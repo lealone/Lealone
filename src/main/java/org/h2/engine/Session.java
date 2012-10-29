@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
+
+import org.apache.hadoop.hbase.master.HMaster;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.h2.command.Command;
 import org.h2.command.CommandInterface;
 import org.h2.command.Parser;
@@ -103,6 +106,25 @@ public class Session extends SessionWithState {
     private int objectId;
     private final int queryCacheSize;
     private SmallLRUCache<String, Command> queryCache;
+
+	private HMaster master;
+	private HRegionServer regionServer;
+
+	public HMaster getMaster() {
+		return master;
+	}
+
+	public void setMaster(HMaster master) {
+		this.master = master;
+	}
+
+	public HRegionServer getRegionServer() {
+		return regionServer;
+	}
+
+	public void setRegionServer(HRegionServer regionServer) {
+		this.regionServer = regionServer;
+	}
 
     public Session(Database database, User user, int id) {
         this.database = database;

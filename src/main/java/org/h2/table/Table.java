@@ -105,8 +105,18 @@ public abstract class Table extends SchemaObjectBase {
     private boolean checkForeignKeyConstraints = true;
     private boolean onCommitDrop, onCommitTruncate;
     private Row nullRow;
+    
+    private String rowKeyName;
 
-    public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
+    public String getRowKeyName() {
+		return rowKeyName;
+	}
+
+	public void setRowKeyName(String rowKeyName) {
+		this.rowKeyName = rowKeyName;
+	}
+
+	public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         columnMap = schema.getDatabase().newStringMap();
         initSchemaObjectBase(schema, id, name, Trace.TABLE);
         this.persistIndexes = persistIndexes;

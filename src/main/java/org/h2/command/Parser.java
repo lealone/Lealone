@@ -24,10 +24,12 @@ import org.h2.command.ddl.AlterView;
 import org.h2.command.ddl.Analyze;
 import org.h2.command.ddl.CreateAggregate;
 import org.h2.command.ddl.CreateConstant;
+import org.h2.command.ddl.CreateFamily;
 import org.h2.command.ddl.CreateFunctionAlias;
 import org.h2.command.ddl.CreateIndex;
 import org.h2.command.ddl.CreateLinkedTable;
 import org.h2.command.ddl.CreateRole;
+import org.h2.command.ddl.CreateRowKey;
 import org.h2.command.ddl.CreateSchema;
 import org.h2.command.ddl.CreateSequence;
 import org.h2.command.ddl.CreateTable;
@@ -52,6 +54,7 @@ import org.h2.command.ddl.DropUser;
 import org.h2.command.ddl.DropUserDataType;
 import org.h2.command.ddl.DropView;
 import org.h2.command.ddl.GrantRevoke;
+import org.h2.command.ddl.Options;
 import org.h2.command.ddl.PrepareProcedure;
 import org.h2.command.ddl.SetComment;
 import org.h2.command.ddl.TruncateTable;
@@ -5019,11 +5022,46 @@ public class Parser {
             return null;
         }
     }
+    
+	private Options parseOptions() {
+		if (readIf("OPTIONS")) {
+			read("(");
+			ArrayList<String> optionNames = New.arrayList();
+			ArrayList<Expression> optionValues = New.arrayList();
+			do {
+				optionNames.add(readUniqueIdentifier());
+				read("=");
+				optionValues.add(readExpression());
+			} while (readIfMore());
+
+			return new Options(session, optionNames, optionValues);
+		}
+
+		return null;
+	}
 
     private DefineCommand parseAlterTableAddConstraintIf(String tableName, Schema schema) {
         String constraintName = null, comment = null;
         boolean ifNotExists = false;
         boolean allowIndexDefinition = database.getMode().indexDefinitionInCreateTable;
+		if (readIf("ROW")) {
+			read("KEY");
+			String rowKeyName = readUniqueIdentifier();
+			return new CreateRowKey(session, rowKeyName);
+		}
+		Options options = parseOptions();
+		if (options != null)
+			return options;
+		if (readIf("FAMILY")) {
+			String familyName = readUniqueIdentifier();
+			boolean isDefault = readIf("DEFAULT");
+			options = parseOptions();
+			CreateFamily family = new CreateFamily(session);
+			family.setFamilyName(familyName);
+			family.setDefault(isDefault);
+			family.setOptions(options);
+			return family;
+		}
         if (readIf("CONSTRAINT")) {
             ifNotExists = readIfNoExists();
             constraintName = readIdentifierWithSchema(schema.getName());

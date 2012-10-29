@@ -505,6 +505,7 @@ Server {
       // start up all service threads.
       status.setStatus("Initializing master service threads");
       startServiceThreads();
+      org.apache.hadoop.hbase.h2.TcpServer.start(LOG, conf, this, null);
     }
 
     // Wait for region servers to report in.

@@ -21,6 +21,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
+import org.apache.hadoop.hbase.master.HMaster;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.h2.Driver;
 import org.h2.constant.ErrorCode;
 import org.h2.engine.Constants;
@@ -72,6 +75,25 @@ public class TcpServer implements Service {
     private Thread listenerThread;
     private int nextThreadId;
     private String key, keyDatabase;
+
+	private HMaster master;
+	private HRegionServer regionServer;
+
+	public HMaster getMaster() {
+		return master;
+	}
+
+	public void setMaster(HMaster master) {
+		this.master = master;
+	}
+
+	public HRegionServer getRegionServer() {
+		return regionServer;
+	}
+
+	public void setRegionServer(HRegionServer regionServer) {
+		this.regionServer = regionServer;
+	}
 
     /**
      * Get the database name of the management database.
@@ -238,6 +260,8 @@ public class TcpServer implements Service {
             while (!stop) {
                 Socket s = serverSocket.accept();
                 TcpServerThread c = new TcpServerThread(s, this, nextThreadId++);
+                c.setMaster(master);
+    			c.setRegionServer(regionServer);
                 running.add(c);
                 Thread thread = new Thread(c, threadName + " thread");
                 thread.setDaemon(isDaemon);

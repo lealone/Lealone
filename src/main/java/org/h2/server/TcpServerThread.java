@@ -15,6 +15,9 @@ import java.io.StringWriter;
 import java.net.Socket;
 import java.sql.SQLException;
 import java.util.ArrayList;
+
+import org.apache.hadoop.hbase.master.HMaster;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.h2.command.Command;
 import org.h2.constant.ErrorCode;
 import org.h2.constant.SysProperties;
@@ -58,6 +61,25 @@ public class TcpServerThread implements Runnable {
     private int threadId;
     private int clientVersion;
     private String sessionId;
+
+	private HMaster master;
+	private HRegionServer regionServer;
+
+	public HMaster getMaster() {
+		return master;
+	}
+
+	public void setMaster(HMaster master) {
+		this.master = master;
+	}
+
+	public HRegionServer getRegionServer() {
+		return regionServer;
+	}
+
+	public void setRegionServer(HRegionServer regionServer) {
+		this.regionServer = regionServer;
+	}
 
     TcpServerThread(Socket socket, TcpServer server, int id) {
         this.server = server;
@@ -134,6 +156,8 @@ public class TcpServerThread implements Runnable {
                     ci.setProperty(transfer.readString(), transfer.readString());
                 }
                 session = Engine.getInstance().createSession(ci);
+                session.setMaster(master);
+                session.setRegionServer(regionServer);
                 transfer.setSession(session);
                 transfer.writeInt(SessionRemote.STATUS_OK);
                 transfer.writeInt(clientVersion);
