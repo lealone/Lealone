@@ -269,4 +269,20 @@ public class Insert extends Prepared implements ResultTarget {
         return true;
     }
 
+	public String getTableName() {
+		return table.getName();
+	}
+
+	public String getRowKey() {
+		//prepare();
+		int index = 0;
+		for (Column c : columns) {
+			//if (c.getName().equalsIgnoreCase(table.getRowKeyName())) {
+			if ("rowKey".equalsIgnoreCase(c.getName())) {
+				return list.get(0)[index].getValue(session).getString();
+			}
+			index++;
+		}
+		return null;
+	}
 }

@@ -121,6 +121,7 @@ import org.h2.result.SortOrder;
 import org.h2.schema.Schema;
 import org.h2.schema.Sequence;
 import org.h2.table.Column;
+import org.h2.table.DummyTable;
 import org.h2.table.FunctionTable;
 import org.h2.table.IndexColumn;
 import org.h2.table.RangeTable;
@@ -184,6 +185,7 @@ public class Parser {
     private String schemaName;
     private ArrayList<String> expectedList;
     private boolean rightsChecked;
+    private boolean disableCheck;
     private boolean recompileAlways;
     private ArrayList<Parameter> indexedParameterList;
     private final boolean identifiersToUpper;
@@ -4774,7 +4776,9 @@ public class Parser {
                 }
             }
         }
-        throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
+		if (disableCheck)
+			return new DummyTable(database.getSchema(session.getCurrentSchemaName()), -1, tableName, false, false);
+		throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
     }
 
     private FunctionAlias findFunctionAlias(String schema, String aliasName) {
@@ -5398,6 +5402,10 @@ public class Parser {
 
     public void setRightsChecked(boolean rightsChecked) {
         this.rightsChecked = rightsChecked;
+    }
+
+    public void setDisableCheck(boolean disableCheck) {
+        this.disableCheck = disableCheck;
     }
 
     /**

@@ -410,6 +410,13 @@ public class Session extends SessionWithState {
         return parser.prepare(sql);
     }
 
+    public Prepared prepare(String sql, boolean rightsChecked, boolean disableCheck) {
+        Parser parser = new Parser(this);
+        parser.setRightsChecked(rightsChecked);
+        parser.setDisableCheck(disableCheck);
+        return parser.prepare(sql);
+    }
+
     /**
      * Parse and prepare the given SQL statement.
      * This method also checks if the connection has been closed.

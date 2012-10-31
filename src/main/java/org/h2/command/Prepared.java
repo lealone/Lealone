@@ -421,4 +421,11 @@ public abstract class Prepared {
         return false;
     }
 
+	public String getTableName() {
+		return null;
+	}
+
+	public String getRowKey() {
+		return null;
+	}
 }

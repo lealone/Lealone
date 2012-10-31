@@ -23,11 +23,22 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.util.Map;
 import java.util.Properties;
+
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.command.CommandInterface;
+import org.h2.command.Prepared;
+import org.h2.command.ddl.DefineCommand;
+import org.h2.command.dml.Insert;
 import org.h2.constant.ErrorCode;
 import org.h2.constant.SysProperties;
 import org.h2.engine.ConnectionInfo;
 import org.h2.engine.Constants;
+import org.h2.engine.Session;
 import org.h2.engine.SessionInterface;
 import org.h2.engine.SessionRemote;
 import org.h2.message.DbException;
@@ -86,17 +97,22 @@ public class JdbcConnection extends TraceObject implements Connection {
     private CloseWatcher watcher;
     private int queryTimeoutCache = -1;
 
+	private boolean isHBaseConnection = false;
+	private Properties info;
+
     /**
      * INTERNAL
      */
     public JdbcConnection(String url, Properties info) throws SQLException {
         this(new ConnectionInfo(url, info), true);
+        this.info = info;
     }
 
     /**
      * INTERNAL
      */
     public JdbcConnection(ConnectionInfo ci, boolean useBaseDir) throws SQLException {
+    	isHBaseConnection = ci.isHBaseConnection();
         try {
             if (useBaseDir) {
                 String baseDir = SysProperties.getBaseDir();
@@ -1110,9 +1126,39 @@ public class JdbcConnection extends TraceObject implements Connection {
      * @param fetchSize the fetch size (used in remote connections)
      * @return the command
      */
-    CommandInterface prepareCommand(String sql, int fetchSize) {
-        return session.prepareCommand(sql, fetchSize);
-    }
+	CommandInterface prepareCommand(String sql, int fetchSize) {
+		if (isHBaseConnection && session instanceof Session) {
+			Prepared prepared = ((Session) session).prepare(sql, true, true);
+
+			if (prepared instanceof DefineCommand) {
+				try {
+					HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
+					ServerName sn = hConnection.getMasterAddress();
+					String url = "jdbc:h2:tcp://" + sn.getHostname() + ":" + sn.getH2TcpPort() + "/dummydb";
+					JdbcConnection masterConn = new JdbcConnection(url, info);
+					return masterConn.prepareCommand(sql, fetchSize);
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			} else if (prepared instanceof Insert) {
+				String tableName = prepared.getTableName();
+				String rowKey = prepared.getRowKey();
+
+				//System.out.println(tableName + " " + rowKey);
+				try {
+					HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
+					HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
+					String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" + regionLocation.getH2TcpPort()
+							+ "/dummydb";
+					JdbcConnection rsConn = new JdbcConnection(url, info);
+					return rsConn.prepareCommand(sql, fetchSize);
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			}
+		}
+		return session.prepareCommand(sql, fetchSize);
+	}
 
     private CommandInterface prepareCommand(String sql, CommandInterface old) {
         return old == null ? session.prepareCommand(sql, Integer.MAX_VALUE) : old;

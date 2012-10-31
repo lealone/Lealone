@@ -48,6 +48,12 @@ public class ConnectionInfo implements Cloneable {
     private boolean persistent;
     private boolean unnamed;
 
+    private boolean isHBaseConnection = false;
+
+    public boolean isHBaseConnection() {
+    	return isHBaseConnection;
+    }
+
     /**
      * Create a connection info object.
      *
@@ -134,6 +140,12 @@ public class ConnectionInfo implements Cloneable {
         } else if (name.startsWith("mem:")) {
             persistent = false;
             if ("mem:".equals(name)) {
+                unnamed = true;
+            }
+        } else if (name.startsWith("hbase:")) {
+        	isHBaseConnection = true;
+            persistent = false;
+            if ("hbase:".equals(name)) {
                 unnamed = true;
             }
         } else if (name.startsWith("file:")) {
