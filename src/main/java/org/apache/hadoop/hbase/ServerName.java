@@ -78,6 +78,16 @@ public class ServerName implements Comparable<ServerName> {
   private final String hostname;
   private final int port;
   private final long startcode;
+  
+  private int h2TcpPort = -1;
+  
+  public int getH2TcpPort() {
+    return h2TcpPort;
+  }
+
+  public void setH2TcpPort(int h2TcpPort) {
+    this.h2TcpPort = h2TcpPort;
+  }
 
   /**
    * Cached versioned bytes of this ServerName instance.

@@ -37,6 +37,16 @@ public class HRegionLocation implements Comparable<HRegionLocation> {
   // Cache of the hostname + port
   private String cachedHostnamePort;
 
+  private int h2TcpPort = -1;
+  
+  public int getH2TcpPort() {
+    return h2TcpPort;
+  }
+
+  public void setH2TcpPort(int h2TcpPort) {
+    this.h2TcpPort = h2TcpPort;
+  }
+
   /**
    * Constructor
    * @param regionInfo the HRegionInfo for the region

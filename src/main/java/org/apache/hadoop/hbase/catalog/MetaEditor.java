@@ -329,6 +329,8 @@ public class MetaEditor {
       Bytes.toBytes(sn.getHostAndPort()));
     p.add(HConstants.CATALOG_FAMILY, HConstants.STARTCODE_QUALIFIER,
       Bytes.toBytes(sn.getStartcode()));
+    p.add(HConstants.CATALOG_FAMILY, HConstants.H2_TCP_PORT_QUALIFIER,
+    	      Bytes.toBytes(sn.getH2TcpPort()));
     return p;
   }
 }

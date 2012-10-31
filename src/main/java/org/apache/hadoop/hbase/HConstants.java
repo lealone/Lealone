@@ -314,6 +314,8 @@ public final class HConstants {
   /** The startcode column qualifier */
   public static final byte [] STARTCODE_QUALIFIER = Bytes.toBytes("serverstartcode");
 
+  public static final byte [] H2_TCP_PORT_QUALIFIER = Bytes.toBytes("h2_tcp_port");
+
   /** The lower-half split region column qualifier */
   public static final byte [] SPLITA_QUALIFIER = Bytes.toBytes("splitA");
 

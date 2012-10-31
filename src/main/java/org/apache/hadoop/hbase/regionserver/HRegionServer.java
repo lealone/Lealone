@@ -978,6 +978,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           String hostnameFromMasterPOV = e.getValue().toString();
           this.serverNameFromMasterPOV = new ServerName(hostnameFromMasterPOV,
             this.isa.getPort(), this.startcode);
+          serverNameFromMasterPOV.setH2TcpPort(conf.getInt("h2.tcpPort", org.h2.engine.Constants.DEFAULT_TCP_PORT));
           LOG.info("Master passed us hostname to use. Was=" +
             this.isa.getHostName() + ", Now=" +
             this.serverNameFromMasterPOV.getHostname());

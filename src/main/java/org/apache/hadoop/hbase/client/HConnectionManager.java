@@ -908,6 +908,8 @@ public class HConnectionManager {
               // instantiate the location
               HRegionLocation loc =
                 new HRegionLocation(regionInfo, hostname, port);
+              loc.setH2TcpPort(Bytes.toInt(result.getValue(HConstants.CATALOG_FAMILY,
+                      HConstants.H2_TCP_PORT_QUALIFIER)));
               // cache this meta entry
               cacheLocation(tableName, loc);
             }
@@ -1042,6 +1044,8 @@ public class HConnectionManager {
           String hostname = Addressing.parseHostname(hostAndPort);
           int port = Addressing.parsePort(hostAndPort);
           location = new HRegionLocation(regionInfo, hostname, port);
+          location.setH2TcpPort(Bytes.toInt(regionInfoRow.getValue(HConstants.CATALOG_FAMILY,
+              HConstants.H2_TCP_PORT_QUALIFIER)));
           cacheLocation(tableName, location);
           return location;
         } catch (TableNotFoundException e) {
