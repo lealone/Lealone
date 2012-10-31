@@ -141,7 +141,7 @@ public class ServerName implements Comparable<ServerName> {
    */
   public synchronized byte [] getVersionedBytes() {
     if (this.bytes == null) {
-      this.bytes = Bytes.add(VERSION_BYTES, Bytes.toBytes(getServerName()));
+      this.bytes = Bytes.add(VERSION_BYTES, Bytes.toBytes(h2TcpPort), Bytes.toBytes(getServerName()));
     }
     return this.bytes;
   }
@@ -286,7 +286,12 @@ public class ServerName implements Comparable<ServerName> {
     short version = Bytes.toShort(versionedBytes);
     if (version == VERSION) {
       int length = versionedBytes.length - Bytes.SIZEOF_SHORT;
-      return new ServerName(Bytes.toString(versionedBytes, Bytes.SIZEOF_SHORT, length));
+      ServerName sn;
+      int h2TcpPort = Bytes.toInt(versionedBytes, Bytes.SIZEOF_SHORT, Bytes.SIZEOF_INT);
+      sn = new ServerName(Bytes.toString(versionedBytes, Bytes.SIZEOF_SHORT + Bytes.SIZEOF_INT, length - Bytes.SIZEOF_INT));
+      sn.setH2TcpPort(h2TcpPort);
+      return sn;
+      //return new ServerName(Bytes.toString(versionedBytes, Bytes.SIZEOF_SHORT, length));
     }
     // Presume the bytes were written with an old version of hbase and that the
     // bytes are actually a String of the form "'<hostname>' ':' '<port>'".

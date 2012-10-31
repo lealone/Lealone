@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HServerAddress;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.ZooKeeperConnectionException;
 import org.apache.hadoop.hbase.catalog.CatalogTracker;
 import org.apache.hadoop.hbase.client.coprocessor.Batch;
@@ -87,6 +88,8 @@ public interface HConnection extends Abortable, Closeable {
   @Deprecated
   public HMasterInterface getMaster()
   throws MasterNotRunningException, ZooKeeperConnectionException;
+
+  public ServerName getMasterAddress() throws ZooKeeperConnectionException;
 
   /** @return - true if the master server is running */
   public boolean isMasterRunning()

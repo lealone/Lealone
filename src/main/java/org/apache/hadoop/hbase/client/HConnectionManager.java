@@ -576,6 +576,11 @@ public class HConnectionManager {
       this.master = null;
       this.masterChecked = false;
     }
+    
+    public ServerName getMasterAddress() throws ZooKeeperConnectionException {
+      ensureZookeeperTrackers();
+      return masterAddressTracker.getMasterAddress();
+    }
 
     private synchronized void ensureZookeeperTrackers()
         throws ZooKeeperConnectionException {

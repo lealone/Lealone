@@ -261,6 +261,7 @@ Server {
     this.isa = this.rpcServer.getListenerAddress();
     this.serverName = new ServerName(this.isa.getHostName(),
       this.isa.getPort(), System.currentTimeMillis());
+    this.serverName.setH2TcpPort(conf.getInt("h2.tcpPort", org.h2.engine.Constants.DEFAULT_TCP_PORT));
     this.rsFatals = new MemoryBoundedLogMessageBuffer(
         conf.getLong("hbase.master.buffer.for.rs.fatals", 1*1024*1024));
 
