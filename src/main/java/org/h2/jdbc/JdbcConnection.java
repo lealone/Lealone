@@ -1134,7 +1134,8 @@ public class JdbcConnection extends TraceObject implements Connection {
 				try {
 					HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
 					ServerName sn = hConnection.getMasterAddress();
-					String url = "jdbc:h2:tcp://" + sn.getHostname() + ":" + sn.getH2TcpPort() + "/dummydb";
+					String url = "jdbc:h2:tcp://" + sn.getHostname() + ":" + sn.getH2TcpPort() + "/hbasedb";
+					//info.setProperty("DISABLE_CHECK", "true");
 					JdbcConnection masterConn = new JdbcConnection(url, info);
 					return masterConn.prepareCommand(sql, fetchSize);
 				} catch (Exception e) {
@@ -1149,7 +1150,9 @@ public class JdbcConnection extends TraceObject implements Connection {
 					HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
 					HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
 					String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" + regionLocation.getH2TcpPort()
-							+ "/dummydb";
+							+ "/hbasedb";//;disableCheck=true
+					info.setProperty("DISABLE_CHECK", "true");
+					info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
 					JdbcConnection rsConn = new JdbcConnection(url, info);
 					return rsConn.prepareCommand(sql, fetchSize);
 				} catch (Exception e) {

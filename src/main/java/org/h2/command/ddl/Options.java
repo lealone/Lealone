@@ -6,13 +6,17 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.h2.command.CommandInterface;
 import org.h2.engine.Session;
-import org.h2.expression.Expression;
 
 public class Options extends DefineCommand {
-	private ArrayList<String> optionNames;
-	private ArrayList<Expression> optionValues;
+	public static final String ON_DEFAULT_COLUMN_FAMILY_NAME = "DEFAULT_COLUMN_FAMILY_NAME";
+	public static final String ON_ROW_KEY_NAME = "ROW_KEY_NAME";
 
-	public Options(Session session, ArrayList<String> optionNames, ArrayList<Expression> optionValues) {
+	public static final String DEFAULT_ROW_KEY_NAME = "_ROWKEY_";
+
+	private ArrayList<String> optionNames;
+	private ArrayList<String> optionValues;
+
+	public Options(Session session, ArrayList<String> optionNames, ArrayList<String> optionValues) {
 		super(session);
 		this.optionNames = optionNames;
 		this.optionValues = optionValues;
@@ -26,11 +30,11 @@ public class Options extends DefineCommand {
 		this.optionNames = optionNames;
 	}
 
-	public ArrayList<Expression> getOptionValues() {
+	public ArrayList<String> getOptionValues() {
 		return optionValues;
 	}
 
-	public void setOptionValues(ArrayList<Expression> optionValues) {
+	public void setOptionValues(ArrayList<String> optionValues) {
 		this.optionValues = optionValues;
 	}
 
@@ -42,7 +46,7 @@ public class Options extends DefineCommand {
 	public void initOptions(HColumnDescriptor hcd) {
 		if (optionNames != null) {
 			for (int i = 0, len = optionNames.size(); i < len; i++) {
-				hcd.setValue(optionNames.get(i), optionValues.get(i).getValue(session).getString());
+				hcd.setValue(optionNames.get(i), optionValues.get(i));
 			}
 		}
 	}
@@ -50,8 +54,28 @@ public class Options extends DefineCommand {
 	public void initOptions(HTableDescriptor htd) {
 		if (optionNames != null) {
 			for (int i = 0, len = optionNames.size(); i < len; i++) {
-				htd.setValue(optionNames.get(i), optionValues.get(i).getValue(session).getString());
+				htd.setValue(optionNames.get(i), optionValues.get(i));
 			}
 		}
+	}
+
+	public String getDefaultColumnFamilyName() {
+		if (optionNames != null)
+			for (int i = 0, len = optionNames.size(); i < len; i++) {
+				if (ON_DEFAULT_COLUMN_FAMILY_NAME.equalsIgnoreCase(optionNames.get(i)))
+					return optionValues.get(i);
+			}
+
+		return null;
+	}
+
+	public String getRowKeyName() {
+		if (optionNames != null)
+			for (int i = 0, len = optionNames.size(); i < len; i++) {
+				if (ON_ROW_KEY_NAME.equalsIgnoreCase(optionNames.get(i)))
+					return optionValues.get(i);
+			}
+
+		return DEFAULT_ROW_KEY_NAME;
 	}
 }

@@ -168,6 +168,8 @@ public class Engine implements SessionFactory {
                 // ignore
             }
         }
+
+		ci.removeProperty("IS_MASTER", false);
         session.setAllowLiterals(true);
         DbSettings defaultSettings = DbSettings.getInstance(null);
         for (String setting : ci.getKeys()) {

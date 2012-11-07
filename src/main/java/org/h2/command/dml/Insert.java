@@ -6,7 +6,11 @@
  */
 package org.h2.command.dml;
 
+import java.io.IOException;
 import java.util.ArrayList;
+
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.api.Trigger;
 import org.h2.command.Command;
 import org.h2.command.CommandInterface;
@@ -24,6 +28,7 @@ import org.h2.result.ResultTarget;
 import org.h2.result.Row;
 import org.h2.table.Column;
 import org.h2.table.Table;
+import org.h2.table.HBaseTable;
 import org.h2.util.New;
 import org.h2.util.StatementBuilder;
 import org.h2.value.Value;
@@ -34,254 +39,281 @@ import org.h2.value.Value;
  */
 public class Insert extends Prepared implements ResultTarget {
 
-    private Table table;
-    private Column[] columns;
-    private ArrayList<Expression[]> list = New.arrayList();
-    private Query query;
-    private boolean sortedInsertMode;
-    private int rowNumber;
-    private boolean insertFromSelect;
+	private Table table;
+	private Column[] columns;
+	private ArrayList<Expression[]> list = New.arrayList();
+	private Query query;
+	private boolean sortedInsertMode;
+	private int rowNumber;
+	private boolean insertFromSelect;
 
-    public Insert(Session session) {
-        super(session);
-    }
+	public Insert(Session session) {
+		super(session);
+	}
 
-    public void setCommand(Command command) {
-        super.setCommand(command);
-        if (query != null) {
-            query.setCommand(command);
-        }
-    }
+	public void setCommand(Command command) {
+		super.setCommand(command);
+		if (query != null) {
+			query.setCommand(command);
+		}
+	}
 
-    public void setTable(Table table) {
-        this.table = table;
-    }
+	public void setTable(Table table) {
+		this.table = table;
+	}
 
-    public void setColumns(Column[] columns) {
-        this.columns = columns;
-    }
+	public void setColumns(Column[] columns) {
+		this.columns = columns;
+	}
 
-    public void setQuery(Query query) {
-        this.query = query;
-    }
+	public void setQuery(Query query) {
+		this.query = query;
+	}
 
-    /**
-     * Add a row to this merge statement.
-     *
-     * @param expr the list of values
-     */
-    public void addRow(Expression[] expr) {
-        list.add(expr);
-    }
+	/**
+	 * Add a row to this merge statement.
+	 *
+	 * @param expr the list of values
+	 */
+	public void addRow(Expression[] expr) {
+		list.add(expr);
+	}
 
-    public int update() {
-        Index index = null;
-        if (sortedInsertMode) {
-            index = table.getScanIndex(session);
-            index.setSortedInsertMode(true);
-        }
-        try {
-            return insertRows();
-        } finally {
-            if (index != null) {
-                index.setSortedInsertMode(false);
-            }
-        }
-    }
+	public int update() {
+		if (table instanceof HBaseTable) {
+			Put put = new Put(Bytes.toBytes(getRowKey()));
+			String rowKeyName = ((HBaseTable) table).getRowKeyName();
+			String defaultColumnFamilyName = ((HBaseTable) table).getDefaultColumnFamilyName();
+			byte[] cf = Bytes.toBytes(defaultColumnFamilyName);
+			try {
+				int index = -1;
+				for (Column c : columns) {
+					index++;
+					if (rowKeyName.equalsIgnoreCase(c.getName())) {
+						continue;
+					}
+					if (c.getColumnFamilyName() != null && !defaultColumnFamilyName.equalsIgnoreCase(c.getColumnFamilyName()))
+						cf = Bytes.toBytes(c.getColumnFamilyName());
+					put.add(cf, Bytes.toBytes(c.getName()), Bytes.toBytes(list.get(0)[index].getValue(session).getString()));
+				}
+				session.getRegionServer().put(session.getRegionName(), put);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+			rowNumber = 1;
+			return rowNumber;
+		}
 
-    private int insertRows() {
-        session.getUser().checkRight(table, Right.INSERT);
-        setCurrentRowNumber(0);
-        table.fire(session, Trigger.INSERT, true);
-        rowNumber = 0;
-        int listSize = list.size();
-        if (listSize > 0) {
-            int columnLen = columns.length;
-            for (int x = 0; x < listSize; x++) {
-                Row newRow = table.getTemplateRow();
-                Expression[] expr = list.get(x);
-                setCurrentRowNumber(x + 1);
-                for (int i = 0; i < columnLen; i++) {
-                    Column c = columns[i];
-                    int index = c.getColumnId();
-                    Expression e = expr[i];
-                    if (e != null) {
-                        // e can be null (DEFAULT)
-                        e = e.optimize(session);
-                        try {
-                            Value v = c.convert(e.getValue(session));
-                            newRow.setValue(index, v);
-                        } catch (DbException ex) {
-                            throw setRow(ex, x, getSQL(expr));
-                        }
-                    }
-                }
-                rowNumber++;
-                table.validateConvertUpdateSequence(session, newRow);
-                boolean done = table.fireBeforeRow(session, null, newRow);
-                if (!done) {
-                    table.lock(session, true, false);
-                    table.addRow(session, newRow);
-                    session.log(table, UndoLogRecord.INSERT, newRow);
-                    table.fireAfterRow(session, null, newRow, false);
-                }
-            }
-        } else {
-            table.lock(session, true, false);
-            if (insertFromSelect) {
-                query.query(0, this);
-            } else {
-                ResultInterface rows = query.query(0);
-                while (rows.next()) {
-                    Value[] r = rows.currentRow();
-                    addRow(r);
-                }
-                rows.close();
-            }
-        }
-        table.fire(session, Trigger.INSERT, false);
-        return rowNumber;
-    }
+		Index index = null;
+		if (sortedInsertMode) {
+			index = table.getScanIndex(session);
+			index.setSortedInsertMode(true);
+		}
+		try {
+			return insertRows();
+		} finally {
+			if (index != null) {
+				index.setSortedInsertMode(false);
+			}
+		}
+	}
 
-    public void addRow(Value[] values) {
-        Row newRow = table.getTemplateRow();
-        setCurrentRowNumber(++rowNumber);
-        for (int j = 0, len = columns.length; j < len; j++) {
-            Column c = columns[j];
-            int index = c.getColumnId();
-            try {
-                Value v = c.convert(values[j]);
-                newRow.setValue(index, v);
-            } catch (DbException ex) {
-                throw setRow(ex, rowNumber, getSQL(values));
-            }
-        }
-        table.validateConvertUpdateSequence(session, newRow);
-        boolean done = table.fireBeforeRow(session, null, newRow);
-        if (!done) {
-            table.addRow(session, newRow);
-            session.log(table, UndoLogRecord.INSERT, newRow);
-            table.fireAfterRow(session, null, newRow, false);
-        }
-    }
+	private int insertRows() {
+		session.getUser().checkRight(table, Right.INSERT);
+		setCurrentRowNumber(0);
+		table.fire(session, Trigger.INSERT, true);
+		rowNumber = 0;
+		int listSize = list.size();
+		if (listSize > 0) {
+			int columnLen = columns.length;
+			for (int x = 0; x < listSize; x++) {
+				Row newRow = table.getTemplateRow();
+				Expression[] expr = list.get(x);
+				setCurrentRowNumber(x + 1);
+				for (int i = 0; i < columnLen; i++) {
+					Column c = columns[i];
+					int index = c.getColumnId();
+					Expression e = expr[i];
+					if (e != null) {
+						// e can be null (DEFAULT)
+						e = e.optimize(session);
+						try {
+							Value v = c.convert(e.getValue(session));
+							newRow.setValue(index, v);
+						} catch (DbException ex) {
+							throw setRow(ex, x, getSQL(expr));
+						}
+					}
+				}
+				rowNumber++;
+				table.validateConvertUpdateSequence(session, newRow);
+				boolean done = table.fireBeforeRow(session, null, newRow);
+				if (!done) {
+					table.lock(session, true, false);
+					table.addRow(session, newRow);
+					session.log(table, UndoLogRecord.INSERT, newRow);
+					table.fireAfterRow(session, null, newRow, false);
+				}
+			}
+		} else {
+			table.lock(session, true, false);
+			if (insertFromSelect) {
+				query.query(0, this);
+			} else {
+				ResultInterface rows = query.query(0);
+				while (rows.next()) {
+					Value[] r = rows.currentRow();
+					addRow(r);
+				}
+				rows.close();
+			}
+		}
+		table.fire(session, Trigger.INSERT, false);
+		return rowNumber;
+	}
 
-    public int getRowCount() {
-        return rowNumber;
-    }
+	public void addRow(Value[] values) {
+		Row newRow = table.getTemplateRow();
+		setCurrentRowNumber(++rowNumber);
+		for (int j = 0, len = columns.length; j < len; j++) {
+			Column c = columns[j];
+			int index = c.getColumnId();
+			try {
+				Value v = c.convert(values[j]);
+				newRow.setValue(index, v);
+			} catch (DbException ex) {
+				throw setRow(ex, rowNumber, getSQL(values));
+			}
+		}
+		table.validateConvertUpdateSequence(session, newRow);
+		boolean done = table.fireBeforeRow(session, null, newRow);
+		if (!done) {
+			table.addRow(session, newRow);
+			session.log(table, UndoLogRecord.INSERT, newRow);
+			table.fireAfterRow(session, null, newRow, false);
+		}
+	}
 
-    public String getPlanSQL() {
-        StatementBuilder buff = new StatementBuilder("INSERT INTO ");
-        buff.append(table.getSQL()).append('(');
-        for (Column c : columns) {
-            buff.appendExceptFirst(", ");
-            buff.append(c.getSQL());
-        }
-        buff.append(")\n");
-        if (insertFromSelect) {
-            buff.append("DIRECT ");
-        }
-        if (sortedInsertMode) {
-            buff.append("SORTED ");
-        }
-        if (list.size() > 0) {
-            buff.append("VALUES ");
-            int row = 0;
-            if (list.size() > 1) {
-                buff.append('\n');
-            }
-            for (Expression[] expr : list) {
-                if (row++ > 0) {
-                    buff.append(",\n");
-                }
-                buff.append('(');
-                buff.resetCount();
-                for (Expression e : expr) {
-                    buff.appendExceptFirst(", ");
-                    if (e == null) {
-                        buff.append("DEFAULT");
-                    } else {
-                        buff.append(e.getSQL());
-                    }
-                }
-                buff.append(')');
-            }
-        } else {
-            buff.append(query.getPlanSQL());
-        }
-        return buff.toString();
-    }
+	public int getRowCount() {
+		return rowNumber;
+	}
 
-    public void prepare() {
-        if (columns == null) {
-            if (list.size() > 0 && list.get(0).length == 0) {
-                // special case where table is used as a sequence
-                columns = new Column[0];
-            } else {
-                columns = table.getColumns();
-            }
-        }
-        if (list.size() > 0) {
-            for (Expression[] expr : list) {
-                if (expr.length != columns.length) {
-                    throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
-                }
-                for (int i = 0, len = expr.length; i < len; i++) {
-                    Expression e = expr[i];
-                    if (e != null) {
-                        e = e.optimize(session);
-                        if (e instanceof Parameter) {
-                            Parameter p = (Parameter) e;
-                            p.setColumn(columns[i]);
-                        }
-                        expr[i] = e;
-                    }
-                }
-            }
-        } else {
-            query.prepare();
-            if (query.getColumnCount() != columns.length) {
-                throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
-            }
-        }
-    }
+	public String getPlanSQL() {
+		StatementBuilder buff = new StatementBuilder("INSERT INTO ");
+		buff.append(table.getSQL()).append('(');
+		for (Column c : columns) {
+			buff.appendExceptFirst(", ");
+			buff.append(c.getSQL());
+		}
+		buff.append(")\n");
+		if (insertFromSelect) {
+			buff.append("DIRECT ");
+		}
+		if (sortedInsertMode) {
+			buff.append("SORTED ");
+		}
+		if (list.size() > 0) {
+			buff.append("VALUES ");
+			int row = 0;
+			if (list.size() > 1) {
+				buff.append('\n');
+			}
+			for (Expression[] expr : list) {
+				if (row++ > 0) {
+					buff.append(",\n");
+				}
+				buff.append('(');
+				buff.resetCount();
+				for (Expression e : expr) {
+					buff.appendExceptFirst(", ");
+					if (e == null) {
+						buff.append("DEFAULT");
+					} else {
+						buff.append(e.getSQL());
+					}
+				}
+				buff.append(')');
+			}
+		} else {
+			buff.append(query.getPlanSQL());
+		}
+		return buff.toString();
+	}
 
-    public boolean isTransactional() {
-        return true;
-    }
+	public void prepare() {
+		if (columns == null) {
+			if (list.size() > 0 && list.get(0).length == 0) {
+				// special case where table is used as a sequence
+				columns = new Column[0];
+			} else {
+				columns = table.getColumns();
+			}
+		}
+		if (list.size() > 0) {
+			for (Expression[] expr : list) {
+				if (expr.length != columns.length) {
+					throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
+				}
+				for (int i = 0, len = expr.length; i < len; i++) {
+					Expression e = expr[i];
+					if (e != null) {
+						e = e.optimize(session);
+						if (e instanceof Parameter) {
+							Parameter p = (Parameter) e;
+							p.setColumn(columns[i]);
+						}
+						expr[i] = e;
+					}
+				}
+			}
+		} else {
+			query.prepare();
+			if (query.getColumnCount() != columns.length) {
+				throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
+			}
+		}
+	}
 
-    public ResultInterface queryMeta() {
-        return null;
-    }
+	public boolean isTransactional() {
+		return true;
+	}
 
-    public void setSortedInsertMode(boolean sortedInsertMode) {
-        this.sortedInsertMode = sortedInsertMode;
-    }
+	public ResultInterface queryMeta() {
+		return null;
+	}
 
-    public int getType() {
-        return CommandInterface.INSERT;
-    }
+	public void setSortedInsertMode(boolean sortedInsertMode) {
+		this.sortedInsertMode = sortedInsertMode;
+	}
 
-    public void setInsertFromSelect(boolean value) {
-        this.insertFromSelect = value;
-    }
+	public int getType() {
+		return CommandInterface.INSERT;
+	}
 
-    public boolean isCacheable() {
-        return true;
-    }
+	public void setInsertFromSelect(boolean value) {
+		this.insertFromSelect = value;
+	}
 
+	public boolean isCacheable() {
+		return true;
+	}
+
+	@Override
 	public String getTableName() {
 		return table.getName();
 	}
 
+	@Override
 	public String getRowKey() {
-		//prepare();
-		int index = 0;
-		for (Column c : columns) {
-			//if (c.getName().equalsIgnoreCase(table.getRowKeyName())) {
-			if ("rowKey".equalsIgnoreCase(c.getName())) {
-				return list.get(0)[index].getValue(session).getString();
+		if (table instanceof HBaseTable) {
+			String rowKeyName = ((HBaseTable) table).getRowKeyName();
+			int index = 0;
+			for (Column c : columns) {
+				if (rowKeyName.equalsIgnoreCase(c.getName())) {
+					return list.get(0)[index].getValue(session).getString();
+				}
+				index++;
 			}
-			index++;
 		}
 		return null;
 	}

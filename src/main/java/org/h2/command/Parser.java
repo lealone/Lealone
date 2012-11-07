@@ -24,12 +24,12 @@ import org.h2.command.ddl.AlterView;
 import org.h2.command.ddl.Analyze;
 import org.h2.command.ddl.CreateAggregate;
 import org.h2.command.ddl.CreateConstant;
-import org.h2.command.ddl.CreateFamily;
+import org.h2.command.ddl.CreateColumnFamily;
 import org.h2.command.ddl.CreateFunctionAlias;
+import org.h2.command.ddl.CreateHBaseTable;
 import org.h2.command.ddl.CreateIndex;
 import org.h2.command.ddl.CreateLinkedTable;
 import org.h2.command.ddl.CreateRole;
-import org.h2.command.ddl.CreateRowKey;
 import org.h2.command.ddl.CreateSchema;
 import org.h2.command.ddl.CreateSequence;
 import org.h2.command.ddl.CreateTable;
@@ -44,6 +44,7 @@ import org.h2.command.ddl.DropAggregate;
 import org.h2.command.ddl.DropConstant;
 import org.h2.command.ddl.DropDatabase;
 import org.h2.command.ddl.DropFunctionAlias;
+import org.h2.command.ddl.DropHBaseTable;
 import org.h2.command.ddl.DropIndex;
 import org.h2.command.ddl.DropRole;
 import org.h2.command.ddl.DropSchema;
@@ -121,7 +122,7 @@ import org.h2.result.SortOrder;
 import org.h2.schema.Schema;
 import org.h2.schema.Sequence;
 import org.h2.table.Column;
-import org.h2.table.DummyTable;
+import org.h2.table.HBaseTable;
 import org.h2.table.FunctionTable;
 import org.h2.table.IndexColumn;
 import org.h2.table.RangeTable;
@@ -800,6 +801,23 @@ public class Parser {
 
     private Column parseColumn(Table table) {
         String id = readColumnIdentifier();
+
+		if (table instanceof HBaseTable) {
+			String columnFamilyName = null;
+			if (readIf(".")) {
+				columnFamilyName = id;
+				if (currentTokenType != IDENTIFIER) {
+					throw DbException.getSyntaxError(sqlCommand, parseIndex, "identifier");
+				}
+				id = currentToken;
+				read();
+			}
+			Column c = table.getColumn(id);
+			if (columnFamilyName != null)
+				c.setColumnFamilyName(columnFamilyName);
+			return c;
+		}
+
         if (database.getSettings().rowId && Column.ROWID.equals(id)) {
             return table.getRowIdColumn();
         }
@@ -1214,7 +1232,14 @@ public class Parser {
                 command.setDropAction(ConstraintReferential.SET_DEFAULT);
             }
             return command;
-        } else if (readIf("INDEX")) {
+		} else if (readIf("HBASE")) {
+			read("TABLE");
+			boolean ifExists = readIfExists(false);
+			String tableName = readIdentifierWithSchema();
+			DropHBaseTable command = new DropHBaseTable(session, getSchema(), tableName);
+			command.setIfExists(ifExists);
+			return command;
+		} else if (readIf("INDEX")) {
             boolean ifExists = readIfExists(false);
             String indexName = readIdentifierWithSchema();
             DropIndex command = new DropIndex(session, getSchema());
@@ -3775,7 +3800,9 @@ public class Parser {
             return parseCreateAggregate(force);
         } else if (readIf("LINKED")) {
             return parseCreateLinkedTable(false, false, force);
-        }
+		} else if (readIf("HBASE")) {
+			return parseCreateHBaseTable();
+		}
         // tables or linked tables
         boolean memory = false, cached = false;
         if (readIf("MEMORY")) {
@@ -4777,7 +4804,7 @@ public class Parser {
             }
         }
 		if (disableCheck)
-			return new DummyTable(database.getSchema(session.getCurrentSchemaName()), -1, tableName, false, false);
+			return new HBaseTable(database.getSchema(session.getCurrentSchemaName()), -1, tableName, false, false);
 		throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
     }
 
@@ -5031,11 +5058,11 @@ public class Parser {
 		if (readIf("OPTIONS")) {
 			read("(");
 			ArrayList<String> optionNames = New.arrayList();
-			ArrayList<Expression> optionValues = New.arrayList();
+			ArrayList<String> optionValues = New.arrayList();
 			do {
 				optionNames.add(readUniqueIdentifier());
 				read("=");
-				optionValues.add(readExpression());
+				optionValues.add(readString());
 			} while (readIfMore());
 
 			return new Options(session, optionNames, optionValues);
@@ -5048,24 +5075,6 @@ public class Parser {
         String constraintName = null, comment = null;
         boolean ifNotExists = false;
         boolean allowIndexDefinition = database.getMode().indexDefinitionInCreateTable;
-		if (readIf("ROW")) {
-			read("KEY");
-			String rowKeyName = readUniqueIdentifier();
-			return new CreateRowKey(session, rowKeyName);
-		}
-		Options options = parseOptions();
-		if (options != null)
-			return options;
-		if (readIf("FAMILY")) {
-			String familyName = readUniqueIdentifier();
-			boolean isDefault = readIf("DEFAULT");
-			options = parseOptions();
-			CreateFamily family = new CreateFamily(session);
-			family.setFamilyName(familyName);
-			family.setDefault(isDefault);
-			family.setOptions(options);
-			return family;
-		}
         if (readIf("CONSTRAINT")) {
             ifNotExists = readIfNoExists();
             constraintName = readIdentifierWithSchema(schema.getName());
@@ -5225,6 +5234,34 @@ public class Parser {
         }
         return command;
     }
+    
+	private CreateHBaseTable parseCreateHBaseTable() {
+		read("TABLE");
+		boolean ifNotExists = readIfNoExists();
+		String tableName = readIdentifierWithSchema();
+		CreateHBaseTable command = new CreateHBaseTable(session, getSchema(), tableName);
+
+		command.setIfNotExists(ifNotExists);
+		if (readIf("(")) {
+			if (!readIf(")")) {
+				do {
+					Options options = parseOptions();
+					if (options != null)
+						command.setOptions(options);
+					if (readIf("COLUMN")) {
+						read("FAMILY");
+						String cfName = readUniqueIdentifier();
+						options = parseOptions();
+						CreateColumnFamily cf = new CreateColumnFamily(session, cfName);
+						cf.setOptions(options);
+						command.addCreateColumnFamily(cf);
+					}
+				} while (readIfMore());
+			}
+		}
+
+		return command;
+	}
 
     private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes) {
         boolean ifNotExists = readIfNoExists();

@@ -85,6 +85,16 @@ public class Column {
     private String comment;
     private boolean primaryKey;
 
+	private String columnFamilyName;
+
+	public String getColumnFamilyName() {
+		return columnFamilyName;
+	}
+
+	public void setColumnFamilyName(String columnFamilyName) {
+		this.columnFamilyName = columnFamilyName;
+	}
+
     public Column(String name, int type) {
         this(name, type, -1, -1, -1);
     }

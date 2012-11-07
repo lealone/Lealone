@@ -109,6 +109,16 @@ public class Session extends SessionWithState {
 
 	private HMaster master;
 	private HRegionServer regionServer;
+	private boolean disableCheck;
+	private byte[] regionName;
+
+	public byte[] getRegionName() {
+		return regionName;
+	}
+
+	public void setRegionName(byte[] regionName) {
+		this.regionName = regionName;
+	}
 
 	public HMaster getMaster() {
 		return master;
@@ -125,6 +135,10 @@ public class Session extends SessionWithState {
 	public void setRegionServer(HRegionServer regionServer) {
 		this.regionServer = regionServer;
 	}
+	
+	public void setDisableCheck(boolean disableCheck) {
+        this.disableCheck = disableCheck;
+    }
 
     public Session(Database database, User user, int id) {
         this.database = database;
@@ -407,6 +421,7 @@ public class Session extends SessionWithState {
     public Prepared prepare(String sql, boolean rightsChecked) {
         Parser parser = new Parser(this);
         parser.setRightsChecked(rightsChecked);
+        parser.setDisableCheck(disableCheck);
         return parser.prepare(sql);
     }
 
@@ -441,6 +456,7 @@ public class Session extends SessionWithState {
             }
         }
         Parser parser = new Parser(this);
+        parser.setDisableCheck(disableCheck);
         command = parser.prepareCommand(sql);
         if (queryCache != null) {
             if (command.isCacheable()) {

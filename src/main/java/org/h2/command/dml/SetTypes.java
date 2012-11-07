@@ -199,6 +199,8 @@ public class SetTypes {
      */
     public static final int REDO_LOG_BINARY = 37;
 
+    public static final int IS_MASTER = 38;
+
     private static final ArrayList<String> TYPES = New.arrayList();
 
     private SetTypes() {
@@ -245,6 +247,7 @@ public class SetTypes {
         list.add(VARIABLE, "@");
         list.add(QUERY_TIMEOUT, "QUERY_TIMEOUT");
         list.add(REDO_LOG_BINARY, "REDO_LOG_BINARY");
+        list.add(IS_MASTER, "IS_MASTER");
     }
 
     /**

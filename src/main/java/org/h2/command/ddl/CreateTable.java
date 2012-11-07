@@ -6,10 +6,7 @@
  */
 package org.h2.command.ddl;
 
-import java.io.IOException;
 import java.util.ArrayList;
-
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.h2.command.CommandInterface;
 import org.h2.command.dml.Insert;
 import org.h2.command.dml.Query;
@@ -32,8 +29,8 @@ import org.h2.value.DataType;
  */
 public class CreateTable extends SchemaCommand {
 
-    private CreateTableData data = new CreateTableData();
-    private ArrayList<DefineCommand> constraintCommands = New.arrayList();
+    private final CreateTableData data = new CreateTableData();
+    private final ArrayList<DefineCommand> constraintCommands = New.arrayList();
     private IndexColumn[] pkColumns;
     private boolean ifNotExists;
     private boolean onCommitDrop;
@@ -41,10 +38,6 @@ public class CreateTable extends SchemaCommand {
     private Query asQuery;
     private String comment;
     private boolean sortedInsertMode;
-
-	private String rowKeyName;
-	private ArrayList<CreateFamily> familyList = New.arrayList();
-	private Options options;
 
     public CreateTable(Session session, Schema schema) {
         super(session, schema);
@@ -82,13 +75,7 @@ public class CreateTable extends SchemaCommand {
     public void addConstraintCommand(DefineCommand command) {
         if (command instanceof CreateIndex) {
             constraintCommands.add(command);
-        } else if(command instanceof CreateRowKey) {
-        	rowKeyName = ((CreateRowKey) command).getRowKeyName();
-		} else if (command instanceof CreateFamily) {
-			familyList.add((CreateFamily) command);
-		}  else if (command instanceof Options) {
-			options = ((Options) command);
-		} else {
+        } else {
             AlterTableAddConstraint con = (AlterTableAddConstraint) command;
             boolean alreadySet;
             if (con.getType() == CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY) {
@@ -120,25 +107,6 @@ public class CreateTable extends SchemaCommand {
             }
             throw DbException.get(ErrorCode.TABLE_OR_VIEW_ALREADY_EXISTS_1, data.tableName);
         }
-		if (rowKeyName != null) {
-			HTableDescriptor htd = new HTableDescriptor(data.tableName);
-			for (CreateFamily family : familyList) {
-				htd.addFamily(family.createHColumnDescriptor());
-			}
-
-			if (options != null) {
-				options.initOptions(htd);
-			}
-
-			htd.setValue("rowKeyName", rowKeyName);
-
-			//TODO splitKeys
-			try {
-				session.getMaster().createTable(htd, null);
-			} catch (IOException e) {
-				throw DbException.convertIOException(e, "failed to HMaster.createTable");
-			}
-		}
         if (asQuery != null) {
             asQuery.prepare();
             if (data.columns.size() == 0) {
@@ -164,7 +132,6 @@ public class CreateTable extends SchemaCommand {
             db.lockMeta(session);
         }
         Table table = getSchema().createTable(data);
-        table.setRowKeyName(rowKeyName);
         ArrayList<Sequence> sequences = New.arrayList();
         for (Column c : data.columns) {
             if (c.isAutoIncrement()) {
@@ -327,4 +294,5 @@ public class CreateTable extends SchemaCommand {
     public int getType() {
         return CommandInterface.CREATE_TABLE;
     }
+
 }
