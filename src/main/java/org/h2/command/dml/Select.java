@@ -36,6 +36,7 @@ import org.h2.result.SearchRow;
 import org.h2.result.SortOrder;
 import org.h2.table.Column;
 import org.h2.table.ColumnResolver;
+import org.h2.table.HBaseTable;
 import org.h2.table.IndexColumn;
 import org.h2.table.Table;
 import org.h2.table.TableFilter;
@@ -83,6 +84,21 @@ public class Select extends Query {
     private boolean sortUsingIndex;
     private SortOrder sort;
     private int currentGroupRowId;
+
+	private int columnIdCounter = 0;
+	private ArrayList<Column> columns = New.arrayList();
+
+	public int getNextColumnId() {
+		return columnIdCounter++;
+	}
+
+	public void addColumn(Column c) {
+		columns.add(c);
+	}
+
+	public ArrayList<Column> getColumns() {
+		return columns;
+	}
 
     public Select(Session session) {
         super(session);
@@ -801,6 +817,8 @@ public class Select extends Query {
         if (condition != null) {
             condition = condition.optimize(session);
             for (TableFilter f : filters) {
+				if (f.getTable() instanceof HBaseTable)
+					continue;
                 // outer joins: must not add index conditions such as
                 // "c is null" - example:
                 // create table parent(p int primary key) as select 1;
@@ -1264,5 +1282,17 @@ public class Select extends Query {
         }
         return false;
     }
+	@Override
+	public String getTableName() {
+		return topTableFilter.getTable().getName();
+	}
 
+	@Override
+	public String[] getRowKeys() {
+		if (condition != null && topTableFilter.getTable() instanceof HBaseTable) {
+			String rowKeyName = ((HBaseTable) topTableFilter.getTable()).getRowKeyName();
+			return condition.getRowKeys(rowKeyName, session);
+		}
+		return null;
+	}
 }

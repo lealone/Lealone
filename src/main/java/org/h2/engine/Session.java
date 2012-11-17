@@ -17,6 +17,7 @@ import org.h2.command.Command;
 import org.h2.command.CommandInterface;
 import org.h2.command.Parser;
 import org.h2.command.Prepared;
+import org.h2.command.dml.Select;
 import org.h2.command.dml.SetTypes;
 import org.h2.constant.ErrorCode;
 import org.h2.constant.SysProperties;
@@ -111,6 +112,16 @@ public class Session extends SessionWithState {
 	private HRegionServer regionServer;
 	private boolean disableCheck;
 	private byte[] regionName;
+	private Select currentSelect;
+	private int fetchSize;
+
+	public int getFetchSize() {
+		return fetchSize;
+	}
+
+	public void setFetchSize(int fetchSize) {
+		this.fetchSize = fetchSize;
+	}
 
 	public byte[] getRegionName() {
 		return regionName;
@@ -118,6 +129,14 @@ public class Session extends SessionWithState {
 
 	public void setRegionName(byte[] regionName) {
 		this.regionName = regionName;
+	}
+
+	public Select getCurrentSelect() {
+		return currentSelect;
+	}
+
+	public void setCurrentSelect(Select currentSelect) {
+		this.currentSelect = currentSelect;
 	}
 
 	public HMaster getMaster() {

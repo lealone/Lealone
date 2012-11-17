@@ -428,4 +428,16 @@ public abstract class Prepared {
 	public String getRowKey() {
 		return null;
 	}
+
+	public String getStartRowKey() {
+		return null;
+	}
+
+	public String getStopRowKey() {
+		return null;
+	}
+	
+	public String[] getRowKeys() {
+		return null;
+	}
 }

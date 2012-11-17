@@ -34,6 +34,7 @@ import org.h2.command.CommandInterface;
 import org.h2.command.Prepared;
 import org.h2.command.ddl.DefineCommand;
 import org.h2.command.dml.Insert;
+import org.h2.command.dml.Select;
 import org.h2.constant.ErrorCode;
 import org.h2.constant.SysProperties;
 import org.h2.engine.ConnectionInfo;
@@ -1144,6 +1145,26 @@ public class JdbcConnection extends TraceObject implements Connection {
 			} else if (prepared instanceof Insert) {
 				String tableName = prepared.getTableName();
 				String rowKey = prepared.getRowKey();
+
+				//System.out.println(tableName + " " + rowKey);
+				try {
+					HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
+					HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
+					String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" + regionLocation.getH2TcpPort()
+							+ "/hbasedb";//;disableCheck=true
+					info.setProperty("DISABLE_CHECK", "true");
+					info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
+					JdbcConnection rsConn = new JdbcConnection(url, info);
+					return rsConn.prepareCommand(sql, fetchSize);
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			} else if (prepared instanceof Select) {
+				String tableName = prepared.getTableName();
+				String[] rowKeys = prepared.getRowKeys();
+				String rowKey = "";
+				if (rowKeys != null && rowKeys.length > 0)
+					rowKey = rowKeys[0];
 
 				//System.out.println(tableName + " " + rowKey);
 				try {

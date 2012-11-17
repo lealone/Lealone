@@ -20,9 +20,12 @@ import org.h2.value.Value;
 public class HBaseTable extends Table {
 	private HTableDescriptor hTableDescriptor;
 	private String rowKeyName;
+	private Index scanIndex;
 
 	public HBaseTable(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
 		super(schema, id, name, persistIndexes, persistData);
+
+		scanIndex = new HBaseTableIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
 	}
 
 	public void setHTableDescriptor(HTableDescriptor hTableDescriptor) {
@@ -62,7 +65,7 @@ public class HBaseTable extends Table {
 	public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
 			boolean create, String indexComment) {
 
-		return new HBaseTableIndex();
+		return scanIndex;
 	}
 
 	@Override
@@ -91,12 +94,12 @@ public class HBaseTable extends Table {
 
 	@Override
 	public Index getScanIndex(Session session) {
-		return new HBaseTableIndex();
+		return scanIndex;
 	}
 
 	@Override
 	public Index getUniqueIndex() {
-		return new HBaseTableIndex();
+		return scanIndex;
 	}
 
 	@Override
@@ -196,6 +199,11 @@ public class HBaseTable extends Table {
 	@Override
 	public Column getColumn(String columnName) {
 		return new Column(columnName, Value.STRING);
+	}
+
+	@Override
+	public Column[] getColumns() {
+		return new Column[0];
 	}
 
 	private static String toS(ImmutableBytesWritable v) {

@@ -336,6 +336,7 @@ public class TcpServerThread implements Runnable {
             int objectId = transfer.readInt();
             int maxRows = transfer.readInt();
             int fetchSize = transfer.readInt();
+            session.setFetchSize(fetchSize);
             Command command = (Command) cache.getObject(id, false);
             setParameters(command);
             int old = session.getModificationId();

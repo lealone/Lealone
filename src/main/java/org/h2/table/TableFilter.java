@@ -155,6 +155,7 @@ public class TableFilter implements ColumnResolver {
      * @return the best plan item
      */
     public PlanItem getBestPlanItem(Session s, int level) {
+    	s.setCurrentSelect(select);
         PlanItem item;
         if (indexConditions.size() == 0) {
             item = new PlanItem();

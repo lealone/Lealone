@@ -520,4 +520,13 @@ public class Comparison extends Condition {
         return getLeft ? this.left : right;
     }
 
+	@Override
+	public String[] getRowKeys(String rowKeyName, Session session) {
+		if (left instanceof ExpressionColumn) {
+			if (rowKeyName.equalsIgnoreCase(((ExpressionColumn) left).getColumnName())) {
+				return new String[] { right.getValue(session).getString() };
+			}
+		}
+		return null;
+	}
 }

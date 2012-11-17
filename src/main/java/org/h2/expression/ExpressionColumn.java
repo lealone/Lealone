@@ -7,6 +7,7 @@
 package org.h2.expression;
 
 import java.util.HashMap;
+
 import org.h2.command.Parser;
 import org.h2.command.dml.Select;
 import org.h2.command.dml.SelectListColumnResolver;
@@ -19,6 +20,7 @@ import org.h2.schema.Constant;
 import org.h2.schema.Schema;
 import org.h2.table.Column;
 import org.h2.table.ColumnResolver;
+import org.h2.table.HBaseTable;
 import org.h2.table.Table;
 import org.h2.table.TableFilter;
 import org.h2.value.Value;
@@ -74,6 +76,21 @@ public class ExpressionColumn extends Expression {
     }
 
     public void mapColumns(ColumnResolver resolver, int level) {
+		if (resolver instanceof TableFilter && resolver.getTableFilter().getTable() instanceof HBaseTable) {
+			for (Column col : resolver.getSelect().getColumns()) {
+				String n = col.getName();
+				if (database.equalsIdentifiers(columnName, n)) {
+					mapColumn(resolver, col, level);
+					return;
+				}
+			}
+			Column c = resolver.getTableFilter().getTable().getColumn(columnName);
+			c.setTable(resolver.getTableFilter().getTable(), resolver.getSelect().getNextColumnId());
+			resolver.getSelect().addColumn(c);
+			mapColumn(resolver, c, level);
+			return;
+		}
+
         if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
             return;
         }
