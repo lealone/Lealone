@@ -66,6 +66,7 @@ import org.h2.command.dml.Call;
 import org.h2.command.dml.Delete;
 import org.h2.command.dml.ExecuteProcedure;
 import org.h2.command.dml.Explain;
+import org.h2.command.dml.HBaseDelete;
 import org.h2.command.dml.Insert;
 import org.h2.command.dml.Merge;
 import org.h2.command.dml.NoOperation;
@@ -738,6 +739,12 @@ public class Parser {
         int start = lastParseIndex;
         readIf("FROM");
         TableFilter filter = readSimpleTableFilter();
+
+        if (filter.getTable() instanceof HBaseTable) {
+            command = new HBaseDelete(session);
+            currentPrepared = command;
+        }
+
         command.setTableFilter(filter);
         if (readIf("WHERE")) {
             Expression condition = readExpression();

@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.command.CommandInterface;
 import org.h2.command.Prepared;
 import org.h2.command.ddl.DefineCommand;
+import org.h2.command.dml.Delete;
 import org.h2.command.dml.Insert;
 import org.h2.command.dml.Select;
 import org.h2.constant.ErrorCode;
@@ -1128,59 +1129,59 @@ public class JdbcConnection extends TraceObject implements Connection {
      * @return the command
      */
 	CommandInterface prepareCommand(String sql, int fetchSize) {
-		if (isHBaseConnection && session instanceof Session) {
-			Prepared prepared = ((Session) session).prepare(sql, true, true);
+        if (isHBaseConnection && session instanceof Session) {
+            Prepared prepared = ((Session) session).prepare(sql, true, true);
 
-			if (prepared instanceof DefineCommand) {
-				try {
-					HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
-					ServerName sn = hConnection.getMasterAddress();
-					String url = "jdbc:h2:tcp://" + sn.getHostname() + ":" + sn.getH2TcpPort() + "/hbasedb";
-					//info.setProperty("DISABLE_CHECK", "true");
-					JdbcConnection masterConn = new JdbcConnection(url, info);
-					return masterConn.prepareCommand(sql, fetchSize);
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
-			} else if (prepared instanceof Insert) {
-				String tableName = prepared.getTableName();
-				String rowKey = prepared.getRowKey();
+            if (prepared instanceof DefineCommand) {
+                try {
+                    HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
+                    ServerName sn = hConnection.getMasterAddress();
+                    String url = "jdbc:h2:tcp://" + sn.getHostname() + ":" + sn.getH2TcpPort() + "/hbasedb";
+                    //info.setProperty("DISABLE_CHECK", "true");
+                    JdbcConnection masterConn = new JdbcConnection(url, info);
+                    return masterConn.prepareCommand(sql, fetchSize);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            } else if (prepared instanceof Insert || prepared instanceof Delete) {
+                String tableName = prepared.getTableName();
+                String rowKey = prepared.getRowKey();
+                if (rowKey == null)
+                    throw new RuntimeException("rowKey is null");
 
-				//System.out.println(tableName + " " + rowKey);
-				try {
-					HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
-					HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
-					String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" + regionLocation.getH2TcpPort()
-							+ "/hbasedb";//;disableCheck=true
-					info.setProperty("DISABLE_CHECK", "true");
-					info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
-					JdbcConnection rsConn = new JdbcConnection(url, info);
-					return rsConn.prepareCommand(sql, fetchSize);
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
-			} else if (prepared instanceof Select) {
-				String tableName = prepared.getTableName();
-				String[] rowKeys = prepared.getRowKeys();
-				String rowKey = "";
-				if (rowKeys != null && rowKeys.length > 0)
-					rowKey = rowKeys[0];
+                try {
+                    HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
+                    HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
+                    String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" + regionLocation.getH2TcpPort()
+                            + "/hbasedb";//;disableCheck=true
+                    info.setProperty("DISABLE_CHECK", "true");
+                    info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
+                    JdbcConnection rsConn = new JdbcConnection(url, info);
+                    return rsConn.prepareCommand(sql, fetchSize);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            } else if (prepared instanceof Select) {
+                String tableName = prepared.getTableName();
+                String[] rowKeys = prepared.getRowKeys();
+                String rowKey = "";
+                if (rowKeys != null && rowKeys.length > 0)
+                    rowKey = rowKeys[0];
 
-				//System.out.println(tableName + " " + rowKey);
-				try {
-					HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
-					HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
-					String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" + regionLocation.getH2TcpPort()
-							+ "/hbasedb";//;disableCheck=true
-					info.setProperty("DISABLE_CHECK", "true");
-					info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
-					JdbcConnection rsConn = new JdbcConnection(url, info);
-					return rsConn.prepareCommand(sql, fetchSize);
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
-			}
-		}
+                try {
+                    HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
+                    HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
+                    String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" + regionLocation.getH2TcpPort()
+                            + "/hbasedb";//;disableCheck=true
+                    info.setProperty("DISABLE_CHECK", "true");
+                    info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
+                    JdbcConnection rsConn = new JdbcConnection(url, info);
+                    return rsConn.prepareCommand(sql, fetchSize);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
 		return session.prepareCommand(sql, fetchSize);
 	}
 

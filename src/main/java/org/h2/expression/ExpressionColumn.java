@@ -76,20 +76,25 @@ public class ExpressionColumn extends Expression {
     }
 
     public void mapColumns(ColumnResolver resolver, int level) {
-		if (resolver instanceof TableFilter && resolver.getTableFilter().getTable() instanceof HBaseTable) {
-			for (Column col : resolver.getSelect().getColumns()) {
-				String n = col.getName();
-				if (database.equalsIdentifiers(columnName, n)) {
-					mapColumn(resolver, col, level);
-					return;
-				}
-			}
-			Column c = resolver.getTableFilter().getTable().getColumn(columnName);
-			c.setTable(resolver.getTableFilter().getTable(), resolver.getSelect().getNextColumnId());
-			resolver.getSelect().addColumn(c);
-			mapColumn(resolver, c, level);
-			return;
-		}
+        if (resolver instanceof TableFilter && resolver.getTableFilter().getTable() instanceof HBaseTable) {
+            if (resolver.getSelect() == null) {
+                Column c = resolver.getTableFilter().getTable().getColumn(columnName);
+                mapColumn(resolver, c, level);
+                return;
+            }
+            for (Column col : resolver.getSelect().getColumns()) {
+                String n = col.getName();
+                if (database.equalsIdentifiers(columnName, n)) {
+                    mapColumn(resolver, col, level);
+                    return;
+                }
+            }
+            Column c = resolver.getTableFilter().getTable().getColumn(columnName);
+            c.setTable(resolver.getTableFilter().getTable(), resolver.getSelect().getNextColumnId());
+            resolver.getSelect().addColumn(c);
+            mapColumn(resolver, c, level);
+            return;
+        }
 
         if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
             return;
