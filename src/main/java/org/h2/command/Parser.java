@@ -67,6 +67,7 @@ import org.h2.command.dml.Delete;
 import org.h2.command.dml.ExecuteProcedure;
 import org.h2.command.dml.Explain;
 import org.h2.command.dml.HBaseDelete;
+import org.h2.command.dml.HBaseUpdate;
 import org.h2.command.dml.Insert;
 import org.h2.command.dml.Merge;
 import org.h2.command.dml.NoOperation;
@@ -630,6 +631,41 @@ public class Parser {
         String tableAlias = null;
         String columnName = readColumnIdentifier();
         if (readIf(".")) {
+            if (filter.getTable() instanceof HBaseTable) {
+                String columnFamilyName = columnName;
+                columnName = readColumnIdentifier();
+                if (readIf(".")) {
+                    tableAlias = columnFamilyName;
+                    columnFamilyName = columnName;
+                    columnName = readColumnIdentifier();
+                    if (readIf(".")) {
+                        String schema = tableAlias;
+                        tableAlias = columnFamilyName;
+                        columnFamilyName = columnName;
+                        columnName = readColumnIdentifier();
+                        if (readIf(".")) {
+                            String catalogName = schema;
+                            schema = tableAlias;
+                            tableAlias = columnFamilyName;
+                            columnFamilyName = columnName;
+                            columnName = readColumnIdentifier();
+                            if (!equalsToken(catalogName, database.getShortName())) {
+                                throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, catalogName);
+                            }
+                        }
+                        if (!equalsToken(schema, filter.getTable().getSchema().getName())) {
+                            throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schema);
+                        }
+                    }
+                    if (!equalsToken(tableAlias, filter.getTableAlias())) {
+                        throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableAlias);
+                    }
+                }
+                Column c = filter.getTable().getColumn(columnName);
+                if (columnFamilyName != null)
+                    c.setColumnFamilyName(columnFamilyName);
+                return c;
+            }
             tableAlias = columnName;
             columnName = readColumnIdentifier();
             if (readIf(".")) {
@@ -666,6 +702,10 @@ public class Parser {
         currentPrepared = command;
         int start = lastParseIndex;
         TableFilter filter = readSimpleTableFilter();
+        if (filter.getTable() instanceof HBaseTable) {
+            command = new HBaseUpdate(session);
+            currentPrepared = command;
+        }
         command.setTableFilter(filter);
         read("SET");
         if (readIf("(")) {

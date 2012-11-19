@@ -36,6 +36,7 @@ import org.h2.command.ddl.DefineCommand;
 import org.h2.command.dml.Delete;
 import org.h2.command.dml.Insert;
 import org.h2.command.dml.Select;
+import org.h2.command.dml.Update;
 import org.h2.constant.ErrorCode;
 import org.h2.constant.SysProperties;
 import org.h2.engine.ConnectionInfo;
@@ -1143,7 +1144,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-            } else if (prepared instanceof Insert || prepared instanceof Delete) {
+            } else if (prepared instanceof Insert || prepared instanceof Delete || prepared instanceof Update) {
                 String tableName = prepared.getTableName();
                 String rowKey = prepared.getRowKey();
                 if (rowKey == null)

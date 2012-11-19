@@ -96,6 +96,17 @@ public class JDBCTest {
         Assert.assertEquals(1, stmt.executeUpdate(sql));
     }
 
+    @Test
+    public void update() throws Exception {
+        stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(15, 'a2', 'b', 12)");
+        sql = "update my_hbase_table set f1=100, cf1.f2=200, cf2.f3=300 where _rowkey_=15";
+        sql = "update my_hbase_table set f1=100, public.my_hbase_table.cf1.f2=200, cf2.f3=300 where _rowkey_=15";
+        Assert.assertEquals(1, stmt.executeUpdate(sql));
+
+        sql = "from my_hbase_table select f1, f2, cf2.f3 where f1='100'";
+        executeQuery();
+    }
+
     private void where() throws Exception {
         sql = "from my_hbase_table select f1, f2, cf2.f3 where f1='a'";
         executeQuery();

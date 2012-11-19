@@ -1282,17 +1282,18 @@ public class Select extends Query {
         }
         return false;
     }
-	@Override
-	public String getTableName() {
-		return topTableFilter.getTable().getName();
-	}
 
-	@Override
-	public String[] getRowKeys() {
-		if (condition != null && topTableFilter.getTable() instanceof HBaseTable) {
-			String rowKeyName = ((HBaseTable) topTableFilter.getTable()).getRowKeyName();
-			return condition.getRowKeys(rowKeyName, session);
-		}
-		return null;
-	}
+    @Override
+    public String getTableName() {
+        return topTableFilter.getTable().getName();
+    }
+
+    @Override
+    public String[] getRowKeys() {
+        if (condition != null && topTableFilter.getTable() instanceof HBaseTable) {
+            String rowKeyName = ((HBaseTable) topTableFilter.getTable()).getRowKeyName();
+            return condition.getRowKeys(rowKeyName, session);
+        }
+        return null;
+    }
 }
