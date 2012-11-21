@@ -6,7 +6,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.api.Trigger;
 import org.h2.engine.Right;
 import org.h2.engine.Session;
+import org.h2.expression.Comparison;
 import org.h2.expression.Expression;
+import org.h2.expression.RowKeyConditionInfo;
 import org.h2.table.HBaseTable;
 import org.h2.table.PlanItem;
 import org.h2.table.Table;
@@ -16,6 +18,8 @@ import org.h2.table.TableFilter;
 public class HBaseDelete extends Delete {
     private Expression condition;
     private TableFilter tableFilter;
+
+    private RowKeyConditionInfo rkci;
 
     public HBaseDelete(Session session) {
         super(session);
@@ -62,6 +66,9 @@ public class HBaseDelete extends Delete {
             condition.mapColumns(tableFilter, 0);
             condition = condition.optimize(session);
             //condition.createIndexConditions(session, tableFilter);
+            String rowKeyName = ((HBaseTable) tableFilter.getTable()).getRowKeyName();
+            rkci = new RowKeyConditionInfo(rowKeyName);
+            condition = condition.removeRowKeyCondition(rkci, session);
         }
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
@@ -75,14 +82,13 @@ public class HBaseDelete extends Delete {
 
     @Override
     public String getRowKey() {
-        String[] rowKeys = null;
-        if (condition != null) {
-            String rowKeyName = ((HBaseTable) tableFilter.getTable()).getRowKeyName();
-            rowKeys = condition.getRowKeys(rowKeyName, session);
+        String rowKey = null;
+        if (rkci != null) {
+            if (rkci.getCompareTypeStart() != Comparison.EQUAL)
+                throw new RuntimeException("rowKey compare type is not '='");
+            if (rkci.getCompareValueStart() != null)
+                rowKey = rkci.getCompareValueStart().getString();
         }
-        if (rowKeys != null && rowKeys.length > 0)
-            return rowKeys[0];
-        return null;
+        return rowKey;
     }
-
 }

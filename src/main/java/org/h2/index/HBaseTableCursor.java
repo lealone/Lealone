@@ -13,70 +13,75 @@ import org.h2.value.Value;
 import org.h2.value.ValueString;
 
 public class HBaseTableCursor implements Cursor {
-	private final Session session;
-	private long scannerId;
-	private Result[] result;
-	private int length = 0;
+    private final Session session;
+    private long scannerId;
+    private Result[] result;
+    private int length = 0;
 
-	public HBaseTableCursor(Session session) {
-		this.session = session;
-		try {
-			scannerId = session.getRegionServer().openScanner(session.getRegionName(), new Scan());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+    public HBaseTableCursor(Session session, SearchRow first, SearchRow last) {
+        this.session = session;
+        try {
+            Scan scan = new Scan();
+            if (first != null)
+                scan.setStartRow(Bytes.toBytes(Long.toString(first.getKey())));
+            if (last != null)
+                scan.setStopRow(Bytes.toBytes(Long.toString(last.getKey())));
+            scannerId = session.getRegionServer().openScanner(session.getRegionName(), scan);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-	@Override
-	public Row get() {
-		if (result == null || length >= result.length) {
-			try {
-				result = session.getRegionServer().next(scannerId, session.getFetchSize());
-				length = 0;
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-		if (result != null && length < result.length) {
-			Result r = result[length++];
-			KeyValue[] kvs = r.raw();
-			int size = kvs.length;
-			Value[] data = new Value[size];
+    @Override
+    public Row get() {
+        if (result == null || length >= result.length) {
+            try {
+                result = session.getRegionServer().next(scannerId, session.getFetchSize());
+                length = 0;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        if (result != null && length < result.length) {
+            Result r = result[length++];
+            KeyValue[] kvs = r.raw();
+            int size = kvs.length;
+            Value[] data = new Value[size];
 
-			for (int i = 0; i < size; i++) {
-				data[i] = ValueString.get(Bytes.toString(kvs[i].getValue()));
-			}
-			return new Row(data, Row.MEMORY_CALCULATE);
-		}
-		return null;
-	}
+            for (int i = 0; i < size; i++) {
+                data[i] = ValueString.get(Bytes.toString(kvs[i].getValue()));
+            }
+            return new Row(data, Row.MEMORY_CALCULATE);
+        }
+        return null;
+    }
 
-	@Override
-	public SearchRow getSearchRow() {
-		return get();
-	}
+    @Override
+    public SearchRow getSearchRow() {
+        return get();
+    }
 
-	@Override
-	public boolean next() {
-		if (result != null && length < result.length)
-			return true;
+    @Override
+    public boolean next() {
+        if (result != null && length < result.length)
+            return true;
 
-		try {
-			result = session.getRegionServer().next(scannerId, session.getFetchSize());
-			length = 0;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+        try {
+            result = session.getRegionServer().next(scannerId, session.getFetchSize());
+            length = 0;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-		if (result != null && result.length > 0)
-			return true;
+        if (result != null && result.length > 0)
+            return true;
 
-		return false;
-	}
+        return false;
+    }
 
-	@Override
-	public boolean previous() {
-		return false;
-	}
+    @Override
+    public boolean previous() {
+        return false;
+    }
 
 }

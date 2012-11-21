@@ -262,16 +262,15 @@ public class ConditionAndOr extends Condition {
         return getLeft ? this.left : right;
     }
 
-	@Override
-	public String[] getRowKeys(String rowKeyName, Session session) {
-		String[] rowKeys = new String[2];
-		if (left.getRowKeys(rowKeyName, session) != null)
-			rowKeys[0] = left.getRowKeys(rowKeyName, session)[0];
+    @Override
+    public Expression removeRowKeyCondition(RowKeyConditionInfo rkci, Session session) {
+        left = left.removeRowKeyCondition(rkci, session);
+        right = right.removeRowKeyCondition(rkci, session);
+        if (left == null)
+            return right;
+        if (right == null)
+            return left;
 
-		if (andOrType == AND) {
-			if (right.getRowKeys(rowKeyName, session) != null)
-				rowKeys[1] = right.getRowKeys(rowKeyName, session)[0];
-		}
-		return rowKeys;
-	}
+        return this;
+    }
 }

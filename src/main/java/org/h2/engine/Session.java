@@ -115,7 +115,7 @@ public class Session extends SessionWithState {
 	private Select currentSelect;
 	private int fetchSize;
 
-	public int getFetchSize() {
+    public int getFetchSize() {
 		return fetchSize;
 	}
 

@@ -26,7 +26,7 @@ public class HBaseTableIndex extends BaseIndex {
 
 	@Override
 	public Cursor find(Session session, SearchRow first, SearchRow last) {
-		return new HBaseTableCursor(session);
+		return new HBaseTableCursor(session, first, last);
 	}
 
 	@Override
@@ -49,7 +49,7 @@ public class HBaseTableIndex extends BaseIndex {
 
 	@Override
 	public Cursor findFirstOrLast(Session session, boolean first) {
-		return new HBaseTableCursor(session);
+		return new HBaseTableCursor(session, null, null);
 	}
 
 	@Override

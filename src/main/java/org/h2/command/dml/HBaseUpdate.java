@@ -14,8 +14,10 @@ import org.h2.api.Trigger;
 import org.h2.constant.ErrorCode;
 import org.h2.engine.Right;
 import org.h2.engine.Session;
+import org.h2.expression.Comparison;
 import org.h2.expression.Expression;
 import org.h2.expression.Parameter;
+import org.h2.expression.RowKeyConditionInfo;
 import org.h2.expression.ValueExpression;
 import org.h2.message.DbException;
 import org.h2.table.Column;
@@ -27,15 +29,17 @@ import org.h2.util.New;
 
 public class HBaseUpdate extends Update {
 
-    public HBaseUpdate(Session session) {
-        super(session);
-    }
-
     private Expression condition;
     private TableFilter tableFilter;
 
     private ArrayList<Column> columns = New.arrayList();
     private HashMap<Column, Expression> expressionMap = New.hashMap();
+
+    private RowKeyConditionInfo rkci;
+
+    public HBaseUpdate(Session session) {
+        super(session);
+    }
 
     @Override
     public void setTableFilter(TableFilter tableFilter) {
@@ -128,6 +132,9 @@ public class HBaseUpdate extends Update {
             condition.mapColumns(tableFilter, 0);
             condition = condition.optimize(session);
             //condition.createIndexConditions(session, tableFilter);
+            String rowKeyName = ((HBaseTable) tableFilter.getTable()).getRowKeyName();
+            rkci = new RowKeyConditionInfo(rowKeyName);
+            condition = condition.removeRowKeyCondition(rkci, session);
         }
         for (int i = 0, size = columns.size(); i < size; i++) {
             Column c = columns.get(i);
@@ -147,14 +154,13 @@ public class HBaseUpdate extends Update {
 
     @Override
     public String getRowKey() {
-        String[] rowKeys = null;
-        if (condition != null) {
-            String rowKeyName = ((HBaseTable) tableFilter.getTable()).getRowKeyName();
-            rowKeys = condition.getRowKeys(rowKeyName, session);
+        String rowKey = null;
+        if (rkci != null) {
+            if (rkci.getCompareTypeStart() != Comparison.EQUAL)
+                throw new RuntimeException("rowKey compare type is not '='");
+            if (rkci.getCompareValueStart() != null)
+                rowKey = rkci.getCompareValueStart().getString();
         }
-        if (rowKeys != null && rowKeys.length > 0)
-            return rowKeys[0];
-        return null;
+        return rowKey;
     }
-
 }

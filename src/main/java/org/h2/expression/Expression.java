@@ -344,7 +344,7 @@ public abstract class Expression {
         }
     }
 
-	public String[] getRowKeys(String rowKeyName, Session session) {
-		return null;
-	}
+    public Expression removeRowKeyCondition(RowKeyConditionInfo rkci, Session session) {
+        return this;
+    }
 }

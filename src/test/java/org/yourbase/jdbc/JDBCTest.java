@@ -110,6 +110,10 @@ public class JDBCTest {
     private void where() throws Exception {
         sql = "from my_hbase_table select f1, f2, cf2.f3 where f1='a'";
         executeQuery();
+        sql = "from my_hbase_table select f1, f2, cf2.f3  where _rowkey_>=12 and f1='a2' and _rowkey_<13";
+        executeQuery();
+        sql = "from my_hbase_table select f1, f2, cf2.f3  where _rowkey_=11 and f1='a2'";
+        executeQuery();
     }
 
     private void orderBy() throws Exception {

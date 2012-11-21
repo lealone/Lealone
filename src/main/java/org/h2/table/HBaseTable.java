@@ -209,4 +209,9 @@ public class HBaseTable extends Table {
 	private static String toS(ImmutableBytesWritable v) {
 		return Bytes.toString(v.get());
 	}
+
+	@Override
+    public Row getTemplateRow() {
+        return new Row(new Value[0], Row.MEMORY_CALCULATE);
+    }
 }

@@ -1165,10 +1165,12 @@ public class JdbcConnection extends TraceObject implements Connection {
             } else if (prepared instanceof Select) {
                 String tableName = prepared.getTableName();
                 String[] rowKeys = prepared.getRowKeys();
-                String rowKey = "";
+                String rowKey = null;
                 if (rowKeys != null && rowKeys.length > 0)
                     rowKey = rowKeys[0];
-
+                if (rowKey == null)
+                    rowKey = "";
+                //TODO 实现org.apache.hadoop.hbase.client.ClientScanner的功能
                 try {
                     HConnection hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
                     HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));

@@ -23,9 +23,12 @@ import org.h2.expression.Expression;
 import org.h2.expression.ExpressionColumn;
 import org.h2.expression.ExpressionVisitor;
 import org.h2.expression.Parameter;
+import org.h2.expression.RowKeyConditionInfo;
+import org.h2.expression.ValueExpression;
 import org.h2.expression.Wildcard;
 import org.h2.index.Cursor;
 import org.h2.index.Index;
+import org.h2.index.IndexCondition;
 import org.h2.index.IndexType;
 import org.h2.message.DbException;
 import org.h2.result.LocalResult;
@@ -87,6 +90,8 @@ public class Select extends Query {
 
 	private int columnIdCounter = 0;
 	private ArrayList<Column> columns = New.arrayList();
+
+	private RowKeyConditionInfo rkci;
 
 	public int getNextColumnId() {
 		return columnIdCounter++;
@@ -817,8 +822,22 @@ public class Select extends Query {
         if (condition != null) {
             condition = condition.optimize(session);
             for (TableFilter f : filters) {
-				if (f.getTable() instanceof HBaseTable)
-					continue;
+                if (f.getTable() instanceof HBaseTable) {
+                    String rowKeyName = ((HBaseTable) f.getTable()).getRowKeyName();
+                    rkci = new RowKeyConditionInfo(rowKeyName);
+                    condition = condition.removeRowKeyCondition(rkci, session);
+
+                    Column column = new Column(rowKeyName, Value.STRING);
+                    column.setTable(f.getTable(), -1);
+                    ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), column);
+                    if (rkci.getCompareValueStart() != null)
+                        f.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStart(), ec, 
+                                ValueExpression.get(rkci.getCompareValueStart())));
+                    if (rkci.getCompareValueStop() != null)
+                        f.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStop(), ec,
+                                ValueExpression.get( rkci.getCompareValueStop())));
+                    break;
+                }
                 // outer joins: must not add index conditions such as
                 // "c is null" - example:
                 // create table parent(p int primary key) as select 1;
@@ -839,6 +858,7 @@ public class Select extends Query {
             }
         }
         cost = preparePlan();
+        
         if (distinct && session.getDatabase().getSettings().optimizeDistinct &&
                 !isGroupQuery && filters.size() == 1 &&
                 expressions.size() == 1 && condition == null) {
@@ -1290,9 +1310,13 @@ public class Select extends Query {
 
     @Override
     public String[] getRowKeys() {
-        if (condition != null && topTableFilter.getTable() instanceof HBaseTable) {
-            String rowKeyName = ((HBaseTable) topTableFilter.getTable()).getRowKeyName();
-            return condition.getRowKeys(rowKeyName, session);
+        if (rkci != null) {
+            String[] rowKeys = new String[2];
+            if (rkci.getCompareValueStart() != null)
+                rowKeys[0] = rkci.getCompareValueStart().getString();
+            if (rkci.getCompareValueStop() != null)
+                rowKeys[1] = rkci.getCompareValueStop().getString();
+            return rowKeys;
         }
         return null;
     }
