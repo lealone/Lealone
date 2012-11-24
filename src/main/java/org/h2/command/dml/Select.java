@@ -93,6 +93,10 @@ public class Select extends Query {
 
 	private RowKeyConditionInfo rkci;
 
+	public boolean isGroupQuery() {
+        return isGroupQuery;
+    }
+
 	public int getNextColumnId() {
 		return columnIdCounter++;
 	}

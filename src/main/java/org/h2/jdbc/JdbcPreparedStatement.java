@@ -73,6 +73,15 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         this.sqlStatement = sql;
         command = conn.prepareCommand(sql, fetchSize);
     }
+    
+    JdbcPreparedStatement copy(JdbcConnection conn) {
+        JdbcPreparedStatement ps = new JdbcPreparedStatement(conn, sqlStatement, getTraceId(), resultSetType, resultSetConcurrency, closedByResultSet);
+        ps.batchParameters = batchParameters;
+        ps.cachedColumnLabelMap = cachedColumnLabelMap;
+        ps.maxRows = maxRows;
+        ps.fetchSize = fetchSize;
+        return ps;
+    }
 
     /**
      * Cache the column labels (looking up the column index can sometimes show
@@ -189,6 +198,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                             ResultInterface result = command.executeQuery(maxRows, scrollable);
                             resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                            resultSet = new HBaseJdbcResultSet(resultSet, conn, this);
                         } else {
                             returnsResultSet = false;
                             updateCount = command.executeUpdate();

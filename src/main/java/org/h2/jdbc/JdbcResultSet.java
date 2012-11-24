@@ -92,6 +92,13 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     private HashMap<String, Integer> columnLabelMap;
     private HashMap<Integer, Value[]> patchedRows;
     private JdbcPreparedStatement preparedStatement;
+    
+    public JdbcResultSet(JdbcResultSet rs){
+        setTrace(rs.conn.getSession().getTrace(), TraceObject.RESULT_SET, rs.getTraceId());
+        closeStatement = rs.closeStatement;
+        scrollable = rs.scrollable;
+        updatable = rs.updatable;
+    }
 
     JdbcResultSet(JdbcConnection conn, JdbcStatement stat, ResultInterface result, int id,
                 boolean closeStatement, boolean scrollable, boolean updatable) {

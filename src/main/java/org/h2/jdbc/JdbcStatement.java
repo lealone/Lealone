@@ -49,6 +49,14 @@ public class JdbcStatement extends TraceObject implements Statement {
         this.closedByResultSet = closeWithResultSet;
     }
 
+    JdbcStatement copy(JdbcConnection conn) {
+        JdbcStatement ps = new JdbcStatement(conn, getTraceId(), resultSetType, resultSetConcurrency, closedByResultSet);
+        ps.maxRows = maxRows;
+        ps.fetchSize = fetchSize;
+        ps.escapeProcessing = escapeProcessing;
+        return ps;
+    }
+
     /**
      * Executes a query (select statement) and returns the result set.
      * If another result set exists for this statement, this will be closed
@@ -78,7 +86,8 @@ public class JdbcStatement extends TraceObject implements Statement {
                     setExecutingStatement(null);
                 }
                 command.close();
-                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                JdbcResultSet resultSet2 = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                resultSet = new HBaseJdbcResultSet(resultSet2, conn, this, sql);
             }
             return resultSet;
         } catch (Exception e) {
@@ -172,6 +181,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                         boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                         ResultInterface result = command.executeQuery(maxRows, scrollable);
                         resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                        resultSet = new HBaseJdbcResultSet(resultSet, conn, this, sql);
                     } else {
                         returnsResultSet = false;
                         updateCount = command.executeUpdate();

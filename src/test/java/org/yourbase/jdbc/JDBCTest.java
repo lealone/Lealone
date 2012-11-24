@@ -62,7 +62,7 @@ public class JDBCTest {
 
     private static void createTable() throws Exception {
         stmt.executeUpdate("DROP HBASE TABLE IF EXISTS my_hbase_table");
-
+        Thread.sleep(1000); //TODO drop表太慢，未完成时，接下来的建表操作有时会抛异常
         //CREATE HBASE TABLE语句不用定义字段
         stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS my_hbase_table (" //
                 //此OPTIONS对应org.apache.hadoop.hbase.HTableDescriptor的参数选项
@@ -88,6 +88,13 @@ public class JDBCTest {
         stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(11, 'a1', 'b', 12)");
         stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(12, 'a2', 'b', 12)");
         stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(13, 'a2', 'b', 12)");
+
+        stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(5, 'a1', 'b', 51)");
+        stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(6, 'a2', 'b', 61)");
+        stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(15, 'a1', 'b', 71)");
+        stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(16, 'a2', 'b', 81)");
+        stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(20, 'a1', 'b', 91)");
+        stmt.executeUpdate("INSERT INTO my_hbase_table(_rowkey_, f1, cf1.f2, cf2.f3) VALUES(24, 'a2', 'b', 100)");
 
         //TODO H2数据库会默认把标识符转成大写，这个问题未解决，所以这里表名、列族名用大写
         HTable t = new HTable(HBaseConfiguration.create(), "MY_HBASE_TABLE");
