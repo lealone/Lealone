@@ -21,7 +21,9 @@ package org.h2.command.ddl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -110,6 +112,22 @@ public class CreateHBaseTable extends SchemaCommand {
             splitKeys = new byte[size][];
             for (int i = 0; i < size; i++)
                 splitKeys[i] = Bytes.toBytes(this.splitKeys.get(i));
+
+            if (splitKeys != null && splitKeys.length > 0) {
+                Arrays.sort(splitKeys, Bytes.BYTES_COMPARATOR);
+                // Verify there are no duplicate split keys
+                byte[] lastKey = null;
+                for (byte[] splitKey : splitKeys) {
+                    if (Bytes.compareTo(splitKey, HConstants.EMPTY_BYTE_ARRAY) == 0) {
+                        throw new IllegalArgumentException("Empty split key must not be passed in the split keys.");
+                    }
+                    if (lastKey != null && Bytes.equals(splitKey, lastKey)) {
+                        throw new IllegalArgumentException("All split keys must be unique, " + "found duplicate: "
+                                + Bytes.toStringBinary(splitKey) + ", " + Bytes.toStringBinary(lastKey));
+                    }
+                    lastKey = splitKey;
+                }
+            }
         }
 
         int id = getObjectId();
