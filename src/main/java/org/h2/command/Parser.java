@@ -5100,23 +5100,40 @@ public class Parser {
             return null;
         }
     }
-    
-	private Options parseOptions() {
-		if (readIf("OPTIONS")) {
-			read("(");
-			ArrayList<String> optionNames = New.arrayList();
-			ArrayList<String> optionValues = New.arrayList();
-			do {
-				optionNames.add(readUniqueIdentifier());
-				read("=");
-				optionValues.add(readString());
-			} while (readIfMore());
 
-			return new Options(session, optionNames, optionValues);
-		}
+    private Options parseOptions() {
+        if (readIf("OPTIONS")) {
+            read("(");
+            ArrayList<String> optionNames = New.arrayList();
+            ArrayList<String> optionValues = New.arrayList();
+            do {
+                optionNames.add(readUniqueIdentifier());
+                read("=");
+                optionValues.add(readString());
+            } while (readIfMore());
 
-		return null;
-	}
+            return new Options(session, optionNames, optionValues);
+        }
+
+        return null;
+    }
+
+    private ArrayList<String> parseSplitKeys() {
+        if (readIf("SPLIT")) {
+            read("KEYS");
+            read("(");
+            ArrayList<String> keys = New.arrayList();
+            do {
+                keys.add(readString());
+            } while (readIfMore());
+
+            if (keys.size() == 0)
+                keys = null;
+            return keys;
+        }
+
+        return null;
+    }
 
     private DefineCommand parseAlterTableAddConstraintIf(String tableName, Schema schema) {
         String constraintName = null, comment = null;
@@ -5282,33 +5299,40 @@ public class Parser {
         return command;
     }
     
-	private CreateHBaseTable parseCreateHBaseTable() {
-		read("TABLE");
-		boolean ifNotExists = readIfNoExists();
-		String tableName = readIdentifierWithSchema();
-		CreateHBaseTable command = new CreateHBaseTable(session, getSchema(), tableName);
+    private CreateHBaseTable parseCreateHBaseTable() {
+        read("TABLE");
+        boolean ifNotExists = readIfNoExists();
+        String tableName = readIdentifierWithSchema();
+        CreateHBaseTable command = new CreateHBaseTable(session, getSchema(), tableName);
 
-		command.setIfNotExists(ifNotExists);
-		if (readIf("(")) {
-			if (!readIf(")")) {
-				do {
-					Options options = parseOptions();
-					if (options != null)
-						command.setOptions(options);
-					if (readIf("COLUMN")) {
-						read("FAMILY");
-						String cfName = readUniqueIdentifier();
-						options = parseOptions();
-						CreateColumnFamily cf = new CreateColumnFamily(session, cfName);
-						cf.setOptions(options);
-						command.addCreateColumnFamily(cf);
-					}
-				} while (readIfMore());
-			}
-		}
+        command.setIfNotExists(ifNotExists);
+        if (readIf("(")) {
+            if (!readIf(")")) {
+                Options options;
+                ArrayList<String> splitKeys;
+                do {
+                    options = parseOptions();
+                    if (options != null)
+                        command.setOptions(options);
 
-		return command;
-	}
+                    splitKeys = parseSplitKeys();
+                    if (splitKeys != null)
+                        command.setSplitKeys(splitKeys);
+
+                    if (readIf("COLUMN")) {
+                        read("FAMILY");
+                        String cfName = readUniqueIdentifier();
+                        options = parseOptions();
+                        CreateColumnFamily cf = new CreateColumnFamily(session, cfName);
+                        cf.setOptions(options);
+                        command.addCreateColumnFamily(cf);
+                    }
+                } while (readIfMore());
+            }
+        }
+
+        return command;
+    }
 
     private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes) {
         boolean ifNotExists = readIfNoExists();
