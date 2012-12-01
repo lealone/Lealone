@@ -29,7 +29,7 @@ public class Parameter extends Expression implements ParameterInterface {
         this.index = index;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         return "?" + (index + 1);
     }
 

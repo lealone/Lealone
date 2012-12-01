@@ -128,12 +128,12 @@ public class ConditionIn extends Condition {
         }
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder("(");
-        buff.append(left.getSQL()).append(" IN(");
+        buff.append(left.getSQL(isDistributed)).append(" IN(");
         for (Expression e : valueList) {
             buff.appendExceptFirst(", ");
-            buff.append(e.getSQL());
+            buff.append(e.getSQL(isDistributed));
         }
         return buff.append("))").toString();
     }

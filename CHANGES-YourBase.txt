@@ -1,0 +1,26 @@
+﻿YourBase Change Log
+
+Release 0.10.0-RC1 - 2012/12/01
+  第一个RC
+
+  支持建表、删表
+  支持单表Select
+  支持Insert(一次只Insert一条记录)
+  支持单一RowKey的Update、Delete
+  支持Order By
+  支持Group By、Having
+  支持少量的字符串和数字函数
+  支持下列11个聚合函数: 
+  ---------------------
+	AVG
+	BOOL_AND
+	BOOL_OR
+	COUNT
+	MAX
+	MIN
+	SUM
+	STDDEV_POP
+	STDDEV_SAMP
+	VAR_POP
+	VAR_SAMP
+

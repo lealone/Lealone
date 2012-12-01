@@ -63,12 +63,12 @@ public class JavaAggregate extends Expression {
         return DataType.getDataType(dataType).defaultScale;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder();
         buff.append(Parser.quoteIdentifier(userAggregate.getName())).append('(');
         for (Expression e : args) {
             buff.appendExceptFirst(", ");
-            buff.append(e.getSQL());
+            buff.append(e.getSQL(isDistributed));
         }
         return buff.append(')').toString();
     }

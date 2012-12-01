@@ -60,8 +60,8 @@ public class ConditionNot extends Condition {
         condition.setEvaluatable(tableFilter, b);
     }
 
-    public String getSQL() {
-        return "(NOT " + condition.getSQL() + ")";
+    public String getSQL(boolean isDistributed) {
+        return "(NOT " + condition.getSQL(isDistributed) + ")";
     }
 
     public void updateAggregate(Session session) {

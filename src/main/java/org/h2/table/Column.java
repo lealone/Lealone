@@ -9,6 +9,8 @@ package org.h2.table;
 import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
+
+import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.command.Parser;
 import org.h2.constant.ErrorCode;
 import org.h2.engine.Constants;
@@ -85,15 +87,29 @@ public class Column {
     private String comment;
     private boolean primaryKey;
 
-	private String columnFamilyName;
+    private String columnFamilyName;
+    private byte[] nameAsBytes;
+    private byte[] columnFamilyNameeAsBytes;
 
-	public String getColumnFamilyName() {
-		return columnFamilyName;
-	}
+    public String getColumnFamilyName() {
+        return columnFamilyName;
+    }
 
-	public void setColumnFamilyName(String columnFamilyName) {
-		this.columnFamilyName = columnFamilyName;
-	}
+    public void setColumnFamilyName(String columnFamilyName) {
+        this.columnFamilyName = columnFamilyName;
+    }
+
+    public byte[] getNameAsBytes() {
+        if (nameAsBytes == null)
+            nameAsBytes = Bytes.toBytes(name);
+        return nameAsBytes;
+    }
+
+    public byte[] getColumnFamilyNameAsBytes() {
+        if (columnFamilyNameeAsBytes == null)
+            columnFamilyNameeAsBytes = Bytes.toBytes(columnFamilyName);
+        return columnFamilyNameeAsBytes;
+    }
 
     public Column(String name, int type) {
         this(name, type, -1, -1, -1);
@@ -225,7 +241,10 @@ public class Column {
     }
 
     public String getSQL() {
-        return Parser.quoteIdentifier(name);
+        if (columnFamilyName != null)
+            return columnFamilyName + "." + Parser.quoteIdentifier(name);
+        else
+            return Parser.quoteIdentifier(name);
     }
 
     public String getName() {

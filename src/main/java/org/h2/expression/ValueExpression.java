@@ -122,7 +122,7 @@ public class ValueExpression extends Expression {
         return value.getDisplaySize();
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         if (this == DEFAULT) {
             return "DEFAULT";
         }

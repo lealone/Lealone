@@ -52,7 +52,7 @@ public class ExpressionColumn extends Expression {
         this.columnName = columnName;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         String sql;
         boolean quote = database.getSettings().databaseToUpper;
         if (column != null) {
@@ -90,6 +90,11 @@ public class ExpressionColumn extends Expression {
                 }
             }
             Column c = resolver.getTableFilter().getTable().getColumn(columnName);
+            if (tableAlias != null) {
+                c.setColumnFamilyName(tableAlias);
+                tableAlias = schemaName;
+                schemaName = null;
+            }
             c.setTable(resolver.getTableFilter().getTable(), resolver.getSelect().getNextColumnId());
             resolver.getSelect().addColumn(c);
             mapColumn(resolver, c, level);

@@ -81,7 +81,7 @@ public class JavaFunction extends Expression implements FunctionCall {
         return Integer.MAX_VALUE;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder();
         // TODO always append the schema once FUNCTIONS_IN_SCHEMA is enabled
         if (functionAlias.getDatabase().getSettings().functionsInSchema ||
@@ -91,7 +91,7 @@ public class JavaFunction extends Expression implements FunctionCall {
         buff.append(Parser.quoteIdentifier(functionAlias.getName())).append('(');
         for (Expression e : args) {
             buff.appendExceptFirst(", ");
-            buff.append(e.getSQL());
+            buff.append(e.getSQL(isDistributed));
         }
         return buff.append(')').toString();
     }

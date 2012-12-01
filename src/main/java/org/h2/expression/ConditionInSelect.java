@@ -120,9 +120,9 @@ public class ConditionInSelect extends Condition {
         query.setEvaluatable(tableFilter, b);
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         StringBuilder buff = new StringBuilder();
-        buff.append('(').append(left.getSQL()).append(' ');
+        buff.append('(').append(left.getSQL(isDistributed)).append(' ');
         if (all) {
             buff.append(Comparison.getCompareOperator(compareType)).
                 append(" ALL");

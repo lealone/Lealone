@@ -60,7 +60,7 @@ public class SequenceValue extends Expression {
         return ValueInt.DISPLAY_SIZE;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         return "(NEXT VALUE FOR " + sequence.getSQL() +")";
     }
 

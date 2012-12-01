@@ -86,7 +86,7 @@ public class Subquery extends Expression {
         return getExpression().getDisplaySize();
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         return "(" + query.getPlanSQL() + ")";
     }
 

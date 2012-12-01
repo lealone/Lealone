@@ -68,8 +68,8 @@ public class Alias extends Expression {
         return expr.isAutoIncrement();
     }
 
-    public String getSQL() {
-        return expr.getSQL() + " AS " + Parser.quoteIdentifier(alias);
+    public String getSQL(boolean isDistributed) {
+        return expr.getSQL(isDistributed) + " AS " + Parser.quoteIdentifier(alias);
     }
 
     public void updateAggregate(Session session) {

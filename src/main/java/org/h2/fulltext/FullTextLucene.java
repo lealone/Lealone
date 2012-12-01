@@ -57,6 +57,7 @@ import org.apache.lucene.index.IndexWriter;
  * This class implements the full text search based on Apache Lucene.
  * Most methods can be called using SQL statements as well.
  */
+@SuppressWarnings("deprecation")
 public class FullTextLucene extends FullText {
 
     /**

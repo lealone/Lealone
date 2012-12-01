@@ -69,16 +69,16 @@ public class Operation extends Expression {
         this.right = right;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         String sql;
         if (opType == NEGATE) {
             // don't remove the space, otherwise it might end up some thing like
             // --1 which is a line remark
-            sql = "- " + left.getSQL();
+            sql = "- " + left.getSQL(isDistributed);
         } else {
             // don't remove the space, otherwise it might end up some thing like
             // --1 which is a line remark
-            sql = left.getSQL() + " " + getOperationToken() + " " + right.getSQL();
+            sql = left.getSQL(isDistributed) + " " + getOperationToken() + " " + right.getSQL(isDistributed);
         }
         return "(" + sql + ")";
     }
@@ -194,6 +194,7 @@ public class Operation extends Expression {
         case MULTIPLY:
         case DIVIDE:
         case MODULUS:
+            dataType = Value.DECIMAL; //我加上的
             right = right.optimize(session);
             int l = left.getType();
             int r = right.getType();
@@ -309,6 +310,7 @@ public class Operation extends Expression {
                     opType = CONCAT;
                 }
             }
+            dataType = Value.DECIMAL; //我加上的
             break;
         default:
             DbException.throwInternalError("type=" + opType);

@@ -2016,29 +2016,29 @@ public class Function extends Expression implements FunctionCall {
         }
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder(info.name);
         buff.append('(');
         switch (info.type) {
         case CAST: {
-            buff.append(args[0].getSQL()).append(" AS ").
+            buff.append(args[0].getSQL(isDistributed)).append(" AS ").
                 append(new Column(null, dataType, precision, scale, displaySize).getCreateSQL());
             break;
         }
         case CONVERT: {
-            buff.append(args[0].getSQL()).append(',').
+            buff.append(args[0].getSQL(isDistributed)).append(',').
                 append(new Column(null, dataType, precision, scale, displaySize).getCreateSQL());
             break;
         }
         case EXTRACT: {
             ValueString v = (ValueString) ((ValueExpression) args[0]).getValue(null);
-            buff.append(v.getString()).append(" FROM ").append(args[1].getSQL());
+            buff.append(v.getString()).append(" FROM ").append(args[1].getSQL(isDistributed));
             break;
         }
         default: {
             for (Expression e : args) {
                 buff.appendExceptFirst(", ");
-                buff.append(e.getSQL());
+                buff.append(e.getSQL(isDistributed));
             }
         }
         }

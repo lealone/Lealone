@@ -47,13 +47,13 @@ public class TableFunction extends Function {
         }
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder(getName());
         buff.append('(');
         int i = 0;
         for (Expression e : args) {
             buff.appendExceptFirst(", ");
-            buff.append(columnList[i++].getCreateSQL()).append('=').append(e.getSQL());
+            buff.append(columnList[i++].getCreateSQL()).append('=').append(e.getSQL(isDistributed));
         }
         return buff.append(')').toString();
     }

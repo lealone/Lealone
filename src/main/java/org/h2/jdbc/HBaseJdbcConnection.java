@@ -34,295 +34,357 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-public class HBaseJdbcConnection implements Connection {
-    private JdbcConnection conn;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.h2.command.Prepared;
+import org.h2.command.ddl.DefineCommand;
+import org.h2.command.dml.Delete;
+import org.h2.command.dml.Insert;
+import org.h2.command.dml.Select;
+import org.h2.command.dml.Update;
+import org.h2.engine.ConnectionInfo;
+import org.h2.engine.Engine;
+import org.h2.engine.Session;
+import org.h2.message.DbException;
 
-    public HBaseJdbcConnection(JdbcConnection conn) {
-        this.conn = conn;
+//TODO 目前未使用，目的是想不修改H2的JDBC实现
+public class HBaseJdbcConnection implements Connection {
+    private final Session session;
+    private final ConnectionInfo connectionInfo;
+    private final Properties info;
+    private final Configuration conf;
+    private final HConnection hConnection;
+
+    private JdbcConnection conn;
+    private List<JdbcConnection> conns = new ArrayList<JdbcConnection>();
+
+    private HRegionInfo regionInfo;
+    private byte[] stopRowKey;
+    private byte[] tableName;
+    private boolean isGroupQuery = false;
+
+    public byte[] getStopRowKey() {
+        return stopRowKey;
     }
 
-    @Override
+    public HRegionInfo getRegionInfo() {
+        return regionInfo;
+    }
+
+    public boolean isGroupQuery() {
+        return isGroupQuery;
+    }
+
+    public HBaseJdbcConnection(String url, Properties info) throws SQLException {
+        this.info = info;
+        connectionInfo = new ConnectionInfo(url, info);
+        try {
+            connectionInfo.setProperty("OPEN_NEW", "true");
+            session = Engine.getInstance().createSession(connectionInfo);
+            connectionInfo.removeProperty("OPEN_NEW", false);
+
+            conf = HBaseConfiguration.create();
+            hConnection = HConnectionManager.createConnection(conf);
+        } catch (Exception re) {
+            throw DbException.convert(re);
+        }
+    }
+
+    private void prepareCommand(String sql) {
+        Prepared prepared = session.prepare(sql, true, true);
+        if (prepared instanceof DefineCommand) {
+            try {
+                ServerName sn = hConnection.getMasterAddress();
+                Properties info = new Properties(this.info);
+                conn = new JdbcConnection(createUrl(sn.getHostname(), sn.getH2TcpPort()), info);
+                conns.add(conn);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        } else if (prepared instanceof Insert || prepared instanceof Delete || prepared instanceof Update) {
+            String tableName = prepared.getTableName();
+            String rowKey = prepared.getRowKey();
+            if (rowKey == null)
+                throw new RuntimeException("rowKey is null");
+
+            try {
+                conn = newJdbcConnection(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
+                conns.add(conn);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        } else if (prepared instanceof Select) {
+            byte[] startRowKey = null;
+            byte[] stopRowKey = null;
+            String[] rowKeys = prepared.getRowKeys();
+            if (rowKeys != null) {
+                if (rowKeys.length >= 1 && rowKeys[0] != null)
+                    startRowKey = Bytes.toBytes(rowKeys[0]);
+
+                if (rowKeys.length >= 2 && rowKeys[1] != null)
+                    stopRowKey = Bytes.toBytes(rowKeys[1]);
+            }
+
+            if (startRowKey == null)
+                startRowKey = HConstants.EMPTY_START_ROW;
+            if (stopRowKey == null)
+                stopRowKey = HConstants.EMPTY_END_ROW;
+
+            this.stopRowKey = stopRowKey;
+            this.tableName = Bytes.toBytes(prepared.getTableName());
+
+            this.isGroupQuery = ((Select) prepared).isGroupQuery();
+            HBaseHTableInfo hTable = new HBaseHTableInfo();
+            hTable.conn = this;
+            hTable.conf = conf;
+            hTable.tableName = tableName;
+            hTable.start = startRowKey;
+            hTable.end = stopRowKey;
+            hTable.isGroupQuery = this.isGroupQuery;
+
+            conns = hTable.getJdbcConnections();
+            conn = conns.get(0);
+        }
+    }
+
+    private String createUrl(HRegionLocation regionLocation) {
+        return createUrl(regionLocation.getHostname(), regionLocation.getH2TcpPort());
+    }
+
+    private String createUrl(String hostname, int port) {
+        // String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" +
+        // "regionLocation.getH2TcpPort() + "/hbasedb";//;disableCheck=true
+        StringBuilder url = new StringBuilder(50);
+        url.append("jdbc:h2:tcp://").append(hostname).append(":").append(port).append("/hbasedb");
+        return url.toString();
+    }
+
+    JdbcConnection newJdbcConnection(byte[] tableName, byte[] startKey) {
+        try {
+            HRegionLocation regionLocation = hConnection.locateRegion(tableName, startKey);
+            String url = createUrl(regionLocation);
+            Properties info = new Properties(this.info);
+            info.setProperty("DISABLE_CHECK", "true");
+            info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
+            return new JdbcConnection(url, info);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    String getNewSQL(Select select, byte[] startKey, boolean isDistributed) {
+        return select.getPlanSQL(startKey, stopRowKey, isDistributed);
+    }
+
     public <T> T unwrap(Class<T> iface) throws SQLException {
         return conn.unwrap(iface);
     }
 
-    @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-
-        return false;
+        return conn.isWrapperFor(iface);
     }
 
-    @Override
     public Statement createStatement() throws SQLException {
-
-        return null;
+        return conn.createStatement();
     }
 
-    @Override
     public PreparedStatement prepareStatement(String sql) throws SQLException {
-
-        return null;
+        prepareCommand(sql);
+        return conn.prepareStatement(sql);
     }
 
-    @Override
     public CallableStatement prepareCall(String sql) throws SQLException {
-
-        return null;
+        return conn.prepareCall(sql);
     }
 
-    @Override
     public String nativeSQL(String sql) throws SQLException {
-
-        return null;
+        return conn.nativeSQL(sql);
     }
 
-    @Override
     public void setAutoCommit(boolean autoCommit) throws SQLException {
-
+        conn.setAutoCommit(autoCommit);
     }
 
-    @Override
     public boolean getAutoCommit() throws SQLException {
-
-        return false;
+        return conn.getAutoCommit();
     }
 
-    @Override
     public void commit() throws SQLException {
-
+        conn.commit();
     }
 
-    @Override
     public void rollback() throws SQLException {
-
+        conn.rollback();
     }
 
-    @Override
     public void close() throws SQLException {
-
+        conn.close();
     }
 
-    @Override
     public boolean isClosed() throws SQLException {
-
-        return false;
+        return conn.isClosed();
     }
 
-    @Override
     public DatabaseMetaData getMetaData() throws SQLException {
-
-        return null;
+        return conn.getMetaData();
     }
 
-    @Override
     public void setReadOnly(boolean readOnly) throws SQLException {
-
+        conn.setReadOnly(readOnly);
     }
 
-    @Override
     public boolean isReadOnly() throws SQLException {
-
-        return false;
+        return conn.isReadOnly();
     }
 
-    @Override
     public void setCatalog(String catalog) throws SQLException {
-
+        conn.setCatalog(catalog);
     }
 
-    @Override
     public String getCatalog() throws SQLException {
-
-        return null;
+        return conn.getCatalog();
     }
 
-    @Override
     public void setTransactionIsolation(int level) throws SQLException {
-
+        conn.setTransactionIsolation(level);
     }
 
-    @Override
     public int getTransactionIsolation() throws SQLException {
-
-        return 0;
+        return conn.getTransactionIsolation();
     }
 
-    @Override
     public SQLWarning getWarnings() throws SQLException {
-
-        return null;
+        return conn.getWarnings();
     }
 
-    @Override
     public void clearWarnings() throws SQLException {
-
+        conn.clearWarnings();
     }
 
-    @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-
-        return null;
+        return conn.createStatement(resultSetType, resultSetConcurrency);
     }
 
-    @Override
     public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-
-        return null;
+        return conn.prepareStatement(sql, resultSetType, resultSetConcurrency);
     }
 
-    @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-
-        return null;
+        return conn.prepareCall(sql, resultSetType, resultSetConcurrency);
     }
 
-    @Override
     public Map<String, Class<?>> getTypeMap() throws SQLException {
-
-        return null;
+        return conn.getTypeMap();
     }
 
-    @Override
     public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
-
+        conn.setTypeMap(map);
     }
 
-    @Override
     public void setHoldability(int holdability) throws SQLException {
-
+        conn.setHoldability(holdability);
     }
 
-    @Override
     public int getHoldability() throws SQLException {
-
-        return 0;
+        return conn.getHoldability();
     }
 
-    @Override
     public Savepoint setSavepoint() throws SQLException {
-
-        return null;
+        return conn.setSavepoint();
     }
 
-    @Override
     public Savepoint setSavepoint(String name) throws SQLException {
-
-        return null;
+        return conn.setSavepoint(name);
     }
 
-    @Override
     public void rollback(Savepoint savepoint) throws SQLException {
-
+        conn.rollback(savepoint);
     }
 
-    @Override
     public void releaseSavepoint(Savepoint savepoint) throws SQLException {
-
+        conn.releaseSavepoint(savepoint);
     }
 
-    @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-
-        return null;
+        return conn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability);
     }
 
-    @Override
     public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability)
             throws SQLException {
-
-        return null;
+        return conn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
     }
 
-    @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability)
             throws SQLException {
-
-        return null;
+        return conn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability);
     }
 
-    @Override
     public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-
-        return null;
+        return conn.prepareStatement(sql, autoGeneratedKeys);
     }
 
-    @Override
     public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-
-        return null;
+        return conn.prepareStatement(sql, columnIndexes);
     }
 
-    @Override
     public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-
-        return null;
+        return conn.prepareStatement(sql, columnNames);
     }
 
-    @Override
     public Clob createClob() throws SQLException {
-
-        return null;
+        return conn.createClob();
     }
 
-    @Override
     public Blob createBlob() throws SQLException {
-
-        return null;
+        return conn.createBlob();
     }
 
-    @Override
     public NClob createNClob() throws SQLException {
-
-        return null;
+        return conn.createNClob();
     }
 
-    @Override
     public SQLXML createSQLXML() throws SQLException {
-
-        return null;
+        return conn.createSQLXML();
     }
 
-    @Override
     public boolean isValid(int timeout) throws SQLException {
-
-        return false;
+        return conn.isValid(timeout);
     }
 
-    @Override
     public void setClientInfo(String name, String value) throws SQLClientInfoException {
-
+        conn.setClientInfo(name, value);
     }
 
-    @Override
     public void setClientInfo(Properties properties) throws SQLClientInfoException {
-
+        conn.setClientInfo(properties);
     }
 
-    @Override
     public String getClientInfo(String name) throws SQLException {
-
-        return null;
+        return conn.getClientInfo(name);
     }
 
-    @Override
     public Properties getClientInfo() throws SQLException {
-
-        return null;
+        return conn.getClientInfo();
     }
 
-    @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-
-        return null;
+        return conn.createArrayOf(typeName, elements);
     }
 
-    @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
-
-        return null;
+        return conn.createStruct(typeName, attributes);
     }
 
 }

@@ -38,7 +38,7 @@ public class Variable extends Expression {
         return lastValue.getPrecision();
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         return "@" + Parser.quoteIdentifier(name);
     }
 

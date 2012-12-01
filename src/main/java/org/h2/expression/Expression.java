@@ -96,7 +96,11 @@ public abstract class Expression {
      *
      * @return the SQL statement
      */
-    public abstract String getSQL();
+    public abstract String getSQL(boolean isDistributed);
+
+    public String getSQL() {
+        return getSQL(false);
+    }
 
     /**
      * Update an aggregate value.
@@ -347,4 +351,25 @@ public abstract class Expression {
     public Expression removeRowKeyCondition(RowKeyConditionInfo rkci, Session session) {
         return this;
     }
+
+    public void mergeAggregate(Session session, Value v) {
+    }
+
+    public void mergeAggregate(Session session, TableFilter tableFilter) {
+    }
+
+    public int calculate(Session session, Value[] currentRow, int index) {
+        return index + 1;
+    }
+
+    public void calculate(Calculator calculator) {
+    }
+
+    public Value getMergedValue(Session session) {
+        return getValue(session);
+    }
+
+    //    public String getDistributedSQL() {
+    //        return getSQL();
+    //    }
 }

@@ -322,9 +322,10 @@ public abstract class Table extends SchemaObjectBase {
             }
         }
         ExpressionVisitor visitor = ExpressionVisitor.getDependenciesVisitor(dependencies);
-        for (Column col : columns) {
-            col.isEverything(visitor);
-        }
+        if (columns != null)
+            for (Column col : columns) {
+                col.isEverything(visitor);
+            }
         if (constraints != null) {
             for (Constraint c : constraints) {
                 c.isEverything(visitor);

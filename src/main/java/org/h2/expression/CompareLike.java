@@ -67,14 +67,14 @@ public class CompareLike extends Condition {
         return s == null || s.length() == 0 ? null : s.charAt(0);
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         String sql;
         if (regexp) {
-            sql = left.getSQL() + " REGEXP " + right.getSQL();
+            sql = left.getSQL(isDistributed) + " REGEXP " + right.getSQL(isDistributed);
         } else {
-            sql = left.getSQL() + " LIKE " + right.getSQL();
+            sql = left.getSQL(isDistributed) + " LIKE " + right.getSQL(isDistributed);
             if (escape != null) {
-                sql += " ESCAPE " + escape.getSQL();
+                sql += " ESCAPE " + escape.getSQL(isDistributed);
             }
         }
         return "(" + sql + ")";

@@ -72,7 +72,7 @@ public class Wildcard extends Expression {
         return schema;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         if (table == null) {
             return "*";
         }

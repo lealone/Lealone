@@ -57,7 +57,7 @@ public class Rownum extends Expression {
         return ValueInt.DISPLAY_SIZE;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         return "ROWNUM()";
     }
 

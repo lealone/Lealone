@@ -24,7 +24,9 @@ import java.sql.Statement;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.ServerName;
@@ -103,10 +105,12 @@ public class JdbcConnection extends TraceObject implements Connection {
 
 	private boolean isHBaseConnection = false;
     private Properties info;
+    private Configuration conf;
     private HConnection hConnection;
     private HRegionInfo regionInfo;
     private byte[] stopRowKey;
-    private String tableName;
+    private byte[] tableName;
+    private boolean isGroupQuery = false;
 
     public byte[] getStopRowKey() {
         return stopRowKey;
@@ -116,8 +120,8 @@ public class JdbcConnection extends TraceObject implements Connection {
         return regionInfo;
     }
 
-    public HConnection gethConnection() {
-        return hConnection;
+    public boolean isGroupQuery() {
+        return isGroupQuery;
     }
 
     /**
@@ -361,6 +365,9 @@ public class JdbcConnection extends TraceObject implements Connection {
      */
     public synchronized void close() throws SQLException {
         try {
+            if (hConnection != null)
+                hConnection.close();
+
             debugCodeCall("close");
             if (session == null) {
                 return;
@@ -1149,9 +1156,12 @@ public class JdbcConnection extends TraceObject implements Connection {
     CommandInterface prepareCommand(String sql, int fetchSize) {
         if (isHBaseConnection && session instanceof Session) {
             Prepared prepared = ((Session) session).prepare(sql, true, true);
+            if (conf == null) {
+                conf = HBaseConfiguration.create();
+            }
             if (hConnection == null) {
                 try {
-                    hConnection = HConnectionManager.createConnection(HBaseConfiguration.create());
+                    hConnection = HConnectionManager.createConnection(conf);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -1159,9 +1169,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             if (prepared instanceof DefineCommand) {
                 try {
                     ServerName sn = hConnection.getMasterAddress();
-                    String url = createUrl(sn.getHostname(), sn.getH2TcpPort());
-                    //info.setProperty("DISABLE_CHECK", "true");
-                    JdbcConnection masterConn = new JdbcConnection(url, info);
+                    JdbcConnection masterConn = new JdbcConnection(createUrl(sn.getHostname(), sn.getH2TcpPort()), info);
                     return masterConn.prepareCommand(sql, fetchSize);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
@@ -1174,53 +1182,46 @@ public class JdbcConnection extends TraceObject implements Connection {
 
                 try {
                     HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
-                    String url = createUrl(regionLocation);
                     info.setProperty("DISABLE_CHECK", "true");
                     info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
-                    JdbcConnection rsConn = new JdbcConnection(url, info);
+                    JdbcConnection rsConn = new JdbcConnection(createUrl(regionLocation), info);
                     return rsConn.prepareCommand(sql, fetchSize);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             } else if (prepared instanceof Select) {
-                String tableName = prepared.getTableName();
-                String[] rowKeys = prepared.getRowKeys();
-                String rowKey = null;
-                if (rowKeys != null && rowKeys.length > 0)
-                    rowKey = rowKeys[0];
-                if (rowKey == null)
-                    rowKey = "";
-
+                byte[] startRowKey = null;
                 byte[] stopRowKey = null;
-                if (rowKeys != null && rowKeys.length >= 2 && rowKeys[1] != null)
-                    stopRowKey = Bytes.toBytes(rowKeys[1]);
+                String[] rowKeys = prepared.getRowKeys();
+                if (rowKeys != null) {
+                    if (rowKeys.length >= 1 && rowKeys[0] != null)
+                        startRowKey = Bytes.toBytes(rowKeys[0]);
 
-                //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery。
-                //对于GroupQuery需要把Select语句同时发给相关的RegionServer，得到结果后再在client一起合并。
-                if (((Select) prepared).isGroupQuery()) {
-                    //TODO
-                } else {
-                    //实现org.apache.hadoop.hbase.client.ClientScanner的功能
-                    try {
-                        HRegionLocation regionLocation = hConnection
-                                .locateRegion(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
-                        String url = createUrl(regionLocation);
-                        info.setProperty("DISABLE_CHECK", "true");
-                        info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
-                        JdbcConnection rsConn = new JdbcConnection(url, info);
-                        rsConn.hConnection = hConnection;
-                        rsConn.regionInfo = regionLocation.getRegionInfo();
-                        rsConn.stopRowKey = stopRowKey;
-                        rsConn.tableName = tableName;
-
-                        this.regionInfo = regionLocation.getRegionInfo();
-                        this.stopRowKey = stopRowKey;
-                        this.tableName = tableName;
-                        return rsConn.prepareCommand(sql, fetchSize);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
+                    if (rowKeys.length >= 2 && rowKeys[1] != null)
+                        stopRowKey = Bytes.toBytes(rowKeys[1]);
                 }
+
+                if (startRowKey == null)
+                    startRowKey = HConstants.EMPTY_START_ROW;
+                if (stopRowKey == null)
+                    stopRowKey = HConstants.EMPTY_END_ROW;
+
+                this.stopRowKey = stopRowKey;
+                this.tableName = Bytes.toBytes(prepared.getTableName());
+
+                this.isGroupQuery = ((Select) prepared).isGroupQuery();
+                HBaseJdbcSelectCommand command = new HBaseJdbcSelectCommand();
+                command.select = (Select) prepared;
+                command.conf = conf;
+                command.tableName = tableName;
+                command.start = startRowKey;
+                command.end = stopRowKey;
+                command.jdbcConn = this;
+                command.sql = sql;
+                command.fetchSize = fetchSize;
+                command.session = (Session) session;
+                CommandInterface c = command.init();
+                return c;
             }
         }
         return session.prepareCommand(sql, fetchSize);
@@ -1240,21 +1241,30 @@ public class JdbcConnection extends TraceObject implements Connection {
 
     JdbcConnection getNewConnection(byte[] startKey) {
         try {
-            HRegionLocation regionLocation = hConnection.locateRegion(Bytes.toBytes(tableName), startKey);
+            HRegionLocation regionLocation = hConnection.locateRegion(tableName, startKey);
             String url = createUrl(regionLocation);
             info.setProperty("DISABLE_CHECK", "true");
             info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
             JdbcConnection rsConn = new JdbcConnection(url, info);
+            rsConn.isGroupQuery = isGroupQuery;
             rsConn.hConnection = hConnection;
             rsConn.regionInfo = regionLocation.getRegionInfo();
+            if (this.regionInfo == null)
+                this.regionInfo = rsConn.regionInfo;
             rsConn.stopRowKey = stopRowKey;
             rsConn.tableName = tableName;
+            //rsConn.isHBaseConnection = isHBaseConnection;
+            //rsConn.session = session;
             return rsConn;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
+    String getNewSQL(Select select, byte[] startKey, boolean isDistributed) {
+        return select.getPlanSQL(startKey, stopRowKey, isDistributed);
+    }
+    
     private CommandInterface prepareCommand(String sql, CommandInterface old) {
         return old == null ? session.prepareCommand(sql, Integer.MAX_VALUE) : old;
     }

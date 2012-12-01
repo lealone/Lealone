@@ -37,6 +37,8 @@ public class Driver implements java.sql.Driver {
 
     private static final Driver INSTANCE = new Driver();
     private static final String DEFAULT_URL = "jdbc:default:connection";
+    //private static final String DEFAULT_HBASE_URL = "jdbc:h2:hbase:";
+    //private static final String DEFAULT_MEM_URL = "jdbc:h2:mem:";
     private static final ThreadLocal<Connection> DEFAULT_CONNECTION = new ThreadLocal<Connection>();
 
     private static volatile boolean registered;
@@ -69,6 +71,10 @@ public class Driver implements java.sql.Driver {
             if (c != null) {
                 return c;
             }
+            //if (url.startsWith(DEFAULT_HBASE_URL)) {
+            //    url = DEFAULT_MEM_URL + url.substring(DEFAULT_HBASE_URL.length());
+            //    return new HBaseJdbcConnection(url, info);
+            //}
             return new JdbcConnection(url, info);
         } catch (Exception e) {
             throw DbException.toSQLException(e);

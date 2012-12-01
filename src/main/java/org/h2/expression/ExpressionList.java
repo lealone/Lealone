@@ -77,11 +77,11 @@ public class ExpressionList extends Expression {
         return Integer.MAX_VALUE;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder("(");
         for (Expression e: list) {
             buff.appendExceptFirst(", ");
-            buff.append(e.getSQL());
+            buff.append(e.getSQL(isDistributed));
         }
         if (list.length == 1) {
             buff.append(',');

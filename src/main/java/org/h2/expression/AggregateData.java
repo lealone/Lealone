@@ -171,6 +171,109 @@ class AggregateData {
         }
     }
 
+    void merge(Database database, boolean distinct, Value v) {
+        if (aggregateType == Aggregate.COUNT || aggregateType == Aggregate.COUNT_ALL) {
+            count += v.getLong();
+            return;
+        } else if (aggregateType == Aggregate.HISTOGRAM) {
+            if (distinctValues == null) {
+                distinctValues = ValueHashMap.newInstance();
+            }
+            AggregateData a = distinctValues.get(v);
+            if (a == null) {
+                if (distinctValues.size() < Constants.SELECTIVITY_DISTINCT_COUNT) {
+                    a = new AggregateData(Aggregate.HISTOGRAM, dataType);
+                    distinctValues.put(v, a);
+                }
+            }
+            if (a != null) {
+                a.count++;
+            }
+            return;
+        }
+        if (v == ValueNull.INSTANCE) {
+            return;
+        }
+        count++;
+        if (distinct) {
+            if (distinctValues == null) {
+                distinctValues = ValueHashMap.newInstance();
+            }
+            distinctValues.put(v, this);
+            return;
+        }
+        switch (aggregateType) {
+        case Aggregate.COUNT:
+        case Aggregate.HISTOGRAM:
+            return;
+        case Aggregate.SUM:
+        case Aggregate.SELECTIVITY:
+            if (value == null) {
+                value = v.convertTo(dataType);
+            } else {
+                v = v.convertTo(value.getType());
+                value = value.add(v);
+            }
+            break;
+        case Aggregate.AVG:
+            if (value == null) {
+                value = v.convertTo(DataType.getAddProofType(dataType));
+            } else {
+                //AVG聚合函数merge的次数不会超过1
+                DbException.throwInternalError("type=" + aggregateType);
+            }
+            break;
+        case Aggregate.MIN:
+            if (value == null || database.compare(v, value) < 0) {
+                value = v;
+            }
+            break;
+        case Aggregate.MAX:
+            if (value == null || database.compare(v, value) > 0) {
+                value = v;
+            }
+            break;
+        case Aggregate.GROUP_CONCAT: {
+            if (list == null) {
+                list = New.arrayList();
+            }
+            list.add(v);
+            break;
+        }
+        case Aggregate.STDDEV_POP:
+        case Aggregate.STDDEV_SAMP:
+        case Aggregate.VAR_POP:
+        case Aggregate.VAR_SAMP: {
+            v = v.convertTo(Value.DOUBLE);
+            if (value == null) {
+                value = v;
+            } else {
+                //这4种聚合函数merge的次数不会超过1
+                DbException.throwInternalError("type=" + aggregateType);
+            }
+            break;
+        }
+        case Aggregate.BOOL_AND:
+            v = v.convertTo(Value.BOOLEAN);
+            if (value == null) {
+                value = v;
+            } else {
+                value = ValueBoolean.get(value.getBoolean().booleanValue() && v.getBoolean().booleanValue());
+            }
+            break;
+        case Aggregate.BOOL_OR:
+            v = v.convertTo(Value.BOOLEAN);
+            if (value == null) {
+                value = v;
+            } else {
+                value = ValueBoolean.get(value.getBoolean().booleanValue() || v.getBoolean().booleanValue());
+            }
+            break;
+        default:
+            DbException.throwInternalError("type=" + aggregateType);
+        }
+    }
+
     ArrayList<Value> getList() {
         return list;
     }
@@ -254,6 +357,64 @@ class AggregateData {
             for (Value dv : distinctValues.keys()) {
                 AggregateData d = distinctValues.get(dv);
                 values[i] = ValueArray.get(new Value[] {dv, ValueLong.get(d.count)});
+                i++;
+            }
+            final CompareMode compareMode = database.getCompareMode();
+            Arrays.sort(values, new Comparator<ValueArray>() {
+                public int compare(ValueArray v1, ValueArray v2) {
+                    Value a1 = v1.getList()[0];
+                    Value a2 = v2.getList()[0];
+                    return a1.compareTo(a2, compareMode);
+                }
+            });
+            v = ValueArray.get(values);
+            break;
+        default:
+            DbException.throwInternalError("type=" + aggregateType);
+        }
+        return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
+    }
+
+    Value getMergedValue(Database database, boolean distinct) {
+        if (distinct) {
+            count = 0;
+            groupDistinct(database);
+        }
+        Value v = null;
+        switch (aggregateType) {
+        case Aggregate.COUNT:
+        case Aggregate.COUNT_ALL:
+            v = ValueLong.get(count);
+            break;
+        case Aggregate.SUM:
+        case Aggregate.MIN:
+        case Aggregate.MAX:
+        case Aggregate.BOOL_OR:
+        case Aggregate.BOOL_AND:
+            v = value;
+            break;
+        case Aggregate.AVG:
+        case Aggregate.STDDEV_POP:
+        case Aggregate.STDDEV_SAMP:
+        case Aggregate.VAR_POP:
+        case Aggregate.VAR_SAMP:
+            return value == null ? ValueNull.INSTANCE : value;
+
+        case Aggregate.SELECTIVITY:
+
+            if (value != null) {
+                v = divide(value, count);
+            }
+            break;
+        case Aggregate.GROUP_CONCAT:
+            return null;
+
+        case Aggregate.HISTOGRAM:
+            ValueArray[] values = new ValueArray[distinctValues.size()];
+            int i = 0;
+            for (Value dv : distinctValues.keys()) {
+                AggregateData d = distinctValues.get(dv);
+                values[i] = ValueArray.get(new Value[] { dv, ValueLong.get(d.count) });
                 i++;
             }
             final CompareMode compareMode = database.getCompareMode();

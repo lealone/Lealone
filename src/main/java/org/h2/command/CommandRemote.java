@@ -8,6 +8,8 @@ package org.h2.command;
 
 import java.io.IOException;
 import java.util.ArrayList;
+
+import org.h2.command.dml.Select;
 import org.h2.constant.SysProperties;
 import org.h2.engine.SessionRemote;
 import org.h2.expression.ParameterInterface;
@@ -37,6 +39,16 @@ public class CommandRemote implements CommandInterface {
     private boolean readonly;
     private int paramCount;
     private int created;
+    
+    private Select select;
+
+    public Select getSelect() {
+        return select;
+    }
+
+    public void setSelect(Select select) {
+        this.select = select;
+    }
 
     public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
         this.transferList = transferList;

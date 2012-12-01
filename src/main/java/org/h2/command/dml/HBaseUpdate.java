@@ -104,7 +104,7 @@ public class HBaseUpdate extends Update {
                             put.add(kv.getFamily(), kv.getQualifier(), kv.getValue());
                         } else {
                             put.add(kv.getFamily(), kv.getQualifier(), kv.getTimestamp() + 1,
-                                    Bytes.toBytes(newExpr.getValue(session).toString()));
+                                    Bytes.toBytes(newExpr.getValue(session).getString()));
                         }
 
                         break;

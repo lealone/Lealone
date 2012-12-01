@@ -39,7 +39,7 @@ public class ConditionExists extends Condition {
         return this;
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         return "EXISTS(\n" + StringUtils.indent(query.getPlanSQL(), 4, false) + ")";
     }
 

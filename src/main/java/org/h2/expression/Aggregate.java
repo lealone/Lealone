@@ -261,6 +261,50 @@ public class Aggregate extends Expression {
         data.add(session.getDatabase(), distinct, v);
     }
 
+    public void mergeAggregate(Session session, Value v) {
+        
+//    }
+//    public void mergeAggregate(Session session, TableFilter tableFilter) {
+        // TODO aggregates: check nested MIN(MAX(ID)) and so on
+        // if(on != null) {
+        // on.updateAggregate();
+        // }
+        HashMap<Expression, Object> group = select.getCurrentGroup();
+        if (group == null) {
+            // this is a different level (the enclosing query)
+            return;
+        }
+
+        int groupRowId = select.getCurrentGroupRowId();
+        if (lastGroupRowId == groupRowId) {
+            // already visited
+            return;
+        }
+        lastGroupRowId = groupRowId;
+
+        AggregateData data = (AggregateData) group.get(this);
+        if (data == null) {
+            data = new AggregateData(type, dataType);
+            group.put(this, data);
+        }
+        if (type == GROUP_CONCAT) {
+            if (v != ValueNull.INSTANCE) {
+                v = v.convertTo(Value.STRING);
+                if (orderList != null) {
+                    int size = orderList.size();
+                    Value[] array = new Value[1 + size];
+                    array[0] = v;
+                    for (int i = 0; i < size; i++) {
+                        SelectOrderBy o = orderList.get(i);
+                        array[i + 1] = o.expression.getValue(session);
+                    }
+                    v = ValueArray.get(array);
+                }
+            }
+        }
+        data.merge(session.getDatabase(), distinct, v);
+    }
+
     public Value getValue(Session session) {
         if (select.isQuickAggregateQuery()) {
             switch (type) {
@@ -335,6 +379,147 @@ public class Aggregate extends Expression {
         return v;
     }
 
+    public Value getMergedValue(Session session) {
+        if (select.isQuickAggregateQuery()) {
+            switch (type) {
+            case COUNT:
+            case COUNT_ALL:
+                Table table = select.getTopTableFilter().getTable();
+                return ValueLong.get(table.getRowCount(session));
+            case MIN:
+            case MAX:
+                boolean first = type == MIN;
+                Index index = getColumnIndex(first);
+                int sortType = index.getIndexColumns()[0].sortType;
+                if ((sortType & SortOrder.DESCENDING) != 0) {
+                    first = !first;
+                }
+                Cursor cursor = index.findFirstOrLast(session, first);
+                SearchRow row = cursor.getSearchRow();
+                Value v;
+                if (row == null) {
+                    v = ValueNull.INSTANCE;
+                } else {
+                    v = row.getValue(index.getColumns()[0].getColumnId());
+                }
+                return v;
+            default:
+                DbException.throwInternalError("type=" + type);
+            }
+        }
+        HashMap<Expression, Object> group = select.getCurrentGroup();
+        if (group == null) {
+            throw DbException.get(ErrorCode.INVALID_USE_OF_AGGREGATE_FUNCTION_1, getSQL());
+        }
+        AggregateData data = (AggregateData) group.get(this);
+        if (data == null) {
+            data = new AggregateData(type, dataType);
+        }
+        Value v = data.getMergedValue(session.getDatabase(), distinct);
+        if (type == GROUP_CONCAT) {
+            ArrayList<Value> list = data.getList();
+            if (list == null || list.size() == 0) {
+                return ValueNull.INSTANCE;
+            }
+            if (orderList != null) {
+                final SortOrder sortOrder = sort;
+                Collections.sort(list, new Comparator<Value>() {
+                    public int compare(Value v1, Value v2) {
+                        Value[] a1 = ((ValueArray) v1).getList();
+                        Value[] a2 = ((ValueArray) v2).getList();
+                        return sortOrder.compare(a1, a2);
+                    }
+                });
+            }
+            StatementBuilder buff = new StatementBuilder();
+            String sep = separator == null ? "," : separator.getValue(session).getString();
+            for (Value val : list) {
+                String s;
+                if (val.getType() == Value.ARRAY) {
+                    s = ((ValueArray) val).getList()[0].getString();
+                } else {
+                    s = val.convertTo(Value.STRING).getString();
+                }
+                if (s == null) {
+                    continue;
+                }
+                if (sep != null) {
+                    buff.appendExceptFirst(sep);
+                }
+                buff.append(s);
+            }
+            v = ValueString.get(buff.toString());
+        }
+        return v;
+    }
+
+    public void calculate(Calculator calculator) {
+        switch (type) {
+        case Aggregate.COUNT_ALL:
+        case Aggregate.COUNT:
+        case Aggregate.MIN:
+        case Aggregate.MAX:
+        case Aggregate.BOOL_AND:
+        case Aggregate.BOOL_OR:
+        case Aggregate.SUM:
+            break;
+
+        case Aggregate.AVG: {
+            int i = calculator.getIndex();
+            double avg = calculator.getValue(i + 1).getDouble() / calculator.getValue(i).getDouble();
+            calculator.addResultValue(ValueDouble.get(avg));
+            calculator.addIndex(2);
+            break;
+        }
+        case Aggregate.STDDEV_POP: {
+            int i = calculator.getIndex();
+            long count = calculator.getValue(i).getLong();
+            double sum1 = calculator.getValue(i + 1).getDouble();
+            double sum2 = calculator.getValue(i + 2).getDouble();
+            double result = Math.sqrt(sum2 / count - (sum1 / count) * (sum1 / count));
+            calculator.addResultValue(ValueDouble.get(result));
+            calculator.addIndex(3);
+            break;
+        }
+        case Aggregate.STDDEV_SAMP: { //见:http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+            int i = calculator.getIndex();
+            long count = calculator.getValue(i).getLong();
+            double sum1 = calculator.getValue(i + 1).getDouble();
+            double sum2 = calculator.getValue(i + 2).getDouble();
+            double result = Math.sqrt((sum2 - (sum1 * sum1 / count)) / (count - 1));
+            calculator.addResultValue(ValueDouble.get(result));
+            calculator.addIndex(3);
+            break;
+        }
+        case Aggregate.VAR_POP: {
+            int i = calculator.getIndex();
+            long count = calculator.getValue(i).getLong();
+            double sum1 = calculator.getValue(i + 1).getDouble();
+            double sum2 = calculator.getValue(i + 2).getDouble();
+            double result = sum2 / count - (sum1 / count) * (sum1 / count);
+            calculator.addResultValue(ValueDouble.get(result));
+            calculator.addIndex(3);
+            break;
+        }
+        case Aggregate.VAR_SAMP: {
+            int i = calculator.getIndex();
+            long count = calculator.getValue(i).getLong();
+            double sum1 = calculator.getValue(i + 1).getDouble();
+            double sum2 = calculator.getValue(i + 2).getDouble();
+            double result = (sum2 - (sum1 * sum1 / count)) / (count - 1);
+            calculator.addResultValue(ValueDouble.get(result));
+            calculator.addIndex(3);
+            break;
+        }
+        case Aggregate.HISTOGRAM:
+        case Aggregate.SELECTIVITY:
+        case Aggregate.GROUP_CONCAT:
+            break;
+        default:
+            DbException.throwInternalError("type=" + type);
+        }
+    }
+
     public int getType() {
         return dataType;
     }
@@ -395,18 +580,20 @@ public class Aggregate extends Expression {
             precision = displaySize = Integer.MAX_VALUE;
             break;
         case SUM:
+            dataType = Value.LONG; //我加上的
             if (dataType == Value.BOOLEAN) {
                 // example: sum(id > 3) (count the rows)
                 dataType = Value.LONG;
             } else if (!DataType.supportsAdd(dataType)) {
-                throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
+                //throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
             } else {
                 dataType = DataType.getAddProofType(dataType);
             }
             break;
         case AVG:
+            dataType = Value.DOUBLE; //我加上的
             if (!DataType.supportsAdd(dataType)) {
-                throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
+                //throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
             }
             break;
         case MIN:
@@ -460,33 +647,33 @@ public class Aggregate extends Expression {
         return displaySize;
     }
 
-    private String getSQLGroupConcat() {
+    private String getSQLGroupConcat(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder("GROUP_CONCAT(");
         if (distinct) {
             buff.append("DISTINCT ");
         }
-        buff.append(on.getSQL());
+        buff.append(on.getSQL(isDistributed));
         if (orderList != null) {
             buff.append(" ORDER BY ");
             for (SelectOrderBy o : orderList) {
                 buff.appendExceptFirst(", ");
-                buff.append(o.expression.getSQL());
+                buff.append(o.expression.getSQL(isDistributed));
                 if (o.descending) {
                     buff.append(" DESC");
                 }
             }
         }
         if (separator != null) {
-            buff.append(" SEPARATOR ").append(separator.getSQL());
+            buff.append(" SEPARATOR ").append(separator.getSQL(isDistributed));
         }
         return buff.append(')').toString();
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         String text;
         switch (type) {
         case GROUP_CONCAT:
-            return getSQLGroupConcat();
+            return getSQLGroupConcat(isDistributed);
         case COUNT_ALL:
             return "COUNT(*)";
         case COUNT:
@@ -508,18 +695,33 @@ public class Aggregate extends Expression {
             text = "MAX";
             break;
         case AVG:
+            if (isDistributed) {
+                if (distinct) {
+                    return "COUNT(DISTINCT " + on.getSQL(isDistributed) + "), SUM(DISTINCT " + on.getSQL(isDistributed) + ")";
+                } else {
+                    return "COUNT(" + on.getSQL(isDistributed) + "), SUM(" + on.getSQL(isDistributed) + ")";
+                }
+            }
             text = "AVG";
             break;
         case STDDEV_POP:
+            if (isDistributed)
+                return getSQL_STDDEV_VAR();
             text = "STDDEV_POP";
             break;
         case STDDEV_SAMP:
+            if (isDistributed)
+                return getSQL_STDDEV_VAR();
             text = "STDDEV_SAMP";
             break;
         case VAR_POP:
+            if (isDistributed)
+                return getSQL_STDDEV_VAR();
             text = "VAR_POP";
             break;
         case VAR_SAMP:
+            if (isDistributed)
+                return getSQL_STDDEV_VAR();
             text = "VAR_SAMP";
             break;
         case BOOL_AND:
@@ -532,9 +734,18 @@ public class Aggregate extends Expression {
             throw DbException.throwInternalError("type=" + type);
         }
         if (distinct) {
-            return text + "(DISTINCT " + on.getSQL() + ")";
+            return text + "(DISTINCT " + on.getSQL(isDistributed) + ")";
         }
-        return text + StringUtils.enclose(on.getSQL());
+        return text + StringUtils.enclose(on.getSQL(isDistributed));
+    }
+    
+    private String getSQL_STDDEV_VAR() {
+        String onSQL = on.getSQL(true);
+        if (distinct) {
+            return "COUNT(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + " * " + onSQL + ")";
+        } else {
+            return "COUNT(" + onSQL + "), SUM(" + onSQL + "), SUM(" + onSQL + " * " + onSQL + ")";
+        }
     }
 
     private Index getColumnIndex(boolean first) {

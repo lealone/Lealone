@@ -859,12 +859,37 @@ public class TableFilter implements ColumnResolver {
         }
         return null;
     }
+    
+    public int getCurrentSearchRowLength() {
+        return currentSearchRow.getColumnCount();
+    }
 
     public Value getValue(Column column) {
         if (currentSearchRow == null) {
             return null;
         }
         int columnId = column.getColumnId();
+        if (columnId == -1) {
+            return ValueLong.get(currentSearchRow.getKey());
+        }
+        if (current == null) {
+            Value v = currentSearchRow.getValue(columnId);
+            if (v != null) {
+                return v;
+            }
+            current = cursor.get();
+            if (current == null) {
+                return ValueNull.INSTANCE;
+            }
+        }
+        return current.getValue(columnId);
+    }
+
+    public Value getValue(int columnId) {
+        if (currentSearchRow == null) {
+            return null;
+        }
+
         if (columnId == -1) {
             return ValueLong.get(currentSearchRow.getKey());
         }

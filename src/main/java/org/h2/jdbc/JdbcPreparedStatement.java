@@ -25,6 +25,8 @@ import java.util.Calendar;
 import java.util.HashMap;
 
 import org.h2.command.CommandInterface;
+import org.h2.command.CommandRemote;
+import org.h2.command.dml.Select;
 import org.h2.constant.ErrorCode;
 import org.h2.expression.ParameterInterface;
 import org.h2.message.DbException;
@@ -73,9 +75,10 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         this.sqlStatement = sql;
         command = conn.prepareCommand(sql, fetchSize);
     }
-    
-    JdbcPreparedStatement copy(JdbcConnection conn) {
-        JdbcPreparedStatement ps = new JdbcPreparedStatement(conn, sqlStatement, getTraceId(), resultSetType, resultSetConcurrency, closedByResultSet);
+
+    JdbcPreparedStatement copy(JdbcConnection conn, String sql) {
+        JdbcPreparedStatement ps = new JdbcPreparedStatement(conn, sql, getTraceId(), resultSetType, resultSetConcurrency,
+                closedByResultSet);
         ps.batchParameters = batchParameters;
         ps.cachedColumnLabelMap = cachedColumnLabelMap;
         ps.maxRows = maxRows;
@@ -119,7 +122,11 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 } finally {
                     setExecutingStatement(null);
                 }
+                Select select = null;
+                if (command instanceof CommandRemote)
+                    select = ((CommandRemote) command).getSelect();
                 resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable, cachedColumnLabelMap);
+                resultSet = new HBaseJdbcResultSet(select, resultSet, conn, this);
             }
             return resultSet;
         } catch (Exception e) {
@@ -197,8 +204,11 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                             ResultInterface result = command.executeQuery(maxRows, scrollable);
+                            Select select = null;
+                            if (command instanceof CommandRemote)
+                                select = ((CommandRemote) command).getSelect();
                             resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                            resultSet = new HBaseJdbcResultSet(resultSet, conn, this);
+                            resultSet = new HBaseJdbcResultSet(select, resultSet, conn, this);
                         } else {
                             returnsResultSet = false;
                             updateCount = command.executeUpdate();

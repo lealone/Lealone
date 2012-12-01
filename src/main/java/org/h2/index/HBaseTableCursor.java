@@ -20,15 +20,18 @@
 package org.h2.index;
 
 import java.io.IOException;
+import java.util.List;
 
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.engine.Session;
 import org.h2.result.Row;
 import org.h2.result.SearchRow;
+import org.h2.table.Column;
+import org.h2.table.HBaseTable;
+import org.h2.table.TableFilter;
 import org.h2.value.Value;
 import org.h2.value.ValueString;
 
@@ -37,18 +40,64 @@ public class HBaseTableCursor implements Cursor {
     private long scannerId;
     private Result[] result;
     private int length = 0;
+    private List<Column> columns;
+    private byte[] defaultColumnFamilyName;
+    private int columnCount = 0;
+    private String rowKeyName;
+
+    public HBaseTableCursor(TableFilter filter, SearchRow first, SearchRow last) {
+        rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();
+        this.session = filter.getSession();
+        byte[] startRowKey = null;
+        byte[] stopRowKey = null;
+        String[] rowKeys = filter.getSelect().getRowKeys();
+        if (rowKeys != null) {
+            if (rowKeys.length >= 1 && rowKeys[0] != null)
+                startRowKey = Bytes.toBytes(rowKeys[0]);
+
+            if (rowKeys.length >= 2 && rowKeys[1] != null)
+                stopRowKey = Bytes.toBytes(rowKeys[1]);
+        }
+
+        if (startRowKey == null)
+            startRowKey = HConstants.EMPTY_START_ROW;
+        if (stopRowKey == null)
+            stopRowKey = HConstants.EMPTY_END_ROW;
+
+        Scan scan = new Scan();
+        if (startRowKey != null)
+            scan.setStartRow(startRowKey);
+        if (stopRowKey != null)
+            scan.setStopRow(stopRowKey);
+
+        columns = filter.getSelect().getColumns();
+        if (columns != null) {
+            columnCount = columns.size();
+            defaultColumnFamilyName = Bytes.toBytes(((HBaseTable) filter.getTable()).getDefaultColumnFamilyName());
+            for (Column c : columns) {
+                if (rowKeyName.equalsIgnoreCase(c.getName()))
+                    continue;
+                else if (c.getColumnFamilyName() != null)
+                    scan.addColumn(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes());
+                else
+                    scan.addColumn(defaultColumnFamilyName, c.getNameAsBytes());
+            }
+        }
+        try {
+            scannerId = session.getRegionServer().openScanner(session.getRegionName(), scan);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     public HBaseTableCursor(Session session, SearchRow first, SearchRow last) {
         this.session = session;
         try {
             Scan scan = new Scan();
-            //            if (first != null)
-            //                scan.setStartRow(Bytes.toBytes(Long.toString(first.getKey())));
-            //            if (last != null)
-            //                scan.setStopRow(Bytes.toBytes(Long.toString(last.getKey())));
-            HRegionInfo info = session.getRegionServer().getRegionInfo(session.getRegionName());
-            scan.setStartRow(info.getStartKey());
-            scan.setStopRow(info.getEncodedNameAsBytes());
+            if (first != null)
+                scan.setStartRow(Bytes.toBytes(Long.toString(first.getKey())));
+            if (last != null)
+                scan.setStopRow(Bytes.toBytes(Long.toString(last.getKey())));
             scannerId = session.getRegionServer().openScanner(session.getRegionName(), scan);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -57,22 +106,20 @@ public class HBaseTableCursor implements Cursor {
 
     @Override
     public Row get() {
-        if (result == null || length >= result.length) {
-            try {
-                result = session.getRegionServer().next(scannerId, session.getFetchSize());
-                length = 0;
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
         if (result != null && length < result.length) {
             Result r = result[length++];
-            KeyValue[] kvs = r.raw();
-            int size = kvs.length;
-            Value[] data = new Value[size];
 
-            for (int i = 0; i < size; i++) {
-                data[i] = ValueString.get(Bytes.toString(kvs[i].getValue()));
+            Value[] data = new Value[columnCount];
+            Column c;
+            for (int i = 0; i < columnCount; i++) {
+                c = columns.get(i);
+                if (rowKeyName.equalsIgnoreCase(c.getName()))
+                    data[i] = ValueString.get(Bytes.toString(r.getRow()));
+                else if (c.getColumnFamilyName() != null)
+                    data[i] = ValueString.get(Bytes.toString(r.getValue(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes())));
+                else {
+                    data[i] = ValueString.get(Bytes.toString(r.getValue(defaultColumnFamilyName, c.getNameAsBytes())));
+                }
             }
             return new Row(data, Row.MEMORY_CALCULATE);
         }

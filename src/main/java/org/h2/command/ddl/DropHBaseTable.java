@@ -71,6 +71,11 @@ public class DropHBaseTable extends SchemaCommand {
         table = getSchema().findTableOrView(session, tableName);
 
         if (table != null) {
+            table.setModified();
+            Database db = session.getDatabase();
+            db.lockMeta(session);
+            db.removeSchemaObject(session, table);
+
             try {
                 HMaster master = session.getMaster();
                 if (master != null) {
@@ -85,10 +90,6 @@ public class DropHBaseTable extends SchemaCommand {
             } catch (Exception e) {
                 throw DbException.convert(e); //Failed to HMaster.deleteTable
             }
-            table.setModified();
-            Database db = session.getDatabase();
-            db.lockMeta(session);
-            db.removeSchemaObject(session, table);
         }
     }
 

@@ -42,14 +42,14 @@ public class ConditionAndOr extends Condition {
         }
     }
 
-    public String getSQL() {
+    public String getSQL(boolean isDistributed) {
         String sql;
         switch (andOrType) {
         case AND:
-            sql = left.getSQL() + "\n    AND " + right.getSQL();
+            sql = left.getSQL(isDistributed) + "\n    AND " + right.getSQL(isDistributed);
             break;
         case OR:
-            sql = left.getSQL() + "\n    OR " + right.getSQL();
+            sql = left.getSQL(isDistributed) + "\n    OR " + right.getSQL(isDistributed);
             break;
         default:
             throw DbException.throwInternalError("andOrType=" + andOrType);
