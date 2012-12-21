@@ -17,6 +17,7 @@ import org.h2.expression.Expression;
 import org.h2.expression.ExpressionColumn;
 import org.h2.expression.ExpressionVisitor;
 import org.h2.expression.Parameter;
+import org.h2.expression.RowKeyConditionInfo;
 import org.h2.expression.ValueExpression;
 import org.h2.message.DbException;
 import org.h2.result.LocalResult;
@@ -66,6 +67,7 @@ public abstract class Query extends Prepared {
     private LocalResult lastResult;
     private Value[] lastParameters;
     private boolean cacheableChecked;
+    private boolean isSubquery;
 
     Query(Session session) {
         super(session);
@@ -505,4 +507,17 @@ public abstract class Query extends Prepared {
         return visitor.getMaxDataModificationId();
     }
 
+    public abstract boolean isDistributed();
+
+    public abstract String[] getPlanSQLs();
+
+    public abstract RowKeyConditionInfo getRowKeyConditionInfo();
+
+    public boolean isSubquery() {
+        return isSubquery;
+    }
+
+    public void setSubquery(boolean isSubquery) {
+        this.isSubquery = isSubquery;
+    }
 }

@@ -100,10 +100,6 @@ public class Select extends Query {
         return isGroupQuery;
     }
 
-    public RowKeyConditionInfo getRowKeyConditionInfo() {
-        return rkci;
-    }
-
     public boolean isNotAggregate() {
         return isGroupQuery && groupByExpression != null && groupByExpression.length > 0;
     }
@@ -939,19 +935,21 @@ public class Select extends Query {
             condition = condition.optimize(session);
             for (TableFilter f : filters) {
                 if (f.getTable() instanceof HBaseTable) {
-                    String rowKeyName = ((HBaseTable) f.getTable()).getRowKeyName();
-                    rkci = new RowKeyConditionInfo(rowKeyName);
-                    condition = condition.removeRowKeyCondition(rkci, session);
+                    if (!isSubquery()) {
+                        String rowKeyName = ((HBaseTable) f.getTable()).getRowKeyName();
+                        rkci = new RowKeyConditionInfo((HBaseTable) f.getTable(), this);
+                        condition = condition.removeRowKeyCondition(rkci, session);
 
-                    Column column = new Column(rowKeyName, Value.STRING);
-                    column.setTable(f.getTable(), -1);
-                    ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), column);
-                    if (rkci.getCompareValueStart() != null)
-                        f.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStart(), ec,
-                                ValueExpression.get(rkci.getCompareValueStart())));
-                    if (rkci.getCompareValueStop() != null)
-                        f.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStop(), ec,
-                                ValueExpression.get(rkci.getCompareValueStop())));
+                        Column column = new Column(rowKeyName, Value.STRING);
+                        column.setTable(f.getTable(), -1);
+                        ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), column);
+                        if (rkci.getCompareValueStart() != null)
+                            f.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStart(), ec,
+                                    ValueExpression.get(rkci.getCompareValueStart())));
+                        if (rkci.getCompareValueStop() != null)
+                            f.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStop(), ec,
+                                    ValueExpression.get(rkci.getCompareValueStop())));
+                    }
                     break;
                 }
                 // outer joins: must not add index conditions such as
@@ -1199,7 +1197,7 @@ public class Select extends Query {
                 buff.append("\nWHERE ");
             else
                 buff.append("AND ");
-            buff.append(StringUtils.unEnclose(condition.getSQL()));
+            buff.append(StringUtils.unEnclose(condition.getSQL(isDistributed)));
         }
         if (groupIndex != null) {
             buff.append("\nGROUP BY ");
@@ -1208,7 +1206,7 @@ public class Select extends Query {
                 Expression g = exprList[gi];
                 g = g.getNonAliasExpression();
                 buff.appendExceptFirst(", ");
-                buff.append(StringUtils.unEnclose(g.getSQL()));
+                buff.append(StringUtils.unEnclose(g.getSQL(isDistributed)));
             }
         }
         if (group != null) {
@@ -1216,7 +1214,7 @@ public class Select extends Query {
             buff.resetCount();
             for (Expression g : group) {
                 buff.appendExceptFirst(", ");
-                buff.append(StringUtils.unEnclose(g.getSQL()));
+                buff.append(StringUtils.unEnclose(g.getSQL(isDistributed)));
             }
         }
         if (having != null) {
@@ -1224,10 +1222,10 @@ public class Select extends Query {
             // in this case the query is not run directly, just getPlanSQL is
             // called
             Expression h = having;
-            buff.append("\nHAVING ").append(StringUtils.unEnclose(h.getSQL()));
+            buff.append("\nHAVING ").append(StringUtils.unEnclose(h.getSQL(isDistributed)));
         } else if (havingIndex >= 0) {
             Expression h = exprList[havingIndex];
-            buff.append("\nHAVING ").append(StringUtils.unEnclose(h.getSQL()));
+            buff.append("\nHAVING ").append(StringUtils.unEnclose(h.getSQL(isDistributed)));
         }
         if (sort != null) {
             buff.append("\nORDER BY ").append(sort.getSQL(exprList, visibleColumnCount));
@@ -1241,9 +1239,9 @@ public class Select extends Query {
             }
         }
         if (limitExpr != null) {
-            buff.append("\nLIMIT ").append(StringUtils.unEnclose(limitExpr.getSQL()));
+            buff.append("\nLIMIT ").append(StringUtils.unEnclose(limitExpr.getSQL(isDistributed)));
             if (offsetExpr != null) {
-                buff.append(" OFFSET ").append(StringUtils.unEnclose(offsetExpr.getSQL()));
+                buff.append(" OFFSET ").append(StringUtils.unEnclose(offsetExpr.getSQL(isDistributed)));
             }
         }
         if (sampleSize != 0) {
@@ -1453,6 +1451,31 @@ public class Select extends Query {
     }
 
     @Override
+    public boolean isDistributed() {
+        if (!(topTableFilter.getTable() instanceof HBaseTable))
+            return false;
+
+        if (rkci == null || rkci.getStartKeysSize() < 2) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public String[] getPlanSQLs() {
+        if (rkci != null) {
+            return rkci.getPlanSQLs();
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public RowKeyConditionInfo getRowKeyConditionInfo() {
+        return rkci;
+    }
+
+    @Override
     public String getTableName() {
         return topTableFilter.getTable().getName();
     }
@@ -1460,13 +1483,9 @@ public class Select extends Query {
     @Override
     public String[] getRowKeys() {
         if (rkci != null) {
-            String[] rowKeys = new String[2];
-            if (rkci.getCompareValueStart() != null)
-                rowKeys[0] = rkci.getCompareValueStart().getString();
-            if (rkci.getCompareValueStop() != null)
-                rowKeys[1] = rkci.getCompareValueStop().getString();
-            return rowKeys;
+            return rkci.getRowKeys();
+        } else {
+            return null;
         }
-        return null;
     }
 }

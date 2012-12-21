@@ -9,6 +9,7 @@ package org.h2.engine;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.Random;
 
 import org.apache.hadoop.hbase.master.HMaster;
@@ -114,6 +115,15 @@ public class Session extends SessionWithState {
 	private byte[] regionName;
 	private Select currentSelect;
 	private int fetchSize;
+	private Properties originalProperties;
+
+    public Properties getOriginalProperties() {
+        return originalProperties;
+    }
+
+    public void setOriginalProperties(Properties originalProperties) {
+        this.originalProperties = originalProperties;
+    }
 
     public int getFetchSize() {
 		return fetchSize;

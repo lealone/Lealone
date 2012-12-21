@@ -23,11 +23,13 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 
 import org.h2.command.CommandInterface;
 import org.h2.command.CommandRemote;
 import org.h2.command.dml.Select;
 import org.h2.constant.ErrorCode;
+import org.h2.expression.Parameter;
 import org.h2.expression.ParameterInterface;
 import org.h2.message.DbException;
 import org.h2.message.TraceObject;
@@ -67,6 +69,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     private final String sqlStatement;
     private ArrayList<Value[]> batchParameters;
     private HashMap<String, Integer> cachedColumnLabelMap;
+
+    private ResultInterface internalResultInterface;
 
     JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType,
                 int resultSetConcurrency, boolean closeWithResultSet) {
@@ -119,6 +123,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 try {
                     setExecutingStatement(command);
                     result = command.executeQuery(maxRows, scrollable);
+                    internalResultInterface = result;
                 } finally {
                     setExecutingStatement(null);
                 }
@@ -1549,4 +1554,20 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         return false;
     }
 
+    /**
+     * INTERNAL
+     */
+    public ResultInterface getInternalResultInterface() {
+        return internalResultInterface;
+    }
+
+    /**
+     * INTERNAL
+     */
+    public void setParameters(List<Parameter> parameters) {
+        ArrayList<? extends ParameterInterface> parameters0 = command.getParameters();
+        if (parameters0 != null && parameters != null)
+            for (int i = 0, size = parameters0.size(); i < size; i++)
+                parameters0.get(i).setValue(parameters.get(i).getParamValue(), true);
+    }
 }

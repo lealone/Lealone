@@ -358,9 +358,9 @@ public abstract class Expression {
     public void mergeAggregate(Session session, TableFilter tableFilter) {
     }
 
-    public int calculate(Session session, Value[] currentRow, int index) {
-        return index + 1;
-    }
+    //    public int calculate(Session session, Value[] currentRow, int index) {
+    //        return index + 1;
+    //    }
 
     public void calculate(Calculator calculator) {
     }

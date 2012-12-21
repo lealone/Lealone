@@ -15,6 +15,7 @@ import java.io.StringWriter;
 import java.net.Socket;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Properties;
 
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
@@ -142,6 +143,7 @@ public class TcpServerThread implements Runnable {
                 }
                 db = server.checkKeyAndGetDatabaseName(db);
                 ConnectionInfo ci = new ConnectionInfo(db);
+                Properties originalProperties = new Properties();
                 if (baseDir != null) {
                     ci.setBaseDir(baseDir);
                 }
@@ -150,14 +152,35 @@ public class TcpServerThread implements Runnable {
                 }
                 ci.setOriginalURL(originalURL);
                 ci.setUserName(transfer.readString());
-                ci.setUserPasswordHash(transfer.readBytes());
-                ci.setFilePasswordHash(transfer.readBytes());
+                originalProperties.setProperty("user", ci.getUserName());
+                originalProperties.setProperty("password", "");
+
+                byte[] userPasswordHash = transfer.readBytes();
+                byte[] filePasswordHash = transfer.readBytes();
+
+                ci.setUserPasswordHash(userPasswordHash);
+                ci.setFilePasswordHash(filePasswordHash);
+
+                if (userPasswordHash != null)
+                    originalProperties.setProperty("_userPasswordHash_", new String(userPasswordHash));
+                if (filePasswordHash != null)
+                    originalProperties.setProperty("_filePasswordHash_", new String(filePasswordHash));
+
                 int len = transfer.readInt();
+                String k, v;
                 for (int i = 0; i < len; i++) {
-                    ci.setProperty(transfer.readString(), transfer.readString());
+                    k = transfer.readString();
+                    v = transfer.readString();
+                    if (k.equalsIgnoreCase("_userPasswordHash_"))
+                        ci.setUserPasswordHash(v.getBytes());
+                    else if (k.equalsIgnoreCase("_filePasswordHash_"))
+                        ci.setFilePasswordHash(v.getBytes());
+                    else
+                        ci.setProperty(k, v);
+                    originalProperties.setProperty(k, v);
                 }
-                
-				boolean disableCheck = "true".equalsIgnoreCase(ci.getProperty("DISABLE_CHECK", "false"));
+
+                boolean disableCheck = "true".equalsIgnoreCase(ci.getProperty("DISABLE_CHECK", "false"));
 				String regionName = ci.getProperty("REGION_NAME", "");
 				if (disableCheck && regionName.length() == 0)
 					throw new RuntimeException("regionName is null");
@@ -170,6 +193,7 @@ public class TcpServerThread implements Runnable {
 				session.setRegionServer(regionServer);
                 session.setDisableCheck(disableCheck);
                 session.setRegionName(Bytes.toBytes(regionName));
+                session.setOriginalProperties(originalProperties);
                 transfer.setSession(session);
                 transfer.writeInt(SessionRemote.STATUS_OK);
                 transfer.writeInt(clientVersion);

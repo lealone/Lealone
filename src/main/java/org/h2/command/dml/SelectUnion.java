@@ -16,6 +16,7 @@ import org.h2.expression.Expression;
 import org.h2.expression.ExpressionColumn;
 import org.h2.expression.ExpressionVisitor;
 import org.h2.expression.Parameter;
+import org.h2.expression.RowKeyConditionInfo;
 import org.h2.expression.ValueExpression;
 import org.h2.message.DbException;
 import org.h2.result.LocalResult;
@@ -417,4 +418,18 @@ public class SelectUnion extends Query {
         return left.allowGlobalConditions() && right.allowGlobalConditions();
     }
 
+    @Override
+    public boolean isDistributed() {
+        return left.isDistributed() && right.isDistributed();
+    }
+
+    @Override
+    public String[] getPlanSQLs() {
+        throw DbException.getUnsupportedException("getPlanSQLs()");
+    }
+
+    @Override
+    public RowKeyConditionInfo getRowKeyConditionInfo() {
+        throw DbException.getUnsupportedException("getRowKeyConditionInfo()");
+    }
 }

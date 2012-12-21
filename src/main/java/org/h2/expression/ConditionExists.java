@@ -8,6 +8,7 @@ package org.h2.expression;
 
 import org.h2.command.dml.Query;
 import org.h2.engine.Session;
+import org.h2.result.CombinedResult;
 import org.h2.result.ResultInterface;
 import org.h2.table.ColumnResolver;
 import org.h2.table.TableFilter;
@@ -24,11 +25,12 @@ public class ConditionExists extends Condition {
 
     public ConditionExists(Query query) {
         this.query = query;
+        query.setSubquery(true);
     }
 
     public Value getValue(Session session) {
         query.setSession(session);
-        ResultInterface result = query.query(1);
+        ResultInterface result = new CombinedResult(session, query, 1); //query.query(1);
         session.addTemporaryResult(result);
         boolean r = result.getRowCount() > 0;
         return ValueBoolean.get(r);

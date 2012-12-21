@@ -12,7 +12,7 @@ import org.h2.engine.Database;
 import org.h2.engine.Session;
 import org.h2.index.IndexCondition;
 import org.h2.message.DbException;
-import org.h2.result.LocalResult;
+import org.h2.result.CombinedResult;
 import org.h2.table.ColumnResolver;
 import org.h2.table.TableFilter;
 import org.h2.util.StringUtils;
@@ -38,11 +38,12 @@ public class ConditionInSelect extends Condition {
         this.query = query;
         this.all = all;
         this.compareType = compareType;
+        query.setSubquery(true);
     }
 
     public Value getValue(Session session) {
         query.setSession(session);
-        LocalResult rows = query.query(0);
+        CombinedResult rows = new CombinedResult(session, query, 0); //query.query(0);
         session.addTemporaryResult(rows);
         Value l = left.getValue(session);
         if (rows.getRowCount() == 0) {
@@ -70,7 +71,7 @@ public class ConditionInSelect extends Condition {
         return ValueBoolean.get(false);
     }
 
-    private Value getValueSlow(LocalResult rows, Value l) {
+    private Value getValueSlow(CombinedResult rows, Value l) {
         // this only returns the correct result if the result has at least one
         // row, and if l is not null
         boolean hasNull = false;

@@ -19,21 +19,12 @@
  */
 package org.h2.jdbc;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.NavigableMap;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.client.MetaScanner;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.Pair;
 import org.apache.hadoop.hbase.util.Threads;
 import org.h2.command.CommandInterface;
 import org.h2.command.CommandRemote;
@@ -41,11 +32,10 @@ import org.h2.command.dml.Select;
 import org.h2.engine.Session;
 import org.h2.expression.ParameterInterface;
 import org.h2.result.ResultInterface;
+import org.h2.util.HBaseUtils;
 
 public class HBaseJdbcSelectCommand implements CommandInterface {
-
     Select select;
-    Configuration conf;
     byte[] tableName;
     byte[] start;
     byte[] end;
@@ -73,7 +63,7 @@ public class HBaseJdbcSelectCommand implements CommandInterface {
                 this.pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
                         Threads.newDaemonThreadFactory("HBaseJdbcGroupQueryCommand"));
                 ((ThreadPoolExecutor) this.pool).allowCoreThreadTimeOut(true);
-                startKeys = getStartKeysInRange();
+                startKeys = HBaseUtils.getStartKeysInRange(tableName, start, end);
             } else {
                 startKeys = new ArrayList<byte[]>(1);
                 startKeys.add(start);
@@ -166,69 +156,4 @@ public class HBaseJdbcSelectCommand implements CommandInterface {
                 return c.getMetaData();
         return null;
     }
-
-    //-----------------以下代码来自org.apache.hadoop.hbase.client.HTable---------------------------//
-
-    private List<byte[]> getStartKeysInRange() throws IOException {
-        Pair<byte[][], byte[][]> startEndKeys = getStartEndKeys();
-        byte[][] startKeys = startEndKeys.getFirst();
-        byte[][] endKeys = startEndKeys.getSecond();
-
-        if (start == null) {
-            start = HConstants.EMPTY_START_ROW;
-        }
-        if (end == null) {
-            end = HConstants.EMPTY_END_ROW;
-        }
-
-        List<byte[]> rangeKeys = new ArrayList<byte[]>();
-        for (int i = 0; i < startKeys.length; i++) {
-            if (Bytes.compareTo(start, startKeys[i]) >= 0) {
-                if (Bytes.equals(endKeys[i], HConstants.EMPTY_END_ROW) || Bytes.compareTo(start, endKeys[i]) < 0) {
-                    rangeKeys.add(start);
-                }
-            } else if (Bytes.equals(end, HConstants.EMPTY_END_ROW) || //
-                    Bytes.compareTo(startKeys[i], end) < 0) { //原先代码是<=，因为coprocessorExec的语义是要包含endKey的
-                rangeKeys.add(startKeys[i]);
-            } else {
-                break; // past stop
-            }
-        }
-
-        return rangeKeys;
-    }
-
-    /**
-     * Gets the starting and ending row keys for every region in the currently
-     * open table.
-     * <p>
-     * This is mainly useful for the MapReduce integration.
-     * @return Pair of arrays of region starting and ending row keys
-     * @throws IOException if a remote or network exception occurs
-     */
-    private Pair<byte[][], byte[][]> getStartEndKeys() throws IOException {
-        NavigableMap<HRegionInfo, ServerName> regions = getRegionLocations();
-        final List<byte[]> startKeyList = new ArrayList<byte[]>(regions.size());
-        final List<byte[]> endKeyList = new ArrayList<byte[]>(regions.size());
-
-        for (HRegionInfo region : regions.keySet()) {
-            startKeyList.add(region.getStartKey());
-            endKeyList.add(region.getEndKey());
-        }
-
-        return new Pair<byte[][], byte[][]>(startKeyList.toArray(new byte[startKeyList.size()][]),
-                endKeyList.toArray(new byte[endKeyList.size()][]));
-    }
-
-    /**
-     * Gets all the regions and their address for this table.
-     * <p>
-     * This is mainly useful for the MapReduce integration.
-     * @return A map of HRegionInfo with it's server address
-     * @throws IOException if a remote or network exception occurs
-     */
-    private NavigableMap<HRegionInfo, ServerName> getRegionLocations() throws IOException {
-        return MetaScanner.allTableRegions(conf, tableName, false);
-    }
-
 }

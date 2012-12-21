@@ -203,7 +203,7 @@ public class HBaseTable extends Table {
 
 	@Override
 	public Column[] getColumns() {
-		return new Column[0];
+		return new Column[0]; //TODO select * from 会抛异常
 	}
 
 	private static String toS(ImmutableBytesWritable v) {

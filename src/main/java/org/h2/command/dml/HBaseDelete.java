@@ -6,7 +6,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.api.Trigger;
 import org.h2.engine.Right;
 import org.h2.engine.Session;
-import org.h2.expression.Comparison;
 import org.h2.expression.Expression;
 import org.h2.expression.RowKeyConditionInfo;
 import org.h2.table.HBaseTable;
@@ -66,8 +65,7 @@ public class HBaseDelete extends Delete {
             condition.mapColumns(tableFilter, 0);
             condition = condition.optimize(session);
             //condition.createIndexConditions(session, tableFilter);
-            String rowKeyName = ((HBaseTable) tableFilter.getTable()).getRowKeyName();
-            rkci = new RowKeyConditionInfo(rowKeyName);
+            rkci = new RowKeyConditionInfo((HBaseTable) tableFilter.getTable(), null);
             condition = condition.removeRowKeyCondition(rkci, session);
         }
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
@@ -82,13 +80,9 @@ public class HBaseDelete extends Delete {
 
     @Override
     public String getRowKey() {
-        String rowKey = null;
-        if (rkci != null) {
-            if (rkci.getCompareTypeStart() != Comparison.EQUAL)
-                throw new RuntimeException("rowKey compare type is not '='");
-            if (rkci.getCompareValueStart() != null)
-                rowKey = rkci.getCompareValueStart().getString();
-        }
-        return rowKey;
+        if (rkci != null)
+            return rkci.getRowKey();
+        else
+            return null;
     }
 }
