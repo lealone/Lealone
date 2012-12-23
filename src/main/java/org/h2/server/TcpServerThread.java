@@ -137,34 +137,12 @@ public class TcpServerThread implements Runnable {
                         }
                     }
                 }
-                String baseDir = server.getBaseDir();
-                if (baseDir == null) {
-                    baseDir = SysProperties.getBaseDir();
-                }
-                db = server.checkKeyAndGetDatabaseName(db);
-                ConnectionInfo ci = new ConnectionInfo(db);
-                Properties originalProperties = new Properties();
-                if (baseDir != null) {
-                    ci.setBaseDir(baseDir);
-                }
-                if (server.getIfExists()) {
-                    ci.setProperty("IFEXISTS", "TRUE");
-                }
-                ci.setOriginalURL(originalURL);
-                ci.setUserName(transfer.readString());
-                originalProperties.setProperty("user", ci.getUserName());
-                originalProperties.setProperty("password", "");
 
+                String userName = transfer.readString();
                 byte[] userPasswordHash = transfer.readBytes();
                 byte[] filePasswordHash = transfer.readBytes();
 
-                ci.setUserPasswordHash(userPasswordHash);
-                ci.setFilePasswordHash(filePasswordHash);
-
-                if (userPasswordHash != null)
-                    originalProperties.setProperty("_userPasswordHash_", new String(userPasswordHash));
-                if (filePasswordHash != null)
-                    originalProperties.setProperty("_filePasswordHash_", new String(filePasswordHash));
+                Properties originalProperties = new Properties();
 
                 int len = transfer.readInt();
                 String k, v;
@@ -172,23 +150,55 @@ public class TcpServerThread implements Runnable {
                     k = transfer.readString();
                     v = transfer.readString();
                     if (k.equalsIgnoreCase("_userPasswordHash_"))
-                        ci.setUserPasswordHash(v.getBytes());
+                        userPasswordHash = v.getBytes();
                     else if (k.equalsIgnoreCase("_filePasswordHash_"))
-                        ci.setFilePasswordHash(v.getBytes());
+                        filePasswordHash = v.getBytes();
                     else
-                        ci.setProperty(k, v);
-                    originalProperties.setProperty(k, v);
+                        originalProperties.setProperty(k, v);
+
+                }
+                String baseDir = server.getBaseDir();
+                if (baseDir == null) {
+                    baseDir = SysProperties.getBaseDir();
                 }
 
+                String storeEngineName = originalProperties.getProperty("STORE_ENGINE_NAME", null);
+                db = server.checkKeyAndGetDatabaseName(db);
+                if (storeEngineName != null && storeEngineName.equalsIgnoreCase("HBASE"))
+                    db = "mem:" + db;
+                ConnectionInfo ci = new ConnectionInfo(db);
+
+                if (baseDir != null) {
+                    ci.setBaseDir(baseDir);
+                }
+                if (server.getIfExists()) {
+                    ci.setProperty("IFEXISTS", "TRUE");
+                }
+                ci.setOriginalURL(originalURL);
+                ci.setUserName(userName);
+
+                ci.setUserPasswordHash(userPasswordHash);
+                ci.setFilePasswordHash(filePasswordHash);
+                ci.readProperties(originalProperties);
+
+                ci.removeProperty("STORE_ENGINE_NAME", false);
+
+                originalProperties.setProperty("user", userName);
+                originalProperties.setProperty("password", "");
+                if (userPasswordHash != null)
+                    originalProperties.setProperty("_userPasswordHash_", new String(userPasswordHash));
+                if (filePasswordHash != null)
+                    originalProperties.setProperty("_filePasswordHash_", new String(filePasswordHash));
+
                 boolean disableCheck = "true".equalsIgnoreCase(ci.getProperty("DISABLE_CHECK", "false"));
-				String regionName = ci.getProperty("REGION_NAME", "");
-				if (disableCheck && regionName.length() == 0)
-					throw new RuntimeException("regionName is null");
-				ci.removeProperty("DISABLE_CHECK", false);
-				ci.removeProperty("REGION_NAME", false);
-				if (master != null)
-					ci.setProperty("IS_MASTER", "true");
-				session = Engine.getInstance().createSession(ci);
+                String regionName = ci.getProperty("REGION_NAME", "");
+                if (disableCheck && regionName.length() == 0)
+                    throw new RuntimeException("regionName is null");
+                ci.removeProperty("DISABLE_CHECK", false);
+                ci.removeProperty("REGION_NAME", false);
+                if (master != null)
+                    ci.setProperty("IS_MASTER", "true");
+                session = Engine.getInstance().createSession(ci);
 				session.setMaster(master);
 				session.setRegionServer(regionServer);
                 session.setDisableCheck(disableCheck);

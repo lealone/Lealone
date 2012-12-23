@@ -106,7 +106,7 @@ public class ConnectionInfo implements Cloneable {
                 "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST",
                 "USER", "AUTO_SERVER", "AUTO_SERVER_PORT", "NO_UPGRADE",
                 "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX",
-                "DISABLE_CHECK", "REGION_NAME"};
+                "DISABLE_CHECK", "REGION_NAME", "STORE_ENGINE_NAME"};
         for (String key : connectionTime) {
             if (SysProperties.CHECK && set.contains(key)) {
                 DbException.throwInternalError(key);
@@ -224,7 +224,7 @@ public class ConnectionInfo implements Cloneable {
         return unnamed;
     }
 
-    private void readProperties(Properties info) {
+    public void readProperties(Properties info) {
         Object[] list = new Object[info.size()];
         info.keySet().toArray(list);
         DbSettings s = null;

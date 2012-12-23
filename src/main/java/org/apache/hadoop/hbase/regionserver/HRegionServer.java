@@ -691,6 +691,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       }
       registerMBean();
 
+      org.apache.hadoop.hbase.h2.TcpServer.start(LOG, conf, null, this);
+
       // We registered with the Master.  Go into run mode.
       long lastMsg = 0;
       long oldRequestCount = -1;
@@ -1015,7 +1017,6 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       this.metrics = new RegionServerMetrics();
       this.dynamicMetrics = RegionServerDynamicMetrics.newInstance(this);
       startServiceThreads();
-	  org.apache.hadoop.hbase.h2.TcpServer.start(LOG, conf, null, this);
       LOG.info("Serving as " + this.serverNameFromMasterPOV +
         ", RPC listening on " + this.isa +
         ", sessionid=0x" +

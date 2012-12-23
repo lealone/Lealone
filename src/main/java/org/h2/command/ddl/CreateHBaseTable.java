@@ -133,14 +133,11 @@ public class CreateHBaseTable extends SchemaCommand {
         int id = getObjectId();
         HBaseTable table = new HBaseTable(getSchema(), id, tableName, true, true);
         table.setRowKeyName(rowKeyName);
-        htd.setValue("OBJECT_ID", id + "");
-        htd.setValue("OBJECT_NAME", table.getSQL());
-        htd.setValue("OBJECT_TYPE", table.getType() + "");
         table.setHTableDescriptor(htd);
 
         try {
             HMaster master = session.getMaster();
-            if (master != null) {
+            if (master != null && master.getTableDescriptors().get(tableName) == null) {
                 master.createTable(htd, splitKeys);
                 try {
                     //确保表已可用

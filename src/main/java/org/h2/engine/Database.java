@@ -17,9 +17,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.StringTokenizer;
 
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.h2.api.DatabaseEventListener;
 import org.h2.command.ddl.CreateTableData;
 import org.h2.command.dml.SetTypes;
@@ -36,7 +33,6 @@ import org.h2.message.Trace;
 import org.h2.message.TraceSystem;
 import org.h2.result.Row;
 import org.h2.result.SearchRow;
-import org.h2.result.SimpleRow;
 import org.h2.schema.Schema;
 import org.h2.schema.SchemaObject;
 import org.h2.schema.Sequence;
@@ -50,7 +46,6 @@ import org.h2.store.PageStore;
 import org.h2.store.WriterThread;
 import org.h2.store.fs.FileUtils;
 import org.h2.table.Column;
-import org.h2.table.HBaseTable;
 import org.h2.table.IndexColumn;
 import org.h2.table.MetaTable;
 import org.h2.table.Table;
@@ -71,7 +66,6 @@ import org.h2.value.CaseInsensitiveMap;
 import org.h2.value.CompareMode;
 import org.h2.value.Value;
 import org.h2.value.ValueInt;
-import org.h2.value.ValueString;
 
 /**
  * There is one database object per open database.
@@ -181,11 +175,16 @@ public class Database implements DataHandler {
 	private final DbSettings dbSettings;
 	private final int reconnectCheckDelay;
 	private int logMode;
+	
+    private final boolean isMaster;
+    private H2MetaTable h2MetaTable;
 
-	private final boolean isMaster;
+    public boolean isMaster() {
+        return isMaster;
+    }
 
 	public Database(ConnectionInfo ci, String cipher) {
-		this.isMaster = "true".equalsIgnoreCase(ci.getProperty("IS_MASTER"));
+	    this.isMaster = "true".equalsIgnoreCase(ci.getProperty("IS_MASTER"));
 		String name = ci.getName();
 		this.dbSettings = ci.getDbSettings();
 		this.reconnectCheckDelay = dbSettings.reconnectCheckDelay;
@@ -631,13 +630,22 @@ public class Database implements DataHandler {
 			MetaRecord rec = new MetaRecord(cursor.get());
 			objectIds.set(rec.getId());
 			records.add(rec);
-		}
-		if (!isMaster)
-			initHBaseTables(records);
+        }
+
+        if (!persistent && !databaseShortName.toLowerCase().startsWith("management_db_")) {
+            try {
+                h2MetaTable = new H2MetaTable();
+                if (records.size() == 0)
+                    h2MetaTable.loadMetaRecords(records);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
 		Collections.sort(records);
 		for (MetaRecord rec : records) {
 			rec.execute(this, systemSession, eventListener);
 		}
+
 		recompileInvalidViews(systemSession);
 		starting = false;
 		if (!readOnly) {
@@ -666,29 +674,6 @@ public class Database implements DataHandler {
 		trace.info("opened {0}", databaseName);
 		if (checkpointAllowed > 0) {
 			afterWriting();
-		}
-	}
-
-	private void initHBaseTables(ArrayList<MetaRecord> records) {
-		try {
-			HBaseAdmin admin = new HBaseAdmin(HBaseConfiguration.create());
-			HTableDescriptor[] htds = admin.listTables();
-			if (htds != null && htds.length > 0) {
-				Value[] data;
-				for (HTableDescriptor htd : htds) {
-					data = new Value[4];
-					//id
-					data[0] = ValueInt.get(Integer.parseInt(htd.getValue("OBJECT_ID")));
-					//type
-					data[2] = ValueInt.get(Integer.parseInt(htd.getValue("OBJECT_TYPE")));
-					//sql
-					data[3] = ValueString.get(HBaseTable.getCreateSQL(htd, htd.getValue("OBJECT_NAME")));
-
-					records.add(new MetaRecord(new SimpleRow(data)));
-				}
-			}
-		} catch (Exception e) {
-			throw new RuntimeException(e);
 		}
 	}
 
@@ -762,20 +747,26 @@ public class Database implements DataHandler {
 
 	private synchronized void addMeta(Session session, DbObject obj) {
 		int id = obj.getId();
-		if (id > 0 && !starting && !obj.isTemporary()) {
-			Row r = meta.getTemplateRow();
-			MetaRecord rec = new MetaRecord(obj);
-			rec.setRecord(r);
-			objectIds.set(id);
-			if (SysProperties.CHECK) {
-				verifyMetaLocked(session);
-			}
-			meta.addRow(session, r);
-			if (isMultiVersion()) {
-				// TODO this should work without MVCC, but avoid risks at the moment
-				session.log(meta, UndoLogRecord.INSERT, r);
-			}
-		}
+        if (id > 0 && !obj.isTemporary()) {
+            objectIds.set(id);
+            if (!starting) {
+                Row r = meta.getTemplateRow();
+                MetaRecord rec = new MetaRecord(obj);
+                rec.setRecord(r);
+
+                if (SysProperties.CHECK) {
+                    verifyMetaLocked(session);
+                }
+                meta.addRow(session, r);
+                if (isMultiVersion()) {
+                    // TODO this should work without MVCC, but avoid risks at the moment
+                    session.log(meta, UndoLogRecord.INSERT, r);
+                }
+
+                if (isMaster && h2MetaTable != null)
+                    h2MetaTable.addRecord(rec);
+            }
+        }
 	}
 
 	/**
@@ -839,6 +830,8 @@ public class Database implements DataHandler {
 				meta.unlock(session);
 				session.unlock(meta);
 			}
+            if (isMaster && h2MetaTable != null)
+                h2MetaTable.removeRecord(id);
 		}
 	}
 
@@ -1201,6 +1194,8 @@ public class Database implements DataHandler {
 				// ignore (the trace is closed already)
 			}
 		}
+        if (h2MetaTable != null)
+            h2MetaTable.close();
 	}
 
 	private void stopWriter() {

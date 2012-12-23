@@ -1,3 +1,22 @@
+/*
+ * Copyright 2011 The Apache Software Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.h2.util;
 
 import java.io.IOException;
@@ -25,6 +44,10 @@ public class HBaseUtils {
         // utility class
     }
 
+    public static Configuration getConfiguration() {
+        return conf;
+    }
+
     public static byte[] toBytes(String s) {
         return Bytes.toBytes(s);
     }
@@ -41,7 +64,7 @@ public class HBaseUtils {
         // String url = "jdbc:h2:tcp://" + regionLocation.getHostname() + ":" +
         // "regionLocation.getH2TcpPort() + "/hbasedb";//;disableCheck=true
         StringBuilder url = new StringBuilder(50);
-        url.append("jdbc:h2:tcp://").append(hostname).append(":").append(port).append("/hbasedb");
+        url.append("jdbc:h2:tcp://").append(hostname).append(":").append(port).append("/hbasedb;STORE_ENGINE_NAME=HBASE");
         return url.toString();
     }
 
@@ -99,7 +122,8 @@ public class HBaseUtils {
                 if (Bytes.equals(endKeys[i], HConstants.EMPTY_END_ROW) || Bytes.compareTo(startKey, endKeys[i]) < 0) {
                     rangeKeys.add(startKey);
                 }
-            } else if (Bytes.equals(endKey, HConstants.EMPTY_END_ROW) || Bytes.compareTo(startKeys[i], endKey) <= 0) {
+            } else if (Bytes.equals(endKey, HConstants.EMPTY_END_ROW) || //
+                    Bytes.compareTo(startKeys[i], endKey) < 0) { //原先代码是<=，因为coprocessorExec的语义是要包含endKey的
                 rangeKeys.add(startKeys[i]);
             } else {
                 break; // past stop

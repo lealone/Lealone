@@ -343,6 +343,7 @@ Server {
       // We are either the active master or we were asked to shutdown
       if (!this.stopped) {
         finishInitialization(startupStatus, false);
+        org.apache.hadoop.hbase.h2.TcpServer.start(LOG, conf, this, null);
         loop();
       }
     } catch (Throwable t) {
@@ -506,7 +507,6 @@ Server {
       // start up all service threads.
       status.setStatus("Initializing master service threads");
       startServiceThreads();
-      org.apache.hadoop.hbase.h2.TcpServer.start(LOG, conf, this, null);
     }
 
     // Wait for region servers to report in.
