@@ -465,5 +465,16 @@ public class TableView extends Table {
     public boolean isTableExpression() {
         return tableExpression;
     }
+    
+    public String getTableName() {
+        for (Table t : tables) {
+            if (t instanceof TableView) {
+                return ((TableView) t).getTableName();
+            } else {
+                return t.getName();
+            }
+        }
 
+        return getName();
+    }
 }

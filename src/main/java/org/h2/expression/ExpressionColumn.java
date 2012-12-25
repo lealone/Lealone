@@ -111,9 +111,11 @@ public class ExpressionColumn extends Expression {
             mapColumn(resolver, c, level);
             return;
         } else {
-            schemaName = tableAlias;
-            tableAlias = columnFamilyName;
-            columnFamilyName = null;
+            if (columnFamilyName != null) {
+                schemaName = tableAlias;
+                tableAlias = columnFamilyName;
+                columnFamilyName = null;
+            }
         }
 
         if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {

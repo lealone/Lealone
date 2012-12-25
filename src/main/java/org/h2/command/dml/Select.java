@@ -46,6 +46,7 @@ import org.h2.table.HBaseTable;
 import org.h2.table.IndexColumn;
 import org.h2.table.Table;
 import org.h2.table.TableFilter;
+import org.h2.table.TableView;
 import org.h2.util.New;
 import org.h2.util.StatementBuilder;
 import org.h2.util.StringUtils;
@@ -1478,7 +1479,11 @@ public class Select extends Query {
 
     @Override
     public String getTableName() {
-        return topTableFilter.getTable().getName();
+        if ((topTableFilter.getTable() instanceof TableView))
+            return ((TableView) topTableFilter.getTable()).getTableName();
+        else
+
+            return topTableFilter.getTable().getName();
     }
 
     @Override
