@@ -1,3 +1,22 @@
+/*
+ * Copyright 2011 The Apache Software Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.h2.command.dml;
 
 import java.io.IOException;
@@ -24,7 +43,9 @@ import org.h2.table.HBaseTable;
 import org.h2.table.PlanItem;
 import org.h2.table.Table;
 import org.h2.table.TableFilter;
+import org.h2.util.HBaseUtils;
 import org.h2.util.New;
+import org.h2.value.Value;
 
 public class HBaseUpdate extends Update {
 
@@ -87,7 +108,7 @@ public class HBaseUpdate extends Update {
             Column c = null;
             int columnCount = columns.size();
             String defaultCF = ((HBaseTable) table).getDefaultColumnFamilyName();
-
+            Value v = null;
             for (KeyValue kv : result.raw()) {
                 cf = Bytes.toString(kv.getFamily());
                 cn = Bytes.toString(kv.getQualifier());
@@ -102,8 +123,9 @@ public class HBaseUpdate extends Update {
                         if (newExpr == null || newExpr == ValueExpression.getDefault()) {
                             put.add(kv.getFamily(), kv.getQualifier(), kv.getValue());
                         } else {
-                            put.add(kv.getFamily(), kv.getQualifier(), kv.getTimestamp() + 1,
-                                    Bytes.toBytes(newExpr.getValue(session).getString()));
+                            v = newExpr.getValue(session);
+                            v = c.convert(v);
+                            put.add(kv.getFamily(), kv.getQualifier(), kv.getTimestamp() + 1, HBaseUtils.toBytes(v));
                         }
 
                         break;

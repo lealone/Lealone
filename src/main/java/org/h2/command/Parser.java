@@ -67,6 +67,7 @@ import org.h2.command.dml.Delete;
 import org.h2.command.dml.ExecuteProcedure;
 import org.h2.command.dml.Explain;
 import org.h2.command.dml.HBaseDelete;
+import org.h2.command.dml.HBaseInsert;
 import org.h2.command.dml.HBaseUpdate;
 import org.h2.command.dml.Insert;
 import org.h2.command.dml.Merge;
@@ -188,7 +189,6 @@ public class Parser {
     private String schemaName;
     private ArrayList<String> expectedList;
     private boolean rightsChecked;
-    private boolean disableCheck;
     private boolean recompileAlways;
     private ArrayList<Parameter> indexedParameterList;
     private final boolean identifiersToUpper;
@@ -661,7 +661,8 @@ public class Parser {
                         throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableAlias);
                     }
                 }
-                Column c = filter.getTable().getColumn(columnName);
+                Column c = ((HBaseTable)filter.getTable()).getColumn(columnFamilyName, columnName, 
+                        currentPrepared instanceof Insert);
                 if (columnFamilyName != null)
                     c.setColumnFamilyName(columnFamilyName);
                 return c;
@@ -847,28 +848,29 @@ public class Parser {
     }
 
     private Column parseColumn(Table table) {
-        String id = readColumnIdentifier();
+        String columnName = readColumnIdentifier();
 
 		if (table instanceof HBaseTable) {
+		    HBaseTable t = (HBaseTable)table;
+		    if(t.getRowKeyName().equalsIgnoreCase(columnName))
+		        return t.getRowKeyColumn();
+		    
 			String columnFamilyName = null;
 			if (readIf(".")) {
-				columnFamilyName = id;
+				columnFamilyName = columnName;
 				if (currentTokenType != IDENTIFIER) {
 					throw DbException.getSyntaxError(sqlCommand, parseIndex, "identifier");
 				}
-				id = currentToken;
+				columnName = currentToken;
 				read();
 			}
-			Column c = table.getColumn(id);
-			if (columnFamilyName != null)
-				c.setColumnFamilyName(columnFamilyName);
-			return c;
+			return t.getColumn(columnFamilyName, columnName, currentPrepared instanceof Insert);
 		}
 
-        if (database.getSettings().rowId && Column.ROWID.equals(id)) {
+        if (database.getSettings().rowId && Column.ROWID.equals(columnName)) {
             return table.getRowIdColumn();
         }
-        return table.getColumn(id);
+        return table.getColumn(columnName);
     }
 
     private boolean readIfMore() {
@@ -1025,6 +1027,10 @@ public class Parser {
         currentPrepared = command;
         read("INTO");
         Table table = readTableOrView();
+        if (table instanceof HBaseTable) {
+            command = new HBaseInsert(session);
+            currentPrepared = command;
+        }
         command.setTable(table);
         Column[] columns = null;
         if (readIf("(")) {
@@ -1490,15 +1496,15 @@ public class Parser {
                 String joinSchema = join.getTable().getSchema().getName();
                 Expression on = null;
                 for (Column tc : tableCols) {
-                    String tableColumnName = tc.getName();
+                    String tableColumnName = tc.getFullName();
                     for (Column c : joinCols) {
-                        String joinColumnName = c.getName();
+                        String joinColumnName = c.getFullName();
                         if (equalsToken(tableColumnName, joinColumnName)) {
                             join.addNaturalJoinColumn(c);
                             Expression tableExpr = new ExpressionColumn(database, tableSchema, last
-                                    .getTableAlias(), tableColumnName);
+                                    .getTableAlias(), tc.getColumnFamilyName(), tableColumnName);
                             Expression joinExpr = new ExpressionColumn(database, joinSchema, join
-                                    .getTableAlias(), joinColumnName);
+                                    .getTableAlias(), c.getColumnFamilyName(), joinColumnName);
                             Expression equal = new Comparison(session, Comparison.EQUAL, tableExpr, joinExpr);
                             if (on == null) {
                                 on = equal;
@@ -2444,9 +2450,6 @@ public class Parser {
                 return readFunction(database.getSchema(schema), name);
             } else if (readIf(".")) {
                 String databaseName = schema;
-                if (!equalsToken(database.getShortName(), databaseName)) {
-                    throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, databaseName);
-                }
                 schema = objectName;
                 objectName = name;
                 expr = readWildcardOrSequenceValue(schema, objectName);
@@ -2454,11 +2457,27 @@ public class Parser {
                     return expr;
                 }
                 name = readColumnIdentifier();
-                return new ExpressionColumn(database, schema, objectName, name);
+                if (readIf(".")) {
+                    if (!equalsToken(database.getShortName(), databaseName)) {
+                        throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, databaseName);
+                    }
+                    String columnFamilyName = name;
+                    name = readColumnIdentifier();
+                    return new ExpressionColumn(database, schema, objectName, columnFamilyName, name);
+                } else {
+                    String columnFamilyName = objectName;
+                    objectName = schema;
+                    schema = databaseName;
+                    return new ExpressionColumn(database, schema, objectName, columnFamilyName, name);
+                }
+            } else {
+                String columnFamilyName = objectName;
+                objectName = schema;
+                schema = null;
+                return new ExpressionColumn(database, schema, objectName, columnFamilyName, name);
             }
-            return new ExpressionColumn(database, schema, objectName, name);
         }
-        return new ExpressionColumn(database, null, objectName, name);
+        return new ExpressionColumn(database, null, null, objectName, name);
     }
 
     private Expression readTerm() {
@@ -4850,8 +4869,12 @@ public class Parser {
                 }
             }
         }
-		if (disableCheck)
-			return new HBaseTable(database.getSchema(session.getCurrentSchemaName()), -1, tableName, false, false);
+        //TODO 在分布式环境下，如果先在一个JVM上执行create table，再执行insert这样的dml，
+        //或者执行create table和insert的是不同JVM，这时由于表的元数据未及时更新到执行insert的JVM，
+        //所以有可能出现此异常，因为不同JVM上的表元数据通过zookeeper异步更新，
+        //有可能执行create table的线程很快结束了，但是zookeeper还未通知，这时insert时就找不到表。
+        //对于这种情况，client重视即可解决，不过还有没有更好的办法呢?
+        //client在使用h2作为内存数据库对SQL预解析时也会碰到这样的情况。
 		throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
     }
 
@@ -5306,6 +5329,7 @@ public class Parser {
         CreateHBaseTable command = new CreateHBaseTable(session, getSchema(), tableName);
 
         command.setIfNotExists(ifNotExists);
+        Schema schema = getSchema();
         if (readIf("(")) {
             if (!readIf(")")) {
                 Options options;
@@ -5322,7 +5346,14 @@ public class Parser {
                     if (readIf("COLUMN")) {
                         read("FAMILY");
                         String cfName = readUniqueIdentifier();
-                        options = parseOptions();
+                        options = null;
+                        if (readIf("(") && !readIf(")")) {
+                            do {
+                                options = parseOptions();
+                                if (options == null)
+                                    parseColumn(schema, command, tableName, cfName);
+                            } while (readIfMore());
+                        }
                         CreateColumnFamily cf = new CreateColumnFamily(session, cfName);
                         cf.setOptions(options);
                         command.addCreateColumnFamily(cf);
@@ -5332,6 +5363,74 @@ public class Parser {
         }
 
         return command;
+    }
+    
+    private Column parseColumn(Schema schema, CreateTable command, String tableName, String cfName) {
+        String columnName = readColumnIdentifier();
+        Column column = parseColumnForTable(columnName, true);
+        if (cfName != null)
+            column.setColumnFamilyName(cfName);
+        if (column.isAutoIncrement() && column.isPrimaryKey()) {
+            column.setPrimaryKey(false);
+            IndexColumn[] cols = { new IndexColumn() };
+            cols[0].columnName = column.getName();
+            AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
+            pk.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
+            pk.setTableName(tableName);
+            pk.setIndexColumns(cols);
+            command.addConstraintCommand(pk);
+        }
+        command.addColumn(column);
+        String constraintName = null;
+        if (readIf("CONSTRAINT")) {
+            constraintName = readColumnIdentifier();
+        }
+        if (readIf("PRIMARY")) {
+            read("KEY");
+            boolean hash = readIf("HASH");
+            IndexColumn[] cols = { new IndexColumn() };
+            cols[0].columnName = column.getName();
+            AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
+            pk.setPrimaryKeyHash(hash);
+            pk.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
+            pk.setTableName(tableName);
+            pk.setIndexColumns(cols);
+            command.addConstraintCommand(pk);
+            if (readIf("AUTO_INCREMENT")) {
+                parseAutoIncrement(column);
+            }
+        } else if (readIf("UNIQUE")) {
+            AlterTableAddConstraint unique = new AlterTableAddConstraint(session, schema, false);
+            unique.setConstraintName(constraintName);
+            unique.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE);
+            IndexColumn[] cols = { new IndexColumn() };
+            cols[0].columnName = columnName;
+            unique.setIndexColumns(cols);
+            unique.setTableName(tableName);
+            command.addConstraintCommand(unique);
+        }
+        if (readIf("NOT")) {
+            read("NULL");
+            column.setNullable(false);
+        } else {
+            readIf("NULL");
+        }
+        if (readIf("CHECK")) {
+            Expression expr = readExpression();
+            column.addCheckConstraint(session, expr);
+        }
+        if (readIf("REFERENCES")) {
+            AlterTableAddConstraint ref = new AlterTableAddConstraint(session, schema, false);
+            ref.setConstraintName(constraintName);
+            ref.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL);
+            IndexColumn[] cols = { new IndexColumn() };
+            cols[0].columnName = columnName;
+            ref.setIndexColumns(cols);
+            ref.setTableName(tableName);
+            parseReferences(ref, schema, tableName);
+            command.addConstraintCommand(ref);
+        }
+        return column;
     }
 
     private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes) {
@@ -5358,68 +5457,7 @@ public class Parser {
                     if (c != null) {
                         command.addConstraintCommand(c);
                     } else {
-                        String columnName = readColumnIdentifier();
-                        Column column = parseColumnForTable(columnName, true);
-                        if (column.isAutoIncrement() && column.isPrimaryKey()) {
-                            column.setPrimaryKey(false);
-                            IndexColumn[] cols = { new IndexColumn() };
-                            cols[0].columnName = column.getName();
-                            AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
-                            pk.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
-                            pk.setTableName(tableName);
-                            pk.setIndexColumns(cols);
-                            command.addConstraintCommand(pk);
-                        }
-                        command.addColumn(column);
-                        String constraintName = null;
-                        if (readIf("CONSTRAINT")) {
-                            constraintName = readColumnIdentifier();
-                        }
-                        if (readIf("PRIMARY")) {
-                            read("KEY");
-                            boolean hash = readIf("HASH");
-                            IndexColumn[] cols = { new IndexColumn() };
-                            cols[0].columnName = column.getName();
-                            AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
-                            pk.setPrimaryKeyHash(hash);
-                            pk.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
-                            pk.setTableName(tableName);
-                            pk.setIndexColumns(cols);
-                            command.addConstraintCommand(pk);
-                            if (readIf("AUTO_INCREMENT")) {
-                                parseAutoIncrement(column);
-                            }
-                        } else if (readIf("UNIQUE")) {
-                            AlterTableAddConstraint unique = new AlterTableAddConstraint(session, schema, false);
-                            unique.setConstraintName(constraintName);
-                            unique.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE);
-                            IndexColumn[] cols = { new IndexColumn() };
-                            cols[0].columnName = columnName;
-                            unique.setIndexColumns(cols);
-                            unique.setTableName(tableName);
-                            command.addConstraintCommand(unique);
-                        }
-                        if (readIf("NOT")) {
-                            read("NULL");
-                            column.setNullable(false);
-                        } else {
-                            readIf("NULL");
-                        }
-                        if (readIf("CHECK")) {
-                            Expression expr = readExpression();
-                            column.addCheckConstraint(session, expr);
-                        }
-                        if (readIf("REFERENCES")) {
-                            AlterTableAddConstraint ref = new AlterTableAddConstraint(session, schema, false);
-                            ref.setConstraintName(constraintName);
-                            ref.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL);
-                            IndexColumn[] cols = { new IndexColumn() };
-                            cols[0].columnName = columnName;
-                            ref.setIndexColumns(cols);
-                            ref.setTableName(tableName);
-                            parseReferences(ref, schema, tableName);
-                            command.addConstraintCommand(ref);
-                        }
+                        parseColumn(schema, command, tableName, null);
                     }
                 } while (readIfMore());
             }
@@ -5510,10 +5548,6 @@ public class Parser {
 
     public void setRightsChecked(boolean rightsChecked) {
         this.rightsChecked = rightsChecked;
-    }
-
-    public void setDisableCheck(boolean disableCheck) {
-        this.disableCheck = disableCheck;
     }
 
     /**

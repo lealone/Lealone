@@ -54,6 +54,7 @@ public class MetaRecord implements Comparable<MetaRecord> {
     void execute(Database db, Session systemSession, DatabaseEventListener listener) {
         try {
             Prepared command = systemSession.prepare(sql);
+            //System.out.println("execute id: " + id + ", sql=" + sql);
             command.setObjectId(id);
             command.update();
         } catch (DbException e) {

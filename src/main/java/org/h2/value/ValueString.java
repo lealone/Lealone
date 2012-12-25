@@ -140,15 +140,4 @@ public class ValueString extends Value {
         return ValueString.get(s);
     }
 
-    public int getSignum() {
-        return Integer.signum(Integer.parseInt(value));
-    }
-    
-//    public Value add(Value v) {
-//        return ValueDouble.get(Double.parseDouble(value));
-//    }
-    
-    public Value negate() {
-        return ValueDouble.get(Double.parseDouble(value)).negate();
-    }
 }

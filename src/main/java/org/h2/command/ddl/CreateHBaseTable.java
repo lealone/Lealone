@@ -22,6 +22,7 @@ package org.h2.command.ddl;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
 
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -34,10 +35,11 @@ import org.h2.engine.Database;
 import org.h2.engine.Session;
 import org.h2.message.DbException;
 import org.h2.schema.Schema;
+import org.h2.table.Column;
 import org.h2.table.HBaseTable;
 import org.h2.util.New;
 
-public class CreateHBaseTable extends SchemaCommand {
+public class CreateHBaseTable extends CreateTable {
     private boolean ifNotExists;
     private String tableName;
     private ArrayList<CreateColumnFamily> cfList = New.arrayList();
@@ -45,9 +47,27 @@ public class CreateHBaseTable extends SchemaCommand {
 
     private Options options;
 
+    private Map<String, ArrayList<Column>> columnsMap = New.hashMap();
+    private final CreateTableData data = new CreateTableData();
+
     public CreateHBaseTable(Session session, Schema schema, String tableName) {
         super(session, schema);
         this.tableName = tableName;
+    }
+
+    @Override
+    public void addColumn(Column column) {
+        data.columns.add(column);
+        String cf = column.getColumnFamilyName();
+        if (cf == null)
+            cf = "";
+
+        ArrayList<Column> list = columnsMap.get(cf);
+        if (list == null) {
+            list = New.arrayList();
+            columnsMap.put(cf, list);
+        }
+        list.add(column);
     }
 
     public void setIfNotExists(boolean ifNotExists) {
@@ -130,8 +150,14 @@ public class CreateHBaseTable extends SchemaCommand {
             }
         }
 
+        ArrayList<Column> list = columnsMap.get("");
+        if (list != null) {
+            columnsMap.remove("");
+            columnsMap.put(defaultColumnFamilyName, list);
+        }
         int id = getObjectId();
-        HBaseTable table = new HBaseTable(getSchema(), id, tableName, true, true);
+        HBaseTable table = new HBaseTable(getSchema(), id, tableName, true, true, columnsMap, data.columns);
+
         table.setRowKeyName(rowKeyName);
         table.setHTableDescriptor(htd);
 

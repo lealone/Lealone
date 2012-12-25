@@ -103,7 +103,7 @@ public class HBaseJdbcConnection implements Connection {
     }
 
     private void prepareCommand(String sql) {
-        Prepared prepared = session.prepare(sql, true, true);
+        Prepared prepared = session.prepare(sql, true);
         if (prepared instanceof DefineCommand) {
             try {
                 ServerName sn = hConnection.getMasterAddress();
@@ -176,7 +176,6 @@ public class HBaseJdbcConnection implements Connection {
             HRegionLocation regionLocation = hConnection.locateRegion(tableName, startKey);
             String url = createUrl(regionLocation);
             Properties info = new Properties(this.info);
-            info.setProperty("DISABLE_CHECK", "true");
             info.setProperty("REGION_NAME", regionLocation.getRegionInfo().getRegionNameAsString());
             return new JdbcConnection(url, info);
         } catch (Exception e) {

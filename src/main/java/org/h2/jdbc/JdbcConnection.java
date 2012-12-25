@@ -1143,7 +1143,7 @@ public class JdbcConnection extends TraceObject implements Connection {
      */
     CommandInterface prepareCommand(String sql, int fetchSize) {
         if (isHBaseConnection && session instanceof Session) {
-            Prepared prepared = ((Session) session).prepare(sql, true, true);
+            Prepared prepared = ((Session) session).prepare(sql, true);
 
             if (prepared instanceof DefineCommand) {
                 try {
@@ -1160,7 +1160,6 @@ public class JdbcConnection extends TraceObject implements Connection {
 
                 try {
                     HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, rowKey);
-                    info.setProperty("DISABLE_CHECK", "true");
                     info.setProperty("REGION_NAME", hri.getRegionName());
                     JdbcConnection rsConn = new JdbcConnection(hri.getRegionServerURL(), info);
                     return rsConn.prepareCommand(sql, fetchSize);
@@ -1207,7 +1206,6 @@ public class JdbcConnection extends TraceObject implements Connection {
     JdbcConnection getNewConnection(byte[] startKey) {
         try {
             HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
-            info.setProperty("DISABLE_CHECK", "true");
             info.setProperty("REGION_NAME", hri.getRegionName());
             JdbcConnection rsConn = new JdbcConnection(hri.getRegionServerURL(), info);
             rsConn.isGroupQuery = isGroupQuery;

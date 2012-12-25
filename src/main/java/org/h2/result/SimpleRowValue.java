@@ -19,6 +19,15 @@ public class SimpleRowValue implements SearchRow {
     private int index;
     private int virtualColumnCount;
     private Value data;
+    private Value rowKey;
+
+    public Value getRowKey() {
+        return rowKey;
+    }
+
+    public void setRowKey(Value rowKey) {
+        this.rowKey = rowKey;
+    }
 
     public SimpleRowValue(int columnCount) {
         this.virtualColumnCount = columnCount;

@@ -26,8 +26,23 @@ public class Row implements SearchRow {
     private int version;
     private boolean deleted;
     private int sessionId;
+    private Value rowKey;
+
+    public Value getRowKey() {
+        return rowKey;
+    }
+
+    public void setRowKey(Value rowKey) {
+        this.rowKey = rowKey;
+    }
 
     public Row(Value[] data, int memory) {
+        this.data = data;
+        this.memory = memory;
+    }
+
+    public Row(Value rowKey, Value[] data, int memory) {
+        this.rowKey = rowKey;
         this.data = data;
         this.memory = memory;
     }

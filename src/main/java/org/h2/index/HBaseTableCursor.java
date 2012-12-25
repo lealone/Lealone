@@ -32,6 +32,7 @@ import org.h2.result.SearchRow;
 import org.h2.table.Column;
 import org.h2.table.HBaseTable;
 import org.h2.table.TableFilter;
+import org.h2.util.HBaseUtils;
 import org.h2.value.Value;
 import org.h2.value.ValueString;
 
@@ -47,6 +48,8 @@ public class HBaseTableCursor implements Cursor {
 
     public HBaseTableCursor(TableFilter filter, SearchRow first, SearchRow last) {
         rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();
+
+        columnCount = ((HBaseTable) filter.getTable()).getColumns().length;
         this.session = filter.getSession();
         byte[] startRowKey = null;
         byte[] stopRowKey = null;
@@ -72,7 +75,6 @@ public class HBaseTableCursor implements Cursor {
 
         columns = filter.getSelect().getColumns();
         if (columns != null) {
-            columnCount = columns.size();
             defaultColumnFamilyName = Bytes.toBytes(((HBaseTable) filter.getTable()).getDefaultColumnFamilyName());
             for (Column c : columns) {
                 if (rowKeyName.equalsIgnoreCase(c.getName()))
@@ -110,18 +112,19 @@ public class HBaseTableCursor implements Cursor {
             Result r = result[length++];
 
             Value[] data = new Value[columnCount];
-            Column c;
-            for (int i = 0; i < columnCount; i++) {
-                c = columns.get(i);
-                if (rowKeyName.equalsIgnoreCase(c.getName()))
-                    data[i] = ValueString.get(Bytes.toString(r.getRow()));
-                else if (c.getColumnFamilyName() != null)
-                    data[i] = ValueString.get(Bytes.toString(r.getValue(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes())));
-                else {
-                    data[i] = ValueString.get(Bytes.toString(r.getValue(defaultColumnFamilyName, c.getNameAsBytes())));
+            Value rowKey = ValueString.get(Bytes.toString(r.getRow()));
+            if (columns != null) {
+                int i = 0;
+                for (Column c : columns) {
+                    i = c.getColumnId();
+                    if (rowKeyName.equalsIgnoreCase(c.getName()))
+                        ;//rowKey = ValueString.get(Bytes.toString(r.getRow()));
+                    else
+                        data[i] = HBaseUtils.toValue(r.getValue(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes()), 
+                                c.getType());
                 }
             }
-            return new Row(data, Row.MEMORY_CALCULATE);
+            return new Row(rowKey, data, Row.MEMORY_CALCULATE);
         }
         return null;
     }

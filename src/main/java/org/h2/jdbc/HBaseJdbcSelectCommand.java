@@ -124,7 +124,7 @@ public class HBaseJdbcSelectCommand implements CommandInterface {
                     results.add(result);
             }
             String newSQL = select.getPlanSQL(null, null, true);
-            Select newSelect = (Select) session.prepare(newSQL, true, true);
+            Select newSelect = (Select) session.prepare(newSQL, true);
             return new HBaseJdbcSelectResult(results, newSelect, select, isGroupQuery);
         }
         return null;

@@ -815,7 +815,8 @@ public class Select extends Query {
                     if (filter.isNaturalJoinColumn(c)) {
                         continue;
                     }
-                    ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), null, alias, c.getName());
+                    ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), null, alias, 
+                            c.getColumnFamilyName(), c.getName());
                     expressions.add(i++, ec);
                 }
                 i--;

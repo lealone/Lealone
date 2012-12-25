@@ -72,7 +72,7 @@ public class JDBCTest extends TestBase {
         Result result = t.get(get);
         assertEquals("a1", toS(result.getValue(cf1, Bytes.toBytes("F1"))));
         assertEquals("b", toS(result.getValue(cf1, Bytes.toBytes("F2"))));
-        assertEquals("12", toS(result.getValue(cf2, Bytes.toBytes("F3"))));
+        assertEquals(12, Bytes.toInt(result.getValue(cf2, Bytes.toBytes("F3"))));
     }
 
     void testUpdate() throws Exception {

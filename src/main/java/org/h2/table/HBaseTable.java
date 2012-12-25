@@ -20,6 +20,7 @@
 package org.h2.table;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -33,203 +34,275 @@ import org.h2.index.Index;
 import org.h2.index.IndexType;
 import org.h2.result.Row;
 import org.h2.schema.Schema;
+import org.h2.util.New;
 import org.h2.util.StatementBuilder;
 import org.h2.value.Value;
 
 public class HBaseTable extends Table {
-	private HTableDescriptor hTableDescriptor;
-	private String rowKeyName;
-	private Index scanIndex;
+    private HTableDescriptor hTableDescriptor;
+    private String rowKeyName;
+    private Index scanIndex;
+    private Map<String, ArrayList<Column>> columnsMap;
+    private boolean modified;
+    private Column rowKeyColumn;
 
-	public HBaseTable(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
-		super(schema, id, name, persistIndexes, persistData);
+    public boolean isModified() {
+        return modified;
+    }
 
-		scanIndex = new HBaseTableIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
-	}
+    public void setModified(boolean modified) {
+        this.modified = modified;
+    }
 
-	public void setHTableDescriptor(HTableDescriptor hTableDescriptor) {
-		this.hTableDescriptor = hTableDescriptor;
-	}
+    public Column getRowKeyColumn() {
+        if (rowKeyColumn == null) {
+            rowKeyColumn = new Column(getRowKeyName());
+            rowKeyColumn.setTable(this, -2);
+        }
+        return rowKeyColumn;
+    }
 
-	public String getDefaultColumnFamilyName() {
-		return hTableDescriptor.getValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME);
-	}
+    public HBaseTable(Schema schema, int id, String name, boolean persistIndexes, boolean persistData,
+            Map<String, ArrayList<Column>> columnsMap, ArrayList<Column> columns) {
+        super(schema, id, name, persistIndexes, persistData);
+        this.columnsMap = columnsMap;
 
-	public void setRowKeyName(String rowKeyName) {
-		this.rowKeyName = rowKeyName;
-	}
+        Column[] cols = new Column[columns.size()];
+        columns.toArray(cols);
+        setColumns(cols);
+        scanIndex = new HBaseTableIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
 
-	public String getRowKeyName() {
-		if (rowKeyName == null)
-			return Options.DEFAULT_ROW_KEY_NAME;
-		return this.rowKeyName;
-	}
+    }
 
-	@Override
-	public void lock(Session session, boolean exclusive, boolean force) {
+    public void setHTableDescriptor(HTableDescriptor hTableDescriptor) {
+        this.hTableDescriptor = hTableDescriptor;
+    }
 
-	}
+    public String getDefaultColumnFamilyName() {
+        return hTableDescriptor.getValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME);
+    }
 
-	@Override
-	public void close(Session session) {
+    public void setRowKeyName(String rowKeyName) {
+        this.rowKeyName = rowKeyName;
+    }
 
-	}
+    public String getRowKeyName() {
+        if (rowKeyName == null)
+            return Options.DEFAULT_ROW_KEY_NAME;
+        return this.rowKeyName;
+    }
 
-	@Override
-	public void unlock(Session s) {
+    @Override
+    public void lock(Session session, boolean exclusive, boolean force) {
 
-	}
+    }
 
-	@Override
-	public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-			boolean create, String indexComment) {
+    @Override
+    public void close(Session session) {
 
-		return scanIndex;
-	}
+    }
 
-	@Override
-	public void removeRow(Session session, Row row) {
+    @Override
+    public void unlock(Session s) {
 
-	}
+    }
 
-	@Override
-	public void truncate(Session session) {
+    @Override
+    public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
+            boolean create, String indexComment) {
 
-	}
+        return scanIndex;
+    }
 
-	@Override
-	public void addRow(Session session, Row row) {
-	}
+    @Override
+    public void removeRow(Session session, Row row) {
 
-	@Override
-	public void checkSupportAlter() {
+    }
 
-	}
+    @Override
+    public void truncate(Session session) {
 
-	@Override
-	public String getTableType() {
-		return "HBASE TABLE";
-	}
+    }
 
-	@Override
-	public Index getScanIndex(Session session) {
-		return scanIndex;
-	}
+    @Override
+    public void addRow(Session session, Row row) {
+    }
 
-	@Override
-	public Index getUniqueIndex() {
-		return scanIndex;
-	}
+    @Override
+    public void checkSupportAlter() {
 
-	@Override
-	public ArrayList<Index> getIndexes() {
-		return null;
-	}
+    }
 
-	@Override
-	public boolean isLockedExclusively() {
-		return false;
-	}
+    @Override
+    public String getTableType() {
+        return "HBASE TABLE";
+    }
 
-	@Override
-	public long getMaxDataModificationId() {
-		return 0;
-	}
+    @Override
+    public Index getScanIndex(Session session) {
+        return scanIndex;
+    }
 
-	@Override
-	public boolean isDeterministic() {
-		return false;
-	}
+    @Override
+    public Index getUniqueIndex() {
+        return scanIndex;
+    }
 
-	@Override
-	public boolean canGetRowCount() {
-		return false;
-	}
+    @Override
+    public ArrayList<Index> getIndexes() {
+        return null;
+    }
 
-	@Override
-	public boolean canDrop() {
-		return true;
-	}
+    @Override
+    public boolean isLockedExclusively() {
+        return false;
+    }
 
-	@Override
-	public long getRowCount(Session session) {
-		return 0;
-	}
+    @Override
+    public long getMaxDataModificationId() {
+        return 0;
+    }
 
-	@Override
-	public long getRowCountApproximation() {
-		return 0;
-	}
+    @Override
+    public boolean isDeterministic() {
+        return false;
+    }
 
-	@Override
-	public String getCreateSQL() {
-		return HBaseTable.getCreateSQL(hTableDescriptor, getSQL());
-	}
+    @Override
+    public boolean canGetRowCount() {
+        return false;
+    }
 
-	public static String getCreateSQL(HTableDescriptor hTableDescriptor, String tableName) {
-		StatementBuilder buff = new StatementBuilder("CREATE HBASE TABLE IF NOT EXISTS ");
-		buff.append(tableName);
-		buff.append("(\n");
-		buff.append("    OPTIONS(");
-		boolean first = true;
-		for (Entry<ImmutableBytesWritable, ImmutableBytesWritable> e : hTableDescriptor.getValues().entrySet()) {
-			//buff.appendExceptFirst(",");
-			if (first) {
-				first = false;
-			} else {
-				buff.append(",");
-			}
-			buff.append(toS(e.getKey())).append("='").append(toS(e.getValue())).append("'");
-		}
-		buff.append(")");
-		HColumnDescriptor[] hcds = hTableDescriptor.getColumnFamilies();
-		String cfName;
-		if (hcds != null && hcds.length > 0) {
-			for (HColumnDescriptor hcd : hcds) {
-				cfName = hcd.getNameAsString();
-				buff.append(",\n    COLUMN FAMILY ").append(cfName);
-				buff.append(" OPTIONS(");
-				first = true;
-				for (Entry<ImmutableBytesWritable, ImmutableBytesWritable> e : hcd.getValues().entrySet()) {
-					if (first) {
-						first = false;
-					} else {
-						buff.append(",");
-					}
-					buff.append(toS(e.getKey())).append("='").append(toS(e.getValue())).append("'");
-				}
-				buff.append(")");
-			}
-		}
-		buff.append("\n)");
-		return buff.toString();
-	}
+    @Override
+    public boolean canDrop() {
+        return true;
+    }
 
-	@Override
-	public String getDropSQL() {
-		return "DROP HBASE TABLE IF EXISTS " + getSQL();
-	}
+    @Override
+    public long getRowCount(Session session) {
+        return 0;
+    }
 
-	@Override
-	public void checkRename() {
+    @Override
+    public long getRowCountApproximation() {
+        return 0;
+    }
 
-	}
+    @Override
+    public String getCreateSQL() {
+        StatementBuilder buff = new StatementBuilder("CREATE HBASE TABLE IF NOT EXISTS ");
+        buff.append(getSQL());
+        buff.append("(\n");
+        buff.append("    OPTIONS(");
+        boolean first = true;
+        for (Entry<ImmutableBytesWritable, ImmutableBytesWritable> e : hTableDescriptor.getValues().entrySet()) {
+            //buff.appendExceptFirst(",");
+            if (first) {
+                first = false;
+            } else {
+                buff.append(",");
+            }
+            buff.append(toS(e.getKey())).append("='").append(toS(e.getValue())).append("'");
+        }
+        buff.append(")");
+        HColumnDescriptor[] hcds = hTableDescriptor.getColumnFamilies();
+        String cfName;
+        if (hcds != null && hcds.length > 0) {
+            for (HColumnDescriptor hcd : hcds) {
+                cfName = hcd.getNameAsString();
+                buff.append(",\n    COLUMN FAMILY ").append(cfName).append(" (\n");
+                buff.append("        OPTIONS(");
+                first = true;
+                for (Entry<ImmutableBytesWritable, ImmutableBytesWritable> e : hcd.getValues().entrySet()) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        buff.append(",");
+                    }
+                    buff.append(toS(e.getKey())).append("='").append(toS(e.getValue())).append("'");
+                }
+                buff.append(")"); //OPTIONS
+                if (columnsMap.get(cfName) != null) {
+                    for (Column column : columnsMap.get(cfName)) {
+                        buff.append(",\n        ");
+                        buff.append(column.getCreateSQL());
+                    }
+                }
+                buff.append("\n    )"); //COLUMN FAMILY
+            }
+        }
+        buff.append("\n)"); //CREATE HBASE TABLE
+        return buff.toString();
+    }
 
-	@Override
-	public Column getColumn(String columnName) {
-		return new Column(columnName, Value.STRING);
-	}
+    @Override
+    public String getDropSQL() {
+        return "DROP HBASE TABLE IF EXISTS " + getSQL();
+    }
 
-	@Override
-	public Column[] getColumns() {
-		return new Column[0]; //TODO select * from 会抛异常
-	}
+    @Override
+    public void checkRename() {
 
-	private static String toS(ImmutableBytesWritable v) {
-		return Bytes.toString(v.get());
-	}
+    }
 
-	@Override
+    @Override
+    public Column getColumn(String columnName) {
+        if (getRowKeyName().equalsIgnoreCase(columnName))
+            return getRowKeyColumn();
+
+        if (columnName.indexOf('.') == -1)
+            return super.getColumn(getFullColumnName(null, columnName));
+        else
+            return super.getColumn(columnName);
+    }
+
+    public String getFullColumnName(String columnFamilyName, String columnName) {
+        if (columnFamilyName == null)
+            columnFamilyName = getDefaultColumnFamilyName();
+        return columnFamilyName + "." + columnName;
+    }
+
+    public Column getColumn(String columnFamilyName, String columnName, boolean isInsert) {
+        if (getRowKeyName().equalsIgnoreCase(columnName))
+            return getRowKeyColumn();
+
+        columnName = getFullColumnName(columnFamilyName, columnName);
+        if (isInsert) {
+            if (doesColumnExist(columnName))
+                return super.getColumn(columnName);
+            else { //处理动态列
+                Column[] oldColumns = getColumns();
+                Column[] newColumns;
+                if (oldColumns == null)
+                    newColumns = new Column[1];
+                else
+                    newColumns = new Column[oldColumns.length + 1];
+                System.arraycopy(oldColumns, 0, newColumns, 0, oldColumns.length);
+                Column c = new Column(columnName);
+                newColumns[oldColumns.length] = c;
+                setColumnsNoCheck(newColumns);
+                modified = true;
+
+                ArrayList<Column> list = columnsMap.get(c.getColumnFamilyName());
+                if (list == null) {
+                    list = New.arrayList();
+                    columnsMap.put(c.getColumnFamilyName(), list);
+                }
+                list.add(c);
+                //if (!list.contains(newColumns[oldColumns.length]))
+                //    list.add(newColumns[oldColumns.length]);
+                return c;
+            }
+        } else {
+            return super.getColumn(columnName);
+        }
+    }
+
+    private static String toS(ImmutableBytesWritable v) {
+        return Bytes.toString(v.get());
+    }
+
+    @Override
     public Row getTemplateRow() {
         return new Row(new Value[0], Row.MEMORY_CALCULATE);
     }

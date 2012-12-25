@@ -19,6 +19,15 @@ public class SimpleRow implements SearchRow {
     private int version;
     private Value[] data;
     private int memory;
+    private Value rowKey;
+
+    public Value getRowKey() {
+        return rowKey;
+    }
+
+    public void setRowKey(Value rowKey) {
+        this.rowKey = rowKey;
+    }
 
     public SimpleRow(Value[] data) {
         this.data = data;

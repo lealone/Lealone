@@ -61,6 +61,11 @@ public class TestBase {
         return Bytes.toString(v);
     }
 
+    public void createTableSQL(String sql) throws Exception {
+        stmt.executeUpdate(sql);
+        Thread.sleep(2000); //TODO CREATE表太慢未完成时，因为是异步的接下来的操作有时会抛异常(比如找不到表)
+    }
+
     //TODO 这个方法很慢
     public void createTable(String tableName, String... splitKeys) throws Exception {
         //stmt.executeUpdate("DROP HBASE TABLE IF EXISTS " + tableName);
@@ -80,7 +85,7 @@ public class TestBase {
         }
 
         //CREATE HBASE TABLE语句不用定义字段
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS " + tableName + " (" //
+        createTableSQL("CREATE HBASE TABLE IF NOT EXISTS " + tableName + " (" //
                 //此OPTIONS对应org.apache.hadoop.hbase.HTableDescriptor的参数选项
                 + "OPTIONS(DEFERRED_LOG_FLUSH='false'), "
 
@@ -88,9 +93,9 @@ public class TestBase {
                 + splitKeyStr
 
                 //COLUMN FAMILY中的OPTIONS对应org.apache.hadoop.hbase.HColumnDescriptor的参数选项
-                + "COLUMN FAMILY cf1 OPTIONS(MIN_VERSIONS=2, KEEP_DELETED_CELLS=true), " //
+                + "COLUMN FAMILY cf1 (OPTIONS(MIN_VERSIONS=2, KEEP_DELETED_CELLS=true)), " //
 
-                + "COLUMN FAMILY cf2 OPTIONS(MIN_VERSIONS=2, KEEP_DELETED_CELLS=true)" //
+                + "COLUMN FAMILY cf2 (OPTIONS(MIN_VERSIONS=2, KEEP_DELETED_CELLS=true))" //
                 + ")");
 
         Configuration conf = HBaseConfiguration.create();

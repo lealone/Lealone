@@ -6,11 +6,8 @@
  */
 package org.h2.command.dml;
 
-import java.io.IOException;
 import java.util.ArrayList;
 
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.api.Trigger;
 import org.h2.command.Command;
 import org.h2.command.CommandInterface;
@@ -28,7 +25,6 @@ import org.h2.result.ResultTarget;
 import org.h2.result.Row;
 import org.h2.table.Column;
 import org.h2.table.Table;
-import org.h2.table.HBaseTable;
 import org.h2.util.New;
 import org.h2.util.StatementBuilder;
 import org.h2.value.Value;
@@ -39,13 +35,13 @@ import org.h2.value.Value;
  */
 public class Insert extends Prepared implements ResultTarget {
 
-	private Table table;
-	private Column[] columns;
-	private ArrayList<Expression[]> list = New.arrayList();
-	private Query query;
-	private boolean sortedInsertMode;
-	private int rowNumber;
-	private boolean insertFromSelect;
+	protected Table table;
+	protected Column[] columns;
+	protected ArrayList<Expression[]> list = New.arrayList();
+	protected Query query;
+	protected boolean sortedInsertMode;
+	protected int rowNumber;
+	protected boolean insertFromSelect;
 
 	public Insert(Session session) {
 		super(session);
@@ -80,29 +76,6 @@ public class Insert extends Prepared implements ResultTarget {
 	}
 
 	public int update() {
-		if (table instanceof HBaseTable) {
-			Put put = new Put(Bytes.toBytes(getRowKey()));
-			String rowKeyName = ((HBaseTable) table).getRowKeyName();
-			String defaultColumnFamilyName = ((HBaseTable) table).getDefaultColumnFamilyName();
-			byte[] cf = Bytes.toBytes(defaultColumnFamilyName);
-			try {
-				int index = -1;
-				for (Column c : columns) {
-					index++;
-					if (rowKeyName.equalsIgnoreCase(c.getName())) {
-						continue;
-					}
-					if (c.getColumnFamilyName() != null && !defaultColumnFamilyName.equalsIgnoreCase(c.getColumnFamilyName()))
-						cf = Bytes.toBytes(c.getColumnFamilyName());
-					put.add(cf, Bytes.toBytes(c.getName()), Bytes.toBytes(list.get(0)[index].getValue(session).getString()));
-				}
-				session.getRegionServer().put(session.getRegionName(), put);
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-			rowNumber = 1;
-			return rowNumber;
-		}
 
 		Index index = null;
 		if (sortedInsertMode) {
@@ -298,23 +271,4 @@ public class Insert extends Prepared implements ResultTarget {
 		return true;
 	}
 
-	@Override
-	public String getTableName() {
-		return table.getName();
-	}
-
-	@Override
-	public String getRowKey() {
-		if (table instanceof HBaseTable) {
-			String rowKeyName = ((HBaseTable) table).getRowKeyName();
-			int index = 0;
-			for (Column c : columns) {
-				if (rowKeyName.equalsIgnoreCase(c.getName())) {
-					return list.get(0)[index].getValue(session).getString();
-				}
-				index++;
-			}
-		}
-		return null;
-	}
 }

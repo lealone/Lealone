@@ -30,7 +30,7 @@ public class SubqueryTest extends TestBase {
     }
 
     void init() throws Exception {
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS SubqueryTest(COLUMN FAMILY cf)");
+        createTableSQL("CREATE HBASE TABLE IF NOT EXISTS SubqueryTest(COLUMN FAMILY cf)");
 
         stmt.executeUpdate("INSERT INTO SubqueryTest(_rowkey_, f1, f2) VALUES('01', 'a1', 10)");
         stmt.executeUpdate("INSERT INTO SubqueryTest(_rowkey_, f1, f2) VALUES('02', 'a2', 50)");
@@ -42,10 +42,6 @@ public class SubqueryTest extends TestBase {
     }
 
     void testSelect() throws Exception {
-        //TODO select * from 会抛异常
-        //见: org.h2.table.HBaseTable.getColumns()
-        sql = "SELECT * FROM SubqueryTest WHERE _rowkey_>='01'"
-            + " AND f2 >= (SELECT f2 FROM SubqueryTest WHERE _rowkey_='01')";
 
         //scalar subquery
         sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"

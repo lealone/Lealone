@@ -106,7 +106,7 @@ public class ConnectionInfo implements Cloneable {
                 "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST",
                 "USER", "AUTO_SERVER", "AUTO_SERVER_PORT", "NO_UPGRADE",
                 "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX",
-                "DISABLE_CHECK", "REGION_NAME", "STORE_ENGINE_NAME"};
+                "REGION_NAME", "STORE_ENGINE_NAME"};
         for (String key : connectionTime) {
             if (SysProperties.CHECK && set.contains(key)) {
                 DbException.throwInternalError(key);
@@ -146,9 +146,7 @@ public class ConnectionInfo implements Cloneable {
         } else if (name.startsWith("hbase:")) {
         	isHBaseConnection = true;
             persistent = false;
-            if ("hbase:".equals(name)) {
-                unnamed = true;
-            }
+            name = org.h2.util.HBaseUtils.HBASE_DB_NAME;
         } else if (name.startsWith("file:")) {
             name = name.substring("file:".length());
             persistent = true;

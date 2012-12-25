@@ -871,6 +871,8 @@ public class TableFilter implements ColumnResolver {
         int columnId = column.getColumnId();
         if (columnId == -1) {
             return ValueLong.get(currentSearchRow.getKey());
+        } else if (columnId == -2) {
+            return currentSearchRow.getRowKey();
         }
         if (current == null) {
             Value v = currentSearchRow.getValue(columnId);

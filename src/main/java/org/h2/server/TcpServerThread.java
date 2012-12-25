@@ -190,18 +190,13 @@ public class TcpServerThread implements Runnable {
                 if (filePasswordHash != null)
                     originalProperties.setProperty("_filePasswordHash_", new String(filePasswordHash));
 
-                boolean disableCheck = "true".equalsIgnoreCase(ci.getProperty("DISABLE_CHECK", "false"));
                 String regionName = ci.getProperty("REGION_NAME", "");
-                if (disableCheck && regionName.length() == 0)
-                    throw new RuntimeException("regionName is null");
-                ci.removeProperty("DISABLE_CHECK", false);
                 ci.removeProperty("REGION_NAME", false);
                 if (master != null)
                     ci.setProperty("IS_MASTER", "true");
                 session = Engine.getInstance().createSession(ci);
 				session.setMaster(master);
 				session.setRegionServer(regionServer);
-                session.setDisableCheck(disableCheck);
                 session.setRegionName(Bytes.toBytes(regionName));
                 session.setOriginalProperties(originalProperties);
                 transfer.setSession(session);

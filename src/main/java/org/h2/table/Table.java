@@ -362,6 +362,14 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     protected void setColumns(Column[] columns) {
+        setColumnsInternal(columns, true);
+    }
+
+    protected void setColumnsNoCheck(Column[] columns) {
+        setColumnsInternal(columns, false);
+    }
+
+    private void setColumnsInternal(Column[] columns, boolean check) {
         this.columns = columns;
         if (columnMap.size() > 0) {
             columnMap.clear();
@@ -369,11 +377,11 @@ public abstract class Table extends SchemaObjectBase {
         for (int i = 0; i < columns.length; i++) {
             Column col = columns[i];
             int dataType = col.getType();
-            if (dataType == Value.UNKNOWN) {
+            if (check && dataType == Value.UNKNOWN) {
                 throw DbException.get(ErrorCode.UNKNOWN_DATA_TYPE_1, col.getSQL());
             }
             col.setTable(this, i);
-            String columnName = col.getName();
+            String columnName = col.getFullName();
             if (columnMap.get(columnName) != null) {
                 throw DbException.get(ErrorCode.DUPLICATE_COLUMN_NAME_1, columnName);
             }

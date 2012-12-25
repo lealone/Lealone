@@ -34,6 +34,7 @@ public class ExpressionColumn extends Expression {
     private Database database;
     private String schemaName;
     private String tableAlias;
+    private String columnFamilyName;
     private String columnName;
     private ColumnResolver columnResolver;
     private int queryLevel;
@@ -49,6 +50,15 @@ public class ExpressionColumn extends Expression {
         this.database = database;
         this.schemaName = schemaName;
         this.tableAlias = tableAlias;
+        this.columnName = columnName;
+    }
+
+    public ExpressionColumn(Database database, String schemaName, String tableAlias,
+            String columnFamilyName, String columnName) {
+        this.database = database;
+        this.schemaName = schemaName;
+        this.tableAlias = tableAlias;
+        this.columnFamilyName = columnFamilyName;
         this.columnName = columnName;
     }
 
@@ -77,28 +87,33 @@ public class ExpressionColumn extends Expression {
 
     public void mapColumns(ColumnResolver resolver, int level) {
         if (resolver instanceof TableFilter && resolver.getTableFilter().getTable() instanceof HBaseTable) {
+            HBaseTable t = (HBaseTable)resolver.getTableFilter().getTable();
+
+            if (t.getRowKeyName().equalsIgnoreCase(columnName)) {
+                mapColumn(resolver, t.getRowKeyColumn(), level);
+                return;
+            }
             if (resolver.getSelect() == null) {
-                Column c = resolver.getTableFilter().getTable().getColumn(columnName);
+                Column c = t.getColumn(columnName);
                 mapColumn(resolver, c, level);
                 return;
             }
+            String fullColumnName = t.getFullColumnName(columnFamilyName, columnName);
             for (Column col : resolver.getSelect().getColumns()) {
-                String n = col.getName();
-                if (database.equalsIdentifiers(columnName, n)) {
+                String n = col.getFullName();
+                if (database.equalsIdentifiers(fullColumnName, n)) {
                     mapColumn(resolver, col, level);
                     return;
                 }
             }
-            Column c = resolver.getTableFilter().getTable().getColumn(columnName);
-            if (tableAlias != null) {
-                c.setColumnFamilyName(tableAlias);
-                tableAlias = schemaName;
-                schemaName = null;
-            }
-            c.setTable(resolver.getTableFilter().getTable(), resolver.getSelect().getNextColumnId());
+            Column c = t.getColumn(fullColumnName);
             resolver.getSelect().addColumn(c);
             mapColumn(resolver, c, level);
             return;
+        } else {
+            schemaName = tableAlias;
+            tableAlias = columnFamilyName;
+            columnFamilyName = null;
         }
 
         if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {

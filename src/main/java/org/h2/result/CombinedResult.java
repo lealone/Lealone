@@ -83,7 +83,6 @@ public class CombinedResult implements ResultInterface {
         try {
             Properties info = new Properties(session.getOriginalProperties());
             HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKeys.get(index));
-            info.setProperty("DISABLE_CHECK", "true");
             info.setProperty("REGION_NAME", hri.getRegionName());
 
             //TODO 重用regionServerURL相同的连接

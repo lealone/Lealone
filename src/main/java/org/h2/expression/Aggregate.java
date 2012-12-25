@@ -580,20 +580,18 @@ public class Aggregate extends Expression {
             precision = displaySize = Integer.MAX_VALUE;
             break;
         case SUM:
-            dataType = Value.LONG; //我加上的
             if (dataType == Value.BOOLEAN) {
                 // example: sum(id > 3) (count the rows)
                 dataType = Value.LONG;
             } else if (!DataType.supportsAdd(dataType)) {
-                //throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
+                throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
             } else {
                 dataType = DataType.getAddProofType(dataType);
             }
             break;
         case AVG:
-            dataType = Value.DOUBLE; //我加上的
             if (!DataType.supportsAdd(dataType)) {
-                //throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
+                throw DbException.get(ErrorCode.SUM_OR_AVG_ON_WRONG_DATATYPE_1, getSQL());
             }
             break;
         case MIN:

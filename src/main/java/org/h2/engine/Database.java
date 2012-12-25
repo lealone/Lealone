@@ -178,6 +178,13 @@ public class Database implements DataHandler {
 	
     private final boolean isMaster;
     private H2MetaTable h2MetaTable;
+    private HashMap<Integer, Pair> dbObjectMap = New.hashMap();
+    private boolean fromZookeeper;
+    
+    private static class Pair {
+        Session session;
+        DbObject dbObject;
+    }
 
     public boolean isMaster() {
         return isMaster;
@@ -634,7 +641,7 @@ public class Database implements DataHandler {
 
         if (!persistent && !databaseShortName.toLowerCase().startsWith("management_db_")) {
             try {
-                h2MetaTable = new H2MetaTable();
+                h2MetaTable = new H2MetaTable(this);
                 if (records.size() == 0)
                     h2MetaTable.loadMetaRecords(records);
             } catch (Exception e) {
@@ -675,7 +682,42 @@ public class Database implements DataHandler {
 		if (checkpointAllowed > 0) {
 			afterWriting();
 		}
-	}
+    }
+
+    public synchronized void addDatabaseObject(int id) {
+        try {
+            fromZookeeper = true;
+            if (h2MetaTable != null) {
+                MetaRecord rec = h2MetaTable.getMetaRecord(id);
+                if (rec != null)
+                    rec.execute(this, systemSession, eventListener);
+            }
+        } finally {
+            fromZookeeper = false;
+        }
+    }
+
+    public synchronized void removeDatabaseObject(int id) {
+        try {
+            fromZookeeper = true;
+
+            Pair p = dbObjectMap.get(id);
+            //TODO if p == null
+            if (p.dbObject != null) {
+                if (p.dbObject instanceof SchemaObject)
+                    removeSchemaObject(p.session, (SchemaObject) p.dbObject);
+                else
+                    removeDatabaseObject(p.session, p.dbObject);
+            }
+        } finally {
+            fromZookeeper = false;
+        }
+    }
+
+    public synchronized void updateDatabaseObject(int id) {
+        removeDatabaseObject(id);
+        addDatabaseObject(id);
+    }
 
 	private void startServer(String key) {
 		try {
@@ -746,9 +788,17 @@ public class Database implements DataHandler {
 	}
 
 	private synchronized void addMeta(Session session, DbObject obj) {
-		int id = obj.getId();
+	    addMeta0(session, obj, false);
+	}
+
+    private synchronized void addMeta0(Session session, DbObject obj, boolean isUpdate) {
+        int id = obj.getId();
         if (id > 0 && !obj.isTemporary()) {
             objectIds.set(id);
+            Pair p = new Pair();
+            p.session = session;
+            p.dbObject = obj;
+            dbObjectMap.put(id, p);
             if (!starting) {
                 Row r = meta.getTemplateRow();
                 MetaRecord rec = new MetaRecord(obj);
@@ -763,12 +813,15 @@ public class Database implements DataHandler {
                     session.log(meta, UndoLogRecord.INSERT, r);
                 }
 
-                if (isMaster && h2MetaTable != null)
-                    h2MetaTable.addRecord(rec);
+                if (!fromZookeeper && h2MetaTable != null) {
+                    if (isUpdate)
+                        h2MetaTable.updateRecord(rec);
+                    else
+                        h2MetaTable.addRecord(rec);
+                }
             }
         }
-	}
-
+    }
 	/**
 	 * Verify the meta table is locked.
 	 *
@@ -802,37 +855,42 @@ public class Database implements DataHandler {
 	 * @param id the id of the object to remove
 	 */
 	public synchronized void removeMeta(Session session, int id) {
-		if (id > 0 && !starting) {
-			SearchRow r = meta.getTemplateSimpleRow(false);
-			r.setValue(0, ValueInt.get(id));
-			boolean wasLocked = lockMeta(session);
-			Cursor cursor = metaIdIndex.find(session, r, r);
-			if (cursor.next()) {
-				if (SysProperties.CHECK) {
-					if (lockMode != 0 && !wasLocked) {
-						throw DbException.throwInternalError();
-					}
-				}
-				Row found = cursor.get();
-				meta.removeRow(session, found);
-				if (isMultiVersion()) {
-					// TODO this should work without MVCC, but avoid risks at the
-					// moment
-					session.log(meta, UndoLogRecord.DELETE, found);
-				}
-				objectIds.clear(id);
-				if (SysProperties.CHECK) {
-					checkMetaFree(session, id);
-				}
-			} else if (!wasLocked) {
-				// must not keep the lock if it was not locked
-				// otherwise updating sequences may cause a deadlock
-				meta.unlock(session);
-				session.unlock(meta);
-			}
-            if (isMaster && h2MetaTable != null)
+	    removeMeta0(session, id, true);
+	}
+
+	private synchronized void removeMeta0(Session session, int id, boolean removeH2MetaTable) {
+        if (id > 0 && !starting) {
+            SearchRow r = meta.getTemplateSimpleRow(false);
+            r.setValue(0, ValueInt.get(id));
+            boolean wasLocked = lockMeta(session);
+            Cursor cursor = metaIdIndex.find(session, r, r);
+            if (cursor.next()) {
+                if (SysProperties.CHECK) {
+                    if (lockMode != 0 && !wasLocked) {
+                        throw DbException.throwInternalError();
+                    }
+                }
+                Row found = cursor.get();
+                meta.removeRow(session, found);
+                if (isMultiVersion()) {
+                    // TODO this should work without MVCC, but avoid risks at the
+                    // moment
+                    session.log(meta, UndoLogRecord.DELETE, found);
+                }
+                objectIds.clear(id);
+                dbObjectMap.remove(id);
+                if (SysProperties.CHECK) {
+                    checkMetaFree(session, id);
+                }
+            } else if (!wasLocked) {
+                // must not keep the lock if it was not locked
+                // otherwise updating sequences may cause a deadlock
+                meta.unlock(session);
+                session.unlock(meta);
+            }
+            if (!fromZookeeper && removeH2MetaTable && h2MetaTable != null) //if (isMaster && h2MetaTable != null)
                 h2MetaTable.removeRecord(id);
-		}
+        }
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1450,8 +1508,8 @@ public class Database implements DataHandler {
 	public synchronized void update(Session session, DbObject obj) {
 		lockMeta(session);
 		int id = obj.getId();
-		removeMeta(session, id);
-		addMeta(session, obj);
+		removeMeta0(session, id, false);
+		addMeta0(session, obj, true);
 	}
 
 	/**
@@ -1506,7 +1564,7 @@ public class Database implements DataHandler {
 		obj.checkRename();
 		int id = obj.getId();
 		lockMeta(session);
-		removeMeta(session, id);
+		removeMeta0(session, id, false);
 		map.remove(obj.getName());
 		obj.rename(newName);
 		map.put(newName, obj);

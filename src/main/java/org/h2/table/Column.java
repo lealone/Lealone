@@ -63,7 +63,7 @@ public class Column {
      */
     public static final int NULLABLE_UNKNOWN = ResultSetMetaData.columnNullableUnknown;
 
-    private final int type;
+    private int type;
     private long precision;
     private int scale;
     private int displaySize;
@@ -91,6 +91,10 @@ public class Column {
     private byte[] nameAsBytes;
     private byte[] columnFamilyNameeAsBytes;
 
+    public boolean isTypeUnknown() {
+        return this.type == Value.UNKNOWN;
+    }
+
     public String getColumnFamilyName() {
         return columnFamilyName;
     }
@@ -111,8 +115,28 @@ public class Column {
         return columnFamilyNameeAsBytes;
     }
 
+    public void setType(int type) {
+        this.type = type;
+        DataType dt = DataType.getDataType(type);
+        precision = dt.defaultPrecision;
+        scale = dt.defaultScale;
+        displaySize = dt.defaultDisplaySize;
+    }
+
     public Column(String name, int type) {
         this(name, type, -1, -1, -1);
+    }
+
+    public Column(String name) {
+        int pos = name.indexOf('.');
+        if (pos != -1) {
+            columnFamilyName = name.substring(0, pos);
+            if (columnFamilyName != null && columnFamilyName.length() == 0)
+                columnFamilyName = null;
+            this.name = name.substring(pos + 1);
+        } else
+            this.name = name;
+        this.type = Value.UNKNOWN; //先设为Value.UNKNOWN，根据表达式的类型动态确定
     }
 
     public Column(String name, int type, long precision, int scale, int displaySize) {
@@ -139,17 +163,26 @@ public class Column {
         if (table == null || other.table == null || name == null || other.name == null) {
             return false;
         }
+
+        if (columnFamilyName != other.columnFamilyName)
+            return false;
+        if (columnFamilyName == null || other.columnFamilyName == null)
+            return false;
+
         if (table != other.table) {
             return false;
         }
-        return name.equals(other.name);
+        return name.equals(other.name) && columnFamilyName.equals(other.columnFamilyName);
     }
 
     public int hashCode() {
         if (table == null || name == null) {
             return 0;
         }
-        return table.getId() ^ name.hashCode();
+        if (columnFamilyName != null)
+            return table.getId() ^ columnFamilyName.hashCode() ^ name.hashCode();
+        else
+            return table.getId() ^ name.hashCode();
     }
 
     public Column getClone() {
@@ -249,6 +282,13 @@ public class Column {
 
     public String getName() {
         return name;
+    }
+
+    public String getFullName() {
+        if (columnFamilyName != null)
+            return columnFamilyName + "." + name;
+        else
+            return name;
     }
 
     public int getType() {
@@ -672,7 +712,7 @@ public class Column {
     }
 
     public String toString() {
-        return name;
+        return getFullName(); //return name;
     }
 
     /**
