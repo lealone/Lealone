@@ -89,8 +89,6 @@ public interface HConnection extends Abortable, Closeable {
   public HMasterInterface getMaster()
   throws MasterNotRunningException, ZooKeeperConnectionException;
 
-  public ServerName getMasterAddress() throws ZooKeeperConnectionException;
-
   /** @return - true if the master server is running */
   public boolean isMasterRunning()
   throws MasterNotRunningException, ZooKeeperConnectionException;

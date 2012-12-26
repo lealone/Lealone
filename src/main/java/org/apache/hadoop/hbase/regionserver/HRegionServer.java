@@ -1899,7 +1899,8 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         "with port=" + this.isa.getPort() + ", startcode=" + this.startcode);
       long now = EnvironmentEdgeManager.currentTimeMillis();
       int port = this.isa.getPort();
-      result = this.hbaseMaster.regionServerStartup(port, this.startcode, now);
+      int h2TcpPort = (conf.getInt("h2.tcpPort", org.h2.engine.Constants.DEFAULT_TCP_PORT));
+      result = this.hbaseMaster.regionServerStartup(port, h2TcpPort, this.startcode, now);
     } catch (RemoteException e) {
       IOException ioe = e.unwrapRemoteException();
       if (ioe instanceof ClockOutOfSyncException) {

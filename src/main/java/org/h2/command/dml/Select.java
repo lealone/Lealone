@@ -1494,4 +1494,11 @@ public class Select extends Query {
             return null;
         }
     }
+
+    @Override
+    public boolean isDistributedSQL() {
+        if (topTableFilter.getTable() instanceof HBaseTable)
+            return true;
+        return super.isDistributedSQL();
+    }
 }

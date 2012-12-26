@@ -917,6 +917,20 @@ Server {
     return mw;
   }
 
+  public MapWritable regionServerStartup(final int port, final int h2TcpPort, 
+          final long serverStartCode, final long serverCurrentTime)
+        throws IOException {
+      // Register with server manager
+      InetAddress ia = HBaseServer.getRemoteIp();
+      ServerName rs = this.serverManager.regionServerStartup(ia, port,
+        serverStartCode, serverCurrentTime);
+      rs.setH2TcpPort(h2TcpPort);
+      // Send back some config info
+      MapWritable mw = createConfigurationSubset();
+      mw.put(new Text(HConstants.KEY_FOR_HOSTNAME_SEEN_BY_MASTER),
+        new Text(rs.getHostname()));
+      return mw;
+  }
   /**
    * @return Subset of configuration to pass initializing regionservers: e.g.
    * the filesystem to use and root directory to use.

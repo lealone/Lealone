@@ -104,4 +104,9 @@ public class HBaseDelete extends Delete {
         else
             return null;
     }
+
+    @Override
+    public boolean isDistributedSQL() {
+        return true;
+    }
 }

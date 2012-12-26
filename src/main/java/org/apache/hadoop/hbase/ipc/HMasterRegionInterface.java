@@ -58,6 +58,10 @@ public interface HMasterRegionInterface extends VersionedProtocol {
     final long serverStartcode, final long serverCurrentTime)
   throws IOException;
 
+  public MapWritable regionServerStartup(final int port, final int h2TcpPort, 
+          final long serverStartcode, final long serverCurrentTime)
+        throws IOException;
+
   /**
    * @param sn {@link ServerName#getVersionedBytes()}
    * @param hsl Server load.

@@ -44,7 +44,6 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -58,6 +57,7 @@ import org.h2.engine.ConnectionInfo;
 import org.h2.engine.Engine;
 import org.h2.engine.Session;
 import org.h2.message.DbException;
+import org.h2.util.HBaseUtils;
 
 //TODO 目前未使用，目的是想不修改H2的JDBC实现
 public class HBaseJdbcConnection implements Connection {
@@ -106,9 +106,8 @@ public class HBaseJdbcConnection implements Connection {
         Prepared prepared = session.prepare(sql, true);
         if (prepared instanceof DefineCommand) {
             try {
-                ServerName sn = hConnection.getMasterAddress();
                 Properties info = new Properties(this.info);
-                conn = new JdbcConnection(createUrl(sn.getHostname(), sn.getH2TcpPort()), info);
+                conn = new JdbcConnection(HBaseUtils.getMasterURL(), info);
                 conns.add(conn);
             } catch (Exception e) {
                 throw new RuntimeException(e);

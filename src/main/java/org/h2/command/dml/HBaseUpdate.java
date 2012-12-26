@@ -179,4 +179,9 @@ public class HBaseUpdate extends Update {
         else
             return null;
     }
+
+    @Override
+    public boolean isDistributedSQL() {
+        return true;
+    }
 }

@@ -437,7 +437,11 @@ public abstract class Prepared {
 		return null;
 	}
 	
-	public String[] getRowKeys() {
-		return null;
-	}
+    public String[] getRowKeys() {
+        return null;
+    }
+
+    public boolean isDistributedSQL() {
+        return false;
+    }
 }

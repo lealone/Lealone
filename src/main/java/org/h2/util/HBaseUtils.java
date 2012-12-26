@@ -24,8 +24,10 @@ import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.NavigableMap;
+import java.util.Random;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -33,6 +35,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
 import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.MetaScanner;
@@ -63,7 +66,9 @@ import org.h2.value.ValueUuid;
 public class HBaseUtils {
     public static final String HBASE_DB_NAME = "hbasedb";
     private static final Configuration conf = HBaseConfiguration.create();
+    private static final Random random = new Random(System.currentTimeMillis());
     private static HConnection hConnection;
+    private static HBaseAdmin admin;
 
     private HBaseUtils() {
         // utility class
@@ -190,11 +195,29 @@ public class HBaseUtils {
         return createURL(regionLocation.getHostname(), regionLocation.getH2TcpPort());
     }
 
+    public static String createURL(ServerName sn) {
+        return createURL(sn.getHostname(), sn.getH2TcpPort());
+    }
+
     public static String createURL(String hostname, int port) {
         StringBuilder url = new StringBuilder(100);
         url.append("jdbc:h2:tcp://").append(hostname).append(":").append(port).append("/").append(HBASE_DB_NAME)
                 .append(";STORE_ENGINE_NAME=HBASE");
         return url.toString();
+    }
+
+    public static HBaseAdmin getHBaseAdmin() throws IOException {
+        if (admin == null) {
+            synchronized (HBaseUtils.class) {
+                if (admin == null) {
+                    admin = new HBaseAdmin(getConfiguration());
+                    if (hConnection == null || hConnection.isClosed()) {
+                        hConnection = admin.getConnection();
+                    }
+                }
+            }
+        }
+        return admin;
     }
 
     public static HConnection getConnection() throws IOException {
@@ -208,8 +231,19 @@ public class HBaseUtils {
     }
 
     public static String getMasterURL() throws IOException {
-        ServerName sn = getConnection().getMasterAddress();
-        return createURL(sn.getHostname(), sn.getH2TcpPort());
+        return createURL(getHBaseAdmin().getClusterStatus().getMaster());
+    }
+
+    /**
+     * 随机获取一个可用的RegionServer URL
+     * 
+     * @return
+     * @throws IOException
+     */
+    public static String getRegionServerURL() throws IOException {
+        Collection<ServerName> servers = getHBaseAdmin().getClusterStatus().getServers();
+        ServerName sn = new ArrayList<ServerName>(servers).get(random.nextInt(servers.size()));
+        return createURL(sn);
     }
 
     public static String getRegionServerURL(String tableName, String rowKey) throws IOException {
