@@ -522,7 +522,7 @@ public class Comparison extends Condition {
 
     @Override
     public Expression removeRowKeyCondition(RowKeyConditionInfo rkci, Session session) {
-        if (left instanceof ExpressionColumn) {
+        if (left instanceof ExpressionColumn && ((ExpressionColumn) left).getTableFilter().getTable() == rkci.getTable()) {
             if (rkci.getRowKeyName().equalsIgnoreCase(((ExpressionColumn) left).getColumnName())) {
                 switch (compareType) {
                 case EQUAL:

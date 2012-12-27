@@ -23,11 +23,13 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 
 public class HBaseRegionInfo {
+    private final HRegionLocation regionLocation;
     private final HRegionInfo regionInfo;
     private final String regionName;
     private final String regionServerURL;
 
     public HBaseRegionInfo(HRegionLocation regionLocation) {
+        this.regionLocation = regionLocation;
         this.regionInfo = regionLocation.getRegionInfo();
         this.regionName = regionLocation.getRegionInfo().getRegionNameAsString();
         this.regionServerURL = HBaseUtils.createURL(regionLocation);
@@ -43,5 +45,13 @@ public class HBaseRegionInfo {
 
     public String getRegionServerURL() {
         return regionServerURL;
+    }
+
+    public String getHostname() {
+        return regionLocation.getHostname();
+    }
+
+    public int getH2TcpPort() {
+        return regionLocation.getH2TcpPort();
     }
 }

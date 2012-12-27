@@ -90,6 +90,17 @@ public class ExpressionColumn extends Expression {
             HBaseTable t = (HBaseTable)resolver.getTableFilter().getTable();
 
             if (t.getRowKeyName().equalsIgnoreCase(columnName)) {
+                if (columnFamilyName != null) {
+                    schemaName = tableAlias;
+                    tableAlias = columnFamilyName;
+                    columnFamilyName = null;
+                }
+                if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
+                    return;
+                }
+                if (schemaName != null && !database.equalsIdentifiers(schemaName, resolver.getSchemaName())) {
+                    return;
+                }
                 mapColumn(resolver, t.getRowKeyColumn(), level);
                 return;
             }
@@ -99,16 +110,24 @@ public class ExpressionColumn extends Expression {
                 return;
             }
             String fullColumnName = t.getFullColumnName(columnFamilyName, columnName);
-            for (Column col : resolver.getSelect().getColumns()) {
+            //            for (Column col : resolver.getSelect().getColumns()) {
+            //                String n = col.getFullName();
+            //                if (database.equalsIdentifiers(fullColumnName, n)) {
+            //                    mapColumn(resolver, col, level);
+            //                    return;
+            //                }
+            //            }
+            for (Column col : t.getColumns()) {
                 String n = col.getFullName();
                 if (database.equalsIdentifiers(fullColumnName, n)) {
+                    resolver.getSelect().addColumn(resolver.getTableFilter(), col);
                     mapColumn(resolver, col, level);
                     return;
                 }
             }
-            Column c = t.getColumn(fullColumnName);
-            resolver.getSelect().addColumn(c);
-            mapColumn(resolver, c, level);
+            //            Column c = t.getColumn(fullColumnName);
+            //            resolver.getSelect().addColumn(c);
+            //            mapColumn(resolver, c, level);
             return;
         } else {
             if (columnFamilyName != null) {

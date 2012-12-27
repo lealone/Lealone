@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.engine.Session;
+import org.h2.result.CombinedResult;
 import org.h2.result.Row;
 import org.h2.result.SearchRow;
 import org.h2.table.Column;
@@ -45,50 +46,54 @@ public class HBaseTableCursor implements Cursor {
     private byte[] defaultColumnFamilyName;
     private int columnCount = 0;
     private String rowKeyName;
+    private CombinedResult combinedResult;
 
     public HBaseTableCursor(TableFilter filter, SearchRow first, SearchRow last) {
-        rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();
-
-        columnCount = ((HBaseTable) filter.getTable()).getColumns().length;
         this.session = filter.getSession();
-        byte[] startRowKey = null;
-        byte[] stopRowKey = null;
-        String[] rowKeys = filter.getSelect().getRowKeys();
-        if (rowKeys != null) {
-            if (rowKeys.length >= 1 && rowKeys[0] != null)
-                startRowKey = Bytes.toBytes(rowKeys[0]);
+        rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();
+        columnCount = ((HBaseTable) filter.getTable()).getColumns().length;
+        columns = filter.getSelect().getColumns(filter);
+        if (filter.getSelect().getTopTableFilter() != filter) {
+            combinedResult = new CombinedResult(filter);
+        } else {
+            byte[] startRowKey = null;
+            byte[] stopRowKey = null;
+            String[] rowKeys = filter.getSelect().getRowKeys();
+            if (rowKeys != null) {
+                if (rowKeys.length >= 1 && rowKeys[0] != null)
+                    startRowKey = Bytes.toBytes(rowKeys[0]);
 
-            if (rowKeys.length >= 2 && rowKeys[1] != null)
-                stopRowKey = Bytes.toBytes(rowKeys[1]);
-        }
-
-        if (startRowKey == null)
-            startRowKey = HConstants.EMPTY_START_ROW;
-        if (stopRowKey == null)
-            stopRowKey = HConstants.EMPTY_END_ROW;
-
-        Scan scan = new Scan();
-        if (startRowKey != null)
-            scan.setStartRow(startRowKey);
-        if (stopRowKey != null)
-            scan.setStopRow(stopRowKey);
-
-        columns = filter.getSelect().getColumns();
-        if (columns != null) {
-            defaultColumnFamilyName = Bytes.toBytes(((HBaseTable) filter.getTable()).getDefaultColumnFamilyName());
-            for (Column c : columns) {
-                if (rowKeyName.equalsIgnoreCase(c.getName()))
-                    continue;
-                else if (c.getColumnFamilyName() != null)
-                    scan.addColumn(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes());
-                else
-                    scan.addColumn(defaultColumnFamilyName, c.getNameAsBytes());
+                if (rowKeys.length >= 2 && rowKeys[1] != null)
+                    stopRowKey = Bytes.toBytes(rowKeys[1]);
             }
-        }
-        try {
-            scannerId = session.getRegionServer().openScanner(session.getRegionName(), scan);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+
+            if (startRowKey == null)
+                startRowKey = HConstants.EMPTY_START_ROW;
+            if (stopRowKey == null)
+                stopRowKey = HConstants.EMPTY_END_ROW;
+
+            Scan scan = new Scan();
+            if (startRowKey != null)
+                scan.setStartRow(startRowKey);
+            if (stopRowKey != null)
+                scan.setStopRow(stopRowKey);
+
+            if (columns != null) {
+                defaultColumnFamilyName = Bytes.toBytes(((HBaseTable) filter.getTable()).getDefaultColumnFamilyName());
+                for (Column c : columns) {
+                    if (rowKeyName.equalsIgnoreCase(c.getName()))
+                        continue;
+                    else if (c.getColumnFamilyName() != null)
+                        scan.addColumn(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes());
+                    else
+                        scan.addColumn(defaultColumnFamilyName, c.getNameAsBytes());
+                }
+            }
+            try {
+                scannerId = session.getRegionServer().openScanner(session.getRegionName(), scan);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -108,6 +113,19 @@ public class HBaseTableCursor implements Cursor {
 
     @Override
     public Row get() {
+        if (combinedResult != null) {
+            Value[] data = new Value[columnCount];
+            Value[] data2 = combinedResult.currentRow();
+
+            Value rowKey = data2[0];
+            if (columns != null) {
+                int i = 1;
+                for (Column c : columns) {
+                    data[c.getColumnId()] = data2[i++];
+                }
+            }
+            return new Row(rowKey, data, Row.MEMORY_CALCULATE);
+        }
         if (result != null && length < result.length) {
             Result r = result[length++];
 
@@ -120,8 +138,7 @@ public class HBaseTableCursor implements Cursor {
                     if (rowKeyName.equalsIgnoreCase(c.getName()))
                         ;//rowKey = ValueString.get(Bytes.toString(r.getRow()));
                     else
-                        data[i] = HBaseUtils.toValue(r.getValue(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes()), 
-                                c.getType());
+                        data[i] = HBaseUtils.toValue(r.getValue(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes()), c.getType());
                 }
             }
             return new Row(rowKey, data, Row.MEMORY_CALCULATE);
@@ -136,6 +153,9 @@ public class HBaseTableCursor implements Cursor {
 
     @Override
     public boolean next() {
+        if (combinedResult != null) {
+            return combinedResult.next();
+        }
         if (result != null && length < result.length)
             return true;
 

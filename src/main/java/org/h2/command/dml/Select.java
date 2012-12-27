@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.api.Trigger;
@@ -92,9 +93,8 @@ public class Select extends Query {
     private SortOrder sort;
     private int currentGroupRowId;
 
-    private int columnIdCounter = 0;
-    private ArrayList<Column> columns = New.arrayList();
-
+    private Map<String, ArrayList<Column>> columnsMap = New.hashMap();
+    private Map<String, RowKeyConditionInfo> rkciMap = New.hashMap();
     private RowKeyConditionInfo rkci;
 
     public boolean isGroupQuery() {
@@ -105,16 +105,17 @@ public class Select extends Query {
         return isGroupQuery && groupByExpression != null && groupByExpression.length > 0;
     }
 
-    public int getNextColumnId() {
-        return columnIdCounter++;
-    }
-
-    public void addColumn(Column c) {
+    public void addColumn(TableFilter f, Column c) {
+        ArrayList<Column> columns = columnsMap.get(f.getTable().getName());
+        if (columns == null) {
+            columns = New.arrayList();
+            columnsMap.put(f.getTable().getName(), columns);
+        }
         columns.add(c);
     }
 
-    public ArrayList<Column> getColumns() {
-        return columns;
+    public ArrayList<Column> getColumns(TableFilter f) {
+        return columnsMap.get(f.getTable().getName());
     }
 
     public Select(Session session) {
@@ -935,36 +936,39 @@ public class Select extends Query {
         }
         if (condition != null) {
             condition = condition.optimize(session);
-            for (TableFilter f : filters) {
-                if (f.getTable() instanceof HBaseTable) {
-                    if (!isSubquery()) {
-                        String rowKeyName = ((HBaseTable) f.getTable()).getRowKeyName();
-                        rkci = new RowKeyConditionInfo((HBaseTable) f.getTable(), this);
-                        condition = condition.removeRowKeyCondition(rkci, session);
+            TableFilter tf = topFilters.get(0);
+            if (tf.getTable() instanceof HBaseTable) {
+                if (!isSubquery()) {
+                    String rowKeyName = ((HBaseTable) tf.getTable()).getRowKeyName();
+                    rkci = new RowKeyConditionInfo((HBaseTable) tf.getTable(), this);
+                    condition = condition.removeRowKeyCondition(rkci, session);
 
-                        Column column = new Column(rowKeyName, Value.STRING);
-                        column.setTable(f.getTable(), -1);
-                        ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), column);
-                        if (rkci.getCompareValueStart() != null)
-                            f.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStart(), ec,
-                                    ValueExpression.get(rkci.getCompareValueStart())));
-                        if (rkci.getCompareValueStop() != null)
-                            f.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStop(), ec,
-                                    ValueExpression.get(rkci.getCompareValueStop())));
-                    }
-                    break;
-                }
-                // outer joins: must not add index conditions such as
-                // "c is null" - example:
-                // create table parent(p int primary key) as select 1;
-                // create table child(c int primary key, pc int);
-                // insert into child values(2, 1);
-                // select p, c from parent
-                // left outer join child on p = pc where c is null;
-                if (!f.isJoinOuter() && !f.isJoinOuterIndirect()) {
-                    condition.createIndexConditions(session, f);
+                    Column column = new Column(rowKeyName, Value.STRING);
+                    column.setTable(tf.getTable(), -1);
+                    ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), column);
+                    if (rkci.getCompareValueStart() != null)
+                        tf.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStart(), ec,
+                                ValueExpression.get(rkci.getCompareValueStart())));
+                    if (rkci.getCompareValueStop() != null)
+                        tf.addIndexCondition(IndexCondition.get(rkci.getCompareTypeStop(), ec,
+                                ValueExpression.get(rkci.getCompareValueStop())));
                 }
             }
+            if (condition != null)
+                for (TableFilter f : filters) {
+                    if (tf.getTable() instanceof HBaseTable)
+                        continue;
+                    // outer joins: must not add index conditions such as
+                    // "c is null" - example:
+                    // create table parent(p int primary key) as select 1;
+                    // create table child(c int primary key, pc int);
+                    // insert into child values(2, 1);
+                    // select p, c from parent
+                    // left outer join child on p = pc where c is null;
+                    if (!f.isJoinOuter() && !f.isJoinOuterIndirect()) {
+                        condition.createIndexConditions(session, f);
+                    }
+                }
         }
         if (isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1) {
             if (condition == null) {
@@ -1181,6 +1185,9 @@ public class Select extends Query {
                 rowKeyName = rkci.getRowKeyName();
             else
                 rowKeyName = ((HBaseTable) topTableFilter.getTable()).getRowKeyName();
+            
+            if (topFilters.size() > 0)
+                rowKeyName = ((HBaseTable) topTableFilter.getTable()).getName() + "." + rowKeyName;
             if (startKey != null && startKey.length > 0) {
                 if (rkci != null && rkci.getCompareTypeStart() == Comparison.EQUAL)
                     buff.append(rowKeyName).append(" = '").append(Bytes.toString(startKey)).append("'");
@@ -1198,7 +1205,7 @@ public class Select extends Query {
             if (addWhere)
                 buff.append("\nWHERE ");
             else
-                buff.append("AND ");
+                buff.append(" AND ");
             buff.append(StringUtils.unEnclose(condition.getSQL(isDistributed)));
         }
         if (groupIndex != null) {
@@ -1477,6 +1484,18 @@ public class Select extends Query {
         return rkci;
     }
 
+    public RowKeyConditionInfo getRowKeyConditionInfo(TableFilter f) {
+        RowKeyConditionInfo rkci = rkciMap.get(f.getTable().getName());
+        if (rkci == null) {
+            rkci = new RowKeyConditionInfo((HBaseTable) f.getTable(), this);
+            if (condition != null)
+                condition = condition.removeRowKeyCondition(rkci, session);
+            rkciMap.put(f.getTable().getName(), rkci);
+        }
+
+        return rkci;
+    }
+    
     @Override
     public String getTableName() {
         if ((topTableFilter.getTable() instanceof TableView))

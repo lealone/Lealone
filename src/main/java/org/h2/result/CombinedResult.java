@@ -22,11 +22,13 @@ package org.h2.result;
 import java.util.List;
 import java.util.Properties;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.command.dml.Query;
 import org.h2.engine.Session;
 import org.h2.expression.RowKeyConditionInfo;
 import org.h2.jdbc.JdbcConnection;
 import org.h2.jdbc.JdbcPreparedStatement;
+import org.h2.table.TableFilter;
 import org.h2.util.HBaseRegionInfo;
 import org.h2.util.HBaseUtils;
 import org.h2.util.JdbcUtils;
@@ -65,6 +67,19 @@ public class CombinedResult implements ResultInterface {
         }
     }
 
+    public CombinedResult(TableFilter filter) {
+        this.session = filter.getSession();
+        this.query = filter.getSelect();
+        this.maxrows = -1;
+        this.tableName = HBaseUtils.toBytes(filter.getTable().getName());
+        
+        RowKeyConditionInfo rkci = filter.getSelect().getRowKeyConditionInfo(filter);
+        startKeys = rkci.getStartKeys();
+        sqls = rkci.getPlanSQLs(filter);
+        size = sqls.length;
+        nextResult();
+    }
+
     private void closeAllSilently() {
         if (conn != null)
             JdbcUtils.closeSilently(conn);
@@ -81,19 +96,26 @@ public class CombinedResult implements ResultInterface {
         closeAllSilently();
 
         try {
-            Properties info = new Properties(session.getOriginalProperties());
             HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKeys.get(index));
-            info.setProperty("REGION_NAME", hri.getRegionName());
 
-            //TODO 重用regionServerURL相同的连接
-            conn = new JdbcConnection(hri.getRegionServerURL(), info);
+            if (hri.getHostname().equals(session.getRegionServer().getServerName().getHostname())
+                    && hri.getH2TcpPort() == session.getRegionServer().getServerName().getH2TcpPort()) {
+                session.setRegionName(Bytes.toBytes(hri.getRegionName()));
+                result = session.prepareLocal(sqls[index]).query(maxrows);
+            } else {
+                Properties info = new Properties(session.getOriginalProperties());
+                info.setProperty("REGION_NAME", hri.getRegionName());
 
-            ps = (JdbcPreparedStatement) conn.prepareStatement(sqls[index]);
-            ps.setMaxRows(maxrows);
-            ps.setFetchSize(session.getFetchSize());
-            ps.setParameters(query.getParameters());
-            ps.executeQuery();
-            result = ps.getInternalResultInterface();
+                //TODO 重用regionServerURL相同的连接
+                conn = new JdbcConnection(hri.getRegionServerURL(), info);
+
+                ps = (JdbcPreparedStatement) conn.prepareStatement(sqls[index]);
+                ps.setMaxRows(maxrows);
+                ps.setFetchSize(session.getFetchSize());
+                ps.setParameters(query.getParameters());
+                ps.executeQuery();
+                result = ps.getInternalResultInterface();
+            }
             index++;
         } catch (Exception e) {
             throw new RuntimeException(e);
