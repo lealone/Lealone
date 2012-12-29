@@ -66,6 +66,7 @@ import org.h2.value.CaseInsensitiveMap;
 import org.h2.value.CompareMode;
 import org.h2.value.Value;
 import org.h2.value.ValueInt;
+import org.h2.zookeeper.H2MetaTableTracker;
 
 /**
  * There is one database object per open database.
@@ -188,6 +189,12 @@ public class Database implements DataHandler {
 
     public boolean isMaster() {
         return isMaster;
+    }
+
+    public H2MetaTableTracker getH2MetaTableTracker() {
+        if (h2MetaTable != null)
+            return h2MetaTable.getH2MetaTableTracker();
+        return null;
     }
 
 	public Database(ConnectionInfo ci, String cipher) {
@@ -691,6 +698,7 @@ public class Database implements DataHandler {
                 MetaRecord rec = h2MetaTable.getMetaRecord(id);
                 if (rec != null)
                     rec.execute(this, systemSession, eventListener);
+                isSysTableLockedThenUnlock(systemSession);
             }
         } finally {
             fromZookeeper = false;
@@ -708,6 +716,8 @@ public class Database implements DataHandler {
                     removeSchemaObject(p.session, (SchemaObject) p.dbObject);
                 else
                     removeDatabaseObject(p.session, p.dbObject);
+
+                isSysTableLockedThenUnlock(p.session);
             }
         } finally {
             fromZookeeper = false;
@@ -2146,6 +2156,13 @@ public class Database implements DataHandler {
 	public boolean isSysTableLocked() {
 		return meta == null || meta.isLockedExclusively();
 	}
+
+    public void isSysTableLockedThenUnlock(Session session) {
+        if (meta != null && meta.isLockedExclusively()) {
+            meta.unlock(session);
+            session.unlock(meta);
+        }
+    }
 
 	/**
 	 * Open a new connection or get an existing connection to another database.

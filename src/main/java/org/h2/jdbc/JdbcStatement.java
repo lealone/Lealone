@@ -13,8 +13,6 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 import org.h2.command.CommandInterface;
-import org.h2.command.CommandRemote;
-import org.h2.command.dml.Select;
 import org.h2.constant.ErrorCode;
 import org.h2.constant.SysProperties;
 import org.h2.engine.SessionInterface;
@@ -36,7 +34,7 @@ public class JdbcStatement extends TraceObject implements Statement {
     protected int updateCount;
     protected final int resultSetType;
     protected final int resultSetConcurrency;
-    protected boolean closedByResultSet;
+    protected final boolean closedByResultSet;
     private CommandInterface executingCommand;
     private int lastExecutedCommandType;
     private ArrayList<String> batchCommands;
@@ -49,14 +47,6 @@ public class JdbcStatement extends TraceObject implements Statement {
         this.resultSetType = resultSetType;
         this.resultSetConcurrency = resultSetConcurrency;
         this.closedByResultSet = closeWithResultSet;
-    }
-
-    JdbcStatement copy(JdbcConnection conn) {
-        JdbcStatement ps = new JdbcStatement(conn, getTraceId(), resultSetType, resultSetConcurrency, closedByResultSet);
-        ps.maxRows = maxRows;
-        ps.fetchSize = fetchSize;
-        ps.escapeProcessing = escapeProcessing;
-        return ps;
     }
 
     /**
@@ -78,9 +68,6 @@ public class JdbcStatement extends TraceObject implements Statement {
                 closeOldResultSet();
                 sql = JdbcConnection.translateSQL(sql, escapeProcessing);
                 CommandInterface command = conn.prepareCommand(sql, fetchSize);
-                Select select = null;
-                if (command instanceof CommandRemote)
-                    select = ((CommandRemote) command).getSelect();
                 ResultInterface result;
                 boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
@@ -91,8 +78,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                     setExecutingStatement(null);
                 }
                 command.close();
-                JdbcResultSet resultSet2 = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                resultSet = new HBaseJdbcResultSet(select, resultSet2, conn, this, sql);
+                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
             }
             return resultSet;
         } catch (Exception e) {
@@ -185,11 +171,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                         boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                         boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                         ResultInterface result = command.executeQuery(maxRows, scrollable);
-                        Select select = null;
-                        if (command instanceof CommandRemote)
-                            select = ((CommandRemote) command).getSelect();
                         resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                        resultSet = new HBaseJdbcResultSet(select, resultSet, conn, this, sql);
                     } else {
                         returnsResultSet = false;
                         updateCount = command.executeUpdate();

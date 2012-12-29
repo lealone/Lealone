@@ -17,44 +17,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.h2.jdbc;
+package org.h2.command;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
 import org.h2.command.CommandInterface;
-import org.h2.command.CommandRemote;
 import org.h2.command.dml.Select;
+import org.h2.command.merge.HBaseJdbcSelectResult;
 import org.h2.engine.Session;
 import org.h2.expression.ParameterInterface;
 import org.h2.result.ResultInterface;
+import org.h2.util.HBaseRegionInfo;
 import org.h2.util.HBaseUtils;
+import org.h2.util.New;
 
-public class HBaseJdbcSelectCommand implements CommandInterface {
+public class CommandSelect implements CommandInterface {
     Select select;
     byte[] tableName;
     byte[] start;
     byte[] end;
-    JdbcConnection jdbcConn;
+    CommandProxy commandProxy;
     String sql;
     int fetchSize;
     Session session;
 
     private List<CommandInterface> commands;
+    private List<byte[]> localRegionNames;
     private ThreadPoolExecutor pool;
     //如果是false，那么按org.apache.hadoop.hbase.client.ClientScanner的功能来实现
     //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery。
     //对于GroupQuery需要把Select语句同时发给相关的RegionServer，得到结果后再在client一起合并。
     private boolean isGroupQuery = false;
 
-    HBaseJdbcSelectCommand() {
+    public CommandSelect() {
     }
 
-    CommandInterface init() {
+    public CommandInterface init() {
         isGroupQuery = select.isGroupQuery();
         List<byte[]> startKeys;
         try {
@@ -71,24 +76,47 @@ public class HBaseJdbcSelectCommand implements CommandInterface {
 
             if (startKeys != null && startKeys.size() == 1) {
                 byte[] startKey = startKeys.get(0);
-                JdbcConnection conn = jdbcConn.getNewConnection(startKey);
-                CommandInterface c = conn.prepareCommand(conn.getNewSQL(select, startKey, false), fetchSize);
-                if (c instanceof CommandRemote)
-                    ((CommandRemote) c).setSelect(select);
-                return c;
+
+                HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
+                if (CommandProxy.isLocal(session, hri)) {
+                    session.setRegionName(Bytes.toBytes(hri.getRegionName()));
+                    Command c = session.prepareLocal(sql);
+                    c.setRegionName(session.getRegionName());
+                    return c;
+                } else {
+                    Properties info = new Properties(session.getOriginalProperties());
+                    info.setProperty("REGION_NAME", hri.getRegionName());
+                    return commandProxy.getCommandInterface(info, hri.getRegionServerURL(), getNewSQL(select, startKey, false));
+                }
             }
 
             if (startKeys != null && startKeys.size() > 0) {
                 commands = new ArrayList<CommandInterface>();
+                localRegionNames = New.arrayList(startKeys.size());
                 for (byte[] startKey : startKeys) {
-                    JdbcConnection conn = jdbcConn.getNewConnection(startKey);
-                    commands.add(conn.prepareCommand(conn.getNewSQL(select, startKey, true), fetchSize));
+                    HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
+                    if (CommandProxy.isLocal(session, hri)) {
+                        Command c = session.prepareLocal(getNewSQL(select, startKey, true));
+                        c.setRegionName(Bytes.toBytes(hri.getRegionName()));
+                        localRegionNames.add(c.getRegionName());
+                        commands.add(c);
+                    } else {
+                        localRegionNames.add(null);
+                        Properties info = new Properties(session.getOriginalProperties());
+                        info.setProperty("REGION_NAME", hri.getRegionName());
+                        commands.add(commandProxy.getCommandInterface(info, hri.getRegionServerURL(),
+                                getNewSQL(select, startKey, true)));
+                    }
                 }
             }
             return this;
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    String getNewSQL(Select select, byte[] startKey, boolean isDistributed) {
+        return select.getPlanSQL(startKey, end, isDistributed);
     }
 
     @Override
@@ -118,7 +146,11 @@ public class HBaseJdbcSelectCommand implements CommandInterface {
     public ResultInterface executeQuery(int maxRows, boolean scrollable) {
         if (commands != null) {
             List<ResultInterface> results = new ArrayList<ResultInterface>(commands.size());
+            int index = 0;
             for (CommandInterface c : commands) {
+                if (localRegionNames.get(index) != null)
+                    session.setRegionName(localRegionNames.get(index));
+                index++;
                 ResultInterface result = c.executeQuery(maxRows, scrollable);
                 if (result != null)
                     results.add(result);

@@ -17,33 +17,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.h2.jdbc;
+package org.h2.command.merge;
 
-import org.h2.engine.Session;
 import org.h2.index.Cursor;
-import org.h2.index.HBaseTableIndex;
-import org.h2.index.IndexType;
 import org.h2.result.ResultInterface;
+import org.h2.result.Row;
 import org.h2.result.SearchRow;
-import org.h2.table.Table;
-import org.h2.table.IndexColumn;
-import org.h2.table.TableFilter;
 
-public class HBaseJdbcSelectIndex extends HBaseTableIndex {
-    private ResultInterface result;
+public class HBaseJdbcSelectCursor implements Cursor {
+    private final ResultInterface result;
 
-    public HBaseJdbcSelectIndex(ResultInterface result, Table table, int id, IndexColumn[] columns, IndexType indexType) {
-        super(table, id, columns, indexType);
+    public HBaseJdbcSelectCursor(ResultInterface result) {
         this.result = result;
     }
 
     @Override
-    public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        return new HBaseJdbcSelectCursor(result, filter.getSession(), first, last);
+    public Row get() {
+        return new Row(result.currentRow(), -1);
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
-        return new HBaseJdbcSelectCursor(result, session, first, last);
+    public SearchRow getSearchRow() {
+        return get();
     }
+
+    @Override
+    public boolean next() {
+        return result.next();
+    }
+
+    @Override
+    public boolean previous() {
+        return false;
+    }
+
 }

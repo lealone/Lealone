@@ -86,14 +86,15 @@ public class JDBCTest extends TestBase {
     }
 
     void testDelete() throws Exception {
+        stmt.executeUpdate("INSERT INTO JDBCTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('13', 'a1', 'b', 12)");
         sql = "SELECT count(*) FROM JDBCTest";
-        assertEquals(9, getIntValue(1, true));
+        assertEquals(10, getIntValue(1, true));
 
-        sql = "DELETE FROM JDBCTest WHERE _rowkey_= '12'";
+        sql = "DELETE FROM JDBCTest WHERE _rowkey_= '13'";
         assertEquals(1, stmt.executeUpdate(sql));
 
         sql = "SELECT count(*) FROM JDBCTest";
-        assertEquals(8, getIntValue(1, true));
+        assertEquals(9, getIntValue(1, true));
     }
 
     void testSelect() throws Exception {

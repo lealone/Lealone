@@ -62,11 +62,11 @@ public class SubqueryTest extends TestBase {
 
         sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"
                 + " AND f2 < ANY(SELECT f2 FROM SubqueryTest WHERE _rowkey_>='04')";
-        assertEquals(3, getIntValue(1, true));
+        assertEquals(5, getIntValue(1, true));
 
         sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"
                 + " AND f2 < SOME(SELECT f2 FROM SubqueryTest WHERE _rowkey_>='04')";
-        assertEquals(3, getIntValue(1, true));
+        assertEquals(5, getIntValue(1, true));
 
     }
 }

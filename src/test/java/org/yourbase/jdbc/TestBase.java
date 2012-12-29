@@ -43,8 +43,7 @@ public class TestBase {
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        //HBase不需要在URL中指定数据库名
-        String url = "jdbc:h2:hbase:";
+        String url = "jdbc:h2:tcp://localhost:9093/hbasedb;STORE_ENGINE_NAME=HBASE";
         conn = DriverManager.getConnection(url, "sa", "");
         stmt = conn.createStatement();
     }
@@ -63,13 +62,10 @@ public class TestBase {
 
     public void createTableSQL(String sql) throws Exception {
         stmt.executeUpdate(sql);
-        Thread.sleep(2000); //TODO CREATE表太慢未完成时，因为是异步的接下来的操作有时会抛异常(比如找不到表)
     }
 
-    //TODO 这个方法很慢
     public void createTable(String tableName, String... splitKeys) throws Exception {
         //stmt.executeUpdate("DROP HBASE TABLE IF EXISTS " + tableName);
-        //Thread.sleep(2000); //TODO drop表太慢未完成时，因为是异步的接下来的建表操作有时会抛异常
 
         StringBuilder builder = new StringBuilder();
         for (String s : splitKeys) {
@@ -105,7 +101,6 @@ public class TestBase {
                 break;
             Thread.sleep(100);
         }
-        //Thread.sleep(2000); //TODO CREATE表太慢未完成时，因为是异步的接下来的操作有时会抛异常(比如找不到表)
 
         //TODO H2数据库会默认把标识符转成大写，这个问题未解决，所以这里表名、列族名用大写
         HTable t = new HTable(conf, tableName.toUpperCase());

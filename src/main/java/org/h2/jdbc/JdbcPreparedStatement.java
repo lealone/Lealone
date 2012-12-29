@@ -23,13 +23,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.List;
 
 import org.h2.command.CommandInterface;
-import org.h2.command.CommandRemote;
-import org.h2.command.dml.Select;
 import org.h2.constant.ErrorCode;
-import org.h2.expression.Parameter;
 import org.h2.expression.ParameterInterface;
 import org.h2.message.DbException;
 import org.h2.message.TraceObject;
@@ -70,24 +66,12 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     private ArrayList<Value[]> batchParameters;
     private HashMap<String, Integer> cachedColumnLabelMap;
 
-    private ResultInterface internalResultInterface;
-
     JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType,
                 int resultSetConcurrency, boolean closeWithResultSet) {
         super(conn, id, resultSetType, resultSetConcurrency, closeWithResultSet);
         setTrace(session.getTrace(), TraceObject.PREPARED_STATEMENT, id);
         this.sqlStatement = sql;
         command = conn.prepareCommand(sql, fetchSize);
-    }
-
-    JdbcPreparedStatement copy(JdbcConnection conn, String sql) {
-        JdbcPreparedStatement ps = new JdbcPreparedStatement(conn, sql, getTraceId(), resultSetType, resultSetConcurrency,
-                closedByResultSet);
-        ps.batchParameters = batchParameters;
-        ps.cachedColumnLabelMap = cachedColumnLabelMap;
-        ps.maxRows = maxRows;
-        ps.fetchSize = fetchSize;
-        return ps;
     }
 
     /**
@@ -123,15 +107,10 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 try {
                     setExecutingStatement(command);
                     result = command.executeQuery(maxRows, scrollable);
-                    internalResultInterface = result;
                 } finally {
                     setExecutingStatement(null);
                 }
-                Select select = null;
-                if (command instanceof CommandRemote)
-                    select = ((CommandRemote) command).getSelect();
                 resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable, cachedColumnLabelMap);
-                resultSet = new HBaseJdbcResultSet(select, resultSet, conn, this);
             }
             return resultSet;
         } catch (Exception e) {
@@ -209,11 +188,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                             ResultInterface result = command.executeQuery(maxRows, scrollable);
-                            Select select = null;
-                            if (command instanceof CommandRemote)
-                                select = ((CommandRemote) command).getSelect();
                             resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                            resultSet = new HBaseJdbcResultSet(select, resultSet, conn, this);
                         } else {
                             returnsResultSet = false;
                             updateCount = command.executeUpdate();
@@ -1554,20 +1529,4 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         return false;
     }
 
-    /**
-     * INTERNAL
-     */
-    public ResultInterface getInternalResultInterface() {
-        return internalResultInterface;
-    }
-
-    /**
-     * INTERNAL
-     */
-    public void setParameters(List<Parameter> parameters) {
-        ArrayList<? extends ParameterInterface> parameters0 = command.getParameters();
-        if (parameters0 != null && parameters != null)
-            for (int i = 0, size = parameters0.size(); i < size; i++)
-                parameters0.get(i).setValue(parameters.get(i).getParamValue(), true);
-    }
 }

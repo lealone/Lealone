@@ -45,7 +45,6 @@ public class JoinTest extends TestBase {
     }
 
     void insert() throws Exception {
-
         stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(1, 10, 'a1', true)");
         stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(2, 20, 'b1', true)");
         stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(3, 30, 'a2', false)");
@@ -66,7 +65,6 @@ public class JoinTest extends TestBase {
     }
 
     void test() throws Exception {
-
         sql = "select rownum, * from JoinTest1 LEFT OUTER JOIN JoinTest2";
         sql = "select rownum, * from JoinTest1 RIGHT OUTER JOIN JoinTest2";
         sql = "select rownum, * from JoinTest1 INNER JOIN JoinTest2";
@@ -102,7 +100,7 @@ public class JoinTest extends TestBase {
         sql = "SELECT rownum, * FROM JoinTest1 LEFT OUTER JOIN JoinTest2 ON name2=null";
 
         sql = "SELECT rownum, * FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1._rowkey_ = 1 and JoinTest2._rowkey_ = 2";
-        
+
         sql = "SELECT rownum, id, id2 FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1._rowkey_ = 1 and JoinTest2._rowkey_ = 2";
 
         //sql = "SELECT rownum, * FROM JoinTest1";

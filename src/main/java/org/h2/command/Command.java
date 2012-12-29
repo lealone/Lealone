@@ -47,6 +47,14 @@ public abstract class Command implements CommandInterface {
 
     private boolean canReuse;
 
+    public byte[] getRegionName() {
+        return getPrepared().getRegionName();
+    }
+
+    public void setRegionName(byte[] regionName) {
+        getPrepared().setRegionName(regionName);
+    }
+
     Command(Parser parser, String sql) {
         this.session = parser.getSession();
         this.sql = sql;
@@ -333,4 +341,5 @@ public abstract class Command implements CommandInterface {
         }
     }
 
+    public abstract Prepared getPrepared();
 }

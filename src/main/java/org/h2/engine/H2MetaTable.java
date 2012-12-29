@@ -92,6 +92,10 @@ public class H2MetaTable implements Abortable {
         tracker.start();
     }
 
+    public H2MetaTableTracker getH2MetaTableTracker() {
+        return tracker;
+    }
+
     public Database getDatabase() {
         return database;
     }

@@ -31,7 +31,6 @@ public class ViewTest extends TestBase {
     void init() throws Exception {
         stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS ViewTest("
                 + "COLUMN FAMILY cf (id int, name varchar(500), b boolean))");
-        Thread.sleep(2000);
         insert();
     }
 
@@ -49,7 +48,6 @@ public class ViewTest extends TestBase {
                 + "AS SELECT id,name FROM ViewTest";
 
         stmt.executeUpdate(sql);
-        Thread.sleep(2000);
 
         sql = "SELECT * FROM my_view";
         //sql = "SELECT * FROM ViewTest";

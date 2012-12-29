@@ -16,6 +16,7 @@ import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.h2.command.Command;
 import org.h2.command.CommandInterface;
+import org.h2.command.CommandProxy;
 import org.h2.command.Parser;
 import org.h2.command.Prepared;
 import org.h2.command.dml.Select;
@@ -456,6 +457,14 @@ public class Session extends SessionWithState {
      * @return the prepared statement
      */
     public Command prepareLocal(String sql) {
+        return prepareCommandInternal(sql, false);
+    }
+
+    public Command prepareRemote(String sql) {
+        return prepareCommandInternal(sql, true);
+    }
+
+    private Command prepareCommandInternal(String sql, boolean useProxy) {
         if (closed) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
@@ -473,6 +482,8 @@ public class Session extends SessionWithState {
         }
         Parser parser = new Parser(this);
         command = parser.prepareCommand(sql);
+        if(useProxy)
+            command = new CommandProxy(parser, sql, command);
         if (queryCache != null) {
             if (command.isCacheable()) {
                 queryCache.put(sql, command);

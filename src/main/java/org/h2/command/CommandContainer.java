@@ -109,4 +109,9 @@ class CommandContainer extends Command {
         return prepared.getType();
     }
 
+    @Override
+    public Prepared getPrepared() {
+        return prepared;
+    }
+
 }

@@ -69,4 +69,9 @@ class CommandList extends Command {
         return command.getCommandType();
     }
 
+    @Override
+    public Prepared getPrepared() {
+        return command.getPrepared();
+    }
+
 }

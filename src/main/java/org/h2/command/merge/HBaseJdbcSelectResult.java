@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.h2.jdbc;
+package org.h2.command.merge;
 
 import java.util.List;
 
@@ -38,7 +38,7 @@ public class HBaseJdbcSelectResult implements ResultInterface {
 
     private ResultInterface mergedResult;
 
-    HBaseJdbcSelectResult(List<ResultInterface> results, Select newSelect, Select oldSelect, boolean isGroupQuery) {
+    public HBaseJdbcSelectResult(List<ResultInterface> results, Select newSelect, Select oldSelect, boolean isGroupQuery) {
         this.results = results;
         this.select = oldSelect;
         defaultResult = results.get(0);

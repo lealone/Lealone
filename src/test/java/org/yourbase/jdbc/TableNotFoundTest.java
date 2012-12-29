@@ -29,7 +29,6 @@ public class TableNotFoundTest extends TestBase {
     void init() throws Exception {
         String t = "TT1";
         createTableSQL("CREATE HBASE TABLE IF NOT EXISTS " + t + "(COLUMN FAMILY cf)");
-        //Thread.sleep(1000);
         stmt.executeUpdate("INSERT INTO " + t + "(_rowkey_, f1, f2) VALUES('01', 'a1', 10)");
     }
 }

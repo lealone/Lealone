@@ -10,54 +10,44 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.sql.Array;
 import java.sql.Blob;
 import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLClientInfoException;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
-import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
-import java.sql.Struct;
 import java.util.Map;
 import java.util.Properties;
-
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.h2.command.CommandInterface;
-import org.h2.command.Prepared;
-import org.h2.command.ddl.DefineCommand;
-import org.h2.command.dml.Delete;
-import org.h2.command.dml.Insert;
-import org.h2.command.dml.Select;
-import org.h2.command.dml.Update;
 import org.h2.constant.ErrorCode;
 import org.h2.constant.SysProperties;
 import org.h2.engine.ConnectionInfo;
 import org.h2.engine.Constants;
-import org.h2.engine.Session;
 import org.h2.engine.SessionInterface;
 import org.h2.engine.SessionRemote;
 import org.h2.message.DbException;
 import org.h2.message.TraceObject;
 import org.h2.result.ResultInterface;
 import org.h2.util.CloseWatcher;
-import org.h2.util.HBaseRegionInfo;
-import org.h2.util.HBaseUtils;
 import org.h2.util.Utils;
 import org.h2.value.CompareMode;
 import org.h2.value.Value;
 import org.h2.value.ValueInt;
 import org.h2.value.ValueNull;
 import org.h2.value.ValueString;
+
+//## Java 1.6 ##
+import java.sql.Array;
+import java.sql.NClob;
+import java.sql.Struct;
+import java.sql.SQLXML;
+import java.sql.SQLClientInfoException;
+//*/
 
 /*## Java 1.7 ##
 import java.util.concurrent.Executor;
@@ -77,8 +67,8 @@ public class JdbcConnection extends TraceObject implements Connection {
 
     private static boolean keepOpenStackTrace;
 
-    private String url;
-    private String user;
+    private final String url;
+    private final String user;
 
     // ResultSet.HOLD_CURSORS_OVER_COMMIT
     private int holdability = 1;
@@ -92,42 +82,21 @@ public class JdbcConnection extends TraceObject implements Connection {
     private int savepointId;
     private String catalog;
     private Statement executingStatement;
-    private CompareMode compareMode = CompareMode.getInstance(null, 0);
-    private CloseWatcher watcher;
+    private final CompareMode compareMode = CompareMode.getInstance(null, 0);
+    private final CloseWatcher watcher;
     private int queryTimeoutCache = -1;
-
-	private boolean isHBaseConnection = false;
-    private Properties info;
-    private HRegionInfo regionInfo;
-    private byte[] stopRowKey;
-    private byte[] tableName;
-    private boolean isGroupQuery = false;
-
-    public byte[] getStopRowKey() {
-        return stopRowKey;
-    }
-
-    public HRegionInfo getRegionInfo() {
-        return regionInfo;
-    }
-
-    public boolean isGroupQuery() {
-        return isGroupQuery;
-    }
 
     /**
      * INTERNAL
      */
     public JdbcConnection(String url, Properties info) throws SQLException {
         this(new ConnectionInfo(url, info), true);
-        this.info = info;
     }
 
     /**
      * INTERNAL
      */
     public JdbcConnection(ConnectionInfo ci, boolean useBaseDir) throws SQLException {
-    	isHBaseConnection = ci.isHBaseConnection();
         try {
             if (useBaseDir) {
                 String baseDir = SysProperties.getBaseDir();
@@ -172,6 +141,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         this.getQueryTimeout = clone.getQueryTimeout;
         this.getReadOnly = clone.getReadOnly;
         this.rollback = clone.rollback;
+        this.watcher = null;
     }
 
     /**
@@ -184,6 +154,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         setTrace(trace, TraceObject.CONNECTION, id);
         this.user = user;
         this.url = url;
+        this.watcher = null;
     }
 
     private void closeOld() {
@@ -1142,97 +1113,9 @@ public class JdbcConnection extends TraceObject implements Connection {
      * @return the command
      */
     CommandInterface prepareCommand(String sql, int fetchSize) {
-        if (isHBaseConnection && session instanceof Session) {
-            Prepared prepared = ((Session) session).prepare(sql, true);
-
-            if (prepared instanceof DefineCommand) {
-                try {
-                    JdbcConnection masterConn = new JdbcConnection(HBaseUtils.getMasterURL(), info);
-                    return masterConn.prepareCommand(sql, fetchSize);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            } else if (!prepared.isDistributedSQL()) {
-                try {
-                    JdbcConnection rsConn = new JdbcConnection(HBaseUtils.getRegionServerURL(), info);
-                    return rsConn.prepareCommand(sql, fetchSize);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            } else if (prepared instanceof Insert || prepared instanceof Delete || prepared instanceof Update) {
-                String tableName = prepared.getTableName();
-                String rowKey = prepared.getRowKey();
-                if (rowKey == null)
-                    throw new RuntimeException("rowKey is null");
-
-                try {
-                    HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, rowKey);
-                    info.setProperty("REGION_NAME", hri.getRegionName());
-                    JdbcConnection rsConn = new JdbcConnection(hri.getRegionServerURL(), info);
-                    return rsConn.prepareCommand(sql, fetchSize);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            } else if (prepared instanceof Select) {
-                byte[] startRowKey = null;
-                byte[] stopRowKey = null;
-                String[] rowKeys = prepared.getRowKeys();
-                if (rowKeys != null) {
-                    if (rowKeys.length >= 1 && rowKeys[0] != null)
-                        startRowKey = Bytes.toBytes(rowKeys[0]);
-
-                    if (rowKeys.length >= 2 && rowKeys[1] != null)
-                        stopRowKey = Bytes.toBytes(rowKeys[1]);
-                }
-
-                if (startRowKey == null)
-                    startRowKey = HConstants.EMPTY_START_ROW;
-                if (stopRowKey == null)
-                    stopRowKey = HConstants.EMPTY_END_ROW;
-
-                this.stopRowKey = stopRowKey;
-                this.tableName = Bytes.toBytes(prepared.getTableName());
-
-                this.isGroupQuery = ((Select) prepared).isGroupQuery();
-                HBaseJdbcSelectCommand command = new HBaseJdbcSelectCommand();
-                command.select = (Select) prepared;
-                command.tableName = tableName;
-                command.start = startRowKey;
-                command.end = stopRowKey;
-                command.jdbcConn = this;
-                command.sql = sql;
-                command.fetchSize = fetchSize;
-                command.session = (Session) session;
-                CommandInterface c = command.init();
-                return c;
-            }
-        }
         return session.prepareCommand(sql, fetchSize);
     }
 
-    JdbcConnection getNewConnection(byte[] startKey) {
-        try {
-            HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
-            info.setProperty("REGION_NAME", hri.getRegionName());
-            JdbcConnection rsConn = new JdbcConnection(hri.getRegionServerURL(), info);
-            rsConn.isGroupQuery = isGroupQuery;
-            rsConn.regionInfo = hri.getHRegionInfo();
-            if (this.regionInfo == null)
-                this.regionInfo = rsConn.regionInfo;
-            rsConn.stopRowKey = stopRowKey;
-            rsConn.tableName = tableName;
-            //rsConn.isHBaseConnection = isHBaseConnection;
-            //rsConn.session = session;
-            return rsConn;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    String getNewSQL(Select select, byte[] startKey, boolean isDistributed) {
-        return select.getPlanSQL(startKey, stopRowKey, isDistributed);
-    }
-    
     private CommandInterface prepareCommand(String sql, CommandInterface old) {
         return old == null ? session.prepareCommand(sql, Integer.MAX_VALUE) : old;
     }

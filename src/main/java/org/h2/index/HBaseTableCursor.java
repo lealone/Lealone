@@ -90,7 +90,10 @@ public class HBaseTableCursor implements Cursor {
                 }
             }
             try {
-                scannerId = session.getRegionServer().openScanner(session.getRegionName(), scan);
+                byte[] regionName = filter.getSelect().getRegionName();
+                if (regionName == null)
+                    regionName = session.getRegionName();
+                scannerId = session.getRegionServer().openScanner(regionName, scan);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

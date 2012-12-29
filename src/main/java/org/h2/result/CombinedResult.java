@@ -23,15 +23,13 @@ import java.util.List;
 import java.util.Properties;
 
 import org.apache.hadoop.hbase.util.Bytes;
+import org.h2.command.CommandProxy;
 import org.h2.command.dml.Query;
 import org.h2.engine.Session;
 import org.h2.expression.RowKeyConditionInfo;
-import org.h2.jdbc.JdbcConnection;
-import org.h2.jdbc.JdbcPreparedStatement;
 import org.h2.table.TableFilter;
 import org.h2.util.HBaseRegionInfo;
 import org.h2.util.HBaseUtils;
-import org.h2.util.JdbcUtils;
 import org.h2.util.ValueHashMap;
 import org.h2.value.Value;
 import org.h2.value.ValueArray;
@@ -47,8 +45,6 @@ public class CombinedResult implements ResultInterface {
     private String[] sqls;
     private int index;
     private int size;
-    private JdbcConnection conn;
-    private JdbcPreparedStatement ps;
     private ValueHashMap<Value[]> distinctRows;
 
     public CombinedResult(Session session, Query query, int maxrows) {
@@ -72,7 +68,7 @@ public class CombinedResult implements ResultInterface {
         this.query = filter.getSelect();
         this.maxrows = -1;
         this.tableName = HBaseUtils.toBytes(filter.getTable().getName());
-        
+
         RowKeyConditionInfo rkci = filter.getSelect().getRowKeyConditionInfo(filter);
         startKeys = rkci.getStartKeys();
         sqls = rkci.getPlanSQLs(filter);
@@ -81,10 +77,6 @@ public class CombinedResult implements ResultInterface {
     }
 
     private void closeAllSilently() {
-        if (conn != null)
-            JdbcUtils.closeSilently(conn);
-        if (ps != null)
-            JdbcUtils.closeSilently(ps);
         if (result != null)
             result.close();
     }
@@ -98,23 +90,14 @@ public class CombinedResult implements ResultInterface {
         try {
             HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKeys.get(index));
 
-            if (hri.getHostname().equals(session.getRegionServer().getServerName().getHostname())
-                    && hri.getH2TcpPort() == session.getRegionServer().getServerName().getH2TcpPort()) {
+            if (CommandProxy.isLocal(session, hri)) {
                 session.setRegionName(Bytes.toBytes(hri.getRegionName()));
                 result = session.prepareLocal(sqls[index]).query(maxrows);
             } else {
                 Properties info = new Properties(session.getOriginalProperties());
                 info.setProperty("REGION_NAME", hri.getRegionName());
-
-                //TODO 重用regionServerURL相同的连接
-                conn = new JdbcConnection(hri.getRegionServerURL(), info);
-
-                ps = (JdbcPreparedStatement) conn.prepareStatement(sqls[index]);
-                ps.setMaxRows(maxrows);
-                ps.setFetchSize(session.getFetchSize());
-                ps.setParameters(query.getParameters());
-                ps.executeQuery();
-                result = ps.getInternalResultInterface();
+                result = CommandProxy.getCommandInterface(session, info, hri.getRegionServerURL(), sqls[index],
+                        query.getParameters()).executeQuery(maxrows, false);
             }
             index++;
         } catch (Exception e) {

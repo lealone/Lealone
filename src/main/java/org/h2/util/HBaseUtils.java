@@ -234,6 +234,10 @@ public class HBaseUtils {
         return createURL(getHBaseAdmin().getClusterStatus().getMaster());
     }
 
+    public static ServerName getMasterServerName() throws IOException {
+        return getHBaseAdmin().getClusterStatus().getMaster();
+    }
+
     /**
      * 随机获取一个可用的RegionServer URL
      * 
@@ -245,6 +249,11 @@ public class HBaseUtils {
         ServerName sn = new ArrayList<ServerName>(servers).get(random.nextInt(servers.size()));
         return createURL(sn);
     }
+
+//    public static ServerName getRegionServerName() throws IOException {
+//        Collection<ServerName> servers = getHBaseAdmin().getClusterStatus().getServers();
+//        return new ArrayList<ServerName>(servers).get(random.nextInt(servers.size()));
+//    }
 
     public static String getRegionServerURL(String tableName, String rowKey) throws IOException {
         return getRegionServerURL(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));

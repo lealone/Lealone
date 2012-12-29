@@ -370,6 +370,7 @@ public class Select extends Query {
         int rowNumber = 0;
         setCurrentRowNumber(0);
         ValueArray defaultGroup = ValueArray.get(new Value[0]);
+        topTableFilter.reset();
         while (topTableFilter.next()) {
             setCurrentRowNumber(rowNumber + 1);
             //if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
