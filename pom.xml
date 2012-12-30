@@ -34,10 +34,10 @@
   </parent>
 
   <groupId>org.apache.hbase</groupId>
-  <artifactId>hbase</artifactId>
+  <artifactId>yourbase</artifactId>
   <packaging>jar</packaging>
-  <version>0.94.3-SNAPSHOT</version>
-  <name>HBase</name>
+  <version>0.10.0-RC2</version>
+  <name>YourBase</name>
   <description>
     HBase is the &amp;lt;a href="http://hadoop.apache.org"&amp;rt;Hadoop&lt;/a&amp;rt; database. Use it when you need
     random, realtime read/write access to your Big Data.
@@ -1032,8 +1032,8 @@
     <surefire.provider>surefire-junit47</surefire.provider>
 
     <!-- default: run small & medium, medium with 2 threads -->
-    <surefire.skipFirstPart>false</surefire.skipFirstPart>
-    <surefire.skipSecondPart>false</surefire.skipSecondPart>
+    <surefire.skipFirstPart>true</surefire.skipFirstPart>
+    <surefire.skipSecondPart>true</surefire.skipSecondPart>
 
     <surefire.firstPartForkMode>once</surefire.firstPartForkMode>
     <surefire.firstPartParallel>classes</surefire.firstPartParallel>
