@@ -71,7 +71,7 @@ public class CreateViewTest extends TestBase {
         //        sql = "CREATE OR REPLACE FORCE VIEW my_view COMMENT IS 'my view'(f1,f2) " //
         //                + "AS SELECT id,name FROM CreateViewTest";
 
-        //stmt.executeUpdate(sql);
+        stmt.executeUpdate(sql);
 
         sql = "SELECT * FROM my_view";
         //sql = "SELECT * FROM CreateViewTest";

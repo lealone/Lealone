@@ -142,7 +142,7 @@ public class CommandProxy extends Command {
                 c.end = stopRowKey;
                 c.sql = sql;
                 c.fetchSize = session.getFetchSize();
-                c.session = (Session) session;
+                c.session = session;
                 this.command = c.init();
             } else {
                 this.command = command;
@@ -160,23 +160,30 @@ public class CommandProxy extends Command {
         return getCommandInterface(session, info, url, sql, params);
     }
 
+    private void initParams(CommandInterface command) {
+        if (params != null && command.getParameters() != null && command.getParameters() != params) {
+            ArrayList<? extends ParameterInterface> oldParams = command.getParameters();
+            for (int i = 0, size = oldParams.size(); i < size; i++) {
+                oldParams.get(i).setValue(params.get(i).getParamValue(), true);
+            }
+        }
+    }
+
     @Override
     public ResultInterface executeQuery(int maxrows, boolean scrollable) {
+        initParams(command);
         return command.executeQuery(maxrows, scrollable);
     }
 
     @Override
     public int executeUpdate() {
-        H2MetaTableTracker tracker = null;
-        if (prepared instanceof DefineCommand) {
-            tracker = session.getDatabase().getH2MetaTableTracker();
-        }
-
+        initParams(command);
         int updateCount = command.executeUpdate();
-
-        if (tracker != null)
-            tracker.updateAll();
-
+        if (prepared instanceof DefineCommand) {
+            H2MetaTableTracker tracker = session.getDatabase().getH2MetaTableTracker();
+            if (tracker != null)
+                tracker.updateAll();
+        }
         return updateCount;
     }
 
@@ -197,7 +204,7 @@ public class CommandProxy extends Command {
 
     @Override
     public ArrayList<? extends ParameterInterface> getParameters() {
-        return prepared.getParameters();
+        return params;
     }
 
     @Override
