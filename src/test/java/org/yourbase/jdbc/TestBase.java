@@ -43,7 +43,7 @@ public class TestBase {
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        String url = "jdbc:h2:tcp://localhost:9093/hbasedb;STORE_ENGINE_NAME=HBASE";
+        String url = "jdbc:h2:tcp://localhost:9092/hbasedb;STORE_ENGINE_NAME=HBASE";
         conn = DriverManager.getConnection(url, "sa", "");
         stmt = conn.createStatement();
     }

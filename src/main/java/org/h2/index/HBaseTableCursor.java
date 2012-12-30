@@ -172,6 +172,11 @@ public class HBaseTableCursor implements Cursor {
         if (result != null && result.length > 0)
             return true;
 
+        try {
+            session.getRegionServer().close(scannerId);
+        } catch (IOException e) {
+            //ignore
+        }
         return false;
     }
 

@@ -107,6 +107,7 @@ import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.fs.HFileSystem;
+import org.apache.hadoop.hbase.h2.TcpServer;
 import org.apache.hadoop.hbase.io.hfile.BlockCache;
 import org.apache.hadoop.hbase.io.hfile.BlockCacheColumnFamilySummary;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
@@ -691,7 +692,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
       }
       registerMBean();
 
-      org.apache.hadoop.hbase.h2.TcpServer.start(LOG, conf, null, this);
+      TcpServer.start(LOG, TcpServer.getRegionServerTcpPort(conf), null, this);
 
       // We registered with the Master.  Go into run mode.
       long lastMsg = 0;
@@ -980,7 +981,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
           String hostnameFromMasterPOV = e.getValue().toString();
           this.serverNameFromMasterPOV = new ServerName(hostnameFromMasterPOV,
             this.isa.getPort(), this.startcode);
-          serverNameFromMasterPOV.setH2TcpPort(conf.getInt("h2.tcpPort", org.h2.engine.Constants.DEFAULT_TCP_PORT));
+          serverNameFromMasterPOV.setH2TcpPort(TcpServer.getRegionServerTcpPort(conf));
           LOG.info("Master passed us hostname to use. Was=" +
             this.isa.getHostName() + ", Now=" +
             this.serverNameFromMasterPOV.getHostname());
@@ -1899,8 +1900,7 @@ public class HRegionServer implements HRegionInterface, HBaseRPCErrorHandler,
         "with port=" + this.isa.getPort() + ", startcode=" + this.startcode);
       long now = EnvironmentEdgeManager.currentTimeMillis();
       int port = this.isa.getPort();
-      int h2TcpPort = (conf.getInt("h2.tcpPort", org.h2.engine.Constants.DEFAULT_TCP_PORT));
-      result = this.hbaseMaster.regionServerStartup(port, h2TcpPort, this.startcode, now);
+      result = this.hbaseMaster.regionServerStartup(port, TcpServer.getRegionServerTcpPort(conf), this.startcode, now);
     } catch (RemoteException e) {
       IOException ioe = e.unwrapRemoteException();
       if (ioe instanceof ClockOutOfSyncException) {

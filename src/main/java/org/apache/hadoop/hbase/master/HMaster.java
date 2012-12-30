@@ -69,6 +69,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 import org.apache.hadoop.hbase.executor.ExecutorService;
 import org.apache.hadoop.hbase.executor.ExecutorService.ExecutorType;
+import org.apache.hadoop.hbase.h2.TcpServer;
 import org.apache.hadoop.hbase.ipc.HBaseRPC;
 import org.apache.hadoop.hbase.ipc.HBaseServer;
 import org.apache.hadoop.hbase.ipc.HMasterInterface;
@@ -261,7 +262,7 @@ Server {
     this.isa = this.rpcServer.getListenerAddress();
     this.serverName = new ServerName(this.isa.getHostName(),
       this.isa.getPort(), System.currentTimeMillis());
-    this.serverName.setH2TcpPort(conf.getInt("h2.tcpPort", org.h2.engine.Constants.DEFAULT_TCP_PORT));
+    this.serverName.setH2TcpPort(TcpServer.getMasterTcpPort(conf));
     this.rsFatals = new MemoryBoundedLogMessageBuffer(
         conf.getLong("hbase.master.buffer.for.rs.fatals", 1*1024*1024));
 
@@ -343,7 +344,7 @@ Server {
       // We are either the active master or we were asked to shutdown
       if (!this.stopped) {
         finishInitialization(startupStatus, false);
-        org.apache.hadoop.hbase.h2.TcpServer.start(LOG, conf, this, null);
+        TcpServer.start(LOG, TcpServer.getMasterTcpPort(conf), this, null);
         loop();
       }
     } catch (Throwable t) {

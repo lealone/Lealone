@@ -30,26 +30,32 @@ import org.h2.tools.Server;
 import org.h2.server.Service;
 
 public class TcpServer {
-	public static void start(Log log, final Configuration conf, HMaster master, HRegionServer regionServer) {
-		ArrayList<String> list = new ArrayList<String>();
-		int tcpPort = conf.getInt("h2.tcpPort", org.h2.engine.Constants.DEFAULT_TCP_PORT);
-		list.add("-tcp");
-		list.add("-tcpPort");
-		list.add("" + tcpPort);
+    public static void start(Log log, int tcpPort, HMaster master, HRegionServer regionServer) {
+        ArrayList<String> list = new ArrayList<String>();
+        list.add("-tcp");
+        list.add("-tcpPort");
+        list.add("" + tcpPort);
 
-		try {
-			Server server = Server.createTcpServer(list.toArray(new String[list.size()]));
-			Service service = server.getService();
-			org.h2.server.TcpServer tcpServer = (org.h2.server.TcpServer) service;
-			tcpServer.setMaster(master);
-			tcpServer.setRegionServer(regionServer);
-			server.start();
+        try {
+            Server server = Server.createTcpServer(list.toArray(new String[list.size()]));
+            Service service = server.getService();
+            org.h2.server.TcpServer tcpServer = (org.h2.server.TcpServer) service;
+            tcpServer.setMaster(master);
+            tcpServer.setRegionServer(regionServer);
+            server.start();
 
-			log.info("Started H2 database tcp server at port " + tcpPort);
-			//org.h2.tools.Server.main(list.toArray(new String[list.size()]));
-		} catch (SQLException e) {
-			throw new RuntimeException(e);
-		}
-	}
+            log.info("Started H2 database tcp server at port " + tcpPort);
+            //org.h2.tools.Server.main(list.toArray(new String[list.size()]));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
+    public static int getMasterTcpPort(Configuration conf) {
+        return conf.getInt("h2.master.tcp.port", org.h2.engine.Constants.DEFAULT_TCP_PORT - 1);
+    }
+
+    public static int getRegionServerTcpPort(Configuration conf) {
+        return conf.getInt("h2.regionserver.tcp.port", org.h2.engine.Constants.DEFAULT_TCP_PORT);
+    }
 }

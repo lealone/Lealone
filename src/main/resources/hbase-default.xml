@@ -870,4 +870,15 @@
     </description>
   </property>
 
+  <property>
+    <name>h2.master.tcp.port</name>
+    <value>9091</value>
+    <description>The port the H2 TCP master server should bind to.</description>
+  </property>
+
+  <property>
+    <name>h2.regionserver.tcp.port</name>
+    <value>9092</value>
+    <description>The port the H2 TCP region server should bind to.</description>
+  </property>
 </configuration>
