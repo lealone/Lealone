@@ -55,7 +55,7 @@ public abstract class Command implements CommandInterface {
         getPrepared().setRegionName(regionName);
     }
 
-    Command(Parser parser, String sql) {
+    protected Command(Parser parser, String sql) {
         this.session = parser.getSession();
         this.sql = sql;
         trace = session.getDatabase().getTrace(Trace.COMMAND);

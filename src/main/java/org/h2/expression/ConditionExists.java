@@ -8,13 +8,14 @@ package org.h2.expression;
 
 import org.h2.command.dml.Query;
 import org.h2.engine.Session;
-import org.h2.result.CombinedResult;
 import org.h2.result.ResultInterface;
 import org.h2.table.ColumnResolver;
 import org.h2.table.TableFilter;
 import org.h2.util.StringUtils;
 import org.h2.value.Value;
 import org.h2.value.ValueBoolean;
+
+import com.codefollower.yourbase.result.CombinedResult;
 
 /**
  * An 'exists' condition as in WHERE EXISTS(SELECT ...)

@@ -11,13 +11,14 @@ import org.h2.command.dml.Query;
 import org.h2.constant.ErrorCode;
 import org.h2.engine.Session;
 import org.h2.message.DbException;
-import org.h2.result.CombinedResult;
 import org.h2.result.ResultInterface;
 import org.h2.table.ColumnResolver;
 import org.h2.table.TableFilter;
 import org.h2.value.Value;
 import org.h2.value.ValueArray;
 import org.h2.value.ValueNull;
+
+import com.codefollower.yourbase.result.CombinedResult;
 
 /**
  * A query returning a single value.

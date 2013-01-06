@@ -16,7 +16,6 @@ import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.h2.command.Command;
 import org.h2.command.CommandInterface;
-import org.h2.command.CommandProxy;
 import org.h2.command.Parser;
 import org.h2.command.Prepared;
 import org.h2.command.dml.Select;
@@ -42,6 +41,8 @@ import org.h2.value.Value;
 import org.h2.value.ValueLong;
 import org.h2.value.ValueNull;
 import org.h2.value.ValueString;
+
+import com.codefollower.yourbase.command.CommandProxy;
 
 /**
  * A session represents an embedded database connection. When using the server

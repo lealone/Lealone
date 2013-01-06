@@ -146,7 +146,7 @@ public class ConnectionInfo implements Cloneable {
         } else if (name.startsWith("hbase:")) {
         	isHBaseConnection = true;
             persistent = false;
-            name = org.h2.util.HBaseUtils.HBASE_DB_NAME;
+            name = com.codefollower.yourbase.util.HBaseUtils.HBASE_DB_NAME;
         } else if (name.startsWith("file:")) {
             name = name.substring("file:".length());
             persistent = true;

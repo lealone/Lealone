@@ -66,7 +66,9 @@ import org.h2.value.CaseInsensitiveMap;
 import org.h2.value.CompareMode;
 import org.h2.value.Value;
 import org.h2.value.ValueInt;
-import org.h2.zookeeper.H2MetaTableTracker;
+
+import com.codefollower.yourbase.table.H2MetaTable;
+import com.codefollower.yourbase.zookeeper.H2MetaTableTracker;
 
 /**
  * There is one database object per open database.

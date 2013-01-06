@@ -16,7 +16,6 @@ import org.h2.expression.Expression;
 import org.h2.expression.ExpressionColumn;
 import org.h2.expression.ExpressionVisitor;
 import org.h2.expression.Parameter;
-import org.h2.expression.RowKeyConditionInfo;
 import org.h2.expression.ValueExpression;
 import org.h2.message.DbException;
 import org.h2.result.LocalResult;
@@ -32,6 +31,8 @@ import org.h2.util.StringUtils;
 import org.h2.value.Value;
 import org.h2.value.ValueInt;
 import org.h2.value.ValueNull;
+
+import com.codefollower.yourbase.command.RowKeyConditionInfo;
 
 /**
  * Represents a union SELECT statement.

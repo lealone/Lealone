@@ -27,7 +27,7 @@ public abstract class DefineCommand extends Prepared {
      *
      * @param session the session
      */
-    DefineCommand(Session session) {
+    protected DefineCommand(Session session) {
         super(session);
     }
 

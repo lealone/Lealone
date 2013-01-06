@@ -12,13 +12,14 @@ import org.h2.engine.Database;
 import org.h2.engine.Session;
 import org.h2.index.IndexCondition;
 import org.h2.message.DbException;
-import org.h2.result.CombinedResult;
 import org.h2.table.ColumnResolver;
 import org.h2.table.TableFilter;
 import org.h2.util.StringUtils;
 import org.h2.value.Value;
 import org.h2.value.ValueBoolean;
 import org.h2.value.ValueNull;
+
+import com.codefollower.yourbase.result.CombinedResult;
 
 /**
  * An 'in' condition with a subquery, as in WHERE ID IN(SELECT ...)

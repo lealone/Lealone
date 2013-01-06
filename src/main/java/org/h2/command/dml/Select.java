@@ -27,7 +27,6 @@ import org.h2.expression.Expression;
 import org.h2.expression.ExpressionColumn;
 import org.h2.expression.ExpressionVisitor;
 import org.h2.expression.Parameter;
-import org.h2.expression.RowKeyConditionInfo;
 import org.h2.expression.ValueExpression;
 import org.h2.expression.Wildcard;
 import org.h2.index.Cursor;
@@ -43,7 +42,6 @@ import org.h2.result.SearchRow;
 import org.h2.result.SortOrder;
 import org.h2.table.Column;
 import org.h2.table.ColumnResolver;
-import org.h2.table.HBaseTable;
 import org.h2.table.IndexColumn;
 import org.h2.table.Table;
 import org.h2.table.TableFilter;
@@ -55,6 +53,9 @@ import org.h2.util.ValueHashMap;
 import org.h2.value.Value;
 import org.h2.value.ValueArray;
 import org.h2.value.ValueNull;
+
+import com.codefollower.yourbase.command.RowKeyConditionInfo;
+import com.codefollower.yourbase.table.HBaseTable;
 
 /**
  * This class represents a simple SELECT statement.

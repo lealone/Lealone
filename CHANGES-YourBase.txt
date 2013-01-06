@@ -24,3 +24,43 @@ Release 0.10.0-RC1 - 2012/12/01
 	VAR_POP
 	VAR_SAMP
 
+Release 0.10.0-RC2 - 2012/12/31
+
+  支持视图
+  支持Join
+  支持子查询
+  支持动态表
+  去掉Client SQL预解析，转移到RegionServer
+
+
+Release 0.10.0-RC3 - 未发布
+
+Sub-task
+
+    - 
+
+Bug
+
+    - 
+    
+
+Improvement
+
+    - 在不修改任何HBase源代码的情况下把HBase集成到YourBase中。
+
+
+New Feature
+
+    - 
+
+
+Task
+
+    - 
+
+
+Test
+
+    - 
+
+

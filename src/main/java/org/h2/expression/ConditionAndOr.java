@@ -15,6 +15,8 @@ import org.h2.value.Value;
 import org.h2.value.ValueBoolean;
 import org.h2.value.ValueNull;
 
+import com.codefollower.yourbase.command.RowKeyConditionInfo;
+
 /**
  * An 'and' or 'or' condition as in WHERE ID=1 AND NAME=?
  */

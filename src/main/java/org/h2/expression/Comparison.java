@@ -19,6 +19,8 @@ import org.h2.value.Value;
 import org.h2.value.ValueBoolean;
 import org.h2.value.ValueNull;
 
+import com.codefollower.yourbase.command.RowKeyConditionInfo;
+
 /**
  * Example comparison expressions are ID=1, NAME=NAME, NAME IS NULL.
  */

@@ -20,11 +20,12 @@ import org.h2.schema.Constant;
 import org.h2.schema.Schema;
 import org.h2.table.Column;
 import org.h2.table.ColumnResolver;
-import org.h2.table.HBaseTable;
 import org.h2.table.Table;
 import org.h2.table.TableFilter;
 import org.h2.value.Value;
 import org.h2.value.ValueBoolean;
+
+import com.codefollower.yourbase.table.HBaseTable;
 
 /**
  * A expression that represents a column of a table or view.
