@@ -20,11 +20,19 @@
 package com.codefollower.yourbase.test.start;
 
 import org.apache.hadoop.hbase.master.HMaster;
+import org.apache.hadoop.hbase.zookeeper.HQuorumPeer;
 
 public class HMasterStarter {
 
     public static void main(String[] args) throws Exception {
+        new ZookeeperThread().start();
+        Thread.sleep(1000);
         HMaster.main(new String[] { "start" });
     }
 
+    static class ZookeeperThread extends Thread {
+        public void run() {
+            HQuorumPeer.main(new String[0]);
+        }
+    }
 }

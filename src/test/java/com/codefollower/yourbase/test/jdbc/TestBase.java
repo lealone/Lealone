@@ -24,14 +24,14 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import junit.framework.Assert;
+//import junit.framework.Assert;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.HTable;
+//import org.apache.hadoop.conf.Configuration;
+//import org.apache.hadoop.hbase.HBaseConfiguration;
+//import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
-import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+//import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
+//import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -94,18 +94,18 @@ public class TestBase {
                 + "COLUMN FAMILY cf2 (OPTIONS(MIN_VERSIONS=2, KEEP_DELETED_CELLS=true))" //
                 + ")");
 
-        Configuration conf = HBaseConfiguration.create();
-        //确保表已可用
-        while (true) {
-            if (ZKTableReadOnly.isEnabledTable(new ZooKeeperWatcher(conf, "TestBase", null), tableName.toUpperCase()))
-                break;
-            Thread.sleep(100);
-        }
-
-        //TODO H2数据库会默认把标识符转成大写，这个问题未解决，所以这里表名、列族名用大写
-        HTable t = new HTable(conf, tableName.toUpperCase());
-        Assert.assertEquals(splitKeys.length + 1, t.getRegionLocations().size());
-        t.close();
+        //        Configuration conf = HBaseConfiguration.create();
+        //        //确保表已可用
+        //        while (true) {
+        //            if (ZKTableReadOnly.isEnabledTable(new ZooKeeperWatcher(conf, "TestBase", null), tableName.toUpperCase()))
+        //                break;
+        //            Thread.sleep(100);
+        //        }
+        //
+        //        //TODO H2数据库会默认把标识符转成大写，这个问题未解决，所以这里表名、列族名用大写
+        //        HTable t = new HTable(conf, tableName.toUpperCase());
+        //        Assert.assertEquals(splitKeys.length + 1, t.getRegionLocations().size());
+        //        t.close();
     }
 
     private void check() throws Exception {

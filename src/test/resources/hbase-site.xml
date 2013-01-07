@@ -40,7 +40,7 @@
 
 	<property>
 		<name>my.hbase.data.dir</name>
-		<value>E:/hbase/tmp/data</value>
+		<value>E:/yourbase/test/hbase/data</value>
 	</property>
 
 	<property>

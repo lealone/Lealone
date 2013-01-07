@@ -61,6 +61,6 @@ Task
 
 Test
 
-    - 
+    - 简化测试启动过程，启动内置zookeeper、HMaster、HRegionServer
 
 
