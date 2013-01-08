@@ -44,7 +44,7 @@ public class HBaseRegionObserver extends BaseRegionObserver {
         if (server == null) {
             server = new H2TcpServer();
             HRegionServer rs = (HRegionServer) ((RegionCoprocessorEnvironment) env).getRegionServerServices();
-            server.start(log, H2TcpServer.getRegionServerTcpPort(rs.getConfiguration()), rs);
+            server.start(H2TcpServer.getRegionServerTcpPort(rs.getConfiguration()), rs);
         }
     }
 
