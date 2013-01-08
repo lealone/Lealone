@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
@@ -30,9 +31,12 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.h2.server.Service;
 import org.h2.tools.Server;
 
+import com.codefollower.yourbase.coprocessor.HBaseMasterObserver;
 import com.codefollower.yourbase.zookeeper.H2TcpPortTracker;
 
 public class H2TcpServer {
+	private static final Log log = LogFactory.getLog(HBaseMasterObserver.class.getName());
+	
     private Server server;
     private int tcpPort;
     private ServerName serverName;
@@ -52,25 +56,25 @@ public class H2TcpServer {
         H2TcpPortTracker.deleteH2TcpPortEphemeralNode(serverName, tcpPort);
     }
 
-    public void start(Log log, int tcpPort, HMaster master) {
+    public void start(int tcpPort, HMaster master) {
         this.serverName = master.getServerName();
         this.tcpPort = tcpPort;
-        startServer(log, tcpPort, master, null);
+        startServer(tcpPort, master, null);
         H2TcpPortTracker.createH2TcpPortEphemeralNode(master.getServerName(), tcpPort);
     }
 
-    public void start(Log log, int tcpPort, HRegionServer regionServer) {
+    public void start(int tcpPort, HRegionServer regionServer) {
         this.serverName = regionServer.getServerName();
         this.tcpPort = tcpPort;
-        startServer(log, tcpPort, null, regionServer);
+        startServer(tcpPort, null, regionServer);
         H2TcpPortTracker.createH2TcpPortEphemeralNode(regionServer.getServerName(), tcpPort);
     }
 
-    private void startServer(Log log, int tcpPort, HMaster master, HRegionServer regionServer) {
+    private void startServer(int tcpPort, HMaster master, HRegionServer regionServer) {
         ArrayList<String> list = new ArrayList<String>();
         list.add("-tcp");
         list.add("-tcpPort");
-        list.add("" + tcpPort);
+        list.add(Integer.toString(tcpPort));
 
         try {
             server = Server.createTcpServer(list.toArray(new String[list.size()]));

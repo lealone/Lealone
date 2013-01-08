@@ -44,7 +44,7 @@ public class HMaster extends org.apache.hadoop.hbase.master.HMaster {
 
     @Override
     public void run() {
-        server.start(log, H2TcpServer.getMasterTcpPort(getConfiguration()), this);
+        server.start(H2TcpServer.getMasterTcpPort(getConfiguration()), this);
         super.run();
         server.stop();
     }

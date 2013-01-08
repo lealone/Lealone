@@ -45,7 +45,7 @@ public class HBaseMasterObserver extends BaseMasterObserver {
         if (server == null) {
             server = new H2TcpServer();
             HMaster m = (HMaster) ((MasterCoprocessorEnvironment) env).getMasterServices();
-            server.start(log, H2TcpServer.getMasterTcpPort(m.getConfiguration()), m);
+            server.start(H2TcpServer.getMasterTcpPort(m.getConfiguration()), m);
         }
     }
 

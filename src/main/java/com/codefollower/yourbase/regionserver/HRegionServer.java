@@ -42,7 +42,7 @@ public class HRegionServer extends org.apache.hadoop.hbase.regionserver.HRegionS
 
     @Override
     public void run() {
-        server.start(log, H2TcpServer.getRegionServerTcpPort(getConfiguration()), this);
+        server.start(H2TcpServer.getRegionServerTcpPort(getConfiguration()), this);
         super.run();
         server.stop();
     }
