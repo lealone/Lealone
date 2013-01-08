@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 /.settings
 /target
+=======
+.settings
+target
+>>>>>>> upstream/master
 /.classpath
 /.project
