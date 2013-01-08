@@ -52,6 +52,11 @@ public class CommandProxy extends Command {
     private Prepared prepared;
     private ArrayList<? extends ParameterInterface> params;
 
+    /**
+     * 对于PreparedStatement，因为存在未知参数，所以无法确定当前SQL要放到哪里执行
+     */
+    private boolean isDeterministic;
+
     public static boolean isLocal(Session session, HBaseRegionInfo hri) throws Exception {
         if (hri == null)
             return false;
@@ -91,6 +96,35 @@ public class CommandProxy extends Command {
 
         prepared = command.getPrepared();
         params = command.getParameters();
+
+        isDeterministic = params == null || params.isEmpty();
+
+        if (!isDeterministic) {
+            this.command = command;
+        } else {
+            parseRowKey();
+        }
+    }
+
+    private CommandInterface getCommandInterface(String url, String sql) throws Exception {
+        return getCommandInterface(new Properties(session.getOriginalProperties()), url, sql);
+    }
+
+    CommandInterface getCommandInterface(Properties info, String url, String sql) throws Exception {
+        return getCommandInterface(session, info, url, sql, params);
+    }
+
+    private void initParams(CommandInterface command) {
+        if (params != null && command.getParameters() != null && command.getParameters() != params) {
+            ArrayList<? extends ParameterInterface> oldParams = command.getParameters();
+            for (int i = 0, size = oldParams.size(); i < size; i++) {
+                oldParams.get(i).setValue(params.get(i).getParamValue(), true);
+            }
+        }
+    }
+
+    private void parseRowKey() {
+        Command command = prepared.getCommand();
         try {
             if (prepared instanceof DefineCommand) {
                 if (session.getMaster() != null) {
@@ -159,31 +193,20 @@ public class CommandProxy extends Command {
         }
     }
 
-    private CommandInterface getCommandInterface(String url, String sql) throws Exception {
-        return getCommandInterface(new Properties(session.getOriginalProperties()), url, sql);
-    }
-
-    CommandInterface getCommandInterface(Properties info, String url, String sql) throws Exception {
-        return getCommandInterface(session, info, url, sql, params);
-    }
-
-    private void initParams(CommandInterface command) {
-        if (params != null && command.getParameters() != null && command.getParameters() != params) {
-            ArrayList<? extends ParameterInterface> oldParams = command.getParameters();
-            for (int i = 0, size = oldParams.size(); i < size; i++) {
-                oldParams.get(i).setValue(params.get(i).getParamValue(), true);
-            }
-        }
-    }
-
     @Override
     public ResultInterface executeQuery(int maxrows, boolean scrollable) {
+        if (!isDeterministic) {
+            parseRowKey();
+        }
         initParams(command);
         return command.executeQuery(maxrows, scrollable);
     }
 
     @Override
     public int executeUpdate() {
+        if (!isDeterministic) {
+            parseRowKey();
+        }
         initParams(command);
         int updateCount = command.executeUpdate();
         if (prepared instanceof DefineCommand) {

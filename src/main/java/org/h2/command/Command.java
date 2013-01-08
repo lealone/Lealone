@@ -43,7 +43,7 @@ public abstract class Command implements CommandInterface {
      */
     private volatile boolean cancel;
 
-    private final String sql;
+    protected final String sql;
 
     private boolean canReuse;
 

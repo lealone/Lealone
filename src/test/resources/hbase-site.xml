@@ -13,10 +13,18 @@
 	the specific language governing permissions and * limitations under the License. 
 	*/ -->
 <configuration>
+	<!-- change it if necessary -->
+	<property>
+		<name>yourbase.test.dir</name>
+		<value>E:/yourbase/test</value>
+	</property>
+
+
+	<!-- yourbase properties -->
+	<!-- ************************************************* -->
 	<property>
 		<name>hbase.coprocessor.master.classes</name>
-		<value>com.codefollower.yourbase.coprocessor.HBaseMasterObserver
-		</value>
+		<value>com.codefollower.yourbase.coprocessor.HBaseMasterObserver</value>
 	</property>
 
 	<property>
@@ -27,42 +35,83 @@
 	<property>
 		<name>h2.master.tcp.port</name>
 		<value>9091</value>
-		<description>The port the H2 TCP master server should bind to.
+		<description>
+			The port the H2 TCP master server should bind to.
 		</description>
 	</property>
 
 	<property>
 		<name>h2.regionserver.tcp.port</name>
 		<value>9092</value>
-		<description>The port the H2 TCP region server should bind to.
+		<description>
+			The port the H2 TCP region server should bind to.
+		</description>
+	</property>
+
+
+	<!-- zookeeper properties -->
+	<!-- ************************************************* -->
+	<property>
+		<name>hbase.zookeeper.property.tickTime</name>
+		<value>2000</value>
+		<description>
+			The number of milliseconds of each tick
 		</description>
 	</property>
 
 	<property>
-		<name>my.hbase.data.dir</name>
-		<value>E:/yourbase/test/hbase/data</value>
+		<name>hbase.zookeeper.property.initLimit</name>
+		<value>10</value>
+		<description>
+			The number of ticks that the initial synchronization
+			phase can take
+		</description>
 	</property>
 
 	<property>
+		<name>hbase.zookeeper.property.syncLimit</name>
+		<value>5</value>
+		<description>
+			The number of ticks that can pass between sending a
+			request and getting an acknowledgement
+		</description>
+	</property>
+
+	<property>
+		<name>hbase.zookeeper.property.dataDir</name>
+		<value>${yourbase.test.dir}/zookeeper</value>
+		<description>
+			the directory where the snapshot is stored.
+		</description>
+	</property>
+
+	<property>
+		<name>hbase.zookeeper.property.clientPort</name>
+		<value>2181</value>
+		<description>
+			the port at which the clients will connect
+		</description>
+	</property>
+
+
+	<!-- hbase properties -->
+	<!-- ************************************************* -->
+	<property>
 		<name>hbase.tmp.dir</name>
-		<value>${my.hbase.data.dir}</value>
+		<value>${yourbase.test.dir}</value>
 	</property>
 
 	<property>
 		<name>hbase.rootdir</name>
-		<value>file:///${my.hbase.data.dir}</value>
+		<value>file:///${yourbase.test.dir}/hbase</value>
 	</property>
 
 	<property>
 		<name>hbase.regionserver.maxlogs</name>
 		<value>-1</value>
 	</property>
-    <!-- 
-	<property>
-		<name>hbase.defaults.for.version</name>
-		<value>0.94.0</value>
-	</property>
-    -->
+	<!-- <property> <name>hbase.defaults.for.version</name> <value>0.94.0</value> 
+		</property> -->
 	<property>
 		<name>hbase.cluster.distributed</name>
 		<value>true</value>
@@ -82,10 +131,8 @@
 		</property> <property> <name>hbase.regionserver.dns.nameserver</name> <value>127.0.0.1</value> 
 		</property> -->
 
-	<!-- <property>
-		<name>hbase.master.wait.on.regionservers.timeout</name>
-		<value>1200000000</value>
-	</property>-->
+	<!-- <property> <name>hbase.master.wait.on.regionservers.timeout</name> 
+		<value>1200000000</value> </property> -->
 
 	<!-- <property> <name>hbase.master.assignment.timeoutmonitor.period</name> 
 		<value>-1</value> </property> -->

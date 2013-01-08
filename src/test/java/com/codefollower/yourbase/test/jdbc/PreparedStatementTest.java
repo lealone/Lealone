@@ -33,9 +33,24 @@ public class PreparedStatementTest extends TestBase {
     void init() throws Exception {
         createTableSQL("CREATE HBASE TABLE IF NOT EXISTS PreparedStatementTest(COLUMN FAMILY cf)");
 
-        stmt.executeUpdate("INSERT INTO PreparedStatementTest(_rowkey_, f1, f2) VALUES('01', 'a1', 10)");
-        stmt.executeUpdate("INSERT INTO PreparedStatementTest(_rowkey_, f1, f2) VALUES('02', 'a2', 50)");
-        stmt.executeUpdate("INSERT INTO PreparedStatementTest(_rowkey_, f1, f2) VALUES('03', 'a3', 30)");
+        sql = "INSERT INTO PreparedStatementTest(_rowkey_, f1, f2) VALUES(?, ?, ?)";
+        PreparedStatement ps = conn.prepareStatement(sql);
+        ps.setString(1, "01");
+        ps.setString(2, "a1");
+        ps.setInt(3, 10);
+        ps.executeUpdate();
+
+        ps.setString(1, "02");
+        ps.setString(2, "a2");
+        ps.setInt(3, 50);
+        ps.executeUpdate();
+
+        ps.setString(1, "03");
+        ps.setString(2, "a3");
+        ps.setInt(3, 30);
+        ps.executeUpdate();
+
+        ps.close();
     }
 
     void test() throws Exception {

@@ -454,4 +454,8 @@ public abstract class Prepared {
     public boolean isDistributedSQL() {
         return false;
     }
+
+    public Command getCommand() {
+        return command;
+    }
 }

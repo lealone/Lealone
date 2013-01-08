@@ -41,7 +41,8 @@ Sub-task
 
 Bug
 
-    - 
+    - 对于PreparedStatement，rowKey值在prepared阶段有可能无法获取，
+      延迟到下一阶段执行Update或Query前再解析出rowKey的值
     
 
 Improvement

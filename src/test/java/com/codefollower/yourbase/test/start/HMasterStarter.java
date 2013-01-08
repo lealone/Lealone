@@ -19,12 +19,23 @@
  */
 package com.codefollower.yourbase.test.start;
 
+import java.io.File;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.master.HMaster;
-import org.apache.hadoop.hbase.zookeeper.HQuorumPeer;
+import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
+import org.h2.store.fs.FileUtils;
+
+import com.codefollower.yourbase.util.HBaseUtils;
 
 public class HMasterStarter {
+    static Configuration conf = HBaseUtils.getConfiguration();
 
     public static void main(String[] args) throws Exception {
+        //删除临时测试目录
+        FileUtils.deleteRecursive(conf.get("yourbase.test.dir"), true);
+
         new ZookeeperThread().start();
         Thread.sleep(1000);
         HMaster.main(new String[] { "start" });
@@ -32,7 +43,16 @@ public class HMasterStarter {
 
     static class ZookeeperThread extends Thread {
         public void run() {
-            HQuorumPeer.main(new String[0]);
+            MiniZooKeeperCluster zooKeeperCluster = new MiniZooKeeperCluster();
+
+            File zkDataPath = new File(conf.get(HConstants.ZOOKEEPER_DATA_DIR));
+            int zkClientPort = conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, 2181);
+            zooKeeperCluster.setDefaultClientPort(zkClientPort);
+            try {
+                zooKeeperCluster.startup(zkDataPath);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

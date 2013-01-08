@@ -112,10 +112,7 @@ public class BenchWrite {
     }
 
     void initPreparedStatement() throws Exception {
-        //TODO 还有bug
-        //ps = conn.prepareStatement("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES(?, ?, ?, ?, ?)");
-
-        ps = conn.prepareStatement("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES('RK10000', ?, ?, ?, ?)");
+        ps = conn.prepareStatement("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES(?, ?, ?, ?, ?)");
     }
 
     void createTable() throws Exception {
@@ -167,17 +164,11 @@ public class BenchWrite {
     void testPreparedStatement() throws Exception {
         long start = System.nanoTime();
         for (int i = 10000; i < count; i++) {
-            //            ps.setString(1, "RK" + i);
-            //            ps.setInt(2, i);
-            //            ps.setString(3, "zhh-2009");
-            //            ps.setLong(4, 30L);
-            //            ps.setFloat(5, 3000.50F);
-            //            ps.executeUpdate();
-
-            ps.setInt(1, i);
-            ps.setString(2, "zhh-2009");
-            ps.setLong(3, 30L);
-            ps.setFloat(4, 3000.50F);
+            ps.setString(1, "RK" + i);
+            ps.setInt(2, i);
+            ps.setString(3, "zhh-2009");
+            ps.setLong(4, 30L);
+            ps.setFloat(5, 3000.50F);
             ps.executeUpdate();
         }
         long end = System.nanoTime();
