@@ -20,70 +20,75 @@
 package com.codefollower.yourbase.server;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-
 import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.h2.server.Service;
+import org.h2.engine.Constants;
+import org.h2.server.TcpServer;
 import org.h2.tools.Server;
-
 import com.codefollower.yourbase.zookeeper.H2TcpPortTracker;
 
 public class H2TcpServer {
-    private Server server;
-    private int tcpPort;
-    private ServerName serverName;
+    private static final Log log = LogFactory.getLog(H2TcpServer.class);
+
+    private final int tcpPort;
+    private final ServerName serverName;
+    private final Server server;
+
+    public H2TcpServer(HMaster master) {
+        tcpPort = getMasterTcpPort(master.getConfiguration());
+        serverName = master.getServerName();
+        server = createServer(master, null);
+    }
+
+    public H2TcpServer(HRegionServer regionServer) {
+        tcpPort = getRegionServerTcpPort(regionServer.getConfiguration());
+        serverName = regionServer.getServerName();
+        server = createServer(null, regionServer);
+    }
 
     public static int getMasterTcpPort(Configuration conf) {
-        return conf.getInt("h2.master.tcp.port", org.h2.engine.Constants.DEFAULT_TCP_PORT - 1);
+        return conf.getInt("h2.master.tcp.port", Constants.DEFAULT_TCP_PORT - 1);
     }
 
     public static int getRegionServerTcpPort(Configuration conf) {
-        return conf.getInt("h2.regionserver.tcp.port", org.h2.engine.Constants.DEFAULT_TCP_PORT);
+        return conf.getInt("h2.regionserver.tcp.port", Constants.DEFAULT_TCP_PORT);
     }
 
-    public void stop() {
-        if (server != null)
-            server.stop();
-
-        H2TcpPortTracker.deleteH2TcpPortEphemeralNode(serverName, tcpPort);
-    }
-
-    public void start(Log log, int tcpPort, HMaster master) {
-        this.serverName = master.getServerName();
-        this.tcpPort = tcpPort;
-        startServer(log, tcpPort, master, null);
-        H2TcpPortTracker.createH2TcpPortEphemeralNode(master.getServerName(), tcpPort);
-    }
-
-    public void start(Log log, int tcpPort, HRegionServer regionServer) {
-        this.serverName = regionServer.getServerName();
-        this.tcpPort = tcpPort;
-        startServer(log, tcpPort, null, regionServer);
-        H2TcpPortTracker.createH2TcpPortEphemeralNode(regionServer.getServerName(), tcpPort);
-    }
-
-    private void startServer(Log log, int tcpPort, HMaster master, HRegionServer regionServer) {
-        ArrayList<String> list = new ArrayList<String>();
-        list.add("-tcp");
-        list.add("-tcpPort");
-        list.add("" + tcpPort);
-
+    public void start() {
         try {
-            server = Server.createTcpServer(list.toArray(new String[list.size()]));
-            Service service = server.getService();
-            org.h2.server.TcpServer tcpServer = (org.h2.server.TcpServer) service;
-            tcpServer.setMaster(master);
-            tcpServer.setRegionServer(regionServer);
             server.start();
-
+            H2TcpPortTracker.createH2TcpPortEphemeralNode(serverName, tcpPort);
             log.info("Started H2 database tcp server at port " + tcpPort);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
+    public void stop() {
+        try {
+            if (server != null)
+                server.stop();
+            log.info("H2 database tcp server stopped");
+        } finally {
+            H2TcpPortTracker.deleteH2TcpPortEphemeralNode(serverName, tcpPort);
+        }
+    }
+
+    private Server createServer(HMaster master, HRegionServer regionServer) {
+        String[] args = { "-tcp", "-tcpPort", "" + tcpPort };
+
+        try {
+            Server server = Server.createTcpServer(args);
+            TcpServer tcpServer = (TcpServer) server.getService();
+            tcpServer.setMaster(master);
+            tcpServer.setRegionServer(regionServer);
+            return server;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

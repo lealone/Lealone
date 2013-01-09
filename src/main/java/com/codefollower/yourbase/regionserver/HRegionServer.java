@@ -20,11 +20,7 @@
 package com.codefollower.yourbase.regionserver;
 
 import java.io.IOException;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-
 import com.codefollower.yourbase.server.H2TcpServer;
 
 /**
@@ -33,17 +29,18 @@ import com.codefollower.yourbase.server.H2TcpServer;
  *
  */
 public class HRegionServer extends org.apache.hadoop.hbase.regionserver.HRegionServer {
-    private static final Log log = LogFactory.getLog(HRegionServer.class.getName());
-    private H2TcpServer server = new H2TcpServer();
-
     public HRegionServer(Configuration conf) throws IOException, InterruptedException {
         super(conf);
     }
 
     @Override
     public void run() {
-        server.start(log, H2TcpServer.getRegionServerTcpPort(getConfiguration()), this);
-        super.run();
-        server.stop();
+        H2TcpServer server = new H2TcpServer(this);
+        server.start();
+        try {
+            super.run();
+        } finally {
+            server.stop();
+        }
     }
 }

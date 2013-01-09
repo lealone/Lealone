@@ -20,14 +20,10 @@
 package com.codefollower.yourbase.coprocessor;
 
 import java.io.IOException;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.BaseMasterObserver;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
 import org.apache.hadoop.hbase.master.HMaster;
-
 import com.codefollower.yourbase.server.H2TcpServer;
 
 /**
@@ -37,15 +33,14 @@ import com.codefollower.yourbase.server.H2TcpServer;
  *
  */
 public class HBaseMasterObserver extends BaseMasterObserver {
-    private static final Log log = LogFactory.getLog(HBaseMasterObserver.class.getName());
     private static H2TcpServer server;
 
     @Override
     public synchronized void start(CoprocessorEnvironment env) throws IOException {
         if (server == null) {
-            server = new H2TcpServer();
             HMaster m = (HMaster) ((MasterCoprocessorEnvironment) env).getMasterServices();
-            server.start(log, H2TcpServer.getMasterTcpPort(m.getConfiguration()), m);
+            server = new H2TcpServer(m);
+            server.start();
         }
     }
 
