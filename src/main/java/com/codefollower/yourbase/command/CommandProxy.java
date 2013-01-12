@@ -83,9 +83,12 @@ public class CommandProxy extends Command {
         ConnectionInfo ci = new ConnectionInfo(url, prop);
         SessionInterface si = new SessionRemote(ci).connectEmbeddedOrServer(false);
         CommandInterface commandInterface = si.prepareCommand(sql, session.getFetchSize());
-        ArrayList<? extends ParameterInterface> newParams = commandInterface.getParameters();
-        for (int i = 0, size = oldParams.size(); i < size; i++) {
-            newParams.get(i).setValue(oldParams.get(i).getParamValue(), true);
+
+        if (oldParams != null) {
+            ArrayList<? extends ParameterInterface> newParams = commandInterface.getParameters();
+            for (int i = 0, size = oldParams.size(); i < size; i++) {
+                newParams.get(i).setValue(oldParams.get(i).getParamValue(), true);
+            }
         }
 
         return commandInterface;

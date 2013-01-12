@@ -105,21 +105,14 @@ public class HBaseUpdate extends Update {
             setCurrentRowNumber(1);
             Result result = session.getRegionServer().get(session.getRegionName(), new Get(rowKey));
             Put put = new Put(rowKey);
-            String cf = null;
-            String cn = null;
             Column c = null;
             int columnCount = columns.size();
-            String defaultCF = ((HBaseTable) table).getDefaultColumnFamilyName();
             Value v = null;
             for (KeyValue kv : result.raw()) {
-                cf = Bytes.toString(kv.getFamily());
-                cn = Bytes.toString(kv.getQualifier());
-
                 for (int i = 0; i < columnCount; i++) {
                     c = columns.get(i);
-                    if (c.getName().equalsIgnoreCase(cn) //
-                            && ((c.getColumnFamilyName() == null && defaultCF.equalsIgnoreCase(cf)) //
-                            || c.getColumnFamilyName() != null && c.getColumnFamilyName().equalsIgnoreCase(cf))) {
+                    if (Bytes.equals(c.getColumnFamilyNameAsBytes(), kv.getFamily()) //
+                            && Bytes.equals(c.getNameAsBytes(), kv.getQualifier())) {
 
                         Expression newExpr = expressionMap.get(c);
                         if (newExpr == null || newExpr == ValueExpression.getDefault()) {

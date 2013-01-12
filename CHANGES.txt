@@ -48,6 +48,7 @@ Bug
 Improvement
 
     - 在不修改任何HBase源代码的情况下把HBase集成到YourBase中。
+    - 如果列是rowKey，那么在构造Column实例时明确标注出来，避免不必要的字段名equals比较
 
 
 New Feature

@@ -19,67 +19,89 @@
  */
 package com.codefollower.yourbase.command.dml;
 
-import java.io.IOException;
-
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.h2.api.Trigger;
+import org.h2.command.CommandInterface;
 import org.h2.command.dml.Insert;
+import org.h2.command.dml.Query;
+import org.h2.engine.Right;
 import org.h2.engine.Session;
 import org.h2.expression.Expression;
+import org.h2.message.DbException;
 import org.h2.table.Column;
 import org.h2.value.Value;
 
+import com.codefollower.yourbase.command.CommandProxy;
 import com.codefollower.yourbase.table.HBaseTable;
 import com.codefollower.yourbase.util.HBaseUtils;
 
 public class HBaseInsert extends Insert {
-    private int rowNumber;
-
     public HBaseInsert(Session session) {
         super(session);
     }
 
     @Override
+    public void addRow(Expression[] expr) {
+        if (list.isEmpty()) {
+            list.add(expr);
+        } else {
+            //TODO 目前不支持事务，所以类似这样的批量插入SQL是不支持的:
+            //INSERT INTO t VALUES(m, n), (x, y)...
+            throw DbException.getUnsupportedException("batch insert");
+        }
+    }
+
+    @Override
+    public void setQuery(Query query) {
+        //TODO 目前不支持事务，所以类似这样的批量插入SQL是不支持的:
+        //INSERT INTO t SELECT x FROM y
+        throw DbException.getUnsupportedException("batch insert");
+    }
+
+    @Override
     public int update() {
+        session.getUser().checkRight(table, Right.INSERT);
+        table.fire(session, Trigger.INSERT, true);
         HBaseTable table = ((HBaseTable) this.table);
         Put put = new Put(Bytes.toBytes(getRowKey()));
-        String rowKeyName = table.getRowKeyName();
-        String defaultColumnFamilyName = table.getDefaultColumnFamilyName();
-        byte[] cf = Bytes.toBytes(defaultColumnFamilyName);
         try {
             int index = -1;
-            Value v = null;
+            Value v;
+            Expression[] exprs = list.get(0);
             Expression e;
             for (Column c : columns) {
                 index++;
-                if (rowKeyName.equalsIgnoreCase(c.getName())) {
+                if (c.isRowKeyColumn())
                     continue;
-                }
-                if (c.getColumnFamilyName() != null && !defaultColumnFamilyName.equalsIgnoreCase(c.getColumnFamilyName()))
-                    cf = Bytes.toBytes(c.getColumnFamilyName());
-
-                e = list.get(0)[index];
-                if (e != null) {
-                    // e can be null (DEFAULT)
+                e = exprs[index];
+                if (e != null) { // e can be null (DEFAULT)
                     e = e.optimize(session);
                     v = e.getValue(session);
+                    if (c.isTypeUnknown())
+                        c.setType(v.getType());
+
+                    v = c.convert(v);
+                    put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
                 }
-                if (c.isTypeUnknown()) {
-                    c.setType(v.getType());
-                }
-                v = c.convert(v);
-                put.add(cf, Bytes.toBytes(c.getName()), HBaseUtils.toBytes(v));
             }
             session.getRegionServer().put(session.getRegionName(), put);
-        } catch (IOException e) {
+
+            //动态表，insert时如果字段未定义，此时可更新meta表
+            //TODO 
+            if (table.isModified()) {
+                table.setModified(false);
+                CommandInterface c = CommandProxy.getCommandInterface(session, session.getOriginalProperties(),
+                        HBaseUtils.getMasterURL(), table.getCreateSQL(), null);
+                c.executeUpdate();
+                //session.getDatabase().update(session, table);
+            }
+        } catch (Exception e) {
             throw new RuntimeException(e);
-        }
-        if (table.isModified()) {
-            table.setModified(false);
-            table.getDatabase().update(session, table);
         }
 
         rowNumber = 1;
+        table.fire(session, Trigger.INSERT, false);
         return rowNumber;
 
     }
@@ -91,10 +113,9 @@ public class HBaseInsert extends Insert {
 
     @Override
     public String getRowKey() {
-        String rowKeyName = ((HBaseTable) table).getRowKeyName();
         int index = 0;
         for (Column c : columns) {
-            if (rowKeyName.equalsIgnoreCase(c.getName())) {
+            if (c.isRowKeyColumn()) {
                 return list.get(0)[index].getValue(session).getString();
             }
             index++;

@@ -60,7 +60,7 @@ public class HBaseTable extends Table {
 
     public Column getRowKeyColumn() {
         if (rowKeyColumn == null) {
-            rowKeyColumn = new Column(getRowKeyName());
+            rowKeyColumn = new Column(getRowKeyName(), true);
             rowKeyColumn.setTable(this, -2);
         }
         return rowKeyColumn;

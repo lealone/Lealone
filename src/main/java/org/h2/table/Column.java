@@ -90,6 +90,11 @@ public class Column {
     private String columnFamilyName;
     private byte[] nameAsBytes;
     private byte[] columnFamilyNameeAsBytes;
+    private boolean isRowKeyColumn;
+
+    public boolean isRowKeyColumn() {
+        return isRowKeyColumn;
+    }
 
     public boolean isTypeUnknown() {
         return this.type == Value.UNKNOWN;
@@ -137,6 +142,11 @@ public class Column {
         } else
             this.name = name;
         this.type = Value.UNKNOWN; //先设为Value.UNKNOWN，根据表达式的类型动态确定
+    }
+
+    public Column(String name, boolean isRowKeyColumn) {
+        this(name);
+        this.isRowKeyColumn = isRowKeyColumn;
     }
 
     public Column(String name, int type, long precision, int scale, int displaySize) {
