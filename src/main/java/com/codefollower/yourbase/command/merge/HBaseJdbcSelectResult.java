@@ -21,12 +21,12 @@ package com.codefollower.yourbase.command.merge;
 
 import java.util.List;
 
-import org.h2.command.dml.Select;
-import org.h2.index.IndexType;
-import org.h2.result.ResultInterface;
-import org.h2.table.IndexColumn;
-import org.h2.table.Table;
-import org.h2.value.Value;
+import com.codefollower.h2.command.dml.Select;
+import com.codefollower.h2.index.IndexType;
+import com.codefollower.h2.result.ResultInterface;
+import com.codefollower.h2.table.IndexColumn;
+import com.codefollower.h2.table.Table;
+import com.codefollower.h2.value.Value;
 
 public class HBaseJdbcSelectResult implements ResultInterface {
     private List<ResultInterface> results;

@@ -22,15 +22,16 @@ package com.codefollower.yourbase.command.ddl;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
-import org.h2.command.CommandInterface;
-import org.h2.command.ddl.SchemaCommand;
-import org.h2.constant.ErrorCode;
-import org.h2.engine.Database;
-import org.h2.engine.Right;
-import org.h2.engine.Session;
-import org.h2.message.DbException;
-import org.h2.schema.Schema;
-import org.h2.table.Table;
+
+import com.codefollower.h2.command.CommandInterface;
+import com.codefollower.h2.command.ddl.SchemaCommand;
+import com.codefollower.h2.constant.ErrorCode;
+import com.codefollower.h2.engine.Database;
+import com.codefollower.h2.engine.Right;
+import com.codefollower.h2.engine.Session;
+import com.codefollower.h2.message.DbException;
+import com.codefollower.h2.schema.Schema;
+import com.codefollower.h2.table.Table;
 
 public class DropHBaseTable extends SchemaCommand {
     private Table table;

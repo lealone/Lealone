@@ -129,7 +129,7 @@ public class CreateViewTest extends TestBase {
         //		+ "AS SELECT id,name FROM CreateViewTest";
 
         //目前不支持参数:
-        //org.h2.jdbc.JdbcSQLException: Feature not supported: "parameters in views"; SQL statement:
+        //com.codefollower.h2.jdbc.JdbcSQLException: Feature not supported: "parameters in views"; SQL statement:
         //sql = "CREATE OR REPLACE FORCE VIEW IF NOT EXISTS my_view (f1,f2) AS SELECT id,name FROM CreateViewTest where id=?";
         //		ps = conn.prepareStatement(sql);
         //		ps.setInt(1, 2);
@@ -150,7 +150,7 @@ public class CreateViewTest extends TestBase {
 
         //sql = "select * from CreateViewTest";
 
-        //测试org.h2.command.Parser.parserWith()
+        //测试com.codefollower.h2.command.Parser.parserWith()
         //stmt.executeUpdate("CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS my_tmp_table(f1 int)");
         //stmt.executeUpdate("DROP VIEW IF EXISTS my_tmp_table");
         //stmt.executeUpdate("CREATE OR REPLACE FORCE VIEW my_tmp_table AS SELECT f2 FROM my_view");

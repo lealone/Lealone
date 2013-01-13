@@ -58,7 +58,8 @@ New Feature
 
 Task
 
-    - 
+    - 应用有可能使用H2数据库的其他版本，为避免潜在的jar包冲突，
+      将YourBase内部使用的H2的包名org.h2改成com.codefollower.h2。
 
 
 Test

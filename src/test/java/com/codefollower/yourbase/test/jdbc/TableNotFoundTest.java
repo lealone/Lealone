@@ -19,7 +19,7 @@
  */
 package com.codefollower.yourbase.test.jdbc;
 
-//测试org.h2.command.Parser.readTableOrView(String)
+//测试com.codefollower.h2.command.Parser.readTableOrView(String)
 public class TableNotFoundTest extends TestBase {
     @org.junit.Test
     public void run() throws Exception {

@@ -21,17 +21,17 @@ package com.codefollower.yourbase.command.dml;
 
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.h2.api.Trigger;
-import org.h2.command.CommandInterface;
-import org.h2.command.dml.Insert;
-import org.h2.command.dml.Query;
-import org.h2.engine.Right;
-import org.h2.engine.Session;
-import org.h2.expression.Expression;
-import org.h2.message.DbException;
-import org.h2.table.Column;
-import org.h2.value.Value;
 
+import com.codefollower.h2.api.Trigger;
+import com.codefollower.h2.command.CommandInterface;
+import com.codefollower.h2.command.dml.Insert;
+import com.codefollower.h2.command.dml.Query;
+import com.codefollower.h2.engine.Right;
+import com.codefollower.h2.engine.Session;
+import com.codefollower.h2.expression.Expression;
+import com.codefollower.h2.message.DbException;
+import com.codefollower.h2.table.Column;
+import com.codefollower.h2.value.Value;
 import com.codefollower.yourbase.command.CommandProxy;
 import com.codefollower.yourbase.table.HBaseTable;
 import com.codefollower.yourbase.util.HBaseUtils;

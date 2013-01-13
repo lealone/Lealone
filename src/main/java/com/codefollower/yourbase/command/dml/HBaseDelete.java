@@ -22,15 +22,15 @@ package com.codefollower.yourbase.command.dml;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.util.Bytes;
-import org.h2.api.Trigger;
-import org.h2.command.dml.Delete;
-import org.h2.engine.Right;
-import org.h2.engine.Session;
-import org.h2.expression.Expression;
-import org.h2.table.PlanItem;
-import org.h2.table.Table;
-import org.h2.table.TableFilter;
 
+import com.codefollower.h2.api.Trigger;
+import com.codefollower.h2.command.dml.Delete;
+import com.codefollower.h2.engine.Right;
+import com.codefollower.h2.engine.Session;
+import com.codefollower.h2.expression.Expression;
+import com.codefollower.h2.table.PlanItem;
+import com.codefollower.h2.table.Table;
+import com.codefollower.h2.table.TableFilter;
 import com.codefollower.yourbase.command.RowKeyConditionInfo;
 import com.codefollower.yourbase.table.HBaseTable;
 

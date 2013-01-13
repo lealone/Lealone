@@ -4,9 +4,10 @@ import java.util.ArrayList;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.h2.command.CommandInterface;
-import org.h2.command.ddl.DefineCommand;
-import org.h2.engine.Session;
+
+import com.codefollower.h2.command.CommandInterface;
+import com.codefollower.h2.command.ddl.DefineCommand;
+import com.codefollower.h2.engine.Session;
 
 public class Options extends DefineCommand {
 	public static final String ON_DEFAULT_COLUMN_FAMILY_NAME = "DEFAULT_COLUMN_FAMILY_NAME";

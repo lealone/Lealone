@@ -19,10 +19,10 @@
  */
 package com.codefollower.yourbase.command.merge;
 
-import org.h2.index.Cursor;
-import org.h2.result.ResultInterface;
-import org.h2.result.Row;
-import org.h2.result.SearchRow;
+import com.codefollower.h2.index.Cursor;
+import com.codefollower.h2.result.ResultInterface;
+import com.codefollower.h2.result.Row;
+import com.codefollower.h2.result.SearchRow;
 
 public class HBaseJdbcSelectCursor implements Cursor {
     private final ResultInterface result;

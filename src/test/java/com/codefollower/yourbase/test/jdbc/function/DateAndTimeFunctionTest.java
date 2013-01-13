@@ -47,7 +47,7 @@ public class DateAndTimeFunctionTest extends TestBase {
     void test0() throws Exception {
         sql = "SELECT " //
                 //以下这21个日期与时间函数在这个方法中: 
-                //org.h2.expression.Function.getSimpleValue(Session, Value, Expression[], Value[])
+                //com.codefollower.h2.expression.Function.getSimpleValue(Session, Value, Expression[], Value[])
                 //----------------------------------------------------------------------------------------
                 + "DAYNAME(d), " //星期几，英文形式，如星期5是: Friday
                 + "DAY_OF_MONTH(d), " //多少号
@@ -70,7 +70,7 @@ public class DateAndTimeFunctionTest extends TestBase {
                 + "CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP, NOW(), NOW(0), NOW(1), NOW(2), NOW(3), NOW(4), " //now后的数字是刻度
 
                 //以下这5个日期与时间函数在这个方法中: 
-                //org.h2.expression.Function.getValueWithArgs(Session, Expression[])
+                //com.codefollower.h2.expression.Function.getValueWithArgs(Session, Expression[])
                 //----------------------------------------------------------------------------------------
                 + "DATEADD('MONTH', 1, d), " //
                 + "DATEDIFF('YEAR', DATE '2001-01-31', DATE '1999-01-31'), " //
@@ -131,7 +131,7 @@ public class DateAndTimeFunctionTest extends TestBase {
 
     void test() throws Exception {
         //以下有21个日期与时间函数, 
-        //在这个方法中org.h2.expression.Function.getSimpleValue(Session, Value, Expression[], Value[])
+        //在这个方法中com.codefollower.h2.expression.Function.getSimpleValue(Session, Value, Expression[], Value[])
         //----------------------------------------------------------------------------------------
         sql = "SELECT DAYNAME(DATE '2000-01-01')";
         sql = "SELECT DAY_OF_MONTH(CURRENT_DATE),DAY_OF_WEEK(CURRENT_DATE),DAY_OF_YEAR(CURRENT_DATE)";
@@ -164,7 +164,7 @@ public class DateAndTimeFunctionTest extends TestBase {
         //
         //
         //以下有5个日期与时间函数, 
-        //在这个方法中org.h2.expression.Function.getValueWithArgs(Session, Expression[])
+        //在这个方法中com.codefollower.h2.expression.Function.getValueWithArgs(Session, Expression[])
         //----------------------------------------------------------------------------------------
 
         //月份加1，结果是2001-02-28 00:00:00.0 

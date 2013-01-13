@@ -1,9 +1,10 @@
 package com.codefollower.yourbase.command.ddl;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.h2.command.CommandInterface;
-import org.h2.command.ddl.DefineCommand;
-import org.h2.engine.Session;
+
+import com.codefollower.h2.command.CommandInterface;
+import com.codefollower.h2.command.ddl.DefineCommand;
+import com.codefollower.h2.engine.Session;
 
 
 public class CreateColumnFamily extends DefineCommand {

@@ -19,15 +19,15 @@
  */
 package com.codefollower.yourbase.index;
 
-import org.h2.engine.Session;
-import org.h2.index.BaseIndex;
-import org.h2.index.Cursor;
-import org.h2.index.IndexType;
-import org.h2.result.Row;
-import org.h2.result.SearchRow;
-import org.h2.table.Table;
-import org.h2.table.IndexColumn;
-import org.h2.table.TableFilter;
+import com.codefollower.h2.engine.Session;
+import com.codefollower.h2.index.BaseIndex;
+import com.codefollower.h2.index.Cursor;
+import com.codefollower.h2.index.IndexType;
+import com.codefollower.h2.result.Row;
+import com.codefollower.h2.result.SearchRow;
+import com.codefollower.h2.table.IndexColumn;
+import com.codefollower.h2.table.Table;
+import com.codefollower.h2.table.TableFilter;
 
 public class HBaseTableIndex extends BaseIndex {
 

@@ -19,15 +19,15 @@
  */
 package com.codefollower.yourbase.command.merge;
 
-import org.h2.engine.Session;
-import org.h2.index.Cursor;
-import org.h2.index.IndexType;
-import org.h2.result.ResultInterface;
-import org.h2.result.SearchRow;
-import org.h2.table.Table;
-import org.h2.table.IndexColumn;
-import org.h2.table.TableFilter;
 
+import com.codefollower.h2.engine.Session;
+import com.codefollower.h2.index.Cursor;
+import com.codefollower.h2.index.IndexType;
+import com.codefollower.h2.result.ResultInterface;
+import com.codefollower.h2.result.SearchRow;
+import com.codefollower.h2.table.IndexColumn;
+import com.codefollower.h2.table.Table;
+import com.codefollower.h2.table.TableFilter;
 import com.codefollower.yourbase.index.HBaseTableIndex;
 
 public class HBaseJdbcSelectIndex extends HBaseTableIndex {

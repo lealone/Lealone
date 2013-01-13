@@ -28,14 +28,14 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Threads;
-import org.h2.command.Command;
-import org.h2.command.CommandInterface;
-import org.h2.command.dml.Select;
-import org.h2.engine.Session;
-import org.h2.expression.ParameterInterface;
-import org.h2.result.ResultInterface;
-import org.h2.util.New;
 
+import com.codefollower.h2.command.Command;
+import com.codefollower.h2.command.CommandInterface;
+import com.codefollower.h2.command.dml.Select;
+import com.codefollower.h2.engine.Session;
+import com.codefollower.h2.expression.ParameterInterface;
+import com.codefollower.h2.result.ResultInterface;
+import com.codefollower.h2.util.New;
 import com.codefollower.yourbase.command.merge.HBaseJdbcSelectResult;
 import com.codefollower.yourbase.util.HBaseRegionInfo;
 import com.codefollower.yourbase.util.HBaseUtils;

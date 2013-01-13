@@ -26,9 +26,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.h2.engine.Constants;
-import org.h2.server.TcpServer;
-import org.h2.tools.Server;
+
+import com.codefollower.h2.engine.Constants;
+import com.codefollower.h2.server.TcpServer;
+import com.codefollower.h2.tools.Server;
 import com.codefollower.yourbase.zookeeper.H2TcpPortTracker;
 
 public class H2TcpServer {

@@ -35,13 +35,13 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.data.Stat;
-import org.h2.engine.Database;
-import org.h2.engine.MetaRecord;
-import org.h2.result.SimpleRow;
-import org.h2.value.Value;
-import org.h2.value.ValueInt;
-import org.h2.value.ValueString;
 
+import com.codefollower.h2.engine.Database;
+import com.codefollower.h2.engine.MetaRecord;
+import com.codefollower.h2.result.SimpleRow;
+import com.codefollower.h2.value.Value;
+import com.codefollower.h2.value.ValueInt;
+import com.codefollower.h2.value.ValueString;
 import com.codefollower.yourbase.util.HBaseUtils;
 import com.codefollower.yourbase.zookeeper.H2MetaTableTracker;
 
@@ -162,9 +162,9 @@ public class H2MetaTable implements Abortable {
             String node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(rec.getId()));
             //setData会异步触发所有机器(包括本机)上的H2MetaTableTracker.nodeDataChanged
             //然后触发下列调用:
-            //=>org.h2.engine.Database.updateDatabaseObject(int)
-            //  =>org.h2.engine.Database.update(Session, DbObject)
-            //      =>org.h2.engine.Database.addMeta0(Session, DbObject, boolean)
+            //=>com.codefollower.h2.engine.Database.updateDatabaseObject(int)
+            //  =>com.codefollower.h2.engine.Database.update(Session, DbObject)
+            //      =>com.codefollower.h2.engine.Database.addMeta0(Session, DbObject, boolean)
             //          =>又到此方法
             //所以会造成循环
             synchronized (this) { //避免setData后立刻触发nodeDataChanged，此时IdVersion还未更新

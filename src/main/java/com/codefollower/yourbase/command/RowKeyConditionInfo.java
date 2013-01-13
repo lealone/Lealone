@@ -25,13 +25,13 @@ import java.util.List;
 
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.h2.command.dml.Select;
-import org.h2.expression.Comparison;
-import org.h2.table.Column;
-import org.h2.table.TableFilter;
-import org.h2.util.StatementBuilder;
-import org.h2.value.Value;
 
+import com.codefollower.h2.command.dml.Select;
+import com.codefollower.h2.expression.Comparison;
+import com.codefollower.h2.table.Column;
+import com.codefollower.h2.table.TableFilter;
+import com.codefollower.h2.util.StatementBuilder;
+import com.codefollower.h2.value.Value;
 import com.codefollower.yourbase.table.HBaseTable;
 import com.codefollower.yourbase.util.HBaseUtils;
 

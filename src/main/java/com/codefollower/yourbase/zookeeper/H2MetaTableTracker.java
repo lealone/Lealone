@@ -176,7 +176,7 @@ public class H2MetaTableTracker extends ZooKeeperListener {
                     ZKUtil.getDataAndWatch(watcher, path, stat);
                     int id = Integer.valueOf(path.substring(NODE_NAME_LENGTH + 1));
                     Integer version = idVersionMap.get(id);
-                    //见org.h2.engine.H2MetaTable.updateRecord(MetaRecord)的内部注释
+                    //见com.codefollower.h2.engine.H2MetaTable.updateRecord(MetaRecord)的内部注释
                     if (version == null)
                         throw new H2MetaTableTrackerException("id: " + id + " not found, it may be a bug");
                     else if (stat.getVersion() > version)

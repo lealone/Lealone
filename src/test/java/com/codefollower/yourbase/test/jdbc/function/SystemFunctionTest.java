@@ -42,10 +42,10 @@ public class SystemFunctionTest extends TestBase {
         //ROW_NUMBER函数虽然定义了，但ROW_NUMBER()函数无效，不支持这样的语法
         sql = "SELECT ROW_NUMBER()";
         //ROWNUM函数虽然没有定义，但ROWNUM()是有效，Parser在解析时把他当成ROWNUM伪字段处理
-        //当成了org.h2.expression.Rownum，见org.h2.command.Parser.readTerm()
+        //当成了com.codefollower.h2.expression.Rownum，见com.codefollower.h2.command.Parser.readTerm()
         sql = "SELECT ROWNUM()";
-        //这样就没问题了,在这个方法中org.h2.command.Parser.readFunction(Schema, String)
-        //把ROW_NUMBER转成org.h2.expression.Rownum了
+        //这样就没问题了,在这个方法中com.codefollower.h2.command.Parser.readFunction(Schema, String)
+        //把ROW_NUMBER转成com.codefollower.h2.expression.Rownum了
         sql = "SELECT ROW_NUMBER()OVER()";
 
         //相等返回null，不相等返回v0

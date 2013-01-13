@@ -25,8 +25,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
-import org.h2.store.fs.FileUtils;
 
+import com.codefollower.h2.store.fs.FileUtils;
 import com.codefollower.yourbase.util.HBaseUtils;
 
 public class HMasterStarter {
