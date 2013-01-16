@@ -19,6 +19,7 @@
  */
 package com.codefollower.yourbase.table;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -26,29 +27,40 @@ import java.util.Map.Entry;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
 
+import com.codefollower.h2.command.ddl.CreateTableData;
 import com.codefollower.h2.engine.Session;
 import com.codefollower.h2.index.Index;
 import com.codefollower.h2.index.IndexType;
+import com.codefollower.h2.message.DbException;
 import com.codefollower.h2.result.Row;
 import com.codefollower.h2.schema.Schema;
 import com.codefollower.h2.table.Column;
 import com.codefollower.h2.table.IndexColumn;
-import com.codefollower.h2.table.Table;
+import com.codefollower.h2.table.TableBase;
 import com.codefollower.h2.util.New;
 import com.codefollower.h2.util.StatementBuilder;
 import com.codefollower.h2.value.Value;
+
 import com.codefollower.yourbase.command.ddl.Options;
 import com.codefollower.yourbase.index.HBaseTableIndex;
 
-public class HBaseTable extends Table {
+public class HBaseTable extends TableBase {
+    private static final String STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME = "CF";
     private HTableDescriptor hTableDescriptor;
     private String rowKeyName;
     private Index scanIndex;
     private Map<String, ArrayList<Column>> columnsMap;
     private boolean modified;
     private Column rowKeyColumn;
+    private boolean isStaticTable;
+
+    public boolean isStaticTable() {
+        return isStaticTable;
+    }
 
     public boolean isModified() {
         return modified;
@@ -66,24 +78,53 @@ public class HBaseTable extends Table {
         return rowKeyColumn;
     }
 
-    public HBaseTable(Schema schema, int id, String name, boolean persistIndexes, boolean persistData,
-            Map<String, ArrayList<Column>> columnsMap, ArrayList<Column> columns) {
-        super(schema, id, name, persistIndexes, persistData);
+    public HBaseTable(CreateTableData data) {
+        super(data);
+        this.isStaticTable = true;
+
+        Column[] cols = getColumns();
+        for (Column c : cols) {
+            //if (c.isPrimaryKey()) { //在Parser.parseColumn中设为false了不能这么用
+            if (c.isRowKeyColumn()) {
+                rowKeyColumn = c.getClone();
+                rowKeyColumn.setTable(this, -2);
+                rowKeyColumn.setRowKeyColumn(true);
+                rowKeyName = rowKeyColumn.getName();
+            }
+
+            c.setColumnFamilyName(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME);
+        }
+        if (rowKeyColumn == null) {
+            throw new RuntimeException("static type table '" + data.tableName + "' not found a primary key");
+        }
+        setColumns(cols);
+        scanIndex = new HBaseTableIndex(this, data.id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
+
+        hTableDescriptor = new HTableDescriptor(data.tableName);
+        hTableDescriptor.setValue(Options.ON_ROW_KEY_NAME, rowKeyName);
+        hTableDescriptor.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME);
+        hTableDescriptor.addFamily(new HColumnDescriptor(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME));
+        createIfNotExists(data.session, data.tableName, hTableDescriptor, null);
+    }
+
+    public HBaseTable(Session session, Schema schema, int id, String name, Map<String, ArrayList<Column>> columnsMap,
+            ArrayList<Column> columns, HTableDescriptor htd, byte[][] splitKeys) {
+        super(schema, id, name, true, true, HBaseTableEngine.class.getName(), false);
         this.columnsMap = columnsMap;
 
         Column[] cols = new Column[columns.size()];
         columns.toArray(cols);
         setColumns(cols);
         scanIndex = new HBaseTableIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
-
-    }
-
-    public void setHTableDescriptor(HTableDescriptor hTableDescriptor) {
-        this.hTableDescriptor = hTableDescriptor;
+        hTableDescriptor = htd;
+        createIfNotExists(session, name, htd, splitKeys);
     }
 
     public String getDefaultColumnFamilyName() {
-        return hTableDescriptor.getValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME);
+        if (isStaticTable)
+            return STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME;
+        else
+            return hTableDescriptor.getValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME);
     }
 
     public void setRowKeyName(String rowKeyName) {
@@ -91,9 +132,11 @@ public class HBaseTable extends Table {
     }
 
     public String getRowKeyName() {
-        if (rowKeyName == null)
-            return Options.DEFAULT_ROW_KEY_NAME;
-        return this.rowKeyName;
+        if (rowKeyName == null) {
+            rowKeyName = Options.DEFAULT_ROW_KEY_NAME;
+        }
+
+        return rowKeyName;
     }
 
     @Override
@@ -194,6 +237,8 @@ public class HBaseTable extends Table {
 
     @Override
     public String getCreateSQL() {
+        if (isStaticTable)
+            return super.getCreateSQL();
         StatementBuilder buff = new StatementBuilder("CREATE HBASE TABLE IF NOT EXISTS ");
         buff.append(getSQL());
         buff.append("(\n");
@@ -240,11 +285,6 @@ public class HBaseTable extends Table {
     }
 
     @Override
-    public String getDropSQL() {
-        return "DROP HBASE TABLE IF EXISTS " + getSQL();
-    }
-
-    @Override
     public void checkRename() {
 
     }
@@ -271,7 +311,7 @@ public class HBaseTable extends Table {
             return getRowKeyColumn();
 
         columnName = getFullColumnName(columnFamilyName, columnName);
-        if (isInsert) {
+        if (!isStaticTable && isInsert) {
             if (doesColumnExist(columnName))
                 return super.getColumn(columnName);
             else { //处理动态列
@@ -302,12 +342,60 @@ public class HBaseTable extends Table {
         }
     }
 
-    private static String toS(ImmutableBytesWritable v) {
-        return Bytes.toString(v.get());
+    @Override
+    public Row getTemplateRow() {
+        if (isStaticTable)
+            return super.getTemplateRow();
+        else
+            return new Row(new Value[0], Row.MEMORY_CALCULATE);
     }
 
     @Override
-    public Row getTemplateRow() {
-        return new Row(new Value[0], Row.MEMORY_CALCULATE);
+    public void removeChildrenAndResources(Session session) {
+        super.removeChildrenAndResources(session);
+        if (!database.isFromZookeeper())
+            dropIfExists(session, getName());
+    }
+
+    private static void createIfNotExists(Session session, String tableName, HTableDescriptor htd, byte[][] splitKeys) {
+        try {
+            HMaster master = session.getMaster();
+            if (master != null && master.getTableDescriptors().get(tableName) == null) {
+                master.createTable(htd, splitKeys);
+                try {
+                    //确保表已可用
+                    while (true) {
+                        if (ZKTableReadOnly.isEnabledTable(master.getZooKeeperWatcher(), tableName))
+                            break;
+                        Thread.sleep(100);
+                    }
+                } catch (Exception e) {
+                    throw DbException.convert(e);
+                }
+            }
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "Failed to HMaster.createTable");
+        }
+    }
+
+    private static void dropIfExists(Session session, String tableName) {
+        try {
+            HMaster master = session.getMaster();
+            if (master != null && master.getTableDescriptors().get(tableName) != null) {
+                master.disableTable(Bytes.toBytes(tableName));
+                while (true) {
+                    if (ZKTableReadOnly.isDisabledTable(master.getZooKeeperWatcher(), tableName))
+                        break;
+                    Thread.sleep(100);
+                }
+                master.deleteTable(Bytes.toBytes(tableName));
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e); //Failed to HMaster.deleteTable
+        }
+    }
+
+    private static String toS(ImmutableBytesWritable v) {
+        return Bytes.toString(v.get());
     }
 }

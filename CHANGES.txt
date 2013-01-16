@@ -35,10 +35,6 @@ Release 0.10.0-RC2 - 2012/12/31
 
 Release 0.10.0-RC3 - 未发布
 
-Sub-task
-
-    - 
-
 Bug
 
     - 对于PreparedStatement，rowKey值在prepared阶段有可能无法获取，
@@ -53,7 +49,7 @@ Improvement
 
 New Feature
 
-    - 
+    - 支持标准的CREATE TABLE，这种类型的表被看成是静态类型的，不需要定义列族，字段类型必须事先定义，并且必须有主键。
 
 
 Task

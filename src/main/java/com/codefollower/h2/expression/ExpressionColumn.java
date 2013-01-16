@@ -90,7 +90,7 @@ public class ExpressionColumn extends Expression {
         if (resolver instanceof TableFilter && resolver.getTableFilter().getTable() instanceof HBaseTable) {
             HBaseTable t = (HBaseTable)resolver.getTableFilter().getTable();
 
-            if (t.getRowKeyName().equalsIgnoreCase(columnName)) {
+            if (!t.isStaticTable() && t.getRowKeyName().equalsIgnoreCase(columnName)) {
                 if (columnFamilyName != null) {
                     schemaName = tableAlias;
                     tableAlias = columnFamilyName;

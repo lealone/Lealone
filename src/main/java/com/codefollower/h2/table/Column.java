@@ -11,7 +11,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
 
 import org.apache.hadoop.hbase.util.Bytes;
-
 import com.codefollower.h2.command.Parser;
 import com.codefollower.h2.constant.ErrorCode;
 import com.codefollower.h2.engine.Constants;
@@ -92,6 +91,10 @@ public class Column {
     private byte[] nameAsBytes;
     private byte[] columnFamilyNameeAsBytes;
     private boolean isRowKeyColumn;
+
+    public void setRowKeyColumn(boolean isRowKeyColumn) {
+        this.isRowKeyColumn = isRowKeyColumn;
+    }
 
     public boolean isRowKeyColumn() {
         return isRowKeyColumn;
@@ -504,6 +507,9 @@ public class Column {
                     buff.append(" DEFAULT ").append(sql);
                 }
             }
+        }
+        if (isRowKeyColumn) {
+            buff.append(" ROW KEY");
         }
         if (!nullable) {
             buff.append(" NOT NULL");

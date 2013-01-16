@@ -34,7 +34,7 @@ public class DateAndTimeFunctionTest extends TestBase {
     }
 
     void init() throws Exception {
-        //stmt.executeUpdate("DROP HBASE TABLE IF EXISTS DateAndTimeFunctionTest");
+        //stmt.executeUpdate("DROP TABLE IF EXISTS DateAndTimeFunctionTest");
         stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS DateAndTimeFunctionTest(" + "COLUMN FAMILY cf)");
         insert();
     }

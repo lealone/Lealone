@@ -34,7 +34,6 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
-import org.apache.zookeeper.data.Stat;
 
 import com.codefollower.h2.engine.Database;
 import com.codefollower.h2.engine.MetaRecord;
@@ -44,6 +43,7 @@ import com.codefollower.h2.value.ValueInt;
 import com.codefollower.h2.value.ValueString;
 import com.codefollower.yourbase.util.HBaseUtils;
 import com.codefollower.yourbase.zookeeper.H2MetaTableTracker;
+import com.codefollower.yourbase.zookeeper.ZooKeeperAdmin;
 
 /**
  * 
@@ -92,7 +92,9 @@ public class H2MetaTable implements Abortable {
         table = new HTable(HBaseUtils.getConfiguration(), TABLE_NAME);
         watcher = new ZooKeeperWatcher(table.getConfiguration(), "H2MetaTableWatcher", this);
         tracker = new H2MetaTableTracker(watcher, this);
-        tracker.start();
+        //master不需要监听元数据的变化，因为元数据的增删改只能从master发起
+        //if (!database.isMaster())
+            tracker.start();
     }
 
     public H2MetaTableTracker getH2MetaTableTracker() {
@@ -110,10 +112,6 @@ public class H2MetaTable implements Abortable {
                 continue;
             rec = getMetaRecord(r);
             records.add(rec);
-
-            if (!tracker.contains(rec.getId()))
-                ZKUtil.createNodeIfNotExistsAndWatch(watcher,
-                        ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(rec.getId())), EMPTY_BYTE_ARRAY);
         }
     }
 
@@ -145,40 +143,31 @@ public class H2MetaTable implements Abortable {
     }
 
     public void addRecord(MetaRecord rec) {
-        try {
-            putRecord(rec, System.currentTimeMillis());
-            String node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(rec.getId()));
-            ZKUtil.createAndWatch(watcher, node, EMPTY_BYTE_ARRAY);
-            tracker.updateIdVersion(rec.getId(), 0);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        if (database.isMaster()) {
+            try {
+                putRecord(rec, System.currentTimeMillis());
+                String node = ZKUtil.joinZNode(ZooKeeperAdmin.METATABLE_NODE, Integer.toString(rec.getId()));
+                ZKUtil.createEphemeralNodeAndWatch(watcher, node, EMPTY_BYTE_ARRAY);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
     public void updateRecord(MetaRecord rec) {
-        try {
-            long ts = System.currentTimeMillis();
-            putRecord(rec, ts);
-            String node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(rec.getId()));
-            //setData会异步触发所有机器(包括本机)上的H2MetaTableTracker.nodeDataChanged
-            //然后触发下列调用:
-            //=>com.codefollower.h2.engine.Database.updateDatabaseObject(int)
-            //  =>com.codefollower.h2.engine.Database.update(Session, DbObject)
-            //      =>com.codefollower.h2.engine.Database.addMeta0(Session, DbObject, boolean)
-            //          =>又到此方法
-            //所以会造成循环
-            synchronized (this) { //避免setData后立刻触发nodeDataChanged，此时IdVersion还未更新
-                ZKUtil.setData(watcher, node, Bytes.toBytes(ts));
-                //setData后watch不见了，所以要继续watch，监听其他人对此node的修改
-                //ZKUtil.watchAndCheckExists(watcher, node);
-                Stat stat = new Stat();
-                ZKUtil.getDataAndWatch(watcher, node, stat);
-                //这里记录下id的最新版本，触发nodeDataChanged时再检查一下是否版本一样，
-                //如果不大于这里的版本那么就不再执行updateDatabaseObject操作
-                tracker.updateIdVersion(rec.getId(), stat.getVersion());
+        if (database.isMaster()) {
+            try {
+                long ts = System.currentTimeMillis();
+                putRecord(rec, ts);
+                String node = ZKUtil.joinZNode(ZooKeeperAdmin.METATABLE_NODE, Integer.toString(rec.getId()));
+
+                if (ZKUtil.checkExists(watcher, node) != -1)
+                    ZKUtil.setData(watcher, node, Bytes.toBytes(ts));
+                else
+                    ZKUtil.createEphemeralNodeAndWatch(watcher, node, Bytes.toBytes(ts));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -191,15 +180,13 @@ public class H2MetaTable implements Abortable {
     }
 
     public void removeRecord(int id) {
-        try {
-            //System.out.println("removeRecord id: " + id);
-            //new Error().printStackTrace();
-            Delete delete = new Delete(Bytes.toBytes(id));
-            table.delete(delete);
-            ZKUtil.deleteNodeFailSilent(watcher, ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(id)));
-            tracker.removeId(id);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        if (database.isMaster()) {
+            try {
+                table.delete(new Delete(Bytes.toBytes(id)));
+                ZKUtil.deleteNodeFailSilent(watcher, ZKUtil.joinZNode(ZooKeeperAdmin.METATABLE_NODE, Integer.toString(id)));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

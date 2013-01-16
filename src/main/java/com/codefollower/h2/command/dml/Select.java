@@ -21,7 +21,6 @@ import com.codefollower.h2.constant.SysProperties;
 import com.codefollower.h2.engine.Constants;
 import com.codefollower.h2.engine.Database;
 import com.codefollower.h2.engine.Session;
-import com.codefollower.h2.expression.Calculator;
 import com.codefollower.h2.expression.Comparison;
 import com.codefollower.h2.expression.ConditionAndOr;
 import com.codefollower.h2.expression.Expression;
@@ -54,6 +53,7 @@ import com.codefollower.h2.util.ValueHashMap;
 import com.codefollower.h2.value.Value;
 import com.codefollower.h2.value.ValueArray;
 import com.codefollower.h2.value.ValueNull;
+import com.codefollower.yourbase.command.Calculator;
 import com.codefollower.yourbase.command.RowKeyConditionInfo;
 import com.codefollower.yourbase.table.HBaseTable;
 

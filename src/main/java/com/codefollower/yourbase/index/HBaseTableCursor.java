@@ -140,8 +140,8 @@ public class HBaseTableCursor implements Cursor {
                 int i = 0;
                 for (Column c : columns) {
                     i = c.getColumnId();
-                    if (rowKeyName.equalsIgnoreCase(c.getName()))
-                        ;//rowKey = ValueString.get(Bytes.toString(r.getRow()));
+                    if (c.isRowKeyColumn())
+                        data[i] = rowKey; //rowKey = ValueString.get(Bytes.toString(r.getRow()));
                     else
                         data[i] = HBaseUtils.toValue(r.getValue(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes()), c.getType());
                 }

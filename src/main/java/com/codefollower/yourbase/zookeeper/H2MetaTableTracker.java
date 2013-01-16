@@ -32,9 +32,7 @@ import org.apache.zookeeper.data.Stat;
 import com.codefollower.yourbase.table.H2MetaTable;
 
 public class H2MetaTableTracker extends ZooKeeperListener {
-    public static final String NODE_NAME = ZKUtil.joinZNode(ZooKeeperAdmin.YOURBASE_NODE, "metatable");
-
-    private static final int NODE_NAME_LENGTH = NODE_NAME.length();
+    private static final int NODE_NAME_LENGTH = ZooKeeperAdmin.METATABLE_NODE.length();
     private final H2MetaTable table;
     private final NavigableSet<Integer> dbObjectIDs = new TreeSet<Integer>();
     /**
@@ -47,24 +45,10 @@ public class H2MetaTableTracker extends ZooKeeperListener {
         this.table = table;
     }
 
-    public H2MetaTable getH2MetaTable() {
-        return table;
-    }
-
-    public void updateIdVersion(int id, int version) {
-        idVersionMap.put(id, version);
-    }
-
-    public void removeId(int id) {
-        idVersionMap.remove(id);
-    }
-
     public void start() throws H2MetaTableTrackerException {
         watcher.registerListener(this);
         try {
-            ZKUtil.createWithParents(watcher, NODE_NAME);
-
-            List<String> objectIDs = ZKUtil.listChildrenAndWatchThem(watcher, NODE_NAME);
+            List<String> objectIDs = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.METATABLE_NODE);
 
             if (objectIDs != null) {
                 for (String n : objectIDs)
@@ -76,31 +60,40 @@ public class H2MetaTableTracker extends ZooKeeperListener {
         }
     }
 
-    public void updateAll() {
+    public void refresh() {
         try {
-            synchronized (table) {
-                synchronized (this.dbObjectIDs) {
-                    List<String> objectIDs = ZKUtil.listChildrenAndWatchThem(watcher, NODE_NAME);
+            synchronized (this.dbObjectIDs) {
+                List<String> objectIDs = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.METATABLE_NODE);
 
-                    if (objectIDs != null) {
-                        for (String n : objectIDs) {
-                            Stat stat = new Stat();
-                            String node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, n);
-                            ZKUtil.getDataAndWatch(watcher, node, stat);
-                            int id = Integer.valueOf(n);
-                            Integer version = idVersionMap.get(id);
+                if (objectIDs != null) {
+                    for (String n : objectIDs) {
+                        Stat stat = new Stat();
+                        String node = ZKUtil.joinZNode(ZooKeeperAdmin.METATABLE_NODE, n);
+                        ZKUtil.getDataAndWatch(watcher, node, stat);
+                        int id = Integer.valueOf(n);
+                        Integer version = idVersionMap.get(id);
 
-                            if (version != null) {
-                                idVersionMap.put(id, version);
-                            }
-                            if (version == null) {
-                                table.getDatabase().addDatabaseObject(id);
-                                idVersionMap.put(id, 0);
-                            } else if (stat.getVersion() > version)
-                                table.getDatabase().updateDatabaseObject(id);
+                        if (version != null) {
+                            idVersionMap.put(id, version);
                         }
-                        add(objectIDs, false);
+                        if (version == null) {
+                            table.getDatabase().addDatabaseObject(id);
+                            idVersionMap.put(id, 0);
+                        } else if (stat.getVersion() > version)
+                            table.getDatabase().updateDatabaseObject(id);
                     }
+                    
+                    synchronized (this.dbObjectIDs) {
+                        NavigableSet<Integer> oldObjectIDs = new TreeSet<Integer>(this.dbObjectIDs);
+                        for (String n : objectIDs) {
+                            oldObjectIDs.remove(Integer.valueOf(n));
+                        }
+                        
+                        for (Integer n : oldObjectIDs) {
+                            remove(n);
+                        }
+                    }
+                    add(objectIDs, false);
                 }
             }
         } catch (Exception e) {
@@ -108,8 +101,51 @@ public class H2MetaTableTracker extends ZooKeeperListener {
         }
     }
 
-    public boolean contains(int id) {
-        return dbObjectIDs.contains(id);
+    @Override
+    public void nodeDeleted(String path) {
+        if (path.startsWith(ZooKeeperAdmin.METATABLE_NODE)) {
+            int id = Integer.valueOf(path.substring(NODE_NAME_LENGTH + 1));
+            remove(id);
+        }
+    }
+
+    @Override
+    public void nodeChildrenChanged(String path) {
+        if (path.equals(ZooKeeperAdmin.METATABLE_NODE)) {
+            try {
+                List<String> objectIDs = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.METATABLE_NODE);
+                add(objectIDs, true);
+            } catch (Exception e) {
+                throw new H2MetaTableTrackerException(e);
+            }
+        }
+    }
+
+    @Override
+    public void nodeCreated(String path) {
+        //System.out.println("nodeCreated: path=" + path);
+        //此方法很少触发，通常是触发nodeChildrenChanged
+    }
+
+    @Override
+    public void nodeDataChanged(String path) {
+        if (path.length() != NODE_NAME_LENGTH && path.startsWith(ZooKeeperAdmin.METATABLE_NODE)) {
+            try {
+                synchronized (this.dbObjectIDs) {
+                    Stat stat = new Stat();
+                    ZKUtil.getDataAndWatch(watcher, path, stat);
+                    int id = Integer.valueOf(path.substring(NODE_NAME_LENGTH + 1));
+                    Integer version = idVersionMap.get(id);
+
+                    if (version == null)
+                        throw new H2MetaTableTrackerException("id: " + id + " not found, it may be a bug");
+                    else if (stat.getVersion() > version)
+                        table.getDatabase().updateDatabaseObject(id);
+                }
+            } catch (Exception e) {
+                throw new H2MetaTableTrackerException(e);
+            }
+        }
     }
 
     private void add(final List<String> newObjectIDs, boolean isNew) throws Exception {
@@ -137,53 +173,6 @@ public class H2MetaTableTracker extends ZooKeeperListener {
             if (dbObjectIDs.remove(id)) {
                 idVersionMap.remove(id);
                 table.getDatabase().removeDatabaseObject(id);
-            }
-        }
-    }
-
-    @Override
-    public void nodeDeleted(String path) {
-        if (path.startsWith(NODE_NAME)) {
-            int id = Integer.valueOf(path.substring(NODE_NAME_LENGTH + 1));
-            remove(id);
-        }
-    }
-
-    @Override
-    public void nodeChildrenChanged(String path) {
-        if (path.equals(NODE_NAME)) {
-            try {
-                List<String> objectIDs = ZKUtil.listChildrenAndWatchThem(watcher, NODE_NAME);
-                add(objectIDs, true);
-            } catch (Exception e) {
-                throw new H2MetaTableTrackerException(e);
-            }
-        }
-    }
-
-    @Override
-    public void nodeCreated(String path) {
-        //System.out.println("nodeCreated: path=" + path);
-        //此方法很少触发，通常是触发nodeChildrenChanged
-    }
-
-    @Override
-    public void nodeDataChanged(String path) {
-        if (path.length() != NODE_NAME_LENGTH && path.startsWith(NODE_NAME)) {
-            try {
-                synchronized (table) {
-                    Stat stat = new Stat();
-                    ZKUtil.getDataAndWatch(watcher, path, stat);
-                    int id = Integer.valueOf(path.substring(NODE_NAME_LENGTH + 1));
-                    Integer version = idVersionMap.get(id);
-                    //见com.codefollower.h2.engine.H2MetaTable.updateRecord(MetaRecord)的内部注释
-                    if (version == null)
-                        throw new H2MetaTableTrackerException("id: " + id + " not found, it may be a bug");
-                    else if (stat.getVersion() > version)
-                        table.getDatabase().updateDatabaseObject(id);
-                }
-            } catch (Exception e) {
-                throw new H2MetaTableTrackerException(e);
             }
         }
     }

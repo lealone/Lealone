@@ -193,6 +193,10 @@ public class Database implements DataHandler {
         return isMaster;
     }
 
+    public boolean isFromZookeeper() {
+        return fromZookeeper;
+    }
+
     public H2MetaTableTracker getH2MetaTableTracker() {
         if (h2MetaTable != null)
             return h2MetaTable.getH2MetaTableTracker();
@@ -694,6 +698,8 @@ public class Database implements DataHandler {
     }
 
     public synchronized void addDatabaseObject(int id) {
+        if (isMaster())
+            return;
         try {
             fromZookeeper = true;
             if (h2MetaTable != null) {
@@ -708,6 +714,8 @@ public class Database implements DataHandler {
     }
 
     public synchronized void removeDatabaseObject(int id) {
+        if (isMaster())
+            return;
         try {
             fromZookeeper = true;
 
@@ -727,6 +735,8 @@ public class Database implements DataHandler {
     }
 
     public synchronized void updateDatabaseObject(int id) {
+        if (isMaster())
+            return;
         removeDatabaseObject(id);
         addDatabaseObject(id);
     }

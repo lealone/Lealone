@@ -19,16 +19,13 @@
  */
 package com.codefollower.yourbase.command.ddl;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
 
 import com.codefollower.h2.command.CommandInterface;
 import com.codefollower.h2.command.ddl.CreateTable;
@@ -159,29 +156,8 @@ public class CreateHBaseTable extends CreateTable {
             columnsMap.put(defaultColumnFamilyName, list);
         }
         int id = getObjectId();
-        HBaseTable table = new HBaseTable(getSchema(), id, tableName, true, true, columnsMap, data.columns);
-
+        HBaseTable table = new HBaseTable(session, getSchema(), id, tableName, columnsMap, data.columns, htd, splitKeys);
         table.setRowKeyName(rowKeyName);
-        table.setHTableDescriptor(htd);
-
-        try {
-            HMaster master = session.getMaster();
-            if (master != null && master.getTableDescriptors().get(tableName) == null) {
-                master.createTable(htd, splitKeys);
-                try {
-                    //确保表已可用
-                    while (true) {
-                        if (ZKTableReadOnly.isEnabledTable(master.getZooKeeperWatcher(), tableName))
-                            break;
-                        Thread.sleep(100);
-                    }
-                } catch (Exception e) {
-                    throw DbException.convert(e);
-                }
-            }
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, "Failed to HMaster.createTable");
-        }
 
         Database db = session.getDatabase();
         db.lockMeta(session);

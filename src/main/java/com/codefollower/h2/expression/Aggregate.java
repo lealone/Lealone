@@ -36,6 +36,7 @@ import com.codefollower.h2.value.ValueInt;
 import com.codefollower.h2.value.ValueLong;
 import com.codefollower.h2.value.ValueNull;
 import com.codefollower.h2.value.ValueString;
+import com.codefollower.yourbase.command.Calculator;
 
 /**
  * Implements the integrated aggregate functions, such as COUNT, MAX, SUM.

@@ -15,11 +15,13 @@ import java.util.HashSet;
 import com.codefollower.h2.api.Trigger;
 import com.codefollower.h2.command.ddl.AlterIndexRename;
 import com.codefollower.h2.command.ddl.AlterSchemaRename;
+import com.codefollower.h2.command.ddl.AlterSequence;
 import com.codefollower.h2.command.ddl.AlterTableAddConstraint;
 import com.codefollower.h2.command.ddl.AlterTableAlterColumn;
 import com.codefollower.h2.command.ddl.AlterTableDropConstraint;
 import com.codefollower.h2.command.ddl.AlterTableRename;
 import com.codefollower.h2.command.ddl.AlterTableRenameColumn;
+import com.codefollower.h2.command.ddl.AlterTableSet;
 import com.codefollower.h2.command.ddl.AlterUser;
 import com.codefollower.h2.command.ddl.AlterView;
 import com.codefollower.h2.command.ddl.Analyze;
@@ -56,8 +58,6 @@ import com.codefollower.h2.command.ddl.GrantRevoke;
 import com.codefollower.h2.command.ddl.PrepareProcedure;
 import com.codefollower.h2.command.ddl.SetComment;
 import com.codefollower.h2.command.ddl.TruncateTable;
-import com.codefollower.h2.command.dml.AlterSequence;
-import com.codefollower.h2.command.dml.AlterTableSet;
 import com.codefollower.h2.command.dml.BackupCommand;
 import com.codefollower.h2.command.dml.Call;
 import com.codefollower.h2.command.dml.Delete;
@@ -145,7 +145,6 @@ import com.codefollower.h2.value.ValueTime;
 import com.codefollower.h2.value.ValueTimestamp;
 import com.codefollower.yourbase.command.ddl.CreateColumnFamily;
 import com.codefollower.yourbase.command.ddl.CreateHBaseTable;
-import com.codefollower.yourbase.command.ddl.DropHBaseTable;
 import com.codefollower.yourbase.command.ddl.Options;
 import com.codefollower.yourbase.command.dml.HBaseDelete;
 import com.codefollower.yourbase.command.dml.HBaseInsert;
@@ -1286,13 +1285,6 @@ public class Parser {
                 command.setDropAction(ConstraintReferential.SET_DEFAULT);
             }
             return command;
-		} else if (readIf("HBASE")) {
-			read("TABLE");
-			boolean ifExists = readIfExists(false);
-			String tableName = readIdentifierWithSchema();
-			DropHBaseTable command = new DropHBaseTable(session, getSchema(), tableName);
-			command.setIfExists(ifExists);
-			return command;
 		} else if (readIf("INDEX")) {
             boolean ifExists = readIfExists(false);
             String indexName = readIdentifierWithSchema();
@@ -5373,6 +5365,7 @@ public class Parser {
             column.setColumnFamilyName(cfName);
         if (column.isAutoIncrement() && column.isPrimaryKey()) {
             column.setPrimaryKey(false);
+            column.setRowKeyColumn(true);
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = column.getName();
             AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
@@ -5386,8 +5379,12 @@ public class Parser {
         if (readIf("CONSTRAINT")) {
             constraintName = readColumnIdentifier();
         }
-        if (readIf("PRIMARY")) {
+        if (readIf("ROW")) {
             read("KEY");
+            column.setRowKeyColumn(true);
+        } else if (readIf("PRIMARY")) {
+            read("KEY");
+            column.setRowKeyColumn(true);
             boolean hash = readIf("HASH");
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = column.getName();
@@ -5465,6 +5462,8 @@ public class Parser {
         }
         if (readIf("ENGINE")) {
             command.setTableEngine(readUniqueIdentifier());
+        } else if (database.getSettings().defaultTableEngine != null) {
+            command.setTableEngine(database.getSettings().defaultTableEngine);
         }
         if (temp) {
             if (readIf("ON")) {

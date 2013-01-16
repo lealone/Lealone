@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.h2.expression;
+package com.codefollower.yourbase.command;
 
 import java.util.ArrayList;
 import java.util.List;

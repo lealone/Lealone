@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.MasterAddressTracker;
 import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
@@ -32,6 +33,8 @@ import com.codefollower.yourbase.util.HBaseUtils;
 
 public class ZooKeeperAdmin {
     public static final String YOURBASE_NODE = "/yourbase";
+    public static final String METATABLE_NODE = ZKUtil.joinZNode(YOURBASE_NODE, "metatable");
+    public static final String TCP_SERVER_NODE = ZKUtil.joinZNode(YOURBASE_NODE, "server");
 
     private static Abortable abortable = newAbortable();
     private static ZooKeeperWatcher watcher;
@@ -65,6 +68,16 @@ public class ZooKeeperAdmin {
                 return abort;
             }
         };
+    }
+
+    public static void createBaseZNodes() {
+        try {
+            ZKUtil.createAndFailSilent(getZooKeeperWatcher(), YOURBASE_NODE);
+            ZKUtil.createAndFailSilent(getZooKeeperWatcher(), METATABLE_NODE);
+            ZKUtil.createAndFailSilent(getZooKeeperWatcher(), TCP_SERVER_NODE);
+        } catch (Exception e) {
+            throw new ZooKeeperAdminException("createBaseZNodes()", e);
+        }
     }
 
     public static ServerName getMasterAddress() {

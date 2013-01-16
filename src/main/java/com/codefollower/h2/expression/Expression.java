@@ -20,6 +20,7 @@ import com.codefollower.h2.util.StringUtils;
 import com.codefollower.h2.value.DataType;
 import com.codefollower.h2.value.Value;
 import com.codefollower.h2.value.ValueArray;
+import com.codefollower.yourbase.command.Calculator;
 import com.codefollower.yourbase.command.RowKeyConditionInfo;
 
 /**

@@ -4,10 +4,9 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package com.codefollower.h2.command.dml;
+package com.codefollower.h2.command.ddl;
 
 import com.codefollower.h2.command.CommandInterface;
-import com.codefollower.h2.command.ddl.SchemaCommand;
 import com.codefollower.h2.engine.Right;
 import com.codefollower.h2.engine.Session;
 import com.codefollower.h2.message.DbException;

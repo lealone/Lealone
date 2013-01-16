@@ -65,7 +65,7 @@ public class TestBase {
     }
 
     public void createTable(String tableName, String... splitKeys) throws Exception {
-        //stmt.executeUpdate("DROP HBASE TABLE IF EXISTS " + tableName);
+        //stmt.executeUpdate("DROP TABLE IF EXISTS " + tableName);
 
         StringBuilder builder = new StringBuilder();
         for (String s : splitKeys) {

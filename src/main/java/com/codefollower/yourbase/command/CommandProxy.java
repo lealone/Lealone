@@ -212,10 +212,10 @@ public class CommandProxy extends Command {
         }
         initParams(command);
         int updateCount = command.executeUpdate();
-        if (prepared instanceof DefineCommand) {
+        if (!session.getDatabase().isMaster() && prepared instanceof DefineCommand) {
             H2MetaTableTracker tracker = session.getDatabase().getH2MetaTableTracker();
             if (tracker != null)
-                tracker.updateAll();
+                tracker.refresh();
         }
         return updateCount;
     }

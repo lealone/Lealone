@@ -7,6 +7,7 @@
 package com.codefollower.h2.table;
 
 import com.codefollower.h2.command.ddl.CreateTableData;
+import com.codefollower.h2.schema.Schema;
 import com.codefollower.h2.util.StatementBuilder;
 import com.codefollower.h2.util.StringUtils;
 
@@ -24,6 +25,13 @@ public abstract class TableBase extends Table {
     protected final String tableEngine;
 
     private final boolean globalTemporary;
+
+    public TableBase(Schema schema, int id, String name, boolean persistIndexes, boolean persistData, String tableEngine,
+            boolean globalTemporary) {
+        super(schema, id, name, persistIndexes, persistData);
+        this.tableEngine = tableEngine;
+        this.globalTemporary = globalTemporary;
+    }
 
     public TableBase(CreateTableData data) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);

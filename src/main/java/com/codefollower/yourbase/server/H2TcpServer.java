@@ -30,7 +30,9 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import com.codefollower.h2.engine.Constants;
 import com.codefollower.h2.server.TcpServer;
 import com.codefollower.h2.tools.Server;
+import com.codefollower.yourbase.table.HBaseTableEngine;
 import com.codefollower.yourbase.zookeeper.H2TcpPortTracker;
+import com.codefollower.yourbase.zookeeper.ZooKeeperAdmin;
 
 public class H2TcpServer {
     private static final Log log = LogFactory.getLog(H2TcpServer.class);
@@ -40,15 +42,22 @@ public class H2TcpServer {
     private final Server server;
 
     public H2TcpServer(HMaster master) {
+        initDbSettings(master.getConfiguration());
+        ZooKeeperAdmin.createBaseZNodes();
         tcpPort = getMasterTcpPort(master.getConfiguration());
         serverName = master.getServerName();
         server = createServer(master, null);
     }
 
     public H2TcpServer(HRegionServer regionServer) {
+        initDbSettings(regionServer.getConfiguration());
         tcpPort = getRegionServerTcpPort(regionServer.getConfiguration());
         serverName = regionServer.getServerName();
         server = createServer(null, regionServer);
+    }
+
+    private void initDbSettings(Configuration conf) {
+        System.setProperty("h2.defaultTableEngine", conf.get("h2.default.table.engine", HBaseTableEngine.class.getName()));
     }
 
     public static int getMasterTcpPort(Configuration conf) {

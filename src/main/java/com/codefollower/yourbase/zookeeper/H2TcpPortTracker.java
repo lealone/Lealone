@@ -35,7 +35,7 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 
 public class H2TcpPortTracker extends ZooKeeperListener {
-    private static final String NODE_NAME = ZKUtil.joinZNode(ZooKeeperAdmin.YOURBASE_NODE, "server");
+
     /*
      * 包含Master他RegionServer的tcp端口
      * key是ServerName.getHostAndPort()
@@ -44,12 +44,11 @@ public class H2TcpPortTracker extends ZooKeeperListener {
     private Abortable abortable;
 
     private static String getH2TcpPortEphemeralNodePath(ServerName sn, int port) {
-        return ZKUtil.joinZNode(NODE_NAME, sn.getHostAndPort() + Addressing.HOSTNAME_PORT_SEPARATOR + port);
+        return ZKUtil.joinZNode(ZooKeeperAdmin.TCP_SERVER_NODE, sn.getHostAndPort() + Addressing.HOSTNAME_PORT_SEPARATOR + port);
     }
 
     public static void createH2TcpPortEphemeralNode(ServerName sn, int port) {
         try {
-            ZKUtil.createWithParents(ZooKeeperAdmin.getZooKeeperWatcher(), NODE_NAME);
             ZKUtil.createEphemeralNodeAndWatch(ZooKeeperAdmin.getZooKeeperWatcher(), getH2TcpPortEphemeralNodePath(sn, port),
                     HConstants.EMPTY_BYTE_ARRAY);
         } catch (KeeperException e) {
@@ -72,7 +71,7 @@ public class H2TcpPortTracker extends ZooKeeperListener {
 
     public void start() throws KeeperException, IOException {
         watcher.registerListener(this);
-        List<String> servers = ZKUtil.listChildrenAndWatchThem(watcher, NODE_NAME);
+        List<String> servers = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.TCP_SERVER_NODE);
         add(servers);
     }
 
@@ -89,7 +88,7 @@ public class H2TcpPortTracker extends ZooKeeperListener {
 
     @Override
     public void nodeDeleted(String path) {
-        if (path.startsWith(NODE_NAME)) {
+        if (path.startsWith(ZooKeeperAdmin.TCP_SERVER_NODE)) {
             String serverName = ZKUtil.getNodeName(path);
             tcpPortMap.remove(serverName.substring(0, serverName.lastIndexOf(Addressing.HOSTNAME_PORT_SEPARATOR)));
         }
@@ -97,9 +96,9 @@ public class H2TcpPortTracker extends ZooKeeperListener {
 
     @Override
     public void nodeChildrenChanged(String path) {
-        if (path.equals(NODE_NAME)) {
+        if (path.equals(ZooKeeperAdmin.TCP_SERVER_NODE)) {
             try {
-                List<String> servers = ZKUtil.listChildrenAndWatchThem(watcher, NODE_NAME);
+                List<String> servers = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.TCP_SERVER_NODE);
                 add(servers);
             } catch (IOException e) {
                 abortable.abort("Unexpected zk exception getting server nodes", e);
