@@ -1,15 +1,30 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<properties>
+		<yourbase.version>0.10-SNAPSHOT</yourbase.version>
+	</properties>
+
+	<name>yourbase project</name>
 
 	<groupId>com.codefollower.yourbase</groupId>
 	<artifactId>yourbase</artifactId>
-	<version>0.10.0-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<packaging>pom</packaging>
+	<version>0.1.0</version>
+	
+	<modules>
+		<module>yourbase-common</module>
+		<module>yourbase-sql</module>
+		<module>yourbase-memory</module>
+		<module>yourbase-regular</module>
+		<module>yourbase-mvstore</module>
+		<module>yourbase-hbase</module>
+		<module>yourbase-olap</module>
+		<module>yourbase-test</module>
+	</modules>
 
-	<name>YourBase</name>
-
-	<build>
+		<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -63,6 +78,18 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>2.12</version>
 				</plugin>
+				<!--
+				<plugin>
+					<artifactId>maven-assembly-plugin</artifactId>
+					<version>2.2-beta-5</version>
+					<configuration>
+						<finalName>yourbase-${yourbase.version}</finalName>
+						<descriptors>
+							<descriptor>assembly.xml</descriptor>
+						</descriptors>
+					</configuration>
+				</plugin>
+				-->
 			</plugins>
 		</pluginManagement>
 	</build>
@@ -74,27 +101,5 @@
 			<version>4.8</version>
 			<scope>test</scope>
 		</dependency>
-
-		<dependency>
-			<groupId>commons-logging</groupId>
-			<artifactId>commons-logging</artifactId>
-			<version>1.1.1</version>
-			<scope>provided</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.hbase</groupId>
-			<artifactId>hbase</artifactId>
-			<version>0.94.3</version>
-			<scope>provided</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-core</artifactId>
-			<version>1.0.4</version>
-			<scope>provided</scope>
-		</dependency>
-
 	</dependencies>
 </project>

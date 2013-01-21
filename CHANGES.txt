@@ -35,6 +35,10 @@ Release 0.10.0-RC2 - 2012/12/31
 
 Release 0.10.0-RC3 - 未发布
 
+Sub-task
+
+    - 
+
 Bug
 
     - 对于PreparedStatement，rowKey值在prepared阶段有可能无法获取，
@@ -45,11 +49,12 @@ Improvement
 
     - 在不修改任何HBase源代码的情况下把HBase集成到YourBase中。
     - 如果列是rowKey，那么在构造Column实例时明确标注出来，避免不必要的字段名equals比较
+    - 代码模块化，分common、SQL引擎和4个存储引擎
 
 
 New Feature
 
-    - 支持标准的CREATE TABLE，这种类型的表被看成是静态类型的，不需要定义列族，字段类型必须事先定义，并且必须有主键。
+    - 
 
 
 Task
