@@ -1843,7 +1843,7 @@ public class Parser {
         command.setSQL(sql);
     }
 
-    private Expression readExpression() {
+    protected Expression readExpression() {
         Expression r = readAnd();
         while (readIf("OR")) {
             r = new ConditionAndOr(ConditionAndOr.OR, r, readAnd());
@@ -4405,7 +4405,7 @@ public class Parser {
         return command;
     }
 
-    private AlterSequence parseAlterSequence() {
+    protected AlterSequence parseAlterSequence() {
         String sequenceName = readIdentifierWithSchema();
         Sequence sequence = getSchema().getSequence(sequenceName);
         AlterSequence command = new AlterSequence(session, sequence.getSchema());
@@ -4786,7 +4786,7 @@ public class Parser {
         return readTableOrView(readIdentifierWithSchema(null));
     }
 
-    private Table readTableOrView(String tableName) {
+    protected Table readTableOrView(String tableName) {
         // same algorithm than readSequence
         if (schemaName != null) {
             return getSchema().getTableOrView(session, tableName);

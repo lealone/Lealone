@@ -43,6 +43,15 @@ public class HBaseDatabase extends Database {
     private MetaTable metaTable;
     private HashMap<Integer, Pair> dbObjectMap;
     private boolean fromZookeeper;
+    private boolean needToAddRedoRecord = true;
+
+    public boolean isNeedToAddRedoRecord() {
+        return needToAddRedoRecord;
+    }
+
+    public void setNeedToAddRedoRecord(boolean needToAddRedoRecord) {
+        this.needToAddRedoRecord = needToAddRedoRecord;
+    }
 
     private static class Pair {
         Session session;
@@ -81,10 +90,10 @@ public class HBaseDatabase extends Database {
 
     @Override
     public synchronized void removeMeta(Session session, int id) {
-        if (id > 0 && !starting) {
+        if (id > 0) {
             objectIds.clear(id);
             dbObjectMap.remove(id);
-            if (isMaster && !fromZookeeper && metaTable != null)
+            if (!starting && isMaster && !fromZookeeper && metaTable != null)
                 metaTable.removeRecord(id);
         }
     }
@@ -129,7 +138,6 @@ public class HBaseDatabase extends Database {
             Pair p = dbObjectMap.get(id);
             //p为null时有可能是refresh时调用过了
             if (p != null && p.dbObject != null) {
-                //new Error("id:"+id+" "+ p.dbObject.getCreateSQL()).printStackTrace();
                 if (p.dbObject instanceof SchemaObject)
                     removeSchemaObject(p.session, (SchemaObject) p.dbObject);
                 else
@@ -145,17 +153,36 @@ public class HBaseDatabase extends Database {
     @Override
     protected synchronized void addMeta(Session session, DbObject obj) {
         int id = obj.getId();
-        if (id > 0 && !starting && !obj.isTemporary()) {
+        if (id > 0 && !obj.isTemporary()) {
             objectIds.set(id);
             Pair p = new Pair();
             p.session = session;
             p.dbObject = obj;
             dbObjectMap.put(id, p);
 
-            if (isMaster && !fromZookeeper && metaTable != null) {
+            if (!starting && isMaster && !fromZookeeper && metaTable != null) {
                 metaTable.addRecord(new MetaRecord(obj));
             }
         }
+    }
+
+    @Override
+    public synchronized void update(Session session, DbObject obj) {
+        lockMeta(session);
+        int id = obj.getId();
+        //removeMeta(session, id); //并不删除记录
+        if (id > 0 && !starting) {
+            dbObjectMap.remove(id);
+            Pair p = new Pair();
+            p.session = session;
+            p.dbObject = obj;
+            dbObjectMap.put(id, p);
+
+            if (isMaster && !fromZookeeper && metaTable != null) {
+                metaTable.updateRecord(new MetaRecord(obj));
+            }
+        }
+
     }
 
     @Override

@@ -23,6 +23,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
+
 import com.codefollower.yourbase.hbase.dbobject.table.MetaTable;
 
 public class MetaTableTracker extends ZooKeeperListener {
@@ -41,7 +42,6 @@ public class MetaTableTracker extends ZooKeeperListener {
 
     public synchronized void refresh() {
         int newRedoPos = getRedoPos(true);
-
         if (newRedoPos != redoPos) {
             int startPos = redoPos;
             int stopPos = newRedoPos;

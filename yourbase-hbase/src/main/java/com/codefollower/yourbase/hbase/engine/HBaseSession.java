@@ -28,11 +28,13 @@ import com.codefollower.yourbase.command.Command;
 import com.codefollower.yourbase.command.Parser;
 import com.codefollower.yourbase.command.dml.Query;
 import com.codefollower.yourbase.constant.ErrorCode;
+import com.codefollower.yourbase.dbobject.Schema;
 import com.codefollower.yourbase.dbobject.User;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.command.CommandProxy;
 import com.codefollower.yourbase.hbase.command.HBaseParser;
+import com.codefollower.yourbase.hbase.dbobject.HBaseSequence;
 import com.codefollower.yourbase.hbase.result.HBaseCombinedResult;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.CombinedResult;
@@ -119,5 +121,9 @@ public class HBaseSession extends Session {
 
     public Parser createParser() {
         return new HBaseParser(this);
+    }
+
+    public HBaseSequence createSequence(Schema schema, int id, String name, boolean belongsToTable) {
+        return new HBaseSequence(schema, id, name, belongsToTable);
     }
 }

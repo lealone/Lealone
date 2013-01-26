@@ -36,7 +36,17 @@ import com.codefollower.yourbase.hbase.zookeeper.MetaTableTrackerException;
 public class H2MetaTableTrackerTest implements Abortable {
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
+    @SuppressWarnings("unused")
     public static void main(String[] args) throws Exception {
+        H2MetaTableTrackerTest test1 = new H2MetaTableTrackerTest();
+        H2MetaTableTrackerTest test2 = new H2MetaTableTrackerTest();
+        H2MetaTableTrackerTest test3 = new H2MetaTableTrackerTest(false);
+        
+        ZKUtil.setData(test3.watcher, H2MetaTableTracker.NODE_NAME, Bytes.toBytes(System.currentTimeMillis()));
+        Thread.sleep(2000);
+    }
+
+    public static void main1(String[] args) throws Exception {
         H2MetaTableTrackerTest test = new H2MetaTableTrackerTest();
 
         String node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(120));
@@ -87,6 +97,13 @@ public class H2MetaTableTrackerTest implements Abortable {
         tracker.start();
     }
 
+    public H2MetaTableTrackerTest(boolean start) throws Exception {
+        watcher = new ZooKeeperWatcher(HBaseUtils.getConfiguration(), "H2MetaTableTrackerTest", this);
+        tracker = new H2MetaTableTracker(watcher);
+        if (start)
+            tracker.start();
+    }
+
     @Override
     public void abort(String why, Throwable e) {
 
@@ -99,7 +116,7 @@ public class H2MetaTableTrackerTest implements Abortable {
     }
 
     public static class H2MetaTableTracker extends ZooKeeperListener {
-        public static final String NODE_NAME = "/yourbase/metatable";
+        public static final String NODE_NAME = "/yourbase/metatable2";
         private static final int NODE_NAME_LENGTH = NODE_NAME.length();
         private final NavigableSet<Integer> objectIDs = new TreeSet<Integer>();
 
@@ -112,6 +129,8 @@ public class H2MetaTableTrackerTest implements Abortable {
             try {
                 ZKUtil.createAndFailSilent(watcher, "/yourbase");
                 ZKUtil.createAndFailSilent(watcher, NODE_NAME);
+                
+                ZKUtil.watchAndCheckExists(watcher, NODE_NAME);
 
                 List<String> objectIDs = ZKUtil.listChildrenAndWatchThem(watcher, NODE_NAME);
                 System.out.println("start: objectIDs=" + objectIDs);

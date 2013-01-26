@@ -87,7 +87,6 @@ public class HBaseSelect extends Select {
         if ((topTableFilter.getTable() instanceof TableView))
             return ((TableView) topTableFilter.getTable()).getTableName();
         else
-
             return topTableFilter.getTable().getName();
     }
 

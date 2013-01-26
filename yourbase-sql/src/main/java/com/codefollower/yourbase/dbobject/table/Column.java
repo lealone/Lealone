@@ -456,7 +456,7 @@ public class Column {
                 break;
             }
         }
-        Sequence seq = new Sequence(schema, id, sequenceName, true);
+        Sequence seq = session.createSequence(schema, id, sequenceName, true);
         seq.setStartValue(start);
         seq.setIncrement(increment);
         if (!temporary) {

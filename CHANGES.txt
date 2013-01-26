@@ -54,7 +54,7 @@ Improvement
 
 New Feature
 
-    - 
+    - 支持分布式SEQUENCE
 
 
 Task

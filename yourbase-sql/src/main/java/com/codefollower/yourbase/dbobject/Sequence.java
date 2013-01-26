@@ -22,10 +22,10 @@ public class Sequence extends SchemaObjectBase {
      */
     public static final int DEFAULT_CACHE_SIZE = 32;
 
-    private long value = 1;
-    private long valueWithMargin;
-    private long increment = 1;
-    private long cacheSize = DEFAULT_CACHE_SIZE;
+    protected long value = 1;
+    protected long valueWithMargin;
+    protected long increment = 1;
+    protected long cacheSize = DEFAULT_CACHE_SIZE;
     private boolean belongsToTable;
 
     public Sequence(Schema schema, int id, String name, boolean belongsToTable) {

@@ -22,16 +22,19 @@ package com.codefollower.yourbase.hbase.command;
 import java.util.ArrayList;
 import com.codefollower.yourbase.command.Parser;
 import com.codefollower.yourbase.command.Prepared;
+import com.codefollower.yourbase.command.ddl.AlterSequence;
 import com.codefollower.yourbase.command.dml.Delete;
 import com.codefollower.yourbase.command.dml.Insert;
 import com.codefollower.yourbase.command.dml.Select;
 import com.codefollower.yourbase.command.dml.Update;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.Schema;
+import com.codefollower.yourbase.dbobject.Sequence;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.engine.Session;
+import com.codefollower.yourbase.hbase.command.ddl.AlterSequenceNextValueMargin;
 import com.codefollower.yourbase.hbase.command.ddl.CreateColumnFamily;
 import com.codefollower.yourbase.hbase.command.ddl.CreateHBaseTable;
 import com.codefollower.yourbase.hbase.command.ddl.Options;
@@ -40,6 +43,7 @@ import com.codefollower.yourbase.hbase.command.dml.HBaseInsert;
 import com.codefollower.yourbase.hbase.command.dml.HBaseSelect;
 import com.codefollower.yourbase.hbase.command.dml.HBaseUpdate;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
+import com.codefollower.yourbase.hbase.engine.HBaseDatabase;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.util.New;
 
@@ -47,6 +51,28 @@ public class HBaseParser extends Parser {
 
     public HBaseParser(Session session) {
         super(session);
+    }
+
+    @Override
+    protected AlterSequence parseAlterSequence() {
+        String sequenceName = readIdentifierWithSchema();
+        Sequence sequence = getSchema().getSequence(sequenceName);
+        if (readIf("NEXT")) {
+            readIf("VALUE");
+            readIf("MARGIN");
+            return new AlterSequenceNextValueMargin(session, sequence.getSchema(), sequence);
+        }
+        AlterSequence command = new AlterSequence(session, sequence.getSchema());
+        command.setSequence(sequence);
+        if (readIf("RESTART")) {
+            read("WITH");
+            command.setStartWith(readExpression());
+        }
+        if (readIf("INCREMENT")) {
+            read("BY");
+            command.setIncrement(readExpression());
+        }
+        return command;
     }
 
     @Override
@@ -246,5 +272,15 @@ public class HBaseParser extends Parser {
             }
         }
         return filter.getTable().getColumn(columnName);
+    }
+
+    @Override
+    protected Table readTableOrView(String tableName) {
+        try {
+            return super.readTableOrView(tableName);
+        } catch (Exception e) {
+            ((HBaseDatabase) database).refreshMetaTable();
+            return super.readTableOrView(tableName);
+        }
     }
 }

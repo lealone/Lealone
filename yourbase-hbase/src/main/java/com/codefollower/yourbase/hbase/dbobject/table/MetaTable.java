@@ -132,8 +132,9 @@ public class MetaTable {
     public void addRecord(MetaRecord rec) {
         if (database.isMaster()) {
             try {
-                addRedoRecord(rec, true);
-                addMetaRecord(rec, System.currentTimeMillis());
+                if (database.isNeedToAddRedoRecord())
+                    addRedoRecord(rec, true);
+                addMetaRecord(rec);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -145,9 +146,22 @@ public class MetaTable {
             try {
                 MetaRecord rec = getMetaRecord(id);
                 if (rec != null) {
-                    addRedoRecord(rec, false);
+                    if (database.isNeedToAddRedoRecord())
+                        addRedoRecord(rec, false);
                     metaTable.delete(new Delete(Bytes.toBytes(id)));
                 }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public void updateRecord(MetaRecord rec) {
+        if (database.isMaster()) {
+            try {
+                if (database.isNeedToAddRedoRecord())
+                    addRedoRecord(rec, false);
+                addRecord(rec);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -189,11 +203,10 @@ public class MetaTable {
         ZKUtil.setData(watcher, ZooKeeperAdmin.METATABLE_NODE, Bytes.toBytes(nextRedoPos));
     }
 
-    private void addMetaRecord(MetaRecord rec, long ts) throws Exception {
+    private void addMetaRecord(MetaRecord rec) throws Exception {
         Put put = new Put(Bytes.toBytes(rec.getId()));
-        put.add(FAMILY, OBJECT_TYPE, ts, Bytes.toBytes(rec.getObjectType()));
-        put.add(FAMILY, SQL, ts, Bytes.toBytes(rec.getSQL()));
-        //System.out.println("addRecord id: " + rec.getId() + ", sql=" + rec.getSQL());
+        put.add(FAMILY, OBJECT_TYPE, Bytes.toBytes(rec.getObjectType()));
+        put.add(FAMILY, SQL, Bytes.toBytes(rec.getSQL()));
         metaTable.put(put);
     }
 

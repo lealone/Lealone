@@ -119,12 +119,6 @@ public class HBaseInsert extends Insert {
                     ci.executeUpdate();
                 }
                 si.close();
-
-                //                System.out.println("alterTable=" + alterTable + " " + c.getCreateSQL());
-                //                CommandInterface c = CommandProxy.getCommandInterface(session, session.getOriginalProperties(),
-                //                        HBaseUtils.getMasterURL(), table.getCreateSQL(), null);
-                //                c.executeUpdate();
-                //session.getDatabase().update(session, table);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
