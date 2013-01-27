@@ -587,7 +587,7 @@ public class Server extends Tool implements Runnable, ShutdownHandler {
         try {
             String osName = StringUtils.toLowerEnglish(Utils.getProperty("os.name", "linux"));
             Runtime rt = Runtime.getRuntime();
-            String browser = Utils.getProperty(SysProperties.H2_BROWSER, null);
+            String browser = Utils.getProperty(SysProperties.YOURBASE_BROWSER, null);
             if (browser != null) {
                 if (browser.startsWith("call:")) {
                     browser = browser.substring("call:".length());
@@ -644,7 +644,7 @@ public class Server extends Tool implements Runnable, ShutdownHandler {
                 }
                 if (!ok) {
                     // No success in detection.
-                    throw new Exception("Browser detection failed and system property " + SysProperties.H2_BROWSER + " not set");
+                    throw new Exception("Browser detection failed and system property " + SysProperties.YOURBASE_BROWSER + " not set");
                 }
             }
         } catch (Exception e) {

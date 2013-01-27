@@ -138,7 +138,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     }
 
     private void initDbSettings(Configuration conf) {
-        System.setProperty("yourbase.defaultTableEngine", conf.get("yourbase.default.table.engine", HBaseTableEngine.NAME));
+        System.setProperty("yourbase.default.table.engine", conf.get("yourbase.default.table.engine", HBaseTableEngine.NAME));
     }
 
     @Override

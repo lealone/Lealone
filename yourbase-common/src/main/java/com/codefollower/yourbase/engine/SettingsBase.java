@@ -64,14 +64,12 @@ public class SettingsBase {
      */
     protected String get(String key, String defaultValue) {
         StringBuilder buff = new StringBuilder("yourbase.");
-        boolean nextUpper = false;
         for (char c : key.toCharArray()) {
             if (c == '_') {
-                nextUpper = true;
+                buff.append('.');
             } else {
                 // Character.toUpperCase / toLowerCase ignores the locale
-                buff.append(nextUpper ? Character.toUpperCase(c) : Character.toLowerCase(c));
-                nextUpper = false;
+                buff.append(Character.toLowerCase(c));
             }
         }
         String sysProperty = buff.toString();

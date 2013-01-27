@@ -35,10 +35,6 @@ Release 0.10.0-RC2 - 2012/12/31
 
 Release 0.10.0-RC3 - 未发布
 
-Sub-task
-
-    - 
-
 Bug
 
     - 对于PreparedStatement，rowKey值在prepared阶段有可能无法获取，
@@ -61,10 +57,12 @@ Task
 
     - 应用有可能使用H2数据库的其他版本，为避免潜在的jar包冲突，
       将YourBase内部使用的H2的包名org.h2改成com.codefollower.h2。
+    - DbSettings和SysProperties中的参数名统一使用点号分隔的小写形式，不再使用驼峰风格，保持与HBase一样。
 
 
 Test
 
     - 简化测试启动过程，启动内置zookeeper、HMaster、HRegionServer
+    - 支持多RegionServer测试
 
 

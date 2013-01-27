@@ -21,14 +21,14 @@ import com.codefollower.yourbase.util.Utils;
  * </p>
  *
  * <pre>
- * java -Dh2.baseDir=/temp
+ * java -Dyourbase.base.dir=/temp
  * </pre>
  *
  * They can be set within the application, but this must be done before loading
  * any classes of this database (before loading the JDBC driver):
  *
  * <pre>
- * System.setProperty(&quot;yourbase.baseDir&quot;, &quot;/temp&quot;);
+ * System.setProperty(&quot;yourbase.base.dir&quot;, &quot;/temp&quot;);
  * </pre>
  */
 public class SysProperties {
@@ -36,12 +36,12 @@ public class SysProperties {
     /**
      * INTERNAL
      */
-    public static final String H2_SCRIPT_DIRECTORY = "yourbase.scriptDirectory";
+    public static final String YOURBASE_SCRIPT_DIRECTORY = "yourbase.scriptDirectory";
 
     /**
      * INTERNAL
      */
-    public static final String H2_BROWSER = "yourbase.browser";
+    public static final String YOURBASE_BROWSER = "yourbase.browser";
 
     /**
      * System property <code>file.encoding</code> (default: Cp1252).<br />
@@ -76,10 +76,10 @@ public class SysProperties {
     public static final String USER_HOME = Utils.getProperty("user.home", "");
 
     /**
-     * System property <code>yourbase.allowedClasses</code> (default: *).<br />
+     * System property <code>yourbase.allowed.classes</code> (default: *).<br />
      * Comma separated list of class names or prefixes.
      */
-    public static final String ALLOWED_CLASSES = Utils.getProperty("yourbase.allowedClasses", "*");
+    public static final String ALLOWED_CLASSES = Utils.getProperty("yourbase.allowed.classes", "*");
 
     /**
      * System property <code>yourbase.browser</code> (default: null).<br />
@@ -88,20 +88,20 @@ public class SysProperties {
      * For Mac OS, if the default browser is not Safari and you want to use Safari,
      * use: <code>java -Dh2.browser="open,-a,Safari,%url" ...</code>.
      */
-    public static final String BROWSER = Utils.getProperty(H2_BROWSER, null);
+    public static final String BROWSER = Utils.getProperty(YOURBASE_BROWSER, null);
 
     /**
-     * System property <code>yourbase.enableAnonymousSSL</code> (default: true).<br />
+     * System property <code>yourbase.enable.anonymous.ssl</code> (default: true).<br />
      * When using SSL connection, the anonymous cipher suite
      * SSL_DH_anon_WITH_RC4_128_MD5 should be enabled.
      */
-    public static final boolean ENABLE_ANONYMOUS_SSL = Utils.getProperty("yourbase.enableAnonymousSSL", true);
+    public static final boolean ENABLE_ANONYMOUS_SSL = Utils.getProperty("yourbase.enable.anonymous.ssl", true);
 
     /**
-     * System property <code>yourbase.bindAddress</code> (default: null).<br />
+     * System property <code>yourbase.bind.address</code> (default: null).<br />
      * The bind address to use.
      */
-    public static final String BIND_ADDRESS = Utils.getProperty("yourbase.bindAddress", null);
+    public static final String BIND_ADDRESS = Utils.getProperty("yourbase.bind.address", null);
 
     /**
      * System property <code>yourbase.check</code> (default: true).<br />
@@ -124,215 +124,216 @@ public class SysProperties {
     //*/
 
     /**
-     * System property <code>yourbase.clientTraceDirectory</code> (default:
+     * System property <code>yourbase.client.trace.directory</code> (default:
      * trace.db/).<br />
      * Directory where the trace files of the JDBC client are stored (only for
      * client / server).
      */
-    public static final String CLIENT_TRACE_DIRECTORY = Utils.getProperty("yourbase.clientTraceDirectory", "trace.db/");
+    public static final String CLIENT_TRACE_DIRECTORY = Utils.getProperty("yourbase.client.trace.directory", "trace.db/");
 
     /**
-     * System property <code>yourbase.collatorCacheSize</code> (default: 32000).<br />
+     * System property <code>yourbase.collator.cache.size</code> (default: 32000).<br />
      * The cache size for collation keys (in elements). Used when a collator has
      * been set for the database.
      */
-    public static final int COLLATOR_CACHE_SIZE = Utils.getProperty("yourbase.collatorCacheSize", 32000);
+    public static final int COLLATOR_CACHE_SIZE = Utils.getProperty("yourbase.collator.cache.size", 32000);
 
     /**
-     * System property <code>yourbase.consoleStream</code> (default: true).<br />
+     * System property <code>yourbase.console.stream</code> (default: true).<br />
      * H2 Console: stream query results.
      */
-    public static final boolean CONSOLE_STREAM = Utils.getProperty("yourbase.consoleStream", true);
+    public static final boolean CONSOLE_STREAM = Utils.getProperty("yourbase.console.stream", true);
 
     /**
-     * System property <code>yourbase.dataSourceTraceLevel</code> (default: 1).<br />
+     * System property <code>yourbase.datasource.trace.level</code> (default: 1).<br />
      * The trace level of the data source implementation. Default is 1 for
      * error.
      */
-    public static final int DATASOURCE_TRACE_LEVEL = Utils.getProperty("yourbase.dataSourceTraceLevel", TraceSystem.ERROR);
+    public static final int DATASOURCE_TRACE_LEVEL = Utils.getProperty("yourbase.datasource.trace.level", TraceSystem.ERROR);
 
     /**
-     * System property <code>yourbase.delayWrongPasswordMin</code> (default: 250).<br />
+     * System property <code>yourbase.delay.wrong.password.min</code> (default: 250).<br />
      * The minimum delay in milliseconds before an exception is thrown for using
      * the wrong user name or password. This slows down brute force attacks. The
      * delay is reset to this value after a successful login. Unsuccessful
      * logins will double the time until DELAY_WRONG_PASSWORD_MAX.
      * To disable the delay, set this system property to 0.
      */
-    public static final int DELAY_WRONG_PASSWORD_MIN = Utils.getProperty("yourbase.delayWrongPasswordMin", 250);
+    public static final int DELAY_WRONG_PASSWORD_MIN = Utils.getProperty("yourbase.delay.wrong.password.min", 250);
 
     /**
-     * System property <code>yourbase.delayWrongPasswordMax</code> (default: 4000).<br />
+     * System property <code>yourbase.delay.wrong.password.max</code> (default: 4000).<br />
      * The maximum delay in milliseconds before an exception is thrown for using
      * the wrong user name or password. This slows down brute force attacks. The
      * delay is reset after a successful login. The value 0 means there is no
      * maximum delay.
      */
-    public static final int DELAY_WRONG_PASSWORD_MAX = Utils.getProperty("yourbase.delayWrongPasswordMax", 4000);
+    public static final int DELAY_WRONG_PASSWORD_MAX = Utils.getProperty("yourbase.delay.wrong.password.max", 4000);
 
     /**
-     * System property <code>yourbase.lobCloseBetweenReads</code> (default: false).<br />
+     * System property <code>yourbase.lob.close.between.reads</code> (default: false).<br />
      * Close LOB files between read operations.
      */
-    public static boolean lobCloseBetweenReads = Utils.getProperty("yourbase.lobCloseBetweenReads", false);
+    public static boolean lobCloseBetweenReads = Utils.getProperty("yourbase.lob.close.between.reads", false);
 
     /**
-     * System property <code>yourbase.lobFilesPerDirectory</code> (default: 256).<br />
+     * System property <code>yourbase.lob.files.per.directory</code> (default: 256).<br />
      * Maximum number of LOB files per directory.
      */
-    public static final int LOB_FILES_PER_DIRECTORY = Utils.getProperty("yourbase.lobFilesPerDirectory", 256);
+    public static final int LOB_FILES_PER_DIRECTORY = Utils.getProperty("yourbase.lob.files.per.directory", 256);
 
     /**
-     * System property <code>yourbase.lobInDatabase</code> (default: true).<br />
+     * System property <code>yourbase.lob.in.database</code> (default: true).<br />
      * Store LOB files in the database.
      */
-    public static final boolean LOB_IN_DATABASE = Utils.getProperty("yourbase.lobInDatabase", true);
+    public static final boolean LOB_IN_DATABASE = Utils.getProperty("yourbase.lob.in.database", true);
 
     /**
-     * System property <code>yourbase.lobClientMaxSizeMemory</code> (default:
+     * System property <code>yourbase.lob.client.max.size.memory</code> (default:
      * 1048576).<br />
      * The maximum size of a LOB object to keep in memory on the client side
      * when using the server mode.
      */
-    public static final int LOB_CLIENT_MAX_SIZE_MEMORY = Utils.getProperty("yourbase.lobClientMaxSizeMemory", 1024 * 1024);
+    public static final int LOB_CLIENT_MAX_SIZE_MEMORY = Utils.getProperty("yourbase.lob.client.max.size.memory", 1024 * 1024);
 
     /**
-     * System property <code>yourbase.maxFileRetry</code> (default: 16).<br />
+     * System property <code>yourbase.max.file.retry</code> (default: 16).<br />
      * Number of times to retry file delete and rename. in Windows, files can't
      * be deleted if they are open. Waiting a bit can help (sometimes the
      * Windows Explorer opens the files for a short time) may help. Sometimes,
      * running garbage collection may close files if the user forgot to call
      * Connection.close() or InputStream.close().
      */
-    public static final int MAX_FILE_RETRY = Math.max(1, Utils.getProperty("yourbase.maxFileRetry", 16));
+    public static final int MAX_FILE_RETRY = Math.max(1, Utils.getProperty("yourbase.max.file.retry", 16));
 
     /**
-     * System property <code>yourbase.maxReconnect</code> (default: 3).<br />
+     * System property <code>yourbase.max.reconnect</code> (default: 3).<br />
      * The maximum number of tries to reconnect in a row.
      */
-    public static final int MAX_RECONNECT = Utils.getProperty("yourbase.maxReconnect", 3);
+    public static final int MAX_RECONNECT = Utils.getProperty("yourbase.max.reconnect", 3);
 
     /**
-     * System property <code>yourbase.maxTraceDataLength</code> (default: 65535).<br />
+     * System property <code>yourbase.max.trace.data.length</code> (default: 65535).<br />
      * The maximum size of a LOB value that is written as data to the trace system.
      */
-    public static final long MAX_TRACE_DATA_LENGTH = Utils.getProperty("yourbase.maxTraceDataLength", 65535);
+    public static final long MAX_TRACE_DATA_LENGTH = Utils.getProperty("yourbase.max.trace.data.length", 65535);
 
     /**
-     * System property <code>yourbase.modifyOnWrite</code> (default: false).<br />
+     * System property <code>yourbase.modify.on.write</code> (default: false).<br />
      * Only modify the database file when recovery is necessary, or when writing
      * to the database. If disabled, opening the database always writes to the
      * file (except if the database is read-only). When enabled, the serialized
      * file lock is faster.
      */
-    public static final boolean MODIFY_ON_WRITE = Utils.getProperty("yourbase.modifyOnWrite", false);
+    public static final boolean MODIFY_ON_WRITE = Utils.getProperty("yourbase.modify.on.write", false);
 
     /**
-     * System property <code>yourbase.nioLoadMapped</code> (default: false).<br />
+     * System property <code>yourbase.nio.load.mapped</code> (default: false).<br />
      * If the mapped buffer should be loaded when the file is opened.
      * This can improve performance.
      */
-    public static final boolean NIO_LOAD_MAPPED = Utils.getProperty("yourbase.nioLoadMapped", false);
+    public static final boolean NIO_LOAD_MAPPED = Utils.getProperty("yourbase.nio.load.mapped", false);
 
     /**
-     * System property <code>yourbase.nioCleanerHack</code> (default: false).<br />
+     * System property <code>yourbase.nio.cleaner.hack</code> (default: false).<br />
      * If enabled, use the reflection hack to un-map the mapped file if
      * possible. If disabled, System.gc() is called in a loop until the object
      * is garbage collected. See also
      * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038
      */
-    public static final boolean NIO_CLEANER_HACK = Utils.getProperty("yourbase.nioCleanerHack", false);
+    public static final boolean NIO_CLEANER_HACK = Utils.getProperty("yourbase.nio.cleaner.hack", false);
 
     /**
-     * System property <code>yourbase.objectCache</code> (default: true).<br />
+     * System property <code>yourbase.object.cache</code> (default: true).<br />
      * Cache commonly used values (numbers, strings). There is a shared cache
      * for all values.
      */
-    public static final boolean OBJECT_CACHE = Utils.getProperty("yourbase.objectCache", true);
+    public static final boolean OBJECT_CACHE = Utils.getProperty("yourbase.object.cache", true);
 
     /**
-     * System property <code>yourbase.objectCacheMaxPerElementSize</code> (default:
+     * System property <code>yourbase.object.cache.max.per.element.size</code> (default:
      * 4096).<br />
      * The maximum size (precision) of an object in the cache.
      */
-    public static final int OBJECT_CACHE_MAX_PER_ELEMENT_SIZE = Utils.getProperty("yourbase.objectCacheMaxPerElementSize", 4096);
+    public static final int OBJECT_CACHE_MAX_PER_ELEMENT_SIZE = Utils.getProperty("yourbase.object.cache.max.per.element.size",
+            4096);
 
     /**
-     * System property <code>yourbase.objectCacheSize</code> (default: 1024).<br />
+     * System property <code>yourbase.object.cache.size</code> (default: 1024).<br />
      * The maximum number of objects in the cache.
      * This value must be a power of 2.
      */
-    public static final int OBJECT_CACHE_SIZE = MathUtils.nextPowerOf2(Utils.getProperty("yourbase.objectCacheSize", 1024));
+    public static final int OBJECT_CACHE_SIZE = MathUtils.nextPowerOf2(Utils.getProperty("yourbase.object.cache.size", 1024));
 
     /**
-     * System property <code>yourbase.pgClientEncoding</code> (default: UTF-8).<br />
+     * System property <code>yourbase.pg.client.encoding</code> (default: UTF-8).<br />
      * Default client encoding for PG server. It is used if the client does not
      * sends his encoding.
      */
-    public static final String PG_DEFAULT_CLIENT_ENCODING = Utils.getProperty("yourbase.pgClientEncoding", "UTF-8");
+    public static final String PG_DEFAULT_CLIENT_ENCODING = Utils.getProperty("yourbase.pg.client.encoding", "UTF-8");
 
     /**
-     * System property <code>yourbase.prefixTempFile</code> (default: yourbase.temp).<br />
+     * System property <code>yourbase.prefix.temp.file</code> (default: yourbase.temp).<br />
      * The prefix for temporary files in the temp directory.
      */
-    public static final String PREFIX_TEMP_FILE = Utils.getProperty("yourbase.prefixTempFile", "yourbase.temp");
+    public static final String PREFIX_TEMP_FILE = Utils.getProperty("yourbase.prefix.temp.file", "yourbase.temp");
 
     /**
-     * System property <code>yourbase.runFinalize</code> (default: true).<br />
+     * System property <code>yourbase.run.finalize</code> (default: true).<br />
      * Run finalizers to detect unclosed connections.
      */
-    public static boolean runFinalize = Utils.getProperty("yourbase.runFinalize", true);
+    public static boolean runFinalize = Utils.getProperty("yourbase.run.finalize", true);
 
     /**
-     * System property <code>yourbase.serverCachedObjects</code> (default: 64).<br />
+     * System property <code>yourbase.server.cached.objects</code> (default: 64).<br />
      * TCP Server: number of cached objects per session.
      */
-    public static final int SERVER_CACHED_OBJECTS = Utils.getProperty("yourbase.serverCachedObjects", 64);
+    public static final int SERVER_CACHED_OBJECTS = Utils.getProperty("yourbase.server.cached.objects", 64);
 
     /**
-     * System property <code>yourbase.serverResultSetFetchSize</code>
+     * System property <code>yourbase.server.resultset.fetch.size</code>
      * (default: 100).<br />
      * The default result set fetch size when using the server mode.
      */
-    public static final int SERVER_RESULT_SET_FETCH_SIZE = Utils.getProperty("yourbase.serverResultSetFetchSize", 100);
+    public static final int SERVER_RESULT_SET_FETCH_SIZE = Utils.getProperty("yourbase.server.resultset.fetch.size", 100);
 
     /**
-     * System property <code>yourbase.socketConnectRetry</code> (default: 16).<br />
+     * System property <code>yourbase.socket.connect.retry</code> (default: 16).<br />
      * The number of times to retry opening a socket. Windows sometimes fails
      * to open a socket, see bug
      * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6213296
      */
-    public static final int SOCKET_CONNECT_RETRY = Utils.getProperty("yourbase.socketConnectRetry", 16);
+    public static final int SOCKET_CONNECT_RETRY = Utils.getProperty("yourbase.socket.connect.retry", 16);
 
     /**
-     * System property <code>yourbase.socketConnectTimeout</code> (default: 2000).<br />
+     * System property <code>yourbase.socket.connect.timeout</code> (default: 2000).<br />
      * The timeout in milliseconds to connect to a server.
      */
-    public static final int SOCKET_CONNECT_TIMEOUT = Utils.getProperty("yourbase.socketConnectTimeout", 2000);
+    public static final int SOCKET_CONNECT_TIMEOUT = Utils.getProperty("yourbase.socket.connect.timeout", 2000);
 
     /**
-     * System property <code>yourbase.sortNullsHigh</code> (default: false).<br />
+     * System property <code>yourbase.sort.nulls.high</code> (default: false).<br />
      * Invert the default sorting behavior for NULL, such that NULL
      * is at the end of a result set in an ascending sort and at
      * the beginning of a result set in a descending sort.
      */
-    public static final boolean SORT_NULLS_HIGH = Utils.getProperty("yourbase.sortNullsHigh", false);
+    public static final boolean SORT_NULLS_HIGH = Utils.getProperty("yourbase.sort.nulls.high", false);
 
     /**
-     * System property <code>yourbase.splitFileSizeShift</code> (default: 30).<br />
+     * System property <code>yourbase.split.file.size.shift</code> (default: 30).<br />
      * The maximum file size of a split file is 1L &lt;&lt; x.
      */
-    public static final long SPLIT_FILE_SIZE_SHIFT = Utils.getProperty("yourbase.splitFileSizeShift", 30);
+    public static final long SPLIT_FILE_SIZE_SHIFT = Utils.getProperty("yourbase.split.file.size.shift", 30);
 
     /**
-     * System property <code>yourbase.storeLocalTime</code> (default: false).<br />
+     * System property <code>yourbase.store.local.time</code> (default: false).<br />
      * Store the local time. If disabled, the daylight saving offset is not
      * taken into account.
      */
-    public static final boolean STORE_LOCAL_TIME = Utils.getProperty("yourbase.storeLocalTime", false);
+    public static final boolean STORE_LOCAL_TIME = Utils.getProperty("yourbase.store.local.time", false);
 
     /**
-     * System property <code>yourbase.syncMethod</code> (default: sync).<br />
+     * System property <code>yourbase.sync.method</code> (default: sync).<br />
      * What method to call when closing the database, on checkpoint, and on
      * CHECKPOINT SYNC. The following options are supported:
      * "sync" (default): RandomAccessFile.getFD().sync();
@@ -341,33 +342,33 @@ public class SysProperties {
      * "": do not call a method (fast but there is a risk of data loss
      * on power failure).
      */
-    public static final String SYNC_METHOD = Utils.getProperty("yourbase.syncMethod", "sync");
+    public static final String SYNC_METHOD = Utils.getProperty("yourbase.sync.method", "sync");
 
     /**
-     * System property <code>yourbase.traceIO</code> (default: false).<br />
+     * System property <code>yourbase.trace.io</code> (default: false).<br />
      * Trace all I/O operations.
      */
-    public static final boolean TRACE_IO = Utils.getProperty("yourbase.traceIO", false);
+    public static final boolean TRACE_IO = Utils.getProperty("yourbase.trace.io", false);
 
     /**
-     * System property <code>yourbase.urlMap</code> (default: null).<br />
+     * System property <code>yourbase.url.map</code> (default: null).<br />
      * A properties file that contains a mapping between database URLs. New
      * connections are written into the file. An empty value in the map means no
      * redirection is used for the given URL.
      */
-    public static final String URL_MAP = Utils.getProperty("yourbase.urlMap", null);
+    public static final String URL_MAP = Utils.getProperty("yourbase.url.map", null);
 
     /**
-     * System property <code>yourbase.useThreadContextClassLoader</code>
+     * System property <code>yourbase.use.thread.context.classloader</code>
      * (default: false).<br />
      * Instead of using the default class loader when deserializing objects, the
      * current thread-context class loader will be used.
      */
-    public static final boolean USE_THREAD_CONTEXT_CLASS_LOADER =
-        Utils.getProperty("yourbase.useThreadContextClassLoader", false);
+    public static final boolean USE_THREAD_CONTEXT_CLASS_LOADER = Utils.getProperty("yourbase.use.thread.context.classloader",
+            false);
 
     /**
-     * System property <code>yourbase.serializeJavaObject</code> (default: true).<br />
+     * System property <code>yourbase.serialize.java.object</code> (default: true).<br />
      * <b>If true</b>, values of type OTHER will be stored in serialized form
      * and have the semantics of binary data for all operations (such as sorting
      * and conversion to string).
@@ -395,17 +396,17 @@ public class SysProperties {
      * defensive copy himself before storing, or ensure that the value object is
      * immutable.
      */
-    public static boolean serializeJavaObject = Utils.getProperty("yourbase.serializeJavaObject", true);
+    public static boolean serializeJavaObject = Utils.getProperty("yourbase.serialize.java.object", true);
 
     /**
-     * System property <code>yourbase.javaObjectSerializer</code> (default: null).<br />
+     * System property <code>yourbase.java.object.serializer</code> (default: null).<br />
      * The JavaObjectSerializer class name for java objects being stored in
      * column of type OTHER. It must be the same on client and server to work
      * correctly.
      */
-    public static final String JAVA_OBJECT_SERIALIZER = Utils.getProperty("yourbase.javaObjectSerializer", null);
+    public static final String JAVA_OBJECT_SERIALIZER = Utils.getProperty("yourbase.java.object.serializer", null);
 
-    private static final String H2_BASE_DIR = "yourbase.baseDir";
+    private static final String YOURBASE_BASE_DIR = "yourbase.base.dir";
 
     private SysProperties() {
         // utility class
@@ -418,14 +419,14 @@ public class SysProperties {
         if (!dir.endsWith("/")) {
             dir += "/";
         }
-        System.setProperty(H2_BASE_DIR, dir);
+        System.setProperty(YOURBASE_BASE_DIR, dir);
     }
 
     /**
      * INTERNAL
      */
     public static String getBaseDir() {
-        return Utils.getProperty(H2_BASE_DIR, null);
+        return Utils.getProperty(YOURBASE_BASE_DIR, null);
     }
 
     /**
@@ -437,7 +438,7 @@ public class SysProperties {
      * @return the current value
      */
     public static String getScriptDirectory() {
-        return Utils.getProperty(H2_SCRIPT_DIRECTORY, "");
+        return Utils.getProperty(YOURBASE_SCRIPT_DIRECTORY, "");
     }
 
 }
