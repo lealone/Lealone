@@ -34,7 +34,6 @@ import com.codefollower.yourbase.expression.ConditionInfo;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
 import com.codefollower.yourbase.util.StatementBuilder;
-import com.codefollower.yourbase.value.Value;
 
 public class RowKeyConditionInfo extends ConditionInfo {
     private final HBaseTable table;
@@ -42,11 +41,6 @@ public class RowKeyConditionInfo extends ConditionInfo {
     private final Select select;
     private final String rowKeyName;
     private final byte[] tableName;
-
-    private int compareTypeStart = -1;
-    private Value compareValueStart;
-    private int compareTypeStop = -1;
-    private Value compareValueStop;
 
     private List<byte[]> startKeys;
     private byte[] startKey;
@@ -66,38 +60,6 @@ public class RowKeyConditionInfo extends ConditionInfo {
 
     public String getRowKeyName() {
         return rowKeyName;
-    }
-
-    public int getCompareTypeStart() {
-        return compareTypeStart;
-    }
-
-    public void setCompareTypeStart(int compareTypeStart) {
-        this.compareTypeStart = compareTypeStart;
-    }
-
-    public Value getCompareValueStart() {
-        return compareValueStart;
-    }
-
-    public void setCompareValueStart(Value compareValueStart) {
-        this.compareValueStart = compareValueStart;
-    }
-
-    public int getCompareTypeStop() {
-        return compareTypeStop;
-    }
-
-    public void setCompareTypeStop(int compareTypeStop) {
-        this.compareTypeStop = compareTypeStop;
-    }
-
-    public Value getCompareValueStop() {
-        return compareValueStop;
-    }
-
-    public void setCompareValueStop(Value compareValueStop) {
-        this.compareValueStop = compareValueStop;
     }
 
     public String[] getRowKeys() {
