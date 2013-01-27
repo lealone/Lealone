@@ -189,8 +189,8 @@ public class Engine implements SessionFactory {
             }
             String value = ci.getProperty(setting);
             try {
-                CommandInterface command = session.prepareCommand("SET " + Parser.quoteIdentifier(setting) + " "
-                        + value, Integer.MAX_VALUE);
+                CommandInterface command = session.prepareLocal("SET " + Parser.quoteIdentifier(setting) + " "
+                        + value);
                 command.executeUpdate();
             } catch (DbException e) {
                 if (!ignoreUnknownSetting) {

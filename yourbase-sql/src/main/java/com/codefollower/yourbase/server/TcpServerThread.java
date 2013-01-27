@@ -258,7 +258,7 @@ public class TcpServerThread implements Runnable {
             int id = transfer.readInt();
             String sql = transfer.readString();
             int old = session.getModificationId();
-            Command command = session.prepareRemote(sql);
+            Command command = session.prepareCommand(sql);
             boolean readonly = command.isReadOnly();
             cache.addObject(id, command);
             boolean isQuery = command.isQuery();

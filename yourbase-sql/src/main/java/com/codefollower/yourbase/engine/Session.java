@@ -12,7 +12,6 @@ import java.util.HashSet;
 import java.util.Random;
 
 import com.codefollower.yourbase.command.Command;
-import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.Parser;
 import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.command.dml.Query;
@@ -378,10 +377,6 @@ public class Session extends SessionWithState {
         this.lockTimeout = lockTimeout;
     }
 
-    public synchronized CommandInterface prepareCommand(String sql, int fetchSize) {
-        return prepareLocal(sql);
-    }
-
     /**
      * Parse and prepare the given SQL statement. This method also checks the
      * rights.
@@ -414,14 +409,19 @@ public class Session extends SessionWithState {
      * @return the prepared statement
      */
     public Command prepareLocal(String sql) {
-        return prepareCommandInternal(sql, false);
+        return prepareCommand(sql, true);
     }
 
-    public Command prepareRemote(String sql) {
-        return prepareCommandInternal(sql, true);
+    @Override
+    public Command prepareCommand(String sql, int fetchSize) {
+        return prepareCommand(sql, false);
     }
 
-    protected Command prepareCommandInternal(String sql, boolean useProxy) {
+    public Command prepareCommand(String sql) {
+        return prepareCommand(sql, false);
+    }
+
+    public synchronized Command prepareCommand(String sql, boolean isLocal) {
         if (closed) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
@@ -438,7 +438,7 @@ public class Session extends SessionWithState {
             }
         }
         Parser parser = createParser();
-        command = parser.prepareCommand(sql);
+        command = parser.prepareCommand(sql, isLocal);
         if (queryCache != null) {
             if (command.isCacheable()) {
                 queryCache.put(sql, command);

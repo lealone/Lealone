@@ -20,6 +20,8 @@
 package com.codefollower.yourbase.hbase.command;
 
 import java.util.ArrayList;
+
+import com.codefollower.yourbase.command.Command;
 import com.codefollower.yourbase.command.Parser;
 import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.command.ddl.AlterSequence;
@@ -51,28 +53,6 @@ public class HBaseParser extends Parser {
 
     public HBaseParser(Session session) {
         super(session);
-    }
-
-    @Override
-    protected AlterSequence parseAlterSequence() {
-        String sequenceName = readIdentifierWithSchema();
-        Sequence sequence = getSchema().getSequence(sequenceName);
-        if (readIf("NEXT")) {
-            readIf("VALUE");
-            readIf("MARGIN");
-            return new AlterSequenceNextValueMargin(session, sequence.getSchema(), sequence);
-        }
-        AlterSequence command = new AlterSequence(session, sequence.getSchema());
-        command.setSequence(sequence);
-        if (readIf("RESTART")) {
-            read("WITH");
-            command.setStartWith(readExpression());
-        }
-        if (readIf("INCREMENT")) {
-            read("BY");
-            command.setIncrement(readExpression());
-        }
-        return command;
     }
 
     @Override
@@ -161,22 +141,29 @@ public class HBaseParser extends Parser {
         return null;
     }
 
-    public Insert createInsert(Session session) {
-        return new HBaseInsert(session);
+    @Override
+    protected AlterSequence parseAlterSequence() {
+        String sequenceName = readIdentifierWithSchema();
+        Sequence sequence = getSchema().getSequence(sequenceName);
+        if (readIf("NEXT")) {
+            readIf("VALUE");
+            readIf("MARGIN");
+            return new AlterSequenceNextValueMargin(session, sequence.getSchema(), sequence);
+        }
+        AlterSequence command = new AlterSequence(session, sequence.getSchema());
+        command.setSequence(sequence);
+        if (readIf("RESTART")) {
+            read("WITH");
+            command.setStartWith(readExpression());
+        }
+        if (readIf("INCREMENT")) {
+            read("BY");
+            command.setIncrement(readExpression());
+        }
+        return command;
     }
 
-    public Update createUpdate(Session session) {
-        return new HBaseUpdate(session);
-    }
-
-    public Delete createDelete(Session session) {
-        return new HBaseDelete(session);
-    }
-
-    public Select createSelect(Session session) {
-        return new HBaseSelect(session);
-    }
-
+    @Override
     protected Column parseColumn(Table table) {
         String columnName = readColumnIdentifier();
 
@@ -203,6 +190,7 @@ public class HBaseParser extends Parser {
         return table.getColumn(columnName);
     }
 
+    @Override
     protected Column readTableColumn(TableFilter filter) {
         String tableAlias = null;
         String columnName = readColumnIdentifier();
@@ -283,4 +271,35 @@ public class HBaseParser extends Parser {
             return super.readTableOrView(tableName);
         }
     }
+
+    @Override
+    public Command prepareCommand(String sql, boolean isLocal) {
+        Command command = super.prepareCommand(sql, isLocal);
+        if (isLocal)
+            return command;
+        //sql有可能在本机执行，也可能需要继续转发给其他节点
+        command = new CommandProxy(this, sql, command);
+        return command;
+    }
+
+    @Override
+    public Insert createInsert(Session session) {
+        return new HBaseInsert(session);
+    }
+
+    @Override
+    public Update createUpdate(Session session) {
+        return new HBaseUpdate(session);
+    }
+
+    @Override
+    public Delete createDelete(Session session) {
+        return new HBaseDelete(session);
+    }
+
+    @Override
+    public Select createSelect(Session session) {
+        return new HBaseSelect(session);
+    }
+
 }

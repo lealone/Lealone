@@ -24,21 +24,16 @@ import java.util.Properties;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
-import com.codefollower.yourbase.command.Command;
 import com.codefollower.yourbase.command.Parser;
 import com.codefollower.yourbase.command.dml.Query;
-import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.Schema;
 import com.codefollower.yourbase.dbobject.User;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
-import com.codefollower.yourbase.hbase.command.CommandProxy;
 import com.codefollower.yourbase.hbase.command.HBaseParser;
 import com.codefollower.yourbase.hbase.dbobject.HBaseSequence;
 import com.codefollower.yourbase.hbase.result.HBaseCombinedResult;
-import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.CombinedResult;
-import com.codefollower.yourbase.util.SmallLRUCache;
 
 public class HBaseSession extends Session {
 
@@ -47,20 +42,8 @@ public class HBaseSession extends Session {
     private byte[] regionName;
     private Properties originalProperties;
 
-    public Properties getOriginalProperties() {
-        return originalProperties;
-    }
-
-    public void setOriginalProperties(Properties originalProperties) {
-        this.originalProperties = originalProperties;
-    }
-
-    public byte[] getRegionName() {
-        return regionName;
-    }
-
-    public void setRegionName(byte[] regionName) {
-        this.regionName = regionName;
+    public HBaseSession(Database database, User user, int id) {
+        super(database, user, id);
     }
 
     public HMaster getMaster() {
@@ -79,44 +62,28 @@ public class HBaseSession extends Session {
         this.regionServer = regionServer;
     }
 
-    public HBaseSession(Database database, User user, int id) {
-        super(database, user, id);
+    public byte[] getRegionName() {
+        return regionName;
     }
 
-    protected Command prepareCommandInternal(String sql, boolean useProxy) {
-        if (closed) {
-            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
-        }
-        Command command;
-        if (queryCacheSize > 0) {
-            if (queryCache == null) {
-                queryCache = SmallLRUCache.newInstance(queryCacheSize);
-            } else {
-                command = queryCache.get(sql);
-                if (command != null && command.canReuse()) {
-                    command.reuse();
-                    return command;
-                }
-            }
-        }
-        Parser parser = createParser();
-        command = parser.prepareCommand(sql);
-        if (useProxy)
-            command = new CommandProxy(parser, sql, command);
-        if (queryCache != null) {
-            if (command.isCacheable()) {
-                queryCache.put(sql, command);
-            }
-        }
-        return command;
+    public void setRegionName(byte[] regionName) {
+        this.regionName = regionName;
     }
 
-    public CombinedResult createCombinedResult(Query query, int maxrows) {
-        return new HBaseCombinedResult(this, query, maxrows);
+    public Properties getOriginalProperties() {
+        return originalProperties;
+    }
+
+    public void setOriginalProperties(Properties originalProperties) {
+        this.originalProperties = originalProperties;
     }
 
     public HBaseDatabase getDatabase() {
         return (HBaseDatabase) database;
+    }
+
+    public CombinedResult createCombinedResult(Query query, int maxrows) {
+        return new HBaseCombinedResult(this, query, maxrows);
     }
 
     public Parser createParser() {
