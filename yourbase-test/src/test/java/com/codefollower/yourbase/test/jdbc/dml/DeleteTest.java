@@ -64,8 +64,6 @@ public class DeleteTest extends TestBase {
         //        sql = "DELETE FROM DeleteTest WHERE _rowkey_= '13'";
         //        assertEquals(1, stmt.executeUpdate(sql));
         //
-        //        sql = "SELECT count(*) FROM DeleteTest";
-        //        assertEquals(9, getIntValue(1, true));
     }
 
 }
