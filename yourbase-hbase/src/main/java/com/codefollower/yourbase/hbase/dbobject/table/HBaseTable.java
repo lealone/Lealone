@@ -242,6 +242,8 @@ public class HBaseTable extends TableBase {
         for (rows.reset(); rows.hasNext();) {
             HBaseRow o = (HBaseRow) rows.next();
             HBaseRow n = (HBaseRow) rows.next();
+
+            o.setForUpdate(true);
             n.setRegionName(o.getRegionName());
             n.setRowKey(o.getRowKey());
             put = new Put(HBaseUtils.toBytes(n.getRowKey()));

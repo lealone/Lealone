@@ -27,6 +27,7 @@ import com.codefollower.yourbase.value.Value;
 public class HBaseRow extends Row {
     private byte[] regionName;
     private Put put;
+    boolean forUpdate = false;
 
     public HBaseRow(Value[] data, int memory) {
         super(data, memory);
@@ -57,4 +58,11 @@ public class HBaseRow extends Row {
         return put;
     }
 
+    public boolean isForUpdate() {
+        return forUpdate;
+    }
+
+    public void setForUpdate(boolean forUpdate) {
+        this.forUpdate = forUpdate;
+    }
 }

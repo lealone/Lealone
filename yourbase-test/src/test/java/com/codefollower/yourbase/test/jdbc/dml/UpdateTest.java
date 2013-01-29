@@ -28,8 +28,8 @@ import com.codefollower.yourbase.test.jdbc.TestBase;
 public class UpdateTest extends TestBase {
     @Test
     public void run() throws Exception {
-        //createTableIfNotExists("UpdateTest");
-        //testInsert();
+        createTableIfNotExists("UpdateTest");
+        testInsert();
         testUpdate();
     }
 

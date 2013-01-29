@@ -59,6 +59,8 @@ public class HBaseTableIndex extends BaseIndex {
 
     @Override
     public void remove(Session session, Row row) {
+        if (((HBaseRow) row).isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
+            return;
         try {
             ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(),
                     new org.apache.hadoop.hbase.client.Delete(HBaseUtils.toBytes(row.getRowKey())));

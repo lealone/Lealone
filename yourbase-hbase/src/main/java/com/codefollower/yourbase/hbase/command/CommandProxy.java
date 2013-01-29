@@ -175,34 +175,34 @@ public class CommandProxy extends Command {
                     } else {
                         this.proxyCommand = new CommandParallel(session, this, tableName, startKeys, sql);
                     }
-                } else if (originalPrepared instanceof Select) {
-                    byte[] startRowKey = null;
-                    byte[] stopRowKey = null;
-                    String[] rowKeys = originalPrepared.getRowKeys();
-                    if (rowKeys != null) {
-                        if (rowKeys.length >= 1 && rowKeys[0] != null)
-                            startRowKey = Bytes.toBytes(rowKeys[0]);
-
-                        if (rowKeys.length >= 2 && rowKeys[1] != null)
-                            stopRowKey = Bytes.toBytes(rowKeys[1]);
-                    }
-
-                    if (startRowKey == null)
-                        startRowKey = HConstants.EMPTY_START_ROW;
-                    if (stopRowKey == null)
-                        stopRowKey = HConstants.EMPTY_END_ROW;
-
-                    CommandSelect c = new CommandSelect();
-                    c.commandProxy = this;
-                    c.select = (Select) originalPrepared;
-                    c.tableName = Bytes.toBytes(originalPrepared.getTableName());
-                    c.start = startRowKey;
-                    c.end = stopRowKey;
-                    c.sql = sql;
-                    c.fetchSize = session.getFetchSize();
-                    c.session = session;
-                    this.proxyCommand = c.init();
                 }
+            } else if (originalPrepared instanceof Select) {
+                byte[] startRowKey = null;
+                byte[] stopRowKey = null;
+                String[] rowKeys = originalPrepared.getRowKeys();
+                if (rowKeys != null) {
+                    if (rowKeys.length >= 1 && rowKeys[0] != null)
+                        startRowKey = Bytes.toBytes(rowKeys[0]);
+
+                    if (rowKeys.length >= 2 && rowKeys[1] != null)
+                        stopRowKey = Bytes.toBytes(rowKeys[1]);
+                }
+
+                if (startRowKey == null)
+                    startRowKey = HConstants.EMPTY_START_ROW;
+                if (stopRowKey == null)
+                    stopRowKey = HConstants.EMPTY_END_ROW;
+
+                CommandSelect c = new CommandSelect();
+                c.commandProxy = this;
+                c.select = (Select) originalPrepared;
+                c.tableName = Bytes.toBytes(originalPrepared.getTableName());
+                c.start = startRowKey;
+                c.end = stopRowKey;
+                c.sql = sql;
+                c.fetchSize = session.getFetchSize();
+                c.session = session;
+                this.proxyCommand = c.init();
             } else {
                 this.proxyCommand = originalCommand;
             }
