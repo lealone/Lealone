@@ -60,10 +60,6 @@ public class DeleteTest extends TestBase {
         //        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('13', 'a1', 'b', 12)");
         //        sql = "SELECT count(*) FROM DeleteTest";
         //        assertEquals(10, getIntValue(1, true));
-        //
-        //        sql = "DELETE FROM DeleteTest WHERE _rowkey_= '13'";
-        //        assertEquals(1, stmt.executeUpdate(sql));
-        //
     }
 
 }
