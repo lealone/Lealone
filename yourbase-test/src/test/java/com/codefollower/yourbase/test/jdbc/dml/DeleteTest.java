@@ -22,13 +22,13 @@ package com.codefollower.yourbase.test.jdbc.dml;
 import static junit.framework.Assert.assertEquals;
 
 import org.junit.Test;
-
 import com.codefollower.yourbase.test.jdbc.TestBase;
 
 public class DeleteTest extends TestBase {
     @Test
     public void run() throws Exception {
-        createTableIfNotExists("DeleteTest");testInsert();
+        createTableIfNotExists("DeleteTest");
+        testInsert();
         testDelete();
     }
 
@@ -53,13 +53,9 @@ public class DeleteTest extends TestBase {
     void testDelete() throws Exception {
         sql = "DELETE FROM DeleteTest WHERE _rowkey_= '01'";
         assertEquals(1, stmt.executeUpdate(sql));
-        
+
         sql = "DELETE FROM DeleteTest WHERE _rowkey_>= '50'";
         assertEquals(6, stmt.executeUpdate(sql));
-
-        //        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('13', 'a1', 'b', 12)");
-        //        sql = "SELECT count(*) FROM DeleteTest";
-        //        assertEquals(10, getIntValue(1, true));
     }
 
 }
