@@ -21,10 +21,10 @@ package com.codefollower.yourbase.hbase.dbobject.table;
 
 import com.codefollower.yourbase.api.TableEngine;
 import com.codefollower.yourbase.command.ddl.CreateTableData;
+import com.codefollower.yourbase.dbobject.table.MemoryTable;
 import com.codefollower.yourbase.dbobject.table.TableBase;
 import com.codefollower.yourbase.dbobject.table.TableEngineManager;
 import com.codefollower.yourbase.engine.Database;
-import com.codefollower.yourbase.memory.dbobject.table.MemoryTable;
 
 /**
  * 

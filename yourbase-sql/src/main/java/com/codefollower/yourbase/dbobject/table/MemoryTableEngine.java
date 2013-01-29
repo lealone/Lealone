@@ -17,17 +17,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.yourbase.memory.engine;
+package com.codefollower.yourbase.dbobject.table;
 
-import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Database;
+import com.codefollower.yourbase.api.TableEngine;
+import com.codefollower.yourbase.command.ddl.CreateTableData;
+import com.codefollower.yourbase.dbobject.table.TableBase;
+import com.codefollower.yourbase.dbobject.table.TableEngineManager;
 
-public class MemoryDatabase extends Database {
-    public void init(ConnectionInfo ci, String cipher) {
-        super.init(ci, cipher);
+public class MemoryTableEngine implements TableEngine {
+    public static final String NAME = "MEMORY";
+    private static final MemoryTableEngine INSTANCE = new MemoryTableEngine();
+    static {
+        TableEngineManager.registerTableEngine(INSTANCE);
     }
 
-    public MemoryDatabase(ConnectionInfo ci, String cipher) {
-        super(ci, cipher);
+    @Override
+    public TableBase createTable(CreateTableData data) {
+        return new MemoryTable(data);
     }
+
+    @Override
+    public String getName() {
+        return NAME;
+    }
+
 }

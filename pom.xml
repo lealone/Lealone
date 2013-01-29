@@ -16,7 +16,6 @@
 	<modules>
 		<module>yourbase-common</module>
 		<module>yourbase-sql</module>
-		<module>yourbase-memory</module>
 		<module>yourbase-regular</module>
 		<module>yourbase-mvstore</module>
 		<module>yourbase-hbase</module>

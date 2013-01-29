@@ -15,7 +15,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>com.codefollower.yourbase</groupId>
-			<artifactId>yourbase-memory</artifactId>
+			<artifactId>yourbase-sql</artifactId>
 			<version>${yourbase.version}</version>
 		</dependency>
 
