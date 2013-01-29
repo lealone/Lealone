@@ -54,7 +54,7 @@ public class RowKeyConditionInfo extends ConditionInfo {
         this.rowKeyName = table.getRowKeyName();
         this.tableName = Bytes.toBytes(table.getName());
     }
-    
+
     public RowKeyConditionInfo(HBaseTable table, Select select, List<IndexCondition> indexConditions) {
         super(table.getRowKeyName());
         this.table = table;
@@ -62,10 +62,10 @@ public class RowKeyConditionInfo extends ConditionInfo {
         this.rowKeyName = table.getRowKeyName();
         this.tableName = Bytes.toBytes(table.getName());
     }
-    
+
     //此方法的实现参考了IndexCursor类
     public void find(List<IndexCondition> indexConditions) {
-        
+
     }
 
     public HBaseTable getTable() {

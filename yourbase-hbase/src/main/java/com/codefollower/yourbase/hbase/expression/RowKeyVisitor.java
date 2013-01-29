@@ -27,7 +27,7 @@ public class RowKeyVisitor extends Visitor<Expression, Expression> {
     protected Value compareValueStart;
     protected int compareTypeStop = -1;
     protected Value compareValueStop;
-    
+
     public RowKeyVisitor(HBaseTable table, Select select, Session session) {
 
         this.rowKeyName = table.getRowKeyName();
@@ -35,17 +35,17 @@ public class RowKeyVisitor extends Visitor<Expression, Expression> {
         this.session = session;
     }
 
-
     @Override
     public Expression visitExpressionColumn(ExpressionColumn e, Expression s) {
         return visitExpression(e, s);
     }
+
     @Override
     public Expression visitComparison(Comparison e, Expression s) {
         Expression left = e.getExpression(true);
         Expression right = e.getExpression(false);
         int compareType = e.getCompareType();
-        
+
         if (left instanceof ExpressionColumn && ((ExpressionColumn) left).getTableFilter().getTable().supportsColumnFamily()) {
             if (rowKeyName.equalsIgnoreCase(((ExpressionColumn) left).getColumnName())) {
                 switch (compareType) {
