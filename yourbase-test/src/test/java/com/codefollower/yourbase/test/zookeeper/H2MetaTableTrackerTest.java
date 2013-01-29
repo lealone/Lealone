@@ -41,7 +41,7 @@ public class H2MetaTableTrackerTest implements Abortable {
         H2MetaTableTrackerTest test1 = new H2MetaTableTrackerTest();
         H2MetaTableTrackerTest test2 = new H2MetaTableTrackerTest();
         H2MetaTableTrackerTest test3 = new H2MetaTableTrackerTest(false);
-        
+
         ZKUtil.setData(test3.watcher, H2MetaTableTracker.NODE_NAME, Bytes.toBytes(System.currentTimeMillis()));
         Thread.sleep(2000);
     }
@@ -129,7 +129,7 @@ public class H2MetaTableTrackerTest implements Abortable {
             try {
                 ZKUtil.createAndFailSilent(watcher, "/yourbase");
                 ZKUtil.createAndFailSilent(watcher, NODE_NAME);
-                
+
                 ZKUtil.watchAndCheckExists(watcher, NODE_NAME);
 
                 List<String> objectIDs = ZKUtil.listChildrenAndWatchThem(watcher, NODE_NAME);

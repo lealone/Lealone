@@ -30,7 +30,7 @@ import com.codefollower.yourbase.value.ValueNull;
 public class Delete extends Prepared {
 
     private Expression condition;
-    private TableFilter tableFilter;
+    protected TableFilter tableFilter;
 
     /**
      * The limit expression as specified in the LIMIT or TOP clause.

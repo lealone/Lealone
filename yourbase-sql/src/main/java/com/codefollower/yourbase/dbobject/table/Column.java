@@ -480,11 +480,19 @@ public class Column {
             defaultExpression = defaultExpression.optimize(session);
         }
     }
-
+    
     public String getCreateSQL() {
+        return getCreateSQL(false);
+    }
+
+    public String getCreateSQL(boolean isAlter) {
         StringBuilder buff = new StringBuilder();
         if (name != null) {
-            buff.append(Parser.quoteIdentifier(name)).append(' ');
+            if (isAlter && table != null && !table.isStatic() && columnFamilyName != null)
+                buff.append(Parser.quoteIdentifier(columnFamilyName)).append('.').append(Parser.quoteIdentifier(name))
+                        .append(' ');
+            else
+                buff.append(Parser.quoteIdentifier(name)).append(' ');
         }
         if (originalSQL != null) {
             buff.append(originalSQL);

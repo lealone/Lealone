@@ -203,7 +203,7 @@ public class HBaseDatabase extends Database {
     }
 
     @Override
-    protected synchronized HBaseSession createSession(User user) {
+    public synchronized HBaseSession createSession(User user) {
         if (exclusiveSession != null) {
             throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);
         }

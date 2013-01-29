@@ -284,7 +284,11 @@ public class Parser {
         return parsePrepared();
     }
 
-    private Prepared parsePrepared() {
+    protected Prepared parsePrepared(char first) {
+        return null;
+    }
+
+    protected Prepared parsePrepared() {
         int start = lastParseIndex;
         Prepared c = null;
         String token = currentToken;
@@ -292,6 +296,9 @@ public class Parser {
             c = new NoOperation(session);
         } else {
             char first = token.charAt(0);
+            c = parsePrepared(first);
+
+            if (c == null)
             switch (first) {
             case '?':
                 // read the ? as a parameter

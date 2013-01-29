@@ -58,16 +58,6 @@ public abstract class Prepared {
     private int currentRowNumber;
     private int rowScanCount;
 
-    private byte[] regionName;
-
-    public byte[] getRegionName() {
-        return regionName;
-    }
-
-    public void setRegionName(byte[] regionName) {
-        this.regionName = regionName;
-    }
-
     /**
      * Create a new object.
      *

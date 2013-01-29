@@ -47,6 +47,8 @@ import com.codefollower.yourbase.hbase.util.HBaseRegionInfo;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
 import com.codefollower.yourbase.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.yourbase.result.ResultInterface;
+import com.codefollower.yourbase.util.StringUtils;
+import com.codefollower.yourbase.value.Value;
 
 public class CommandProxy extends Command {
     private final HBaseSession session;
@@ -139,6 +141,23 @@ public class CommandProxy extends Command {
         }
     }
 
+    //    public String createSQL(String regionName, byte[] start, byte[] end, String sql) {
+    //        StringBuilder buff = new StringBuilder("IN THE REGION ");
+    //        buff.append(StringUtils.quoteStringSQL(regionName));
+    //        if (start != null)
+    //            buff.append(" START").append(StringUtils.quoteStringSQL(Bytes.toString(start)));
+    //        if (end != null)
+    //            buff.append(" END").append(StringUtils.quoteStringSQL(Bytes.toString(end)));
+    //        buff.append(" START").append(sql);
+    //        return buff.toString();
+    //    }
+
+    public String createSQL(String regionName, String sql) {
+        StringBuilder buff = new StringBuilder("IN THE REGION ");
+        buff.append(StringUtils.quoteStringSQL(regionName)).append(" ").append(sql);
+        return buff.toString();
+    }
+
     private void parseRowKey() {
         Command command = prepared.getCommand();
         try {
@@ -160,6 +179,55 @@ public class CommandProxy extends Command {
             } else if (!prepared.isDistributedSQL()) {
                 this.command = command;
             } else if (prepared instanceof Insert || prepared instanceof Delete || prepared instanceof Update) {
+                if (prepared instanceof Delete && prepared instanceof HBasePrepared) {
+                    HBasePrepared hp = (HBasePrepared) prepared;
+                    byte[] start = null;
+                    byte[] end = null;
+                    Value startValue = hp.getStartRowKeyValue();
+                    Value endValue = hp.getEndRowKeyValue();
+                    if (startValue != null)
+                        start = HBaseUtils.toBytes(startValue);
+                    if (endValue != null)
+                        end = HBaseUtils.toBytes(endValue);
+
+                    if (start == null)
+                        start = HConstants.EMPTY_START_ROW;
+                    if (end == null)
+                        end = HConstants.EMPTY_END_ROW;
+
+                    byte[] tableName = Bytes.toBytes(prepared.getTableName());
+                    boolean oneRegion = false;
+                    List<byte[]> startKeys = null;
+                    if (startValue != null && endValue != null && startValue == endValue)
+                        oneRegion = true;
+
+                    if (!oneRegion) {
+                        startKeys = HBaseUtils.getStartKeysInRange(tableName, start, end);
+                        if (startKeys == null || startKeys.isEmpty()) {
+                            this.command = command;
+                            return;
+                        } else if (startKeys.size() == 1) {
+                            oneRegion = true;
+                            start = startKeys.get(0);
+                        }
+                    }
+
+                    if (oneRegion) {
+                        HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, start);
+                        if (CommandProxy.isLocal(session, hri)) {
+                            hp.setRegionName(hri.getRegionName());
+                            this.command = command;
+                        } else {
+                            //Properties info = new Properties(session.getOriginalProperties());
+                            //info.setProperty("REGION_NAME", hri.getRegionName());
+                            this.command = getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
+                                    createSQL(hri.getRegionName(), sql));
+                        }
+                    } else {
+                        this.command = new CommandParallel(session, this, tableName, startKeys, sql);
+                    }
+                    return;
+                }
                 String tableName = prepared.getTableName();
                 String rowKey = prepared.getRowKey();
                 if (rowKey == null)
@@ -174,6 +242,7 @@ public class CommandProxy extends Command {
                     info.setProperty("REGION_NAME", hri.getRegionName());
                     this.command = getCommandInterface(info, hri.getRegionServerURL(), sql);
                 }
+
             } else if (prepared instanceof Select) {
                 byte[] startRowKey = null;
                 byte[] stopRowKey = null;

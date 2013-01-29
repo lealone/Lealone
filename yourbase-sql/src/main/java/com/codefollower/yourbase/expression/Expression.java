@@ -373,4 +373,8 @@ public abstract class Expression {
     //    public String getDistributedSQL() {
     //        return getSQL();
     //    }
+    
+    public <R,S> R accept(Visitor<R,S> v, S s) {
+        return v.visitExpression(this, s);
+    }
 }

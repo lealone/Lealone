@@ -28,12 +28,14 @@ import com.codefollower.yourbase.command.Parser;
 import com.codefollower.yourbase.command.dml.Query;
 import com.codefollower.yourbase.dbobject.Schema;
 import com.codefollower.yourbase.dbobject.User;
+import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.command.HBaseParser;
 import com.codefollower.yourbase.hbase.dbobject.HBaseSequence;
 import com.codefollower.yourbase.hbase.result.HBaseCombinedResult;
 import com.codefollower.yourbase.result.CombinedResult;
+import com.codefollower.yourbase.result.Row;
 
 public class HBaseSession extends Session {
 
@@ -92,5 +94,10 @@ public class HBaseSession extends Session {
 
     public HBaseSequence createSequence(Schema schema, int id, String name, boolean belongsToTable) {
         return new HBaseSequence(schema, id, name, belongsToTable);
+    }
+
+    @Override
+    public void log(Table table, short operation, Row row) {
+        // do nothing
     }
 }

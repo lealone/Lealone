@@ -71,6 +71,16 @@ public class IndexCursor implements Cursor {
      * @param indexConditions the index conditions
      */
     public void find(Session s, ArrayList<IndexCondition> indexConditions) {
+        parseIndexConditions(s, indexConditions);
+        if (inColumn != null) {
+            return;
+        }
+        if (!alwaysFalse) {
+            cursor = index.find(tableFilter, start, end);
+        }
+    }
+
+    public void parseIndexConditions(Session s, ArrayList<IndexCondition> indexConditions) {
         this.session = s;
         alwaysFalse = false;
         start = end = null;
@@ -139,12 +149,6 @@ public class IndexCursor implements Cursor {
                 }
             }
         }
-        if (inColumn != null) {
-            return;
-        }
-        if (!alwaysFalse) {
-            cursor = index.find(tableFilter, start, end);
-        }
     }
 
     private boolean canUseIndexForIn(Column column) {
@@ -170,7 +174,9 @@ public class IndexCursor implements Cursor {
         } else {
             v = getMax(row.getValue(id), v, max);
         }
-        if (id < 0) {
+        if (id == -2) {
+            row.setRowKey(v);
+        } else if (id < 0) {
             row.setKey(v.getLong());
         } else {
             row.setValue(id, v);
@@ -283,4 +289,11 @@ public class IndexCursor implements Cursor {
         throw DbException.throwInternalError();
     }
 
+    public SearchRow getStartSearchRow() {
+        return start;
+    }
+
+    public SearchRow getEndSearchRow() {
+        return end;
+    }
 }

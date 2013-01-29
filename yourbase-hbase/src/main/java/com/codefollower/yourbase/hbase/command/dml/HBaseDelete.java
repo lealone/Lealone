@@ -19,82 +19,25 @@
  */
 package com.codefollower.yourbase.hbase.command.dml;
 
-import java.io.IOException;
-
-import org.apache.hadoop.hbase.util.Bytes;
-
-import com.codefollower.yourbase.api.Trigger;
 import com.codefollower.yourbase.command.dml.Delete;
-import com.codefollower.yourbase.dbobject.Right;
-import com.codefollower.yourbase.dbobject.table.PlanItem;
-import com.codefollower.yourbase.dbobject.table.Table;
-import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.engine.Session;
-import com.codefollower.yourbase.expression.Expression;
-import com.codefollower.yourbase.hbase.command.RowKeyConditionInfo;
-import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
-import com.codefollower.yourbase.hbase.engine.HBaseSession;
+import com.codefollower.yourbase.hbase.command.HBasePrepared;
+import com.codefollower.yourbase.result.SearchRow;
+import com.codefollower.yourbase.value.Value;
 
-//TODO 目前只能按where rowKey=???的方式删除，还不支持按family、qualifier、timestamp删除
-public class HBaseDelete extends Delete {
-    private final HBaseSession session;
-    private Expression condition;
-    private TableFilter tableFilter;
-
-    private RowKeyConditionInfo rkci;
-
+//TODO
+//目前还不支持按family、qualifier、timestamp删除
+//可删除多条记录，但是因为不支持事务，所以有可能出现部分删除成功、部分删除失败。
+public class HBaseDelete extends Delete implements HBasePrepared {
+    private String regionName;
     public HBaseDelete(Session session) {
         super(session);
-        this.session = (HBaseSession) session;
-    }
-
-    @Override
-    public void setTableFilter(TableFilter tableFilter) {
-        super.setTableFilter(tableFilter);
-        this.tableFilter = tableFilter;
-    }
-
-    @Override
-    public void setCondition(Expression condition) {
-        super.setCondition(condition);
-        this.condition = condition;
-    }
-
-    @Override
-    public int update() {
-        Table table = tableFilter.getTable();
-        session.getUser().checkRight(table, Right.DELETE);
-        table.fire(session, Trigger.DELETE, true);
-        table.lock(session, true, false);
-
-        setCurrentRowNumber(0);
-        String rowKey = getRowKey();
-        if (rowKey == null)
-            return 0;
-
-        try {
-            setCurrentRowNumber(1);
-            session.getRegionServer().delete(session.getRegionName(),
-                    new org.apache.hadoop.hbase.client.Delete(Bytes.toBytes(rowKey)));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        table.fire(session, Trigger.DELETE, false);
-        return 1;
     }
 
     @Override
     public void prepare() {
-        if (condition != null) {
-            condition.mapColumns(tableFilter, 0);
-            condition = condition.optimize(session);
-            //condition.createIndexConditions(session, tableFilter);
-            rkci = new RowKeyConditionInfo((HBaseTable) tableFilter.getTable(), null);
-            condition = condition.removeRowKeyCondition(rkci, session);
-        }
-        PlanItem item = tableFilter.getBestPlanItem(session, 1);
-        tableFilter.setPlanItem(item);
-        tableFilter.prepare();
+        super.prepare();
+        tableFilter.setPrepared(this);
     }
 
     @Override
@@ -103,15 +46,33 @@ public class HBaseDelete extends Delete {
     }
 
     @Override
-    public String getRowKey() {
-        if (rkci != null)
-            return rkci.getRowKey();
-        else
-            return null;
+    public boolean isDistributedSQL() {
+        return true;
     }
 
     @Override
-    public boolean isDistributedSQL() {
-        return true;
+    public Value getStartRowKeyValue() {
+        SearchRow start = tableFilter.getStartSearchRow();
+        if (start != null)
+            return start.getRowKey();
+        return null;
+    }
+
+    @Override
+    public Value getEndRowKeyValue() {
+        SearchRow end = tableFilter.getEndSearchRow();
+        if (end != null)
+            return end.getRowKey();
+        return null;
+    }
+
+    @Override
+    public String getRegionName() {
+        return regionName;
+    }
+
+    @Override
+    public void setRegionName(String regionName) {
+        this.regionName = regionName;
     }
 }

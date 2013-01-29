@@ -9,6 +9,7 @@ package com.codefollower.yourbase.dbobject.table;
 import java.util.ArrayList;
 
 import com.codefollower.yourbase.command.Parser;
+import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.command.dml.Select;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.Right;
@@ -103,6 +104,8 @@ public class TableFilter implements ColumnResolver {
     private boolean foundOne;
     private Expression fullCondition;
     private final int hashCode;
+
+    private Prepared prepared;
 
     /**
      * Create a new table filter object.
@@ -1033,4 +1036,38 @@ public class TableFilter implements ColumnResolver {
         void accept(TableFilter f);
     }
 
+    private boolean parsed = false;
+
+    public SearchRow[] getStartAndEndSearchRow() {
+        if (!parsed) {
+            parsed = true;
+            cursor.parseIndexConditions(session, indexConditions);
+
+        }
+        return new SearchRow[] { cursor.getStartSearchRow(), cursor.getEndSearchRow() };
+    }
+
+    public SearchRow getStartSearchRow() {
+        if (!parsed) {
+            parsed = true;
+            cursor.parseIndexConditions(session, indexConditions);
+        }
+        return cursor.getStartSearchRow();
+    }
+
+    public SearchRow getEndSearchRow() {
+        if (!parsed) {
+            parsed = true;
+            cursor.parseIndexConditions(session, indexConditions);
+        }
+        return cursor.getEndSearchRow();
+    }
+
+    public Prepared getPrepared() {
+        return prepared;
+    }
+
+    public void setPrepared(Prepared prepared) {
+        this.prepared = prepared;
+    }
 }

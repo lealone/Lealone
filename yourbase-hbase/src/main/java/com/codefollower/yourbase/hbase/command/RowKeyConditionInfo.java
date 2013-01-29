@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.yourbase.command.dml.Select;
+import com.codefollower.yourbase.dbobject.index.IndexCondition;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.expression.Comparison;
@@ -52,6 +53,19 @@ public class RowKeyConditionInfo extends ConditionInfo {
         this.select = select;
         this.rowKeyName = table.getRowKeyName();
         this.tableName = Bytes.toBytes(table.getName());
+    }
+    
+    public RowKeyConditionInfo(HBaseTable table, Select select, List<IndexCondition> indexConditions) {
+        super(table.getRowKeyName());
+        this.table = table;
+        this.select = select;
+        this.rowKeyName = table.getRowKeyName();
+        this.tableName = Bytes.toBytes(table.getName());
+    }
+    
+    //此方法的实现参考了IndexCursor类
+    public void find(List<IndexCondition> indexConditions) {
+        
     }
 
     public HBaseTable getTable() {

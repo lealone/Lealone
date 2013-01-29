@@ -222,7 +222,10 @@ public class HBaseTable extends TableBase {
 
     @Override
     public void removeRow(Session session, Row row) {
-
+        for (int i = indexes.size() - 1; i >= 0; i--) {
+            Index index = indexes.get(i);
+            index.remove(session, row);
+        }
     }
 
     @Override
@@ -392,8 +395,6 @@ public class HBaseTable extends TableBase {
                     columnsMap.put(c.getColumnFamilyName(), list);
                 }
                 list.add(c);
-                //if (!list.contains(newColumns[oldColumns.length]))
-                //    list.add(newColumns[oldColumns.length]);
                 return c;
             }
         } else {

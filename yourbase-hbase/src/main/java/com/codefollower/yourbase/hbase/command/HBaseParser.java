@@ -44,6 +44,7 @@ import com.codefollower.yourbase.hbase.command.dml.HBaseDelete;
 import com.codefollower.yourbase.hbase.command.dml.HBaseInsert;
 import com.codefollower.yourbase.hbase.command.dml.HBaseSelect;
 import com.codefollower.yourbase.hbase.command.dml.HBaseUpdate;
+import com.codefollower.yourbase.hbase.command.dml.InTheRegion;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
 import com.codefollower.yourbase.hbase.engine.HBaseDatabase;
 import com.codefollower.yourbase.message.DbException;
@@ -53,6 +54,22 @@ public class HBaseParser extends Parser {
 
     public HBaseParser(Session session) {
         super(session);
+    }
+
+    @Override
+    protected Prepared parsePrepared(char first) {
+        if (first == 'I' || first == 'i') {
+            if (readIf("IN") && readIf("THE") && readIf("REGION")) {
+                return parseInTheRegion();
+            }
+        }
+        return null;
+    }
+
+    private Prepared parseInTheRegion() {
+        String regionName = readString();
+        Prepared p = parsePrepared();
+        return new InTheRegion(session, regionName, p);
     }
 
     @Override

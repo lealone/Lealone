@@ -82,9 +82,7 @@ public class CommandSelect implements CommandInterface {
                 HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
                 if (CommandProxy.isLocal(session, hri)) {
                     session.setRegionName(Bytes.toBytes(hri.getRegionName()));
-                    Command c = session.prepareLocal(sql);
-                    c.setRegionName(session.getRegionName());
-                    return c;
+                    return session.prepareLocal(sql);
                 } else {
                     Properties info = new Properties(session.getOriginalProperties());
                     info.setProperty("REGION_NAME", hri.getRegionName());
@@ -99,8 +97,7 @@ public class CommandSelect implements CommandInterface {
                     HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
                     if (CommandProxy.isLocal(session, hri)) {
                         Command c = session.prepareLocal(getNewSQL(select, startKey, true));
-                        c.setRegionName(Bytes.toBytes(hri.getRegionName()));
-                        localRegionNames.add(c.getRegionName());
+                        localRegionNames.add(Bytes.toBytes(hri.getRegionName()));
                         commands.add(c);
                     } else {
                         localRegionNames.add(null);

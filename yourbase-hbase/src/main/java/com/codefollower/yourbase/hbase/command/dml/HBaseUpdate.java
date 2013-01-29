@@ -162,6 +162,8 @@ public class HBaseUpdate extends Update {
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
         tableFilter.prepare();
+
+        tableFilter.setPrepared(this);
     }
 
     @Override

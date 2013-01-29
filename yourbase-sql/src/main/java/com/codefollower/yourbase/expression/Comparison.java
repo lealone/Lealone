@@ -112,6 +112,10 @@ public class Comparison extends Condition {
         this.compareType = compareType;
     }
 
+    public int getCompareType() {
+        return compareType;
+    }
+
     public String getSQL(boolean isDistributed) {
         String sql;
         switch (compareType) {

@@ -867,7 +867,7 @@ public class Database implements DataHandler {
      * @return the session
      * @throws DbException if the database is in exclusive mode
      */
-    protected synchronized Session createSession(User user) {
+    public synchronized Session createSession(User user) {
         if (exclusiveSession != null) {
             throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);
         }

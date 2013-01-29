@@ -65,6 +65,16 @@ public class TestBase {
         stmt.executeUpdate(sql);
     }
 
+    public void createTableIfNotExists(String tableName) throws Exception {
+        //建立了4个分区
+        //------------------------
+        //分区1: rowKey < 25
+        //分区2: 25 <= rowKey < 50
+        //分区3: 50 <= rowKey < 75
+        //分区4: rowKey > 75
+        createTable(tableName, "25", "50", "75");
+    }
+
     public void createTable(String tableName, String... splitKeys) throws Exception {
         //stmt.executeUpdate("DROP TABLE IF EXISTS " + tableName);
 
