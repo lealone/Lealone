@@ -30,6 +30,7 @@ import com.codefollower.yourbase.value.Value;
 //可删除多条记录，但是因为不支持事务，所以有可能出现部分删除成功、部分删除失败。
 public class HBaseDelete extends Delete implements HBasePrepared {
     private String regionName;
+
     public HBaseDelete(Session session) {
         super(session);
     }

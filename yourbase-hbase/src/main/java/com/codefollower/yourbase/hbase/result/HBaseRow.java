@@ -19,11 +19,22 @@
  */
 package com.codefollower.yourbase.hbase.result;
 
+import org.apache.hadoop.hbase.client.Put;
+
 import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.value.Value;
 
 public class HBaseRow extends Row {
     private byte[] regionName;
+    private Put put;
+
+    public HBaseRow(Value[] data, int memory) {
+        super(data, memory);
+    }
+
+    public HBaseRow(Value rowKey, Value[] data, int memory) {
+        super(rowKey, data, memory);
+    }
 
     public HBaseRow(byte[] regionName, Value rowKey, Value[] data, int memory) {
         super(rowKey, data, memory);
@@ -36,6 +47,14 @@ public class HBaseRow extends Row {
 
     public void setRegionName(byte[] regionName) {
         this.regionName = regionName;
+    }
+
+    public void setPut(Put put) {
+        this.put = put;
+    }
+
+    public Put getPut() {
+        return put;
     }
 
 }

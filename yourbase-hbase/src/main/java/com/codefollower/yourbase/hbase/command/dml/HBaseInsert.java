@@ -24,26 +24,35 @@ import java.util.ArrayList;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.codefollower.yourbase.api.Trigger;
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.dml.Insert;
 import com.codefollower.yourbase.command.dml.Query;
-import com.codefollower.yourbase.dbobject.Right;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.engine.SessionInterface;
 import com.codefollower.yourbase.expression.Expression;
 import com.codefollower.yourbase.hbase.command.CommandProxy;
+import com.codefollower.yourbase.hbase.command.HBasePrepared;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
+import com.codefollower.yourbase.hbase.result.HBaseRow;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
 import com.codefollower.yourbase.message.DbException;
+import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.StatementBuilder;
 import com.codefollower.yourbase.value.Value;
+import com.codefollower.yourbase.value.ValueString;
 
-public class HBaseInsert extends Insert {
+//TODO
+//可Insert多条记录，但是因为不支持事务，所以有可能出现部分Insert成功、部分Insert失败。
+public class HBaseInsert extends Insert implements HBasePrepared {
     private final HBaseSession session;
+    private String regionName;
+    private byte[] regionNameAsBytes;
+
+    private StatementBuilder alterTable;
+    private ArrayList<Column> alterColumns;
 
     public HBaseInsert(Session session) {
         super(session);
@@ -70,11 +79,7 @@ public class HBaseInsert extends Insert {
 
     @Override
     public int update() {
-        session.getUser().checkRight(table, Right.INSERT);
-        table.fire(session, Trigger.INSERT, true);
         HBaseTable table = ((HBaseTable) this.table);
-        StatementBuilder alterTable = null;
-        ArrayList<Column> alterColumns = null;
         if (table.isModified()) {
             alterTable = new StatementBuilder("ALTER TABLE ");
             //不能使用ALTER TABLE t ADD COLUMN(f1 int, f2 int)这样的语法，因为有可能多个RS都在执行这种语句，在Master那会有冲突
@@ -82,34 +87,8 @@ public class HBaseInsert extends Insert {
 
             alterColumns = New.arrayList();
         }
-        Put put = new Put(Bytes.toBytes(getRowKey()));
+        int updateCount = super.update();
         try {
-            int index = -1;
-            Value v;
-            Expression[] exprs = list.get(0);
-            Expression e;
-            for (Column c : columns) {
-                index++;
-                if (c.isRowKeyColumn())
-                    continue;
-                e = exprs[index];
-                if (e != null) { // e can be null (DEFAULT)
-                    e = e.optimize(session);
-                    v = e.getValue(session);
-                    if (c.isTypeUnknown()) {
-                        c.setType(v.getType());
-                        //alterTable.appendExceptFirst(", ");
-                        //alterTable.append(c.getCreateSQL());
-                        alterColumns.add(c);
-                    }
-
-                    v = c.convert(v);
-                    put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
-                }
-            }
-            session.getRegionServer().put(session.getRegionName(), put);
-
-            //动态表，insert时如果字段未定义，此时可更新meta表
             if (table.isModified()) {
                 table.setModified(false);
                 SessionInterface si = CommandProxy.getSessionInterface(session, session.getOriginalProperties(),
@@ -123,11 +102,45 @@ public class HBaseInsert extends Insert {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+        return updateCount;
+    }
 
-        rowNumber = 1;
-        table.fire(session, Trigger.INSERT, false);
-        return rowNumber;
+    @Override
+    protected Row createRow(int columnLen, Expression[] expr, int rowId) {
+        HBaseRow row = (HBaseRow) table.getTemplateRow();
+        row.setRowKey(ValueString.get(getRowKey()));
+        row.setRegionName(regionNameAsBytes);
 
+        Put put = new Put(Bytes.toBytes(getRowKey()));
+        row.setPut(put);
+        Column c;
+        Value v;
+        Expression e;
+        for (int i = 0; i < columnLen; i++) {
+            c = columns[i];
+            if (c.isRowKeyColumn())
+                continue;
+            e = expr[i];
+            if (e != null) {
+                // e can be null (DEFAULT)
+                e = e.optimize(session);
+                v = e.getValue(session);
+                if (c.isTypeUnknown()) {
+                    c.setType(v.getType());
+                    //alterTable.appendExceptFirst(", ");
+                    //alterTable.append(c.getCreateSQL());
+                    alterColumns.add(c);
+                }
+                try {
+                    v = c.convert(e.getValue(session));
+                    row.setValue(c.getColumnId(), v);
+                    put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
+                } catch (DbException ex) {
+                    throw setRow(ex, rowId, getSQL(expr));
+                }
+            }
+        }
+        return row;
     }
 
     @Override
@@ -152,5 +165,26 @@ public class HBaseInsert extends Insert {
     @Override
     public boolean isDistributedSQL() {
         return true;
+    }
+
+    @Override
+    public Value getStartRowKeyValue() {
+        return ValueString.get(getRowKey());
+    }
+
+    @Override
+    public Value getEndRowKeyValue() {
+        return ValueString.get(getRowKey());
+    }
+
+    @Override
+    public String getRegionName() {
+        return regionName;
+    }
+
+    @Override
+    public void setRegionName(String regionName) {
+        this.regionName = regionName;
+        this.regionNameAsBytes = Bytes.toBytes(regionName);
     }
 }

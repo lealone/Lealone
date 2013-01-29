@@ -91,6 +91,27 @@ public class Insert extends Prepared implements ResultTarget {
 		}
 	}
 
+    protected Row createRow(int columnLen, Expression[] expr, int rowId) {
+        Row row = table.getTemplateRow();
+        for (int i = 0; i < columnLen; i++) {
+            Column c = columns[i];
+            int index = c.getColumnId();
+            Expression e = expr[i];
+            if (e != null) {
+                // e can be null (DEFAULT)
+                e = e.optimize(session);
+                try {
+                    Value v = c.convert(e.getValue(session));
+                    row.setValue(index, v);
+                } catch (DbException ex) {
+                    throw setRow(ex, rowId, getSQL(expr));
+                }
+            }
+        }
+
+        return row;
+    }
+
 	private int insertRows() {
 		session.getUser().checkRight(table, Right.INSERT);
 		setCurrentRowNumber(0);
@@ -100,24 +121,27 @@ public class Insert extends Prepared implements ResultTarget {
 		if (listSize > 0) {
 			int columnLen = columns.length;
 			for (int x = 0; x < listSize; x++) {
-				Row newRow = table.getTemplateRow();
-				Expression[] expr = list.get(x);
-				setCurrentRowNumber(x + 1);
-				for (int i = 0; i < columnLen; i++) {
-					Column c = columns[i];
-					int index = c.getColumnId();
-					Expression e = expr[i];
-					if (e != null) {
-						// e can be null (DEFAULT)
-						e = e.optimize(session);
-						try {
-							Value v = c.convert(e.getValue(session));
-							newRow.setValue(index, v);
-						} catch (DbException ex) {
-							throw setRow(ex, x, getSQL(expr));
-						}
-					}
-				}
+                //				Row newRow = table.getTemplateRow();
+                //				Expression[] expr = list.get(x);
+                //				setCurrentRowNumber(x + 1);
+                //				for (int i = 0; i < columnLen; i++) {
+                //					Column c = columns[i];
+                //					int index = c.getColumnId();
+                //					Expression e = expr[i];
+                //					if (e != null) {
+                //						// e can be null (DEFAULT)
+                //						e = e.optimize(session);
+                //						try {
+                //							Value v = c.convert(e.getValue(session));
+                //							newRow.setValue(index, v);
+                //						} catch (DbException ex) {
+                //							throw setRow(ex, x, getSQL(expr));
+                //						}
+                //					}
+                //				}
+                setCurrentRowNumber(x + 1);
+                Expression[] expr = list.get(x);
+                Row newRow = createRow(columnLen, expr, x);
 				rowNumber++;
 				table.validateConvertUpdateSequence(session, newRow);
 				boolean done = table.fireBeforeRow(session, null, newRow);

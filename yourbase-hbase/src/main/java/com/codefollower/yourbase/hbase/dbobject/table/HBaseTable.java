@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
 
+import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.command.ddl.CreateTableData;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.Schema;
@@ -44,8 +45,10 @@ import com.codefollower.yourbase.hbase.command.ddl.Options;
 import com.codefollower.yourbase.hbase.dbobject.index.HBaseTableIndex;
 import com.codefollower.yourbase.hbase.engine.HBaseDatabase;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
+import com.codefollower.yourbase.hbase.result.HBaseRow;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.Row;
+import com.codefollower.yourbase.result.RowList;
 import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.StatementBuilder;
 import com.codefollower.yourbase.value.Value;
@@ -221,6 +224,19 @@ public class HBaseTable extends TableBase {
     }
 
     @Override
+    public void addRow(Session session, Row row) {
+        for (int i = 0, size = indexes.size(); i < size; i++) {
+            Index index = indexes.get(i);
+            index.add(session, row);
+        }
+    }
+
+    @Override
+    public void updateRows(Prepared prepared, Session session, RowList rows) {
+
+    }
+
+    @Override
     public void removeRow(Session session, Row row) {
         for (int i = indexes.size() - 1; i >= 0; i--) {
             Index index = indexes.get(i);
@@ -231,10 +247,6 @@ public class HBaseTable extends TableBase {
     @Override
     public void truncate(Session session) {
 
-    }
-
-    @Override
-    public void addRow(Session session, Row row) {
     }
 
     @Override
@@ -407,7 +419,7 @@ public class HBaseTable extends TableBase {
         if (isStatic)
             return super.getTemplateRow();
         else
-            return new Row(new Value[0], Row.MEMORY_CALCULATE);
+            return new HBaseRow(new Value[columns.length], Row.MEMORY_CALCULATE);
     }
 
     @Override

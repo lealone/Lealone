@@ -20,9 +20,6 @@
 package com.codefollower.yourbase.hbase.command.dml;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Put;
@@ -32,63 +29,26 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.yourbase.api.Trigger;
 import com.codefollower.yourbase.command.dml.Update;
-import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.Right;
 import com.codefollower.yourbase.dbobject.table.Column;
-import com.codefollower.yourbase.dbobject.table.PlanItem;
 import com.codefollower.yourbase.dbobject.table.Table;
-import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.expression.Expression;
-import com.codefollower.yourbase.expression.Parameter;
 import com.codefollower.yourbase.expression.ValueExpression;
-import com.codefollower.yourbase.hbase.command.RowKeyConditionInfo;
-import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
+import com.codefollower.yourbase.hbase.command.HBasePrepared;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
-import com.codefollower.yourbase.message.DbException;
-import com.codefollower.yourbase.util.New;
+import com.codefollower.yourbase.result.SearchRow;
 import com.codefollower.yourbase.value.Value;
 
-public class HBaseUpdate extends Update {
+//TODO
+//可Update多条记录，但是因为不支持事务，所以有可能出现部分Update成功、部分Update失败。
+public class HBaseUpdate extends Update implements HBasePrepared {
     private final HBaseSession session;
-    private Expression condition;
-    private TableFilter tableFilter;
-
-    private ArrayList<Column> columns = New.arrayList();
-    private HashMap<Column, Expression> expressionMap = New.hashMap();
-
-    private RowKeyConditionInfo rkci;
-
+    private String regionName;
     public HBaseUpdate(Session session) {
         super(session);
         this.session = (HBaseSession) session;
-    }
-
-    @Override
-    public void setTableFilter(TableFilter tableFilter) {
-        super.setTableFilter(tableFilter);
-        this.tableFilter = tableFilter;
-    }
-
-    @Override
-    public void setCondition(Expression condition) {
-        super.setCondition(condition);
-        this.condition = condition;
-    }
-
-    @Override
-    public void setAssignment(Column column, Expression expression) {
-        super.setAssignment(column, expression);
-        if (expressionMap.containsKey(column)) {
-            throw DbException.get(ErrorCode.DUPLICATE_COLUMN_NAME_1, column.getName());
-        }
-        columns.add(column);
-        expressionMap.put(column, expression);
-        if (expression instanceof Parameter) {
-            Parameter p = (Parameter) expression;
-            p.setColumn(column);
-        }
     }
 
     @Override
@@ -146,23 +106,7 @@ public class HBaseUpdate extends Update {
 
     @Override
     public void prepare() {
-        if (condition != null) {
-            condition.mapColumns(tableFilter, 0);
-            condition = condition.optimize(session);
-            //condition.createIndexConditions(session, tableFilter);
-            rkci = new RowKeyConditionInfo((HBaseTable) tableFilter.getTable(), null);
-            condition = condition.removeRowKeyCondition(rkci, session);
-        }
-        for (int i = 0, size = columns.size(); i < size; i++) {
-            Column c = columns.get(i);
-            Expression e = expressionMap.get(c);
-            e.mapColumns(tableFilter, 0);
-            expressionMap.put(c, e.optimize(session));
-        }
-        PlanItem item = tableFilter.getBestPlanItem(session, 1);
-        tableFilter.setPlanItem(item);
-        tableFilter.prepare();
-
+        super.prepare();
         tableFilter.setPrepared(this);
     }
 
@@ -172,15 +116,33 @@ public class HBaseUpdate extends Update {
     }
 
     @Override
-    public String getRowKey() {
-        if (rkci != null)
-            return rkci.getRowKey();
-        else
-            return null;
+    public boolean isDistributedSQL() {
+        return true;
     }
 
     @Override
-    public boolean isDistributedSQL() {
-        return true;
+    public Value getStartRowKeyValue() {
+        SearchRow start = tableFilter.getStartSearchRow();
+        if (start != null)
+            return start.getRowKey();
+        return null;
+    }
+
+    @Override
+    public Value getEndRowKeyValue() {
+        SearchRow end = tableFilter.getEndSearchRow();
+        if (end != null)
+            return end.getRowKey();
+        return null;
+    }
+
+    @Override
+    public String getRegionName() {
+        return regionName;
+    }
+
+    @Override
+    public void setRegionName(String regionName) {
+        this.regionName = regionName;
     }
 }

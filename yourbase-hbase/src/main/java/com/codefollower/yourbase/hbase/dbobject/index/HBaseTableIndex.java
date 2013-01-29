@@ -50,6 +50,11 @@ public class HBaseTableIndex extends BaseIndex {
 
     @Override
     public void add(Session session, Row row) {
+        try {
+            ((HBaseSession) session).getRegionServer().put(((HBaseRow) row).getRegionName(), ((HBaseRow) row).getPut());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

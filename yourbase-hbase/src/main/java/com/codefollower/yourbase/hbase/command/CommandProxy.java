@@ -232,15 +232,16 @@ public class CommandProxy extends Command {
                 String rowKey = prepared.getRowKey();
                 if (rowKey == null)
                     throw new RuntimeException("rowKey is null");
+                
+                HBasePrepared hp = (HBasePrepared) prepared;
 
                 HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, rowKey);
                 if (isLocal(session, hri)) {
-                    session.setRegionName(Bytes.toBytes(hri.getRegionName()));
+                    hp.setRegionName(hri.getRegionName());
                     this.command = command;
                 } else {
-                    Properties info = new Properties(session.getOriginalProperties());
-                    info.setProperty("REGION_NAME", hri.getRegionName());
-                    this.command = getCommandInterface(info, hri.getRegionServerURL(), sql);
+                    this.command = getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
+                            createSQL(hri.getRegionName(), sql));
                 }
 
             } else if (prepared instanceof Select) {

@@ -46,6 +46,9 @@ public class InsertTest extends TestBase {
         stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a1', 'b', 12)");
         stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'b', 12)");
         stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'b', 12)");
+
+        sql = "select _rowkey_, f1, f2, cf2.f3 from InsertTest";
+        printResultSet();
     }
 
 }
