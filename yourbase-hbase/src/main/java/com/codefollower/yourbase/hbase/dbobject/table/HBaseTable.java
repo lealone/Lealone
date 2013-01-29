@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -46,6 +47,7 @@ import com.codefollower.yourbase.hbase.dbobject.index.HBaseTableIndex;
 import com.codefollower.yourbase.hbase.engine.HBaseDatabase;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.hbase.result.HBaseRow;
+import com.codefollower.yourbase.hbase.util.HBaseUtils;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.result.RowList;
@@ -233,7 +235,23 @@ public class HBaseTable extends TableBase {
 
     @Override
     public void updateRows(Prepared prepared, Session session, RowList rows) {
-
+        Column[] columns = getColumns();
+        int columnCount = columns.length;
+        Put put;
+        Column c;
+        for (rows.reset(); rows.hasNext();) {
+            HBaseRow o = (HBaseRow) rows.next();
+            HBaseRow n = (HBaseRow) rows.next();
+            n.setRegionName(o.getRegionName());
+            n.setRowKey(o.getRowKey());
+            put = new Put(HBaseUtils.toBytes(n.getRowKey()));
+            for (int i = 0; i < columnCount; i++) {
+                c = columns[i];
+                put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(n.getValue(i)));
+                n.setPut(put);
+            }
+        }
+        super.updateRows(prepared, session, rows);
     }
 
     @Override
