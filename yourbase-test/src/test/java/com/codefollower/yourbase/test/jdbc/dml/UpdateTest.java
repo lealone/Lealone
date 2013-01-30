@@ -51,7 +51,6 @@ public class UpdateTest extends TestBase {
         stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'b', 12)");
     }
 
-
     void testUpdate() throws Exception {
         sql = "UPDATE UpdateTest SET f1 = 'a1', cf2.f3 = 61 WHERE _rowkey_= '01'";
         assertEquals(1, stmt.executeUpdate(sql));

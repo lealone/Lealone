@@ -28,9 +28,8 @@ import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.result.ResultInterface;
 import com.codefollower.yourbase.value.Value;
 
-public class HBaseJdbcSelectResult implements ResultInterface {
+public class HBaseMergedResult implements ResultInterface {
     private List<ResultInterface> results;
-    private Select select;
     private ResultInterface defaultResult;
     private ResultInterface currentResult;
     private int index = 0;
@@ -38,15 +37,14 @@ public class HBaseJdbcSelectResult implements ResultInterface {
 
     private ResultInterface mergedResult;
 
-    public HBaseJdbcSelectResult(List<ResultInterface> results, Select newSelect, Select oldSelect, boolean isGroupQuery) {
+    public HBaseMergedResult(List<ResultInterface> results, Select newSelect, Select oldSelect, boolean isGroupQuery) {
         this.results = results;
-        this.select = oldSelect;
         defaultResult = results.get(0);
         size = results.size();
 
         Table table = newSelect.getTopTableFilter().getTable();
         newSelect.getTopTableFilter().setIndex(
-                new HBaseJdbcSelectIndex(this, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
+                new HBaseMergedIndex(this, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
 
         if (isGroupQuery)
             mergedResult = newSelect.queryGroupMerge(0, null);
@@ -55,14 +53,9 @@ public class HBaseJdbcSelectResult implements ResultInterface {
 
         table = oldSelect.getTopTableFilter().getTable();
         oldSelect.getTopTableFilter().setIndex(
-                new HBaseJdbcSelectIndex(mergedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType
-                        .createScan(false)));
+                new HBaseMergedIndex(mergedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
 
         defaultResult = mergedResult = oldSelect.queryGroupMerge(0, null);
-    }
-
-    public Select getSelect() {
-        return select;
     }
 
     @Override

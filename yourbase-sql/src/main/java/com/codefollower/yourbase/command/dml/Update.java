@@ -38,14 +38,14 @@ import com.codefollower.yourbase.value.ValueNull;
  */
 public class Update extends Prepared {
 
-    private Expression condition;
-    private TableFilter tableFilter;
+    protected Expression condition;
+    protected TableFilter tableFilter;
 
     /** The limit expression as specified in the LIMIT clause. */
     private Expression limitExpr;
 
-    private final ArrayList<Column> columns = New.arrayList();
-    private final HashMap<Column, Expression> expressionMap  = New.hashMap();
+    protected final ArrayList<Column> columns = New.arrayList();
+    protected final HashMap<Column, Expression> expressionMap  = New.hashMap();
 
     public Update(Session session) {
         super(session);
@@ -168,6 +168,10 @@ public class Update extends Prepared {
         }
         if (condition != null) {
             buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
+        }
+
+        if (limitExpr != null) {
+            buff.append("\nLIMIT (").append(StringUtils.unEnclose(limitExpr.getSQL())).append(')');
         }
         return buff.toString();
     }

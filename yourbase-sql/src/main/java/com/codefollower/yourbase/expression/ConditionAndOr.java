@@ -262,16 +262,4 @@ public class ConditionAndOr extends Condition {
     public Expression getExpression(boolean getLeft) {
         return getLeft ? this.left : right;
     }
-
-    @Override
-    public Expression removeRowKeyCondition(ConditionInfo rkci, Session session) {
-        left = left.removeRowKeyCondition(rkci, session);
-        right = right.removeRowKeyCondition(rkci, session);
-        if (left == null)
-            return right;
-        if (right == null)
-            return left;
-
-        return this;
-    }
 }

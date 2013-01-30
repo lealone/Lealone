@@ -33,15 +33,14 @@ import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.command.HBaseParser;
 import com.codefollower.yourbase.hbase.dbobject.HBaseSequence;
-import com.codefollower.yourbase.hbase.result.HBaseCombinedResult;
-import com.codefollower.yourbase.result.CombinedResult;
+import com.codefollower.yourbase.hbase.result.HBaseSubqueryResult;
+import com.codefollower.yourbase.result.SubqueryResult;
 import com.codefollower.yourbase.result.Row;
 
 public class HBaseSession extends Session {
 
     private HMaster master;
     private HRegionServer regionServer;
-    private byte[] regionName;
     private Properties originalProperties;
 
     public HBaseSession(Database database, User user, int id) {
@@ -64,14 +63,6 @@ public class HBaseSession extends Session {
         this.regionServer = regionServer;
     }
 
-    public byte[] getRegionName() {
-        return regionName;
-    }
-
-    public void setRegionName(byte[] regionName) {
-        this.regionName = regionName;
-    }
-
     public Properties getOriginalProperties() {
         return originalProperties;
     }
@@ -84,8 +75,8 @@ public class HBaseSession extends Session {
         return (HBaseDatabase) database;
     }
 
-    public CombinedResult createCombinedResult(Query query, int maxrows) {
-        return new HBaseCombinedResult(this, query, maxrows);
+    public SubqueryResult createSubqueryResult(Query query, int maxrows) {
+        return new HBaseSubqueryResult(this, query, maxrows);
     }
 
     public Parser createParser() {

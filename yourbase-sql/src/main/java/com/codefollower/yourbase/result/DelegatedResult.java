@@ -19,123 +19,107 @@
  */
 package com.codefollower.yourbase.result;
 
-import com.codefollower.yourbase.command.dml.Query;
-import com.codefollower.yourbase.result.LocalResult;
-import com.codefollower.yourbase.result.ResultInterface;
-import com.codefollower.yourbase.util.ValueHashMap;
 import com.codefollower.yourbase.value.Value;
-import com.codefollower.yourbase.value.ValueArray;
 
-public class CombinedResult implements ResultInterface {
-    private ResultInterface result;
-    private ValueHashMap<Value[]> distinctRows;
+public class DelegatedResult implements ResultInterface {
+    protected ResultInterface result;
 
-    public CombinedResult() {
-    }
-
-    public CombinedResult(Query query, int maxrows) {
-        result = query.query(maxrows);
-    }
-
-    public boolean containsDistinct(Value[] values) {
-        if (result instanceof LocalResult)
-            return ((LocalResult) result).containsDistinct(values);
-
-        if (distinctRows == null) {
-            distinctRows = ValueHashMap.newInstance();
-            int visibleColumnCount = getVisibleColumnCount();
-            while (next()) {
-                Value[] row = currentRow();
-                if (row.length > visibleColumnCount) {
-                    Value[] r2 = new Value[visibleColumnCount];
-                    System.arraycopy(row, 0, r2, 0, visibleColumnCount);
-                    row = r2;
-                }
-                ValueArray array = ValueArray.get(row);
-                distinctRows.put(array, row);
-            }
-        }
-
-        ValueArray array = ValueArray.get(values);
-        return distinctRows.get(array) != null;
-    }
-
+    @Override
     public void reset() {
         result.reset();
     }
 
+    @Override
     public Value[] currentRow() {
         return result.currentRow();
     }
 
+    @Override
     public boolean next() {
         return result.next();
     }
 
+    @Override
     public int getRowId() {
         return result.getRowId();
     }
 
+    @Override
     public int getVisibleColumnCount() {
         return result.getVisibleColumnCount();
     }
 
+    @Override
     public int getRowCount() {
         return result.getRowCount();
     }
 
+    @Override
     public boolean needToClose() {
         return result.needToClose();
     }
 
+    @Override
     public void close() {
         result.close();
     }
 
+    @Override
     public String getAlias(int i) {
         return result.getAlias(i);
     }
 
+    @Override
     public String getSchemaName(int i) {
         return result.getSchemaName(i);
     }
 
+    @Override
     public String getTableName(int i) {
         return result.getTableName(i);
     }
 
+    @Override
     public String getColumnName(int i) {
         return result.getColumnName(i);
     }
 
+    @Override
     public int getColumnType(int i) {
         return result.getColumnType(i);
     }
 
+    @Override
     public long getColumnPrecision(int i) {
         return result.getColumnPrecision(i);
     }
 
+    @Override
     public int getColumnScale(int i) {
         return result.getColumnScale(i);
     }
 
+    @Override
     public int getDisplaySize(int i) {
         return result.getDisplaySize(i);
     }
 
+    @Override
     public boolean isAutoIncrement(int i) {
         return result.isAutoIncrement(i);
     }
 
+    @Override
     public int getNullable(int i) {
         return result.getNullable(i);
     }
 
+    @Override
     public void setFetchSize(int fetchSize) {
         result.setFetchSize(fetchSize);
     }
 
+    @Override
     public int getFetchSize() {
         return result.getFetchSize();
     }

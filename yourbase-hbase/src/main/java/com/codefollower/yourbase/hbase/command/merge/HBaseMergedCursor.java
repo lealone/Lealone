@@ -20,30 +20,35 @@
 package com.codefollower.yourbase.hbase.command.merge;
 
 import com.codefollower.yourbase.dbobject.index.Cursor;
-import com.codefollower.yourbase.dbobject.index.IndexType;
-import com.codefollower.yourbase.dbobject.table.IndexColumn;
-import com.codefollower.yourbase.dbobject.table.Table;
-import com.codefollower.yourbase.dbobject.table.TableFilter;
-import com.codefollower.yourbase.engine.Session;
-import com.codefollower.yourbase.hbase.dbobject.index.HBaseTableIndex;
 import com.codefollower.yourbase.result.ResultInterface;
+import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.result.SearchRow;
 
-public class HBaseJdbcSelectIndex extends HBaseTableIndex {
+public class HBaseMergedCursor implements Cursor {
     private final ResultInterface result;
 
-    public HBaseJdbcSelectIndex(ResultInterface result, Table table, int id, IndexColumn[] columns, IndexType indexType) {
-        super(table, id, columns, indexType);
+    public HBaseMergedCursor(ResultInterface result) {
         this.result = result;
     }
 
     @Override
-    public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        return new HBaseJdbcSelectCursor(result);
+    public Row get() {
+        return new Row(result.currentRow(), -1);
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
-        return new HBaseJdbcSelectCursor(result);
+    public SearchRow getSearchRow() {
+        return get();
     }
+
+    @Override
+    public boolean next() {
+        return result.next();
+    }
+
+    @Override
+    public boolean previous() {
+        return false;
+    }
+
 }

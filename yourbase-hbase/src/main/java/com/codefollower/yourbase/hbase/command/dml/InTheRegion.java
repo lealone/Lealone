@@ -62,7 +62,6 @@ public class InTheRegion extends Prepared {
         return command.getCurrentRowNumber();
     }
 
-
     public boolean isCacheable() {
         return command.isCacheable();
     }

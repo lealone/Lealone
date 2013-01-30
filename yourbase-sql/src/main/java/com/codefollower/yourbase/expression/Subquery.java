@@ -35,7 +35,7 @@ public class Subquery extends Expression {
 
     public Value getValue(Session session) {
         query.setSession(session);
-        ResultInterface result = session.createCombinedResult(query, 2); //query.query(2);
+        ResultInterface result = session.createSubqueryResult(query, 2); //query.query(2);
         try {
             int rowcount = result.getRowCount();
             if (rowcount > 1) {

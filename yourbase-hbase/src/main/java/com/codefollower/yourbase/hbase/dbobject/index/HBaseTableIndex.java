@@ -31,6 +31,7 @@ import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.hbase.result.HBaseRow;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
+import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.result.SearchRow;
 
@@ -50,10 +51,17 @@ public class HBaseTableIndex extends BaseIndex {
 
     @Override
     public void add(Session session, Row row) {
+        try {
+            ((HBaseSession) session).getRegionServer().put(((HBaseRow) row).getRegionName(), ((HBaseRow) row).getPut());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void remove(Session session, Row row) {
+        if (((HBaseRow) row).isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
+            return;
         try {
             ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(),
                     new org.apache.hadoop.hbase.client.Delete(HBaseUtils.toBytes(row.getRowKey())));
@@ -69,7 +77,7 @@ public class HBaseTableIndex extends BaseIndex {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        return new HBaseTableCursor(session, first, last);
+        throw DbException.getUnsupportedException("find(Session, SearchRow, SearchRow)");
     }
 
     @Override
@@ -92,7 +100,7 @@ public class HBaseTableIndex extends BaseIndex {
 
     @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
-        return new HBaseTableCursor(session, null, null);
+        throw DbException.getUnsupportedException("findFirstOrLast");
     }
 
     @Override

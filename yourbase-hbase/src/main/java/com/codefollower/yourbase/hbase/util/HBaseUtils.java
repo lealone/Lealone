@@ -298,7 +298,7 @@ public class HBaseUtils {
                     rangeKeys.add(startKey);
                 }
             } else if (Bytes.equals(endKey, HConstants.EMPTY_END_ROW) || //
-                    Bytes.compareTo(startKeys[i], endKey) < 0) { //原先代码是<=，因为coprocessorExec的语义是要包含endKey的
+                    Bytes.compareTo(startKeys[i], endKey) <= 0) { //原先代码是<=，因为coprocessorExec的语义是要包含endKey的
                 rangeKeys.add(startKeys[i]);
             } else {
                 break; // past stop

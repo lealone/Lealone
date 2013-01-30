@@ -28,6 +28,7 @@ public class InsertTest extends TestBase {
     public void run() throws Exception {
         createTableIfNotExists("InsertTest");
         testInsert();
+        testSelect();
     }
 
     void testInsert() throws Exception {
@@ -48,4 +49,8 @@ public class InsertTest extends TestBase {
         stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'b', 12)");
     }
 
+    void testSelect() throws Exception {
+        sql = "select _rowkey_, f1, f2, cf2.f3 from InsertTest";
+        printResultSet();
+    }
 }

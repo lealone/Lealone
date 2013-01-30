@@ -24,6 +24,8 @@ import com.codefollower.yourbase.value.Value;
 public interface HBasePrepared {
     public String getTableName();
 
+    public String getRowKey();
+
     public Value getStartRowKeyValue();
 
     public Value getEndRowKeyValue();

@@ -34,11 +34,10 @@ import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.index.Cursor;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
-import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.command.HBasePrepared;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
-import com.codefollower.yourbase.hbase.result.HBaseCombinedResult;
+import com.codefollower.yourbase.hbase.result.HBaseSubqueryResult;
 import com.codefollower.yourbase.hbase.result.HBaseRow;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
 import com.codefollower.yourbase.result.Row;
@@ -57,16 +56,16 @@ public class HBaseTableCursor implements Cursor {
     private byte[] defaultColumnFamilyName;
     private int columnCount;
     private String rowKeyName;
-    private HBaseCombinedResult combinedResult;
+    private HBaseSubqueryResult combinedResult;
     private boolean isGet = false;
 
     public HBaseTableCursor(TableFilter filter, SearchRow first, SearchRow last) {
         session = (HBaseSession) filter.getSession();
-        HBasePrepared prepared = (HBasePrepared) filter.getPrepared();
-        if (prepared != null)
-            regionName = Bytes.toBytes(prepared.getRegionName());
+        HBasePrepared hp = (HBasePrepared) filter.getPrepared();
+        if (hp != null)
+            regionName = Bytes.toBytes(hp.getRegionName());
         if (regionName == null)
-            regionName = session.getRegionName();
+            throw new RuntimeException("regionName is null");
 
         rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();
         columnCount = ((HBaseTable) filter.getTable()).getColumns().length;
@@ -93,50 +92,32 @@ public class HBaseTableCursor implements Cursor {
                 throw new RuntimeException(e);
             }
         } else if (filter.getSelect() != null && filter.getSelect().getTopTableFilter() != filter) {
-            combinedResult = new HBaseCombinedResult(filter);
+            combinedResult = new HBaseSubqueryResult(filter);
         } else {
             byte[] startKey = HConstants.EMPTY_BYTE_ARRAY;
             byte[] endKey = HConstants.EMPTY_BYTE_ARRAY;
 
             Scan scan = new Scan();
+            if (startValue != null)
+                startKey = HBaseUtils.toBytes(startValue);
+            if (endValue != null)
+                endKey = HBaseUtils.toBytes(endValue);
 
-            if (filter.getSelect() != null) {
-                String[] rowKeys = filter.getSelect().getRowKeys();
-                if (rowKeys != null) {
-                    if (rowKeys.length >= 1 && rowKeys[0] != null)
-                        startKey = Bytes.toBytes(rowKeys[0]);
-
-                    if (rowKeys.length >= 2 && rowKeys[1] != null)
-                        endKey = Bytes.toBytes(rowKeys[1]);
-                }
-
-                if (startKey != null)
+            try {
+                HRegionInfo info = session.getRegionServer().getRegionInfo(regionName);
+                if (Bytes.compareTo(startKey, info.getStartKey()) >= 0)
                     scan.setStartRow(startKey);
-                if (endKey != null)
+                else
+                    scan.setStartRow(info.getStartKey());
+
+                if (Bytes.equals(endKey, HConstants.EMPTY_BYTE_ARRAY))
+                    scan.setStopRow(info.getEndKey());
+                else if (Bytes.compareTo(endKey, info.getEndKey()) < 0)
                     scan.setStopRow(endKey);
-
-            } else {
-                if (startValue != null)
-                    startKey = HBaseUtils.toBytes(startValue);
-                if (endValue != null)
-                    endKey = HBaseUtils.toBytes(endValue);
-
-                try {
-                    HRegionInfo info = session.getRegionServer().getRegionInfo(regionName);
-                    if (Bytes.compareTo(startKey, info.getStartKey()) >= 0)
-                        scan.setStartRow(startKey);
-                    else
-                        scan.setStartRow(info.getStartKey());
-
-                    if (Bytes.equals(endKey, HConstants.EMPTY_BYTE_ARRAY))
-                        scan.setStopRow(info.getEndKey());
-                    else if (Bytes.compareTo(endKey, info.getEndKey()) < 0)
-                        scan.setStopRow(endKey);
-                    else
-                        scan.setStopRow(info.getEndKey());
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                else
+                    scan.setStopRow(info.getEndKey());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
 
             if (columns != null) {
@@ -155,20 +136,6 @@ public class HBaseTableCursor implements Cursor {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }
-    }
-
-    public HBaseTableCursor(Session session, SearchRow first, SearchRow last) {
-        this.session = (HBaseSession) session;
-        try {
-            Scan scan = new Scan();
-            if (first != null)
-                scan.setStartRow(Bytes.toBytes(Long.toString(first.getKey())));
-            if (last != null)
-                scan.setStopRow(Bytes.toBytes(Long.toString(last.getKey())));
-            scannerId = this.session.getRegionServer().openScanner(this.session.getRegionName(), scan);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 

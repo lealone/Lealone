@@ -26,11 +26,13 @@ import java.util.Map.Entry;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
 
+import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.command.ddl.CreateTableData;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.Schema;
@@ -44,8 +46,11 @@ import com.codefollower.yourbase.hbase.command.ddl.Options;
 import com.codefollower.yourbase.hbase.dbobject.index.HBaseTableIndex;
 import com.codefollower.yourbase.hbase.engine.HBaseDatabase;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
+import com.codefollower.yourbase.hbase.result.HBaseRow;
+import com.codefollower.yourbase.hbase.util.HBaseUtils;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.Row;
+import com.codefollower.yourbase.result.RowList;
 import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.StatementBuilder;
 import com.codefollower.yourbase.value.Value;
@@ -221,6 +226,37 @@ public class HBaseTable extends TableBase {
     }
 
     @Override
+    public void addRow(Session session, Row row) {
+        for (int i = 0, size = indexes.size(); i < size; i++) {
+            Index index = indexes.get(i);
+            index.add(session, row);
+        }
+    }
+
+    @Override
+    public void updateRows(Prepared prepared, Session session, RowList rows) {
+        Column[] columns = getColumns();
+        int columnCount = columns.length;
+        Put put;
+        Column c;
+        for (rows.reset(); rows.hasNext();) {
+            HBaseRow o = (HBaseRow) rows.next();
+            HBaseRow n = (HBaseRow) rows.next();
+
+            o.setForUpdate(true);
+            n.setRegionName(o.getRegionName());
+            n.setRowKey(o.getRowKey());
+            put = new Put(HBaseUtils.toBytes(n.getRowKey()));
+            for (int i = 0; i < columnCount; i++) {
+                c = columns[i];
+                put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(n.getValue(i)));
+                n.setPut(put);
+            }
+        }
+        super.updateRows(prepared, session, rows);
+    }
+
+    @Override
     public void removeRow(Session session, Row row) {
         for (int i = indexes.size() - 1; i >= 0; i--) {
             Index index = indexes.get(i);
@@ -231,10 +267,6 @@ public class HBaseTable extends TableBase {
     @Override
     public void truncate(Session session) {
 
-    }
-
-    @Override
-    public void addRow(Session session, Row row) {
     }
 
     @Override
@@ -407,7 +439,7 @@ public class HBaseTable extends TableBase {
         if (isStatic)
             return super.getTemplateRow();
         else
-            return new Row(new Value[0], Row.MEMORY_CALCULATE);
+            return new HBaseRow(new Value[columns.length], Row.MEMORY_CALCULATE);
     }
 
     @Override

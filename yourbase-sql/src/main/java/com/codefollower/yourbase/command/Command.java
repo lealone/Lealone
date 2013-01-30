@@ -49,10 +49,14 @@ public abstract class Command implements CommandInterface {
 
     private boolean canReuse;
 
-    protected Command(Parser parser, String sql) {
-        this.session = parser.getSession();
+    protected Command(Session session, String sql) {
+        this.session = session;
         this.sql = sql;
         trace = session.getDatabase().getTrace(Trace.COMMAND);
+    }
+
+    protected Command(Parser parser, String sql) {
+        this(parser.getSession(), sql);
     }
 
     /**
