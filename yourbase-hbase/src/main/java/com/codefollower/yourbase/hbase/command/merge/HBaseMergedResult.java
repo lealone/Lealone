@@ -53,8 +53,7 @@ public class HBaseMergedResult implements ResultInterface {
 
         table = oldSelect.getTopTableFilter().getTable();
         oldSelect.getTopTableFilter().setIndex(
-                new HBaseMergedIndex(mergedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType
-                        .createScan(false)));
+                new HBaseMergedIndex(mergedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
 
         defaultResult = mergedResult = oldSelect.queryGroupMerge(0, null);
     }

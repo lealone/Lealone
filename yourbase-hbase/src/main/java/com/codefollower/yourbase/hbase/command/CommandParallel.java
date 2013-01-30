@@ -129,7 +129,7 @@ public class CommandParallel implements CommandInterface {
         //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery，
         //对于GroupQuery需要把Select语句同时发给相关的RegionServer，得到结果后再合并。
         if (!originalSelect.isGroupQuery())
-            return new HBaseSerializedResult(createHBaseSession(), commands, maxRows, scrollable);
+            return new HBaseSerializedResult(commands, maxRows, scrollable);
 
         int size = commands.size();
         List<Future<ResultInterface>> futures = New.arrayList(size);

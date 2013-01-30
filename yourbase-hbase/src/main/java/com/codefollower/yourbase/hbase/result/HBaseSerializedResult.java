@@ -21,13 +21,11 @@ package com.codefollower.yourbase.hbase.result;
 
 import java.util.List;
 import com.codefollower.yourbase.command.CommandInterface;
-import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.result.ResultInterface;
 import com.codefollower.yourbase.value.Value;
 
 public class HBaseSerializedResult implements ResultInterface {
     private final static int UNKNOW_ROW_COUNT = -1;
-    //private final HBaseSession session;
     private final List<CommandInterface> commands;
     private final int maxRows;
     private final boolean scrollable;
@@ -36,10 +34,8 @@ public class HBaseSerializedResult implements ResultInterface {
     private int index = 0;
 
     private ResultInterface result;
-    //private boolean isLast = false;
 
-    public HBaseSerializedResult(HBaseSession session, List<CommandInterface> commands, int maxRows, boolean scrollable) {
-        //this.session = session;
+    public HBaseSerializedResult(List<CommandInterface> commands, int maxRows, boolean scrollable) {
         this.commands = commands;
         this.maxRows = maxRows;
         this.scrollable = scrollable;
@@ -55,8 +51,6 @@ public class HBaseSerializedResult implements ResultInterface {
             result.close();
 
         result = commands.get(index++).executeQuery(maxRows, scrollable);
-        //        if (index >= size)
-        //            isLast = true;
         return true;
     }
 
@@ -93,7 +87,6 @@ public class HBaseSerializedResult implements ResultInterface {
 
     @Override
     public int getRowCount() {
-        //return isLast ? result.getRowCount() : UNKNOW_ROW_COUNT;
         return UNKNOW_ROW_COUNT;
     }
 

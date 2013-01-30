@@ -355,22 +355,10 @@ public abstract class Expression {
     public void mergeAggregate(Session session, TableFilter tableFilter) {
     }
 
-    //    public int calculate(Session session, Value[] currentRow, int index) {
-    //        return index + 1;
-    //    }
-
     public void calculate(Calculator calculator) {
     }
 
     public Value getMergedValue(Session session) {
         return getValue(session);
-    }
-
-    //    public String getDistributedSQL() {
-    //        return getSQL();
-    //    }
-    
-    public <R,S> R accept(Visitor<R,S> v, S s) {
-        return v.visitExpression(this, s);
     }
 }
