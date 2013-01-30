@@ -38,7 +38,7 @@ import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.command.HBasePrepared;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
-import com.codefollower.yourbase.hbase.result.HBaseCombinedResult;
+import com.codefollower.yourbase.hbase.result.HBaseSubqueryResult;
 import com.codefollower.yourbase.hbase.result.HBaseRow;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
 import com.codefollower.yourbase.result.Row;
@@ -57,7 +57,7 @@ public class HBaseTableCursor implements Cursor {
     private byte[] defaultColumnFamilyName;
     private int columnCount;
     private String rowKeyName;
-    private HBaseCombinedResult combinedResult;
+    private HBaseSubqueryResult combinedResult;
     private boolean isGet = false;
 
     public HBaseTableCursor(TableFilter filter, SearchRow first, SearchRow last) {
@@ -93,7 +93,7 @@ public class HBaseTableCursor implements Cursor {
                 throw new RuntimeException(e);
             }
         } else if (filter.getSelect() != null && filter.getSelect().getTopTableFilter() != filter) {
-            combinedResult = new HBaseCombinedResult(filter);
+            combinedResult = new HBaseSubqueryResult(filter);
         } else {
             byte[] startKey = HConstants.EMPTY_BYTE_ARRAY;
             byte[] endKey = HConstants.EMPTY_BYTE_ARRAY;

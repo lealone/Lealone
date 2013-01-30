@@ -64,9 +64,9 @@ public class CommandProxy extends Command {
      */
     private boolean isParameterized;
 
-    public CommandProxy(Parser parser, String sql, Command originalCommand) {
-        super(parser, sql);
-        this.session = (HBaseSession) parser.getSession();
+    public CommandProxy(Session session, String sql, Command originalCommand) {
+        super(session, sql);
+        this.session = (HBaseSession) session;
         originalPrepared = originalCommand.getPrepared();
         originalParams = originalCommand.getParameters();
 
@@ -77,6 +77,10 @@ public class CommandProxy extends Command {
         } else {
             parseRowKey(); //不带参数时直接解析rowKey
         }
+    }
+
+    public CommandProxy(Parser parser, String sql, Command originalCommand) {
+        this(parser.getSession(), sql, originalCommand);
     }
 
     private CommandInterface getCommandInterface(String url, String sql) throws Exception {

@@ -28,7 +28,8 @@ import com.codefollower.yourbase.test.jdbc.TestBase;
 public class SelectTest extends TestBase {
     @Test
     public void run() throws Exception {
-        //createTableIfNotExists("SelectTest"); testInsert();
+        createTableIfNotExists("SelectTest");
+        testInsert();
         testSelect();
     }
 
@@ -53,7 +54,7 @@ public class SelectTest extends TestBase {
     void testSelect() throws Exception {
         sql = "select _rowkey_, f1, f2, cf2.f3 from SelectTest";
         printResultSet();
-        
+
         sql = "select _rowkey_, f1, f2, cf2.f3 from SelectTest";
         stmt.setFetchSize(2);
         printResultSet();
@@ -61,6 +62,12 @@ public class SelectTest extends TestBase {
         //        where();
         //        orderBy();
         //        groupBy();
+    }
+
+    void testSelect0() throws Exception {
+        where();
+        orderBy();
+        groupBy();
     }
 
     private void where() throws Exception {

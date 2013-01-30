@@ -30,7 +30,7 @@ public class ConditionExists extends Condition {
 
     public Value getValue(Session session) {
         query.setSession(session);
-        ResultInterface result = session.createCombinedResult(query, 1); //query.query(1);
+        ResultInterface result = session.createSubqueryResult(query, 1); //query.query(1);
         session.addTemporaryResult(result);
         boolean r = result.getRowCount() > 0;
         return ValueBoolean.get(r);

@@ -15,7 +15,7 @@ import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;
-import com.codefollower.yourbase.result.CombinedResult;
+import com.codefollower.yourbase.result.SubqueryResult;
 import com.codefollower.yourbase.util.StringUtils;
 import com.codefollower.yourbase.value.Value;
 import com.codefollower.yourbase.value.ValueBoolean;
@@ -44,7 +44,7 @@ public class ConditionInSelect extends Condition {
 
     public Value getValue(Session session) {
         query.setSession(session);
-        CombinedResult rows = session.createCombinedResult(query, 0); //query.query(0);
+        SubqueryResult rows = session.createSubqueryResult(query, 0); //query.query(0);
         session.addTemporaryResult(rows);
         Value l = left.getValue(session);
         if (rows.getRowCount() == 0) {
@@ -72,7 +72,7 @@ public class ConditionInSelect extends Condition {
         return ValueBoolean.get(false);
     }
 
-    private Value getValueSlow(CombinedResult rows, Value l) {
+    private Value getValueSlow(SubqueryResult rows, Value l) {
         // this only returns the correct result if the result has at least one
         // row, and if l is not null
         boolean hasNull = false;

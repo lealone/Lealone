@@ -33,7 +33,7 @@ import com.codefollower.yourbase.jdbc.JdbcConnection;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.message.Trace;
 import com.codefollower.yourbase.message.TraceSystem;
-import com.codefollower.yourbase.result.CombinedResult;
+import com.codefollower.yourbase.result.SubqueryResult;
 import com.codefollower.yourbase.result.ResultInterface;
 import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.store.DataHandler;
@@ -1258,8 +1258,8 @@ public class Session extends SessionWithState {
         return redoLogBinary;
     }
 
-    public CombinedResult createCombinedResult(Query query, int maxrows) {
-        return new CombinedResult(query, maxrows);
+    public SubqueryResult createSubqueryResult(Query query, int maxrows) {
+        return new SubqueryResult(query, maxrows);
     }
 
     public Parser createParser() {
