@@ -31,6 +31,7 @@ import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.hbase.result.HBaseRow;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
+import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.result.SearchRow;
 
@@ -76,7 +77,7 @@ public class HBaseTableIndex extends BaseIndex {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        return new HBaseTableCursor(session, first, last);
+        throw DbException.getUnsupportedException("find(Session, SearchRow, SearchRow)");
     }
 
     @Override
@@ -99,7 +100,7 @@ public class HBaseTableIndex extends BaseIndex {
 
     @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
-        return new HBaseTableCursor(session, null, null);
+        throw DbException.getUnsupportedException("findFirstOrLast");
     }
 
     @Override

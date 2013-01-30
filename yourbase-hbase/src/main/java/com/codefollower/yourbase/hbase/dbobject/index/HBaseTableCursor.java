@@ -34,7 +34,6 @@ import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.index.Cursor;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
-import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.command.HBasePrepared;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTable;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
@@ -66,7 +65,7 @@ public class HBaseTableCursor implements Cursor {
         if (hp != null)
             regionName = Bytes.toBytes(hp.getRegionName());
         if (regionName == null)
-            regionName = session.getRegionName();
+            throw new RuntimeException("regionName is null");
 
         rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();
         columnCount = ((HBaseTable) filter.getTable()).getColumns().length;
@@ -99,23 +98,6 @@ public class HBaseTableCursor implements Cursor {
             byte[] endKey = HConstants.EMPTY_BYTE_ARRAY;
 
             Scan scan = new Scan();
-
-            //            if (filter.getSelect() != null) {
-            //                String[] rowKeys = filter.getSelect().getRowKeys();
-            //                if (rowKeys != null) {
-            //                    if (rowKeys.length >= 1 && rowKeys[0] != null)
-            //                        startKey = Bytes.toBytes(rowKeys[0]);
-            //
-            //                    if (rowKeys.length >= 2 && rowKeys[1] != null)
-            //                        endKey = Bytes.toBytes(rowKeys[1]);
-            //                }
-            //
-            //                if (startKey != null)
-            //                    scan.setStartRow(startKey);
-            //                if (endKey != null)
-            //                    scan.setStopRow(endKey);
-            //
-            //            } else {
             if (startValue != null)
                 startKey = HBaseUtils.toBytes(startValue);
             if (endValue != null)
@@ -137,7 +119,6 @@ public class HBaseTableCursor implements Cursor {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-            //}
 
             if (columns != null) {
                 defaultColumnFamilyName = Bytes.toBytes(((HBaseTable) filter.getTable()).getDefaultColumnFamilyName());
@@ -155,20 +136,6 @@ public class HBaseTableCursor implements Cursor {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }
-    }
-
-    public HBaseTableCursor(Session session, SearchRow first, SearchRow last) {
-        this.session = (HBaseSession) session;
-        try {
-            Scan scan = new Scan();
-            if (first != null)
-                scan.setStartRow(Bytes.toBytes(Long.toString(first.getKey())));
-            if (last != null)
-                scan.setStopRow(Bytes.toBytes(Long.toString(last.getKey())));
-            scannerId = this.session.getRegionServer().openScanner(this.session.getRegionName(), scan);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 

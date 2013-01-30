@@ -29,7 +29,6 @@ import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.engine.HBaseEngine;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.server.TcpServerThread;
-import com.codefollower.yourbase.util.Bytes;
 import com.codefollower.yourbase.value.Transfer;
 
 public class HBaseTcpServerThread extends TcpServerThread {
@@ -93,8 +92,6 @@ public class HBaseTcpServerThread extends TcpServerThread {
         if (filePasswordHash != null)
             originalProperties.setProperty("_filePasswordHash_", new String(filePasswordHash));
 
-        String regionName = ci.getProperty("REGION_NAME", "");
-        ci.removeProperty("REGION_NAME", false);
         if (server.getMaster() != null)
             ci.setProperty("SERVER_TYPE", "M");
         else if (server.getRegionServer() != null)
@@ -102,7 +99,6 @@ public class HBaseTcpServerThread extends TcpServerThread {
         HBaseSession session = (HBaseSession) HBaseEngine.getInstance().createSession(ci);
         session.setMaster(server.getMaster());
         session.setRegionServer(server.getRegionServer());
-        session.setRegionName(Bytes.toBytes(regionName));
         session.setOriginalProperties(originalProperties);
 
         return session;

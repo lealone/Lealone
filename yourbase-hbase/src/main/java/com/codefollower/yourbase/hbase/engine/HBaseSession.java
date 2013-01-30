@@ -41,7 +41,6 @@ public class HBaseSession extends Session {
 
     private HMaster master;
     private HRegionServer regionServer;
-    private byte[] regionName;
     private Properties originalProperties;
 
     public HBaseSession(Database database, User user, int id) {
@@ -62,14 +61,6 @@ public class HBaseSession extends Session {
 
     public void setRegionServer(HRegionServer regionServer) {
         this.regionServer = regionServer;
-    }
-
-    public byte[] getRegionName() {
-        return regionName;
-    }
-
-    public void setRegionName(byte[] regionName) {
-        this.regionName = regionName;
     }
 
     public Properties getOriginalProperties() {
