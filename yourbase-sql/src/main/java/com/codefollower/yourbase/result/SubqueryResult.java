@@ -21,13 +21,11 @@ package com.codefollower.yourbase.result;
 
 import com.codefollower.yourbase.command.dml.Query;
 import com.codefollower.yourbase.result.LocalResult;
-import com.codefollower.yourbase.result.ResultInterface;
 import com.codefollower.yourbase.util.ValueHashMap;
 import com.codefollower.yourbase.value.Value;
 import com.codefollower.yourbase.value.ValueArray;
 
-public class SubqueryResult implements ResultInterface {
-    protected ResultInterface result;
+public class SubqueryResult extends DelegatedResult {
     protected ValueHashMap<Value[]> distinctRows;
     protected int rowCount = -1;
 
@@ -73,31 +71,6 @@ public class SubqueryResult implements ResultInterface {
     }
 
     @Override
-    public void reset() {
-        result.reset();
-    }
-
-    @Override
-    public Value[] currentRow() {
-        return result.currentRow();
-    }
-
-    @Override
-    public boolean next() {
-        return result.next();
-    }
-
-    @Override
-    public int getRowId() {
-        return result.getRowId();
-    }
-
-    @Override
-    public int getVisibleColumnCount() {
-        return result.getVisibleColumnCount();
-    }
-
-    @Override
     public int getRowCount() {
         int rowCount = result.getRowCount();
         if (rowCount == -1) {
@@ -107,75 +80,4 @@ public class SubqueryResult implements ResultInterface {
 
         return rowCount;
     }
-
-    @Override
-    public boolean needToClose() {
-        return result.needToClose();
-    }
-
-    @Override
-    public void close() {
-        result.close();
-    }
-
-    @Override
-    public String getAlias(int i) {
-        return result.getAlias(i);
-    }
-
-    @Override
-    public String getSchemaName(int i) {
-        return result.getSchemaName(i);
-    }
-
-    @Override
-    public String getTableName(int i) {
-        return result.getTableName(i);
-    }
-
-    @Override
-    public String getColumnName(int i) {
-        return result.getColumnName(i);
-    }
-
-    @Override
-    public int getColumnType(int i) {
-        return result.getColumnType(i);
-    }
-
-    @Override
-    public long getColumnPrecision(int i) {
-        return result.getColumnPrecision(i);
-    }
-
-    @Override
-    public int getColumnScale(int i) {
-        return result.getColumnScale(i);
-    }
-
-    @Override
-    public int getDisplaySize(int i) {
-        return result.getDisplaySize(i);
-    }
-
-    @Override
-    public boolean isAutoIncrement(int i) {
-        return result.isAutoIncrement(i);
-    }
-
-    @Override
-    public int getNullable(int i) {
-        return result.getNullable(i);
-    }
-
-    @Override
-    public void setFetchSize(int fetchSize) {
-        result.setFetchSize(fetchSize);
-    }
-
-    @Override
-    public int getFetchSize() {
-        return result.getFetchSize();
-    }
-
 }

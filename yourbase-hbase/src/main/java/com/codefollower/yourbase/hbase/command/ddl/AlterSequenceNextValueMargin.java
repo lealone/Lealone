@@ -46,7 +46,7 @@ public class AlterSequenceNextValueMargin extends AlterSequence {
         return new ResultInterfaceImpl(sequence.alterNextValueMargin(session));
     }
 
-    static class ResultInterfaceImpl implements ResultInterface {
+    private static class ResultInterfaceImpl implements ResultInterface {
         Value[] v = new Value[1];
         boolean next = true;
 
