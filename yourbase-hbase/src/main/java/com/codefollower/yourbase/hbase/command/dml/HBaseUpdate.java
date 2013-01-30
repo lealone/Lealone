@@ -41,13 +41,21 @@ public class HBaseUpdate extends Update implements HBasePrepared {
     }
 
     @Override
-    public String getTableName() {
-        return tableFilter.getTable().getName();
+    public boolean isDistributedSQL() {
+        return true;
     }
 
     @Override
-    public boolean isDistributedSQL() {
-        return true;
+    public String getRowKey() {
+        Value rowKey = getStartRowKeyValue();
+        if (rowKey != null)
+            rowKey.getString();
+        return null;
+    }
+
+    @Override
+    public String getTableName() {
+        return tableFilter.getTable().getName();
     }
 
     @Override

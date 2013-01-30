@@ -28,6 +28,7 @@ import com.codefollower.yourbase.command.dml.Query;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.hbase.command.CommandProxy;
 import com.codefollower.yourbase.hbase.command.RowKeyConditionInfo;
+import com.codefollower.yourbase.hbase.command.dml.HBaseSelect;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.hbase.util.HBaseRegionInfo;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
@@ -55,7 +56,7 @@ public class HBaseCombinedResult extends CombinedResult {
         this.session = session;
         this.query = query;
         this.maxrows = maxrows;
-        this.tableName = HBaseUtils.toBytes(query.getTableName());
+        this.tableName = HBaseUtils.toBytes(((HBaseSelect) query).getTableName()); //TODO 处理SelectUnion的情况
         if (!query.isDistributed()) {
             result = query.query(maxrows);
         } else {

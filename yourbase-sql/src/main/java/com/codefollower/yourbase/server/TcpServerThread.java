@@ -325,9 +325,12 @@ public class TcpServerThread implements Runnable {
             for (int i = 0; i < columnCount; i++) {
                 ResultColumn.writeColumn(transfer, result, i);
             }
-            int fetch = Math.min(rowCount, fetchSize);
-            for (int i = 0; i < fetch; i++) {
-                sendRow(result);
+            int fetch = fetchSize;
+            if (rowCount != -1)
+                fetch = Math.min(rowCount, fetchSize);
+            boolean isEnd = false;
+            for (int i = 0; !isEnd && i < fetch; i++) {
+                isEnd = sendRow(result);
             }
             transfer.flush();
             break;
@@ -365,8 +368,9 @@ public class TcpServerThread implements Runnable {
             int count = transfer.readInt();
             ResultInterface result = (ResultInterface) cache.getObject(id, false);
             transfer.writeInt(SessionRemote.STATUS_OK);
-            for (int i = 0; i < count; i++) {
-                sendRow(result);
+            boolean isEnd = false;
+            for (int i = 0; !isEnd && i < count; i++) {
+                isEnd = sendRow(result);
             }
             transfer.flush();
             break;
@@ -466,7 +470,7 @@ public class TcpServerThread implements Runnable {
         return SessionRemote.STATUS_OK_STATE_CHANGED;
     }
 
-    private void sendRow(ResultInterface result) throws IOException {
+    private boolean sendRow(ResultInterface result) throws IOException {
         if (result.next()) {
             transfer.writeBoolean(true);
             Value[] v = result.currentRow();
@@ -477,8 +481,10 @@ public class TcpServerThread implements Runnable {
                     writeValue(v[i]);
                 }
             }
+            return false;
         } else {
             transfer.writeBoolean(false);
+            return true;
         }
     }
 

@@ -62,9 +62,9 @@ public class HBaseTableCursor implements Cursor {
 
     public HBaseTableCursor(TableFilter filter, SearchRow first, SearchRow last) {
         session = (HBaseSession) filter.getSession();
-        HBasePrepared prepared = (HBasePrepared) filter.getPrepared();
-        if (prepared != null)
-            regionName = Bytes.toBytes(prepared.getRegionName());
+        HBasePrepared hp = (HBasePrepared) filter.getPrepared();
+        if (hp != null)
+            regionName = Bytes.toBytes(hp.getRegionName());
         if (regionName == null)
             regionName = session.getRegionName();
 
@@ -100,44 +100,44 @@ public class HBaseTableCursor implements Cursor {
 
             Scan scan = new Scan();
 
-            if (filter.getSelect() != null) {
-                String[] rowKeys = filter.getSelect().getRowKeys();
-                if (rowKeys != null) {
-                    if (rowKeys.length >= 1 && rowKeys[0] != null)
-                        startKey = Bytes.toBytes(rowKeys[0]);
+            //            if (filter.getSelect() != null) {
+            //                String[] rowKeys = filter.getSelect().getRowKeys();
+            //                if (rowKeys != null) {
+            //                    if (rowKeys.length >= 1 && rowKeys[0] != null)
+            //                        startKey = Bytes.toBytes(rowKeys[0]);
+            //
+            //                    if (rowKeys.length >= 2 && rowKeys[1] != null)
+            //                        endKey = Bytes.toBytes(rowKeys[1]);
+            //                }
+            //
+            //                if (startKey != null)
+            //                    scan.setStartRow(startKey);
+            //                if (endKey != null)
+            //                    scan.setStopRow(endKey);
+            //
+            //            } else {
+            if (startValue != null)
+                startKey = HBaseUtils.toBytes(startValue);
+            if (endValue != null)
+                endKey = HBaseUtils.toBytes(endValue);
 
-                    if (rowKeys.length >= 2 && rowKeys[1] != null)
-                        endKey = Bytes.toBytes(rowKeys[1]);
-                }
-
-                if (startKey != null)
+            try {
+                HRegionInfo info = session.getRegionServer().getRegionInfo(regionName);
+                if (Bytes.compareTo(startKey, info.getStartKey()) >= 0)
                     scan.setStartRow(startKey);
-                if (endKey != null)
+                else
+                    scan.setStartRow(info.getStartKey());
+
+                if (Bytes.equals(endKey, HConstants.EMPTY_BYTE_ARRAY))
+                    scan.setStopRow(info.getEndKey());
+                else if (Bytes.compareTo(endKey, info.getEndKey()) < 0)
                     scan.setStopRow(endKey);
-
-            } else {
-                if (startValue != null)
-                    startKey = HBaseUtils.toBytes(startValue);
-                if (endValue != null)
-                    endKey = HBaseUtils.toBytes(endValue);
-
-                try {
-                    HRegionInfo info = session.getRegionServer().getRegionInfo(regionName);
-                    if (Bytes.compareTo(startKey, info.getStartKey()) >= 0)
-                        scan.setStartRow(startKey);
-                    else
-                        scan.setStartRow(info.getStartKey());
-
-                    if (Bytes.equals(endKey, HConstants.EMPTY_BYTE_ARRAY))
-                        scan.setStopRow(info.getEndKey());
-                    else if (Bytes.compareTo(endKey, info.getEndKey()) < 0)
-                        scan.setStopRow(endKey);
-                    else
-                        scan.setStopRow(info.getEndKey());
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+                else
+                    scan.setStopRow(info.getEndKey());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
+            //}
 
             if (columns != null) {
                 defaultColumnFamilyName = Bytes.toBytes(((HBaseTable) filter.getTable()).getDefaultColumnFamilyName());

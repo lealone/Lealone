@@ -21,7 +21,6 @@ import com.codefollower.yourbase.expression.Expression;
 import com.codefollower.yourbase.expression.ExpressionColumn;
 import com.codefollower.yourbase.expression.ExpressionVisitor;
 import com.codefollower.yourbase.expression.Parameter;
-import com.codefollower.yourbase.expression.ConditionInfo;
 import com.codefollower.yourbase.expression.ValueExpression;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.LocalResult;
@@ -428,10 +427,5 @@ public class SelectUnion extends Query {
     @Override
     public String[] getPlanSQLs() {
         throw DbException.getUnsupportedException("getPlanSQLs()");
-    }
-
-    @Override
-    public ConditionInfo getConditionInfo() {
-        throw DbException.getUnsupportedException("getConditionInfo()");
     }
 }

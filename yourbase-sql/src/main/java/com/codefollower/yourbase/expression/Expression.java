@@ -349,10 +349,6 @@ public abstract class Expression {
         }
     }
 
-    public Expression removeRowKeyCondition(ConditionInfo rkci, Session session) {
-        return this;
-    }
-
     public void mergeAggregate(Session session, Value v) {
     }
 

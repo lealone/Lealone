@@ -31,83 +31,42 @@ import org.apache.hadoop.hbase.util.Threads;
 
 import com.codefollower.yourbase.command.Command;
 import com.codefollower.yourbase.command.CommandInterface;
-import com.codefollower.yourbase.constant.ErrorCode;
-import com.codefollower.yourbase.engine.Session;
+import com.codefollower.yourbase.command.Prepared;
+import com.codefollower.yourbase.command.dml.Select;
 import com.codefollower.yourbase.expression.ParameterInterface;
+import com.codefollower.yourbase.hbase.command.merge.HBaseMergedResult;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
+import com.codefollower.yourbase.hbase.result.HBaseSerializedResult;
 import com.codefollower.yourbase.hbase.util.HBaseRegionInfo;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
-import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.ResultInterface;
 import com.codefollower.yourbase.util.New;
 
 public class CommandParallel implements CommandInterface {
     private static ThreadPoolExecutor pool;
-
+    private final HBaseSession originalSession;
+    private final Prepared originalPrepared;
     private final String sql;
-    private List<CommandInterface> commands;
-
-    private static class CommandWrapper implements CommandInterface {
-        private Command c;
-        private Session session;
-
-        CommandWrapper(Command c, Session session) {
-            this.c = c;
-            this.session = session;
-        }
-
-        @Override
-        public int getCommandType() {
-            return c.getCommandType();
-        }
-
-        @Override
-        public boolean isQuery() {
-            return c.isQuery();
-        }
-
-        @Override
-        public ArrayList<? extends ParameterInterface> getParameters() {
-            return c.getParameters();
-        }
-
-        @Override
-        public ResultInterface executeQuery(int maxRows, boolean scrollable) {
-            return c.executeQuery(maxRows, scrollable);
-        }
-
-        @Override
-        public int executeUpdate() {
-            return c.executeUpdate();
-        }
-
-        @Override
-        public void close() {
-            session.close();
-            c.close();
-        }
-
-        @Override
-        public void cancel() {
-            c.cancel();
-        }
-
-        @Override
-        public ResultInterface getMetaData() {
-            return c.getMetaData();
-        }
-
-    }
+    private final List<CommandInterface> commands;
 
     public CommandParallel(HBaseSession session, CommandProxy commandProxy, //
-            byte[] tableName, List<byte[]> startKeys, String sql) {
+            byte[] tableName, List<byte[]> startKeys, String sql, Prepared originalPrepared) {
+        if (startKeys == null)
+            throw new RuntimeException("startKeys is null");
+        else if (startKeys.size() < 2)
+            throw new RuntimeException("startKeys.size() < 2");
+
+        this.originalSession = session;
+        this.originalPrepared = originalPrepared;
         this.sql = sql;
+
         try {
             if (pool == null) {
                 synchronized (CommandParallel.class) {
                     if (pool == null) {
+                        //TODO 可配置的线程池参数
                         pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
-                                Threads.newDaemonThreadFactory("CommandParallel"));
+                                Threads.newDaemonThreadFactory(CommandParallel.class.getSimpleName()));
                         pool.allowCoreThreadTimeOut(true);
                     }
                 }
@@ -115,23 +74,32 @@ public class CommandParallel implements CommandInterface {
             commands = new ArrayList<CommandInterface>(startKeys.size());
             for (byte[] startKey : startKeys) {
                 HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
-                if (CommandProxy.isLocal(session, hri)) {
-                    //必须使用新Session，否则在并发执行executeUpdate时因为使用session对象来同步所以造成死锁
-                    HBaseSession newSession = (HBaseSession) session.getDatabase().createSession(session.getUser());
-                    newSession.setRegionServer(session.getRegionServer());
-                    newSession.setFetchSize(session.getFetchSize());
+                if (CommandProxy.isLocal(originalSession, hri)) {
+                    HBaseSession newSession = createHBaseSession();
                     Command c = newSession.prepareLocal(sql);
                     HBasePrepared hp = (HBasePrepared) c.getPrepared();
                     hp.setRegionName(hri.getRegionName());
                     commands.add(new CommandWrapper(c, newSession));
                 } else {
-                    commands.add(commandProxy.getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
-                            CommandProxy.createSQL(hri.getRegionName(), sql)));
+                    commands.add(commandProxy.getCommandInterface(originalSession.getOriginalProperties(),
+                            hri.getRegionServerURL(), CommandProxy.createSQL(hri.getRegionName(), planSQL())));
                 }
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private HBaseSession createHBaseSession() {
+        //必须使用新Session，否则在并发执行Command类的executeUpdate或executeQuery时因为使用session对象来同步所以会造成死锁
+        HBaseSession newSession = (HBaseSession) originalSession.getDatabase().createSession(originalSession.getUser());
+        newSession.setRegionServer(originalSession.getRegionServer());
+        newSession.setFetchSize(originalSession.getFetchSize());
+        return newSession;
+    }
+
+    private String planSQL() {
+        return originalPrepared.isQuery() ? ((Select) originalPrepared).getPlanSQL(true) : sql;
     }
 
     @Override
@@ -141,71 +109,90 @@ public class CommandParallel implements CommandInterface {
 
     @Override
     public int getCommandType() {
-        return UNKNOWN;
+        return originalPrepared.getType();
     }
 
     @Override
     public boolean isQuery() {
-        return false;
+        return originalPrepared.isQuery();
     }
 
     @Override
     public ArrayList<? extends ParameterInterface> getParameters() {
-        if (commands != null)
-            for (CommandInterface c : commands)
-                return c.getParameters();
-        return null;
+        return originalPrepared.getParameters();
     }
 
     @Override
-    public ResultInterface executeQuery(int maxRows, boolean scrollable) {
-        throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_QUERY);
+    public ResultInterface executeQuery(final int maxRows, final boolean scrollable) {
+        Select originalSelect = (Select) originalPrepared;
+        //originalSelect.isGroupQuery()如果是false，那么按org.apache.hadoop.hbase.client.ClientScanner的功能来实现。
+        //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery，
+        //对于GroupQuery需要把Select语句同时发给相关的RegionServer，得到结果后再合并。
+        if (!originalSelect.isGroupQuery())
+            return new HBaseSerializedResult(createHBaseSession(), commands, maxRows, scrollable);
+
+        int size = commands.size();
+        List<Future<ResultInterface>> futures = New.arrayList(size);
+        List<ResultInterface> results = new ArrayList<ResultInterface>(size);
+        for (int i = 0; i < size; i++) {
+            final CommandInterface c = commands.get(i);
+            futures.add(pool.submit(new Callable<ResultInterface>() {
+                public ResultInterface call() throws Exception {
+                    return c.executeQuery(maxRows, scrollable);
+                }
+            }));
+        }
+        try {
+            for (int i = 0; i < size; i++) {
+                results.add(futures.get(i).get());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        String newSQL = originalSelect.getPlanSQL(true);
+        Select newSelect = (Select) createHBaseSession().prepare(newSQL, true);
+
+        return new HBaseMergedResult(results, newSelect, originalSelect, originalSelect.isGroupQuery());
     }
 
     @Override
     public int executeUpdate() {
         int updateCount = 0;
-        if (commands != null) {
-            int size = commands.size();
-            List<Future<Integer>> futures = New.arrayList(size);
-            for (int i = 0; i < size; i++) {
-                final CommandInterface c = commands.get(i);
-                futures.add(pool.submit(new Callable<Integer>() {
-                    public Integer call() throws Exception {
-                        return c.executeUpdate();
-                    }
-                }));
-            }
-            try {
-                for (int i = 0; i < size; i++) {
-                    updateCount += futures.get(i).get();
+        int size = commands.size();
+        List<Future<Integer>> futures = New.arrayList(size);
+        for (int i = 0; i < size; i++) {
+            final CommandInterface c = commands.get(i);
+            futures.add(pool.submit(new Callable<Integer>() {
+                public Integer call() throws Exception {
+                    return c.executeUpdate();
                 }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            }));
+        }
+        try {
+            for (int i = 0; i < size; i++) {
+                updateCount += futures.get(i).get();
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
         return updateCount;
     }
 
     @Override
     public void close() {
-        if (commands != null)
-            for (CommandInterface c : commands)
-                c.close();
+        for (CommandInterface c : commands)
+            c.close();
     }
 
     @Override
     public void cancel() {
-        if (commands != null)
-            for (CommandInterface c : commands)
-                c.cancel();
+        for (CommandInterface c : commands)
+            c.cancel();
     }
 
     @Override
     public ResultInterface getMetaData() {
-        if (commands != null)
-            for (CommandInterface c : commands)
-                return c.getMetaData();
-        return null;
+        return originalPrepared.getCommand().getMetaData();
     }
 }

@@ -422,25 +422,25 @@ public abstract class Prepared {
         return false;
     }
 
-	public String getTableName() {
-		return null;
-	}
-
-	public String getRowKey() {
-		return null;
-	}
-
-	public String getStartRowKey() {
-		return null;
-	}
-
-	public String getStopRowKey() {
-		return null;
-	}
-	
-    public String[] getRowKeys() {
-        return null;
-    }
+//	public String getTableName() {
+//		return null;
+//	}
+//
+//	public String getRowKey() {
+//		return null;
+//	}
+//
+//	public String getStartRowKey() {
+//		return null;
+//	}
+//
+//	public String getStopRowKey() {
+//		return null;
+//	}
+//	
+//    public String[] getRowKeys() {
+//        return null;
+//    }
 
     public boolean isDistributedSQL() {
         return false;

@@ -144,6 +144,11 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     }
 
     @Override
+    public boolean isDistributedSQL() {
+        return true;
+    }
+
+    @Override
     public String getTableName() {
         return table.getName();
     }
@@ -160,11 +165,6 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         if (table.isStatic())
             return System.currentTimeMillis() + "";
         return null;
-    }
-
-    @Override
-    public boolean isDistributedSQL() {
-        return true;
     }
 
     @Override

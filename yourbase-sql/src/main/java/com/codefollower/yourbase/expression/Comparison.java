@@ -523,36 +523,4 @@ public class Comparison extends Condition {
     public Expression getExpression(boolean getLeft) {
         return getLeft ? this.left : right;
     }
-
-    @Override
-    public Expression removeRowKeyCondition(ConditionInfo rkci, Session session) {
-        if (left instanceof ExpressionColumn && ((ExpressionColumn) left).getTableFilter().getTable().supportsColumnFamily()) {
-            if (rkci.getConditionName().equalsIgnoreCase(((ExpressionColumn) left).getColumnName())) {
-                switch (compareType) {
-                case EQUAL:
-                case BIGGER_EQUAL:
-                    rkci.setCompareTypeStart(compareType);
-                    rkci.setCompareValueStart(right.getValue(session));
-                    break;
-                case SMALLER:
-                    rkci.setCompareTypeStop(compareType);
-                    rkci.setCompareValueStop(right.getValue(session));
-                    break;
-                default:
-                    throw new RuntimeException("rowKey compare type is not = or >= or <");
-                }
-
-                return null;
-            }
-        }
-        left = left.removeRowKeyCondition(rkci, session);
-        if (right != null)
-            right = right.removeRowKeyCondition(rkci, session);
-        if (left == null)
-            return right;
-        if (right == null)
-            return left;
-
-        return this;
-    }
 }

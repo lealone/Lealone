@@ -35,6 +35,8 @@ public class ResultRemote implements ResultInterface {
     private ArrayList<Value[]> result;
     private final Trace trace;
 
+    private boolean isEnd = false;
+
     public ResultRemote(SessionRemote session, Transfer transfer, int id, int columnCount, int fetchSize)
             throws IOException {
         this.session = session;
@@ -114,7 +116,23 @@ public class ResultRemote implements ResultInterface {
     }
 
     public boolean next() {
-        if (rowId < rowCount) {
+        if (rowCount == -1) {
+            rowId++;
+            remapIfOld();
+            if (rowId - rowOffset >= result.size()) {
+                if (isEnd) {
+                    currentRow = null;
+                    return false;
+                }
+                fetchRows(true);
+            }
+            if (isEnd && rowId - rowOffset >= result.size()) {
+                currentRow = null;
+                return false;
+            }
+            currentRow = result.get(rowId - rowOffset);
+            return true;
+        } else if (rowId < rowCount) {
             rowId++;
             remapIfOld();
             if (rowId < rowCount) {
@@ -138,6 +156,9 @@ public class ResultRemote implements ResultInterface {
     }
 
     public int getRowCount() {
+        if (rowCount == -1)
+            return Integer.MAX_VALUE;
+
         return rowCount;
     }
 
@@ -190,7 +211,9 @@ public class ResultRemote implements ResultInterface {
             try {
                 rowOffset += result.size();
                 result.clear();
-                int fetch = Math.min(fetchSize, rowCount - rowOffset);
+                int fetch = fetchSize;
+                if (rowCount != -1)
+                    fetch = Math.min(fetchSize, rowCount - rowOffset);
                 if (sendFetch) {
                     session.traceOperation("RESULT_FETCH_ROWS", id);
                     transfer.writeInt(SessionRemote.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetch);
@@ -199,6 +222,8 @@ public class ResultRemote implements ResultInterface {
                 for (int r = 0; r < fetch; r++) {
                     boolean row = transfer.readBoolean();
                     if (!row) {
+                        if(rowCount == -1)
+                            isEnd = true;
                         break;
                     }
                     int len = columns.length;
@@ -209,7 +234,10 @@ public class ResultRemote implements ResultInterface {
                     }
                     result.add(values);
                 }
-                if (rowOffset + result.size() >= rowCount) {
+
+                if (isEnd)
+                    sendClose();
+                else if (rowCount != -1 && rowOffset + result.size() >= rowCount) {
                     sendClose();
                 }
             } catch (IOException e) {

@@ -24,14 +24,12 @@ import com.codefollower.yourbase.dbobject.table.ColumnResolver;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
-import com.codefollower.yourbase.dbobject.table.TableView;
 import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.expression.Calculator;
 import com.codefollower.yourbase.expression.Comparison;
 import com.codefollower.yourbase.expression.ConditionAndOr;
-import com.codefollower.yourbase.expression.ConditionInfo;
 import com.codefollower.yourbase.expression.Expression;
 import com.codefollower.yourbase.expression.ExpressionColumn;
 import com.codefollower.yourbase.expression.ExpressionVisitor;
@@ -44,7 +42,6 @@ import com.codefollower.yourbase.result.ResultTarget;
 import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.result.SearchRow;
 import com.codefollower.yourbase.result.SortOrder;
-import com.codefollower.yourbase.util.Bytes;
 import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.StatementBuilder;
 import com.codefollower.yourbase.util.StringUtils;
@@ -1113,10 +1110,10 @@ public class Select extends Query {
     }
 
     public String getPlanSQL() {
-        return getPlanSQL(null, null, false);
+        return getPlanSQL(false);
     }
 
-    public String getPlanSQL(byte[] startKey, byte[] endKey, boolean isDistributed) {
+    public String getPlanSQL(boolean isDistributed) {
         // can not use the field sqlStatement because the parameter
         // indexes may be incorrect: ? may be in fact ?2 for a subquery
         // but indexes may be set manually as well
@@ -1155,39 +1152,8 @@ public class Select extends Query {
                 } while (f != null);
             }
         }
-        boolean addWhere = true;
-        if ((startKey != null && startKey.length > 0) || (endKey != null && endKey.length > 0)) {
-            buff.append("\nWHERE ");
-            addWhere = false;
-            String rowKeyName = null;
-            boolean addAnd = false;
-            ConditionInfo ci = getConditionInfo();
-            if (ci != null)
-                rowKeyName = ci.getConditionName();
-            else
-                rowKeyName = topTableFilter.getTable().getRowKeyName();
-            
-            if (topFilters.size() > 0)
-                rowKeyName = topTableFilter.getTable().getName() + "." + rowKeyName;
-            if (startKey != null && startKey.length > 0) {
-                if (ci != null && ci.getCompareTypeStart() == Comparison.EQUAL)
-                    buff.append(rowKeyName).append(" = '").append(Bytes.toString(startKey)).append("'");
-                else
-                    buff.append(rowKeyName).append(" >= '").append(Bytes.toString(startKey)).append("'");
-                addAnd = true;
-            }
-            if (endKey != null && endKey.length > 0) {
-                if (addAnd)
-                    buff.append(" AND ");
-                buff.append(rowKeyName).append(" < '").append(Bytes.toString(endKey)).append("'");
-            }
-        }
         if (condition != null) {
-            if (addWhere)
-                buff.append("\nWHERE ");
-            else
-                buff.append(" AND ");
-            buff.append(StringUtils.unEnclose(condition.getSQL(isDistributed)));
+            buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
         }
         if (groupIndex != null) {
             buff.append("\nGROUP BY ");
@@ -1447,24 +1413,6 @@ public class Select extends Query {
 
     @Override
     public String[] getPlanSQLs() {
-            return null;
-    }
-
-    @Override
-    public ConditionInfo getConditionInfo() {
         return null;
     }
-
-    public ConditionInfo getConditionInfo(TableFilter f) {
-        return null;
-    }
-    
-    @Override
-    public String getTableName() {
-        if ((topTableFilter.getTable() instanceof TableView))
-            return ((TableView) topTableFilter.getTable()).getTableName();
-        else
-            return topTableFilter.getTable().getName();
-    }
-
 }

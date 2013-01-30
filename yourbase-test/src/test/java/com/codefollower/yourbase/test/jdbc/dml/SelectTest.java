@@ -28,11 +28,8 @@ import com.codefollower.yourbase.test.jdbc.TestBase;
 public class SelectTest extends TestBase {
     @Test
     public void run() throws Exception {
-        createTableIfNotExists("SelectTest");
-        testInsert();
-        //testUpdate();
-        testDelete();
-        //testSelect();
+        //createTableIfNotExists("SelectTest"); testInsert();
+        testSelect();
     }
 
     void testInsert() throws Exception {
@@ -53,38 +50,17 @@ public class SelectTest extends TestBase {
         stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'b', 12)");
     }
 
-    void testUpdate() throws Exception {
-        sql = "UPDATE SelectTest SET f1 = 'a1', cf2.f3 = 61 WHERE _rowkey_= '01'";
-        assertEquals(1, stmt.executeUpdate(sql));
-
-        sql = "SELECT f1, cf1.f2, cf2.f3 FROM SelectTest WHERE _rowkey_ = '01'";
-        assertEquals("a1", getStringValue(1));
-        assertEquals("b", getStringValue(2));
-        assertEquals(61, getIntValue(3, true));
-    }
-
-    void testDelete() throws Exception {
-        sql = "DELETE FROM SelectTest WHERE _rowkey_= '12'";
-        assertEquals(1, stmt.executeUpdate(sql));
-
-        //        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('13', 'a1', 'b', 12)");
-        //        sql = "SELECT count(*) FROM SelectTest";
-        //        assertEquals(10, getIntValue(1, true));
-        //
-        //        sql = "DELETE FROM SelectTest WHERE _rowkey_= '13'";
-        //        assertEquals(1, stmt.executeUpdate(sql));
-        //
-        //        sql = "SELECT count(*) FROM SelectTest";
-        //        assertEquals(9, getIntValue(1, true));
-    }
-
     void testSelect() throws Exception {
         sql = "select _rowkey_, f1, f2, cf2.f3 from SelectTest";
         printResultSet();
+        
+        sql = "select _rowkey_, f1, f2, cf2.f3 from SelectTest";
+        stmt.setFetchSize(2);
+        printResultSet();
 
-        where();
-        orderBy();
-        groupBy();
+        //        where();
+        //        orderBy();
+        //        groupBy();
     }
 
     private void where() throws Exception {

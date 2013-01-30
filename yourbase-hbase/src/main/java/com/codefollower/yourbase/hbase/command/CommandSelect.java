@@ -33,7 +33,7 @@ import com.codefollower.yourbase.command.Command;
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.dml.Select;
 import com.codefollower.yourbase.expression.ParameterInterface;
-import com.codefollower.yourbase.hbase.command.merge.HBaseJdbcSelectResult;
+import com.codefollower.yourbase.hbase.command.merge.HBaseMergedResult;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.hbase.util.HBaseRegionInfo;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
@@ -115,7 +115,7 @@ public class CommandSelect implements CommandInterface {
     }
 
     String getNewSQL(Select select, byte[] startKey, boolean isDistributed) {
-        return select.getPlanSQL(startKey, end, isDistributed);
+        return select.getPlanSQL(isDistributed);
     }
 
     @Override
@@ -154,9 +154,9 @@ public class CommandSelect implements CommandInterface {
                 if (result != null)
                     results.add(result);
             }
-            String newSQL = select.getPlanSQL(null, null, true);
+            String newSQL = select.getPlanSQL(true);
             Select newSelect = (Select) session.prepare(newSQL, true);
-            return new HBaseJdbcSelectResult(results, newSelect, select, isGroupQuery);
+            return new HBaseMergedResult(results, newSelect, select, isGroupQuery);
         }
         return null;
     }

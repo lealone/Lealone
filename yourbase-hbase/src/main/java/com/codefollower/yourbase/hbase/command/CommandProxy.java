@@ -73,7 +73,7 @@ public class CommandProxy extends Command {
         isParameterized = originalParams != null && !originalParams.isEmpty();
 
         if (isParameterized) {
-            this.proxyCommand = originalCommand; //对于参数化的SQL，推迟到executeQuery和executeUpdate时再解析rowKey
+            proxyCommand = originalCommand; //对于参数化的SQL，推迟到executeQuery和executeUpdate时再解析rowKey
         } else {
             parseRowKey(); //不带参数时直接解析rowKey
         }
@@ -93,121 +93,99 @@ public class CommandProxy extends Command {
             //1. DDL类型的SQL全转向Master处理
             if (originalPrepared instanceof DefineCommand) {
                 if (session.getMaster() != null) {
-                    this.proxyCommand = originalCommand;
+                    proxyCommand = originalCommand;
                 } else if (session.getRegionServer() != null) {
                     ServerName msn = HBaseUtils.getMasterServerName();
                     ServerName rsn = session.getRegionServer().getServerName();
                     if (ZooKeeperAdmin.getTcpPort(msn) == ZooKeeperAdmin.getTcpPort(rsn)
                             && msn.getHostname().equalsIgnoreCase(rsn.getHostname())) {
-                        this.proxyCommand = originalCommand;
+                        proxyCommand = originalCommand;
                     } else {
-                        this.proxyCommand = getCommandInterface(HBaseUtils.getMasterURL(), sql);
+                        proxyCommand = getCommandInterface(HBaseUtils.getMasterURL(), sql);
                     }
                 } else {
-                    this.proxyCommand = getCommandInterface(HBaseUtils.getMasterURL(), sql);
+                    proxyCommand = getCommandInterface(HBaseUtils.getMasterURL(), sql);
                 }
 
                 //2. 如果SQL不是分布式的，那么直接在本地执行
             } else if (!originalPrepared.isDistributedSQL()) {
-                this.proxyCommand = originalCommand;
+                proxyCommand = originalCommand;
 
                 //3. 如果SQL是HBasePrepared类型，需要进一步判断
             } else if (originalPrepared instanceof HBasePrepared) {
-                HBasePrepared hp = (HBasePrepared) originalPrepared;
-
-                if (originalPrepared instanceof Insert) {
-                    String tableName = originalPrepared.getTableName();
-                    String rowKey = originalPrepared.getRowKey();
-                    if (rowKey == null)
-                        throw new RuntimeException("rowKey is null");
-
-                    HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, rowKey);
-                    if (isLocal(session, hri)) {
-                        hp.setRegionName(hri.getRegionName());
-                        this.proxyCommand = originalCommand;
-                    } else {
-                        this.proxyCommand = getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
-                                createSQL(hri.getRegionName(), sql));
-                    }
-                } else if (originalPrepared instanceof Delete || originalPrepared instanceof Update) {
-                    byte[] start = null;
-                    byte[] end = null;
-                    Value startValue = hp.getStartRowKeyValue();
-                    Value endValue = hp.getEndRowKeyValue();
-                    if (startValue != null)
-                        start = HBaseUtils.toBytes(startValue);
-                    if (endValue != null)
-                        end = HBaseUtils.toBytes(endValue);
-
-                    if (start == null)
-                        start = HConstants.EMPTY_START_ROW;
-                    if (end == null)
-                        end = HConstants.EMPTY_END_ROW;
-
-                    byte[] tableName = Bytes.toBytes(originalPrepared.getTableName());
-                    boolean oneRegion = false;
-                    List<byte[]> startKeys = null;
-                    if (startValue != null && endValue != null && startValue == endValue)
-                        oneRegion = true;
-
-                    if (!oneRegion) {
-                        startKeys = HBaseUtils.getStartKeysInRange(tableName, start, end);
-                        if (startKeys == null || startKeys.isEmpty()) {
-                            this.proxyCommand = originalCommand; //TODO 找不到任何Region时说明此时Delete或Update都无效果
-                            return;
-                        } else if (startKeys.size() == 1) {
-                            oneRegion = true;
-                            start = startKeys.get(0);
-                        }
-                    }
-
-                    if (oneRegion) {
-                        HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, start);
-                        if (CommandProxy.isLocal(session, hri)) {
-                            hp.setRegionName(hri.getRegionName());
-                            this.proxyCommand = originalCommand;
-                        } else {
-                            //Properties info = new Properties(session.getOriginalProperties());
-                            //info.setProperty("REGION_NAME", hri.getRegionName());
-                            this.proxyCommand = getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
-                                    createSQL(hri.getRegionName(), sql));
-                        }
-                    } else {
-                        this.proxyCommand = new CommandParallel(session, this, tableName, startKeys, sql);
-                    }
-                }
-            } else if (originalPrepared instanceof Select) {
-                byte[] startRowKey = null;
-                byte[] stopRowKey = null;
-                String[] rowKeys = originalPrepared.getRowKeys();
-                if (rowKeys != null) {
-                    if (rowKeys.length >= 1 && rowKeys[0] != null)
-                        startRowKey = Bytes.toBytes(rowKeys[0]);
-
-                    if (rowKeys.length >= 2 && rowKeys[1] != null)
-                        stopRowKey = Bytes.toBytes(rowKeys[1]);
-                }
-
-                if (startRowKey == null)
-                    startRowKey = HConstants.EMPTY_START_ROW;
-                if (stopRowKey == null)
-                    stopRowKey = HConstants.EMPTY_END_ROW;
-
-                CommandSelect c = new CommandSelect();
-                c.commandProxy = this;
-                c.select = (Select) originalPrepared;
-                c.tableName = Bytes.toBytes(originalPrepared.getTableName());
-                c.start = startRowKey;
-                c.end = stopRowKey;
-                c.sql = sql;
-                c.fetchSize = session.getFetchSize();
-                c.session = session;
-                this.proxyCommand = c.init();
+                parseHBasePrepared(originalCommand);
             } else {
-                this.proxyCommand = originalCommand;
+                proxyCommand = originalCommand;
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void parseHBasePrepared(Command originalCommand) throws Exception {
+        HBasePrepared hp = (HBasePrepared) originalPrepared;
+
+        if (originalPrepared instanceof Insert) {
+            String tableName = hp.getTableName();
+            String rowKey = hp.getRowKey();
+            if (rowKey == null)
+                throw new RuntimeException("rowKey is null");
+
+            HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, rowKey);
+            if (isLocal(session, hri)) {
+                hp.setRegionName(hri.getRegionName());
+                proxyCommand = originalCommand;
+            } else {
+                proxyCommand = getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
+                        createSQL(hri.getRegionName(), sql));
+            }
+        } else if (originalPrepared instanceof Delete || originalPrepared instanceof Update //
+                || originalPrepared instanceof Select) {
+            byte[] start = null;
+            byte[] end = null;
+            Value startValue = hp.getStartRowKeyValue();
+            Value endValue = hp.getEndRowKeyValue();
+            if (startValue != null)
+                start = HBaseUtils.toBytes(startValue);
+            if (endValue != null)
+                end = HBaseUtils.toBytes(endValue);
+
+            if (start == null)
+                start = HConstants.EMPTY_START_ROW;
+            if (end == null)
+                end = HConstants.EMPTY_END_ROW;
+
+            byte[] tableName = Bytes.toBytes(hp.getTableName());
+            boolean oneRegion = false;
+            List<byte[]> startKeys = null;
+            if (startValue != null && endValue != null && startValue == endValue)
+                oneRegion = true;
+
+            if (!oneRegion) {
+                startKeys = HBaseUtils.getStartKeysInRange(tableName, start, end);
+                if (startKeys == null || startKeys.isEmpty()) {
+                    proxyCommand = originalCommand; //TODO 找不到任何Region时说明此时Delete或Update都无效果
+                    return;
+                } else if (startKeys.size() == 1) {
+                    oneRegion = true;
+                    start = startKeys.get(0);
+                }
+            }
+
+            if (oneRegion) {
+                HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, start);
+                if (CommandProxy.isLocal(session, hri)) {
+                    hp.setRegionName(hri.getRegionName());
+                    proxyCommand = originalCommand;
+                } else {
+                    proxyCommand = getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
+                            createSQL(hri.getRegionName(), sql));
+                }
+            } else {
+                proxyCommand = new CommandParallel(session, this, tableName, startKeys, sql, originalPrepared);
+            }
+        } else {
+            proxyCommand = originalCommand;
         }
     }
 

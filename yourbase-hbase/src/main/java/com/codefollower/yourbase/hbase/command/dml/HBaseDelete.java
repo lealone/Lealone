@@ -42,13 +42,21 @@ public class HBaseDelete extends Delete implements HBasePrepared {
     }
 
     @Override
+    public boolean isDistributedSQL() {
+        return true;
+    }
+
+    @Override
     public String getTableName() {
         return tableFilter.getTable().getName();
     }
 
     @Override
-    public boolean isDistributedSQL() {
-        return true;
+    public String getRowKey() {
+        Value rowKey = getStartRowKeyValue();
+        if (rowKey != null)
+            rowKey.getString();
+        return null;
     }
 
     @Override
@@ -76,4 +84,5 @@ public class HBaseDelete extends Delete implements HBasePrepared {
     public void setRegionName(String regionName) {
         this.regionName = regionName;
     }
+
 }
