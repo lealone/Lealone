@@ -501,4 +501,8 @@ public interface CommandInterface {
      * @return the empty result
      */
     ResultInterface getMetaData();
+
+    int getFetchSize();
+
+    void setFetchSize(int fetchSize);
 }

@@ -19,19 +19,20 @@
  */
 package com.codefollower.yourbase.hbase.command.dml;
 
+import com.codefollower.yourbase.command.Command;
 import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.command.HBasePrepared;
 import com.codefollower.yourbase.result.ResultInterface;
 
 public class InTheRegion extends Prepared {
-    private Prepared command;
+    private Prepared originalPrepared;
     private String regionName;
 
-    public InTheRegion(Session session, String regionName, Prepared command) {
+    public InTheRegion(Session session, String regionName, Prepared prepared) {
         super(session);
         this.regionName = regionName;
-        this.command = command;
+        this.originalPrepared = prepared;
     }
 
     public String getRegionName() {
@@ -39,11 +40,11 @@ public class InTheRegion extends Prepared {
     }
 
     public boolean isReadOnly() {
-        return command.isReadOnly();
+        return originalPrepared.isReadOnly();
     }
 
     public boolean needRecompile() {
-        return command.needRecompile();
+        return originalPrepared.needRecompile();
     }
 
     public String getPlanSQL() {
@@ -51,19 +52,19 @@ public class InTheRegion extends Prepared {
     }
 
     public void checkCanceled() {
-        command.checkCanceled();
+        originalPrepared.checkCanceled();
     }
 
     public void setPrepareAlways(boolean prepareAlways) {
-        command.setPrepareAlways(prepareAlways);
+        originalPrepared.setPrepareAlways(prepareAlways);
     }
 
     public int getCurrentRowNumber() {
-        return command.getCurrentRowNumber();
+        return originalPrepared.getCurrentRowNumber();
     }
 
     public boolean isCacheable() {
-        return command.isCacheable();
+        return originalPrepared.isCacheable();
     }
 
     public boolean isDistributedSQL() {
@@ -72,38 +73,43 @@ public class InTheRegion extends Prepared {
 
     @Override
     public boolean isTransactional() {
-        return command.isTransactional();
+        return originalPrepared.isTransactional();
     }
 
     @Override
     public ResultInterface queryMeta() {
-        return command.queryMeta();
+        return originalPrepared.queryMeta();
     }
 
     @Override
     public int getType() {
-        return command.getType();
+        return originalPrepared.getType();
     }
 
     @Override
     public boolean isQuery() {
-        return command.isQuery();
+        return originalPrepared.isQuery();
     }
 
     @Override
     public void prepare() {
-        if (command instanceof HBasePrepared)
-            ((HBasePrepared) command).setRegionName(regionName);
-        command.prepare();
+        if (originalPrepared instanceof HBasePrepared)
+            ((HBasePrepared) originalPrepared).setRegionName(regionName);
+        originalPrepared.prepare();
     }
 
     @Override
     public int update() {
-        return command.update();
+        return originalPrepared.update();
     }
 
     @Override
     public ResultInterface query(int maxrows) {
-        return command.query(maxrows);
+        return originalPrepared.query(maxrows);
+    }
+
+    public void setCommand(Command command) {
+        super.setCommand(command);
+        originalPrepared.setCommand(command);
     }
 }

@@ -235,6 +235,9 @@ public class ResultRemote implements ResultInterface {
                     result.add(values);
                 }
 
+//                if (fetch == 0)
+//                    isEnd = true;
+
                 if (isEnd)
                     sendClose();
                 else if (rowCount != -1 && rowOffset + result.size() >= rowCount) {

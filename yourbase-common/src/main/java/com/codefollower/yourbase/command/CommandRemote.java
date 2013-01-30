@@ -31,7 +31,7 @@ public class CommandRemote implements CommandInterface {
     private final ArrayList<ParameterInterface> parameters;
     private final Trace trace;
     private final String sql;
-    private final int fetchSize;
+    private int fetchSize;
     private SessionRemote session;
     private int id;
     private boolean isQuery;
@@ -250,4 +250,13 @@ public class CommandRemote implements CommandInterface {
         return UNKNOWN;
     }
 
+    @Override
+    public int getFetchSize() {
+        return fetchSize;
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        this.fetchSize = fetchSize;
+    }
 }

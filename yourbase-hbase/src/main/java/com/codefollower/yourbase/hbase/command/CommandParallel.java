@@ -48,6 +48,7 @@ public class CommandParallel implements CommandInterface {
     private final Prepared originalPrepared;
     private final String sql;
     private final List<CommandInterface> commands;
+    private int fetchSize;
 
     public CommandParallel(HBaseSession session, CommandProxy commandProxy, //
             byte[] tableName, List<byte[]> startKeys, String sql, Prepared originalPrepared) {
@@ -94,12 +95,14 @@ public class CommandParallel implements CommandInterface {
         //必须使用新Session，否则在并发执行Command类的executeUpdate或executeQuery时因为使用session对象来同步所以会造成死锁
         HBaseSession newSession = (HBaseSession) originalSession.getDatabase().createSession(originalSession.getUser());
         newSession.setRegionServer(originalSession.getRegionServer());
-        newSession.setFetchSize(originalSession.getFetchSize());
         return newSession;
     }
 
     private String planSQL() {
-        return originalPrepared.isQuery() ? ((Select) originalPrepared).getPlanSQL(true) : sql;
+        if (originalPrepared.isQuery() && ((Select) originalPrepared).isGroupQuery())
+            return ((Select) originalPrepared).getPlanSQL(true);
+        else
+            return sql;
     }
 
     @Override
@@ -124,6 +127,10 @@ public class CommandParallel implements CommandInterface {
 
     @Override
     public ResultInterface executeQuery(final int maxRows, final boolean scrollable) {
+        int size = commands.size();
+        for (int i = 0; i < size; i++) {
+            commands.get(i).setFetchSize(fetchSize);
+        }
         Select originalSelect = (Select) originalPrepared;
         //originalSelect.isGroupQuery()如果是false，那么按org.apache.hadoop.hbase.client.ClientScanner的功能来实现。
         //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery，
@@ -131,7 +138,6 @@ public class CommandParallel implements CommandInterface {
         if (!originalSelect.isGroupQuery())
             return new HBaseSerializedResult(commands, maxRows, scrollable);
 
-        int size = commands.size();
         List<Future<ResultInterface>> futures = New.arrayList(size);
         List<ResultInterface> results = new ArrayList<ResultInterface>(size);
         for (int i = 0; i < size; i++) {
@@ -163,6 +169,7 @@ public class CommandParallel implements CommandInterface {
         List<Future<Integer>> futures = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
+            c.setFetchSize(fetchSize);
             futures.add(pool.submit(new Callable<Integer>() {
                 public Integer call() throws Exception {
                     return c.executeUpdate();
@@ -194,5 +201,15 @@ public class CommandParallel implements CommandInterface {
     @Override
     public ResultInterface getMetaData() {
         return originalPrepared.getCommand().getMetaData();
+    }
+
+    @Override
+    public int getFetchSize() {
+        return fetchSize;
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        this.fetchSize = fetchSize;
     }
 }
