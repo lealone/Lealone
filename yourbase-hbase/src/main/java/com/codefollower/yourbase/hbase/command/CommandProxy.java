@@ -194,6 +194,7 @@ public class CommandProxy extends Command {
     }
 
     private void setProxyCommandParameters() {
+        proxyCommand.setFetchSize(fetchSize);
         //当Command是在本地执行时，proxyCommand.getParameters()就是originalParams，此时不需要重复设置
         if (originalParams != null && proxyCommand.getParameters() != null && proxyCommand.getParameters() != originalParams) {
             ArrayList<? extends ParameterInterface> params = proxyCommand.getParameters();
@@ -270,8 +271,8 @@ public class CommandProxy extends Command {
     }
 
     @Override
-    public boolean isCacheable() {
-        return originalPrepared.isCacheable();
+    public boolean isCacheable() { //TODO 解决重用问题
+        return false; //originalPrepared.isCacheable();
     }
 
     @Override
@@ -318,7 +319,7 @@ public class CommandProxy extends Command {
             prop.setProperty(key, info.getProperty(key));
         ConnectionInfo ci = new ConnectionInfo(url, prop);
         SessionInterface si = new SessionRemote(ci).connectEmbeddedOrServer(false);
-        CommandInterface commandInterface = si.prepareCommand(sql, ((HBaseSession) session).getFetchSize());
+        CommandInterface commandInterface = si.prepareCommand(sql, -1); //此时fetchSize还未知
 
         if (oldParams != null) {
             ArrayList<? extends ParameterInterface> newParams = commandInterface.getParameters();

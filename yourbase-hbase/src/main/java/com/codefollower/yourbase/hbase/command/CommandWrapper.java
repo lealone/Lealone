@@ -76,4 +76,14 @@ class CommandWrapper implements CommandInterface {
     public ResultInterface getMetaData() {
         return c.getMetaData();
     }
+
+    @Override
+    public int getFetchSize() {
+        return c.getFetchSize();
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        c.setFetchSize(fetchSize);
+    }
 }

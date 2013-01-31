@@ -17,6 +17,8 @@ import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.message.Trace;
 import com.codefollower.yourbase.result.ResultInterface;
 import com.codefollower.yourbase.result.ResultRemote;
+import com.codefollower.yourbase.result.ResultRemoteCursor;
+import com.codefollower.yourbase.result.ResultRemoteInMemory;
 import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.value.Transfer;
 import com.codefollower.yourbase.value.Value;
@@ -31,12 +33,13 @@ public class CommandRemote implements CommandInterface {
     private final ArrayList<ParameterInterface> parameters;
     private final Trace trace;
     private final String sql;
-    private final int fetchSize;
+    private int fetchSize;
     private SessionRemote session;
     private int id;
     private boolean isQuery;
     private boolean readonly;
     private final int created;
+    private final ArrayList<ResultRemoteCursor> resultRemoteCursors;
 
     public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
         this.transferList = transferList;
@@ -49,6 +52,7 @@ public class CommandRemote implements CommandInterface {
         this.session = session;
         this.fetchSize = fetchSize;
         created = session.getLastReconnect();
+        resultRemoteCursors = New.arrayList();
     }
 
     private void prepare(SessionRemote s, boolean createParams) {
@@ -116,7 +120,7 @@ public class CommandRemote implements CommandInterface {
                     transfer.writeInt(SessionRemote.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
                     session.done(transfer);
                     int columnCount = transfer.readInt();
-                    result = new ResultRemote(session, transfer, objectId, columnCount, Integer.MAX_VALUE);
+                    result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, 0, Integer.MAX_VALUE);
                     break;
                 } catch (IOException e) {
                     session.removeServer(e, i--, ++count);
@@ -149,11 +153,16 @@ public class CommandRemote implements CommandInterface {
                     sendParameters(transfer);
                     session.done(transfer);
                     int columnCount = transfer.readInt();
+                    int rowCount = transfer.readInt();
                     if (result != null) {
                         result.close();
                         result = null;
                     }
-                    result = new ResultRemote(session, transfer, objectId, columnCount, fetch);
+                    if (rowCount < 0) {
+                        result = new ResultRemoteCursor(session, transfer, objectId, columnCount, fetch);
+                        resultRemoteCursors.add((ResultRemoteCursor) result);
+                    } else
+                        result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, fetch);
                     if (readonly) {
                         break;
                     }
@@ -250,4 +259,13 @@ public class CommandRemote implements CommandInterface {
         return UNKNOWN;
     }
 
+    @Override
+    public int getFetchSize() {
+        return fetchSize;
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        this.fetchSize = fetchSize;
+    }
 }

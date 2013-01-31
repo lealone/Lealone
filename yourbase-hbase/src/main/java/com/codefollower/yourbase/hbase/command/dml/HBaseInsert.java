@@ -94,7 +94,7 @@ public class HBaseInsert extends Insert implements HBasePrepared {
                 SessionInterface si = CommandProxy.getSessionInterface(session, session.getOriginalProperties(),
                         HBaseUtils.getMasterURL());
                 for (Column c : alterColumns) {
-                    CommandInterface ci = si.prepareCommand(alterTable + c.getCreateSQL(true), session.getFetchSize());
+                    CommandInterface ci = si.prepareCommand(alterTable + c.getCreateSQL(true), 1);
                     ci.executeUpdate();
                 }
                 si.close();

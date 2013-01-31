@@ -48,6 +48,7 @@ public abstract class Command implements CommandInterface {
     protected final String sql;
 
     private boolean canReuse;
+    protected int fetchSize;
 
     protected Command(Session session, String sql) {
         this.session = session;
@@ -340,4 +341,14 @@ public abstract class Command implements CommandInterface {
     }
 
     public abstract Prepared getPrepared();
+
+    @Override
+    public int getFetchSize() {
+        return fetchSize;
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        this.fetchSize = fetchSize;
+    }
 }

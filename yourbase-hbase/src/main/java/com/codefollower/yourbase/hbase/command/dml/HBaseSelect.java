@@ -65,15 +65,6 @@ public class HBaseSelect extends Select implements HBasePrepared {
     }
 
     @Override
-    public void prepare() {
-        super.prepare();
-        topTableFilter.setPrepared(this);
-        for (TableFilter f : filters) {
-            f.setPrepared(this);
-        }
-    }
-
-    @Override
     public boolean isDistributedSQL() {
         if (topTableFilter.getTable().isDistributedSQL())
             return true;

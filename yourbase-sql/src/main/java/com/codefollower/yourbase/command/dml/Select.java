@@ -1021,6 +1021,10 @@ public class Select extends Query {
         }
         expressionArray = new Expression[expressions.size()];
         expressions.toArray(expressionArray);
+        topTableFilter.setPrepared(this);
+        for (TableFilter f : filters) {
+            f.setPrepared(this);
+        }
         isPrepared = true;
     }
 

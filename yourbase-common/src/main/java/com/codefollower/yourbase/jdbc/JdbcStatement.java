@@ -78,8 +78,9 @@ public class JdbcStatement extends TraceObject implements Statement {
                 } finally {
                     setExecutingStatement(null);
                 }
-                command.close();
+                //command.close(); //关闭结果集时再关闭
                 resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                resultSet.setCommand(command);
             }
             return resultSet;
         } catch (Exception e) {

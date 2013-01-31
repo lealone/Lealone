@@ -30,7 +30,6 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.index.Cursor;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
@@ -47,6 +46,7 @@ import com.codefollower.yourbase.value.ValueString;
 
 public class HBaseTableCursor implements Cursor {
     private final HBaseSession session;
+    private final int fetchSize;
     private byte[] regionName = null;
 
     private long scannerId;
@@ -66,6 +66,8 @@ public class HBaseTableCursor implements Cursor {
             regionName = Bytes.toBytes(hp.getRegionName());
         if (regionName == null)
             throw new RuntimeException("regionName is null");
+
+        fetchSize = filter.getPrepared().getCommand().getFetchSize();
 
         rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();
         columnCount = ((HBaseTable) filter.getTable()).getColumns().length;
@@ -192,9 +194,6 @@ public class HBaseTableCursor implements Cursor {
             return false;
 
         try {
-            int fetchSize = session.getFetchSize();
-            if (fetchSize <= 0)
-                fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
             result = session.getRegionServer().next(scannerId, fetchSize);
             index = 0;
         } catch (IOException e) {

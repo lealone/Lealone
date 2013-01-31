@@ -111,8 +111,6 @@ public class Session extends SessionWithState {
     protected final int queryCacheSize;
     protected SmallLRUCache<String, Command> queryCache;
 
-    private int fetchSize;
-
     public Session(Database database, User user, int id) {
         this.database = database;
         this.queryTimeout = database.getSettings().maxQueryTimeout;
@@ -123,14 +121,6 @@ public class Session extends SessionWithState {
         Setting setting = database.findSetting(SetTypes.getTypeName(SetTypes.DEFAULT_LOCK_TIMEOUT));
         this.lockTimeout = setting == null ? Constants.INITIAL_LOCK_TIMEOUT : setting.getIntValue();
         this.currentSchemaName = Constants.SCHEMA_MAIN;
-    }
-
-    public int getFetchSize() {
-        return fetchSize;
-    }
-
-    public void setFetchSize(int fetchSize) {
-        this.fetchSize = fetchSize;
     }
 
     public boolean setCommitOrRollbackDisabled(boolean x) {

@@ -59,12 +59,6 @@ public class SelectTest extends TestBase {
         stmt.setFetchSize(2);
         printResultSet();
 
-        //        where();
-        //        orderBy();
-        //        groupBy();
-    }
-
-    void testSelect0() throws Exception {
         where();
         orderBy();
         groupBy();
@@ -72,12 +66,12 @@ public class SelectTest extends TestBase {
 
     private void where() throws Exception {
         sql = "SELECT count(*) FROM SelectTest WHERE f1 = 'a2'";
-        assertEquals(4, getIntValue(1, true));
+        assertEquals(5, getIntValue(1, true));
 
-        sql = "SELECT count(*) FROM SelectTest WHERE _rowkey_ >= '10' AND f1 = 'a2'";
-        assertEquals(1, getIntValue(1, true));
+        sql = "SELECT count(*) FROM SelectTest WHERE _rowkey_ >= '50' AND f1 = 'a2'";
+        assertEquals(2, getIntValue(1, true));
 
-        sql = "SELECT count(*) FROM SelectTest WHERE _rowkey_ = '12' AND f1 = 'a2'";
+        sql = "SELECT count(*) FROM SelectTest WHERE _rowkey_ = '75' AND f1 = 'a2'";
         assertEquals(0, getIntValue(1, true));
     }
 
