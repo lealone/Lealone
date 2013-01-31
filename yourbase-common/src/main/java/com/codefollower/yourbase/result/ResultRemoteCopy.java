@@ -17,27 +17,34 @@ import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.value.Transfer;
 import com.codefollower.yourbase.value.Value;
 
-public abstract class ResultRemote implements ResultInterface {
+/**
+ * The client side part of a result set that is kept on the server.
+ * In many cases, the complete data is kept on the client side,
+ * but for large results only a subset is in-memory.
+ */
+public class ResultRemoteCopy implements ResultInterface {
 
-    protected int fetchSize;
-    protected SessionRemote session;
-    protected Transfer transfer;
-    protected int id;
-    protected final ResultColumn[] columns;
-    protected Value[] currentRow;
-    protected final int rowCount;
-    protected int rowId, rowOffset;
-    protected ArrayList<Value[]> result;
-    protected final Trace trace;
+    private int fetchSize;
+    private SessionRemote session;
+    private Transfer transfer;
+    private int id;
+    private final ResultColumn[] columns;
+    private Value[] currentRow;
+    private final int rowCount;
+    private int rowId, rowOffset;
+    private ArrayList<Value[]> result;
+    private final Trace trace;
 
-    public ResultRemote(SessionRemote session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
+    private boolean isEnd = false;
+
+    public ResultRemoteCopy(SessionRemote session, Transfer transfer, int id, int columnCount, int fetchSize)
             throws IOException {
         this.session = session;
         trace = session.getTrace();
         this.transfer = transfer;
         this.id = id;
         this.columns = new ResultColumn[columnCount];
-        this.rowCount = rowCount;
+        rowCount = transfer.readInt();
         for (int i = 0; i < columnCount; i++) {
             columns[i] = new ResultColumn(transfer);
         }
@@ -46,10 +53,6 @@ public abstract class ResultRemote implements ResultInterface {
         this.fetchSize = fetchSize;
         fetchRows(false);
     }
-
-    public abstract boolean next();
-
-    protected abstract void fetchRows(boolean sendFetch);
 
     public String getAlias(int i) {
         return columns[i].alias;
@@ -112,6 +115,38 @@ public abstract class ResultRemote implements ResultInterface {
         return currentRow;
     }
 
+    public boolean next() {
+        if (rowCount == -1) {
+            rowId++;
+            remapIfOld();
+            if (rowId - rowOffset >= result.size()) {
+                if (isEnd) {
+                    currentRow = null;
+                    return false;
+                }
+                fetchRows(true);
+            }
+            if (isEnd && rowId - rowOffset >= result.size()) {
+                currentRow = null;
+                return false;
+            }
+            currentRow = result.get(rowId - rowOffset);
+            return true;
+        } else if (rowId < rowCount) {
+            rowId++;
+            remapIfOld();
+            if (rowId < rowCount) {
+                if (rowId - rowOffset >= result.size()) {
+                    fetchRows(true);
+                }
+                currentRow = result.get(rowId - rowOffset);
+                return true;
+            }
+            currentRow = null;
+        }
+        return false;
+    }
+
     public int getRowId() {
         return rowId;
     }
@@ -121,10 +156,13 @@ public abstract class ResultRemote implements ResultInterface {
     }
 
     public int getRowCount() {
+        if (rowCount == -1)
+            return Integer.MAX_VALUE;
+
         return rowCount;
     }
 
-    protected void sendClose() {
+    private void sendClose() {
         if (session == null) {
             return;
         }
@@ -142,18 +180,12 @@ public abstract class ResultRemote implements ResultInterface {
         }
     }
 
-    protected void sendFetch() throws IOException {
-        session.traceOperation("RESULT_FETCH_ROWS", id);
-        transfer.writeInt(SessionRemote.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize);
-        session.done(transfer);
-    }
-
     public void close() {
         result = null;
         sendClose();
     }
 
-    protected void remapIfOld() {
+    private void remapIfOld() {
         if (session == null) {
             return;
         }
@@ -170,6 +202,50 @@ public abstract class ResultRemote implements ResultInterface {
             }
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
+        }
+    }
+
+    private void fetchRows(boolean sendFetch) {
+        synchronized (session) {
+            session.checkClosed();
+            try {
+                rowOffset += result.size();
+                result.clear();
+                int fetch = fetchSize;
+                if (rowCount != -1)
+                    fetch = Math.min(fetchSize, rowCount - rowOffset);
+                if (sendFetch) {
+                    session.traceOperation("RESULT_FETCH_ROWS", id);
+                    transfer.writeInt(SessionRemote.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetch);
+                    session.done(transfer);
+                }
+                for (int r = 0; r < fetch; r++) {
+                    boolean row = transfer.readBoolean();
+                    if (!row) {
+                        if(rowCount == -1)
+                            isEnd = true;
+                        break;
+                    }
+                    int len = columns.length;
+                    Value[] values = new Value[len];
+                    for (int i = 0; i < len; i++) {
+                        Value v = transfer.readValue();
+                        values[i] = v;
+                    }
+                    result.add(values);
+                }
+
+//                if (fetch == 0)
+//                    isEnd = true;
+
+                if (isEnd)
+                    sendClose();
+                else if (rowCount != -1 && rowOffset + result.size() >= rowCount) {
+                    sendClose();
+                }
+            } catch (IOException e) {
+                throw DbException.convertIOException(e, null);
+            }
         }
     }
 

@@ -32,6 +32,7 @@ import java.sql.RowId;
 import java.sql.SQLXML;
 //*/
 
+import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.message.DbException;
@@ -91,6 +92,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     private HashMap<String, Integer> columnLabelMap;
     private HashMap<Integer, Value[]> patchedRows;
     private JdbcPreparedStatement preparedStatement;
+    private CommandInterface command;
 
     JdbcResultSet(JdbcConnection conn, JdbcStatement stat, ResultInterface result, int id,
                 boolean closeStatement, boolean scrollable, boolean updatable) {
@@ -197,6 +199,8 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     void closeInternal() throws SQLException {
         if (result != null) {
             try {
+                if (command != null)
+                    command.close();
                 result.close();
                 if (closeStatement && stat != null) {
                     stat.close();
@@ -208,6 +212,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
                 conn = null;
                 insertRow = null;
                 updateRow = null;
+                command = null;
             }
         }
     }
@@ -3486,6 +3491,14 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
         if (!updatable) {
             throw DbException.get(ErrorCode.RESULT_SET_READONLY);
         }
+    }
+
+    public void setCommand(CommandInterface command) {
+        this.command = command;
+    }
+
+    public CommandInterface getCommand() {
+        return command;
     }
 
 }

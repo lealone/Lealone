@@ -25,21 +25,20 @@ import com.codefollower.yourbase.command.dml.Select;
 import com.codefollower.yourbase.dbobject.index.IndexType;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.Table;
+import com.codefollower.yourbase.result.DelegatedResult;
 import com.codefollower.yourbase.result.ResultInterface;
 import com.codefollower.yourbase.value.Value;
 
-public class HBaseMergedResult implements ResultInterface {
-    private List<ResultInterface> results;
-    private ResultInterface defaultResult;
+public class HBaseMergedResult extends DelegatedResult {
+    private final List<ResultInterface> results;
     private ResultInterface currentResult;
-    private int index = 0;
-    private int size = 0;
-
     private ResultInterface mergedResult;
+    private int index = 0;
+    private final int size;
 
     public HBaseMergedResult(List<ResultInterface> results, Select newSelect, Select oldSelect, boolean isGroupQuery) {
         this.results = results;
-        defaultResult = results.get(0);
+        result = results.get(0);
         size = results.size();
 
         Table table = newSelect.getTopTableFilter().getTable();
@@ -55,7 +54,7 @@ public class HBaseMergedResult implements ResultInterface {
         oldSelect.getTopTableFilter().setIndex(
                 new HBaseMergedIndex(mergedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
 
-        defaultResult = mergedResult = oldSelect.queryGroupMerge(0, null);
+        result = mergedResult = oldSelect.queryGroupMerge(0, null);
     }
 
     @Override
@@ -110,16 +109,6 @@ public class HBaseMergedResult implements ResultInterface {
     }
 
     @Override
-    public int getRowId() {
-        return defaultResult.getRowId();
-    }
-
-    @Override
-    public int getVisibleColumnCount() {
-        return defaultResult.getVisibleColumnCount();
-    }
-
-    @Override
     public int getRowCount() {
         if (mergedResult != null)
             return mergedResult.getRowCount();
@@ -130,75 +119,15 @@ public class HBaseMergedResult implements ResultInterface {
     }
 
     @Override
-    public boolean needToClose() {
-        return defaultResult.needToClose();
-    }
-
-    @Override
     public void close() {
         for (ResultInterface result : results)
             result.close();
     }
 
     @Override
-    public String getAlias(int i) {
-        return defaultResult.getAlias(i);
-    }
-
-    @Override
-    public String getSchemaName(int i) {
-        return defaultResult.getSchemaName(i);
-    }
-
-    @Override
-    public String getTableName(int i) {
-        return defaultResult.getTableName(i);
-    }
-
-    @Override
-    public String getColumnName(int i) {
-        return defaultResult.getColumnName(i);
-    }
-
-    @Override
-    public int getColumnType(int i) {
-        return defaultResult.getColumnType(i);
-    }
-
-    @Override
-    public long getColumnPrecision(int i) {
-        return defaultResult.getColumnPrecision(i);
-    }
-
-    @Override
-    public int getColumnScale(int i) {
-        return defaultResult.getColumnScale(i);
-    }
-
-    @Override
-    public int getDisplaySize(int i) {
-        return defaultResult.getDisplaySize(i);
-    }
-
-    @Override
-    public boolean isAutoIncrement(int i) {
-        return defaultResult.isAutoIncrement(i);
-    }
-
-    @Override
-    public int getNullable(int i) {
-        return defaultResult.getNullable(i);
-    }
-
-    @Override
     public void setFetchSize(int fetchSize) {
         for (ResultInterface result : results)
             result.setFetchSize(fetchSize);
-    }
-
-    @Override
-    public int getFetchSize() {
-        return defaultResult.getFetchSize();
     }
 
 }

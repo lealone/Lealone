@@ -271,8 +271,8 @@ public class CommandProxy extends Command {
     }
 
     @Override
-    public boolean isCacheable() {
-        return originalPrepared.isCacheable();
+    public boolean isCacheable() { //TODO 解决重用问题
+        return false; //originalPrepared.isCacheable();
     }
 
     @Override
