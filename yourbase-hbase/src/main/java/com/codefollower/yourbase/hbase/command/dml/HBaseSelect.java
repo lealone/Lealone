@@ -58,7 +58,7 @@ public class HBaseSelect extends Select implements HBasePrepared {
 
     @Override
     public boolean isDistributedSQL() {
-        if (topTableFilter.getTable().isDistributedSQL())
+        if (topTableFilter.getTable().isDistributed())
             return true;
         return super.isDistributedSQL();
     }

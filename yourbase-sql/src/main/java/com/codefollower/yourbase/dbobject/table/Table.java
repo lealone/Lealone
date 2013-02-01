@@ -1113,7 +1113,7 @@ public abstract class Table extends SchemaObjectBase {
         return true;
     }
 
-    public boolean isDistributedSQL() {
+    public boolean isDistributed() {
         return false;
     }
     

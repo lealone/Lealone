@@ -491,7 +491,8 @@ public class HBaseTable extends TableBase {
         return Bytes.toString(v.get());
     }
 
-    public boolean isDistributedSQL() {
+    @Override
+    public boolean isDistributed() {
         return true;
     }
 

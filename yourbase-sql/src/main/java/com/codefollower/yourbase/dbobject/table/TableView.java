@@ -482,4 +482,16 @@ public class TableView extends Table {
 
         return getName();
     }
+
+    @Override
+    public boolean isDistributed() {
+        for (Table t : tables) {
+            if (t instanceof TableView) {
+                return ((TableView) t).isDistributed();
+            } else {
+                return t.isDistributed();
+            }
+        }
+        return super.isDistributed();
+    }
 }

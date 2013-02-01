@@ -8,6 +8,7 @@ package com.codefollower.yourbase.command.dml;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.constant.ErrorCode;
@@ -417,5 +418,12 @@ public class SelectUnion extends Query {
 
     public boolean allowGlobalConditions() {
         return left.allowGlobalConditions() && right.allowGlobalConditions();
+    }
+
+    @Override
+    public List<TableFilter> getTopFilters() {
+        List<TableFilter> filters = left.getTopFilters();
+        filters.addAll(right.getTopFilters());
+        return filters;
     }
 }

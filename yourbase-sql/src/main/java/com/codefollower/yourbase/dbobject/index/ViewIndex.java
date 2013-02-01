@@ -13,6 +13,7 @@ import com.codefollower.yourbase.command.dml.SelectUnion;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
+import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.dbobject.table.TableView;
 import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Session;
@@ -162,6 +163,16 @@ public class ViewIndex extends BaseIndex {
         return cost;
     }
 
+    @Override
+    public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
+        if (query != null) {
+            for (TableFilter f : query.getTopFilters())
+                f.setPrepared(filter.getPrepared());
+        }
+        return find(filter.getSession(), first, last);
+    }
+
+    @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         if (recursive) {
             ResultInterface recResult = view.getRecursiveResult();

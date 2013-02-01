@@ -8,6 +8,7 @@ package com.codefollower.yourbase.command.dml;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.constant.ErrorCode;
@@ -505,4 +506,6 @@ public abstract class Query extends Prepared {
         isEverything(visitor);
         return visitor.getMaxDataModificationId();
     }
+
+    public abstract List<TableFilter> getTopFilters();
 }

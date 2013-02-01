@@ -134,6 +134,7 @@ public class Select extends Query {
         }
     }
 
+    @Override
     public ArrayList<TableFilter> getTopFilters() {
         return topFilters;
     }
