@@ -25,107 +25,44 @@ import com.codefollower.yourbase.command.dml.Select;
 import com.codefollower.yourbase.dbobject.index.IndexType;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.Table;
+import com.codefollower.yourbase.hbase.result.HBaseSerializedResult;
 import com.codefollower.yourbase.result.DelegatedResult;
 import com.codefollower.yourbase.result.ResultInterface;
-import com.codefollower.yourbase.value.Value;
 
 public class HBaseMergedResult extends DelegatedResult {
-    private final List<ResultInterface> results;
-    private ResultInterface currentResult;
-    private ResultInterface mergedResult;
-    private int index = 0;
-    private final int size;
-
     public HBaseMergedResult(List<ResultInterface> results, Select newSelect, Select oldSelect) {
-        this.results = results;
-        result = results.get(0);
-        size = results.size();
-
+        //1. 结果集串行化，为合并做准备
+        HBaseSerializedResult serializedResult = new HBaseSerializedResult(results);
         Table table = newSelect.getTopTableFilter().getTable();
         newSelect.getTopTableFilter().setIndex(
-                new HBaseMergedIndex(this, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
+                new HBaseMergedIndex(serializedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType
+                        .createScan(false)));
 
-        mergedResult = newSelect.queryGroupMerge();
-        mergedResult = oldSelect.calculate(mergedResult, newSelect);
+        //2. 把多个结果集合并
+        ResultInterface mergedResult = newSelect.queryGroupMerge();
 
-        table = oldSelect.getTopTableFilter().getTable();
-        oldSelect.getTopTableFilter().setIndex(
-                new HBaseMergedIndex(mergedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
+        //3. 计算合并后的结果集,
+        //例如oldSelect="select avg"时，在分布式环境要转成newSelect="select count, sum"，
+        //此时就由count, sum来算出avg
+        ResultInterface calculatedResult = oldSelect.calculate(mergedResult, newSelect);
 
-        result = mergedResult = oldSelect.queryGroupMerge();
-    }
+        //4. 如果不存在avg、stddev这类需要拆分为count、sum的计算，此时mergedResult和calculatedResult是同一个实例
+        //否则就是不同实例，需要再一次按oldSelect合并结果集
+        if (mergedResult != calculatedResult) {
+            table = oldSelect.getTopTableFilter().getTable();
+            oldSelect.getTopTableFilter().setIndex(
+                    new HBaseMergedIndex(calculatedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType
+                            .createScan(false)));
+            //5. 最终结果集
+            result = oldSelect.queryGroupMerge();
 
-    @Override
-    public void reset() {
-        for (ResultInterface result : results)
-            result.reset();
-    }
-
-    @Override
-    public Value[] currentRow() {
-        if (mergedResult != null)
-            return mergedResult.currentRow();
-        return currentResult.currentRow();
-    }
-
-    @Override
-    public boolean next() {
-        if (size == 0)
-            return false;
-
-        boolean next = false;
-
-        if (currentResult != null) {
-            next = currentResult.next();
-            if (next)
-                return true;
+            //6. 立刻关闭中间结果集
+            serializedResult.close();
+            mergedResult.close();
+            calculatedResult.close();
+        } else {
+            result = mergedResult;
         }
 
-        if (mergedResult != null)
-            return mergedResult.next();
-        if (index >= size) {
-            if (currentResult != null)
-                currentResult.next();
-            else
-                return false;
-        }
-
-        if (currentResult == null && index < size) {
-            currentResult = results.get(index++);
-        }
-
-        if (currentResult == null)
-            return next();
-
-        next = currentResult.next();
-        if (!next) {
-            currentResult = null;
-            return next();
-        }
-
-        return next;
     }
-
-    @Override
-    public int getRowCount() {
-        if (mergedResult != null)
-            return mergedResult.getRowCount();
-        int rowCount = 0;
-        for (ResultInterface result : results)
-            rowCount += result.getRowCount();
-        return rowCount;
-    }
-
-    @Override
-    public void close() {
-        for (ResultInterface result : results)
-            result.close();
-    }
-
-    @Override
-    public void setFetchSize(int fetchSize) {
-        for (ResultInterface result : results)
-            result.setFetchSize(fetchSize);
-    }
-
 }

@@ -22,9 +22,11 @@ package com.codefollower.yourbase.hbase.result;
 import java.util.List;
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.result.DelegatedResult;
+import com.codefollower.yourbase.result.ResultInterface;
 
 public class HBaseSerializedResult extends DelegatedResult {
     private final static int UNKNOW_ROW_COUNT = -1;
+    private final List<ResultInterface> results;
     private final List<CommandInterface> commands;
     private final int maxRows;
     private final boolean scrollable;
@@ -33,10 +35,20 @@ public class HBaseSerializedResult extends DelegatedResult {
     private int index = 0;
 
     public HBaseSerializedResult(List<CommandInterface> commands, int maxRows, boolean scrollable) {
+        this.results = null;
         this.commands = commands;
         this.maxRows = maxRows;
         this.scrollable = scrollable;
         this.size = commands.size();
+        nextResult();
+    }
+
+    public HBaseSerializedResult(List<ResultInterface> results) {
+        this.results = results;
+        this.commands = null;
+        this.maxRows = -1;
+        this.scrollable = false;
+        this.size = results.size();
         nextResult();
     }
 
@@ -47,7 +59,10 @@ public class HBaseSerializedResult extends DelegatedResult {
         if (result != null)
             result.close();
 
-        result = commands.get(index++).executeQuery(maxRows, scrollable);
+        if (results != null)
+            result = results.get(index++);
+        else
+            result = commands.get(index++).executeQuery(maxRows, scrollable);
         return true;
     }
 

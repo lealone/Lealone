@@ -76,7 +76,7 @@ public class CommandParallel implements CommandInterface {
                 HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
                 if (CommandProxy.isLocal(originalSession, hri)) {
                     HBaseSession newSession = createHBaseSession();
-                    Command c = newSession.prepareLocal(sql);
+                    Command c = newSession.prepareLocal(planSQL());
                     HBasePrepared hp = (HBasePrepared) c.getPrepared();
                     hp.setRegionName(hri.getRegionName());
                     commands.add(new CommandWrapper(c, newSession)); //newSession在Command关闭的时候自动关闭
@@ -135,7 +135,7 @@ public class CommandParallel implements CommandInterface {
 
         int size = commands.size();
         List<Future<ResultInterface>> futures = New.arrayList(size);
-        List<ResultInterface> results = new ArrayList<ResultInterface>(size);
+        List<ResultInterface> results = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
             futures.add(pool.submit(new Callable<ResultInterface>() {

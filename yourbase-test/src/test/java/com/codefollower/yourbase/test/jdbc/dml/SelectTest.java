@@ -31,6 +31,7 @@ public class SelectTest extends TestBase {
         createTableIfNotExists("SelectTest");
         testInsert();
         testSelect();
+        testAggregate();
     }
 
     void testInsert() throws Exception {
@@ -86,4 +87,11 @@ public class SelectTest extends TestBase {
         printResultSet();
     }
 
+    void testAggregate() throws Exception {
+        sql = "select sum(cf2.f3) from SelectTest";
+        assertEquals(418, getIntValue(1, true));
+        sql = "select avg(cf2.f3) from SelectTest";
+        //因为cf2.f3是int，所以内部已进行4舍5入
+        assertEquals(35.0, getDoubleValue(1, true), 0.2);
+    }
 }

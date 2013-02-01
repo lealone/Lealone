@@ -263,13 +263,6 @@ public class Aggregate extends Expression {
     }
 
     public void mergeAggregate(Session session, Value v) {
-        
-//    }
-//    public void mergeAggregate(Session session, TableFilter tableFilter) {
-        // TODO aggregates: check nested MIN(MAX(ID)) and so on
-        // if(on != null) {
-        // on.updateAggregate();
-        // }
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             // this is a different level (the enclosing query)
