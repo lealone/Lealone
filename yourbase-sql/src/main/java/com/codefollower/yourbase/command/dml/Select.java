@@ -354,10 +354,10 @@ public class Select extends Query {
         return lr;
     }
 
-    public ResultInterface queryGroupMerge(int columnCount, LocalResult result) {
-        columnCount = visibleColumnCount;
-        columnCount = expressions.size();
-        result = new LocalResult(session, expressionArray, visibleColumnCount);
+    public ResultInterface queryGroupMerge() {
+        //columnCount = visibleColumnCount;
+        int columnCount = expressions.size();
+        LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount);
         ValueHashMap<HashMap<Expression, Object>> groups = ValueHashMap.newInstance();
         int rowNumber = 0;
         setCurrentRowNumber(0);

@@ -155,7 +155,7 @@ public class CommandParallel implements CommandInterface {
         String newSQL = originalSelect.getPlanSQL(true);
         Select newSelect = (Select) createHBaseSession().prepare(newSQL, true);
 
-        return new HBaseMergedResult(results, newSelect, originalSelect, originalSelect.isGroupQuery());
+        return new HBaseMergedResult(results, newSelect, originalSelect);
     }
 
     @Override

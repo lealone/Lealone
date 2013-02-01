@@ -36,7 +36,7 @@ public class HBaseMergedResult extends DelegatedResult {
     private int index = 0;
     private final int size;
 
-    public HBaseMergedResult(List<ResultInterface> results, Select newSelect, Select oldSelect, boolean isGroupQuery) {
+    public HBaseMergedResult(List<ResultInterface> results, Select newSelect, Select oldSelect) {
         this.results = results;
         result = results.get(0);
         size = results.size();
@@ -45,16 +45,14 @@ public class HBaseMergedResult extends DelegatedResult {
         newSelect.getTopTableFilter().setIndex(
                 new HBaseMergedIndex(this, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
 
-        if (isGroupQuery)
-            mergedResult = newSelect.queryGroupMerge(0, null);
-
+        mergedResult = newSelect.queryGroupMerge();
         mergedResult = oldSelect.calculate(mergedResult, newSelect);
 
         table = oldSelect.getTopTableFilter().getTable();
         oldSelect.getTopTableFilter().setIndex(
                 new HBaseMergedIndex(mergedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType.createScan(false)));
 
-        result = mergedResult = oldSelect.queryGroupMerge(0, null);
+        result = mergedResult = oldSelect.queryGroupMerge();
     }
 
     @Override
