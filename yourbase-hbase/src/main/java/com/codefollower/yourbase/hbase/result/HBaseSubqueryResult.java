@@ -19,9 +19,11 @@
  */
 package com.codefollower.yourbase.hbase.result;
 
+import com.codefollower.yourbase.command.Command;
 import com.codefollower.yourbase.command.dml.Query;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.hbase.command.CommandProxy;
+import com.codefollower.yourbase.hbase.command.CommandSubquery;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.result.SubqueryResult;
 
@@ -29,7 +31,12 @@ public class HBaseSubqueryResult extends SubqueryResult {
     private CommandProxy commandProxy;
 
     public HBaseSubqueryResult(HBaseSession session, Query query, int maxrows) {
-        commandProxy = new CommandProxy(session, query.getSQL(), query.getCommand());
+        Command c = query.getCommand();
+        if (c == null)
+            c = new CommandSubquery(session, query);
+
+        commandProxy = new CommandProxy(session, query.getSQL(), c);
+        commandProxy.setFetchSize(c.getFetchSize());
         result = commandProxy.executeQuery(maxrows, false);
     }
 
