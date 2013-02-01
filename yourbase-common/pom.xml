@@ -13,13 +13,13 @@
 	<name>yourbase common</name>
 
 	<dependencies>
-
+		<!--
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>1.4.3</version>
 			<scope>optional</scope>
 		</dependency>
-
+		-->
 	</dependencies>
 </project>
