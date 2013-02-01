@@ -83,14 +83,6 @@ public class CommandProxy extends Command {
         this(parser.getSession(), sql, originalCommand);
     }
 
-    private CommandInterface getCommandInterface(String url, String sql) throws Exception {
-        return getCommandInterface(new Properties(session.getOriginalProperties()), url, sql);
-    }
-
-    CommandInterface getCommandInterface(Properties info, String url, String sql) throws Exception {
-        return getCommandInterface(session, info, url, sql, originalParams); //传递最初的参数值到新的CommandInterface
-    }
-
     private void parseRowKey() {
         Command originalCommand = originalPrepared.getCommand();
         try {
@@ -140,8 +132,7 @@ public class CommandProxy extends Command {
                 hp.setRegionName(hri.getRegionName());
                 proxyCommand = originalCommand;
             } else {
-                proxyCommand = getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
-                        createSQL(hri.getRegionName(), sql));
+                proxyCommand = getCommandInterface(hri.getRegionServerURL(), createSQL(hri.getRegionName(), sql));
             }
         } else if (originalPrepared instanceof Delete || originalPrepared instanceof Update //
                 || originalPrepared instanceof Select) {
@@ -182,8 +173,7 @@ public class CommandProxy extends Command {
                     hp.setRegionName(hri.getRegionName());
                     proxyCommand = originalCommand;
                 } else {
-                    proxyCommand = getCommandInterface(session.getOriginalProperties(), hri.getRegionServerURL(),
-                            createSQL(hri.getRegionName(), sql));
+                    proxyCommand = getCommandInterface(hri.getRegionServerURL(), createSQL(hri.getRegionName(), sql));
                 }
             } else {
                 proxyCommand = new CommandParallel(session, this, tableName, startKeys, sql, originalPrepared);
@@ -287,6 +277,32 @@ public class CommandProxy extends Command {
         super.cancel();
     }
 
+    CommandInterface getCommandInterface(String url, String sql) throws Exception {
+        //TODO 如何重用SessionInterface
+        SessionInterface si = getSessionInterface(session.getOriginalProperties(), url);
+        CommandInterface commandInterface = si.prepareCommand(sql, -1); //此时fetchSize还未知
+
+        //传递最初的参数值到新的CommandInterface
+        if (originalParams != null) {
+            ArrayList<? extends ParameterInterface> newParams = commandInterface.getParameters();
+            for (int i = 0, size = originalParams.size(); i < size; i++) {
+                newParams.get(i).setValue(originalParams.get(i).getParamValue(), true);
+            }
+        }
+
+        return commandInterface;
+    }
+
+    public static SessionInterface getSessionInterface(Properties info, String url) throws Exception {
+
+        Properties prop = new Properties();
+        for (String key : info.stringPropertyNames())
+            prop.setProperty(key, info.getProperty(key));
+        ConnectionInfo ci = new ConnectionInfo(url, prop);
+
+        return new SessionRemote(ci).connectEmbeddedOrServer(false);
+    }
+
     public static String createSQL(String regionName, String sql) {
         StringBuilder buff = new StringBuilder("IN THE REGION ");
         buff.append(StringUtils.quoteStringSQL(regionName)).append(" ").append(sql);
@@ -308,37 +324,6 @@ public class CommandProxy extends Command {
         if (hri.getHostname().equalsIgnoreCase(sn.getHostname()) && hri.getH2TcpPort() == ZooKeeperAdmin.getTcpPort(sn))
             return true;
         return false;
-    }
-
-    //TODO 如何重用SessionInterface
-    public static CommandInterface getCommandInterface(Session session, Properties info, String url, String sql,
-            List<? extends ParameterInterface> oldParams) throws Exception {
-
-        Properties prop = new Properties();
-        for (String key : info.stringPropertyNames())
-            prop.setProperty(key, info.getProperty(key));
-        ConnectionInfo ci = new ConnectionInfo(url, prop);
-        SessionInterface si = new SessionRemote(ci).connectEmbeddedOrServer(false);
-        CommandInterface commandInterface = si.prepareCommand(sql, -1); //此时fetchSize还未知
-
-        if (oldParams != null) {
-            ArrayList<? extends ParameterInterface> newParams = commandInterface.getParameters();
-            for (int i = 0, size = oldParams.size(); i < size; i++) {
-                newParams.get(i).setValue(oldParams.get(i).getParamValue(), true);
-            }
-        }
-
-        return commandInterface;
-    }
-
-    public static SessionInterface getSessionInterface(Session session, Properties info, String url) throws Exception {
-
-        Properties prop = new Properties();
-        for (String key : info.stringPropertyNames())
-            prop.setProperty(key, info.getProperty(key));
-        ConnectionInfo ci = new ConnectionInfo(url, prop);
-
-        return new SessionRemote(ci).connectEmbeddedOrServer(false);
     }
 
 }

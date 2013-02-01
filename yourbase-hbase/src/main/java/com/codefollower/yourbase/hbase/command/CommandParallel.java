@@ -82,8 +82,8 @@ public class CommandParallel implements CommandInterface {
                     hp.setRegionName(hri.getRegionName());
                     commands.add(new CommandWrapper(c, newSession));
                 } else {
-                    commands.add(commandProxy.getCommandInterface(originalSession.getOriginalProperties(),
-                            hri.getRegionServerURL(), CommandProxy.createSQL(hri.getRegionName(), planSQL())));
+                    commands.add(commandProxy.getCommandInterface(hri.getRegionServerURL(),
+                            CommandProxy.createSQL(hri.getRegionName(), planSQL())));
                 }
             }
         } catch (Exception e) {

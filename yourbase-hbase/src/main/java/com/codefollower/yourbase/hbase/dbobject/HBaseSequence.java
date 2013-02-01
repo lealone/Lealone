@@ -42,7 +42,7 @@ public class HBaseSequence extends Sequence {
         if (s.getRegionServer() != null) {
             SessionInterface si = null;
             try {
-                si = CommandProxy.getSessionInterface(s, s.getOriginalProperties(), HBaseUtils.getMasterURL());
+                si = CommandProxy.getSessionInterface(s.getOriginalProperties(), HBaseUtils.getMasterURL());
                 CommandInterface ci = si.prepareCommand("ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", 1);
                 //ci.executeUpdate();
                 ResultInterface ri = ci.executeQuery(-1, false);
