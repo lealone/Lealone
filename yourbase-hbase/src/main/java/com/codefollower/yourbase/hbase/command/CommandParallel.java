@@ -47,19 +47,19 @@ public class CommandParallel implements CommandInterface {
     private final HBaseSession originalSession;
     private final Prepared originalPrepared;
     private final String sql;
-    private final List<CommandInterface> commands;
-    private int fetchSize;
+    private final List<CommandInterface> commands; //保证不会为null且size>=2
 
-    public CommandParallel(HBaseSession session, CommandProxy commandProxy, //
+    public CommandParallel(HBaseSession originalSession, CommandProxy commandProxy, //
             byte[] tableName, List<byte[]> startKeys, String sql, Prepared originalPrepared) {
         if (startKeys == null)
             throw new RuntimeException("startKeys is null");
         else if (startKeys.size() < 2)
             throw new RuntimeException("startKeys.size() < 2");
 
-        this.originalSession = session;
+        this.originalSession = originalSession;
         this.originalPrepared = originalPrepared;
         this.sql = sql;
+        this.commands = new ArrayList<CommandInterface>(startKeys.size());
 
         try {
             if (pool == null) {
@@ -72,7 +72,6 @@ public class CommandParallel implements CommandInterface {
                     }
                 }
             }
-            commands = new ArrayList<CommandInterface>(startKeys.size());
             for (byte[] startKey : startKeys) {
                 HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
                 if (CommandProxy.isLocal(originalSession, hri)) {
@@ -80,7 +79,7 @@ public class CommandParallel implements CommandInterface {
                     Command c = newSession.prepareLocal(sql);
                     HBasePrepared hp = (HBasePrepared) c.getPrepared();
                     hp.setRegionName(hri.getRegionName());
-                    commands.add(new CommandWrapper(c, newSession));
+                    commands.add(new CommandWrapper(c, newSession)); //newSession在Command关闭的时候自动关闭
                 } else {
                     commands.add(commandProxy.getCommandInterface(hri.getRegionServerURL(),
                             CommandProxy.createSQL(hri.getRegionName(), planSQL())));
@@ -127,10 +126,6 @@ public class CommandParallel implements CommandInterface {
 
     @Override
     public ResultInterface executeQuery(final int maxRows, final boolean scrollable) {
-        int size = commands.size();
-        for (int i = 0; i < size; i++) {
-            commands.get(i).setFetchSize(fetchSize);
-        }
         Select originalSelect = (Select) originalPrepared;
         //originalSelect.isGroupQuery()如果是false，那么按org.apache.hadoop.hbase.client.ClientScanner的功能来实现。
         //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery，
@@ -138,6 +133,7 @@ public class CommandParallel implements CommandInterface {
         if (!originalSelect.isGroupQuery())
             return new HBaseSerializedResult(commands, maxRows, scrollable);
 
+        int size = commands.size();
         List<Future<ResultInterface>> futures = New.arrayList(size);
         List<ResultInterface> results = new ArrayList<ResultInterface>(size);
         for (int i = 0; i < size; i++) {
@@ -169,7 +165,6 @@ public class CommandParallel implements CommandInterface {
         List<Future<Integer>> futures = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
-            c.setFetchSize(fetchSize);
             futures.add(pool.submit(new Callable<Integer>() {
                 public Integer call() throws Exception {
                     return c.executeUpdate();
@@ -205,11 +200,14 @@ public class CommandParallel implements CommandInterface {
 
     @Override
     public int getFetchSize() {
-        return fetchSize;
+        return commands.get(0).getFetchSize();
     }
 
     @Override
     public void setFetchSize(int fetchSize) {
-        this.fetchSize = fetchSize;
+        int size = commands.size();
+        for (int i = 0; i < size; i++) {
+            commands.get(i).setFetchSize(fetchSize);
+        }
     }
 }
