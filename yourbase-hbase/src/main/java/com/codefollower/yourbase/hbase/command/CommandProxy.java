@@ -51,10 +51,9 @@ import com.codefollower.yourbase.util.StringUtils;
 import com.codefollower.yourbase.value.Value;
 
 public class CommandProxy extends Command {
-    private final HBaseSession session;
-    private CommandInterface proxyCommand;
-    private Prepared originalPrepared;
-    private ArrayList<? extends ParameterInterface> originalParams;
+    private final HBaseSession originalSession;
+    private final Prepared originalPrepared;
+    private final ArrayList<? extends ParameterInterface> originalParams;
 
     /**
      * SQL是否是参数化的？
@@ -62,11 +61,13 @@ public class CommandProxy extends Command {
      * 所以此时rowKey字段还没有值，无法确定当前SQL要放到哪里执行，
      * 只能推迟到executeQuery和executeUpdate时再解析rowKey
      */
-    private boolean isParameterized;
+    private final boolean isParameterized;
 
-    public CommandProxy(Session session, String sql, Command originalCommand) {
-        super(session, sql);
-        this.session = (HBaseSession) session;
+    private CommandInterface proxyCommand;
+
+    public CommandProxy(Session originalSession, String sql, Command originalCommand) {
+        super(originalSession, sql);
+        this.originalSession = (HBaseSession) originalSession;
         originalPrepared = originalCommand.getPrepared();
         originalParams = originalCommand.getParameters();
 
@@ -88,11 +89,11 @@ public class CommandProxy extends Command {
         try {
             //1. DDL类型的SQL全转向Master处理
             if (originalPrepared instanceof DefineCommand) {
-                if (session.getMaster() != null) {
+                if (originalSession.getMaster() != null) {
                     proxyCommand = originalCommand;
-                } else if (session.getRegionServer() != null) {
+                } else if (originalSession.getRegionServer() != null) {
                     ServerName msn = HBaseUtils.getMasterServerName();
-                    ServerName rsn = session.getRegionServer().getServerName();
+                    ServerName rsn = originalSession.getRegionServer().getServerName();
                     if (ZooKeeperAdmin.getTcpPort(msn) == ZooKeeperAdmin.getTcpPort(rsn)
                             && msn.getHostname().equalsIgnoreCase(rsn.getHostname())) {
                         proxyCommand = originalCommand;
@@ -128,7 +129,7 @@ public class CommandProxy extends Command {
                 throw new RuntimeException("rowKey is null");
 
             HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, rowKey);
-            if (isLocal(session, hri)) {
+            if (isLocal(originalSession, hri)) {
                 hp.setRegionName(hri.getRegionName());
                 proxyCommand = originalCommand;
             } else {
@@ -169,14 +170,14 @@ public class CommandProxy extends Command {
 
             if (oneRegion) {
                 HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, start);
-                if (CommandProxy.isLocal(session, hri)) {
+                if (CommandProxy.isLocal(originalSession, hri)) {
                     hp.setRegionName(hri.getRegionName());
                     proxyCommand = originalCommand;
                 } else {
                     proxyCommand = getCommandInterface(hri.getRegionServerURL(), createSQL(hri.getRegionName(), sql));
                 }
             } else {
-                proxyCommand = new CommandParallel(session, this, tableName, startKeys, sql, originalPrepared);
+                proxyCommand = new CommandParallel(originalSession, this, tableName, startKeys, sql, originalPrepared);
             }
         } else {
             proxyCommand = originalCommand;
@@ -213,8 +214,8 @@ public class CommandProxy extends Command {
         }
         setProxyCommandParameters();
         int updateCount = proxyCommand.executeUpdate();
-        if (!session.getDatabase().isMaster() && originalPrepared instanceof DefineCommand) {
-            session.getDatabase().refreshMetaTable();
+        if (!originalSession.getDatabase().isMaster() && originalPrepared instanceof DefineCommand) {
+            originalSession.getDatabase().refreshMetaTable();
 
             try {
                 HBaseUtils.reset(); //执行完DDL后，元数据已变动，清除HConnection中的相关缓存
@@ -279,7 +280,7 @@ public class CommandProxy extends Command {
 
     CommandInterface getCommandInterface(String url, String sql) throws Exception {
         //TODO 如何重用SessionInterface
-        SessionInterface si = getSessionInterface(session.getOriginalProperties(), url);
+        SessionInterface si = getSessionInterface(originalSession.getOriginalProperties(), url);
         CommandInterface commandInterface = si.prepareCommand(sql, -1); //此时fetchSize还未知
 
         //传递最初的参数值到新的CommandInterface
