@@ -25,7 +25,6 @@ public class ConditionExists extends Condition {
 
     public ConditionExists(Query query) {
         this.query = query;
-        query.setSubquery(true);
     }
 
     public Value getValue(Session session) {

@@ -37,14 +37,6 @@ public class HBaseSelect extends Select implements HBasePrepared {
         this.session = (HBaseSession) session;
     }
 
-    @Override
-    public boolean isDistributed() {
-        if (!(topTableFilter.getTable().supportsColumnFamily()))
-            return false;
-
-        return true;
-    }
-
     protected void prepareCondition() {
         TableFilter tf = topFilters.get(0);
         if (condition != null)

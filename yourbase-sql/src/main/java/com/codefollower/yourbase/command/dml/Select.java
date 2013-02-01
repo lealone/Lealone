@@ -1409,14 +1409,4 @@ public class Select extends Query {
         }
         return false;
     }
-
-    @Override
-    public boolean isDistributed() {
-        return false;
-    }
-
-    @Override
-    public String[] getPlanSQLs() {
-        return null;
-    }
 }

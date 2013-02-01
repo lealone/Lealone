@@ -30,7 +30,6 @@ public class Subquery extends Expression {
 
     public Subquery(Query query) {
         this.query = query;
-        query.setSubquery(true);
     }
 
     public Value getValue(Session session) {

@@ -39,7 +39,6 @@ public class ConditionInSelect extends Condition {
         this.query = query;
         this.all = all;
         this.compareType = compareType;
-        query.setSubquery(true);
     }
 
     public Value getValue(Session session) {

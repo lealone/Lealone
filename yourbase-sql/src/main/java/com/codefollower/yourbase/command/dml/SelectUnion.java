@@ -418,14 +418,4 @@ public class SelectUnion extends Query {
     public boolean allowGlobalConditions() {
         return left.allowGlobalConditions() && right.allowGlobalConditions();
     }
-
-    @Override
-    public boolean isDistributed() {
-        return left.isDistributed() && right.isDistributed();
-    }
-
-    @Override
-    public String[] getPlanSQLs() {
-        throw DbException.getUnsupportedException("getPlanSQLs()");
-    }
 }

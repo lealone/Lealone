@@ -67,7 +67,6 @@ public abstract class Query extends Prepared {
     private LocalResult lastResult;
     private Value[] lastParameters;
     private boolean cacheableChecked;
-    private boolean isSubquery;
 
     Query(Session session) {
         super(session);
@@ -505,17 +504,5 @@ public abstract class Query extends Prepared {
         ExpressionVisitor visitor = ExpressionVisitor.getMaxModificationIdVisitor();
         isEverything(visitor);
         return visitor.getMaxDataModificationId();
-    }
-
-    public abstract boolean isDistributed();
-
-    public abstract String[] getPlanSQLs();
-
-    public boolean isSubquery() {
-        return isSubquery;
-    }
-
-    public void setSubquery(boolean isSubquery) {
-        this.isSubquery = isSubquery;
     }
 }
