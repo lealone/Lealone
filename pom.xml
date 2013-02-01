@@ -23,7 +23,7 @@
 		<module>yourbase-test</module>
 	</modules>
 
-		<build>
+	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -32,6 +32,10 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
 			</plugin>
 		</plugins>
 		<pluginManagement>
@@ -77,8 +81,8 @@
 					<artifactId>maven-surefire-plugin</artifactId>
 					<version>2.12</version>
 				</plugin>
-				<!--
 				<plugin>
+				    <groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-assembly-plugin</artifactId>
 					<version>2.2-beta-5</version>
 					<configuration>
@@ -88,7 +92,6 @@
 						</descriptors>
 					</configuration>
 				</plugin>
-				-->
 			</plugins>
 		</pluginManagement>
 	</build>

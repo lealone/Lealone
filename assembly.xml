@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<assembly>
+	<formats>
+		<format>dir</format>
+	</formats>
+
+	<baseDirectory>/</baseDirectory>
+
+	<moduleSets>
+		<moduleSet>
+			<includes>
+				<include>com.codefollower.yourbase:yourbase-common</include>
+			</includes>
+			<binaries>
+				<unpack>false</unpack>
+				<outputDirectory>yourbase-common</outputDirectory>
+				<dependencySets>
+					<dependencySet>
+						<useTransitiveFiltering>true</useTransitiveFiltering>
+						<useTransitiveDependencies>true</useTransitiveDependencies>
+					</dependencySet>
+				</dependencySets>
+			</binaries>
+		</moduleSet>
+
+		<moduleSet>
+			<includes>
+				<include>com.codefollower.yourbase:yourbase-hbase</include>
+			</includes>
+			<binaries>
+				<unpack>false</unpack>
+				<outputDirectory>yourbase-hbase</outputDirectory>
+				<dependencySets>
+					<dependencySet>
+						<useTransitiveFiltering>true</useTransitiveFiltering>
+						<useTransitiveDependencies>true</useTransitiveDependencies>
+					</dependencySet>
+				</dependencySets>
+			</binaries>
+		</moduleSet>
+
+		<moduleSet>
+			<includes>
+				<include>com.codefollower.yourbase:yourbase-mvstore</include>
+			</includes>
+			<binaries>
+				<unpack>false</unpack>
+				<outputDirectory>yourbase-mvstore</outputDirectory>
+				<dependencySets>
+					<dependencySet>
+						<useTransitiveFiltering>true</useTransitiveFiltering>
+						<useTransitiveDependencies>true</useTransitiveDependencies>
+					</dependencySet>
+				</dependencySets>
+			</binaries>
+		</moduleSet>
+
+		<moduleSet>
+			<includes>
+				<include>com.codefollower.yourbase:yourbase-regular</include>
+			</includes>
+			<binaries>
+				<unpack>false</unpack>
+				<outputDirectory>yourbase-regular</outputDirectory>
+				<dependencySets>
+					<dependencySet>
+						<useTransitiveFiltering>true</useTransitiveFiltering>
+						<useTransitiveDependencies>true</useTransitiveDependencies>
+					</dependencySet>
+				</dependencySets>
+			</binaries>
+		</moduleSet>
+
+	</moduleSets>
+</assembly>
