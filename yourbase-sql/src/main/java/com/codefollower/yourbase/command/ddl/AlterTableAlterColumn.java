@@ -322,7 +322,6 @@ public class AlterTableAlterColumn extends SchemaCommand {
         data.create = true;
         data.session = session;
         data.tableEngine = table.getTableEngine();
-        data.cloningTable = table;
         Table newTable = getSchema().createTable(data);
         newTable.setComment(table.getComment());
         StringBuilder buff = new StringBuilder();

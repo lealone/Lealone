@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.yourbase.test.jdbc.ddl;
+package com.codefollower.yourbase.test.jdbc;
 
 import static org.junit.Assert.assertTrue;
 
@@ -26,12 +26,10 @@ import java.sql.SQLException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.codefollower.yourbase.test.jdbc.TestBase;
-
-public class CreateHBaseTableTest extends TestBase {
+public class HBaseDynamicTableTest extends TestBase {
     @Test
     public void run() throws Exception {
-        createTableSQL("CREATE HBASE TABLE IF NOT EXISTS CreateHBaseTableTest (" //
+        createTableSQL("CREATE HBASE TABLE IF NOT EXISTS HBaseDynamicTableTest (" //
                 //此OPTIONS对应org.apache.hadoop.hbase.HTableDescriptor的参数选项
                 + "OPTIONS(DEFERRED_LOG_FLUSH='false'), "
 
@@ -50,15 +48,15 @@ public class CreateHBaseTableTest extends TestBase {
                 + "COLUMN FAMILY cf3" //
                 + ")");
 
-        stmt.executeUpdate("INSERT INTO CreateHBaseTableTest(_rowkey_, f1, f2, f3) VALUES('01', 10, 'b', CURRENT_DATE)");
+        stmt.executeUpdate("INSERT INTO HBaseDynamicTableTest(_rowkey_, f1, f2, f3) VALUES('01', 10, 'b', CURRENT_DATE)");
         //cf2.f1是动态字段
-        stmt.executeUpdate("INSERT INTO CreateHBaseTableTest(_rowkey_, f1, f2, f3, cf2.f1) "
+        stmt.executeUpdate("INSERT INTO HBaseDynamicTableTest(_rowkey_, f1, f2, f3, cf2.f1) "
                 + "VALUES('01', 10, 'b', CURRENT_DATE, CURRENT_TIME)");
 
         //cf2.f1是动态字段，虽然在cf2中未定义它的类型，但是前面第一次insert时用了CURRENT_TIME，所以就确定为time类型
         //这次的'invalid time'是字符串，所以是非法的。
         try {
-            stmt.executeUpdate("INSERT INTO CreateHBaseTableTest(_rowkey_, f1, f2, f3, cf2.f1) "
+            stmt.executeUpdate("INSERT INTO HBaseDynamicTableTest(_rowkey_, f1, f2, f3, cf2.f1) "
                     + "VALUES('01', 10, 'b', CURRENT_DATE, 'invalid time')");
             Assert.fail("not throw SQLException");
         } catch (SQLException e) {
@@ -66,12 +64,12 @@ public class CreateHBaseTableTest extends TestBase {
         }
 
         String db = com.codefollower.yourbase.hbase.util.HBaseUtils.HBASE_DB_NAME;
-        sql = "SELECT " + db + ".public.CreateHBaseTableTest.cf1.f1 FROM CreateHBaseTableTest";
-        sql = "SELECT public.CreateHBaseTableTest.cf1.f1 FROM CreateHBaseTableTest";
-        sql = "SELECT CreateHBaseTableTest.cf1.f1 FROM CreateHBaseTableTest";
-        sql = "SELECT cf1.f1 FROM CreateHBaseTableTest";
-        sql = "SELECT f1 FROM CreateHBaseTableTest";
-        sql = "SELECT * FROM CreateHBaseTableTest";
+        sql = "SELECT " + db + ".public.HBaseDynamicTableTest.cf1.f1 FROM HBaseDynamicTableTest";
+        sql = "SELECT public.HBaseDynamicTableTest.cf1.f1 FROM HBaseDynamicTableTest";
+        sql = "SELECT HBaseDynamicTableTest.cf1.f1 FROM HBaseDynamicTableTest";
+        sql = "SELECT cf1.f1 FROM HBaseDynamicTableTest";
+        sql = "SELECT f1 FROM HBaseDynamicTableTest";
+        sql = "SELECT * FROM HBaseDynamicTableTest";
         printResultSet();
     }
 }

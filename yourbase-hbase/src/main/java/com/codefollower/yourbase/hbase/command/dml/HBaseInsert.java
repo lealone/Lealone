@@ -42,6 +42,7 @@ import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.StatementBuilder;
 import com.codefollower.yourbase.value.Value;
 import com.codefollower.yourbase.value.ValueString;
+import com.codefollower.yourbase.value.ValueUuid;
 
 //TODO
 //可Insert多条记录，但是因为不支持事务，所以有可能出现部分Insert成功、部分Insert失败。
@@ -61,7 +62,7 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     @Override
     public int update() {
         HBaseTable table = ((HBaseTable) this.table);
-        if (table.isModified()) {
+        if (table.isColumnsModified()) {
             alterTable = new StatementBuilder("ALTER TABLE ");
             //不能使用ALTER TABLE t ADD COLUMN(f1 int, f2 int)这样的语法，因为有可能多个RS都在执行这种语句，在Master那会有冲突
             alterTable.append(table.getSQL()).append(" ADD COLUMN IF NOT EXISTS ");
@@ -70,8 +71,8 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         }
         int updateCount = super.update();
         try {
-            if (table.isModified()) {
-                table.setModified(false);
+            if (table.isColumnsModified()) {
+                table.setColumnsModified(false);
                 SessionInterface si = CommandProxy
                         .getSessionInterface(session.getOriginalProperties(), HBaseUtils.getMasterURL());
                 for (Column c : alterColumns) {
@@ -99,7 +100,7 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         Expression e;
         for (int i = 0; i < columnLen; i++) {
             c = columns[i];
-            if (c.isRowKeyColumn())
+            if (!((HBaseTable) this.table).isStatic() && c.isRowKeyColumn())
                 continue;
             e = expr[i];
             if (e != null) {
@@ -110,11 +111,13 @@ public class HBaseInsert extends Insert implements HBasePrepared {
                     c.setType(v.getType());
                     //alterTable.appendExceptFirst(", ");
                     //alterTable.append(c.getCreateSQL());
-                    alterColumns.add(c);
+                    if (alterColumns != null)
+                        alterColumns.add(c);
                 }
                 try {
                     v = c.convert(e.getValue(session));
                     row.setValue(c.getColumnId(), v);
+
                     put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
                 } catch (DbException ex) {
                     throw setRow(ex, rowId, getSQL(expr));
@@ -144,7 +147,7 @@ public class HBaseInsert extends Insert implements HBasePrepared {
             index++;
         }
         if (table.isStatic())
-            return System.currentTimeMillis() + "";
+            return ValueUuid.getNewRandom().getString();
         return null;
     }
 

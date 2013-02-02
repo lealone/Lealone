@@ -10,7 +10,6 @@ import java.util.ArrayList;
 
 import com.codefollower.yourbase.dbobject.Schema;
 import com.codefollower.yourbase.dbobject.table.Column;
-import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.util.New;
 
@@ -78,7 +77,5 @@ public class CreateTableData {
      * The table is hidden.
      */
     public boolean isHidden;
-
-    public Table cloningTable;
 
 }

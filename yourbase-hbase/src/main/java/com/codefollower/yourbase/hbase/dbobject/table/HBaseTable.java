@@ -57,25 +57,62 @@ import com.codefollower.yourbase.value.Value;
 
 public class HBaseTable extends TableBase {
     private static final String STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME = "CF";
+
+    private final boolean isStatic;
     private final ArrayList<Index> indexes = New.arrayList();
-    private HTableDescriptor hTableDescriptor;
+    private final Index scanIndex;
+    private final HTableDescriptor hTableDescriptor;
+
     private String rowKeyName;
-    private Index scanIndex;
-    private Map<String, ArrayList<Column>> columnsMap;
-    private boolean modified;
     private Column rowKeyColumn;
-    private boolean isStatic;
+    private Map<String, ArrayList<Column>> columnsMap;
+
+    private boolean isColumnsModified;
+
+    public HBaseTable(CreateTableData data) {
+        super(data);
+        isStatic = true;
+
+        Column[] cols = getColumns();
+        for (Column c : cols) {
+            c.setColumnFamilyName(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME);
+        }
+        setColumns(cols);
+
+        HTableDescriptor htd = new HTableDescriptor(data.tableName);
+        htd.addFamily(new HColumnDescriptor(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME));
+        createIfNotExists(data.session, data.tableName, htd, null);
+
+        scanIndex = new HBaseTableIndex(this, data.id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
+        indexes.add(scanIndex);
+        hTableDescriptor = null; //静态表不需要这个字段
+    }
+
+    public HBaseTable(Session session, Schema schema, int id, String name, Map<String, ArrayList<Column>> columnsMap,
+            ArrayList<Column> columns, HTableDescriptor htd, byte[][] splitKeys) {
+        super(schema, id, name, true, true, HBaseTableEngine.class.getName(), false);
+        isStatic = false;
+
+        this.columnsMap = columnsMap;
+        setColumns(columns.toArray(new Column[columns.size()]));
+
+        createIfNotExists(session, name, htd, splitKeys);
+
+        scanIndex = new HBaseTableIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
+        indexes.add(scanIndex);
+        hTableDescriptor = htd;
+    }
 
     public boolean isStatic() {
         return isStatic;
     }
 
-    public boolean isModified() {
-        return modified;
+    public boolean isColumnsModified() {
+        return isColumnsModified;
     }
 
-    public void setModified(boolean modified) {
-        this.modified = modified;
+    public void setColumnsModified(boolean modified) {
+        this.isColumnsModified = modified;
     }
 
     public Column getRowKeyColumn() {
@@ -84,64 +121,6 @@ public class HBaseTable extends TableBase {
             rowKeyColumn.setTable(this, -2);
         }
         return rowKeyColumn;
-    }
-
-    public HBaseTable(CreateTableData data) {
-        super(data);
-        if (data.cloningTable != null) {
-            HBaseTable t = (HBaseTable) data.cloningTable;
-            hTableDescriptor = t.hTableDescriptor;
-            rowKeyName = t.rowKeyName;
-            rowKeyColumn = t.rowKeyColumn;
-            if (rowKeyColumn != null)
-                rowKeyColumn.setTable(this, rowKeyColumn.getColumnId());
-            isStatic = t.isStatic;
-
-            rebuildColumnsMap(getColumns(), t.getDefaultColumnFamilyName());
-        } else {
-            isStatic = true;
-            Column[] cols = getColumns();
-            for (Column c : cols) {
-                //if (c.isPrimaryKey()) { //在Parser.parseColumn中设为false了不能这么用
-                if (c.isRowKeyColumn()) {
-                    rowKeyColumn = c.getClone();
-                    rowKeyColumn.setTable(this, -2);
-                    rowKeyColumn.setRowKeyColumn(true);
-                    rowKeyName = rowKeyColumn.getName();
-                }
-
-                c.setColumnFamilyName(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME);
-            }
-            //        if (rowKeyColumn == null) {
-            //            throw new RuntimeException("static type table '" + data.tableName + "' not found a primary key");
-            //        }
-            setColumns(cols);
-
-            hTableDescriptor = new HTableDescriptor(data.tableName);
-            if (rowKeyColumn != null)
-                hTableDescriptor.setValue(Options.ON_ROW_KEY_NAME, rowKeyName);
-            hTableDescriptor.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME);
-            hTableDescriptor.addFamily(new HColumnDescriptor(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME));
-
-            createIfNotExists(data.session, data.tableName, hTableDescriptor, null);
-        }
-
-        scanIndex = new HBaseTableIndex(this, data.id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
-        indexes.add(scanIndex);
-    }
-
-    public HBaseTable(Session session, Schema schema, int id, String name, Map<String, ArrayList<Column>> columnsMap,
-            ArrayList<Column> columns, HTableDescriptor htd, byte[][] splitKeys) {
-        super(schema, id, name, true, true, HBaseTableEngine.class.getName(), false);
-        this.columnsMap = columnsMap;
-
-        Column[] cols = new Column[columns.size()];
-        columns.toArray(cols);
-        setColumns(cols);
-        scanIndex = new HBaseTableIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
-        hTableDescriptor = htd;
-        createIfNotExists(session, name, htd, splitKeys);
-        indexes.add(scanIndex);
     }
 
     public String getDefaultColumnFamilyName() {
@@ -159,7 +138,7 @@ public class HBaseTable extends TableBase {
         if (rowKeyName == null) {
             if (isStatic) {
                 for (Index idx : getIndexes()) {
-                    if (idx.getIndexType().isPrimaryKey() || idx.getIndexType().isUnique()) {
+                    if (idx.getIndexType().isPrimaryKey()) {
                         if (idx.getIndexColumns().length == 1) {
                             rowKeyColumn = idx.getIndexColumns()[0].column.getClone();
                             rowKeyColumn.setTable(this, -2);
@@ -419,7 +398,7 @@ public class HBaseTable extends TableBase {
                 Column c = new Column(columnName);
                 newColumns[oldColumns.length] = c;
                 setColumnsNoCheck(newColumns);
-                modified = true;
+                isColumnsModified = true;
 
                 ArrayList<Column> list = columnsMap.get(c.getColumnFamilyName());
                 if (list == null) {

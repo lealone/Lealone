@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.yourbase.test.jdbc.ddl;
+package com.codefollower.yourbase.test.jdbc;
 
 import static org.junit.Assert.assertTrue;
 
@@ -26,19 +26,10 @@ import java.sql.SQLException;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.codefollower.yourbase.test.jdbc.TestBase;
-
-public class CreateTableTest extends TestBase {
+public class HBaseStaticTableTest extends TestBase {
     @Test
     public void run() throws Exception {
-        String tableName = "CreateTableTest3";
-
-        //        try {
-        //            createTableSQL("CREATE TABLE IF NOT EXISTS CreateTableTest1 (f1 int, f2 long)");
-        //            Assert.fail("not throw SQLException");
-        //        } catch (SQLException e) {
-        //            assertTrue(e.getMessage().contains("not found a primary key"));
-        //        }
+        String tableName = "HBaseStaticTableTest";
 
         createTableSQL("CREATE TABLE IF NOT EXISTS " + tableName + " (f1 int primary key, f2 long)");
         stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(1, 2)");
@@ -56,5 +47,15 @@ public class CreateTableTest extends TestBase {
         }
 
         //stmt.executeUpdate("DROP TABLE IF EXISTS " + tableName);
+
+        tableName = "HBaseStaticTableTestNoPrimaryKey";
+
+        createTableSQL("CREATE TABLE IF NOT EXISTS " + tableName + " (f1 int, f2 long)");
+        stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(1, 2)");
+        stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(2, 3)");
+        stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(3, 4)");
+        sql = "SELECT * FROM " + tableName;
+        printResultSet();
     }
+
 }
