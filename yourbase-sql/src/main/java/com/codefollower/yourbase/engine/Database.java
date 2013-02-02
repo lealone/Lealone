@@ -191,10 +191,6 @@ public class Database implements DataHandler {
     public Database() {
     }
 
-    public Database(ConnectionInfo ci, String cipher) {
-        init(ci, cipher);
-    }
-
     public void init(ConnectionInfo ci, String cipher) {
         String name = ci.getName();
         this.dbSettings = ci.getDbSettings();

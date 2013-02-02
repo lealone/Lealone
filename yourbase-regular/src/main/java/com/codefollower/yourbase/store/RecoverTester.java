@@ -108,7 +108,8 @@ public class RecoverTester implements Recorder {
             p.setProperty("user", "");
             p.setProperty("password", "");
             ConnectionInfo ci = new ConnectionInfo("jdbc:yourbase:" + testDatabase + ";FILE_LOCK=NO;TRACE_LEVEL_FILE=0", p);
-            Database database = new Database(ci, null);
+            Database database = new Database();
+            database.init(ci, null);
             // close the database
             Session session = database.getSystemSession();
             session.prepare("script to '" + testDatabase + ".sql'").query(0);
@@ -150,7 +151,8 @@ public class RecoverTester implements Recorder {
             // avoid using the Engine class to avoid deadlocks
             Properties p = new Properties();
             ConnectionInfo ci = new ConnectionInfo("jdbc:yourbase:" + testDatabase + ";FILE_LOCK=NO", p);
-            Database database = new Database(ci, null);
+            Database database = new Database();
+            database.init(ci, null);
             // close the database
             database.removeSession(null);
         } catch (Exception e) {

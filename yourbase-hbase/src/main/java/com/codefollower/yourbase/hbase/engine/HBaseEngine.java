@@ -36,7 +36,7 @@ public class HBaseEngine extends Engine {
     }
 
     @Override
-    protected HBaseDatabase createDatabase(ConnectionInfo ci, String cipher) {
-        return new HBaseDatabase(ci, cipher);
+    protected HBaseDatabase createDatabase() {
+        return new HBaseDatabase();
     }
 }

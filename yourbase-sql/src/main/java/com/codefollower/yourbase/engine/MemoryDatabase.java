@@ -19,15 +19,7 @@
  */
 package com.codefollower.yourbase.engine;
 
-import com.codefollower.yourbase.engine.ConnectionInfo;
 import com.codefollower.yourbase.engine.Database;
 
 public class MemoryDatabase extends Database {
-    public void init(ConnectionInfo ci, String cipher) {
-        super.init(ci, cipher);
-    }
-
-    public MemoryDatabase(ConnectionInfo ci, String cipher) {
-        super(ci, cipher);
-    }
 }

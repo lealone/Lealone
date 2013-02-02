@@ -19,15 +19,7 @@
  */
 package com.codefollower.yourbase.olap.engine;
 
-import com.codefollower.yourbase.engine.ConnectionInfo;
 import com.codefollower.yourbase.engine.Database;
 
 public class OlapDatabase extends Database {
-    public void init(ConnectionInfo ci, String cipher) {
-        super.init(ci, cipher);
-    }
-
-    public OlapDatabase(ConnectionInfo ci, String cipher) {
-        super(ci, cipher);
-    }
 }

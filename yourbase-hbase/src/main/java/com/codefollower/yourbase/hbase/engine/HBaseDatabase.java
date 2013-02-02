@@ -58,10 +58,6 @@ public class HBaseDatabase extends Database {
         DbObject dbObject;
     }
 
-    public HBaseDatabase(ConnectionInfo ci, String cipher) {
-        super(ci, cipher);
-    }
-
     @Override
     public void init(ConnectionInfo ci, String cipher) {
         this.isMaster = "M".equalsIgnoreCase(ci.getProperty("SERVER_TYPE"));

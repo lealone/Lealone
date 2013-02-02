@@ -43,8 +43,8 @@ public class Engine implements SessionFactory {
         return INSTANCE;
     }
 
-    protected Database createDatabase(ConnectionInfo ci, String cipher) {
-        return new Database(ci, cipher);
+    protected Database createDatabase() {
+        return new Database();
     }
 
     private Session openSession(ConnectionInfo ci, boolean ifExists, String cipher) {
@@ -63,7 +63,8 @@ public class Engine implements SessionFactory {
             if (ifExists && !Database.exists(name)) {
                 throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, name);
             }
-            database = createDatabase(ci, cipher);
+            database = createDatabase();
+            database.init(ci, cipher);
             opened = true;
             if (database.getAllUsers().size() == 0) {
                 // users is the last thing we add, so if no user is around,

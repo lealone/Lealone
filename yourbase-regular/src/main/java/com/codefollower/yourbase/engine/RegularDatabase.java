@@ -62,10 +62,7 @@ public class RegularDatabase extends Database {
     protected WriterThread writer;
     protected Server server;
 
-    public RegularDatabase(ConnectionInfo ci, String cipher) {
-        super(ci, cipher);
-    }
-
+    @Override
     public void init(ConnectionInfo ci, String cipher) {
         this.pageSize = ci.getProperty("PAGE_SIZE", Constants.DEFAULT_PAGE_SIZE);
         super.init(ci, cipher);
