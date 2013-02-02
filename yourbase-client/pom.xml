@@ -7,10 +7,10 @@
 		<version>0.1.0</version>
 	</parent>
 
-	<artifactId>yourbase-common</artifactId>
+	<artifactId>yourbase-client</artifactId>
 	<packaging>jar</packaging>
 	<version>${yourbase.version}</version>
-	<name>yourbase common</name>
+	<name>yourbase client</name>
 
 	<dependencies>
 		<!--

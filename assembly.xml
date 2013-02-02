@@ -10,11 +10,11 @@
 	<moduleSets>
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.yourbase:yourbase-common</include>
+				<include>com.codefollower.yourbase:yourbase-client</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>yourbase-common</outputDirectory>
+				<outputDirectory>yourbase-client</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>

@@ -68,10 +68,6 @@ public class Driver implements java.sql.Driver {
                 return DEFAULT_CONNECTION.get();
             }
 
-            //if (url.startsWith(DEFAULT_HBASE_URL)) {
-            //    url = DEFAULT_MEM_URL + url.substring(DEFAULT_HBASE_URL.length());
-            //    return new HBaseJdbcConnection(url, info);
-            //}
             return new JdbcConnection(url, info);
         } catch (Exception e) {
             throw DbException.toSQLException(e);

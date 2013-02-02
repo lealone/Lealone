@@ -15,7 +15,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>com.codefollower.yourbase</groupId>
-			<artifactId>yourbase-common</artifactId>
+			<artifactId>yourbase-client</artifactId>
 			<version>${yourbase.version}</version>
 		</dependency>
 	</dependencies>

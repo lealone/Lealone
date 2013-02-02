@@ -14,7 +14,7 @@
 	<version>0.1.0</version>
 	
 	<modules>
-		<module>yourbase-common</module>
+		<module>yourbase-client</module>
 		<module>yourbase-sql</module>
 		<module>yourbase-regular</module>
 		<module>yourbase-mvstore</module>
