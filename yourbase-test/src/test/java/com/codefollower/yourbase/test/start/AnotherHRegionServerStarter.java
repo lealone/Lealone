@@ -27,7 +27,7 @@ import org.apache.hadoop.hbase.regionserver.HRegionServerCommandLine;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.util.ToolRunner;
 
-//共用同一个hbase-site文件，但是使用三个同的端口号
+//共用同一个hbase-site文件，但是使用三个不同的端口号
 public class AnotherHRegionServerStarter {
 
     public static void main(String[] args) throws Exception {

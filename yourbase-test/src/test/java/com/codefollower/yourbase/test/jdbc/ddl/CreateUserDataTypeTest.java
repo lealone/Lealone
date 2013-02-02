@@ -19,6 +19,11 @@
  */
 package com.codefollower.yourbase.test.jdbc.ddl;
 
+import static org.junit.Assert.assertTrue;
+
+import java.sql.SQLException;
+
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.codefollower.yourbase.test.jdbc.TestBase;
@@ -40,6 +45,11 @@ public class CreateUserDataTypeTest extends TestBase {
         //如CREATE DATATYPE IF NOT EXISTS int AS VARCHAR(255)
         //但是非隐藏类型就不能覆盖
         //如CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255)
-        //stmt.executeUpdate("CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
+        try {
+            stmt.executeUpdate("CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
+            Assert.fail("not throw SQLException");
+        } catch (SQLException e) {
+            assertTrue(e.getMessage().toLowerCase().contains("user data type"));
+        }
     }
 }

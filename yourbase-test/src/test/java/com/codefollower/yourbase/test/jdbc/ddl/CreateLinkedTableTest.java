@@ -23,15 +23,23 @@ import org.junit.Test;
 
 import com.codefollower.yourbase.test.jdbc.TestBase;
 
+//TODO 支持LinkedTable
 public class CreateLinkedTableTest extends TestBase {
     @Test
     public void run() throws Exception {
-        stmt.executeUpdate("DROP TABLE IF EXISTS CreateLinkedTableTest");
-        stmt.executeUpdate("CREATE LINKED TABLE IF NOT EXISTS CreateLinkedTableTest "
-                + "('com.mysql.jdbc.Driver','jdbc:mysql://localhost:3306/test'," + "'root', 'zhh', 'BenchWrite') EMIT UPDATES");
-
-        sql = "select * from CreateLinkedTableTest";
-        executeQuery();
+        //        stmt.executeUpdate("DROP TABLE IF EXISTS memtable");
+        //        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS memtable (f1 int primary key, f2 long) ENGINE memory");
+        //        stmt.executeUpdate("INSERT INTO memtable(f1, f2) VALUES(1, 2)");
+        //        stmt.executeUpdate("INSERT INTO memtable(f1, f2) VALUES(2, 3)");
+        //        stmt.executeUpdate("INSERT INTO memtable(f1, f2) VALUES(3, 4)");
+        //
+        //        stmt.executeUpdate("DROP TABLE IF EXISTS CreateLinkedTableTest");
+        //        stmt.executeUpdate("CREATE LINKED TABLE IF NOT EXISTS CreateLinkedTableTest " //
+        //                + "('" + com.codefollower.yourbase.Driver.class.getName() + "','" + url + "'," //
+        //                + "'sa', '', 'memtable') EMIT UPDATES");
+        //
+        //        sql = "select * from CreateLinkedTableTest";
+        //        executeQuery();
 
     }
 }

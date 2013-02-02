@@ -19,6 +19,11 @@
  */
 package com.codefollower.yourbase.test.jdbc.ddl;
 
+import static org.junit.Assert.assertTrue;
+
+import java.sql.SQLException;
+
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.codefollower.yourbase.test.jdbc.TestBase;
@@ -32,6 +37,9 @@ public class CreateUserTest extends TestBase {
         stmt.executeUpdate("DROP USER IF EXISTS sa1 CASCADE");
         //stmt.executeUpdate("DROP USER IF EXISTS SA2 CASCADE");
         stmt.executeUpdate("DROP USER IF EXISTS SA3 CASCADE");
+
+        stmt.executeUpdate("DROP SCHEMA IF EXISTS TEST_SCHEMA2");
+        stmt.executeUpdate("DROP USER IF EXISTS SA222 CASCADE");
 
         stmt.executeUpdate("CREATE USER IF NOT EXISTS sa1 PASSWORD 'abc' ADMIN");
         //X不加也是可以的
@@ -47,7 +55,12 @@ public class CreateUserTest extends TestBase {
         stmt.executeUpdate("ALTER USER SA2 SET SALT X'123456' HASH X'78'");
 
         stmt.executeUpdate("ALTER USER SA2 RENAME TO SA222");
-        stmt.executeUpdate("ALTER USER SA222 ADMIN false");
+        try {
+            stmt.executeUpdate("ALTER USER SA222 ADMIN false");
+            Assert.fail("not throw SQLException");
+        } catch (SQLException e) {
+            assertTrue(e.getMessage().toLowerCase().contains("cannot drop"));
+        }
         //rightTest();
     }
 

@@ -37,7 +37,7 @@ public class AlterSchemaRenameTest extends TestBase {
         stmt.executeUpdate("DROP SCHEMA IF EXISTS schema1");
         stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS schema0 AUTHORIZATION sa");
 
-        stmt.executeUpdate("ALTER SCHEMA mydb.public.schema0 RENAME TO schema1");
+        stmt.executeUpdate("ALTER SCHEMA public.schema0 RENAME TO schema1");
 
     }
 

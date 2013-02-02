@@ -36,7 +36,7 @@ public class AlterIndexRenameTest extends TestBase {
         //stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS schema0 AUTHORIZATION sa");
         //stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO schema0.idx1");
 
-        stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO idx1");
+        stmt.executeUpdate("ALTER INDEX public.idx0 RENAME TO idx1");
 
     }
 
