@@ -17,33 +17,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.yourbase.test.jdbc;
+package com.codefollower.yourbase.test.jdbc.misc;
 
-import static junit.framework.Assert.assertEquals;
+import com.codefollower.yourbase.test.jdbc.TestBase;
 
-import java.sql.CallableStatement;
-import java.sql.Types;
-import org.junit.Test;
-
-public class CallableStatementTest extends TestBase {
-    @Test
+//测试com.codefollower.yourbase.command.Parser.readTableOrView(String)
+public class TableNotFoundTest extends TestBase {
+    @org.junit.Test
     public void run() throws Exception {
         init();
-        test();
     }
 
     void init() throws Exception {
-        stmt.executeUpdate("CREATE ALIAS IF NOT EXISTS MY_SQRT FOR \"java.lang.Math.sqrt\"");
-    }
-
-    void test() throws Exception {
-        sql = "?= CALL MY_SQRT(?)";
-        CallableStatement cs = conn.prepareCall(sql);
-        cs.registerOutParameter(1, Types.DOUBLE); //sqlType其实被忽略了，所以设什么都没用
-        cs.setDouble(2, 4.0);
-        cs.execute();
-
-        assertEquals(2.0, cs.getDouble(1));
-        cs.close();
+        String t = "TT3";
+        createTableSQL("CREATE HBASE TABLE IF NOT EXISTS " + t + "(COLUMN FAMILY cf)");
+        stmt.executeUpdate("INSERT INTO " + t + "(_rowkey_, f1, f2) VALUES('01', 'a1', 10)");
     }
 }

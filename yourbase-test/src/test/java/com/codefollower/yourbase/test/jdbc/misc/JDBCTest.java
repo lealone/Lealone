@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.yourbase.test.jdbc;
+package com.codefollower.yourbase.test.jdbc.misc;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -27,6 +27,8 @@ import static junit.framework.Assert.assertEquals;
 //import org.apache.hadoop.hbase.client.Result;
 //import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
+
+import com.codefollower.yourbase.test.jdbc.TestBase;
 
 //TODO 由于HBase不支持事务，目前只能按rowKey删除或更新单条记录
 public class JDBCTest extends TestBase {
