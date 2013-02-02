@@ -56,11 +56,9 @@ import com.codefollower.yourbase.message.TraceSystem;
 import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.result.SearchRow;
 import com.codefollower.yourbase.store.DataHandler;
-import com.codefollower.yourbase.store.FileLock;
 import com.codefollower.yourbase.store.FileStore;
 import com.codefollower.yourbase.store.LobStorage;
 import com.codefollower.yourbase.store.fs.FileUtils;
-import com.codefollower.yourbase.tools.DeleteDbFiles;
 import com.codefollower.yourbase.util.BitField;
 import com.codefollower.yourbase.util.MathUtils;
 import com.codefollower.yourbase.util.New;
@@ -131,11 +129,9 @@ public class Database implements DataHandler {
     protected Session systemSession;
     protected Table meta;
     protected Index metaIdIndex;
-    protected FileLock lock;
     protected boolean starting;
     protected TraceSystem traceSystem;
     protected Trace trace;
-    protected int fileLockMethod;
     private Role publicRole;
     private long modificationDataId;
     private long modificationMetaId;
@@ -153,7 +149,7 @@ public class Database implements DataHandler {
     private int powerOffCount = initialPowerOffCount;
     private int closeDelay;
     protected DatabaseCloser delayedCloser;
-    private volatile boolean closing;
+    protected volatile boolean closing;
     private boolean ignoreCase;
     protected boolean deleteFilesOnDisconnect;
     private String lobCompressionAlgorithm;
@@ -175,8 +171,6 @@ public class Database implements DataHandler {
     protected volatile long reconnectCheckNext;
     protected volatile boolean reconnectChangePending;
     private volatile int checkpointAllowed;
-    private volatile boolean checkpointRunning;
-    private final Object reconnectSync = new Object();
     protected int cacheSize;
     protected int compactMode;
     private SourceCompiler compiler;
@@ -185,7 +179,6 @@ public class Database implements DataHandler {
     private LobStorage lobStorage;
     private int defaultTableType = Table.TYPE_CACHED;
     private DbSettings dbSettings;
-    protected int reconnectCheckDelay;
     protected int logMode;
 
     public Database() {
@@ -194,7 +187,6 @@ public class Database implements DataHandler {
     public void init(ConnectionInfo ci, String cipher) {
         String name = ci.getName();
         this.dbSettings = ci.getDbSettings();
-        this.reconnectCheckDelay = dbSettings.reconnectCheckDelay;
         this.compareMode = CompareMode.getInstance(null, 0);
         this.persistent = ci.isPersistent();
         this.filePasswordHash = ci.getFilePasswordHash();
@@ -203,7 +195,6 @@ public class Database implements DataHandler {
         this.maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
                 : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
         this.cipher = cipher;
-        String lockMethodName = ci.getProperty("FILE_LOCK", null);
         this.accessModeData = StringUtils.toLowerEnglish(ci.getProperty("ACCESS_MODE_DATA", "rw"));
         this.autoServerMode = ci.getProperty("AUTO_SERVER", false);
         this.autoServerPort = ci.getProperty("AUTO_SERVER_PORT", 0);
@@ -211,7 +202,6 @@ public class Database implements DataHandler {
         if ("r".equals(accessModeData)) {
             readOnly = true;
         }
-        this.fileLockMethod = FileLock.getFileLockMethod(lockMethodName);
         this.databaseURL = ci.getURL();
         String listener = ci.removeProperty("DATABASE_EVENT_LISTENER", null);
         if (listener != null) {
@@ -320,20 +310,6 @@ public class Database implements DataHandler {
         return modificationDataId;
     }
 
-    /**
-     * Set or reset the pending change flag in the .lock.db file.
-     *
-     * @param pending the new value of the flag
-     * @return true if the call was successful,
-     *          false if another connection was faster
-     */
-    protected synchronized boolean reconnectModified(boolean pending) {
-        if (readOnly || lock == null || fileLockMethod != FileLock.LOCK_SERIALIZED) {
-            return true;
-        }
-        return false;
-    }
-
     public long getNextModificationDataId() {
         return ++modificationDataId;
     }
@@ -365,14 +341,6 @@ public class Database implements DataHandler {
             try {
                 powerOffCount = -1;
                 checkPowerOffInternal();
-                if (lock != null) {
-                    stopServer();
-                    if (fileLockMethod != FileLock.LOCK_SERIALIZED) {
-                        // allow testing shutdown
-                        lock.unlock();
-                    }
-                    lock = null;
-                }
                 if (traceSystem != null) {
                     traceSystem.close();
                 }
@@ -936,17 +904,7 @@ public class Database implements DataHandler {
         if (closing) {
             return;
         }
-        if (fileLockMethod == FileLock.LOCK_SERIALIZED && !reconnectChangePending) {
-            // another connection may have written something - don't write
-            try {
-                closeOpenFilesAndUnlock(false);
-            } catch (DbException e) {
-                // ignore
-            }
-            traceSystem.close();
-            Engine.getInstance().close(databaseName);
-            return;
-        }
+
         closing = true;
         stopServer();
         if (userSessions.size() > 0) {
@@ -1034,17 +992,6 @@ public class Database implements DataHandler {
             closeOnExit = null;
         }
         Engine.getInstance().close(databaseName);
-
-        if (deleteFilesOnDisconnect && persistent) {
-            deleteFilesOnDisconnect = false;
-            try {
-                String directory = FileUtils.getParent(databaseName);
-                String name = FileUtils.getName(databaseName);
-                DeleteDbFiles.execute(directory, name, true);
-            } catch (Exception e) {
-                // ignore (the trace is closed already)
-            }
-        }
     }
 
     /**
@@ -1052,16 +999,7 @@ public class Database implements DataHandler {
      *
      * @param flush whether writing is allowed
      */
-    private synchronized void closeOpenFilesAndUnlock(boolean flush) {
-        closeOpenFilesAndUnlockInternal(flush);
-        reconnectModified(false);
-        closeFiles();
-        if (persistent && lock == null && fileLockMethod != FileLock.LOCK_NO && fileLockMethod != FileLock.LOCK_FS) {
-            // everything already closed (maybe in checkPowerOff)
-            // don't delete temp files in this case because
-            // the database could be open now (even from within another process)
-            return;
-        }
+    protected synchronized void closeOpenFilesAndUnlock(boolean flush) {
         if (persistent) {
             deleteOldTempFiles();
         }
@@ -1069,24 +1007,6 @@ public class Database implements DataHandler {
             systemSession.close();
             systemSession = null;
         }
-        if (lock != null) {
-            if (fileLockMethod == FileLock.LOCK_SERIALIZED) {
-                // wait before deleting the .lock file,
-                // otherwise other connections can not detect that
-                if (lock.load().containsKey("changePending")) {
-                    try {
-                        Thread.sleep((int) (reconnectCheckDelay * 1.1));
-                    } catch (InterruptedException e) {
-                        trace.error(e, "close");
-                    }
-                }
-            }
-            lock.unlock();
-            lock = null;
-        }
-    }
-
-    protected void closeOpenFilesAndUnlockInternal(boolean flush) {
     }
 
     protected void closeFiles() {
@@ -1545,12 +1465,6 @@ public class Database implements DataHandler {
         if (readOnly) {
             throw DbException.get(ErrorCode.DATABASE_IS_READ_ONLY);
         }
-
-        if (fileLockMethod == FileLock.LOCK_SERIALIZED) {
-            if (!reconnectChangePending) {
-                throw DbException.get(ErrorCode.DATABASE_IS_READ_ONLY);
-            }
-        }
     }
 
     public boolean isReadOnly() {
@@ -1958,49 +1872,7 @@ public class Database implements DataHandler {
      * @return true if reconnecting is required
      */
     public boolean isReconnectNeeded() {
-        if (fileLockMethod != FileLock.LOCK_SERIALIZED) {
-            return false;
-        }
-        if (reconnectChangePending) {
-            return false;
-        }
-        long now = System.currentTimeMillis();
-        if (now < reconnectCheckNext) {
-            return false;
-        }
-        reconnectCheckNext = now + reconnectCheckDelay;
-        if (lock == null) {
-            lock = new FileLock(traceSystem, databaseName + Constants.SUFFIX_LOCK_FILE, Constants.LOCK_SLEEP);
-        }
-        try {
-            Properties prop = lock.load(), first = prop;
-            while (true) {
-                if (prop.equals(reconnectLastLock)) {
-                    return false;
-                }
-                if (prop.getProperty("changePending", null) == null) {
-                    break;
-                }
-                if (System.currentTimeMillis() > now + reconnectCheckDelay * 10) {
-                    if (first.equals(prop)) {
-                        // the writing process didn't update the file -
-                        // it may have terminated
-                        lock.setProperty("changePending", null);
-                        lock.save();
-                        break;
-                    }
-                }
-                trace.debug("delay (change pending)");
-                Thread.sleep(reconnectCheckDelay);
-                prop = lock.load();
-            }
-            reconnectLastLock = prop;
-        } catch (Exception e) {
-            // DbException, InterruptedException
-            trace.error(e, "readOnly {0}", readOnly);
-            // ignore
-        }
-        return true;
+        return false;
     }
 
     /**
@@ -2010,42 +1882,10 @@ public class Database implements DataHandler {
      * the .lock.db file.
      */
     public void checkpointIfRequired() {
-        if (fileLockMethod != FileLock.LOCK_SERIALIZED || readOnly || !reconnectChangePending || closing) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        if (now > reconnectCheckNext + reconnectCheckDelay) {
-            if (SysProperties.CHECK && checkpointAllowed < 0) {
-                DbException.throwInternalError();
-            }
-            synchronized (reconnectSync) {
-                if (checkpointAllowed > 0) {
-                    return;
-                }
-                checkpointRunning = true;
-            }
-            synchronized (this) {
-                trace.debug("checkpoint start");
-                flushSequences();
-                checkpoint();
-                reconnectModified(false);
-                trace.debug("checkpoint end");
-            }
-            synchronized (reconnectSync) {
-                checkpointRunning = false;
-            }
-        }
     }
 
     public boolean isFileLockSerialized() {
-        return fileLockMethod == FileLock.LOCK_SERIALIZED;
-    }
-
-    private void flushSequences() {
-        for (SchemaObject obj : getAllSchemaObjects(DbObject.SEQUENCE)) {
-            Sequence sequence = (Sequence) obj;
-            sequence.flushWithoutMargin();
-        }
+        return false;
     }
 
     /**
@@ -2062,44 +1902,13 @@ public class Database implements DataHandler {
      *          false if another connection was faster
      */
     public boolean beforeWriting() {
-        if (fileLockMethod != FileLock.LOCK_SERIALIZED) {
-            return true;
-        }
-        while (checkpointRunning) {
-            try {
-                Thread.sleep(10 + (int) (Math.random() * 10));
-            } catch (Exception e) {
-                // ignore InterruptedException
-            }
-        }
-        synchronized (reconnectSync) {
-            if (reconnectModified(true)) {
-                checkpointAllowed++;
-                if (SysProperties.CHECK && checkpointAllowed > 20) {
-                    throw DbException.throwInternalError();
-                }
-                return true;
-            }
-        }
-        // make sure the next call to isReconnectNeeded() returns true
-        reconnectCheckNext = System.currentTimeMillis() - 1;
-        reconnectLastLock = null;
-        return false;
+        return true;
     }
 
     /**
      * This method is called after updates are finished.
      */
     public void afterWriting() {
-        if (fileLockMethod != FileLock.LOCK_SERIALIZED) {
-            return;
-        }
-        synchronized (reconnectSync) {
-            checkpointAllowed--;
-        }
-        if (SysProperties.CHECK && checkpointAllowed < 0) {
-            throw DbException.throwInternalError();
-        }
     }
 
     /**

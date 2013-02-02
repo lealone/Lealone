@@ -33,6 +33,9 @@ import com.codefollower.yourbase.api.DatabaseEventListener;
 import com.codefollower.yourbase.command.dml.BackupCommand;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
+import com.codefollower.yourbase.dbobject.DbObject;
+import com.codefollower.yourbase.dbobject.SchemaObject;
+import com.codefollower.yourbase.dbobject.Sequence;
 import com.codefollower.yourbase.dbobject.index.IndexType;
 import com.codefollower.yourbase.dbobject.index.PageBtreeIndex;
 import com.codefollower.yourbase.dbobject.index.PersistentIndex;
@@ -62,8 +65,20 @@ public class RegularDatabase extends Database {
     protected WriterThread writer;
     protected Server server;
 
+    protected FileLock lock;
+    protected int fileLockMethod;
+
+    private volatile boolean checkpointRunning;
+    private volatile int checkpointAllowed;
+    private final Object reconnectSync = new Object();
+
+    protected int reconnectCheckDelay;
+
     @Override
     public void init(ConnectionInfo ci, String cipher) {
+        this.reconnectCheckDelay = ci.getDbSettings().reconnectCheckDelay;
+        String lockMethodName = ci.getProperty("FILE_LOCK", null);
+        this.fileLockMethod = FileLock.getFileLockMethod(lockMethodName);
         this.pageSize = ci.getProperty("PAGE_SIZE", Constants.DEFAULT_PAGE_SIZE);
         super.init(ci, cipher);
     }
@@ -87,6 +102,20 @@ public class RegularDatabase extends Database {
     }
 
     protected synchronized void close(boolean fromShutdownHook) {
+        if (closing) {
+            return;
+        }
+        if (fileLockMethod == FileLock.LOCK_SERIALIZED && !reconnectChangePending) {
+            // another connection may have written something - don't write
+            try {
+                closeOpenFilesAndUnlock(false);
+            } catch (DbException e) {
+                // ignore
+            }
+            traceSystem.close();
+            Engine.getInstance().close(databaseName);
+            return;
+        }
         super.close(fromShutdownHook);
         if (deleteFilesOnDisconnect && persistent) {
             deleteFilesOnDisconnect = false;
@@ -178,7 +207,7 @@ public class RegularDatabase extends Database {
         }
     }
 
-    protected synchronized void closeOpenFilesAndUnlockInternal(boolean flush) {
+    protected synchronized void closeOpenFilesAndUnlock(boolean flush) {
         stopWriter();
         if (pageStore != null) {
             if (flush) {
@@ -204,6 +233,37 @@ public class RegularDatabase extends Database {
                     trace.error(t, "close");
                 }
             }
+        }
+        reconnectModified(false);
+
+        closeFiles();
+        if (persistent && lock == null && fileLockMethod != FileLock.LOCK_NO && fileLockMethod != FileLock.LOCK_FS) {
+            // everything already closed (maybe in checkPowerOff)
+            // don't delete temp files in this case because
+            // the database could be open now (even from within another process)
+            return;
+        }
+        if (persistent) {
+            deleteOldTempFiles();
+        }
+        if (systemSession != null) {
+            systemSession.close();
+            systemSession = null;
+        }
+        if (lock != null) {
+            if (fileLockMethod == FileLock.LOCK_SERIALIZED) {
+                // wait before deleting the .lock file,
+                // otherwise other connections can not detect that
+                if (lock.load().containsKey("changePending")) {
+                    try {
+                        Thread.sleep((int) (reconnectCheckDelay * 1.1));
+                    } catch (InterruptedException e) {
+                        trace.error(e, "close");
+                    }
+                }
+            }
+            lock.unlock();
+            lock = null;
         }
     }
 
@@ -439,6 +499,15 @@ public class RegularDatabase extends Database {
             }
             pageStore = null;
         }
+
+        if (lock != null) {
+            stopServer();
+            if (fileLockMethod != FileLock.LOCK_SERIALIZED) {
+                // allow testing shutdown
+                lock.unlock();
+            }
+            lock = null;
+        }
     }
 
     public void setWriteDelay(int value) {
@@ -607,5 +676,161 @@ public class RegularDatabase extends Database {
     public PersistentIndex createPersistentIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols,
             IndexType indexType, boolean create, Session session) {
         return new PageBtreeIndex(table, indexId, indexName, indexCols, indexType, create, session);
+    }
+
+    /**
+     * Check if the contents of the database was changed and therefore it is
+     * required to re-connect. This method waits until pending changes are
+     * completed. If a pending change takes too long (more than 2 seconds), the
+     * pending change is broken (removed from the properties file).
+     *
+     * @return true if reconnecting is required
+     */
+    public boolean isReconnectNeeded() {
+        if (fileLockMethod != FileLock.LOCK_SERIALIZED) {
+            return false;
+        }
+        if (reconnectChangePending) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (now < reconnectCheckNext) {
+            return false;
+        }
+        reconnectCheckNext = now + reconnectCheckDelay;
+        if (lock == null) {
+            lock = new FileLock(traceSystem, databaseName + Constants.SUFFIX_LOCK_FILE, Constants.LOCK_SLEEP);
+        }
+        try {
+            Properties prop = lock.load(), first = prop;
+            while (true) {
+                if (prop.equals(reconnectLastLock)) {
+                    return false;
+                }
+                if (prop.getProperty("changePending", null) == null) {
+                    break;
+                }
+                if (System.currentTimeMillis() > now + reconnectCheckDelay * 10) {
+                    if (first.equals(prop)) {
+                        // the writing process didn't update the file -
+                        // it may have terminated
+                        lock.setProperty("changePending", null);
+                        lock.save();
+                        break;
+                    }
+                }
+                trace.debug("delay (change pending)");
+                Thread.sleep(reconnectCheckDelay);
+                prop = lock.load();
+            }
+            reconnectLastLock = prop;
+        } catch (Exception e) {
+            // DbException, InterruptedException
+            trace.error(e, "readOnly {0}", readOnly);
+            // ignore
+        }
+        return true;
+    }
+
+    /**
+     * Flush all changes when using the serialized mode, and if there are
+     * pending changes, and some time has passed. This switches to a new
+     * transaction log and resets the change pending flag in
+     * the .lock.db file.
+     */
+    public void checkpointIfRequired() {
+        if (fileLockMethod != FileLock.LOCK_SERIALIZED || readOnly || !reconnectChangePending || closing) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now > reconnectCheckNext + reconnectCheckDelay) {
+            if (SysProperties.CHECK && checkpointAllowed < 0) {
+                DbException.throwInternalError();
+            }
+            synchronized (reconnectSync) {
+                if (checkpointAllowed > 0) {
+                    return;
+                }
+                checkpointRunning = true;
+            }
+            synchronized (this) {
+                trace.debug("checkpoint start");
+                flushSequences();
+                checkpoint();
+                reconnectModified(false);
+                trace.debug("checkpoint end");
+            }
+            synchronized (reconnectSync) {
+                checkpointRunning = false;
+            }
+        }
+    }
+
+    public boolean isFileLockSerialized() {
+        return fileLockMethod == FileLock.LOCK_SERIALIZED;
+    }
+
+    private void flushSequences() {
+        for (SchemaObject obj : getAllSchemaObjects(DbObject.SEQUENCE)) {
+            Sequence sequence = (Sequence) obj;
+            sequence.flushWithoutMargin();
+        }
+    }
+
+    /**
+     * This method is called before writing to the transaction log.
+     *
+     * @return true if the call was successful and writing is allowed,
+     *          false if another connection was faster
+     */
+    public boolean beforeWriting() {
+        if (fileLockMethod != FileLock.LOCK_SERIALIZED) {
+            return true;
+        }
+        while (checkpointRunning) {
+            try {
+                Thread.sleep(10 + (int) (Math.random() * 10));
+            } catch (Exception e) {
+                // ignore InterruptedException
+            }
+        }
+        synchronized (reconnectSync) {
+            if (reconnectModified(true)) {
+                checkpointAllowed++;
+                if (SysProperties.CHECK && checkpointAllowed > 20) {
+                    throw DbException.throwInternalError();
+                }
+                return true;
+            }
+        }
+        // make sure the next call to isReconnectNeeded() returns true
+        reconnectCheckNext = System.currentTimeMillis() - 1;
+        reconnectLastLock = null;
+        return false;
+    }
+
+    /**
+     * This method is called after updates are finished.
+     */
+    public void afterWriting() {
+        if (fileLockMethod != FileLock.LOCK_SERIALIZED) {
+            return;
+        }
+        synchronized (reconnectSync) {
+            checkpointAllowed--;
+        }
+        if (SysProperties.CHECK && checkpointAllowed < 0) {
+            throw DbException.throwInternalError();
+        }
+    }
+
+    public void checkWritingAllowed() {
+        super.checkWritingAllowed();
+
+        if (fileLockMethod == FileLock.LOCK_SERIALIZED) {
+            if (!reconnectChangePending) {
+                throw DbException.get(ErrorCode.DATABASE_IS_READ_ONLY);
+            }
+        }
     }
 }

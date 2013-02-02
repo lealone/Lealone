@@ -14,7 +14,6 @@ import java.util.Properties;
 
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.message.DbException;
-import com.codefollower.yourbase.store.FileLister;
 import com.codefollower.yourbase.store.fs.FileUtils;
 
 /**
@@ -75,7 +74,7 @@ public abstract class Tool {
      */
     protected void printNoDatabaseFilesFound(String dir, String db) {
         StringBuilder buff;
-        dir = FileLister.getDir(dir);
+        dir = getDir(dir);
         if (!FileUtils.isDirectory(dir)) {
             buff = new StringBuilder("Directory not found: ");
             buff.append(dir);
@@ -130,5 +129,16 @@ public abstract class Tool {
         }
         return false;
     }
-
+    /**
+     * Normalize the directory name.
+     *
+     * @param dir the directory (null for the current directory)
+     * @return the normalized directory name
+     */
+    public static String getDir(String dir) {
+        if (dir == null || dir.equals("")) {
+            return ".";
+        }
+        return FileUtils.toRealPath(dir);
+    }
 }

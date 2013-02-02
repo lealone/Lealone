@@ -20,7 +20,6 @@ import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.SessionFactory;
 import com.codefollower.yourbase.jmx.DatabaseInfo;
 import com.codefollower.yourbase.message.DbException;
-import com.codefollower.yourbase.store.FileLock;
 import com.codefollower.yourbase.util.MathUtils;
 import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.StringUtils;
@@ -134,23 +133,9 @@ public class Engine implements SessionFactory {
 
     protected Session createSessionAndValidate(ConnectionInfo ci) {
         try {
-            ConnectionInfo backup = null;
-            String lockMethodName = ci.getProperty("FILE_LOCK", null);
-            int fileLockMethod = FileLock.getFileLockMethod(lockMethodName);
-            if (fileLockMethod == FileLock.LOCK_SERIALIZED) {
-                // In serialized mode, database instance sharing is not possible
-                ci.setProperty("OPEN_NEW", "TRUE");
-                try {
-                    backup = (ConnectionInfo) ci.clone();
-                } catch (CloneNotSupportedException e) {
-                    throw DbException.convert(e);
-                }
-            }
+
             Session session = openSession(ci);
             validateUserAndPassword(true);
-            if (backup != null) {
-                session.setConnectionInfo(backup);
-            }
             return session;
         } catch (DbException e) {
             if (e.getErrorCode() == ErrorCode.WRONG_USER_OR_PASSWORD) {
@@ -160,7 +145,7 @@ public class Engine implements SessionFactory {
         }
     }
 
-    private synchronized Session openSession(ConnectionInfo ci) {
+    protected synchronized Session openSession(ConnectionInfo ci) {
         boolean ifExists = ci.removeProperty("IFEXISTS", false);
         boolean ignoreUnknownSetting = ci.removeProperty("IGNORE_UNKNOWN_SETTINGS", false);
         String cipher = ci.removeProperty("CIPHER", null);
@@ -270,7 +255,7 @@ public class Engine implements SessionFactory {
      * @param correct if the user name or the password was correct
      * @throws DbException the exception 'wrong user or password'
      */
-    private void validateUserAndPassword(boolean correct) {
+    protected void validateUserAndPassword(boolean correct) {
         int min = SysProperties.DELAY_WRONG_PASSWORD_MIN;
         if (correct) {
             long delay = wrongPasswordDelay;
