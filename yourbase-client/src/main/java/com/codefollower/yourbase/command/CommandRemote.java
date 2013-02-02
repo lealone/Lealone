@@ -120,7 +120,8 @@ public class CommandRemote implements CommandInterface {
                     transfer.writeInt(SessionRemote.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
                     session.done(transfer);
                     int columnCount = transfer.readInt();
-                    result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, 0, Integer.MAX_VALUE);
+                    int rowCount = transfer.readInt();
+                    result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, Integer.MAX_VALUE);
                     break;
                 } catch (IOException e) {
                     session.removeServer(e, i--, ++count);
