@@ -20,7 +20,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.server.Service;
 import com.codefollower.yourbase.util.NetUtils;

@@ -17,8 +17,8 @@ import java.net.UnknownHostException;
 import java.util.Properties;
 
 import com.codefollower.yourbase.Driver;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.SessionRemote;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.message.Trace;

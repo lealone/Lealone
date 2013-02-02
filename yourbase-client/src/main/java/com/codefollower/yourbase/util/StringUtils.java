@@ -11,9 +11,9 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Locale;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 
 /**

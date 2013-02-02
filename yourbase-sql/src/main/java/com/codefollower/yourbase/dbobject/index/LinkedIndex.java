@@ -10,10 +10,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.TableLink;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.Row;

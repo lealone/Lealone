@@ -9,7 +9,6 @@ package com.codefollower.yourbase.constant;
 import java.util.HashMap;
 
 import com.codefollower.yourbase.constant.DbSettings;
-import com.codefollower.yourbase.engine.SettingsBase;
 
 /**
  * This class contains various database-level settings. To override the

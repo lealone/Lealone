@@ -24,8 +24,8 @@ import java.util.Map;
 import java.util.zip.CRC32;
 
 import com.codefollower.yourbase.compress.CompressLZF;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.dbobject.DbObject;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.MetaRecord;
 import com.codefollower.yourbase.jdbc.JdbcConnection;
 import com.codefollower.yourbase.message.DbException;

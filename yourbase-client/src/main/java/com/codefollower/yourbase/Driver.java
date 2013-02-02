@@ -12,7 +12,7 @@ import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.jdbc.JdbcConnection;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.message.TraceSystem;

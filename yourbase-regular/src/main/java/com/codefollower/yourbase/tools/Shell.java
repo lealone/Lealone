@@ -21,7 +21,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Properties;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.server.web.ConnectionInfo;
 import com.codefollower.yourbase.util.JdbcUtils;
 import com.codefollower.yourbase.util.New;

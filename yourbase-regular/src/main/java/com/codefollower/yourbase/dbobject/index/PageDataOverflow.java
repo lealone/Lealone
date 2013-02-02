@@ -6,9 +6,9 @@
  */
 package com.codefollower.yourbase.dbobject.index;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.store.Data;

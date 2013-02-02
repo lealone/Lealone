@@ -11,10 +11,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
 
 import com.codefollower.yourbase.command.Parser;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.Schema;
 import com.codefollower.yourbase.dbobject.Sequence;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Mode;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.expression.ConditionAndOr;

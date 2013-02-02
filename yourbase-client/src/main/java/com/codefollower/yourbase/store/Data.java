@@ -21,9 +21,9 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.tools.SimpleResultSet;
 import com.codefollower.yourbase.util.DataUtils;

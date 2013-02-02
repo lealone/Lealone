@@ -13,8 +13,8 @@ import java.sql.SQLException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.store.fs.FileUtils;
 import com.codefollower.yourbase.util.IOUtils;

@@ -13,8 +13,8 @@ import javax.naming.Name;
 import javax.naming.Reference;
 import javax.naming.spi.ObjectFactory;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.Trace;
 import com.codefollower.yourbase.message.TraceSystem;
 

@@ -21,8 +21,8 @@ import java.util.Locale;
 import java.util.Properties;
 import java.util.StringTokenizer;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.TraceSystem;
 import com.codefollower.yourbase.util.DataUtils;
 import com.codefollower.yourbase.util.IOUtils;

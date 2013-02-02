@@ -9,6 +9,7 @@ package com.codefollower.yourbase.result;
 import java.util.ArrayList;
 
 import com.codefollower.yourbase.command.ddl.CreateTableData;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.dbobject.Schema;
 import com.codefollower.yourbase.dbobject.index.Cursor;
 import com.codefollower.yourbase.dbobject.index.Index;
@@ -16,7 +17,6 @@ import com.codefollower.yourbase.dbobject.index.IndexType;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.TableBase;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.value.Value;

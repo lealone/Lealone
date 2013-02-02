@@ -10,13 +10,13 @@ import java.util.ArrayList;
 
 import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.command.dml.Query;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.Schema;
 import com.codefollower.yourbase.dbobject.User;
 import com.codefollower.yourbase.dbobject.index.Index;
 import com.codefollower.yourbase.dbobject.index.IndexType;
 import com.codefollower.yourbase.dbobject.index.ViewIndex;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.expression.Expression;
 import com.codefollower.yourbase.expression.ExpressionVisitor;

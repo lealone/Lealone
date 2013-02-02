@@ -35,9 +35,9 @@ import java.util.Properties;
 import java.util.Random;
 
 import com.codefollower.yourbase.bnf.Bnf;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.jdbc.JdbcSQLException;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.security.SHA256;

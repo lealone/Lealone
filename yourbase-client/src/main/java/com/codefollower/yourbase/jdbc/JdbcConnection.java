@@ -25,10 +25,10 @@ import java.util.Map;
 import java.util.Properties;
 
 import com.codefollower.yourbase.command.CommandInterface;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.SessionInterface;
 import com.codefollower.yourbase.engine.SessionRemote;
 import com.codefollower.yourbase.message.DbException;

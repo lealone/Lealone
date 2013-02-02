@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.codefollower.yourbase.command.Prepared;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.DbObject;
 import com.codefollower.yourbase.dbobject.Right;
@@ -22,7 +23,6 @@ import com.codefollower.yourbase.dbobject.TriggerObject;
 import com.codefollower.yourbase.dbobject.constraint.Constraint;
 import com.codefollower.yourbase.dbobject.index.Index;
 import com.codefollower.yourbase.dbobject.index.IndexType;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.engine.UndoLogRecord;
 import com.codefollower.yourbase.expression.Expression;

@@ -9,12 +9,12 @@ package com.codefollower.yourbase.dbobject;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.table.MetaTable;
 import com.codefollower.yourbase.dbobject.table.RangeTable;
 import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.dbobject.table.TableView;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;

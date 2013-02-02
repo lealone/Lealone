@@ -28,7 +28,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTableEngine;
 import com.codefollower.yourbase.hbase.zookeeper.TcpPortTracker;
 import com.codefollower.yourbase.hbase.zookeeper.ZooKeeperAdmin;

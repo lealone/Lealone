@@ -22,8 +22,8 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.store.fs.FileUtils;
 

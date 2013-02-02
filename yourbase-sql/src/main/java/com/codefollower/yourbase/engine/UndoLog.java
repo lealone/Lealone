@@ -9,9 +9,9 @@ package com.codefollower.yourbase.engine;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.table.Table;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.store.Data;
 import com.codefollower.yourbase.store.FileStore;

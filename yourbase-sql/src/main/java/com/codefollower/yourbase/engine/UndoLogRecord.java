@@ -6,10 +6,10 @@
  */
 package com.codefollower.yourbase.engine;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.table.Table;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.store.Data;

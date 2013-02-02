@@ -14,7 +14,7 @@ import java.util.HashSet;
 import java.util.Properties;
 
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.DbSettings;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SetTypes;

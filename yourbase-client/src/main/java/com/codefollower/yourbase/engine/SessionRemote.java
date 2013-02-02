@@ -12,10 +12,10 @@ import java.sql.Connection;
 import java.util.ArrayList;
 
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.api.DatabaseEventListener;
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.CommandRemote;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SetTypes;
 import com.codefollower.yourbase.constant.SysProperties;

@@ -9,7 +9,7 @@ package com.codefollower.yourbase.compress;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 
 /**
  * An output stream to write an LZF stream.

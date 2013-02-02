@@ -21,8 +21,8 @@ import java.sql.NClob;
 //*/
 import java.sql.SQLException;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.message.TraceObject;
 import com.codefollower.yourbase.util.IOUtils;

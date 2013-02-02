@@ -6,7 +6,7 @@
  */
 package com.codefollower.yourbase.result;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.store.Data;
 import com.codefollower.yourbase.util.StatementBuilder;
 import com.codefollower.yourbase.value.Value;

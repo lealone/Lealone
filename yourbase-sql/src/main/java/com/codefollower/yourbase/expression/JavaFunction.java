@@ -7,10 +7,10 @@
 package com.codefollower.yourbase.expression;
 
 import com.codefollower.yourbase.command.Parser;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.dbobject.FunctionAlias;
 import com.codefollower.yourbase.dbobject.table.ColumnResolver;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.util.StatementBuilder;
 import com.codefollower.yourbase.value.DataType;

@@ -10,7 +10,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.sql.SQLException;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 
 /**
  * Represents a database exception.

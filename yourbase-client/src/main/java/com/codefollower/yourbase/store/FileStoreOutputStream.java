@@ -8,7 +8,7 @@ package com.codefollower.yourbase.store;
 
 import java.io.OutputStream;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.tools.CompressTool;
 
 /**

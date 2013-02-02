@@ -16,10 +16,10 @@ import java.util.Arrays;
 
 import com.codefollower.yourbase.Driver;
 import com.codefollower.yourbase.command.Parser;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.table.Table;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.expression.Expression;
 import com.codefollower.yourbase.message.DbException;

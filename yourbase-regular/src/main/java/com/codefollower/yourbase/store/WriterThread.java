@@ -10,7 +10,7 @@ import java.lang.ref.WeakReference;
 import java.security.AccessControlException;
 
 import com.codefollower.yourbase.Driver;
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.message.Trace;
 import com.codefollower.yourbase.message.TraceSystem;

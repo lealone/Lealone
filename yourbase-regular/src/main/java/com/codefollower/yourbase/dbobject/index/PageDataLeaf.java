@@ -9,10 +9,10 @@ package com.codefollower.yourbase.dbobject.index;
 import java.lang.ref.SoftReference;
 import java.util.Arrays;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.table.RegularTable;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.Row;

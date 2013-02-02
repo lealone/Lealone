@@ -15,6 +15,7 @@ import java.util.zip.CRC32;
 
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.ddl.CreateTableData;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.Schema;
@@ -35,7 +36,6 @@ import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.RegularTable;
 import com.codefollower.yourbase.dbobject.table.Table;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.InDoubtTransaction;
 import com.codefollower.yourbase.engine.Session;

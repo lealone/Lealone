@@ -25,9 +25,9 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.store.fs.FileUtils;
 import com.codefollower.yourbase.tools.SimpleResultSet;

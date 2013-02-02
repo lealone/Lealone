@@ -10,13 +10,13 @@ import java.util.HashMap;
 
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.Parser;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.DbSettings;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SetTypes;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.User;
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.SessionFactory;
 import com.codefollower.yourbase.jmx.DatabaseInfo;
 import com.codefollower.yourbase.message.DbException;

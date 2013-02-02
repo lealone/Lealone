@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package com.codefollower.yourbase.engine;
+package com.codefollower.yourbase.constant;
 
 import java.sql.ResultSet;
 

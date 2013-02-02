@@ -9,7 +9,7 @@ package com.codefollower.yourbase.result;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;

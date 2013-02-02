@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.util.IntIntHashMap;

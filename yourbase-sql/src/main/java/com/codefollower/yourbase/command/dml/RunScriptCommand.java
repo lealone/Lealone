@@ -12,7 +12,7 @@ import java.io.InputStreamReader;
 
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.Prepared;
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.result.ResultInterface;

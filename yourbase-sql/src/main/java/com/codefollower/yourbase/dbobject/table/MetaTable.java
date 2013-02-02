@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.Locale;
 
 import com.codefollower.yourbase.command.Command;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.dbobject.Constant;
 import com.codefollower.yourbase.dbobject.DbObject;
 import com.codefollower.yourbase.dbobject.FunctionAlias;
@@ -40,7 +41,6 @@ import com.codefollower.yourbase.dbobject.index.Index;
 import com.codefollower.yourbase.dbobject.index.IndexType;
 import com.codefollower.yourbase.dbobject.index.MetaIndex;
 import com.codefollower.yourbase.dbobject.index.MultiVersionIndex;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Csv;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.InDoubtTransaction;

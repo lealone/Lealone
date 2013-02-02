@@ -10,7 +10,7 @@ import java.lang.reflect.Array;
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.util.MathUtils;
 import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.StatementBuilder;

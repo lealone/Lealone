@@ -13,10 +13,10 @@ import java.util.WeakHashMap;
 
 import com.codefollower.yourbase.api.TableEngine;
 import com.codefollower.yourbase.command.ddl.CreateTableData;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.table.TableBase;
 import com.codefollower.yourbase.dbobject.table.TableEngineManager;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.mvstore.MVStore;

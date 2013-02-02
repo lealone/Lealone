@@ -4,11 +4,10 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package com.codefollower.yourbase.engine;
+package com.codefollower.yourbase.constant;
 
 import java.util.HashMap;
 
-import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.util.Utils;
 
@@ -87,7 +86,7 @@ public class SettingsBase {
      * @param k the key
      * @return true if they do
      */
-    protected boolean containsKey(String k) {
+    public boolean containsKey(String k) {
         return settings.containsKey(k);
     }
 

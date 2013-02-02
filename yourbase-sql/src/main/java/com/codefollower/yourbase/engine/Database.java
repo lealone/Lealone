@@ -19,6 +19,7 @@ import java.util.StringTokenizer;
 
 import com.codefollower.yourbase.api.DatabaseEventListener;
 import com.codefollower.yourbase.command.ddl.CreateTableData;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.DbSettings;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SetTypes;
@@ -48,7 +49,6 @@ import com.codefollower.yourbase.dbobject.table.TableBase;
 import com.codefollower.yourbase.dbobject.table.TableLinkConnection;
 import com.codefollower.yourbase.dbobject.table.TableView;
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.jdbc.JdbcConnection;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.message.Trace;

@@ -6,7 +6,7 @@
  */
 package com.codefollower.yourbase.security;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.store.DataHandler;
 import com.codefollower.yourbase.store.FileStore;
 import com.codefollower.yourbase.util.MathUtils;

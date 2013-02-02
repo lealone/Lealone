@@ -12,12 +12,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.RegularTable;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.RegularDatabase;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.engine.UndoLogRecord;

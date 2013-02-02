@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Arrays;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.message.DbException;
 
 /**

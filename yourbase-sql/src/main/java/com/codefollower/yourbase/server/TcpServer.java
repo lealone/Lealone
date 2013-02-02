@@ -23,8 +23,8 @@ import java.util.Properties;
 import java.util.Set;
 
 import com.codefollower.yourbase.Driver;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.message.TraceSystem;
 import com.codefollower.yourbase.util.JdbcUtils;

@@ -6,6 +6,7 @@
  */
 package com.codefollower.yourbase.dbobject.index;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.DbObject;
 import com.codefollower.yourbase.dbobject.SchemaObjectBase;
@@ -13,7 +14,6 @@ import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Mode;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;

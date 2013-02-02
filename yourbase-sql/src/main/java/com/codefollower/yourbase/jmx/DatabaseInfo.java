@@ -17,9 +17,9 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import com.codefollower.yourbase.command.Command;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.util.New;

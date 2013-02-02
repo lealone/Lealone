@@ -9,7 +9,7 @@ package com.codefollower.yourbase.store;
 import java.io.IOException;
 import java.io.InputStream;
 
-import com.codefollower.yourbase.engine.Constants;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.tools.CompressTool;
 import com.codefollower.yourbase.util.DataUtils;

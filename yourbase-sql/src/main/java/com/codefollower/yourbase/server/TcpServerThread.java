@@ -17,10 +17,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import com.codefollower.yourbase.command.Command;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Engine;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.engine.SessionRemote;

@@ -15,8 +15,8 @@ import java.sql.RowIdLifetime;
 //*/
 import java.sql.SQLException;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.SysProperties;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.message.Trace;
 import com.codefollower.yourbase.message.TraceObject;
 import com.codefollower.yourbase.util.StatementBuilder;

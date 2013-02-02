@@ -14,6 +14,7 @@ import java.util.Map;
 
 import com.codefollower.yourbase.api.Trigger;
 import com.codefollower.yourbase.command.CommandInterface;
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.index.Cursor;
@@ -24,7 +25,6 @@ import com.codefollower.yourbase.dbobject.table.ColumnResolver;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.Table;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
-import com.codefollower.yourbase.engine.Constants;
 import com.codefollower.yourbase.engine.Database;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.expression.Calculator;
