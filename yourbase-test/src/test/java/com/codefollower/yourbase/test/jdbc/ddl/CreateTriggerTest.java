@@ -59,7 +59,7 @@ public class CreateTriggerTest extends TestBase {
     public void run() throws Exception {
         conn.setAutoCommit(false);
 
-        stmt.executeUpdate("DROP TABLE IF EXISTS CreateTriggerTest");
+        //stmt.executeUpdate("DROP TABLE IF EXISTS CreateTriggerTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS CreateTriggerTest(id int, name varchar(500))");
 
         stmt.executeUpdate("CREATE FORCE TRIGGER IF NOT EXISTS MyTrigger1"
@@ -70,12 +70,12 @@ public class CreateTriggerTest extends TestBase {
                 + " AFTER INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
                 + " QUEUE 10 NOWAIT CALL \"com.codefollower.yourbase.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
 
-        //INSTEAD OFҲ��BEFORE����
+        //INSTEAD OF也是BEFORE类型
         stmt.executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger3"
                 + " INSTEAD OF INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
                 + " QUEUE 10 NOWAIT CALL \"com.codefollower.yourbase.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
 
-        //�����﷨�ɲ��������¼
+        //这种语法可查入多条记录
         //null null
         //10 a
         //20 b

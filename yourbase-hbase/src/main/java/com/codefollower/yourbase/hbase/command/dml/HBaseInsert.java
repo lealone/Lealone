@@ -26,7 +26,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.dml.Insert;
-import com.codefollower.yourbase.command.dml.Query;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.engine.SessionInterface;
@@ -57,24 +56,6 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     public HBaseInsert(Session session) {
         super(session);
         this.session = (HBaseSession) session;
-    }
-
-    @Override
-    public void addRow(Expression[] expr) {
-        if (list.isEmpty()) {
-            list.add(expr);
-        } else {
-            //TODO 目前不支持事务，所以类似这样的批量插入SQL是不支持的:
-            //INSERT INTO t VALUES(m, n), (x, y)...
-            throw DbException.getUnsupportedException("batch insert");
-        }
-    }
-
-    @Override
-    public void setQuery(Query query) {
-        //TODO 目前不支持事务，所以类似这样的批量插入SQL是不支持的:
-        //INSERT INTO t SELECT x FROM y
-        throw DbException.getUnsupportedException("batch insert");
     }
 
     @Override

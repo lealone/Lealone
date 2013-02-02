@@ -436,10 +436,7 @@ public class HBaseTable extends TableBase {
 
     @Override
     public Row getTemplateRow() {
-        if (isStatic)
-            return super.getTemplateRow();
-        else
-            return new HBaseRow(new Value[columns.length], Row.MEMORY_CALCULATE);
+        return new HBaseRow(new Value[columns.length], Row.MEMORY_CALCULATE);
     }
 
     @Override
