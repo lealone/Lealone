@@ -36,13 +36,16 @@ import com.codefollower.yourbase.result.Row;
 import com.codefollower.yourbase.result.SearchRow;
 
 public class HBaseTableIndex extends BaseIndex {
+    private final boolean isScanIndex;
 
     public HBaseTableIndex(Table table, int id, IndexColumn[] columns, IndexType indexType) {
         initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
+        isScanIndex = true;
     }
 
     public HBaseTableIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
         initBaseIndex(table, id, indexName, columns, indexType);
+        isScanIndex = false;
     }
 
     @Override
@@ -127,4 +130,8 @@ public class HBaseTableIndex extends BaseIndex {
         return 0;
     }
 
+    @Override
+    public String getCreateSQL() {
+        return isScanIndex ? null : super.getCreateSQL();
+    }
 }

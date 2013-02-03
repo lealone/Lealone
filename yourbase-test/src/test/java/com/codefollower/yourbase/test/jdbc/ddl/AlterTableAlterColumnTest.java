@@ -19,6 +19,11 @@
  */
 package com.codefollower.yourbase.test.jdbc.ddl;
 
+import static org.junit.Assert.assertTrue;
+
+import java.sql.SQLException;
+
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.codefollower.yourbase.test.jdbc.TestBase;
@@ -177,7 +182,12 @@ public class AlterTableAlterColumnTest extends TestBase {
         stmt.executeUpdate(sql);
 
         sql = "ALTER TABLE mytable DROP ch"; //不能删除最后一列
-        stmt.executeUpdate(sql);
+        try {
+            stmt.executeUpdate(sql);
+            Assert.fail("not throw SQLException");
+        } catch (SQLException e) {
+            assertTrue(e.getMessage().toLowerCase().contains("cannot drop last column"));
+        }
     }
 
     void ALTER_TABLE_ALTER_COLUMN_SELECTIVITY() throws Exception {
