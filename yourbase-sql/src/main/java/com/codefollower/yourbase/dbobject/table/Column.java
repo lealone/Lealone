@@ -154,14 +154,16 @@ public class Column {
     }
 
     public Column(String name, int type, long precision, int scale, int displaySize) {
-        int pos = name.indexOf('.');
-        if (pos != -1) {
-            columnFamilyName = name.substring(0, pos);
-            if (columnFamilyName != null && columnFamilyName.length() == 0)
-                columnFamilyName = null;
-            this.name = name.substring(pos + 1);
-        } else
-            this.name = name;
+        if (name != null) {
+            int pos = name.indexOf('.');
+            if (pos != -1) {
+                columnFamilyName = name.substring(0, pos);
+                if (columnFamilyName != null && columnFamilyName.length() == 0)
+                    columnFamilyName = null;
+                this.name = name.substring(pos + 1);
+            } else
+                this.name = name;
+        }
         this.type = type;
         if (precision == -1 && scale == -1 && displaySize == -1) {
             DataType dt = DataType.getDataType(type);
