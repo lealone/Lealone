@@ -13,13 +13,11 @@
 	<name>yourbase client</name>
 
 	<dependencies>
-		<!--
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>1.4.3</version>
-			<scope>optional</scope>
+			<optional>true</optional>
 		</dependency>
-		-->
 	</dependencies>
 </project>
