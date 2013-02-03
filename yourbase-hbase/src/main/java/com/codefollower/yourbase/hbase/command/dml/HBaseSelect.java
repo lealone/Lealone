@@ -20,40 +20,17 @@
 package com.codefollower.yourbase.hbase.command.dml;
 
 import com.codefollower.yourbase.command.dml.Select;
-import com.codefollower.yourbase.dbobject.table.TableFilter;
 import com.codefollower.yourbase.dbobject.table.TableView;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.hbase.command.HBasePrepared;
-import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.result.SearchRow;
 import com.codefollower.yourbase.value.Value;
 
 public class HBaseSelect extends Select implements HBasePrepared {
-    private final HBaseSession session;
     private String regionName;
 
     public HBaseSelect(Session session) {
         super(session);
-        this.session = (HBaseSession) session;
-    }
-
-    protected void prepareCondition() {
-        TableFilter tf = topFilters.get(0);
-        if (condition != null)
-            for (TableFilter f : filters) {
-                if (tf.getTable().supportsColumnFamily())
-                    continue;
-                // outer joins: must not add index conditions such as
-                // "c is null" - example:
-                // create table parent(p int primary key) as select 1;
-                // create table child(c int primary key, pc int);
-                // insert into child values(2, 1);
-                // select p, c from parent
-                // left outer join child on p = pc where c is null;
-                if (!f.isJoinOuter() && !f.isJoinOuterIndirect()) {
-                    condition.createIndexConditions(session, f);
-                }
-            }
     }
 
     @Override

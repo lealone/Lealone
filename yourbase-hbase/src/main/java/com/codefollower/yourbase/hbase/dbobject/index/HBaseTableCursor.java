@@ -57,7 +57,7 @@ public class HBaseTableCursor implements Cursor {
     private byte[] defaultColumnFamilyName;
     private int columnCount;
     private String rowKeyName;
-    private HBaseSubqueryResult combinedResult;
+    private HBaseSubqueryResult subqueryResult;
     private boolean isGet = false;
 
     public HBaseTableCursor(TableFilter filter, SearchRow first, SearchRow last) {
@@ -91,14 +91,14 @@ public class HBaseTableCursor implements Cursor {
         if (startValue != null && endValue != null && startValue == endValue) {
             try {
                 isGet = true;
-                Result r = session.getRegionServer().get(regionName, new Get(HBaseUtils.toBytes(startValue)));
+                Result r = session.getRegionServer().get(regionName, new Get(Bytes.toBytes(startValue.getString())));
                 if (r != null && !r.isEmpty())
                     result = new Result[] { r };
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         } else if (filter.getSelect() != null && filter.getSelect().getTopTableFilter() != filter) {
-            combinedResult = new HBaseSubqueryResult(filter);
+            subqueryResult = new HBaseSubqueryResult(filter);
         } else {
             byte[] startKey = HConstants.EMPTY_BYTE_ARRAY;
             byte[] endKey = HConstants.EMPTY_BYTE_ARRAY;
@@ -147,9 +147,9 @@ public class HBaseTableCursor implements Cursor {
 
     @Override
     public Row get() {
-        if (combinedResult != null) {
+        if (subqueryResult != null) {
             Value[] data = new Value[columnCount];
-            Value[] data2 = combinedResult.currentRow();
+            Value[] data2 = subqueryResult.currentRow();
 
             Value rowKey = data2[0];
             if (columns != null) {
@@ -189,8 +189,8 @@ public class HBaseTableCursor implements Cursor {
     @Override
     public boolean next() {
         index++;
-        if (combinedResult != null) {
-            return combinedResult.next();
+        if (subqueryResult != null) {
+            return subqueryResult.next();
         }
         if (result != null && index < result.length)
             return true;

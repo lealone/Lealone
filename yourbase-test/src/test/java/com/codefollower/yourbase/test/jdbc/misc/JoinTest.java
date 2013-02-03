@@ -31,7 +31,6 @@ public class JoinTest extends TestBase {
         test();
     }
 
-    //topTableFilter.getTable().getName().equalsIgnoreCase("JoinTest1")
     void init() throws Exception {
         stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS JoinTest1(" //
                 + "COLUMN FAMILY cf(id int, name varchar(500), b boolean))");
