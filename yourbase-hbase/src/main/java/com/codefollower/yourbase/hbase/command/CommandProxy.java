@@ -185,7 +185,6 @@ public class CommandProxy extends Command {
     }
 
     private void setProxyCommandParameters() {
-        proxyCommand.setFetchSize(fetchSize);
         //当Command是在本地执行时，proxyCommand.getParameters()就是originalParams，此时不需要重复设置
         if (originalParams != null && proxyCommand.getParameters() != null && proxyCommand.getParameters() != originalParams) {
             ArrayList<? extends ParameterInterface> params = proxyCommand.getParameters();
@@ -202,6 +201,8 @@ public class CommandProxy extends Command {
         //所以如果是参数化的SQL，则需要解析rowKey。
         if (isParameterized) {
             parseRowKey();
+            //此时是一条新的proxyCommand，所以要设置fetchSize
+            proxyCommand.setFetchSize(super.getFetchSize());
         }
         setProxyCommandParameters();
         return proxyCommand.executeQuery(maxrows, scrollable);
@@ -276,6 +277,17 @@ public class CommandProxy extends Command {
     public void cancel() {
         proxyCommand.cancel();
         super.cancel();
+    }
+
+    @Override
+    public int getFetchSize() {
+        return proxyCommand.getFetchSize();
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        proxyCommand.setFetchSize(fetchSize);
+        super.setFetchSize(fetchSize);
     }
 
     CommandInterface getCommandInterface(String url, String sql) throws Exception {

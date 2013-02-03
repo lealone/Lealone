@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.index.Cursor;
 import com.codefollower.yourbase.dbobject.table.Column;
 import com.codefollower.yourbase.dbobject.table.TableFilter;
@@ -46,7 +47,7 @@ import com.codefollower.yourbase.value.ValueString;
 
 public class HBaseTableCursor implements Cursor {
     private final HBaseSession session;
-    private final int fetchSize;
+    private int fetchSize;
     private byte[] regionName = null;
 
     private long scannerId;
@@ -68,6 +69,9 @@ public class HBaseTableCursor implements Cursor {
             throw new RuntimeException("regionName is null");
 
         fetchSize = filter.getPrepared().getCommand().getFetchSize();
+        //非查询的操作一般不设置fetchSize，此时fetchSize为0，所以要设置一个默认值
+        if (fetchSize < 1 && !filter.getPrepared().isQuery())
+            fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
         rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();
         columnCount = ((HBaseTable) filter.getTable()).getColumns().length;

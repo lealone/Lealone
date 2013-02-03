@@ -33,6 +33,7 @@ import com.codefollower.yourbase.command.Command;
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.Prepared;
 import com.codefollower.yourbase.command.dml.Select;
+import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.expression.ParameterInterface;
 import com.codefollower.yourbase.hbase.command.merge.HBaseMergedResult;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
@@ -85,6 +86,9 @@ public class CommandParallel implements CommandInterface {
                             CommandProxy.createSQL(hri.getRegionName(), planSQL())));
                 }
             }
+
+            //设置默认fetchSize，当执行Update、Delete之类的操作时也需要先抓取记录然后再判断记录是否满足条件。
+            setFetchSize(SysProperties.SERVER_RESULT_SET_FETCH_SIZE);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
