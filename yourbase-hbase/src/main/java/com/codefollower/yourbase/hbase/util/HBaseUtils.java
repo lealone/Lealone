@@ -202,8 +202,7 @@ public class HBaseUtils {
 
     public static String createURL(String hostname, int port) {
         StringBuilder url = new StringBuilder(100);
-        url.append("jdbc:yourbase:tcp://").append(hostname).append(":").append(port).append("/").append(HBASE_DB_NAME)
-                .append(";STORE_ENGINE_NAME=HBASE");
+        url.append("jdbc:yourbase:tcp://").append(hostname).append(":").append(port).append("/").append(HBASE_DB_NAME);
         return url.toString();
     }
 

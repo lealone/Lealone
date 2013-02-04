@@ -64,10 +64,8 @@ public class HBaseTcpServerThread extends TcpServerThread {
             baseDir = SysProperties.getBaseDir();
         }
 
-        String storeEngineName = originalProperties.getProperty("STORE_ENGINE_NAME", null);
         db = server.checkKeyAndGetDatabaseName(db);
-        if (storeEngineName != null && storeEngineName.equalsIgnoreCase("HBASE"))
-            db = "mem:" + db;
+        db = "mem:" + db; //TODO
         ConnectionInfo ci = new ConnectionInfo(db);
 
         if (baseDir != null) {
@@ -82,8 +80,6 @@ public class HBaseTcpServerThread extends TcpServerThread {
         ci.setUserPasswordHash(userPasswordHash);
         ci.setFilePasswordHash(filePasswordHash);
         ci.readProperties(originalProperties);
-
-        ci.removeProperty("STORE_ENGINE_NAME", false);
 
         originalProperties.setProperty("user", userName);
         originalProperties.setProperty("password", "");

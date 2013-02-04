@@ -100,7 +100,7 @@ public class BenchWrite {
     }
 
     void init() throws Exception {
-        String url = "jdbc:yourbase:tcp://localhost:9092/hbasedb;STORE_ENGINE_NAME=HBASE";
+        String url = "jdbc:yourbase:tcp://localhost:9092/hbasedb";
         conn = DriverManager.getConnection(url, "sa", "");
         stmt = conn.createStatement();
         stmt.executeUpdate("SET DB_CLOSE_DELAY -1"); //不马上关闭数据库

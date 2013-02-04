@@ -41,7 +41,7 @@ public class TestBase {
     protected ResultSet rs;
     protected String sql;
     protected String db = "hbasedb";
-    protected static String url = "jdbc:yourbase:tcp://localhost:9092/hbasedb;STORE_ENGINE_NAME=HBASE";
+    protected static String url = "jdbc:yourbase:tcp://localhost:9092/hbasedb";
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
