@@ -157,7 +157,7 @@ public class TcpServerThread implements Runnable {
             ci.setProperty("IFEXISTS", "TRUE");
         }
         ci.setOriginalURL(originalURL);
-        ci.setUserName(transfer.readString());
+        ci.setUserName(userName);
         ci.setUserPasswordHash(transfer.readBytes());
         ci.setFilePasswordHash(transfer.readBytes());
         int len = transfer.readInt();

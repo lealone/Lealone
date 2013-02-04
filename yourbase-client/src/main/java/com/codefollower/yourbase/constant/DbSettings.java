@@ -318,7 +318,7 @@ public class DbSettings extends SettingsBase {
      * (default: null).<br />
      * The default table engine to use for new tables.
      */
-    public String defaultTableEngine = get("DEFAULT_TABLE_ENGINE", "REGULAR");
+    public final String defaultTableEngine = get("DEFAULT_TABLE_ENGINE", "REGULAR");
 
     private DbSettings(HashMap<String, String> s) {
         super(s);
