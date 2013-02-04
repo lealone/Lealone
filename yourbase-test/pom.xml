@@ -20,6 +20,18 @@
 		</dependency>
 
 		<dependency>
+			<groupId>com.codefollower.yourbase</groupId>
+			<artifactId>yourbase-mvstore</artifactId>
+			<version>${yourbase.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.codefollower.yourbase</groupId>
+			<artifactId>yourbase-olap</artifactId>
+			<version>${yourbase.version}</version>
+		</dependency>
+
+		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
 			<version>1.1.1</version>

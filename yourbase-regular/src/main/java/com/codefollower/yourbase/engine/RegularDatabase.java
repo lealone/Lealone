@@ -42,6 +42,7 @@ import com.codefollower.yourbase.dbobject.index.PageBtreeIndex;
 import com.codefollower.yourbase.dbobject.index.PersistentIndex;
 import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.MetaTable;
+import com.codefollower.yourbase.dbobject.table.RegularTableEngine;
 import com.codefollower.yourbase.dbobject.table.TableBase;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.message.Trace;
@@ -61,6 +62,10 @@ import com.codefollower.yourbase.util.NetUtils;
 import com.codefollower.yourbase.util.Utils;
 
 public class RegularDatabase extends Database {
+    public RegularDatabase(DatabaseEngine dbEngine) {
+        super(dbEngine, true);
+    }
+
     protected PageStore pageStore;
     protected int pageSize;
     protected WriterThread writer;
@@ -74,6 +79,11 @@ public class RegularDatabase extends Database {
     private final Object reconnectSync = new Object();
 
     protected int reconnectCheckDelay;
+
+    @Override
+    public String getTableEngineName() {
+        return RegularTableEngine.NAME;
+    }
 
     @Override
     public void init(ConnectionInfo ci, String cipher) {
@@ -114,7 +124,7 @@ public class RegularDatabase extends Database {
                 // ignore
             }
             traceSystem.close();
-            Engine.getInstance().close(databaseName);
+            dbEngine.closeDatabase(databaseName);
             return;
         }
         super.close(fromShutdownHook);

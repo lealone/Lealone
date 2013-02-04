@@ -17,6 +17,7 @@ import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.engine.ConnectionInfo;
 import com.codefollower.yourbase.engine.Database;
+import com.codefollower.yourbase.engine.RegularDatabaseEngine;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.store.fs.FilePathRec;
@@ -108,7 +109,7 @@ public class RecoverTester implements Recorder {
             p.setProperty("user", "");
             p.setProperty("password", "");
             ConnectionInfo ci = new ConnectionInfo("jdbc:yourbase:" + testDatabase + ";FILE_LOCK=NO;TRACE_LEVEL_FILE=0", p);
-            Database database = new Database();
+            Database database = RegularDatabaseEngine.getInstance().createDatabase();
             database.init(ci, null);
             // close the database
             Session session = database.getSystemSession();
@@ -151,7 +152,7 @@ public class RecoverTester implements Recorder {
             // avoid using the Engine class to avoid deadlocks
             Properties p = new Properties();
             ConnectionInfo ci = new ConnectionInfo("jdbc:yourbase:" + testDatabase + ";FILE_LOCK=NO", p);
-            Database database = new Database();
+            Database database = RegularDatabaseEngine.getInstance().createDatabase();
             database.init(ci, null);
             // close the database
             database.removeSession(null);

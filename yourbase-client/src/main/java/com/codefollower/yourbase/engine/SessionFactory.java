@@ -13,7 +13,7 @@ import com.codefollower.yourbase.engine.ConnectionInfo;
 /**
  * A class that implements this interface can create new database sessions.
  */
-interface SessionFactory {
+public interface SessionFactory {
 
     /**
      * Create a new session.

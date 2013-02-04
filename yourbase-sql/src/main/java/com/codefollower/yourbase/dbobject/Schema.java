@@ -539,6 +539,10 @@ public class Schema extends DbObjectBase {
                 database.lockMeta(data.session);
             }
             data.schema = this;
+
+            if (data.tableEngine == null) {
+                data.tableEngine = database.getTableEngineName();
+            }
             if (data.tableEngine != null) {
                 TableEngine engine = TableEngineManager.getTableEngine(data.tableEngine);
                 if (engine == null) {

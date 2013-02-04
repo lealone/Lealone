@@ -19,18 +19,27 @@
  */
 package com.codefollower.yourbase.olap.engine;
 
-import com.codefollower.yourbase.engine.Database;
-import com.codefollower.yourbase.engine.DatabaseEngine;
-import com.codefollower.yourbase.olap.dbobject.table.OlapTableEngine;
+import com.codefollower.yourbase.engine.DatabaseEngineBase;
+import com.codefollower.yourbase.engine.DatabaseEngineManager;
 
-public class OlapDatabase extends Database {
-    public OlapDatabase(DatabaseEngine dbEngine) {
-        super(dbEngine, true);
+public class OlapDatabaseEngine extends DatabaseEngineBase {
+    public static final String NAME = "OLAP";
+    private static final OlapDatabaseEngine INSTANCE = new OlapDatabaseEngine();
+    static {
+        DatabaseEngineManager.registerDatabaseEngine(INSTANCE);
+    }
+
+    public static OlapDatabaseEngine getInstance() {
+        return INSTANCE;
     }
 
     @Override
-    public String getTableEngineName() {
-        return OlapTableEngine.NAME;
+    public OlapDatabase createDatabase() {
+        return new OlapDatabase(this);
     }
 
+    @Override
+    public String getName() {
+        return NAME;
+    }
 }

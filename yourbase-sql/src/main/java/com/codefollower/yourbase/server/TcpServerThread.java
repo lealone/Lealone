@@ -21,7 +21,6 @@ import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Engine;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.engine.SessionRemote;
 import com.codefollower.yourbase.expression.Parameter;
@@ -164,7 +163,11 @@ public class TcpServerThread implements Runnable {
         for (int i = 0; i < len; i++) {
             ci.setProperty(transfer.readString(), transfer.readString());
         }
-        return Engine.getInstance().createSession(ci);
+        try {
+            return (Session) ci.getSessionFactory().createSession(ci);
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
     }
 
     private void closeSession() {

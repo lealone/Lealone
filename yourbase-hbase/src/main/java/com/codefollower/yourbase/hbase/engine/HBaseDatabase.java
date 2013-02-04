@@ -30,13 +30,19 @@ import com.codefollower.yourbase.dbobject.SchemaObject;
 import com.codefollower.yourbase.dbobject.User;
 import com.codefollower.yourbase.engine.ConnectionInfo;
 import com.codefollower.yourbase.engine.Database;
+import com.codefollower.yourbase.engine.DatabaseEngine;
 import com.codefollower.yourbase.engine.MetaRecord;
 import com.codefollower.yourbase.engine.Session;
+import com.codefollower.yourbase.hbase.dbobject.table.HBaseTableEngine;
 import com.codefollower.yourbase.hbase.dbobject.table.MetaTable;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.util.New;
 
 public class HBaseDatabase extends Database {
+
+    public HBaseDatabase(DatabaseEngine dbEngine) {
+        super(dbEngine, false);
+    }
 
     private boolean isMaster;
     private boolean isRegionServer;
@@ -56,6 +62,11 @@ public class HBaseDatabase extends Database {
     private static class Pair {
         Session session;
         DbObject dbObject;
+    }
+
+    @Override
+    public String getTableEngineName() {
+        return HBaseTableEngine.NAME;
     }
 
     @Override

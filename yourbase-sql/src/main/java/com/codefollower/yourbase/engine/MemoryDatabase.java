@@ -19,7 +19,17 @@
  */
 package com.codefollower.yourbase.engine;
 
+import com.codefollower.yourbase.dbobject.table.MemoryTableEngine;
 import com.codefollower.yourbase.engine.Database;
 
 public class MemoryDatabase extends Database {
+
+    public MemoryDatabase(DatabaseEngine dbEngine) {
+        super(dbEngine, false);
+    }
+
+    @Override
+    public String getTableEngineName() {
+        return MemoryTableEngine.NAME;
+    }
 }

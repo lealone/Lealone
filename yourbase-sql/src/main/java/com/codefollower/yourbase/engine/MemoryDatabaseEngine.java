@@ -17,20 +17,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.yourbase.olap.engine;
+package com.codefollower.yourbase.engine;
 
-import com.codefollower.yourbase.engine.Database;
-import com.codefollower.yourbase.engine.DatabaseEngine;
-import com.codefollower.yourbase.olap.dbobject.table.OlapTableEngine;
+public class MemoryDatabaseEngine extends DatabaseEngineBase {
+    public static final String NAME = "MEMORY";
+    private static final MemoryDatabaseEngine INSTANCE = new MemoryDatabaseEngine();
+    static {
+        DatabaseEngineManager.registerDatabaseEngine(INSTANCE);
+    }
 
-public class OlapDatabase extends Database {
-    public OlapDatabase(DatabaseEngine dbEngine) {
-        super(dbEngine, true);
+    public static MemoryDatabaseEngine getInstance() {
+        return INSTANCE;
     }
 
     @Override
-    public String getTableEngineName() {
-        return OlapTableEngine.NAME;
+    public MemoryDatabase createDatabase() {
+        return new MemoryDatabase(this);
     }
 
+    @Override
+    public String getName() {
+        return NAME;
+    }
 }

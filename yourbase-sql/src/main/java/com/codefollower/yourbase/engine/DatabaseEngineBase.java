@@ -1,8 +1,21 @@
 /*
- * Copyright 2004-2011 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Copyright 2011 The Apache Software Foundation
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package com.codefollower.yourbase.engine;
 
@@ -16,37 +29,113 @@ import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SetTypes;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.dbobject.User;
-import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.SessionFactory;
-import com.codefollower.yourbase.jmx.DatabaseInfo;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.util.MathUtils;
 import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.StringUtils;
-import com.codefollower.yourbase.util.Utils;
 
 /**
  * The engine contains a map of all open databases.
  * It is also responsible for opening and creating new databases.
  * This is a singleton class.
  */
-public class Engine implements SessionFactory {
+public abstract class DatabaseEngineBase implements DatabaseEngine {
 
-    private static final Engine INSTANCE = new Engine();
     private static final HashMap<String, Database> DATABASES = New.hashMap();
 
     private volatile long wrongPasswordDelay = SysProperties.DELAY_WRONG_PASSWORD_MIN;
-    private boolean jmx;
 
-    public static Engine getInstance() {
-        return INSTANCE;
+    /**
+     * Open a database connection with the given connection information.
+     *
+     * @param ci the connection information
+     * @return the session
+     */
+    @Override
+    public synchronized Session createSession(ConnectionInfo ci) {
+        return createSessionAndValidate(ci);
     }
 
-    protected Database createDatabase() {
-        return new Database();
+    /**
+     * Called after a database has been closed, to remove the object from the
+     * list of open databases.
+     *
+     * @param dbName the database name
+     */
+    public synchronized void closeDatabase(String dbName) {
+        unregisterMBean(dbName);
+        DATABASES.remove(dbName);
     }
 
-    private Session openSession(ConnectionInfo ci, boolean ifExists, String cipher) {
+    protected Session createSessionAndValidate(ConnectionInfo ci) {
+        try {
+            Session session = openSession(ci);
+            validateUserAndPassword(true);
+            return session;
+        } catch (DbException e) {
+            if (e.getErrorCode() == ErrorCode.WRONG_USER_OR_PASSWORD) {
+                validateUserAndPassword(false);
+            }
+            throw e;
+        }
+    }
+
+    protected Session openSession(ConnectionInfo ci) {
+        boolean ifExists = ci.removeProperty("IFEXISTS", false);
+        boolean ignoreUnknownSetting = ci.removeProperty("IGNORE_UNKNOWN_SETTINGS", false);
+        String cipher = ci.removeProperty("CIPHER", null);
+        String init = ci.removeProperty("INIT", null);
+        Session session;
+        while (true) {
+            session = openSession(ci, ifExists, cipher);
+            if (session != null) {
+                break;
+            }
+            // we found a database that is currently closing
+            // wait a bit to avoid a busy loop (the method is synchronized)
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                // ignore
+            }
+        }
+
+        ci.removeProperty("SERVER_TYPE", false);
+        session.setAllowLiterals(true);
+        DbSettings defaultSettings = DbSettings.getInstance(null);
+        for (String setting : ci.getKeys()) {
+            if (defaultSettings.containsKey(setting)) {
+                // database setting are only used when opening the database
+                continue;
+            }
+            String value = ci.getProperty(setting);
+            try {
+                CommandInterface command = session.prepareLocal("SET " + Parser.quoteIdentifier(setting) + " " + value);
+                command.executeUpdate();
+            } catch (DbException e) {
+                if (!ignoreUnknownSetting) {
+                    session.close();
+                    throw e;
+                }
+            }
+        }
+        if (init != null) {
+            try {
+                CommandInterface command = session.prepareCommand(init, Integer.MAX_VALUE);
+                command.executeUpdate();
+            } catch (DbException e) {
+                if (!ignoreUnknownSetting) {
+                    session.close();
+                    throw e;
+                }
+            }
+        }
+        session.setAllowLiterals(false);
+        session.commit(true);
+        return session;
+    }
+
+    protected Session openSession(ConnectionInfo ci, boolean ifExists, String cipher) {
         String name = ci.getName();
         Database database;
         ci.removeProperty("NO_UPGRADE", false);
@@ -108,97 +197,15 @@ public class Engine implements SessionFactory {
             }
             checkClustering(ci, database);
             Session session = database.createSession(user);
-            if (ci.getProperty("JMX", false)) {
-                try {
-                    Utils.callStaticMethod(DatabaseInfo.class.getName() + ".registerMBean", ci, database);
-                } catch (Exception e) {
-                    database.removeSession(session);
-                    throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, e, "JMX");
-                }
-                jmx = true;
-            }
+            registerMBean(ci, database, session);
             return session;
         }
     }
 
-    /**
-     * Open a database connection with the given connection information.
-     *
-     * @param ci the connection information
-     * @return the session
-     */
-    public Session createSession(ConnectionInfo ci) {
-        return INSTANCE.createSessionAndValidate(ci);
+    protected void registerMBean(ConnectionInfo ci, Database database, Session session) {
     }
 
-    protected Session createSessionAndValidate(ConnectionInfo ci) {
-        try {
-
-            Session session = openSession(ci);
-            validateUserAndPassword(true);
-            return session;
-        } catch (DbException e) {
-            if (e.getErrorCode() == ErrorCode.WRONG_USER_OR_PASSWORD) {
-                validateUserAndPassword(false);
-            }
-            throw e;
-        }
-    }
-
-    protected synchronized Session openSession(ConnectionInfo ci) {
-        boolean ifExists = ci.removeProperty("IFEXISTS", false);
-        boolean ignoreUnknownSetting = ci.removeProperty("IGNORE_UNKNOWN_SETTINGS", false);
-        String cipher = ci.removeProperty("CIPHER", null);
-        String init = ci.removeProperty("INIT", null);
-        Session session;
-        while (true) {
-            session = openSession(ci, ifExists, cipher);
-            if (session != null) {
-                break;
-            }
-            // we found a database that is currently closing
-            // wait a bit to avoid a busy loop (the method is synchronized)
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                // ignore
-            }
-        }
-
-		ci.removeProperty("SERVER_TYPE", false);
-        session.setAllowLiterals(true);
-        DbSettings defaultSettings = DbSettings.getInstance(null);
-        for (String setting : ci.getKeys()) {
-            if (defaultSettings.containsKey(setting)) {
-                // database setting are only used when opening the database
-                continue;
-            }
-            String value = ci.getProperty(setting);
-            try {
-                CommandInterface command = session.prepareLocal("SET " + Parser.quoteIdentifier(setting) + " "
-                        + value);
-                command.executeUpdate();
-            } catch (DbException e) {
-                if (!ignoreUnknownSetting) {
-                    session.close();
-                    throw e;
-                }
-            }
-        }
-        if (init != null) {
-            try {
-                CommandInterface command = session.prepareCommand(init, Integer.MAX_VALUE);
-                command.executeUpdate();
-            } catch (DbException e) {
-                if (!ignoreUnknownSetting) {
-                    session.close();
-                    throw e;
-                }
-            }
-        }
-        session.setAllowLiterals(false);
-        session.commit(true);
-        return session;
+    protected void unregisterMBean(String dbName) {
     }
 
     private static void checkClustering(ConnectionInfo ci, Database database) {
@@ -219,23 +226,6 @@ public class Engine implements SessionFactory {
                 }
             }
         }
-    }
-
-    /**
-     * Called after a database has been closed, to remove the object from the
-     * list of open databases.
-     *
-     * @param name the database name
-     */
-    void close(String name) {
-        if (jmx) {
-            try {
-                Utils.callStaticMethod(DatabaseInfo.class.getName() + ".unregisterMBean", name);
-            } catch (Exception e) {
-                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, e, "JMX");
-            }
-        }
-        DATABASES.remove(name);
     }
 
     /**
@@ -262,7 +252,7 @@ public class Engine implements SessionFactory {
             if (delay > min && delay > 0) {
                 // the first correct password must be blocked,
                 // otherwise parallel attacks are possible
-                synchronized (INSTANCE) {
+                synchronized (this) {
                     // delay up to the last delay
                     // an attacker can't know how long it will be
                     delay = MathUtils.secureRandomInt((int) delay);
@@ -277,7 +267,7 @@ public class Engine implements SessionFactory {
         } else {
             // this method is not synchronized on the Engine, so that
             // regular successful attempts are not blocked
-            synchronized (INSTANCE) {
+            synchronized (this) {
                 long delay = wrongPasswordDelay;
                 int max = SysProperties.DELAY_WRONG_PASSWORD_MAX;
                 if (max <= 0) {
@@ -300,5 +290,4 @@ public class Engine implements SessionFactory {
             }
         }
     }
-
 }

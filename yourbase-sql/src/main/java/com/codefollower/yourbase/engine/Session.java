@@ -19,6 +19,7 @@ import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.constant.SetTypes;
 import com.codefollower.yourbase.constant.SysProperties;
+import com.codefollower.yourbase.dbobject.Procedure;
 import com.codefollower.yourbase.dbobject.Schema;
 import com.codefollower.yourbase.dbobject.Sequence;
 import com.codefollower.yourbase.dbobject.Setting;
@@ -1213,7 +1214,7 @@ public class Session extends SessionWithState {
     public SessionInterface reconnect(boolean write) {
         readSessionState();
         close();
-        Session newSession = Engine.getInstance().createSession(connectionInfo);
+        Session newSession = (Session) database.getDatabaseEngine().createSession(connectionInfo);
         newSession.sessionState = sessionState;
         newSession.recreateSessionState();
         if (write) {

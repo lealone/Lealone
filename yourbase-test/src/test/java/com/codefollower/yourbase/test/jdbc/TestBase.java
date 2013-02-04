@@ -43,9 +43,13 @@ public class TestBase {
     protected String db = "hbasedb";
     protected static String url = "jdbc:yourbase:tcp://localhost:9092/hbasedb";
 
+    public static String getURL() {
+        return url;
+    }
+
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        conn = DriverManager.getConnection(url, "sa", "");
+        conn = DriverManager.getConnection(getURL(), "sa", "");
         stmt = conn.createStatement();
     }
 

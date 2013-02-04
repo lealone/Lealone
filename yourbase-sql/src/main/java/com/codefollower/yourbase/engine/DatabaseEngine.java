@@ -17,26 +17,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.yourbase.hbase.engine;
+package com.codefollower.yourbase.engine;
 
-import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Engine;
-import com.codefollower.yourbase.engine.Session;
+public interface DatabaseEngine extends SessionFactory {
+    /**
+     * 获取数据库引擎名称
+     * 
+     * @return 数据库引擎名称
+     */
+    String getName();
 
-public class HBaseEngine extends Engine {
-    private static final HBaseEngine INSTANCE = new HBaseEngine();
+    Database createDatabase();
 
-    public static HBaseEngine getInstance() {
-        return INSTANCE;
-    }
+    void closeDatabase(String dbName);
 
-    @Override
-    public Session createSession(ConnectionInfo ci) {
-        return INSTANCE.createSessionAndValidate(ci);
-    }
-
-    @Override
-    protected HBaseDatabase createDatabase() {
-        return new HBaseDatabase();
-    }
+    SessionInterface createSession(ConnectionInfo ci);
 }

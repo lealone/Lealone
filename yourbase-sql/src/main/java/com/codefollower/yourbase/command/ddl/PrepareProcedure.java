@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 import com.codefollower.yourbase.command.CommandInterface;
 import com.codefollower.yourbase.command.Prepared;
-import com.codefollower.yourbase.engine.Procedure;
+import com.codefollower.yourbase.dbobject.Procedure;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.expression.Parameter;
 import com.codefollower.yourbase.util.New;

@@ -303,7 +303,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
                 ci.setProperty("OPEN_NEW", "true");
             }
             if (sessionFactory == null) {
-                sessionFactory = (SessionFactory) Class.forName("com.codefollower.yourbase.engine.Engine").newInstance();
+                sessionFactory = ci.getSessionFactory();
             }
             return sessionFactory.createSession(ci);
         } catch (Exception re) {

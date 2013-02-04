@@ -51,6 +51,10 @@ public class ConnectionInfo implements Cloneable {
     private boolean persistent;
     private boolean unnamed;
 
+    private String dbEngineName;
+    private boolean embedded;
+    private SessionFactory sessionFactory;
+
     /**
      * Create a connection info object.
      *
@@ -98,11 +102,9 @@ public class ConnectionInfo implements Cloneable {
         ArrayList<String> list = SetTypes.getTypes();
         HashSet<String> set = KNOWN_SETTINGS;
         set.addAll(list);
-        String[] connectionTime = { "ACCESS_MODE_DATA", "AUTOCOMMIT", "CIPHER",
-                "CREATE", "CACHE_TYPE", "FILE_LOCK", "IGNORE_UNKNOWN_SETTINGS",
-                "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST",
-                "USER", "AUTO_SERVER", "AUTO_SERVER_PORT", "NO_UPGRADE",
-                "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX"};
+        String[] connectionTime = { "ACCESS_MODE_DATA", "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "FILE_LOCK",
+                "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "AUTO_SERVER",
+                "AUTO_SERVER_PORT", "NO_UPGRADE", "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX" };
         for (String key : connectionTime) {
             if (SysProperties.CHECK && set.contains(key)) {
                 DbException.throwInternalError(key);
@@ -134,17 +136,43 @@ public class ConnectionInfo implements Cloneable {
             remote = true;
             ssl = true;
             name = name.substring("ssl:".length());
-        } else if (name.startsWith("mem:")) {
+        } else if (name.startsWith("mem:")) { //不推荐再使用，用embedded:memory替换
             persistent = false;
             if ("mem:".equals(name)) {
                 unnamed = true;
             }
-        } else if (name.startsWith("file:")) {
+            embedded = true;
+            dbEngineName = "MEMORY";
+        } else if (name.startsWith("file:")) { //不推荐再使用，用embedded:regular替换
             name = name.substring("file:".length());
             persistent = true;
-        } else {
+            embedded = true;
+            dbEngineName = "REGULAR";
+        } else if (name.startsWith("embedded:")) {
+            embedded = true;
+            name = name.substring("embedded:".length());
+            int pos = name.indexOf(':');
+            if (pos == -1)
+                throw getFormatException();
+            else {
+                dbEngineName = name.substring(0, pos);
+                name = name.substring(pos + 1);
+                if ("".equals(name)) {
+                    unnamed = true;
+                }
+            }
+        } else { //不推荐再使用，用embedded:regular替换
             persistent = true;
+            embedded = true;
+            dbEngineName = "REGULAR";
         }
+
+        if ("default".equalsIgnoreCase(dbEngineName))
+            dbEngineName = getDbSettings().defaultDatabaseEngine;
+        if ("MEMORY".equalsIgnoreCase(dbEngineName))
+            persistent = false;
+        else if ("REGULAR".equalsIgnoreCase(dbEngineName) || "MVSTORE".equalsIgnoreCase(dbEngineName))
+            persistent = true;
         if (persistent && !remote) {
             if ("/".equals(SysProperties.FILE_SEPARATOR)) {
                 name = name.replace('\\', '/');
@@ -172,14 +200,13 @@ public class ConnectionInfo implements Cloneable {
             if (absolute) {
                 n = name;
             } else {
-                n  = FileUtils.unwrap(name);
+                n = FileUtils.unwrap(name);
                 prefix = name.substring(0, name.length() - n.length());
                 n = dir + SysProperties.FILE_SEPARATOR + n;
             }
             String normalizedName = FileUtils.unwrap(FileUtils.toRealPath(n));
             if (normalizedName.equals(absDir) || !normalizedName.startsWith(absDir)) {
-                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " +
-                        absDir);
+                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " + absDir);
             }
             if (!absolute) {
                 name = prefix + dir + SysProperties.FILE_SEPARATOR + FileUtils.unwrap(name);
@@ -201,9 +228,9 @@ public class ConnectionInfo implements Cloneable {
      *
      * @return true if it is
      */
-    public boolean isPersistent() {
-        return persistent;
-    }
+    //    public boolean isPersistent() {
+    //        return persistent;
+    //    }
 
     /**
      * Check if the referenced database is an unnamed in-memory database.
@@ -633,4 +660,22 @@ public class ConnectionInfo implements Cloneable {
         return url;
     }
 
+    public SessionFactory getSessionFactory() {
+        if (sessionFactory == null) {
+            try {
+                String name;
+                if (embedded) {
+                    name = dbEngineName;
+                } else if (!persistent)
+                    name = "MEMORY";
+                else
+                    name = getDbSettings().defaultDatabaseEngine;
+                sessionFactory = (SessionFactory) Utils.callStaticMethod(
+                        "com.codefollower.yourbase.engine.DatabaseEngineManager.getDatabaseEngine", name);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+        return sessionFactory;
+    }
 }

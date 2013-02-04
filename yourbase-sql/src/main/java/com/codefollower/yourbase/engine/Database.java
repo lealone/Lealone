@@ -80,7 +80,7 @@ import com.codefollower.yourbase.value.ValueInt;
  *
  * @since 2004-04-15 22:49
  */
-public class Database implements DataHandler {
+public abstract class Database implements DataHandler {
     /**
      * This log mode means the transaction log is not used.
      */
@@ -181,14 +181,24 @@ public class Database implements DataHandler {
     private DbSettings dbSettings;
     protected int logMode;
 
-    public Database() {
+    protected final DatabaseEngine dbEngine;
+
+    public Database(DatabaseEngine dbEngine, boolean persistent) {
+        this.dbEngine = dbEngine;
+        this.persistent = persistent;
     }
+
+    public DatabaseEngine getDatabaseEngine() {
+        return dbEngine;
+    }
+
+    public abstract String getTableEngineName();
 
     public void init(ConnectionInfo ci, String cipher) {
         String name = ci.getName();
         this.dbSettings = ci.getDbSettings();
         this.compareMode = CompareMode.getInstance(null, 0);
-        this.persistent = ci.isPersistent();
+        //this.persistent = ci.isPersistent();
         this.filePasswordHash = ci.getFilePasswordHash();
         this.databaseName = name;
         this.databaseShortName = parseDatabaseShortName();
@@ -348,7 +358,7 @@ public class Database implements DataHandler {
                 TraceSystem.traceThrowable(e);
             }
         }
-        Engine.getInstance().close(databaseName);
+        getDatabaseEngine().closeDatabase(databaseName);
         throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
     }
 
@@ -991,7 +1001,7 @@ public class Database implements DataHandler {
             }
             closeOnExit = null;
         }
-        Engine.getInstance().close(databaseName);
+        getDatabaseEngine().closeDatabase(databaseName);
     }
 
     /**

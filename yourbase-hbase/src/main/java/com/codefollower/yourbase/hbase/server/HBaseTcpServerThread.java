@@ -26,7 +26,7 @@ import java.util.Properties;
 import com.codefollower.yourbase.constant.SysProperties;
 import com.codefollower.yourbase.engine.ConnectionInfo;
 import com.codefollower.yourbase.engine.Session;
-import com.codefollower.yourbase.hbase.engine.HBaseEngine;
+import com.codefollower.yourbase.hbase.engine.HBaseDatabaseEngine;
 import com.codefollower.yourbase.hbase.engine.HBaseSession;
 import com.codefollower.yourbase.server.TcpServerThread;
 import com.codefollower.yourbase.value.Transfer;
@@ -92,7 +92,7 @@ public class HBaseTcpServerThread extends TcpServerThread {
             ci.setProperty("SERVER_TYPE", "M");
         else if (server.getRegionServer() != null)
             ci.setProperty("SERVER_TYPE", "RS");
-        HBaseSession session = (HBaseSession) HBaseEngine.getInstance().createSession(ci);
+        HBaseSession session = (HBaseSession) HBaseDatabaseEngine.getInstance().createSession(ci);
         session.setMaster(server.getMaster());
         session.setRegionServer(server.getRegionServer());
         session.setOriginalProperties(originalProperties);

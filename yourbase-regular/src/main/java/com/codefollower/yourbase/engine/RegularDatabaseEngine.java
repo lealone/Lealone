@@ -21,26 +21,33 @@ package com.codefollower.yourbase.engine;
 
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.engine.ConnectionInfo;
-import com.codefollower.yourbase.engine.Engine;
 import com.codefollower.yourbase.engine.Session;
+import com.codefollower.yourbase.jmx.DatabaseInfo;
 import com.codefollower.yourbase.message.DbException;
 import com.codefollower.yourbase.store.FileLock;
+import com.codefollower.yourbase.util.Utils;
 
-public class RegularEngine extends Engine {
-    private static final RegularEngine INSTANCE = new RegularEngine();
+public class RegularDatabaseEngine extends DatabaseEngineBase {
+    public static final String NAME = "REGULAR";
+    private static final RegularDatabaseEngine INSTANCE = new RegularDatabaseEngine();
+    static {
+        DatabaseEngineManager.registerDatabaseEngine(INSTANCE);
+    }
 
-    public static RegularEngine getInstance() {
+    public static RegularDatabaseEngine getInstance() {
         return INSTANCE;
     }
 
+    private boolean jmx;
+
     @Override
-    public Session createSession(ConnectionInfo ci) {
-        return INSTANCE.createSessionAndValidate(ci);
+    public RegularDatabase createDatabase() {
+        return new RegularDatabase(this);
     }
 
     @Override
-    protected RegularDatabase createDatabase() {
-        return new RegularDatabase();
+    public String getName() {
+        return NAME;
     }
 
     @Override
@@ -69,6 +76,30 @@ public class RegularEngine extends Engine {
                 validateUserAndPassword(false);
             }
             throw e;
+        }
+    }
+
+    @Override
+    protected void registerMBean(ConnectionInfo ci, Database database, Session session) {
+        if (ci.getProperty("JMX", false)) {
+            try {
+                Utils.callStaticMethod(DatabaseInfo.class.getName() + ".registerMBean", ci, database);
+            } catch (Exception e) {
+                database.removeSession(session);
+                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, e, "JMX");
+            }
+            jmx = true;
+        }
+    }
+
+    @Override
+    protected void unregisterMBean(String dbName) {
+        if (jmx) {
+            try {
+                Utils.callStaticMethod(DatabaseInfo.class.getName() + ".unregisterMBean", dbName);
+            } catch (Exception e) {
+                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, e, "JMX");
+            }
         }
     }
 }

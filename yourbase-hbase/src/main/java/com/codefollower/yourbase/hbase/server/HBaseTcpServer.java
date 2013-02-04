@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
 import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.hbase.dbobject.table.HBaseTableEngine;
+import com.codefollower.yourbase.hbase.engine.HBaseDatabaseEngine;
 import com.codefollower.yourbase.hbase.zookeeper.TcpPortTracker;
 import com.codefollower.yourbase.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.yourbase.message.TraceSystem;
@@ -149,6 +150,9 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
         }
         key = Constants.PROJECT_NAME_PREFIX + "default.table.engine";
         System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
+
+        key = Constants.PROJECT_NAME_PREFIX + "default.database.engine";
+        System.setProperty(key, conf.get(key, HBaseDatabaseEngine.NAME));
     }
 
     @Override
