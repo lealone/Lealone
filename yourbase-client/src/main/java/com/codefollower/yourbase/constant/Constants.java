@@ -12,6 +12,15 @@ import java.sql.ResultSet;
  * Constants are fixed values that are used in the whole database code.
  */
 public class Constants {
+    /**
+     * 项目名称.
+     */
+    public static final String PROJECT_NAME = "yourbase";
+
+    /**
+     * 项目名称前缀.
+     */
+    public static final String PROJECT_NAME_PREFIX = PROJECT_NAME + ".";
 
     /**
      * The build date is updated for each public release.

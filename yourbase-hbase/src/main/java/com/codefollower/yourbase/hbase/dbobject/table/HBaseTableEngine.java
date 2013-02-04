@@ -32,7 +32,7 @@ import com.codefollower.yourbase.engine.Database;
  *
  */
 public class HBaseTableEngine implements TableEngine {
-    public static final String NAME = "HBase";
+    public static final String NAME = "HBASE";
     private static final HBaseTableEngine INSTANCE = new HBaseTableEngine();
     static {
         TableEngineManager.registerTableEngine(INSTANCE);

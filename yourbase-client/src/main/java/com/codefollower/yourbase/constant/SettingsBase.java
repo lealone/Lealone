@@ -62,7 +62,7 @@ public class SettingsBase {
      * @return the setting
      */
     protected String get(String key, String defaultValue) {
-        StringBuilder buff = new StringBuilder("yourbase.");
+        StringBuilder buff = new StringBuilder(Constants.PROJECT_NAME_PREFIX);
         for (char c : key.toCharArray()) {
             if (c == '_') {
                 buff.append('.');

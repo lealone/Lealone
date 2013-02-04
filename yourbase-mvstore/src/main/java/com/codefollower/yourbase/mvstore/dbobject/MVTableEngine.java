@@ -26,7 +26,7 @@ import com.codefollower.yourbase.util.New;
  * A table engine that internally uses the MVStore.
  */
 public class MVTableEngine implements TableEngine {
-    public static final String NAME = "MVStore";
+    public static final String NAME = "MVSTORE";
     private static final MVTableEngine INSTANCE = new MVTableEngine();
     static {
         TableEngineManager.registerTableEngine(INSTANCE);

@@ -29,10 +29,11 @@ import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
+import com.codefollower.yourbase.constant.Constants;
 import com.codefollower.yourbase.hbase.util.HBaseUtils;
 
 public class ZooKeeperAdmin {
-    public static final String YOURBASE_NODE = "/yourbase";
+    public static final String YOURBASE_NODE = "/" + Constants.PROJECT_NAME;
     public static final String METATABLE_NODE = ZKUtil.joinZNode(YOURBASE_NODE, "metatable");
     public static final String TCP_SERVER_NODE = ZKUtil.joinZNode(YOURBASE_NODE, "server");
 

@@ -21,6 +21,8 @@ package com.codefollower.yourbase.hbase.server;
 
 import java.net.Socket;
 import java.sql.SQLException;
+import java.util.Map.Entry;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -40,11 +42,11 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     private static final Log log = LogFactory.getLog(HBaseTcpServer.class);
 
     public static int getMasterTcpPort(Configuration conf) {
-        return conf.getInt("yourbase.master.tcp.port", Constants.DEFAULT_TCP_PORT - 1);
+        return conf.getInt(Constants.PROJECT_NAME_PREFIX + "master.tcp.port", Constants.DEFAULT_TCP_PORT - 1);
     }
 
     public static int getRegionServerTcpPort(Configuration conf) {
-        return conf.getInt("yourbase.regionserver.tcp.port", Constants.DEFAULT_TCP_PORT);
+        return conf.getInt(Constants.PROJECT_NAME_PREFIX + "regionserver.tcp.port", Constants.DEFAULT_TCP_PORT);
     }
 
     private final int tcpPort;
@@ -55,7 +57,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
 
     public HBaseTcpServer(HMaster master) {
         ZooKeeperAdmin.createBaseZNodes();
-        initDbSettings(master.getConfiguration());
+        initConf(master.getConfiguration());
         tcpPort = getMasterTcpPort(master.getConfiguration());
         serverName = master.getServerName();
         this.master = master;
@@ -63,7 +65,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     }
 
     public HBaseTcpServer(HRegionServer regionServer) {
-        initDbSettings(regionServer.getConfiguration());
+        initConf(regionServer.getConfiguration());
         tcpPort = getRegionServerTcpPort(regionServer.getConfiguration());
         serverName = regionServer.getServerName();
         this.regionServer = regionServer;
@@ -137,8 +139,16 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
         super.init(args);
     }
 
-    private void initDbSettings(Configuration conf) {
-        System.setProperty("yourbase.default.table.engine", conf.get("yourbase.default.table.engine", HBaseTableEngine.NAME));
+    private void initConf(Configuration conf) {
+        String key;
+        for (Entry<String, String> e : conf) {
+            key = e.getKey().toLowerCase();
+            if (key.startsWith(Constants.PROJECT_NAME_PREFIX)) {
+                System.setProperty(key, e.getValue());
+            }
+        }
+        key = Constants.PROJECT_NAME_PREFIX + "default.table.engine";
+        System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
     }
 
     @Override
