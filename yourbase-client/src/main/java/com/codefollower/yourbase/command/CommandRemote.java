@@ -39,7 +39,6 @@ public class CommandRemote implements CommandInterface {
     private boolean isQuery;
     private boolean readonly;
     private final int created;
-    private final ArrayList<ResultRemoteCursor> resultRemoteCursors;
 
     public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
         this.transferList = transferList;
@@ -52,7 +51,6 @@ public class CommandRemote implements CommandInterface {
         this.session = session;
         this.fetchSize = fetchSize;
         created = session.getLastReconnect();
-        resultRemoteCursors = New.arrayList();
     }
 
     private void prepare(SessionRemote s, boolean createParams) {
@@ -159,10 +157,9 @@ public class CommandRemote implements CommandInterface {
                         result.close();
                         result = null;
                     }
-                    if (rowCount < 0) {
+                    if (rowCount < 0)
                         result = new ResultRemoteCursor(session, transfer, objectId, columnCount, fetch);
-                        resultRemoteCursors.add((ResultRemoteCursor) result);
-                    } else
+                    else
                         result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, fetch);
                     if (readonly) {
                         break;
