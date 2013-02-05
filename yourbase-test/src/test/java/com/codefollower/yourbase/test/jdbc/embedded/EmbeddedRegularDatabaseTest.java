@@ -34,7 +34,7 @@ import com.codefollower.yourbase.test.jdbc.TestBase;
 
 public class EmbeddedRegularDatabaseTest extends TestBase {
     protected static String url = "jdbc:yourbase:embedded:regular:hbasedb";
-    
+
     //如果是default，按yourbase.default.database.engine参数选择默认的引擎
     //protected static String url = "jdbc:yourbase:embedded:default:hbasedb";
 

@@ -71,7 +71,7 @@ public class SystemFunctionTest extends TestBase {
 
         sql = "SELECT CURRVAL('SEQ_ID'), NEXTVAL('SEQ_ID')";
         printResultSet();
-        
+
         sql = "SELECT CAST(65535 AS BINARY);";
         printResultSet();
     }

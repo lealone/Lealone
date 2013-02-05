@@ -62,6 +62,7 @@ public class HBaseTable extends TableBase {
     private final ArrayList<Index> indexes = New.arrayList();
     private final Index scanIndex;
     private final HTableDescriptor hTableDescriptor;
+    private final String tableName;
 
     private String rowKeyName;
     private Column rowKeyColumn;
@@ -72,6 +73,7 @@ public class HBaseTable extends TableBase {
     public HBaseTable(CreateTableData data) {
         super(data);
         isStatic = true;
+        tableName = data.tableName;
 
         Column[] cols = getColumns();
         for (Column c : cols) {
@@ -92,6 +94,7 @@ public class HBaseTable extends TableBase {
             ArrayList<Column> columns, HTableDescriptor htd, byte[][] splitKeys) {
         super(schema, id, name, true, true, HBaseTableEngine.class.getName(), false);
         isStatic = false;
+        tableName = name;
 
         this.columnsMap = columnsMap;
         setColumns(columns.toArray(new Column[columns.size()]));
@@ -174,7 +177,6 @@ public class HBaseTable extends TableBase {
     @Override
     public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
             boolean create, String indexComment) {
-        //new Error("id:"+indexId+" "+ indexName).printStackTrace();
         if (indexType.isPrimaryKey()) {
             for (IndexColumn c : cols) {
                 Column column = c.column;
@@ -420,9 +422,23 @@ public class HBaseTable extends TableBase {
 
     @Override
     public void removeChildrenAndResources(Session session) {
+        int i = 1;
+        while (indexes.size() > 1) {
+            Index index = indexes.get(i++);
+            if (index.getName() != null) {
+                database.removeSchemaObject(session, index);
+            }
+        }
+        indexes.clear();
+        boolean isFromZookeeper = ((HBaseDatabase) database).isFromZookeeper();
         super.removeChildrenAndResources(session);
-        if (!((HBaseDatabase) database).isFromZookeeper())
+        if (!isFromZookeeper)
             dropIfExists(session, getName());
+    }
+
+    @Override
+    public String getName() { //removeChildrenAndResources会触发invalidate()，导致objectName为null，所以要覆盖它
+        return tableName;
     }
 
     private static void createIfNotExists(Session session, String tableName, HTableDescriptor htd, byte[][] splitKeys) {

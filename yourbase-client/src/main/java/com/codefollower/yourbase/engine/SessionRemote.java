@@ -66,7 +66,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     public static final int STATUS_CLOSED = 2;
     public static final int STATUS_OK_STATE_CHANGED = 3;
 
-    private static SessionFactory sessionFactory;
+    private SessionFactory sessionFactory;
 
     private TraceSystem traceSystem;
     private Trace trace;

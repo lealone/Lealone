@@ -19,8 +19,6 @@
  */
 package com.codefollower.yourbase.dbobject.table;
 
-import java.util.ArrayList;
-
 import com.codefollower.yourbase.command.ddl.CreateTableData;
 import com.codefollower.yourbase.constant.ErrorCode;
 import com.codefollower.yourbase.dbobject.index.HashIndex;
@@ -34,32 +32,12 @@ import com.codefollower.yourbase.dbobject.table.IndexColumn;
 import com.codefollower.yourbase.dbobject.table.TableBase;
 import com.codefollower.yourbase.engine.Session;
 import com.codefollower.yourbase.message.DbException;
-import com.codefollower.yourbase.result.Row;
-import com.codefollower.yourbase.util.New;
 
 public class MemoryTable extends TableBase {
-    private Index scanIndex;
-    private final ArrayList<Index> indexes = New.arrayList();
-
     public MemoryTable(CreateTableData data) {
         super(data);
-        scanIndex = new ScanIndex(this, data.id, IndexColumn.wrap(getColumns()), IndexType.createScan(data.persistData));
+        scanIndex = new ScanIndex(this, data.id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
         indexes.add(scanIndex);
-    }
-
-    @Override
-    public void lock(Session session, boolean exclusive, boolean force) {
-
-    }
-
-    @Override
-    public void close(Session session) {
-
-    }
-
-    @Override
-    public void unlock(Session s) {
-
     }
 
     @Override
@@ -91,6 +69,7 @@ public class MemoryTable extends TableBase {
         if (database.isMultiVersion()) {
             index = new MultiVersionIndex(index, this);
         }
+        rebuildIfNeed(session, index, indexName);
         index.setTemporary(isTemporary());
         if (index.getCreateSQL() != null) {
             index.setComment(indexComment);
@@ -103,104 +82,6 @@ public class MemoryTable extends TableBase {
         indexes.add(index);
         setModified();
         return index;
-    }
-
-    @Override
-    public void removeRow(Session session, Row row) {
-
-    }
-
-    @Override
-    public void truncate(Session session) {
-
-    }
-
-    @Override
-    public void addRow(Session session, Row row) {
-
-    }
-
-    @Override
-    public void checkSupportAlter() {
-
-    }
-
-    @Override
-    public String getTableType() {
-        return Table.TABLE;
-    }
-
-    @Override
-    public Index getScanIndex(Session session) {
-        return scanIndex;
-    }
-
-    @Override
-    public Index getUniqueIndex() {
-        for (Index idx : indexes) {
-            if (idx.getIndexType().isUnique()) {
-                return idx;
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public ArrayList<Index> getIndexes() {
-        return indexes;
-    }
-
-    @Override
-    public boolean isLockedExclusively() {
-
-        return false;
-    }
-
-    @Override
-    public long getMaxDataModificationId() {
-
-        return 0;
-    }
-
-    @Override
-    public boolean isDeterministic() {
-        return true;
-    }
-
-    @Override
-    public boolean canGetRowCount() {
-
-        return false;
-    }
-
-    @Override
-    public boolean canDrop() {
-
-        return false;
-    }
-
-    @Override
-    public long getRowCount(Session session) {
-        return rowCount;
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return scanIndex.getRowCountApproximation();
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return scanIndex.getDiskSpaceUsed();
-    }
-
-    @Override
-    public void checkRename() {
-    }
-
-    @Override
-    public Row getRow(Session session, long key) {
-        return scanIndex.getRow(session, key);
     }
 
 }

@@ -315,10 +315,10 @@ public class DbSettings extends SettingsBase {
 
     /**
      * Database setting <code>DEFAULT_TABLE_ENGINE</code>
-     * (default: REGULAR).<br />
+     * (default: null).<br />
      * The default table engine to use for new tables.
      */
-    public final String defaultTableEngine = get("DEFAULT_TABLE_ENGINE", "REGULAR");
+    public final String defaultTableEngine = get("DEFAULT_TABLE_ENGINE", null);
     
     /**
      * Database setting <code>DEFAULT_DATABASE_ENGINE</code>
