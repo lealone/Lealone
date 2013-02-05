@@ -43,22 +43,23 @@ public class TcpPortTracker extends ZooKeeperListener {
     private ConcurrentHashMap<String, Integer> tcpPortMap = new ConcurrentHashMap<String, Integer>();
     private Abortable abortable;
 
-    private static String getH2TcpPortEphemeralNodePath(ServerName sn, int port) {
-        return ZKUtil.joinZNode(ZooKeeperAdmin.TCP_SERVER_NODE, sn.getHostAndPort() + Addressing.HOSTNAME_PORT_SEPARATOR + port);
+    private static String getH2TcpPortEphemeralNodePath(ServerName sn, int port, boolean isMaster) {
+        String znode = (isMaster ? "M" : "S") + ":" + sn.getHostAndPort() + Addressing.HOSTNAME_PORT_SEPARATOR + port;
+        return ZKUtil.joinZNode(ZooKeeperAdmin.TCP_SERVER_NODE, znode);
     }
 
-    public static void createTcpPortEphemeralNode(ServerName sn, int port) {
+    public static void createTcpPortEphemeralNode(ServerName sn, int port, boolean isMaster) {
         try {
-            ZKUtil.createEphemeralNodeAndWatch(ZooKeeperAdmin.getZooKeeperWatcher(), getH2TcpPortEphemeralNodePath(sn, port),
-                    HConstants.EMPTY_BYTE_ARRAY);
+            ZKUtil.createEphemeralNodeAndWatch(ZooKeeperAdmin.getZooKeeperWatcher(),
+                    getH2TcpPortEphemeralNodePath(sn, port, isMaster), HConstants.EMPTY_BYTE_ARRAY);
         } catch (KeeperException e) {
             throw new TcpPortTrackerException(e);
         }
     }
 
-    public static void deleteTcpPortEphemeralNode(ServerName sn, int port) {
+    public static void deleteTcpPortEphemeralNode(ServerName sn, int port, boolean isMaster) {
         try {
-            ZKUtil.deleteNode(ZooKeeperAdmin.getZooKeeperWatcher(), getH2TcpPortEphemeralNodePath(sn, port));
+            ZKUtil.deleteNode(ZooKeeperAdmin.getZooKeeperWatcher(), getH2TcpPortEphemeralNodePath(sn, port, isMaster));
         } catch (KeeperException e) {
             throw new TcpPortTrackerException(e);
         }
@@ -79,6 +80,7 @@ public class TcpPortTracker extends ZooKeeperListener {
         ConcurrentHashMap<String, Integer> tcpPortMap = new ConcurrentHashMap<String, Integer>();
         for (String n : servers) {
             n = ZKUtil.getNodeName(n);
+            n = n.substring(2);
             int pos = n.lastIndexOf(Addressing.HOSTNAME_PORT_SEPARATOR);
             tcpPortMap.put(n.substring(0, pos), Integer.parseInt(n.substring(pos + 1)));
         }
@@ -90,6 +92,7 @@ public class TcpPortTracker extends ZooKeeperListener {
     public void nodeDeleted(String path) {
         if (path.startsWith(ZooKeeperAdmin.TCP_SERVER_NODE)) {
             String serverName = ZKUtil.getNodeName(path);
+            serverName = serverName.substring(2);
             tcpPortMap.remove(serverName.substring(0, serverName.lastIndexOf(Addressing.HOSTNAME_PORT_SEPARATOR)));
         }
     }

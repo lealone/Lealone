@@ -27,12 +27,17 @@ import com.codefollower.yourbase.util.New;
 import com.codefollower.yourbase.util.SortedProperties;
 import com.codefollower.yourbase.util.StringUtils;
 import com.codefollower.yourbase.util.Utils;
+import com.codefollower.yourbase.zookeeper.ZooKeeperAdmin;
 
 /**
  * Encapsulates the connection settings, including user name and password.
  */
 public class ConnectionInfo implements Cloneable {
     private static final HashSet<String> KNOWN_SETTINGS = New.hashSet();
+
+    /** Default value for ZooKeeper session timeout */
+    public static final int DEFAULT_ZK_SESSION_TIMEOUT = 180 * 1000;
+    private ZooKeeperAdmin zkAdmin;
 
     private Properties prop = new Properties();
     private String originalURL;
@@ -54,6 +59,7 @@ public class ConnectionInfo implements Cloneable {
     private String dbEngineName;
     private boolean embedded;
     private SessionFactory sessionFactory;
+    private boolean dynamic;
 
     /**
      * Create a connection info object.
@@ -104,7 +110,8 @@ public class ConnectionInfo implements Cloneable {
         set.addAll(list);
         String[] connectionTime = { "ACCESS_MODE_DATA", "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "FILE_LOCK",
                 "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "AUTO_SERVER",
-                "AUTO_SERVER_PORT", "NO_UPGRADE", "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX" };
+                "AUTO_SERVER_PORT", "NO_UPGRADE", "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX",
+                "ZOOKEEPER_SESSION_TIMEOUT" };
         for (String key : connectionTime) {
             if (SysProperties.CHECK && set.contains(key)) {
                 DbException.throwInternalError(key);
@@ -161,6 +168,9 @@ public class ConnectionInfo implements Cloneable {
                     unnamed = true;
                 }
             }
+        } else if (name.startsWith("dynamic:")) {
+            dynamic = true;
+            name = name.substring("dynamic:".length());
         } else { //不推荐再使用，用embedded:regular替换
             persistent = true;
             embedded = true;
@@ -678,4 +688,18 @@ public class ConnectionInfo implements Cloneable {
         }
         return sessionFactory;
     }
+
+    public boolean isDynamic() {
+        return dynamic;
+    }
+
+    public String getOnlineServer(String quorum) {
+        if (zkAdmin == null) {
+            int sessionTimeout = getProperty("ZOOKEEPER_SESSION_TIMEOUT", DEFAULT_ZK_SESSION_TIMEOUT);
+            removeProperty("ZOOKEEPER_SESSION_TIMEOUT", null);
+            zkAdmin = new ZooKeeperAdmin(quorum, sessionTimeout);
+        }
+        return zkAdmin.getOnlineServer();
+    }
+
 }

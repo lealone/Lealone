@@ -85,7 +85,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     public void start() {
         try {
             super.start();
-            TcpPortTracker.createTcpPortEphemeralNode(serverName, tcpPort);
+            TcpPortTracker.createTcpPortEphemeralNode(serverName, tcpPort, master != null);
 
             String name = getName() + " (" + getURL() + ")";
             Thread t = new Thread(this, name);
@@ -104,7 +104,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
             super.stop();
             log.info("Stopped yourbase tcp server");
         } finally {
-            TcpPortTracker.deleteTcpPortEphemeralNode(serverName, tcpPort);
+            TcpPortTracker.deleteTcpPortEphemeralNode(serverName, tcpPort, master != null);
         }
     }
 

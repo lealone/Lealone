@@ -51,6 +51,7 @@ Improvement
 New Feature
 
     - 支持分布式SEQUENCE
+    - 基于Zookeeper实现动态连接
 
 
 Task

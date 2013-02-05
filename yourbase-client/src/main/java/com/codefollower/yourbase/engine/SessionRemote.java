@@ -286,7 +286,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
      */
     public SessionInterface connectEmbeddedOrServer(boolean openNew) {
         ConnectionInfo ci = connectionInfo;
-        if (ci.isRemote()) {
+        if (ci.isRemote() || ci.isDynamic()) {
             connectServer(ci);
             return this;
         }
@@ -385,7 +385,13 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         if (cipher != null) {
             fileEncryptionKey = MathUtils.secureRandomBytes(32);
         }
-        String[] servers = StringUtils.arraySplit(server, ',', true);
+
+        String[] servers;
+        if (ci.isDynamic()) {
+            servers = new String[] { ci.getOnlineServer(server) };
+        } else {
+            servers = StringUtils.arraySplit(server, ',', true);
+        }
         int len = servers.length;
         transferList.clear();
         sessionId = StringUtils.convertBytesToHex(MathUtils.secureRandomBytes(32));
