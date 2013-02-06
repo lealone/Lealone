@@ -422,10 +422,11 @@ public class HBaseTable extends TableBase {
 
     @Override
     public void removeChildrenAndResources(Session session) {
+        int size = indexes.size();
         int i = 1;
-        while (indexes.size() > 1) {
+        while (size > 1 && i < size) {
             Index index = indexes.get(i++);
-            if (index.getName() != null) {
+            if (!index.getIndexType().getBelongsToConstraint() && getName() != null) {
                 database.removeSchemaObject(session, index);
             }
         }
