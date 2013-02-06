@@ -1,6 +1,6 @@
 ## YourBase是什么?
 
-* 是一个分布式SQL引擎
+* 是一个可用于HBase的分布式SQL引擎
 
 * 是对[H2关系数据库](http://www.h2database.com/html/main.html)的改进和扩展
 
@@ -30,9 +30,9 @@
 * Maven 2或更高
 
 
-## 安装
+## 安装配置
 
-* [YourBase安装](https://github.com/codefollower/YourBase/wiki/YourBase%E5%AE%89%E8%A3%85)
+* [YourBase安装配置](https://github.com/codefollower/YourBase/wiki/YourBase%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE)
 
 
 ## 快速入门
