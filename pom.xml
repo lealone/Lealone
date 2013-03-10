@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<properties>
-		<yourbase.version>0.10-SNAPSHOT</yourbase.version>
+		<yourbase.version>0.12-SNAPSHOT</yourbase.version>
 	</properties>
 
 	<name>yourbase project</name>
