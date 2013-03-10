@@ -20,6 +20,7 @@
 		<module>yourbase-mvstore</module>
 		<module>yourbase-hbase</module>
 		<module>yourbase-olap</module>
+		<module>yourbase-omid</module>
 		<module>yourbase-test</module>
 	</modules>
 
