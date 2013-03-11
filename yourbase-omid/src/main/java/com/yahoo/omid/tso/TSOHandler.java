@@ -107,7 +107,7 @@ public class TSOHandler extends SimpleChannelHandler {
      */
     public TSOHandler(ChannelGroup channelGroup, TSOState state) {
         this.channelGroup = channelGroup;
-        this.timestampOracle = state.getSO();
+        this.timestampOracle = state.getTimestampOracle();
         this.sharedState = state;
     }
 
@@ -345,7 +345,7 @@ public class TSOHandler extends SimpleChannelHandler {
 
                         sharedState.processCommit(msg.startTimestamp, commitTimestamp);
                         if (sharedState.largestDeletedTimestamp > oldLargestDeletedTimestamp) {
-                            toWAL.writeByte(LoggerProtocol.LARGESTDELETEDTIMESTAMP);
+                            toWAL.writeByte(LoggerProtocol.LARGEST_DELETED_TIMESTAMP);
                             toWAL.writeLong(sharedState.largestDeletedTimestamp);
                             Set<Long> toAbort = sharedState.uncommited
                                     .raiseLargestDeletedTransaction(sharedState.largestDeletedTimestamp);

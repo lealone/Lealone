@@ -47,18 +47,12 @@ public class LargestDeletedTimestampReport implements TSOMessage {
 
     @Override
     public void readObject(ChannelBuffer aInputStream) {
-
         largestDeletedTimestamp = aInputStream.readLong();
     }
 
     @Override
     public void writeObject(DataOutputStream aOutputStream) throws IOException {
         aOutputStream.writeLong(largestDeletedTimestamp);
-    }
-
-    @Override
-    public void writeObject(ChannelBuffer buffer) {
-        buffer.writeLong(largestDeletedTimestamp);
     }
 
     @Override

@@ -58,14 +58,6 @@ public class CommitResponse implements TSOMessage {
     }
 
     @Override
-    public void writeObject(ChannelBuffer buffer) {
-        buffer.writeLong(startTimestamp);
-        buffer.writeByte((byte) (committed ? 1 : 0));
-        if (committed)
-            buffer.writeLong(commitTimestamp);
-    }
-
-    @Override
     public String toString() {
         return "CommitResponse: T_s:" + startTimestamp + " T_c:" + commitTimestamp;
     }

@@ -30,9 +30,9 @@ public class LoggerProtocol extends TSOState {
     /*
      * Protocol flags. Used to identify fields of the logger records.
      */
-    public final static byte TIMESTAMPORACLE = (byte) -1;
+    public final static byte TIMESTAMP_ORACLE = (byte) -1;
     public final static byte COMMIT = (byte) -2;
-    public final static byte LARGESTDELETEDTIMESTAMP = (byte) -3;
+    public final static byte LARGEST_DELETED_TIMESTAMP = (byte) -3;
     public final static byte ABORT = (byte) -4;
     public final static byte FULLABORT = (byte) -5;
     public final static byte LOGSTART = (byte) -6;
@@ -69,9 +69,9 @@ public class LoggerProtocol extends TSOState {
                 LOG.trace("Operation: " + op);
             }
             switch (op) {
-            case TIMESTAMPORACLE:
+            case TIMESTAMP_ORACLE:
                 timestamp = bb.getLong();
-                this.getSO().initialize(timestamp);
+                this.getTimestampOracle().initialize(timestamp);
                 this.initialize();
                 oracle = true;
                 break;
@@ -83,7 +83,7 @@ public class LoggerProtocol extends TSOState {
                     commits = true;
                 }
                 break;
-            case LARGESTDELETEDTIMESTAMP:
+            case LARGEST_DELETED_TIMESTAMP:
                 timestamp = bb.getLong();
                 processLargestDeletedTimestamp(timestamp);
 

@@ -5,7 +5,6 @@ public class AbortedTransaction {
     private long snapshot;
 
     public AbortedTransaction(long startTimestamp, long snapshot) {
-        super();
         this.startTimestamp = startTimestamp;
         this.snapshot = snapshot;
     }

@@ -8,7 +8,6 @@ public class MinimumTimestamp implements Serializable {
     private final long timestamp;
 
     public MinimumTimestamp(long timestamp) {
-        super();
         this.timestamp = timestamp;
     }
 

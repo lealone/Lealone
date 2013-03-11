@@ -36,14 +36,6 @@ public class ZipperState implements TSOMessage {
     }
 
     @Override
-    public void writeObject(ChannelBuffer buffer) {
-        buffer.writeLong(lastStartTimestamp);
-        buffer.writeLong(lastCommitTimestamp);
-        buffer.writeLong(lastHalfAbortedTimestamp);
-        buffer.writeLong(lastFullAbortedTimestamp);
-    }
-
-    @Override
     public void writeObject(DataOutputStream buffer) throws IOException {
         buffer.writeLong(lastStartTimestamp);
         buffer.writeLong(lastCommitTimestamp);

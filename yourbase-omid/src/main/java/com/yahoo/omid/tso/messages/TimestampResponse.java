@@ -54,11 +54,6 @@ public class TimestampResponse implements TSOMessage {
     }
 
     @Override
-    public void writeObject(ChannelBuffer buffer) {
-        buffer.writeLong(timestamp);
-    }
-
-    @Override
     public void readObject(ChannelBuffer aInputStream) {
         timestamp = aInputStream.readLong();
     }

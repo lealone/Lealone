@@ -52,7 +52,4 @@ public class CommitQueryRequest implements TSOMessage {
         return "CommitQueryRequest[" + startTimestamp + "," + queryTimestamp + "]";
     }
 
-    @Override
-    public void writeObject(ChannelBuffer buffer) {
-    }
 }

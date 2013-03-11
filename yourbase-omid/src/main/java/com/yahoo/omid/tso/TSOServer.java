@@ -55,7 +55,6 @@ public class TSOServer implements Runnable {
     private Object lock;
 
     public TSOServer() {
-        super();
         this.config = TSOServerConfig.configFactory();
 
         this.finish = false;
@@ -63,7 +62,6 @@ public class TSOServer implements Runnable {
     }
 
     public TSOServer(TSOServerConfig config) {
-        super();
         this.config = config;
 
         this.finish = false;

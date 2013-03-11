@@ -66,8 +66,4 @@ public class FullAbortRequest implements TSOMessage {
         aOutputStream.writeLong(startTimestamp);
     }
 
-    @Override
-    public void writeObject(ChannelBuffer buffer) {
-        buffer.writeLong(startTimestamp);
-    }
 }

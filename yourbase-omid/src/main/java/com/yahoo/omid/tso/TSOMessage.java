@@ -36,7 +36,6 @@ public interface TSOMessage {
     final public byte CommittedTransactionReportShortShort = (byte) 0xf5;
     final public byte CommittedTransactionReportIntegerShort = (byte) 0xf6;
     final public byte CommittedTransactionReportLongShort = (byte) 0xf7;
-    final public byte CommittedTransactionReportLongLong = (byte) 0xf8;
 
     final public byte CommittedTransactionReport = (byte) 0xe0;
 
@@ -66,5 +65,4 @@ public interface TSOMessage {
      */
     public void writeObject(DataOutputStream aOutputStream) throws IOException;
 
-    public void writeObject(ChannelBuffer buffer);
 }

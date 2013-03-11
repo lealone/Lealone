@@ -70,12 +70,4 @@ public class CommitQueryResponse implements TSOMessage {
     public String toString() {
         return "CommitQueryResponse[" + startTimestamp + "," + queryTimestamp + "," + committed + "," + commitTimestamp + "]";
     }
-
-    @Override
-    public void writeObject(ChannelBuffer buffer) {
-        buffer.writeLong(startTimestamp);
-        buffer.writeLong(queryTimestamp);
-        buffer.writeByte((byte) (committed ? 1 : 0));
-        buffer.writeByte((byte) (retry ? 1 : 0));
-    }
 }

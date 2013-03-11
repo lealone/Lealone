@@ -53,7 +53,8 @@ public class TSOServerConfig {
     @Parameter(names = "-batch", description = "Threshold for the batch sent to the WAL")
     private int batch;
 
-    @Parameter(names = "-ha", description = "Highly Available status oracle: logs operations to the WAL and recovers from a crash")
+    @Parameter(names = "-ha", description = "Highly Available status oracle: "
+            + "logs operations to the WAL and recovers from a crash")
     private boolean recoveryEnabled;
 
     @Parameter(names = "-zk", description = "ZooKeeper ensemble: host1:port1,host2:port2...")

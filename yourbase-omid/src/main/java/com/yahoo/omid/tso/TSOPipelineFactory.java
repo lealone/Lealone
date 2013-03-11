@@ -23,8 +23,6 @@ import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.handler.execution.ExecutionHandler;
-import org.jboss.netty.util.Timer;
-
 import com.yahoo.omid.tso.serialization.TSODecoder;
 import com.yahoo.omid.tso.serialization.TSOEncoder;
 
@@ -34,7 +32,11 @@ import com.yahoo.omid.tso.serialization.TSOEncoder;
  */
 public class TSOPipelineFactory implements ChannelPipelineFactory {
 
+    public static BandwidthMeterHandler bwhandler = null;
+
     private Executor pipelineExecutor = null;
+    private ExecutionHandler x = null;// = new ExecutionHandler(pipelineExecutor);
+    private ChannelHandler handler = null;
 
     /**
      * Constructor
@@ -45,21 +47,10 @@ public class TSOPipelineFactory implements ChannelPipelineFactory {
      * @param shared The shared state among handlers
      */
     public TSOPipelineFactory(Executor pipelineExecutor, ChannelHandler handler) {
-        super();
         this.pipelineExecutor = pipelineExecutor;
         this.handler = handler;
     }
 
-    /**
-     * Initiate the Pipeline for the newly active connection with ObjectXxcoder.
-     * @see org.jboss.netty.channel.ChannelPipelineFactory#getPipeline()
-     */
-    //TSODecoder d = new TSODecoder();
-    //TSOEncoder e = new TSOEncoder();
-    ExecutionHandler x = null;// = new ExecutionHandler(pipelineExecutor);
-    ChannelHandler handler = null;
-    Timer timer = null;
-    public static BandwidthMeterHandler bwhandler = null;
 
     public ChannelPipeline getPipeline() throws Exception {
         ChannelPipeline pipeline = Channels.pipeline();

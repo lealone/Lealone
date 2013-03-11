@@ -30,14 +30,11 @@ import com.yahoo.omid.tso.TSOMessage;
 public class TimestampRequest implements TSOMessage {
 
     @Override
-    public void writeObject(DataOutputStream aOutputStream) throws IOException {
-    }
-
-    @Override
     public void readObject(ChannelBuffer aInputStream) {
     }
 
     @Override
-    public void writeObject(ChannelBuffer buffer) {
+    public void writeObject(DataOutputStream aOutputStream) throws IOException {
     }
+
 }

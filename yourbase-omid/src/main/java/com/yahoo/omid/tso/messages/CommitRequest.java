@@ -36,6 +36,11 @@ public class CommitRequest implements TSOMessage {
      */
     public long startTimestamp;
 
+    /**
+     * Modified rows' ids
+     */
+    public RowKey[] rows;
+
     public CommitRequest() {
     }
 
@@ -49,11 +54,6 @@ public class CommitRequest implements TSOMessage {
         this.rows = rows;
     }
 
-    /**
-     * Modified rows' ids
-     */
-    public RowKey[] rows;
-
     @Override
     public String toString() {
         return "CommitRequest: T_s:" + startTimestamp;
@@ -61,17 +61,12 @@ public class CommitRequest implements TSOMessage {
 
     @Override
     public void readObject(ChannelBuffer aInputStream) {
-        long l = aInputStream.readLong();
-        startTimestamp = l;
+        startTimestamp = aInputStream.readLong();
         int size = aInputStream.readInt();
         rows = new RowKey[size];
         for (int i = 0; i < size; i++) {
             rows[i] = RowKey.readObject(aInputStream);
         }
-    }
-
-    @Override
-    public void writeObject(ChannelBuffer buffer) {
     }
 
     @Override

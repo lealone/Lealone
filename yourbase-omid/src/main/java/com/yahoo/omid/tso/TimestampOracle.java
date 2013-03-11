@@ -57,7 +57,7 @@ public class TimestampOracle {
         last++;
         if (last == maxTimestamp) {
             maxTimestamp += TIMESTAMP_BATCH;
-            toWal.writeByte(LoggerProtocol.TIMESTAMPORACLE);
+            toWal.writeByte(LoggerProtocol.TIMESTAMP_ORACLE);
             toWal.writeLong(maxTimestamp);
             if (LOG.isTraceEnabled()) {
                 LOG.trace("Logging TimestampOracle " + maxTimestamp);

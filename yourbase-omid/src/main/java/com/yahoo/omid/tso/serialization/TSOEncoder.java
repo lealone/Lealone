@@ -43,6 +43,7 @@ import com.yahoo.omid.tso.messages.TimestampResponse;
 public class TSOEncoder extends OneToOneEncoder {
 
     //just override decode method
+    @Override
     protected Object encode(ChannelHandlerContext ctx, Channel channel, Object msg) throws Exception {
         ByteArrayOutputStream buffer = BufferPool.getBuffer();
         buffer.reset();

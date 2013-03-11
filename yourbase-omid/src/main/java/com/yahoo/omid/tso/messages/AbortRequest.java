@@ -27,7 +27,6 @@ public class AbortRequest implements TSOMessage {
 
     @Override
     public void readObject(ChannelBuffer aInputStream) {
-
         startTimestamp = aInputStream.readLong();
     }
 
@@ -36,8 +35,4 @@ public class AbortRequest implements TSOMessage {
         aOutputStream.writeLong(startTimestamp);
     }
 
-    @Override
-    public void writeObject(ChannelBuffer buffer) {
-        buffer.writeLong(startTimestamp);
-    }
 }

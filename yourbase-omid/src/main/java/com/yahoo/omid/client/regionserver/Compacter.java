@@ -167,7 +167,6 @@ public class Compacter extends BaseRegionObserver {
         @Override
         public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
             Object message = e.getMessage();
-            //         System.out.println("Received " + message);
             if (message instanceof MinimumTimestamp) {
                 Compacter.this.minTimestamp = ((MinimumTimestamp) message).getTimestamp();
             } else {

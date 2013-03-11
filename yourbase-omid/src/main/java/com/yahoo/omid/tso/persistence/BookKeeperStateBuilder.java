@@ -56,14 +56,14 @@ import com.yahoo.omid.tso.persistence.LoggerException.Code;
  *
  */
 
-public class BookKeeperStateBuilder extends StateBuilder {
+public class BookKeeperStateBuilder implements StateBuilder {
     private static final Log LOG = LogFactory.getLog(BookKeeperStateBuilder.class);
 
     /*
      * Assuming that each entry is 1k bytes, we read 50k bytes at each call.
      * It provides a good degree of parallelism.
      */
-    private static final long BKREADBATCHSIZE = 50;
+    private static final long BK_READ_BATCH_SIZE = 50;
     private static final int PARALLEL_READS = 4;
 
     public static TSOState getState(TSOServerConfig config) {
@@ -88,12 +88,12 @@ public class BookKeeperStateBuilder extends StateBuilder {
         return returnValue;
     }
 
-    TimestampOracle timestampOracle;
-    ZooKeeper zk;
-    LoggerProtocol lp;
-    boolean enabled;
-    Semaphore throttleReads;
-    TSOServerConfig config;
+    private TimestampOracle timestampOracle;
+    private ZooKeeper zk;
+    private LoggerProtocol lp;
+    private Semaphore throttleReads;
+    private TSOServerConfig config;
+    private BookKeeper bk;
 
     BookKeeperStateBuilder(TSOServerConfig config) {
         this.timestampOracle = new TimestampOracle();
@@ -160,7 +160,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
         }
     }
 
-    class LoggerWatcher implements Watcher {
+    private class LoggerWatcher implements Watcher {
         CountDownLatch latch;
 
         LoggerWatcher(CountDownLatch latch) {
@@ -175,8 +175,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
         }
     }
 
-    class LockCreateCallback implements StringCallback {
-
+    private class LockCreateCallback implements StringCallback {
         public void processResult(int rc, String path, Object ctx, String name) {
             if (rc != Code.OK) {
                 LOG.warn("Failed to create lock znode: " + path);
@@ -185,11 +184,9 @@ public class BookKeeperStateBuilder extends StateBuilder {
                 zk.getData(LoggerConstants.OMID_LEDGER_ID_PATH, false, new LedgerIdReadCallback(), ctx);
             }
         }
-
     }
 
-    class LedgerIdReadCallback implements DataCallback {
-
+    private class LedgerIdReadCallback implements DataCallback {
         public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat) {
             if (rc == Code.OK) {
                 buildStateFromLedger(data, ctx);
@@ -215,7 +212,7 @@ public class BookKeeperStateBuilder extends StateBuilder {
      * created in the open callback. 
      *
      */
-    class LoggerExecutor implements ReadCallback {
+    private class LoggerExecutor implements ReadCallback {
         public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx) {
             throttleReads.release();
             if (rc != BKException.Code.OK) {
@@ -234,8 +231,6 @@ public class BookKeeperStateBuilder extends StateBuilder {
             }
         }
     }
-
-    BookKeeper bk;
 
     @Override
     public TSOState buildState() throws LoggerException {
@@ -301,6 +296,18 @@ public class BookKeeperStateBuilder extends StateBuilder {
     }
 
     /**
+     * Disables this builder.    
+     */
+    @Override
+    public void shutdown() {
+        try {
+            this.zk.close();
+        } catch (InterruptedException e) {
+            LOG.error("Error while shutting down", e);
+        }
+    }
+
+    /**
      * Builds state from a ledger.
      * 
      * 
@@ -359,9 +366,9 @@ public class BookKeeperStateBuilder extends StateBuilder {
                         if (((Context) ctx).isReady())
                             break;
                         ((Context) ctx).incrementPending();
-                        long nextBatch = Math.max(counter - BKREADBATCHSIZE + 1, 0);
+                        long nextBatch = Math.max(counter - BK_READ_BATCH_SIZE + 1, 0);
                         lh.asyncReadEntries(nextBatch, counter, new LoggerExecutor(), ctx);
-                        counter -= BKREADBATCHSIZE;
+                        counter -= BK_READ_BATCH_SIZE;
                     }
                 }
             }
@@ -369,15 +376,4 @@ public class BookKeeperStateBuilder extends StateBuilder {
 
     }
 
-    /**
-     * Disables this builder.    
-     */
-    public void shutdown() {
-        this.enabled = false;
-        try {
-            this.zk.close();
-        } catch (InterruptedException e) {
-            LOG.error("Error while shutting down", e);
-        }
-    }
 }

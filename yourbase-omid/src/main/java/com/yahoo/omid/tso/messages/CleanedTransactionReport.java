@@ -47,18 +47,12 @@ public class CleanedTransactionReport implements TSOMessage {
 
     @Override
     public void readObject(ChannelBuffer aInputStream) {
-
         startTimestamp = aInputStream.readLong();
     }
 
     @Override
     public void writeObject(DataOutputStream aOutputStream) throws IOException {
         aOutputStream.writeLong(startTimestamp);
-    }
-
-    @Override
-    public void writeObject(ChannelBuffer buffer) {
-        buffer.writeLong(startTimestamp);
     }
 
     @Override

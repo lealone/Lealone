@@ -31,67 +31,48 @@ import com.yahoo.omid.tso.persistence.StateLogger;
  * @author maysam
  */
 public class TSOState {
-
-    /**
-     * The maximum entries kept in TSO
-     */
-    // static final public int MAX_ITEMS = 10000000;
-    // static final public int MAX_ITEMS = 4000000;
-    static public int MAX_ITEMS = 100;
-    static {
-        try {
-            MAX_ITEMS = Integer.valueOf(System.getProperty("omid.maxItems"));
-        } catch (Exception e) {
-            // ignore, usedefault
-        }
-    };
-
-    static public int MAX_COMMITS = 100;
-    static {
-        try {
-            MAX_COMMITS = Integer.valueOf(System.getProperty("omid.maxCommits"));
-        } catch (Exception e) {
-            // ignore, usedefault
-        }
-    };
-
-    static public int FLUSH_TIMEOUT = 10;
-    static {
-        try {
-            FLUSH_TIMEOUT = Integer.valueOf(System.getProperty("omid.flushTimeout"));
-        } catch (Exception e) {
-            // ignore, usedefault
-        }
-    };
-
     /**
      * Hash map load factor
      */
     static final public float LOAD_FACTOR = 0.5f;
 
     /**
+     * The maximum entries kept in TSO
+     */
+    static public int MAX_ITEMS = 100;
+    static public int MAX_COMMITS = 100;
+    static public int FLUSH_TIMEOUT = 10;
+
+    static {
+        try {
+            MAX_ITEMS = Integer.valueOf(System.getProperty("omid.maxItems"));
+        } catch (Exception e) {
+            // ignore, usedefault
+        }
+
+        try {
+            MAX_COMMITS = Integer.valueOf(System.getProperty("omid.maxCommits"));
+        } catch (Exception e) {
+            // ignore, usedefault
+        }
+
+        try {
+            FLUSH_TIMEOUT = Integer.valueOf(System.getProperty("omid.flushTimeout"));
+        } catch (Exception e) {
+            // ignore, usedefault
+        }
+    }
+
+    /**
      * Object that implements the logic to log records
      * for recoverability
      */
-
-    StateLogger logger;
-
-    public StateLogger getLogger() {
-        return logger;
-    }
-
-    public void setLogger(StateLogger logger) {
-        this.logger = logger;
-    }
+    private StateLogger logger;
 
     /**
      * Only timestamp oracle instance in the system.
      */
     private TimestampOracle timestampOracle;
-
-    protected TimestampOracle getSO() {
-        return timestampOracle;
-    }
 
     /**
      * Largest Deleted Timestamp
@@ -109,6 +90,38 @@ public class TSOState {
 
     public Uncommited uncommited;
 
+    /*
+     * WAL related pointers
+     */
+    public static int BATCH_SIZE = 0;//in bytes
+    public ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    public DataOutputStream toWAL = new DataOutputStream(baos);
+    public List<TSOHandler.ChannelandMessage> nextBatch = new ArrayList<TSOHandler.ChannelandMessage>();
+
+    public TSOState(TimestampOracle timestampOracle) {
+        this(null, timestampOracle);
+    }
+
+    public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
+        this.timestampOracle = timestampOracle;
+        this.previousLargestDeletedTimestamp = this.timestampOracle.get();
+        this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
+        this.uncommited = new Uncommited(timestampOracle.first());
+        this.logger = logger;
+    }
+
+    public void initialize() {
+        this.uncommited = new Uncommited(timestampOracle.first());
+    }
+
+    public void setLogger(StateLogger logger) {
+        this.logger = logger;
+    }
+
+    protected TimestampOracle getTimestampOracle() {
+        return timestampOracle;
+    }
+
     /**
      * Process commit request.
      * 
@@ -116,15 +129,6 @@ public class TSOState {
      */
     protected void processCommit(long startTimestamp, long commitTimestamp) {
         largestDeletedTimestamp = hashmap.setCommitted(startTimestamp, commitTimestamp, largestDeletedTimestamp);
-    }
-
-    /**
-     * Process largest deleted timestamp.
-     * 
-     * @param largestDeletedTimestamp
-     */
-    protected synchronized void processLargestDeletedTimestamp(long largestDeletedTimestamp) {
-        this.largestDeletedTimestamp = Math.max(largestDeletedTimestamp, this.largestDeletedTimestamp);
     }
 
     /**
@@ -144,6 +148,15 @@ public class TSOState {
      */
     protected void processFullAbort(long startTimestamp) {
         hashmap.setFullAborted(startTimestamp);
+    }
+
+    /**
+     * Process largest deleted timestamp.
+     * 
+     * @param largestDeletedTimestamp
+     */
+    protected synchronized void processLargestDeletedTimestamp(long largestDeletedTimestamp) {
+        this.largestDeletedTimestamp = Math.max(largestDeletedTimestamp, this.largestDeletedTimestamp);
     }
 
     /**
@@ -170,27 +183,4 @@ public class TSOState {
         }
     }
 
-    /*
-     * WAL related pointers
-     */
-    public static int BATCH_SIZE = 0;//in bytes
-    public ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    public DataOutputStream toWAL = new DataOutputStream(baos);
-    public List<TSOHandler.ChannelandMessage> nextBatch = new ArrayList<TSOHandler.ChannelandMessage>();
-
-    public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
-        this.timestampOracle = timestampOracle;
-        this.previousLargestDeletedTimestamp = this.timestampOracle.get();
-        this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
-        this.uncommited = new Uncommited(timestampOracle.first());
-        this.logger = logger;
-    }
-
-    public TSOState(TimestampOracle timestampOracle) {
-        this(null, timestampOracle);
-    }
-
-    public void initialize() {
-        this.uncommited = new Uncommited(timestampOracle.first());
-    }
 }

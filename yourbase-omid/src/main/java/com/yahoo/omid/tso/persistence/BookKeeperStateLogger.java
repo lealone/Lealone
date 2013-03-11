@@ -33,10 +33,8 @@ import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
-import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.AsyncCallback.StringCallback;
 import org.apache.zookeeper.AsyncCallback.StatCallback;
-import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 
@@ -57,6 +55,22 @@ class BookKeeperStateLogger implements StateLogger {
     private LedgerHandle lh;
 
     /**
+     * Flag to determine whether this logger is operating or not.
+     */
+    private boolean enabled = false;
+
+    /**
+     * Constructor creates a zookeeper and a bookkeeper objects.
+     */
+    BookKeeperStateLogger(ZooKeeper zk) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Constructing Logger");
+        }
+
+        this.zk = zk;
+    }
+
+    /**
      * We try to acquire a lock for this primary first. If we succeed, then we check
      * if there is a ledger to recover from. 
      * 
@@ -64,7 +78,7 @@ class BookKeeperStateLogger implements StateLogger {
      * operations to write the ledger id. 
      */
 
-    class LedgerIdCreateCallback implements StringCallback {
+    private class LedgerIdCreateCallback implements StringCallback {
         LoggerInitCallback cb;
         byte[] ledgerId;
 
@@ -90,7 +104,7 @@ class BookKeeperStateLogger implements StateLogger {
         }
     }
 
-    class LedgerIdSetCallback implements StatCallback {
+    private class LedgerIdSetCallback implements StatCallback {
         LoggerInitCallback cb;
 
         LedgerIdSetCallback(LoggerInitCallback cb) {
@@ -110,40 +124,12 @@ class BookKeeperStateLogger implements StateLogger {
     }
 
     /**
-     * Flag to determine whether this logger is operating or not.
-     */
-    boolean enabled = false;
-
-    /**
-     * Constructor creates a zookeeper and a bookkeeper objects.
-     */
-    BookKeeperStateLogger(ZooKeeper zk) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Constructing Logger");
-        }
-
-        this.zk = zk;
-    }
-
-    /**
-     * Watcher for the zookeeper object.
-     */
-
-    class LoggerWatcher implements Watcher {
-        public void process(WatchedEvent event) {
-            if (event.getState() != Watcher.Event.KeeperState.SyncConnected)
-                shutdown();
-        }
-    }
-
-    /**
      * Initializes this logger object to add records. Implements the initialize 
      * method of the StateLogger interface.
      * 
      * @param cb
      * @param ctx
      */
-
     @Override
     public void initialize(final LoggerInitCallback cb, Object ctx) throws LoggerException {
         TSOServerConfig config = ((BookKeeperStateBuilder.Context) ctx).config;
@@ -222,6 +208,7 @@ class BookKeeperStateLogger implements StateLogger {
      * Shuts down this logger.
      * 
      */
+    @Override
     public void shutdown() {
         enabled = false;
         try {

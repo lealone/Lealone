@@ -37,8 +37,11 @@ public class Uncommited {
         lastOpenedBucket = firstUncommitedBucket = getRelativePosition(startTimestamp);
         firstUncommitedAbsolute = getAbsolutePosition(startTimestamp);
         long ts = startTimestamp & ~(Bucket.getBucketSize() - 1);
-        LOG.debug("Start TS : " + startTimestamp + " firstUncom: " + firstUncommitedBucket + " Mask:" + ts);
-        LOG.debug("BKT_NUMBER : " + BKT_NUMBER + " BKT_SIZE: " + Bucket.getBucketSize());
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Start TS : " + startTimestamp + " firstUncom: " + firstUncommitedBucket + " Mask:" + ts);
+            LOG.debug("BKT_NUMBER : " + BKT_NUMBER + " BKT_SIZE: " + Bucket.getBucketSize());
+        }
         for (; ts <= startTimestamp; ++ts)
             commit(ts);
     }

@@ -57,10 +57,6 @@ public class CommittedTransactionReport implements TSOMessage {
     }
 
     @Override
-    public void writeObject(ChannelBuffer buffer) {
-    }
-
-    @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;

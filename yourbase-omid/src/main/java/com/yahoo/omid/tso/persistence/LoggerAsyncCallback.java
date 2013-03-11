@@ -16,15 +16,9 @@
 
 package com.yahoo.omid.tso.persistence;
 
-import com.yahoo.omid.tso.TSOState;
-
 public interface LoggerAsyncCallback {
     public interface LoggerInitCallback {
         void loggerInitComplete(int rc, StateLogger sl, Object ctx);
-    }
-
-    public interface BuilderInitCallback {
-        void builderInitComplete(int rc, TSOState state, Object ctx);
     }
 
     public interface AddRecordCallback {
