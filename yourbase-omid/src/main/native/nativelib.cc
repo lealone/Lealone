@@ -19,7 +19,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "com_yahoo_omid_tso_CommitHashMap.h"
+#include "com_codefollower_yourbase_omid_tso_CommitHashMap.h"
 
 #define MAX_KEY_SIZE 256
 /**
@@ -56,41 +56,41 @@ int tableLength;
 int threshold;
 
 /*
- * Class:     com_yahoo_omid_CommitHashMap
+ * Class:     com_codefollower_yourbase_omid_CommitHashMap
  * Method:    gettotalput
  * Signature: ()J
  */
-JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_gettotalput
+JNIEXPORT jlong JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_gettotalput
 (JNIEnv * env, jclass jcls) {
    return totalput;
 }
 
 /*
- * Class:     com_yahoo_omid_CommitHashMap
+ * Class:     com_codefollower_yourbase_omid_CommitHashMap
  * Method:    gettotalget
  * Signature: ()J
  */
-JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_gettotalget
+JNIEXPORT jlong JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_gettotalget
 (JNIEnv * env, jclass jcls) {
    return totalget;
 }
 
 /*
- * Class:     com_yahoo_omid_CommitHashMap
+ * Class:     com_codefollower_yourbase_omid_CommitHashMap
  * Method:    gettotalwalkforput
  * Signature: ()J
  */
-JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_gettotalwalkforput
+JNIEXPORT jlong JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_gettotalwalkforput
 (JNIEnv * env, jclass jcls) {
    return totalwalkforput;
 }
 
 /*
- * Class:     com_yahoo_omid_CommitHashMap
+ * Class:     com_codefollower_yourbase_omid_CommitHashMap
  * Method:    gettotalwalkforget
  * Signature: ()J
  */
-JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_gettotalwalkforget
+JNIEXPORT jlong JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_gettotalwalkforget
 (JNIEnv * env, jclass jcls) {
    return totalwalkforget;
 }
@@ -150,7 +150,7 @@ struct LargeEntry {
  * Method:    init
  * Signature: ()V
  */
-JNIEXPORT void JNICALL Java_com_yahoo_omid_tso_CommitHashMap_init
+JNIEXPORT void JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_init
 (JNIEnv * env, jobject jobj, jint initialCapacity, jint maxCommits,jfloat loadFactor) {
    tableLength = initialCapacity;
    threshold = (int) (initialCapacity * loadFactor);
@@ -198,7 +198,7 @@ JNIEXPORT void JNICALL Java_com_yahoo_omid_tso_CommitHashMap_init
  */
 
 jbyte keyarray[MAX_KEY_SIZE];
-JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_get
+JNIEXPORT jlong JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_get
 (JNIEnv * env , jobject jobj, jbyteArray rowId, jbyteArray tableId, jint hash) {
    totalget++;
    jsize rowidsize  = env->GetArrayLength(rowId);
@@ -223,7 +223,7 @@ JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_get
  * Method:    put
  * Signature: (JJJI)Z
  */
-JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_put
+JNIEXPORT jlong JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_put
 (JNIEnv * env , jobject jobj, jbyteArray rowId, jbyteArray tableId, jlong value, jint hash, jlong largestDeletedTimestamp) {
    totalput++;
    int index = (hash & 0x7FFFFFFF) % tableLength;
@@ -317,7 +317,7 @@ JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_put
 }
 
 
-JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_getCommittedTimestamp(JNIEnv *, jobject, jlong startTimestamp) {
+JNIEXPORT jlong JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_getCommittedTimestamp(JNIEnv *, jobject, jlong startTimestamp) {
    int key = startTimestamp % gmaxCommits;
    StartCommit& entry = commitTable[key];
    if (entry.start == startTimestamp)
@@ -325,7 +325,7 @@ JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_getCommittedTimest
    return 0;//which means that there is not such entry in the array, either deleted or never entered
 }
 
-JNIEXPORT jlong JNICALL Java_com_yahoo_omid_tso_CommitHashMap_setCommitted(JNIEnv * env , jobject jobj, jlong startTimestamp, jlong commitTimestamp, jlong largestDeletedTimestamp) {
+JNIEXPORT jlong JNICALL Java_com_codefollower_yourbase_omid_tso_CommitHashMap_setCommitted(JNIEnv * env , jobject jobj, jlong startTimestamp, jlong commitTimestamp, jlong largestDeletedTimestamp) {
    int key = startTimestamp % gmaxCommits;
    StartCommit& entry = commitTable[key];
    //assume(entry.start != startTimestamp);
