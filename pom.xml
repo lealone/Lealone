@@ -3,25 +3,25 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<properties>
-		<yourbase.version>0.12-SNAPSHOT</yourbase.version>
+		<lealone.version>0.12-SNAPSHOT</lealone.version>
 	</properties>
 
-	<name>yourbase project</name>
+	<name>lealone project</name>
 
-	<groupId>com.codefollower.yourbase</groupId>
-	<artifactId>yourbase</artifactId>
+	<groupId>com.codefollower.lealone</groupId>
+	<artifactId>lealone</artifactId>
 	<packaging>pom</packaging>
 	<version>0.1.0</version>
 	
 	<modules>
-		<module>yourbase-client</module>
-		<module>yourbase-sql</module>
-		<module>yourbase-regular</module>
-		<module>yourbase-mvstore</module>
-		<module>yourbase-hbase</module>
-		<module>yourbase-olap</module>
-		<module>yourbase-omid</module>
-		<module>yourbase-test</module>
+		<module>lealone-client</module>
+		<module>lealone-sql</module>
+		<module>lealone-regular</module>
+		<module>lealone-mvstore</module>
+		<module>lealone-hbase</module>
+		<module>lealone-olap</module>
+		<module>lealone-omid</module>
+		<module>lealone-test</module>
 	</modules>
 
 	<build>
@@ -87,7 +87,7 @@
 					<artifactId>maven-assembly-plugin</artifactId>
 					<version>2.2-beta-5</version>
 					<configuration>
-						<finalName>yourbase-${yourbase.version}</finalName>
+						<finalName>lealone-${lealone.version}</finalName>
 						<descriptors>
 							<descriptor>assembly.xml</descriptor>
 						</descriptors>

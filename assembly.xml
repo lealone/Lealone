@@ -10,11 +10,11 @@
 	<moduleSets>
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.yourbase:yourbase-client</include>
+				<include>com.codefollower.lealone:lealone-client</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>yourbase-client</outputDirectory>
+				<outputDirectory>lealone-client</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
@@ -26,11 +26,11 @@
 
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.yourbase:yourbase-hbase</include>
+				<include>com.codefollower.lealone:lealone-hbase</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>yourbase-hbase</outputDirectory>
+				<outputDirectory>lealone-hbase</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
@@ -42,11 +42,11 @@
 
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.yourbase:yourbase-mvstore</include>
+				<include>com.codefollower.lealone:lealone-mvstore</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>yourbase-mvstore</outputDirectory>
+				<outputDirectory>lealone-mvstore</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
@@ -58,11 +58,11 @@
 
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.yourbase:yourbase-regular</include>
+				<include>com.codefollower.lealone:lealone-regular</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>yourbase-regular</outputDirectory>
+				<outputDirectory>lealone-regular</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
