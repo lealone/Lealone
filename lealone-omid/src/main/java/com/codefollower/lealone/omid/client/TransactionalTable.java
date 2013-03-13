@@ -44,19 +44,14 @@ import org.apache.hadoop.hbase.util.Bytes;
  *
  */
 public class TransactionalTable extends HTable {
-
-    public static long getsPerformed = 0;
-    public static long elementsGotten = 0;
-    public static long elementsRead = 0;
-    public static long extraGetsPerformed = 0;
-    public static double extraVersionsAvg = 3;
-
     /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
     private static int CACHE_VERSIONS_OVERHEAD = 3;
-    /** Average number of versions needed to reach the right snapshot */
-    public double versionsAvg = 3;
+
     /** How fast do we adapt the average */
     private static final double alpha = 0.975;
+
+    /** Average number of versions needed to reach the right snapshot */
+    private double versionsAvg = 3;
 
     public TransactionalTable(Configuration conf, byte[] tableName) throws IOException {
         super(conf, tableName);
@@ -93,7 +88,6 @@ public class TransactionalTable extends HTable {
                 }
             }
         }
-        getsPerformed++;
         // Return the KVs that belong to the transaction snapshot, ask for more versions if needed
         return new Result(filter(transactionState, super.get(tsget).list(), requestedVersions));
     }

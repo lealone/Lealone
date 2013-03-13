@@ -199,7 +199,7 @@ public class TSOHandler extends SimpleChannelHandler {
             try {
                 timestamp = timestampOracle.next(sharedState.toWAL);
             } catch (IOException e) {
-                e.printStackTrace();
+                LOG.error("failed to return the next timestamp", e);
                 return;
             }
         }
