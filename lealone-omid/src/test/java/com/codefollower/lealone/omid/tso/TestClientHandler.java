@@ -25,15 +25,14 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.codefollower.lealone.omid.client.SyncAbortCompleteCallback;
 import com.codefollower.lealone.omid.client.SyncCommitCallback;
 import com.codefollower.lealone.omid.client.SyncCommitQueryCallback;
@@ -55,8 +54,7 @@ import com.codefollower.lealone.omid.tso.messages.TimestampRequest;
  * 
  */
 public class TestClientHandler extends TSOClient {
-
-    private static final Logger LOG = LoggerFactory.getLogger(TestClientHandler.class);
+    private static final Log LOG = LogFactory.getLog(TestClientHandler.class);
 
     /**
      * Return value for the caller

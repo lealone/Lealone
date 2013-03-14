@@ -20,11 +20,11 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 public class Uncommited {
-    private static final Logger LOG = LoggerFactory.getLogger(TSOHandler.class);
+    private static final Log LOG = LogFactory.getLog(Uncommited.class);
 
     private static final int BKT_NUMBER = 1 << 10; // 2 ^ 10
 
