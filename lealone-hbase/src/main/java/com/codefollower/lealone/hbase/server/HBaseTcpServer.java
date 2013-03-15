@@ -124,15 +124,15 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     }
 
     @Override
-    protected synchronized void stopManagementDb() {
+    protected void stopManagementDb() {
     }
 
     @Override
-    protected synchronized void addConnection(int id, String url, String user) {
+    protected void addConnection(int id, String url, String user) {
     }
 
     @Override
-    protected synchronized void removeConnection(int id) {
+    protected void removeConnection(int id) {
     }
 
     private void init() {
