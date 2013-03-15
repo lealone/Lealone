@@ -39,8 +39,19 @@ import com.codefollower.lealone.result.SubqueryResult;
 
 public class HBaseSession extends Session {
 
+    /**
+     * HBase的HMaster对象，master和regionServer不可能同时非null
+     */
     private HMaster master;
+
+    /**
+     * HBase的HRegionServer对象，master和regionServer不可能同时非null
+     */
     private HRegionServer regionServer;
+
+    /**
+     * 最初从Client端传递过来的配置参数
+     */
     private Properties originalProperties;
 
     public HBaseSession(Database database, User user, int id) {
@@ -71,18 +82,22 @@ public class HBaseSession extends Session {
         this.originalProperties = originalProperties;
     }
 
+    @Override
     public HBaseDatabase getDatabase() {
         return (HBaseDatabase) database;
     }
 
+    @Override
     public SubqueryResult createSubqueryResult(Query query, int maxrows) {
         return new HBaseSubqueryResult(this, query, maxrows);
     }
 
+    @Override
     public Parser createParser() {
         return new HBaseParser(this);
     }
 
+    @Override
     public HBaseSequence createSequence(Schema schema, int id, String name, boolean belongsToTable) {
         return new HBaseSequence(schema, id, name, belongsToTable);
     }
