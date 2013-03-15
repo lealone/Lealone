@@ -41,13 +41,13 @@ public class ZooKeeperAdmin {
     private static ZooKeeperWatcher watcher;
     private static MasterAddressTracker masterAddressTracker;
     private static RegionServerTracker regionServerTracker;
-    private static TcpPortTracker h2TcpPortTracker;
+    private static TcpPortTracker tcpPortTracker;
 
     private static void reset() {
         watcher = null;
         masterAddressTracker = null;
         regionServerTracker = null;
-        h2TcpPortTracker = null;
+        tcpPortTracker = null;
         abortable = newAbortable();
     }
 
@@ -126,31 +126,31 @@ public class ZooKeeperAdmin {
     }
 
     public static int getTcpPort(ServerName sn) {
-        return getH2TcpPortTracker().getTcpPort(sn);
+        return getTcpPortTracker().getTcpPort(sn);
     }
 
     public static int getTcpPort(HRegionLocation loc) {
-        return getH2TcpPortTracker().getTcpPort(loc);
+        return getTcpPortTracker().getTcpPort(loc);
     }
 
     public static int getTcpPort(String hostAndPort) {
-        return getH2TcpPortTracker().getTcpPort(hostAndPort);
+        return getTcpPortTracker().getTcpPort(hostAndPort);
     }
 
-    public static TcpPortTracker getH2TcpPortTracker() {
-        if (h2TcpPortTracker == null) {
+    public static TcpPortTracker getTcpPortTracker() {
+        if (tcpPortTracker == null) {
             synchronized (ZooKeeperAdmin.class) {
-                if (h2TcpPortTracker == null) {
-                    h2TcpPortTracker = new TcpPortTracker(getZooKeeperWatcher(), abortable);
+                if (tcpPortTracker == null) {
+                    tcpPortTracker = new TcpPortTracker(getZooKeeperWatcher(), abortable);
                     try {
-                        h2TcpPortTracker.start();
+                        tcpPortTracker.start();
                     } catch (Exception e) {
-                        throw new ZooKeeperAdminException("getH2TcpPortTracker()", e);
+                        throw new ZooKeeperAdminException("getTcpPortTracker()", e);
                     }
                 }
             }
         }
-        return h2TcpPortTracker;
+        return tcpPortTracker;
     }
 
     public static ZooKeeperWatcher getZooKeeperWatcher() {

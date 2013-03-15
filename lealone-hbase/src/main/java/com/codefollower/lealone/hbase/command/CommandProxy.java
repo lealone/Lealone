@@ -334,7 +334,7 @@ public class CommandProxy extends Command {
         if (sn == null)
             return false;
 
-        if (hri.getHostname().equalsIgnoreCase(sn.getHostname()) && hri.getH2TcpPort() == ZooKeeperAdmin.getTcpPort(sn))
+        if (hri.getHostname().equalsIgnoreCase(sn.getHostname()) && hri.getTcpPort() == ZooKeeperAdmin.getTcpPort(sn))
             return true;
         return false;
     }

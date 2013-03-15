@@ -53,7 +53,7 @@ public class HBaseRegionInfo {
         return regionLocation.getHostname();
     }
 
-    public int getH2TcpPort() {
+    public int getTcpPort() {
         return ZooKeeperAdmin.getTcpPort(regionLocation);
     }
 }
