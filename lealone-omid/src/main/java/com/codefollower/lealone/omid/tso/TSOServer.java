@@ -119,7 +119,7 @@ public class TSOServer implements Runnable {
             return;
         }
 
-        state.addRecord(new byte[] { LoggerProtocol.LOGSTART }, new AddRecordCallback() {
+        state.addRecord(new byte[] { LoggerProtocol.LOG_START }, new AddRecordCallback() {
             @Override
             public void addRecordComplete(int rc, Object ctx) {
             }

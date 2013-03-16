@@ -34,8 +34,8 @@ public class LoggerProtocol extends TSOState {
     public final static byte COMMIT = (byte) -2;
     public final static byte LARGEST_DELETED_TIMESTAMP = (byte) -3;
     public final static byte ABORT = (byte) -4;
-    public final static byte FULLABORT = (byte) -5;
-    public final static byte LOGSTART = (byte) -6;
+    public final static byte FULL_ABORT = (byte) -5;
+    public final static byte LOG_START = (byte) -6;
     public final static byte SNAPSHOT = (byte) -7;
 
     /**
@@ -93,12 +93,12 @@ public class LoggerProtocol extends TSOState {
                 processAbort(timestamp);
 
                 break;
-            case FULLABORT:
+            case FULL_ABORT:
                 timestamp = bb.getLong();
                 processFullAbort(timestamp);
 
                 break;
-            case LOGSTART:
+            case LOG_START:
                 consumed = true;
                 break;
             case SNAPSHOT:

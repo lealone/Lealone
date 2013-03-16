@@ -352,7 +352,7 @@ public class TSOHandler extends SimpleChannelHandler {
         synchronized (sharedState) {
             DataOutputStream toWAL = sharedState.toWAL;
             try {
-                toWAL.writeByte(LoggerProtocol.FULLABORT);
+                toWAL.writeByte(LoggerProtocol.FULL_ABORT);
                 toWAL.writeLong(msg.startTimestamp);
             } catch (IOException e) {
                 LOG.error("failed to write fullabort wal", e);

@@ -29,7 +29,6 @@ import org.apache.bookkeeper.client.AsyncCallback.CreateCallback;
 import org.apache.bookkeeper.client.BKException;
 import org.apache.bookkeeper.client.BookKeeper;
 import org.apache.bookkeeper.client.LedgerHandle;
-import org.apache.bookkeeper.conf.ClientConfiguration;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
@@ -51,8 +50,8 @@ import com.codefollower.lealone.omid.tso.persistence.LoggerException.Code;
 class BookKeeperStateLogger implements StateLogger {
     private static final Log LOG = LogFactory.getLog(BookKeeperStateLogger.class);
 
-    private ZooKeeper zk;
-    private BookKeeper bk;
+    private final ZooKeeper zk;
+    private final BookKeeper bk;
     private LedgerHandle lh;
 
     /**
@@ -63,12 +62,13 @@ class BookKeeperStateLogger implements StateLogger {
     /**
      * Constructor creates a zookeeper and a bookkeeper objects.
      */
-    BookKeeperStateLogger(ZooKeeper zk) {
+    BookKeeperStateLogger(ZooKeeper zk, BookKeeper bk) {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Constructing Logger");
         }
 
         this.zk = zk;
+        this.bk = bk;
     }
 
     /**
@@ -134,16 +134,6 @@ class BookKeeperStateLogger implements StateLogger {
     @Override
     public void initialize(final LoggerInitCallback cb, Object ctx) throws LoggerException {
         TSOServerConfig config = ((BookKeeperStateBuilder.Context) ctx).config;
-
-        /*
-         * Create new ledger for adding records
-         */
-        try {
-            bk = new BookKeeper(new ClientConfiguration(), zk);
-        } catch (Exception e) {
-            LOG.error("Exception while initializing bookkeeper", e);
-            throw new LoggerException.BKOpFailedException();
-        }
 
         bk.asyncCreateLedger(config.getEnsembleSize(), config.getQuorumSize(), BookKeeper.DigestType.CRC32,
                 "flavio was here".getBytes(), new CreateCallback() {

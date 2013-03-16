@@ -88,12 +88,12 @@ public class BookKeeperStateBuilder implements StateBuilder {
         return returnValue;
     }
 
-    private TimestampOracle timestampOracle;
+    private final TimestampOracle timestampOracle;
+    private final TSOServerConfig config;
+    private final Semaphore throttleReads;
+
     private ZooKeeper zk;
     private LoggerProtocol lp;
-    private Semaphore throttleReads;
-    private TSOServerConfig config;
-    private BookKeeper bk;
 
     BookKeeperStateBuilder(TSOServerConfig config) {
         this.timestampOracle = new TimestampOracle();
@@ -113,6 +113,7 @@ public class BookKeeperStateBuilder implements StateBuilder {
         boolean hasLogger = false;
         int pending = 0;
         StateLogger logger;
+        BookKeeper bk;
 
         synchronized void setState(TSOState state) {
             this.state = state;
@@ -160,26 +161,11 @@ public class BookKeeperStateBuilder implements StateBuilder {
         }
     }
 
-    private class LoggerWatcher implements Watcher {
-        CountDownLatch latch;
-
-        LoggerWatcher(CountDownLatch latch) {
-            this.latch = latch;
-        }
-
-        public void process(WatchedEvent event) {
-            if (event.getState() != Watcher.Event.KeeperState.SyncConnected)
-                shutdown();
-            else
-                latch.countDown();
-        }
-    }
-
     private class LockCreateCallback implements StringCallback {
         public void processResult(int rc, String path, Object ctx, String name) {
             if (rc != Code.OK) {
                 LOG.warn("Failed to create lock znode: " + path);
-                ((BookKeeperStateBuilder.Context) ctx).setState(null);
+                ((Context) ctx).setState(null);
             } else {
                 zk.getData(LoggerConstants.OMID_LEDGER_ID_PATH, false, new LedgerIdReadCallback(), ctx);
             }
@@ -199,10 +185,10 @@ public class BookKeeperStateBuilder implements StateBuilder {
                     LOG.error("Error while creating state logger.", e);
                     tempState = null;
                 }
-                ((BookKeeperStateBuilder.Context) ctx).setState(tempState);
+                ((Context) ctx).setState(tempState);
             } else {
                 LOG.warn("Failed to read data. " + KeeperException.Code.get(rc).toString());
-                ((BookKeeperStateBuilder.Context) ctx).setState(null);
+                ((Context) ctx).setState(null);
             }
         }
     }
@@ -213,22 +199,38 @@ public class BookKeeperStateBuilder implements StateBuilder {
      *
      */
     private class LoggerExecutor implements ReadCallback {
-        public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx) {
+        public void readComplete(int rc, LedgerHandle lh, Enumeration<LedgerEntry> entries, Object ctx0) {
+            Context ctx = (Context) ctx0;
             throttleReads.release();
             if (rc != BKException.Code.OK) {
                 LOG.error("Error while reading ledger entries." + BKException.getMessage(rc));
-                ((BookKeeperStateBuilder.Context) ctx).setState(null);
+                ctx.setState(null);
             } else {
                 while (entries.hasMoreElements()) {
                     LedgerEntry le = entries.nextElement();
                     lp.execute(ByteBuffer.wrap(le.getEntry()));
 
                     if (lp.finishedRecovery() || le.getEntryId() == 0) {
-                        ((BookKeeperStateBuilder.Context) ctx).setState(lp.getState());
+                        ctx.setState(lp.getState());
                     }
                 }
-                ((BookKeeperStateBuilder.Context) ctx).decrementPending();
+                ctx.decrementPending();
             }
+        }
+    }
+
+    private class LoggerWatcher implements Watcher {
+        CountDownLatch latch;
+
+        LoggerWatcher(CountDownLatch latch) {
+            this.latch = latch;
+        }
+
+        public void process(WatchedEvent event) {
+            if (event.getState() != Watcher.Event.KeeperState.SyncConnected)
+                shutdown();
+            else
+                latch.countDown();
         }
     }
 
@@ -237,36 +239,38 @@ public class BookKeeperStateBuilder implements StateBuilder {
         try {
             CountDownLatch latch = new CountDownLatch(1);
 
-            this.zk = new ZooKeeper(config.getZkServers(), Integer.parseInt(System.getProperty("SESSIONTIMEOUT",
+            zk = new ZooKeeper(config.getZkServers(), Integer.parseInt(System.getProperty("SESSIONTIMEOUT",
                     Integer.toString(10000))), new LoggerWatcher(latch));
 
             latch.await();
         } catch (Exception e) {
             LOG.error("Exception while starting zookeeper client", e);
-            this.zk = null;
+            zk = null;
             throw LoggerException.create(Code.ZKOPFAILED);
         }
 
         LOG.info("Creating bookkeeper client");
 
+        BookKeeper bk;
+
         try {
-            bk = new BookKeeper(new ClientConfiguration(), this.zk);
+            bk = new BookKeeper(new ClientConfiguration(), zk);
         } catch (Exception e) {
             LOG.error("Error while creating bookkeeper object", e);
-            return null;
+            throw new LoggerException.BKOpFailedException();
         }
 
         /*
          * Create ZooKeeper lock
          */
-
         Context ctx = new Context();
         ctx.config = this.config;
+        ctx.bk = bk;
 
         zk.create(LoggerConstants.OMID_LOCK_PATH, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL,
                 new LockCreateCallback(), ctx);
 
-        new BookKeeperStateLogger(zk).initialize(new LoggerInitCallback() {
+        new BookKeeperStateLogger(zk, bk).initialize(new LoggerInitCallback() {
             public void loggerInitComplete(int rc, StateLogger sl, Object ctx) {
                 if (rc == Code.OK) {
                     if (LOG.isDebugEnabled()) {
@@ -301,7 +305,7 @@ public class BookKeeperStateBuilder implements StateBuilder {
     @Override
     public void shutdown() {
         try {
-            this.zk.close();
+            zk.close();
         } catch (InterruptedException e) {
             LOG.error("Error while shutting down", e);
         }
@@ -315,14 +319,15 @@ public class BookKeeperStateBuilder implements StateBuilder {
      * @param ctx
      * @return
      */
-    private void buildStateFromLedger(byte[] data, Object ctx) {
+    private void buildStateFromLedger(byte[] data, Object ctx0) {
+        Context ctx = (Context) ctx0;
         if (LOG.isDebugEnabled()) {
             LOG.debug("Building state from ledger");
         }
 
         if (data == null) {
             LOG.error("No data on znode, can't determine ledger id");
-            ((BookKeeperStateBuilder.Context) ctx).setState(null);
+            ctx.setState(null);
         }
 
         /*
@@ -332,27 +337,27 @@ public class BookKeeperStateBuilder implements StateBuilder {
             LOG.debug("Creating logger protocol object");
         }
         try {
-            this.lp = new LoggerProtocol(timestampOracle);
+            lp = new LoggerProtocol(timestampOracle);
         } catch (Exception e) {
             LOG.error("Error while creating state logger for logger protocol.", e);
-            ((BookKeeperStateBuilder.Context) ctx).setState(null);
+            ctx.setState(null);
         }
 
         /*
          * Open ledger for reading.
          */
-
         ByteBuffer bb = ByteBuffer.wrap(data);
         long ledgerId = bb.getLong();
 
-        bk.asyncOpenLedger(ledgerId, BookKeeper.DigestType.CRC32, "flavio was here".getBytes(), new OpenCallback() {
-            public void openComplete(int rc, LedgerHandle lh, Object ctx) {
+        ctx.bk.asyncOpenLedger(ledgerId, BookKeeper.DigestType.CRC32, "flavio was here".getBytes(), new OpenCallback() {
+            public void openComplete(int rc, LedgerHandle lh, Object ctx0) {
+                Context ctx = (Context) ctx0;
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Open complete, ledger id: " + lh.getId());
                 }
                 if (rc != BKException.Code.OK) {
                     LOG.error("Could not open ledger for reading." + BKException.getMessage(rc));
-                    ((BookKeeperStateBuilder.Context) ctx).setState(null);
+                    ctx.setState(null);
                 } else {
                     long counter = lh.getLastAddConfirmed();
                     while (counter >= 0) {
@@ -360,12 +365,12 @@ public class BookKeeperStateBuilder implements StateBuilder {
                             throttleReads.acquire();
                         } catch (InterruptedException e) {
                             LOG.error("Couldn't build state", e);
-                            ((Context) ctx).abort();
+                            ctx.abort();
                             break;
                         }
-                        if (((Context) ctx).isReady())
+                        if (ctx.isReady())
                             break;
-                        ((Context) ctx).incrementPending();
+                        ctx.incrementPending();
                         long nextBatch = Math.max(counter - BK_READ_BATCH_SIZE + 1, 0);
                         lh.asyncReadEntries(nextBatch, counter, new LoggerExecutor(), ctx);
                         counter -= BK_READ_BATCH_SIZE;
@@ -373,7 +378,5 @@ public class BookKeeperStateBuilder implements StateBuilder {
                 }
             }
         }, ctx);
-
     }
-
 }
