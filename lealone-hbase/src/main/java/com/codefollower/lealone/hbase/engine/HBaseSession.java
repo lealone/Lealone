@@ -34,6 +34,10 @@ import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
 import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
+import com.codefollower.lealone.hbase.util.HBaseUtils;
+import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.omid.client.TransactionManager;
+import com.codefollower.lealone.omid.client.TransactionState;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SubqueryResult;
 
@@ -53,6 +57,9 @@ public class HBaseSession extends Session {
      * 最初从Client端传递过来的配置参数
      */
     private Properties originalProperties;
+
+    private TransactionManager tm;
+    private TransactionState ts;
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
@@ -105,5 +112,56 @@ public class HBaseSession extends Session {
     @Override
     public void log(Table table, short operation, Row row) {
         // do nothing
+    }
+
+    @Override
+    public void setAutoCommit(boolean autoCommit) {
+        super.setAutoCommit(autoCommit);
+        if (!autoCommit) {
+            try {
+                if (tm == null)
+                    tm = new TransactionManager(HBaseUtils.getConfiguration());
+
+                ts = tm.beginTransaction();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+    }
+
+    @Override
+    public void begin() {
+        super.begin();
+        setAutoCommit(false);
+    }
+
+    @Override
+    public void commit(boolean ddl) {
+        super.commit(ddl);
+        if (ts != null) {
+            try {
+                tm.tryCommit(ts);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+            ts = null;
+        }
+    }
+
+    @Override
+    public void rollback() {
+        super.rollback();
+        if (ts != null) {
+            try {
+                tm.abort(ts);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+            ts = null;
+        }
+    }
+
+    public TransactionState getTransactionState() {
+        return ts;
     }
 }
