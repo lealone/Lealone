@@ -154,7 +154,8 @@ public class TSOTestBase {
         Thread.sleep(500);
 
         LOG.info("Starting TSO");
-        tso = new TSOServer(TSOServerConfig.configFactory(1234, 0, recoveryEnabled(), 4, 2, new String("localhost:2181")));
+        tso = new TSOServer(TSOServerConfig.parseConfig(new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha",
+                recoveryEnabled() + "", "-ensemble", "4", "-quorum", "2", "-batch", "0" }));
         tsoExecutor = Executors.newSingleThreadExecutor();
         tsoExecutor.execute(tso);
         TestUtils.waitForSocketListening("localhost", 1234, 100);

@@ -46,40 +46,20 @@ import com.codefollower.lealone.omid.tso.persistence.LoggerAsyncCallback.AddReco
  * TSO Server with serialization
  */
 public class TSOServer implements Runnable {
+    private static final Log LOG = LogFactory.getLog(TSOServer.class);
 
-    /**
-     * Take two arguments :<br>
-     * -port to listen to<br>
-     * -nb of connections before shutting down
-     * 
-     * @param args
-     * @throws Exception
-     */
     public static void main(String[] args) throws Exception {
-        TSOServerConfig config = TSOServerConfig.parseConfig(args);
-
-        new TSOServer(config).run();
+        new TSOServer(TSOServerConfig.parseConfig(args)).run();
     }
 
-    private static final Log LOG = LogFactory.getLog(BookKeeperStateBuilder.class);
+    private final TSOServerConfig config;
+    private final Object lock = new Object();
 
     private TSOState state;
-    private TSOServerConfig config;
-    private boolean finish;
-    private Object lock;
-
-    public TSOServer() {
-        this.config = TSOServerConfig.configFactory();
-
-        this.finish = false;
-        this.lock = new Object();
-    }
+    private boolean finish = false;
 
     public TSOServer(TSOServerConfig config) {
         this.config = config;
-
-        this.finish = false;
-        this.lock = new Object();
     }
 
     public TSOState getState() {
@@ -108,12 +88,7 @@ public class TSOServer implements Runnable {
                     }
                 }, Executors.defaultThreadFactory());
 
-        // This is the only object of timestamp oracle
-        // TODO: make it singleton
-        //TimestampOracle timestampOracle = new TimestampOracle();
-        // The wrapper for the shared state of TSO
-        state = BookKeeperStateBuilder.getState(this.config);
-
+        state = BookKeeperStateBuilder.getState(config);
         if (state == null) {
             LOG.error("Couldn't build state");
             return;
@@ -126,10 +101,11 @@ public class TSOServer implements Runnable {
         }, null);
 
         TSOState.BATCH_SIZE = config.getBatchSize();
-        System.out.println("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
-        System.out.println("PARAM BATCH_SIZE: " + TSOState.BATCH_SIZE);
-        System.out.println("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
-        System.out.println("PARAM MAX_THREADS: " + maxThreads);
+
+        LOG.info("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
+        LOG.info("PARAM BATCH_SIZE: " + TSOState.BATCH_SIZE);
+        LOG.info("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
+        LOG.info("PARAM MAX_THREADS: " + maxThreads);
 
         final TSOHandler handler = new TSOHandler(channelGroup, state);
         handler.start();
@@ -203,22 +179,25 @@ public class TSOServer implements Runnable {
         // *** Start the Netty shutdown ***
 
         // End the monitor
-        System.out.println("End of monitor");
+        LOG.info("End of monitor");
         monitor.interrupt();
         // Now close all channels
-        System.out.println("End of channel group");
+        LOG.info("End of channel group");
         channelGroup.close().awaitUninterruptibly();
         comGroup.close().awaitUninterruptibly();
         // Close the executor for Pipeline
-        System.out.println("End of pipeline executor");
+        LOG.info("End of pipeline executor");
         pipelineExecutor.shutdownNow();
         // Now release resources
-        System.out.println("End of resources");
+        LOG.info("End of resources");
         factory.releaseExternalResources();
         comFactory.releaseExternalResources();
     }
 
     public void stop() {
         finish = true;
+        synchronized (lock) {
+            lock.notify();
+        }
     }
 }
