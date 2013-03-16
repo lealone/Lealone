@@ -49,6 +49,7 @@ import com.codefollower.lealone.omid.tso.persistence.LoggerException.Code;
 
 class BookKeeperStateLogger implements StateLogger {
     private static final Log LOG = LogFactory.getLog(BookKeeperStateLogger.class);
+    static final byte[] LEDGER_PASSWORD = "flavio was here".getBytes();
 
     private final ZooKeeper zk;
     private final BookKeeper bk;
@@ -135,8 +136,8 @@ class BookKeeperStateLogger implements StateLogger {
     public void initialize(final LoggerInitCallback cb, Object ctx) throws LoggerException {
         TSOServerConfig config = ((BookKeeperStateBuilder.Context) ctx).config;
 
-        bk.asyncCreateLedger(config.getEnsembleSize(), config.getQuorumSize(), BookKeeper.DigestType.CRC32,
-                "flavio was here".getBytes(), new CreateCallback() {
+        bk.asyncCreateLedger(config.getEnsembleSize(), config.getQuorumSize(), BookKeeper.DigestType.CRC32, LEDGER_PASSWORD,
+                new CreateCallback() {
                     @Override
                     public void createComplete(int rc, LedgerHandle lh, Object ctx) {
                         if (rc == BKException.Code.OK) {
