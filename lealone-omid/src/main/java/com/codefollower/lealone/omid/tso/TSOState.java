@@ -40,27 +40,36 @@ public class TSOState {
     /**
      * The maximum entries kept in TSO
      */
-    public static int MAX_ITEMS = 100;
-    public static int MAX_COMMITS = 100;
-    public static int FLUSH_TIMEOUT = 10;
+    public static final int MAX_ITEMS = getMaxItems();
+    public static final int MAX_COMMITS = getMaxCommits();
+    public static final int FLUSH_TIMEOUT = getFlushTimeout();
 
-    static {
+    //正常情况下，下面三个参数都不设置，所以System.getProperty返回null，
+    //虽然能够捕获到异常，但是可以避免的，只要调用System.getProperty时设置默认值即可。
+    private static int getMaxItems() {
         try {
-            MAX_ITEMS = Integer.valueOf(System.getProperty("omid.maxItems"));
+            return Integer.valueOf(System.getProperty("omid.maxItems", "100"));
         } catch (Exception e) {
-            // ignore, usedefault
+            // ignore, use default
+            return 100;
         }
+    }
 
+    private static int getMaxCommits() {
         try {
-            MAX_COMMITS = Integer.valueOf(System.getProperty("omid.maxCommits"));
+            return Integer.valueOf(System.getProperty("omid.maxCommits", "100"));
         } catch (Exception e) {
-            // ignore, usedefault
+            // ignore, use default
+            return 100;
         }
+    }
 
+    private static int getFlushTimeout() {
         try {
-            FLUSH_TIMEOUT = Integer.valueOf(System.getProperty("omid.flushTimeout"));
+            return Integer.valueOf(System.getProperty("omid.flushTimeout", "10"));
         } catch (Exception e) {
-            // ignore, usedefault
+            // ignore, use default
+            return 10;
         }
     }
 
@@ -73,7 +82,7 @@ public class TSOState {
     /**
      * Only timestamp oracle instance in the system.
      */
-    private TimestampOracle timestampOracle;
+    private final TimestampOracle timestampOracle;
 
     /**
      * Largest Deleted Timestamp
@@ -81,21 +90,21 @@ public class TSOState {
     public long largestDeletedTimestamp = 0;
     public long previousLargestDeletedTimestamp = 0;
 
-    public SharedMessageBuffer sharedMessageBuffer = new SharedMessageBuffer();
+    public final SharedMessageBuffer sharedMessageBuffer = new SharedMessageBuffer();
 
     /**
      * The hash map to to keep track of recently committed rows
      * each bucket is about 20 byte, so the initial capacity is 20MB
      */
-    public CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS, LOAD_FACTOR);
+    public final CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS, LOAD_FACTOR);
 
     public Uncommited uncommited;
 
     /*
      * WAL related pointers
      */
-    public ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    public DataOutputStream toWAL = new DataOutputStream(baos);
+    public final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    public final DataOutputStream toWAL = new DataOutputStream(baos);
     public List<TSOHandler.ChannelAndMessage> nextBatch = new ArrayList<TSOHandler.ChannelAndMessage>();
 
     public TSOState(TimestampOracle timestampOracle) {
@@ -103,11 +112,11 @@ public class TSOState {
     }
 
     public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
+        this.logger = logger;
         this.timestampOracle = timestampOracle;
         this.previousLargestDeletedTimestamp = this.timestampOracle.get();
         this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;
-        this.uncommited = new Uncommited(timestampOracle.first());
-        this.logger = logger;
+        initialize();
     }
 
     public void initialize() {
