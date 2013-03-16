@@ -35,14 +35,14 @@ public class TSOState {
     /**
      * Hash map load factor
      */
-    static final public float LOAD_FACTOR = 0.5f;
+    public static final float LOAD_FACTOR = 0.5f;
 
     /**
      * The maximum entries kept in TSO
      */
-    static public int MAX_ITEMS = 100;
-    static public int MAX_COMMITS = 100;
-    static public int FLUSH_TIMEOUT = 10;
+    public static int MAX_ITEMS = 100;
+    public static int MAX_COMMITS = 100;
+    public static int FLUSH_TIMEOUT = 10;
 
     static {
         try {
@@ -94,7 +94,6 @@ public class TSOState {
     /*
      * WAL related pointers
      */
-    public static int BATCH_SIZE = 0;//in bytes
     public ByteArrayOutputStream baos = new ByteArrayOutputStream();
     public DataOutputStream toWAL = new DataOutputStream(baos);
     public List<TSOHandler.ChannelAndMessage> nextBatch = new ArrayList<TSOHandler.ChannelAndMessage>();

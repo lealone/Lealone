@@ -113,6 +113,7 @@ public class TSOHandler extends SimpleChannelHandler {
 
     private final FlushThread flushThread;
     private final ScheduledExecutorService scheduledExecutor;
+    private final int batchSize;
 
     private ScheduledFuture<?> flushFuture;
     private boolean finish;
@@ -138,7 +139,7 @@ public class TSOHandler extends SimpleChannelHandler {
      * Constructor
      * @param channelGroup
      */
-    public TSOHandler(ChannelGroup channelGroup, TSOState state) {
+    public TSOHandler(ChannelGroup channelGroup, TSOState state, int batchSize) {
         this.channelGroup = channelGroup;
         this.timestampOracle = state.getTimestampOracle();
         this.sharedState = state;
@@ -153,6 +154,7 @@ public class TSOHandler extends SimpleChannelHandler {
                 return t;
             }
         });
+        this.batchSize = batchSize;
     }
 
     private void createAbortedSnapshot() {
@@ -470,7 +472,7 @@ public class TSOHandler extends SimpleChannelHandler {
             ChannelAndMessage cam = new ChannelAndMessage(ctx, reply);
 
             sharedState.nextBatch.add(cam);
-            if (sharedState.baos.size() >= TSOState.BATCH_SIZE) {
+            if (sharedState.baos.size() >= batchSize) {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("Going to add record of size " + sharedState.baos.size());
                 }

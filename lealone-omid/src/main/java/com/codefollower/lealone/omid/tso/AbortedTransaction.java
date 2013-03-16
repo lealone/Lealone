@@ -17,8 +17,8 @@
 package com.codefollower.lealone.omid.tso;
 
 public class AbortedTransaction {
-    private long startTimestamp;
-    private long snapshot;
+    private final long startTimestamp;
+    private final long snapshot;
 
     public AbortedTransaction(long startTimestamp, long snapshot) {
         this.startTimestamp = startTimestamp;
@@ -29,16 +29,8 @@ public class AbortedTransaction {
         return startTimestamp;
     }
 
-    public void setStartTimestamp(long startTimestamp) {
-        this.startTimestamp = startTimestamp;
-    }
-
     public long getSnapshot() {
         return snapshot;
-    }
-
-    public void setSnapshot(long snapshot) {
-        this.snapshot = snapshot;
     }
 
     @Override

@@ -100,14 +100,12 @@ public class TSOServer implements Runnable {
             }
         }, null);
 
-        TSOState.BATCH_SIZE = config.getBatchSize();
-
         LOG.info("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
-        LOG.info("PARAM BATCH_SIZE: " + TSOState.BATCH_SIZE);
+        LOG.info("PARAM BATCH_SIZE: " + config.getBatchSize());
         LOG.info("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
         LOG.info("PARAM MAX_THREADS: " + maxThreads);
 
-        final TSOHandler handler = new TSOHandler(channelGroup, state);
+        final TSOHandler handler = new TSOHandler(channelGroup, state, config.getBatchSize());
         handler.start();
 
         bootstrap.setPipelineFactory(new TSOPipelineFactory(pipelineExecutor, handler));
