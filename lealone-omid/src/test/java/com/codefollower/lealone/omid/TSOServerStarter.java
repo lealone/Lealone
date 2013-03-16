@@ -39,7 +39,7 @@ public class TSOServerStarter {
         //System.setProperty("java.library.path", new File("src/test/resources").getCanonicalPath() + File.pathSeparatorChar
         //        + System.getProperty("java.library.path"));
 
-        args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234" };
+        args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha", "-ensemble", "1", "-quorum", "1" };
         TSOServer.main(args);
     }
 }

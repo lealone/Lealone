@@ -45,7 +45,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  */
 public class TransactionalTable extends HTable {
     /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
-    private static int CACHE_VERSIONS_OVERHEAD = 3;
+    private static final int CACHE_VERSIONS_OVERHEAD = 3;
 
     /** How fast do we adapt the average */
     private static final double alpha = 0.975;
@@ -197,10 +197,11 @@ public class TransactionalTable extends HTable {
      * @throws IOException
      */
     private List<KeyValue> filter(TransactionState transactionState, List<KeyValue> kvs, int localVersions) throws IOException {
-        final int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
         if (kvs == null) {
             return Collections.emptyList();
         }
+
+        final int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
 
         long startTimestamp = transactionState.getStartTimestamp();
         // Filtered kvs
@@ -260,9 +261,9 @@ public class TransactionalTable extends HTable {
         return filtered;
     }
 
-    protected class ClientScanner extends org.apache.hadoop.hbase.client.ClientScanner {
-        private TransactionState state;
-        private int maxVersions;
+    private class ClientScanner extends org.apache.hadoop.hbase.client.ClientScanner {
+        private final TransactionState state;
+        private final int maxVersions;
 
         ClientScanner(TransactionState state, Configuration conf, Scan scan, byte[] tableName, int maxVersions)
                 throws IOException {

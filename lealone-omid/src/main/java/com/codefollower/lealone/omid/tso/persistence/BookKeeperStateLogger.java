@@ -184,25 +184,24 @@ class BookKeeperStateLogger implements StateLogger {
             LOG.debug("Adding record.");
         }
 
-        if (!enabled) {
+        if (enabled) {
+            lh.asyncAddEntry(record, new AddCallback() {
+                @Override
+                public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Add to ledger complete: " + lh.getId() + ", " + entryId);
+                    }
+                    if (rc != BKException.Code.OK) {
+                        LOG.error("Asynchronous add entry failed: " + BKException.getMessage(rc));
+                        cb.addRecordComplete(Code.ADDFAILED, ctx);
+                    } else {
+                        cb.addRecordComplete(Code.OK, ctx);
+                    }
+                }
+            }, ctx);
+        } else {
             cb.addRecordComplete(Code.LOGGERDISABLED, ctx);
-            return;
         }
-
-        this.lh.asyncAddEntry(record, new AddCallback() {
-            @Override
-            public void addComplete(int rc, LedgerHandle lh, long entryId, Object ctx) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.info("Add to ledger complete: " + lh.getId() + ", " + entryId);
-                }
-                if (rc != BKException.Code.OK) {
-                    LOG.error("Asynchronous add entry failed: " + BKException.getMessage(rc));
-                    cb.addRecordComplete(Code.ADDFAILED, ctx);
-                } else {
-                    cb.addRecordComplete(Code.OK, ctx);
-                }
-            }
-        }, ctx);
     }
 
     /**
@@ -220,9 +219,9 @@ class BookKeeperStateLogger implements StateLogger {
             } catch (Exception e) {
                 LOG.warn("Exception while deleting lock znode", e);
             }
-            if (this.bk != null)
+            if (bk != null)
                 bk.close();
-            if (this.zk != null)
+            if (zk != null)
                 zk.close();
         } catch (InterruptedException e) {
             LOG.warn("Interrupted while closing logger.", e);
