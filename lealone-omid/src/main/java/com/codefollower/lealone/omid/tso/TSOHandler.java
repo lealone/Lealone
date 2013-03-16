@@ -182,11 +182,15 @@ public class TSOHandler extends SimpleChannelHandler {
     }
 
     public void start() {
-        flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
+        scheduleFlushThread();
     }
 
     public void stop() {
         finish = true;
+    }
+
+    private void scheduleFlushThread() {
+        flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
     }
 
     private void flush() {
@@ -213,7 +217,7 @@ public class TSOHandler extends SimpleChannelHandler {
             sharedState.nextBatch = new ArrayList<ChannelAndMessage>(sharedState.nextBatch.size() + 5);
             sharedState.baos.reset();
             if (flushFuture.cancel(false)) {
-                flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
+                scheduleFlushThread();
             }
         }
     }
@@ -234,7 +238,7 @@ public class TSOHandler extends SimpleChannelHandler {
                     }
                 }
             }
-            flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
+            scheduleFlushThread();
         }
     }
 
