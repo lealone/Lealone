@@ -86,4 +86,19 @@ class CommandWrapper implements CommandInterface {
     public void setFetchSize(int fetchSize) {
         c.setFetchSize(fetchSize);
     }
+
+    @Override
+    public byte[][] getTransactionalRowKeys() {
+        return c.getTransactionalRowKeys();
+    }
+
+    @Override
+    public void setStartTimestamp(Long startTimestamp) {
+        c.setStartTimestamp(startTimestamp);
+    }
+
+    @Override
+    public Long getStartTimestamp() {
+        return c.getStartTimestamp();
+    }
 }

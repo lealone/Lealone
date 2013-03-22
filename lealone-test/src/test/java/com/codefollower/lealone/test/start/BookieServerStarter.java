@@ -37,7 +37,7 @@ public class BookieServerStarter {
     public static void main(String[] args) throws Exception {
         //建立必须的bookkeeper节点
         ZooKeeper zk = new ZooKeeper("127.0.0.1:2181", 12000, new MyWatcher());
-        deleteNodeRecursively(zk, "/ledgers");
+        deleteNodeRecursivelyAndFailSilent(zk, "/ledgers");
 
         createAndFailSilent(zk, "/ledgers");
         createAndFailSilent(zk, "/ledgers/cookies");
@@ -67,20 +67,24 @@ public class BookieServerStarter {
             //zk.delete(znode, -1);
             zk.create(znode, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
     }
 
-    private static void deleteNodeRecursively(ZooKeeper zk, String znode) throws Exception {
-        List<String> children = zk.getChildren(znode, false);
-        if (children == null)
-            return;
+    private static void deleteNodeRecursivelyAndFailSilent(ZooKeeper zk, String znode) throws Exception {
+        try {
+            List<String> children = zk.getChildren(znode, false);
+            if (children == null)
+                return;
 
-        if (!children.isEmpty()) {
-            for (String child : children) {
-                deleteNodeRecursively(zk, znode + "/" + child);
+            if (!children.isEmpty()) {
+                for (String child : children) {
+                    deleteNodeRecursivelyAndFailSilent(zk, znode + "/" + child);
+                }
             }
+            zk.delete(znode, -1);
+        } catch (Exception e) {
+            //e.printStackTrace();
         }
-        zk.delete(znode, -1);
     }
 }

@@ -40,6 +40,9 @@ public class CommandRemote implements CommandInterface {
     private boolean readonly;
     private final int created;
 
+    private byte[][] transactionalRowKeys;
+    private Long startTimestamp;
+
     public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
         this.transferList = transferList;
         trace = session.getTrace();
@@ -139,9 +142,13 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    session.traceOperation("COMMAND_EXECUTE_QUERY", id);
-                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_QUERY).writeInt(id).writeInt(objectId).writeInt(
-                            maxRows);
+                    if (startTimestamp == null) {
+                        session.traceOperation("COMMAND_EXECUTE_QUERY", id);
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_QUERY).writeInt(id).writeInt(objectId).writeInt(maxRows);
+                    } else {
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_TRANSACTIONAL_QUERY).writeInt(id).writeInt(objectId)
+                                .writeInt(maxRows).writeLong(startTimestamp.longValue());
+                    }
                     int fetch;
                     if (session.isClustered() || scrollable) {
                         fetch = Integer.MAX_VALUE;
@@ -183,12 +190,26 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
-                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_UPDATE).writeInt(id);
-                    sendParameters(transfer);
-                    session.done(transfer);
-                    updateCount = transfer.readInt();
-                    autoCommit = transfer.readBoolean();
+                    if (startTimestamp == null) {
+                        session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_UPDATE).writeInt(id);
+                        sendParameters(transfer);
+                        session.done(transfer);
+                        updateCount = transfer.readInt();
+                        autoCommit = transfer.readBoolean();
+                    } else {
+                        session.traceOperation("COMMAND_EXECUTE_TRANSACTIONAL_UPDATE", id);
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_TRANSACTIONAL_UPDATE).writeInt(id)
+                                .writeLong(startTimestamp.longValue());
+                        sendParameters(transfer);
+                        session.done(transfer);
+                        updateCount = transfer.readInt();
+                        autoCommit = transfer.readBoolean();
+                        int rowKeyCount = transfer.readInt();
+                        transactionalRowKeys = new byte[rowKeyCount][];
+                        for (int j = 0; j < rowKeyCount; j++)
+                            transactionalRowKeys[j] = transfer.readBytes();
+                    }
                 } catch (IOException e) {
                     session.removeServer(e, i--, ++count);
                 }
@@ -265,5 +286,20 @@ public class CommandRemote implements CommandInterface {
     @Override
     public void setFetchSize(int fetchSize) {
         this.fetchSize = fetchSize;
+    }
+
+    @Override
+    public byte[][] getTransactionalRowKeys() {
+        return transactionalRowKeys;
+    }
+
+    @Override
+    public Long getStartTimestamp() {
+        return startTimestamp;
+    }
+
+    @Override
+    public void setStartTimestamp(Long startTimestamp) {
+        this.startTimestamp = startTimestamp;
     }
 }

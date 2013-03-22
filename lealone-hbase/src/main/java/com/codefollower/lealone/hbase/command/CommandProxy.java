@@ -22,9 +22,11 @@ package com.codefollower.lealone.hbase.command;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -46,11 +48,15 @@ import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
+import com.codefollower.lealone.omid.client.RowKeyFamily;
+import com.codefollower.lealone.omid.client.TransactionState;
 import com.codefollower.lealone.result.ResultInterface;
+import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 
 public class CommandProxy extends Command {
+    private static final Map<byte[], List<KeyValue>> EMPTY_MAP = New.hashMap();
     private final HBaseSession originalSession;
     private final Prepared originalPrepared;
     private final ArrayList<? extends ParameterInterface> originalParams;
@@ -205,6 +211,8 @@ public class CommandProxy extends Command {
             proxyCommand.setFetchSize(super.getFetchSize());
         }
         setProxyCommandParameters();
+        if (originalSession.getTransactionState() != null)
+            proxyCommand.setStartTimestamp(getStartTimestamp());
         return proxyCommand.executeQuery(maxrows, scrollable);
     }
 
@@ -214,7 +222,18 @@ public class CommandProxy extends Command {
             parseRowKey();
         }
         setProxyCommandParameters();
+        TransactionState ts = originalSession.getTransactionState();
+        if (ts != null)
+            proxyCommand.setStartTimestamp(getStartTimestamp());
         int updateCount = proxyCommand.executeUpdate();
+        if (ts != null && originalPrepared instanceof HBasePrepared) {
+            HBasePrepared hp = (HBasePrepared) originalPrepared;
+            byte[] tableName = HBaseUtils.toBytes(hp.getTableName());
+            for (byte[] rowKey : proxyCommand.getTransactionalRowKeys()) {
+                ts.addRow(new RowKeyFamily(rowKey, tableName, EMPTY_MAP));
+            }
+        }
+
         if (!originalSession.getDatabase().isMaster() && originalPrepared instanceof DefineCommand) {
             originalSession.getDatabase().refreshMetaTable();
 

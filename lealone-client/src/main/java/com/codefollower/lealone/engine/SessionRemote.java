@@ -61,6 +61,9 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     public static final int SESSION_UNDO_LOG_POS = 16;
     public static final int LOB_READ = 17;
 
+    public static final int COMMAND_EXECUTE_TRANSACTIONAL_QUERY = 100;
+    public static final int COMMAND_EXECUTE_TRANSACTIONAL_UPDATE = 101;
+
     public static final int STATUS_ERROR = 0;
     public static final int STATUS_OK = 1;
     public static final int STATUS_CLOSED = 2;
@@ -495,8 +498,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         }
         recreateSessionState();
         if (eventListener != null) {
-            eventListener.setProgress(DatabaseEventListener.STATE_RECONNECTED, databaseName, count,
-                    SysProperties.MAX_RECONNECT);
+            eventListener.setProgress(DatabaseEventListener.STATE_RECONNECTED, databaseName, count, SysProperties.MAX_RECONNECT);
         }
         return true;
     }

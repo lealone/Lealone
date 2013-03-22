@@ -117,7 +117,7 @@ public class HBaseSession extends Session {
     @Override
     public void setAutoCommit(boolean autoCommit) {
         super.setAutoCommit(autoCommit);
-        if (!autoCommit) {
+        if (!autoCommit && ts == null) { //TODO 是否考虑支持嵌套事务
             try {
                 if (tm == null)
                     tm = new TransactionManager(HBaseUtils.getConfiguration());

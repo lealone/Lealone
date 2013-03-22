@@ -33,10 +33,6 @@ public class HBaseRow extends Row {
         super(data, memory);
     }
 
-    public HBaseRow(Value rowKey, Value[] data, int memory) {
-        super(rowKey, data, memory);
-    }
-
     public HBaseRow(byte[] regionName, Value rowKey, Value[] data, int memory) {
         super(rowKey, data, memory);
         this.regionName = regionName;
@@ -65,4 +61,5 @@ public class HBaseRow extends Row {
     public void setForUpdate(boolean forUpdate) {
         this.forUpdate = forUpdate;
     }
+
 }

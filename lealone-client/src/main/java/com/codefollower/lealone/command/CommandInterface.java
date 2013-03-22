@@ -505,4 +505,10 @@ public interface CommandInterface {
     int getFetchSize();
 
     void setFetchSize(int fetchSize);
+
+    byte[][] getTransactionalRowKeys();
+
+    void setStartTimestamp(Long startTimestamp);
+
+    Long getStartTimestamp();
 }

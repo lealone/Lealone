@@ -28,12 +28,22 @@ public class Row implements SearchRow {
     private int sessionId;
     private Value rowKey;
 
+    private Long startTimestamp;
+
     public Value getRowKey() {
         return rowKey;
     }
 
     public void setRowKey(Value rowKey) {
         this.rowKey = rowKey;
+    }
+
+    public Long getStartTimestamp() {
+        return startTimestamp;
+    }
+
+    public void setStartTimestamp(Long startTimestamp) {
+        this.startTimestamp = startTimestamp;
     }
 
     public Row(Value[] data, int memory) {

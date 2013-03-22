@@ -38,11 +38,10 @@ import org.apache.hadoop.hbase.client.HTable;
  */
 public class TransactionManager {
     private static final Log LOG = LogFactory.getLog(TransactionManager.class);
-
     private static TSOClient tsoclient = null;
 
-    private Configuration conf;
-    private HashMap<byte[], HTable> tableCache;
+    private final Configuration conf;
+    private final HashMap<byte[], HTable> tableCache = new HashMap<byte[], HTable>();
 
     public TransactionManager(Configuration conf) throws TransactionException, IOException {
         this.conf = conf;
@@ -53,7 +52,6 @@ public class TransactionManager {
                 }
             }
         }
-        tableCache = new HashMap<byte[], HTable>();
     }
 
     /**
@@ -144,6 +142,7 @@ public class TransactionManager {
         Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
         for (final RowKeyFamily rowkey : transactionState.getRows()) {
             List<Delete> batch = deleteBatches.get(rowkey.getTable());
+            //List<Delete> batch = deleteBatches.get(Bytes.toString(rowkey.getTable()));
             if (batch == null) {
                 batch = new ArrayList<Delete>();
                 deleteBatches.put(rowkey.getTable(), batch);

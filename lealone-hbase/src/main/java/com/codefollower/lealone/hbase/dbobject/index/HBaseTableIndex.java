@@ -21,6 +21,8 @@ package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
 
+import org.apache.hadoop.hbase.client.Delete;
+
 import com.codefollower.lealone.dbobject.index.BaseIndex;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.index.IndexType;
@@ -66,8 +68,12 @@ public class HBaseTableIndex extends BaseIndex {
         if (((HBaseRow) row).isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
             return;
         try {
-            ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(),
-                    new org.apache.hadoop.hbase.client.Delete(HBaseUtils.toBytes(row.getRowKey())));
+            Delete delete;
+            if (row.getStartTimestamp() != null)
+                delete = new Delete(HBaseUtils.toBytes(row.getRowKey()), row.getStartTimestamp(), null);
+            else
+                delete = new Delete(HBaseUtils.toBytes(row.getRowKey()));
+            ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

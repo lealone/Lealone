@@ -227,7 +227,10 @@ public class HBaseTable extends TableBase {
             o.setForUpdate(true);
             n.setRegionName(o.getRegionName());
             n.setRowKey(o.getRowKey());
-            put = new Put(HBaseUtils.toBytes(n.getRowKey()));
+            if (prepared.getCommand().getStartTimestamp() != null)
+                put = new Put(HBaseUtils.toBytes(n.getRowKey()), Long.valueOf(prepared.getCommand().getStartTimestamp()));
+            else
+                put = new Put(HBaseUtils.toBytes(n.getRowKey()));
             for (int i = 0; i < columnCount; i++) {
                 c = columns[i];
                 put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(n.getValue(i)));

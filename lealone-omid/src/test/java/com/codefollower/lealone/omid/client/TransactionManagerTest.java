@@ -44,11 +44,7 @@ public class TransactionManagerTest {
         put.add(Bytes.toBytes("f"), Bytes.toBytes("c"), Bytes.toBytes("2002"));
         put(ts, put);
 
-        put = new Put(Bytes.toBytes("2003"));
-        put.add(Bytes.toBytes("f"), Bytes.toBytes("c"), Bytes.toBytes("2003"));
-        put(ts, put);
-
-        tm.tryCommit(ts);
+        //tm.tryCommit(ts);
         //System.out.println(ts.tsoclient.validRead(ts.getCommitTimestamp(), ts.getStartTimestamp()));
         //System.out.println(ts.tsoclient.validRead(8, ts.getStartTimestamp()));
 
@@ -58,6 +54,15 @@ public class TransactionManagerTest {
         SyncAbortCompleteCallback c = new SyncAbortCompleteCallback();
         ts.tsoclient.completeAbort(ts.getStartTimestamp(), c);
         c.await();
+
+        for (int i = 0; i < 60; i++) {
+            ts = tm.beginTransaction();
+            put = new Put(Bytes.toBytes("2003"));
+            put.add(Bytes.toBytes("f"), Bytes.toBytes("c"), Bytes.toBytes("2003"));
+            put(ts, put);
+            tm.tryCommit(ts);
+        }
+
         //TransactionManager.close();
     }
 

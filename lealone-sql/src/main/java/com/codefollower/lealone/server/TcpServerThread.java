@@ -255,6 +255,7 @@ public class TcpServerThread implements Runnable {
 
     private void process() throws IOException {
         int operation = transfer.readInt();
+        boolean isTransactional = false;
         switch (operation) {
         case SessionRemote.SESSION_PREPARE_READ_PARAMS:
         case SessionRemote.SESSION_PREPARE: {
@@ -338,9 +339,14 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
+        case SessionRemote.COMMAND_EXECUTE_TRANSACTIONAL_UPDATE: {
+            isTransactional = true;
+        }
         case SessionRemote.COMMAND_EXECUTE_UPDATE: {
             int id = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
+            if (isTransactional)
+                command.setStartTimestamp(Long.valueOf(transfer.readLong()));
             setParameters(command);
             int old = session.getModificationId();
             int updateCount;
@@ -354,6 +360,11 @@ public class TcpServerThread implements Runnable {
                 status = getState(old);
             }
             transfer.writeInt(status).writeInt(updateCount).writeBoolean(session.getAutoCommit());
+            if (isTransactional) {
+                transfer.writeInt(command.getTransactionalRowKeys().length);
+                for (byte[] rowKey : command.getTransactionalRowKeys())
+                    transfer.writeBytes(rowKey);
+            }
             transfer.flush();
             break;
         }

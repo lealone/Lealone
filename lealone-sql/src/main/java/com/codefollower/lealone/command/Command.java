@@ -19,6 +19,7 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.Trace;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.util.MathUtils;
+import com.codefollower.lealone.value.Value;
 
 /**
  * Represents a SQL statement. This object is only used on the server side.
@@ -49,6 +50,8 @@ public abstract class Command implements CommandInterface {
 
     private boolean canReuse;
     protected int fetchSize;
+    private Long startTimestamp;
+    private ArrayList<Value> rowKeys = new ArrayList<Value>();
 
     protected Command(Session session, String sql) {
         this.session = session;
@@ -350,5 +353,28 @@ public abstract class Command implements CommandInterface {
     @Override
     public void setFetchSize(int fetchSize) {
         this.fetchSize = fetchSize;
+    }
+
+    @Override
+    public Long getStartTimestamp() {
+        return startTimestamp;
+    }
+
+    @Override
+    public void setStartTimestamp(Long startTimestamp) {
+        this.startTimestamp = startTimestamp;
+    }
+
+    public void addRowKey(Value rowKey) {
+        rowKeys.add(rowKey);
+    }
+
+    @Override
+    public byte[][] getTransactionalRowKeys() {
+        int size = rowKeys.size();
+        byte[][] keys = new byte[size][];
+        for (int i = 0; i < size; i++)
+            keys[i] = rowKeys.get(i).getBytesNoCopy();
+        return keys;
     }
 }

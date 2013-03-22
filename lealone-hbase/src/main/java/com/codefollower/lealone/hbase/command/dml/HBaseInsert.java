@@ -93,7 +93,11 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         row.setRowKey(ValueString.get(getRowKey()));
         row.setRegionName(regionNameAsBytes);
 
-        Put put = new Put(Bytes.toBytes(getRowKey()));
+        Put put;
+        if (getCommand().getStartTimestamp() != null)
+            put = new Put(Bytes.toBytes(getRowKey()), Long.valueOf(getCommand().getStartTimestamp()));
+        else
+            put = new Put(Bytes.toBytes(getRowKey()));
         row.setPut(put);
         Column c;
         Value v;
