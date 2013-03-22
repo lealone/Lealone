@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.omid;
+package com.codefollower.lealone.test.start;
 
 import java.io.File;
 
@@ -29,7 +29,7 @@ import com.codefollower.lealone.omid.tso.TSOServer;
  * 
  * 请加上VM参数: -Djava.library.path=<tso-commithashmap path> (见下面的输出信息"tso-commithashmap path: ")
  * 
- * 如: -Djava.library.path=E:\lealone\git\lealone-omid\src\test\resources
+ * 如: -Djava.library.path=E:\lealone\git\lealone-test\src\test\resources
  *
  */
 public class TSOServerStarter {
