@@ -63,6 +63,7 @@ public class HBaseTable extends TableBase {
     private final Index scanIndex;
     private final HTableDescriptor hTableDescriptor;
     private final String tableName;
+    private final byte[] tableNameAsBytes;
 
     private String rowKeyName;
     private Column rowKeyColumn;
@@ -74,6 +75,7 @@ public class HBaseTable extends TableBase {
         super(data);
         isStatic = true;
         tableName = data.tableName;
+        tableNameAsBytes = HBaseUtils.toBytes(tableName);
 
         Column[] cols = getColumns();
         for (Column c : cols) {
@@ -95,6 +97,7 @@ public class HBaseTable extends TableBase {
         super(schema, id, name, true, true, HBaseTableEngine.class.getName(), false);
         isStatic = false;
         tableName = name;
+        tableNameAsBytes = HBaseUtils.toBytes(tableName);
 
         this.columnsMap = columnsMap;
         setColumns(columns.toArray(new Column[columns.size()]));
@@ -104,6 +107,10 @@ public class HBaseTable extends TableBase {
         scanIndex = new HBaseTableIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
         indexes.add(scanIndex);
         hTableDescriptor = htd;
+    }
+
+    public byte[] getTableNameAsBytes() {
+        return tableNameAsBytes;
     }
 
     public boolean isStatic() {

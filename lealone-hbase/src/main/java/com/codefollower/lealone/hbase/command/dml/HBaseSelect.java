@@ -23,6 +23,8 @@ import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.dbobject.table.TableView;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.HBasePrepared;
+import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
 
@@ -46,6 +48,14 @@ public class HBaseSelect extends Select implements HBasePrepared {
             return ((TableView) topTableFilter.getTable()).getTableName();
         else
             return topTableFilter.getTable().getName();
+    }
+
+    @Override
+    public byte[] getTableNameAsBytes() {
+        if ((topTableFilter.getTable() instanceof TableView))
+            return HBaseUtils.toBytes(((TableView) topTableFilter.getTable()).getTableName());
+        else
+            return ((HBaseTable) topTableFilter.getTable()).getTableNameAsBytes();
     }
 
     @Override

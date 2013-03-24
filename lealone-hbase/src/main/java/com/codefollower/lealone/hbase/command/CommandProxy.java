@@ -228,7 +228,7 @@ public class CommandProxy extends Command {
         int updateCount = proxyCommand.executeUpdate();
         if (ts != null && originalPrepared instanceof HBasePrepared) {
             HBasePrepared hp = (HBasePrepared) originalPrepared;
-            byte[] tableName = HBaseUtils.toBytes(hp.getTableName());
+            byte[] tableName = hp.getTableNameAsBytes();
             for (byte[] rowKey : proxyCommand.getTransactionalRowKeys()) {
                 ts.addRow(new RowKeyFamily(rowKey, tableName, EMPTY_MAP));
             }

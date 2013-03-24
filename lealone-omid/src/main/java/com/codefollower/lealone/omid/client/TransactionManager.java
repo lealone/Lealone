@@ -142,7 +142,6 @@ public class TransactionManager {
         Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
         for (final RowKeyFamily rowkey : transactionState.getRows()) {
             List<Delete> batch = deleteBatches.get(rowkey.getTable());
-            //List<Delete> batch = deleteBatches.get(Bytes.toString(rowkey.getTable()));
             if (batch == null) {
                 batch = new ArrayList<Delete>();
                 deleteBatches.put(rowkey.getTable(), batch);

@@ -142,6 +142,11 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     }
 
     @Override
+    public byte[] getTableNameAsBytes() {
+        return ((HBaseTable) table).getTableNameAsBytes();
+    }
+
+    @Override
     public String getRowKey() {
         int index = 0;
         for (Column c : columns) {

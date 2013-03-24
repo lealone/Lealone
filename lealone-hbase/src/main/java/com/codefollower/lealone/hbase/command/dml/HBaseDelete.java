@@ -22,6 +22,7 @@ package com.codefollower.lealone.hbase.command.dml;
 import com.codefollower.lealone.command.dml.Delete;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.HBasePrepared;
+import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
 
@@ -49,6 +50,11 @@ public class HBaseDelete extends Delete implements HBasePrepared {
     @Override
     public String getTableName() {
         return tableFilter.getTable().getName();
+    }
+
+    @Override
+    public byte[] getTableNameAsBytes() {
+        return ((HBaseTable) tableFilter.getTable()).getTableNameAsBytes();
     }
 
     @Override

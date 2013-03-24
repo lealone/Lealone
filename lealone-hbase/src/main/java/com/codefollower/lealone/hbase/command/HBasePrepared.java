@@ -24,6 +24,8 @@ import com.codefollower.lealone.value.Value;
 public interface HBasePrepared {
     public String getTableName();
 
+    public byte[] getTableNameAsBytes();
+
     public String getRowKey();
 
     public Value getStartRowKeyValue();
