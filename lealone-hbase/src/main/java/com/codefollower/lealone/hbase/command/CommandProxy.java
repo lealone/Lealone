@@ -309,6 +309,17 @@ public class CommandProxy extends Command {
         super.setFetchSize(fetchSize);
     }
 
+    @Override
+    public void setStartTimestamp(Long startTimestamp) {
+        proxyCommand.setStartTimestamp(startTimestamp);
+        super.setStartTimestamp(startTimestamp);
+    }
+
+    @Override
+    public byte[][] getTransactionalRowKeys() {
+        return proxyCommand.getTransactionalRowKeys();
+    }
+
     CommandInterface getCommandInterface(String url, String sql) throws Exception {
         //TODO 如何重用SessionInterface
         SessionInterface si = getSessionInterface(originalSession.getOriginalProperties(), url);

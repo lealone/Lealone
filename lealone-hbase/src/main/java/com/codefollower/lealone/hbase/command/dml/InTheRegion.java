@@ -112,4 +112,9 @@ public class InTheRegion extends Prepared {
         super.setCommand(command);
         originalPrepared.setCommand(command);
     }
+
+    @Override
+    public Command getCommand() {
+        return originalPrepared.getCommand();
+    }
 }
