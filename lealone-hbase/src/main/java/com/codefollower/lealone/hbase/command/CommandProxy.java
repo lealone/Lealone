@@ -212,7 +212,7 @@ public class CommandProxy extends Command {
         }
         setProxyCommandParameters();
         if (originalSession.getTransactionState() != null)
-            proxyCommand.setStartTimestamp(getStartTimestamp());
+            proxyCommand.setStartTimestamp(originalSession.getTransactionState().getStartTimestamp());
         return proxyCommand.executeQuery(maxrows, scrollable);
     }
 
@@ -224,7 +224,7 @@ public class CommandProxy extends Command {
         setProxyCommandParameters();
         TransactionState ts = originalSession.getTransactionState();
         if (ts != null)
-            proxyCommand.setStartTimestamp(getStartTimestamp());
+            proxyCommand.setStartTimestamp(ts.getStartTimestamp());
         int updateCount = proxyCommand.executeUpdate();
         if (ts != null && originalPrepared instanceof HBasePrepared) {
             HBasePrepared hp = (HBasePrepared) originalPrepared;

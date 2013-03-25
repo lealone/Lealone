@@ -146,7 +146,8 @@ public class TransactionManager {
                 batch = new ArrayList<Delete>();
                 deleteBatches.put(rowkey.getTable(), batch);
             }
-            Delete delete = new Delete(rowkey.getRow());
+            Delete delete = new Delete(rowkey.getRow(), transactionState.getStartTimestamp(), null);
+            //Delete delete = new Delete(rowkey.getRow());
             for (Entry<byte[], List<KeyValue>> entry : rowkey.getFamilies().entrySet()) {
                 for (KeyValue kv : entry.getValue()) {
                     delete.deleteColumn(entry.getKey(), kv.getQualifier(), transactionState.getStartTimestamp());

@@ -6,6 +6,7 @@
  */
 package com.codefollower.lealone.command;
 
+import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
@@ -373,8 +374,13 @@ public abstract class Command implements CommandInterface {
     public byte[][] getTransactionalRowKeys() {
         int size = rowKeys.size();
         byte[][] keys = new byte[size][];
-        for (int i = 0; i < size; i++)
-            keys[i] = rowKeys.get(i).getBytesNoCopy();
+        for (int i = 0; i < size; i++) {
+            try {
+                keys[i] = rowKeys.get(i).getString().getBytes("UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                keys[i] = rowKeys.get(i).getString().getBytes();
+            }
+        }
         return keys;
     }
 }

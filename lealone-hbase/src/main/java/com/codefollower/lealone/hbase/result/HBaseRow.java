@@ -20,6 +20,7 @@
 package com.codefollower.lealone.hbase.result;
 
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.value.Value;
@@ -27,7 +28,8 @@ import com.codefollower.lealone.value.Value;
 public class HBaseRow extends Row {
     private byte[] regionName;
     private Put put;
-    boolean forUpdate = false;
+    private boolean forUpdate = false;
+    private Result result;
 
     public HBaseRow(Value[] data, int memory) {
         super(data, memory);
@@ -36,6 +38,12 @@ public class HBaseRow extends Row {
     public HBaseRow(byte[] regionName, Value rowKey, Value[] data, int memory) {
         super(rowKey, data, memory);
         this.regionName = regionName;
+    }
+
+    public HBaseRow(byte[] regionName, Value rowKey, Value[] data, int memory, Result result) {
+        super(rowKey, data, memory);
+        this.regionName = regionName;
+        this.result = result;
     }
 
     public byte[] getRegionName() {
@@ -61,5 +69,7 @@ public class HBaseRow extends Row {
     public void setForUpdate(boolean forUpdate) {
         this.forUpdate = forUpdate;
     }
-
+    public Result getResult() {
+        return result;
+    }
 }

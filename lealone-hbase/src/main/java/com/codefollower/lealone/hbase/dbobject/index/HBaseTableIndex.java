@@ -21,7 +21,9 @@ package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
 
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Result;
 
 import com.codefollower.lealone.dbobject.index.BaseIndex;
 import com.codefollower.lealone.dbobject.index.Cursor;
@@ -71,8 +73,15 @@ public class HBaseTableIndex extends BaseIndex {
             Delete delete;
             if (row.getStartTimestamp() != null)
                 delete = new Delete(HBaseUtils.toBytes(row.getRowKey()), row.getStartTimestamp(), null);
-            else
+            else {
+                Result result = ((HBaseRow) row).getResult();
                 delete = new Delete(HBaseUtils.toBytes(row.getRowKey()));
+                if (result != null) {
+                    for (KeyValue kv : result.list()) {
+                        delete.deleteColumn(kv.getFamily(), kv.getQualifier(), kv.getTimestamp());
+                    }
+                }
+            }
             ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
         } catch (IOException e) {
             throw new RuntimeException(e);

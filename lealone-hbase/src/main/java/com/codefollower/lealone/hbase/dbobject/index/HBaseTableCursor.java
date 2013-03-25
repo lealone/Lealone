@@ -176,7 +176,7 @@ public class HBaseTableCursor implements Cursor {
                                 r.getValue(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes()), c.getType());
                 }
             }
-            return new HBaseRow(regionName, rowKey, data, Row.MEMORY_CALCULATE);
+            return new HBaseRow(regionName, rowKey, data, Row.MEMORY_CALCULATE, r);
         }
         return null;
     }

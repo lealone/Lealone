@@ -21,16 +21,61 @@ package com.codefollower.lealone.test.jdbc.transaction;
 
 import static junit.framework.Assert.assertEquals;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import com.codefollower.lealone.test.jdbc.TestBase;
 
 public class TransactionTest extends TestBase {
+    Configuration conf = HBaseConfiguration.create();
+
     @Test
     public void run() throws Exception {
+        //stmt.executeUpdate("DROP TABLE IF EXISTS TransactionTest");
         createTableIfNotExists("TransactionTest");
         testCommit();
         testRollback();
+        //delete();
+    }
+
+    void delete() throws Exception {
+
+        HTable t = new HTable(conf, "TRANSACTIONTEST");
+
+        Put put = new Put(Bytes.toBytes("100"));
+        put.add(Bytes.toBytes("CF1"), Bytes.toBytes("f1"), 10, Bytes.toBytes("01"));
+        t.put(put);
+
+        put = new Put(Bytes.toBytes("200"));
+        put.add(Bytes.toBytes("CF1"), Bytes.toBytes("f1"), 10, Bytes.toBytes("02"));
+        t.put(put);
+
+        List<Delete> batch = new ArrayList<Delete>();
+        scan();
+        //t.delete(new Delete(Bytes.toBytes("01"), 10, null));
+        //t.delete(new Delete(Bytes.toBytes("02"), 10, null));
+
+        batch.add(new Delete(Bytes.toBytes("100"), 10, null));
+        batch.add(new Delete(Bytes.toBytes("200"), 10, null));
+
+        t.delete(batch);
+        scan();
+        //Thread.sleep(2000);
+
+        //put = new Put(Bytes.toBytes("01"));
+        //put.add(Bytes.toBytes("CF1"), Bytes.toBytes("f1"), System.currentTimeMillis(), Bytes.toBytes("01"));
+        //put.add(Bytes.toBytes("CF1"), Bytes.toBytes("f1"), 100, Bytes.toBytes("01"));
+        //t.put(put);
     }
 
     void insert() throws Exception {
@@ -59,13 +104,19 @@ public class TransactionTest extends TestBase {
         } finally {
             conn.setAutoCommit(true);
         }
+
+        scan();
+
         sql = "SELECT count(*) FROM TransactionTest";
         assertEquals(12, getIntValue(1, true));
+
+        sql = "DELETE FROM TransactionTest";
+        assertEquals(12, stmt.executeUpdate(sql));
+        sql = "SELECT count(*) FROM TransactionTest";
+        assertEquals(0, getIntValue(1, true));
     }
 
     void testRollback() throws Exception {
-        sql = "DELETE FROM TransactionTest";
-        assertEquals(12, stmt.executeUpdate(sql));
         try {
             conn.setAutoCommit(false);
             insert();
@@ -73,7 +124,17 @@ public class TransactionTest extends TestBase {
         } finally {
             conn.setAutoCommit(true);
         }
+
+        scan();
         sql = "SELECT count(*) FROM TransactionTest";
         assertEquals(0, getIntValue(1, true));
+
+    }
+
+    void scan() throws Exception {
+        HTable t = new HTable(conf, "TRANSACTIONTEST");
+        for (Result r : t.getScanner(new Scan())) {
+            System.out.println(r);
+        }
     }
 }
