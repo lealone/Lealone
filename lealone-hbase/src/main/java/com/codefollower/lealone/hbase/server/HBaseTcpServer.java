@@ -21,6 +21,7 @@ package com.codefollower.lealone.hbase.server;
 
 import java.net.Socket;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Map.Entry;
 
 import org.apache.commons.logging.Log;
@@ -62,7 +63,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
         tcpPort = getMasterTcpPort(master.getConfiguration());
         serverName = master.getServerName();
         this.master = master;
-        init();
+        init(master.getConfiguration());
     }
 
     public HBaseTcpServer(HRegionServer regionServer) {
@@ -70,7 +71,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
         tcpPort = getRegionServerTcpPort(regionServer.getConfiguration());
         serverName = regionServer.getServerName();
         this.regionServer = regionServer;
-        init();
+        init(regionServer.getConfiguration());
     }
 
     public HMaster getMaster() {
@@ -135,9 +136,21 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     protected void removeConnection(int id) {
     }
 
-    private void init() {
-        String[] args = { "-tcp", "-tcpPort", "" + tcpPort, "-tcpDaemon" };
-        super.init(args);
+    private void init(Configuration conf) {
+        ArrayList<String> args = new ArrayList<String>();
+        for (String arg : conf.getStrings(Constants.PROJECT_NAME_PREFIX + "args")) {
+            int pos = arg.indexOf('=');
+            if (pos == -1) {
+                args.add(arg.trim());
+            } else {
+                args.add(arg.substring(0, pos).trim());
+                args.add(arg.substring(pos + 1).trim());
+            }
+        }
+        args.add("-tcpPort");
+        args.add("" + tcpPort);
+        args.add("-tcpDaemon");
+        super.init(args.toArray(new String[0]));
     }
 
     private void initConf(Configuration conf) {

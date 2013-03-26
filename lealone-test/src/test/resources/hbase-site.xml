@@ -48,6 +48,13 @@
 		</description>
 	</property>
 
+	<property>
+		<name>lealone.args</name>
+		<value>-tcpAllowOthers, -tcpDaemon</value>
+		<description>
+			The lealone server start args.
+		</description>
+	</property>
 
 	<!-- zookeeper properties -->
 	<!-- ************************************************* -->
