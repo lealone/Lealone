@@ -25,11 +25,11 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
-import com.codefollower.lealone.hbase.dbobject.index.HBaseTableIndex;
+import com.codefollower.lealone.hbase.dbobject.index.HBasePrimaryIndex;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.SearchRow;
 
-public class HBaseMergedIndex extends HBaseTableIndex {
+public class HBaseMergedIndex extends HBasePrimaryIndex {
     private final ResultInterface result;
 
     public HBaseMergedIndex(ResultInterface result, Table table, int id, IndexColumn[] columns, IndexType indexType) {

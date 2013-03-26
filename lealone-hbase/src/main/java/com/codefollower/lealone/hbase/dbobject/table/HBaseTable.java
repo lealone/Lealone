@@ -43,7 +43,8 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.TableBase;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.ddl.Options;
-import com.codefollower.lealone.hbase.dbobject.index.HBaseTableIndex;
+import com.codefollower.lealone.hbase.dbobject.index.HBasePrimaryIndex;
+import com.codefollower.lealone.hbase.dbobject.index.HBaseSecondaryIndex;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
@@ -87,7 +88,7 @@ public class HBaseTable extends TableBase {
         htd.addFamily(new HColumnDescriptor(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME));
         createIfNotExists(data.session, data.tableName, htd, null);
 
-        scanIndex = new HBaseTableIndex(this, data.id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
+        scanIndex = new HBasePrimaryIndex(this, data.id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
         indexes.add(scanIndex);
         hTableDescriptor = null; //静态表不需要这个字段
     }
@@ -104,7 +105,7 @@ public class HBaseTable extends TableBase {
 
         createIfNotExists(session, name, htd, splitKeys);
 
-        scanIndex = new HBaseTableIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
+        scanIndex = new HBasePrimaryIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
         indexes.add(scanIndex);
         hTableDescriptor = htd;
     }
@@ -196,8 +197,14 @@ public class HBaseTable extends TableBase {
         boolean isSessionTemporary = isTemporary() && !isGlobalTemporary();
         if (!isSessionTemporary) {
             database.lockMeta(session);
+
+            try {
+                HBaseSecondaryIndex.createIndexTableIfNotExists(indexName);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
         }
-        Index index = new HBaseTableIndex(this, indexId, indexName, cols, indexType);
+        Index index = new HBaseSecondaryIndex(this, indexId, indexName, cols, indexType);
 
         index.setTemporary(isTemporary());
         if (index.getCreateSQL() != null) {

@@ -21,35 +21,44 @@ package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
 
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.dbobject.index.BaseIndex;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.index.IndexType;
+import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
-import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 
-public class HBaseTableIndex extends BaseIndex {
-    private final boolean isScanIndex;
+public class HBaseSecondaryIndex extends BaseIndex {
 
-    public HBaseTableIndex(Table table, int id, IndexColumn[] columns, IndexType indexType) {
-        initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
-        isScanIndex = true;
-    }
+    private final static byte[] FAMILY = Bytes.toBytes("cf");
+    private final static byte[] ROWKEY = Bytes.toBytes("rk");
 
-    public HBaseTableIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+    private final HTable indexTable;
+
+    public HBaseSecondaryIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
         initBaseIndex(table, id, indexName, columns, indexType);
-        isScanIndex = false;
+        try {
+            indexTable = new HTable(HBaseUtils.getConfiguration(), indexName);
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 
     @Override
@@ -59,10 +68,26 @@ public class HBaseTableIndex extends BaseIndex {
     @Override
     public void add(Session session, Row row) {
         try {
-            ((HBaseSession) session).getRegionServer().put(((HBaseRow) row).getRegionName(), ((HBaseRow) row).getPut());
+            Put oldPut = ((HBaseRow) row).getPut();
+            Put newPut = new Put(getIndexRowKey(row));
+            newPut.add(FAMILY, ROWKEY, oldPut.getTimeStamp(), oldPut.getRow());
+            indexTable.put(newPut);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw DbException.convert(e);
         }
+    }
+
+    private byte[] getIndexRowKey(Row row) {
+        if (columns.length == 1)
+            return HBaseUtils.toBytes(row.getValue(columns[0].getColumnId()));
+        StringBuilder buff = new StringBuilder();
+        for (Column c : columns) {
+            if (buff.length() > 0)
+                buff.append("_");
+            int idx = c.getColumnId();
+            buff.append(row.getValue(idx).getString());
+        }
+        return HBaseUtils.toBytes(buff.toString());
     }
 
     @Override
@@ -82,15 +107,15 @@ public class HBaseTableIndex extends BaseIndex {
                     }
                 }
             }
-            ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
+            indexTable.delete(delete);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw DbException.convert(e);
         }
     }
 
     @Override
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        return new HBaseTableCursor(filter, first, last);
+        return new HBaseSecondaryIndexCursor(filter, first, last);
     }
 
     @Override
@@ -145,8 +170,23 @@ public class HBaseTableIndex extends BaseIndex {
         return 0;
     }
 
-    @Override
-    public String getCreateSQL() {
-        return isScanIndex ? null : super.getCreateSQL();
+    public synchronized static void createIndexTableIfNotExists(String indexName) throws Exception {
+        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
+        HColumnDescriptor hcd = new HColumnDescriptor(FAMILY);
+        hcd.setMaxVersions(1);
+
+        HTableDescriptor htd = new HTableDescriptor(indexName);
+        htd.addFamily(hcd);
+        if (!admin.tableExists(indexName)) {
+            admin.createTable(htd);
+        }
+    }
+
+    public synchronized static void dropIndexTableIfExists(String indexName) throws Exception {
+        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
+        if (admin.tableExists(indexName)) {
+            admin.disableTable(indexName);
+            admin.deleteTable(indexName);
+        }
     }
 }

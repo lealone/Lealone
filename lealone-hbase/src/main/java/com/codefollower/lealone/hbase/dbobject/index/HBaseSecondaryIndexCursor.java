@@ -45,7 +45,7 @@ import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueString;
 
-public class HBaseTableCursor implements Cursor {
+public class HBaseSecondaryIndexCursor implements Cursor {
     private final HBaseSession session;
     private int fetchSize;
     private byte[] regionName = null;
@@ -60,7 +60,7 @@ public class HBaseTableCursor implements Cursor {
     private HBaseSubqueryResult subqueryResult;
     private boolean isGet = false;
 
-    public HBaseTableCursor(TableFilter filter, SearchRow first, SearchRow last) {
+    public HBaseSecondaryIndexCursor(TableFilter filter, SearchRow first, SearchRow last) {
         session = (HBaseSession) filter.getSession();
         HBasePrepared hp = (HBasePrepared) filter.getPrepared();
         if (hp != null)
