@@ -40,16 +40,8 @@ import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 
 public class HBasePrimaryIndex extends BaseIndex {
-    private final boolean isScanIndex;
-
     public HBasePrimaryIndex(Table table, int id, IndexColumn[] columns, IndexType indexType) {
         initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
-        isScanIndex = true;
-    }
-
-    public HBasePrimaryIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
-        initBaseIndex(table, id, indexName, columns, indexType);
-        isScanIndex = false;
     }
 
     @Override
@@ -147,6 +139,6 @@ public class HBasePrimaryIndex extends BaseIndex {
 
     @Override
     public String getCreateSQL() {
-        return isScanIndex ? null : super.getCreateSQL();
+        return null;
     }
 }
