@@ -63,6 +63,11 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
     @Override
     public void close(Session session) {
+        try {
+            indexTable.close();
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     @Override
@@ -130,10 +135,21 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
     @Override
     public void remove(Session session) {
+        try {
+            HBaseSecondaryIndex.dropIndexTableIfExists(getName());
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     @Override
     public void truncate(Session session) {
+        try {
+            HBaseSecondaryIndex.dropIndexTableIfExists(getName());
+            HBaseSecondaryIndex.createIndexTableIfNotExists(getName());
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     @Override
