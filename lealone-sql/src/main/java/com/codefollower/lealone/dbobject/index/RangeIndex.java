@@ -12,6 +12,7 @@ import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 
 /**
  * An index for the SYSTEM_RANGE table.
@@ -54,7 +55,7 @@ public class RangeIndex extends BaseIndex {
         return new RangeCursor(start, end);
     }
 
-    public double getCost(Session session, int[] masks) {
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         return 1;
     }
 

@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
-
 import com.codefollower.lealone.mvstore.type.DataType;
 import com.codefollower.lealone.mvstore.type.ObjectDataType;
 import com.codefollower.lealone.util.DataUtils;
@@ -50,8 +49,10 @@ public class MVMap<K, V> extends AbstractMap<K, V>
     private boolean closed;
     private boolean readOnly;
 
+    /**
+     * This flag is set during a write operation.
+     */
     private volatile boolean writing;
-    private volatile int writeCount;
 
     protected MVMap(DataType keyType, DataType valueType) {
         this.keyType = keyType;
@@ -96,6 +97,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      */
     @SuppressWarnings("unchecked")
     public V put(K key, V value) {
+        DataUtils.checkArgument(value != null, "The value may not be null");
         beforeWrite();
         try {
             long writeVersion = store.getCurrentVersion();
@@ -582,11 +584,27 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      */
     public synchronized boolean remove(Object key, Object value) {
         V old = get(key);
-        if (old.equals(value)) {
+        if (areValuesEqual(old, value)) {
             remove(key);
             return true;
         }
         return false;
+    }
+
+    /**
+     * Check whether the two values are equal.
+     *
+     * @param a the first value
+     * @param b the second value
+     * @return true if they are equal
+     */
+    public boolean areValuesEqual(Object a, Object b) {
+        if (a == b) {
+            return true;
+        } else if (a == null || b == null) {
+            return false;
+        }
+        return valueType.compare(a, b) == 0;
     }
 
     /**
@@ -599,7 +617,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      */
     public synchronized boolean replace(K key, V oldValue, V newValue) {
         V old = get(key);
-        if (old.equals(oldValue)) {
+        if (areValuesEqual(old, oldValue)) {
             put(key, newValue);
             return true;
         }
@@ -611,7 +629,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
      *
      * @param key the key (may not be null)
      * @param value the new value
-     * @return true if the value was replaced
+     * @return the old value, if the value was replaced, or null
      */
     public synchronized V replace(K key, V value) {
         V old = get(key);
@@ -756,18 +774,6 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         return new Cursor<K>(this, root, from);
     }
 
-    /**
-     * Iterate over all keys in changed pages.
-     *
-     * @param version the old version
-     * @return the iterator
-     */
-    public Iterator<K> changeIterator(long version) {
-        checkOpen();
-        MVMap<K, V> old = openVersion(version);
-        return new ChangeCursor<K, V>(this, root, old.root);
-    }
-
     public Set<Map.Entry<K, V>> entrySet() {
         HashMap<K, V> map = new HashMap<K, V>();
         for (K k : keySet()) {
@@ -822,7 +828,7 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         return store;
     }
 
-    int getId() {
+    public int getId() {
         return id;
     }
 
@@ -875,6 +881,10 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         }
         int i = searchRoot(oldest);
         if (i < 0) {
+            i = -i - 1;
+        }
+        i--;
+        if (i <= 0) {
             return;
         }
         // create a new instance
@@ -905,9 +915,11 @@ public class MVMap<K, V> extends AbstractMap<K, V>
 
     /**
      * This method is called before writing to the map. The default
-     * implementation checks whether writing is allowed.
+     * implementation checks whether writing is allowed, and tries
+     * to detect concurrent modification.
      *
-     * @throws UnsupportedOperationException if the map is read-only
+     * @throws UnsupportedOperationException if the map is read-only,
+     *      or if another thread is concurrently writing
      */
     protected void beforeWrite() {
         if (readOnly) {
@@ -915,31 +927,38 @@ public class MVMap<K, V> extends AbstractMap<K, V>
             throw DataUtils.newUnsupportedOperationException(
                     "This map is read-only");
         }
+        checkConcurrentWrite();
         writing = true;
         store.beforeWrite();
     }
 
     /**
-     * This method is called after writing to the map.
+     * Check that no write operation is in progress.
+     */
+    protected void checkConcurrentWrite() {
+        if (writing) {
+            // try to detect concurrent modification
+            // on a best-effort basis
+            throw DataUtils.newConcurrentModificationException();
+        }
+    }
+
+    /**
+     * This method is called after writing to the map (whether or not the write
+     * operation was successful).
      */
     protected void afterWrite() {
-        writeCount++;
         writing = false;
     }
 
-    void waitUntilWritten(long version) {
-        if (root.getVersion() < version) {
-            // a write will create a new version
-            return;
-        }
-        // wait until writing is done,
-        // but only for the current write operation
-        // a bit like a spin lock
-        int w = writeCount;
-        while (writing) {
-            if (writeCount > w) {
-                return;
-            }
+    /**
+     * If there is a concurrent update to the given version, wait until it is
+     * finished.
+     *
+     * @param root the root page
+     */
+    protected void waitUntilWritten(Page root) {
+        while (writing && root == this.root) {
             Thread.yield();
         }
     }
@@ -962,14 +981,14 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         return root.getTotalCount();
     }
 
-    long getCreateVersion() {
+    public long getCreateVersion() {
         return createVersion;
     }
 
     /**
      * Remove the given page (make the space available).
      *
-     * @param p the page
+     * @param pos the position of the page to remove
      */
     protected void removePage(long pos) {
         store.removePage(this, pos);
@@ -992,7 +1011,11 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         Page newest = null;
         // need to copy because it can change
         Page r = root;
-        if (r.getVersion() <= version && r.getVersion() >= 0) {
+        if (version >= r.getVersion() &&
+                (version == store.getCurrentVersion() ||
+                r.getVersion() >= 0 ||
+                version <= createVersion ||
+                store.getFile() == null)) {
             newest = r;
         } else {
             // find the newest page that has a getVersion() <= version
@@ -1153,6 +1176,14 @@ public class MVMap<K, V> extends AbstractMap<K, V>
         public Builder<K, V> keyType(DataType keyType) {
             this.keyType = keyType;
             return this;
+        }
+        
+        public DataType getKeyType() {
+            return keyType;
+        }
+
+        public DataType getValueType() {
+            return valueType;
         }
 
         /**

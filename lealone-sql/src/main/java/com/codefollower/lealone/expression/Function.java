@@ -26,6 +26,7 @@ import java.util.regex.PatternSyntaxException;
 
 import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
+import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.Sequence;
@@ -100,6 +101,12 @@ public class Function extends Expression implements FunctionCall {
             MEMORY_FREE = 212, MEMORY_USED = 213, LOCK_MODE = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217,
             LINK_SCHEMA = 218, GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, TABLE = 223, TABLE_DISTINCT = 224,
             FILE_READ = 225, TRANSACTION_ID = 226, TRUNCATE_VALUE = 227, NVL2 = 228, DECODE = 229, ARRAY_CONTAINS = 230;
+    
+    /**
+     * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
+     * for VERSION() when running under the PostgreSQL ODBC driver.
+     */
+    public static final int LEALONE_VERSION = 231;
 
     public static final int ROW_NUMBER = 300;
 
@@ -204,9 +211,9 @@ public class Function extends Expression implements FunctionCall {
         addFunction("SQRT", SQRT, 1, Value.DOUBLE);
         addFunction("TAN", TAN, 1, Value.DOUBLE);
         addFunction("TANH", TANH, 1, Value.DOUBLE);
-        addFunction("TRUNCATE", TRUNCATE, 2, Value.DOUBLE);
+        addFunction("TRUNCATE", TRUNCATE, VAR_ARGS, Value.NULL);
         // same as TRUNCATE
-        addFunction("TRUNC", TRUNCATE, 2, Value.DOUBLE);
+        addFunction("TRUNC", TRUNCATE, VAR_ARGS, Value.NULL);
         addFunction("HASH", HASH, 3, Value.BYTES);
         addFunction("ENCRYPT", ENCRYPT, 3, Value.BYTES);
         addFunction("DECRYPT", DECRYPT, 3, Value.BYTES);
@@ -234,6 +241,8 @@ public class Function extends Expression implements FunctionCall {
         addFunction("LENGTH", LENGTH, 1, Value.LONG);
         // 2 or 3 arguments
         addFunction("LOCATE", LOCATE, VAR_ARGS, Value.INT);
+     // alias for MSSQLServer
+        addFunction("CHARINDEX", LOCATE, VAR_ARGS, Value.INT); 
         // same as LOCATE with 2 arguments
         addFunction("POSITION", LOCATE, 2, Value.INT);
         addFunction("INSTR", INSTR, VAR_ARGS, Value.INT);
@@ -270,6 +279,8 @@ public class Function extends Expression implements FunctionCall {
         // date
         addFunctionNotDeterministic("CURRENT_DATE", CURRENT_DATE, 0, Value.DATE);
         addFunctionNotDeterministic("CURDATE", CURDATE, 0, Value.DATE);
+        // alias for MSSQLServer
+        addFunctionNotDeterministic("GETDATE", CURDATE, 0, Value.DATE);
         addFunctionNotDeterministic("CURRENT_TIME", CURRENT_TIME, 0, Value.TIME);
         addFunctionNotDeterministic("CURTIME", CURTIME, 0, Value.TIME);
         addFunctionNotDeterministic("CURRENT_TIMESTAMP", CURRENT_TIMESTAMP, VAR_ARGS, Value.TIMESTAMP);
@@ -346,6 +357,7 @@ public class Function extends Expression implements FunctionCall {
         addFunctionNotDeterministic("TRANSACTION_ID", TRANSACTION_ID, 0, Value.STRING);
         addFunctionWithNull("DECODE", DECODE, VAR_ARGS, Value.NULL);
         addFunctionNotDeterministic("DISK_SPACE_USED", DISK_SPACE_USED, 1, Value.LONG);
+        addFunction("LEALONE_VERSION", LEALONE_VERSION, 0, Value.STRING);
 
         // TableFunction
         addFunctionWithNull("TABLE", TABLE, VAR_ARGS, Value.RESULT_SET);
@@ -1016,11 +1028,22 @@ public class Function extends Expression implements FunctionCall {
             break;
         }
         case TRUNCATE: {
-            double d = v0.getDouble();
-            int p = v1.getInt();
-            double f = Math.pow(10., p);
-            double g = d * f;
-            result = ValueDouble.get(((d < 0) ? Math.ceil(g) : Math.floor(g)) / f);
+            if (v0.getType() == Value.TIMESTAMP) {
+                java.sql.Timestamp d = v0.getTimestamp();
+                Calendar c = Calendar.getInstance();
+                c.setTime(d);
+                c.set(Calendar.HOUR, 0);
+                c.set(Calendar.MINUTE, 0);
+                c.set(Calendar.SECOND, 0);
+                c.set(Calendar.MILLISECOND, 0);
+                result = ValueTimestamp.get(new java.sql.Timestamp(c.getTimeInMillis()));
+            } else {
+                double d = v0.getDouble();
+                int p = v1.getInt();
+                double f = Math.pow(10., p);
+                double g = d * f;
+                result = ValueDouble.get(((d < 0) ? Math.ceil(g) : Math.floor(g)) / f);
+            }
             break;
         }
         case HASH:
@@ -1127,7 +1150,10 @@ public class Function extends Expression implements FunctionCall {
         case LPAD:
             result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(), false));
             break;
-            // date
+        case LEALONE_VERSION:
+            result = ValueString.get(Constants.getVersion());
+            break;
+        // date
         case DATE_ADD:
             result = ValueTimestamp.get(dateadd(v0.getString(), v1.getInt(), v2.getTimestamp()));
             break;
@@ -1700,6 +1726,7 @@ public class Function extends Expression implements FunctionCall {
         case FILE_READ:
         case ROUND:
         case XMLTEXT:
+        case TRUNCATE:
             min = 1;
             max = 2;
             break;
@@ -1859,11 +1886,27 @@ public class Function extends Expression implements FunctionCall {
             s = scale;
             d = displaySize;
             break;
+        case TRUNCATE:
+            t = p0.getType();
+            s = p0.getScale();
+            p = p0.getPrecision();
+            d = p0.getDisplaySize();
+            if (t == Value.NULL) {
+                t = Value.INT;
+                p = ValueInt.PRECISION;
+                d = ValueInt.DISPLAY_SIZE;
+                s = 0;
+            } else if (t == Value.TIMESTAMP) {
+                t = Value.DATE;
+                p = ValueDate.PRECISION;
+                s = 0;
+                d = ValueDate.DISPLAY_SIZE;
+            }
+            break;
         case ABS:
         case FLOOR:
         case RADIANS:
         case ROUND:
-        case TRUNCATE:
         case POWER:
             t = p0.getType();
             s = p0.getScale();
@@ -2005,6 +2048,7 @@ public class Function extends Expression implements FunctionCall {
         case TRIM:
         case STRINGDECODE:
         case UTF8TOSTRING:
+        case TRUNCATE:
             precision = args[0].getPrecision();
             displaySize = args[0].getDisplaySize();
             break;

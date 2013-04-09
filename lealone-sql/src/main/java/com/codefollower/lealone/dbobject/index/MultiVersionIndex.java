@@ -20,6 +20,7 @@ import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueNull;
 
@@ -124,8 +125,8 @@ public class MultiVersionIndex implements Index {
         return cursor;
     }
 
-    public double getCost(Session session, int[] masks) {
-        return base.getCost(session, masks);
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+        return base.getCost(session, masks, sortOrder);
     }
 
     public boolean needRebuild() {

@@ -6,6 +6,7 @@
  */
 package com.codefollower.lealone.command.ddl;
 
+import com.codefollower.lealone.api.Trigger;
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.Schema;
@@ -87,6 +88,9 @@ public class CreateTrigger extends SchemaCommand {
                 return 0;
             }
             throw DbException.get(ErrorCode.TRIGGER_ALREADY_EXISTS_1, triggerName);
+        }
+        if ((typeMask & Trigger.SELECT) == Trigger.SELECT && rowBased) {
+            throw DbException.get(ErrorCode.TRIGGER_SELECT_AND_ROW_BASED_NOT_SUPPORTED, triggerName);
         }
         int id = getObjectId();
         Table table = getSchema().getTableOrView(session, tableName);

@@ -212,6 +212,10 @@ public abstract class Query extends Prepared {
         distinct = b;
     }
 
+    public boolean isDistinct() {
+        return distinct;
+    }
+
     /**
      * Whether results need to support random access.
      *
@@ -481,8 +485,16 @@ public abstract class Query extends Prepared {
         this.offsetExpr = offset;
     }
 
+    public Expression getOffset() {
+        return offsetExpr;
+    }
+
     public void setLimit(Expression limit) {
         this.limitExpr = limit;
+    }
+
+    public Expression getLimit() {
+        return limitExpr;
     }
 
     /**

@@ -88,6 +88,9 @@ public class ValueBytes extends Value {
 
     protected int compareSecure(Value v, CompareMode mode) {
         byte[] v2 = ((ValueBytes) v).value;
+        if (mode.isBinaryUnsigned()) {
+            return Utils.compareNotNullUnsigned(value, v2);
+        }
         return Utils.compareNotNullSigned(value, v2);
     }
 

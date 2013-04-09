@@ -23,6 +23,7 @@ import com.codefollower.lealone.engine.UndoLogRecord;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.util.New;
 
 /**
@@ -160,7 +161,7 @@ public class ScanIndex extends BaseIndex {
         return new ScanCursor(session, this, database.isMultiVersion());
     }
 
-    public double getCost(Session session, int[] masks) {
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         return tableData.getRowCountApproximation() + Constants.COST_ROW_OFFSET;
     }
 

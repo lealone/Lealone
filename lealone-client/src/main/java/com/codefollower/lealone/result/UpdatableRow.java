@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.jdbc.JdbcConnection;
 import com.codefollower.lealone.message.DbException;
-import com.codefollower.lealone.util.JdbcUtils;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.util.StringUtils;
@@ -67,8 +66,8 @@ public class UpdatableRow {
         }
         final DatabaseMetaData meta = conn.getMetaData();
         ResultSet rs = meta.getTables(null,
-                JdbcUtils.escapeMetaDataPattern(schemaName),
-                JdbcUtils.escapeMetaDataPattern(tableName),
+                StringUtils.escapeMetaDataPattern(schemaName),
+                StringUtils.escapeMetaDataPattern(tableName),
                 new String[] { "TABLE" });
         if (!rs.next()) {
             return;
@@ -84,7 +83,7 @@ public class UpdatableRow {
         boolean toUpper = !table.equals(tableName) && table.equalsIgnoreCase(tableName);
         key = New.arrayList();
         rs = meta.getPrimaryKeys(null,
-                JdbcUtils.escapeMetaDataPattern(schemaName),
+                StringUtils.escapeMetaDataPattern(schemaName),
                 tableName);
         while (rs.next()) {
             String c = rs.getString("COLUMN_NAME");
@@ -96,7 +95,7 @@ public class UpdatableRow {
         }
         key.clear();
         rs = meta.getIndexInfo(null,
-                JdbcUtils.escapeMetaDataPattern(schemaName),
+                StringUtils.escapeMetaDataPattern(schemaName),
                 tableName, true, true);
         while (rs.next()) {
             int pos = rs.getShort("ORDINAL_POSITION");

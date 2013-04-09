@@ -12,6 +12,7 @@ import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 
 /**
  * An index for a function that returns a result set. This index can only scan
@@ -45,7 +46,7 @@ public class FunctionIndex extends BaseIndex {
         return new FunctionCursor(functionTable.getResult(session));
     }
 
-    public double getCost(Session session, int[] masks) {
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         if (masks != null) {
             throw DbException.getUnsupportedException("ALIAS");
         }

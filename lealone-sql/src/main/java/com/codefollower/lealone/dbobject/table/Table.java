@@ -34,6 +34,7 @@ import com.codefollower.lealone.result.RowList;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.result.SimpleRow;
 import com.codefollower.lealone.result.SimpleRowValue;
+import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.value.CompareMode;
 import com.codefollower.lealone.value.Value;
@@ -637,18 +638,19 @@ public abstract class Table extends SchemaObjectBase {
      * Get the best plan for the given search mask.
      *
      * @param session the session
-     * @param masks null means 'always false'
+     * @param masks per-column comparison bit masks, null means 'always false',
+     *              see constants in IndexCondition
      * @return the plan item
      */
-    public PlanItem getBestPlanItem(Session session, int[] masks) {
+    public PlanItem getBestPlanItem(Session session, int[] masks, SortOrder sortOrder) {
         PlanItem item = new PlanItem();
         item.setIndex(getScanIndex(session));
-        item.cost = item.getIndex().getCost(session, null);
+        item.cost = item.getIndex().getCost(session, null, null);
         ArrayList<Index> indexes = getIndexes();
         if (indexes != null && masks != null) {
             for (int i = 1, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                double cost = index.getCost(session, masks);
+                double cost = index.getCost(session, masks, sortOrder);
                 if (cost < item.cost) {
                     item.cost = cost;
                     item.setIndex(index);
@@ -1099,6 +1101,10 @@ public abstract class Table extends SchemaObjectBase {
 
     public void setHidden(boolean hidden) {
         this.isHidden = hidden;
+    }
+
+    public boolean isMVStore() {
+        return false;
     }
 
     public boolean supportsColumnFamily() {

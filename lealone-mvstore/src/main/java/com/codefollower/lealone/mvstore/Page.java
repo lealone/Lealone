@@ -9,7 +9,6 @@ package com.codefollower.lealone.mvstore;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Arrays;
-
 import com.codefollower.lealone.compress.Compressor;
 import com.codefollower.lealone.mvstore.type.DataType;
 import com.codefollower.lealone.util.DataUtils;
@@ -243,6 +242,7 @@ public class Page {
 
     public String toString() {
         StringBuilder buff = new StringBuilder();
+        buff.append("id: ").append(System.identityHashCode(this)).append('\n');
         buff.append("pos: ").append(pos).append("\n");
         for (int i = 0; i <= keyCount; i++) {
             if (i > 0) {
@@ -766,6 +766,7 @@ public class Page {
      * @return the target buffer
      */
     private ByteBuffer write(Chunk chunk, ByteBuffer buff) {
+        buff = DataUtils.ensureCapacity(buff, 1024);
         int start = buff.position();
         buff.putInt(0);
         buff.putShort((byte) 0);
@@ -815,11 +816,15 @@ public class Page {
                 ^ DataUtils.getCheckValue(start)
                 ^ DataUtils.getCheckValue(pageLength);
         buff.putShort(start + 4, (short) check);
-        this.pos = DataUtils.getPagePos(chunkId, start, pageLength, type);
+        if (pos != 0) {
+            throw DataUtils.newIllegalStateException("Page already stored");
+        }
+        pos = DataUtils.getPagePos(chunkId, start, pageLength, type);
         long max = DataUtils.getPageMaxLength(pos);
         chunk.maxLength += max;
         chunk.maxLengthLive += max;
         chunk.pageCount++;
+        chunk.pageCountLive++;
         return buff;
     }
 
@@ -832,6 +837,10 @@ public class Page {
      * @return the target buffer
      */
     ByteBuffer writeUnsavedRecursive(Chunk chunk, ByteBuffer buff) {
+        if (pos != 0) {
+            // already stored before
+            return buff;
+        }
         if (!isLeaf()) {
             int len = children.length;
             for (int i = 0; i < len; i++) {
@@ -839,11 +848,26 @@ public class Page {
                 if (p != null) {
                     buff = p.writeUnsavedRecursive(chunk, buff);
                     children[i] = p.getPos();
-                    childrenPages[i] = null;
                 }
             }
         }
         return write(chunk, buff);
+    }
+    
+    /**
+     * Unlink the children recursively after all data is written.
+     */
+    void writeEnd() {
+        if (!isLeaf()) {
+            int len = children.length;
+            for (int i = 0; i < len; i++) {
+                Page p = childrenPages[i];
+                if (p != null) {
+                    p.writeEnd();
+                    childrenPages[i] = null;
+                }
+            }
+        }
     }
 
     long getVersion() {

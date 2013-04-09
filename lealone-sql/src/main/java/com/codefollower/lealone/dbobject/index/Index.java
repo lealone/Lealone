@@ -14,6 +14,7 @@ import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 
 /**
  * An index. Indexes are used to speed up searching data.
@@ -77,10 +78,11 @@ public interface Index extends SchemaObject {
      * For possible search masks, see IndexCondition.
      *
      * @param session the session
-     * @param masks the search mask
+     * @param masks per-column comparison bit masks, null means 'always false',
+     *              see constants in IndexCondition
      * @return the estimated cost
      */
-    double getCost(Session session, int[] masks);
+    double getCost(Session session, int[] masks, SortOrder sortOrder);
 
     /**
      * Remove the index.

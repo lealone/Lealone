@@ -26,6 +26,7 @@ import com.codefollower.lealone.engine.UndoLogRecord;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.store.Page;
 import com.codefollower.lealone.store.PageStore;
 import com.codefollower.lealone.util.MathUtils;
@@ -305,7 +306,7 @@ public class PageDataIndex extends PageIndex {
         return root.getLastKey();
     }
 
-    public double getCost(Session session, int[] masks) {
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         long cost = 10 * (tableData.getRowCountApproximation() + Constants.COST_ROW_OFFSET);
         return cost;
     }

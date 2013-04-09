@@ -39,6 +39,16 @@ public class CompareMode {
 
     private static final boolean CAN_USE_ICU4J;
 
+    /**
+     * This constant means that the BINARY columns are sorted as if the bytes were signed.
+     */
+    public static final String SIGNED = "SIGNED";
+
+    /**
+     * This constant means that the BINARY columns are sorted as if the bytes were unsigned.
+     */
+    public static final String UNSIGNED = "UNSIGNED";
+
     static {
         boolean b = false;
         try {
@@ -52,10 +62,13 @@ public class CompareMode {
 
     private final String name;
     private final int strength;
+    /** if true, sort BINARY columns as if they contain unsigned bytes */
+    private final boolean binaryUnsigned;
 
-    protected CompareMode(String name, int strength) {
+    protected CompareMode(String name, int strength, boolean binaryUnsigned) {
         this.name = name;
         this.strength = strength;
+        this.binaryUnsigned = binaryUnsigned;
     }
 
     /**
@@ -68,16 +81,16 @@ public class CompareMode {
      * @param strength the collation strength
      * @return the compare mode
      */
-    public static synchronized CompareMode getInstance(String name, int strength) {
+    public static synchronized CompareMode getInstance(String name, int strength, boolean binaryUnsigned) {
         if (lastUsed != null) {
-            if (StringUtils.equals(lastUsed.name, name)) {
-                if (lastUsed.strength == strength) {
-                    return lastUsed;
-                }
+            if (StringUtils.equals(lastUsed.name, name) &&
+                    lastUsed.strength == strength && 
+                    lastUsed.binaryUnsigned == binaryUnsigned) {
+                return lastUsed;
             }
         }
         if (name == null || name.equals(OFF)) {
-            lastUsed = new CompareMode(name, strength);
+            lastUsed = new CompareMode(name, strength, binaryUnsigned);
         } else {
             boolean useICU4J;
             if (name.startsWith(ICU4J)) {
@@ -90,9 +103,9 @@ public class CompareMode {
                 useICU4J = CAN_USE_ICU4J;
             }
             if (useICU4J) {
-                lastUsed = new CompareModeIcu4J(name, strength);
+                lastUsed = new CompareModeIcu4J(name, strength, binaryUnsigned);
             } else {
-                lastUsed = new CompareModeDefault(name, strength);
+                lastUsed = new CompareModeDefault(name, strength, binaryUnsigned);
             }
         }
         return lastUsed;
@@ -209,4 +222,7 @@ public class CompareMode {
         return strength;
     }
 
+    public boolean isBinaryUnsigned() {
+        return binaryUnsigned;
+    }
 }

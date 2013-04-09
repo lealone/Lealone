@@ -402,10 +402,11 @@ public class WebApp {
         return "tools.jsp";
     }
 
-    @SuppressWarnings("unchecked")
     private String adminStartTranslate() {
-        Map<Object, Object> p = (Map<Object, Object>) session.map.get("text");
-        String file = server.startTranslate(p);
+        Map<?, ?> p = Map.class.cast(session.map.get("text"));
+        @SuppressWarnings("unchecked")
+        Map<Object, Object> p2 = (Map<Object, Object>) p;
+        String file = server.startTranslate(p2);
         session.put("translationFile", file);
         return "helpTranslate.jsp";
     }

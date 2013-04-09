@@ -149,12 +149,6 @@ public class TcpServerThread implements Runnable {
         }
         db = server.checkKeyAndGetDatabaseName(db);
         ConnectionInfo ci = new ConnectionInfo(db);
-        if (baseDir != null) {
-            ci.setBaseDir(baseDir);
-        }
-        if (server.getIfExists()) {
-            ci.setProperty("IFEXISTS", "TRUE");
-        }
         ci.setOriginalURL(originalURL);
         ci.setUserName(userName);
         ci.setUserPasswordHash(transfer.readBytes());
@@ -162,6 +156,13 @@ public class TcpServerThread implements Runnable {
         int len = transfer.readInt();
         for (int i = 0; i < len; i++) {
             ci.setProperty(transfer.readString(), transfer.readString());
+        }
+        // override client's requested properties with server settings
+        if (baseDir != null) {
+            ci.setBaseDir(baseDir);
+        }
+        if (server.getIfExists()) {
+            ci.setProperty("IFEXISTS", "TRUE");
         }
         try {
             return (Session) ci.getSessionFactory().createSession(ci);

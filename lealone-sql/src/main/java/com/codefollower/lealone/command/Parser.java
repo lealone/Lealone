@@ -897,7 +897,15 @@ public class Parser {
             // for MySQL compatibility
             buff.append("SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA");
         }
-        return prepare(session, buff.toString(), paramValues);
+        boolean b = session.getAllowLiterals();
+        try {
+            // need to temporarily enable it, in case we are in
+            // ALLOW_LITERALS_NUMBERS mode
+            session.setAllowLiterals(true);
+            return prepare(session, buff.toString(), paramValues);
+        } finally {
+            session.setAllowLiterals(b);
+        }
     }
 
     private static Prepared prepare(Session s, String sql, ArrayList<Value> paramValues) {
@@ -1071,7 +1079,14 @@ public class Parser {
         } else {
             String tableName = readIdentifierWithSchema(null);
             Schema schema = getSchema();
-            if (readIf("(")) {
+            boolean foundLeftBracket = readIf("(");
+            if (foundLeftBracket && readIf("INDEX")) {
+                // Sybase compatibility with "select * from test (index table1_index)"
+                readIdentifierWithSchema(null);
+                read(")");
+                foundLeftBracket = false;
+            }
+            if (foundLeftBracket) {
                 Schema mainSchema = database.getSchema(Constants.SCHEMA_MAIN);
                 if (equalsToken(tableName, RangeTable.NAME)) {
                     Expression min = readExpression();
@@ -1680,7 +1695,7 @@ public class Parser {
                     read("RR");
                 }
                 command.setForUpdate(true);
-            } else if (readIf("READ")) {
+            } else if (readIf("READ") || readIf("FETCH")) {
                 read("ONLY");
                 if (readIf("WITH")) {
                     read("RS");
@@ -2197,11 +2212,19 @@ public class Parser {
             break;
         }
         case Function.CONVERT: {
-            function.setParameter(0, readExpression());
-            read(",");
-            Column type = parseColumnWithType(null);
-            function.setDataType(type);
-            read(")");
+            if (database.getMode().swapConvertFunctionParameters) {
+                Column type = parseColumnWithType(null);
+                function.setDataType(type);
+                read(",");
+                function.setParameter(0, readExpression());
+                read(")");
+            } else {
+                function.setParameter(0, readExpression());
+                read(",");
+                Column type = parseColumnWithType(null);
+                function.setDataType(type);
+                read(")");
+            }
             break;
         }
         case Function.EXTRACT: {
@@ -3552,11 +3575,22 @@ public class Parser {
     private Column parseColumnForTable(String columnName, boolean defaultNullable) {
         Column column;
         boolean isIdentity = false;
-        if (readIf("IDENTITY") || readIf("SERIAL")) {
+        if (readIf("IDENTITY") || readIf("BIGSERIAL")) {
             column = new Column(columnName, Value.LONG);
             column.setOriginalSQL("IDENTITY");
             parseAutoIncrement(column);
-            column.setPrimaryKey(true);
+            // PostgreSQL compatibility
+            if (!database.getMode().serialColumnIsNotPK) {
+                column.setPrimaryKey(true);
+            }
+        } else if (readIf("SERIAL")) {
+            column = new Column(columnName, Value.INT);
+            column.setOriginalSQL("SERIAL");
+            parseAutoIncrement(column);
+            // PostgreSQL compatibility
+            if (!database.getMode().serialColumnIsNotPK) {
+                column.setPrimaryKey(true);
+            }
         } else {
             column = parseColumnWithType(columnName);
         }
@@ -4545,6 +4579,9 @@ public class Parser {
         } else if (readIf("COLLATION")) {
             readIfEqualOrTo();
             return parseSetCollation();
+        } else if (readIf("BINARY_COLLATION")) {
+            readIfEqualOrTo();
+            return parseSetBinaryCollation();
         } else if (readIf("CLUSTER")) {
             readIfEqualOrTo();
             Set command = new Set(session, SetTypes.CLUSTER);
@@ -4714,6 +4751,16 @@ public class Parser {
             command.setInt(coll.getStrength());
         }
         return command;
+    }
+
+    private Set parseSetBinaryCollation() {
+        Set command = new Set(session, SetTypes.BINARY_COLLATION);
+        String name = readAliasIdentifier();
+        command.setString(name);
+        if (equalsToken(name, CompareMode.UNSIGNED) || equalsToken(name, CompareMode.SIGNED)) {
+            return command;
+        }
+        throw DbException.getInvalidValueException("BINARY_COLLATION", name);
     }
 
     private RunScriptCommand parseRunScript() {
@@ -4929,6 +4976,12 @@ public class Parser {
                 command.setOldColumn(table.getColumn(columnName));
                 return command;
             }
+        } else if (readIf("MODIFY")) {
+            // MySQL compatibility
+            readIf("COLUMN");
+            String columnName = readColumnIdentifier();
+            Column column = table.getColumn(columnName);
+            return parseAlterTableAlterColumnType(table, columnName, column);
         } else if (readIf("ALTER")) {
             readIf("COLUMN");
             String columnName = readColumnIdentifier();
@@ -5340,9 +5393,23 @@ public class Parser {
             }
         }
         if (readIf("ENGINE")) {
-            command.setTableEngine(readUniqueIdentifier());
+            if (readIf("=")) {
+                // map MySQL engine types onto H2 behavior
+                String tableEngine = readUniqueIdentifier();
+                if ("InnoDb".equalsIgnoreCase(tableEngine)) {
+                    // ok
+                } else if (!"MyISAM".equalsIgnoreCase(tableEngine)) {
+                    throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, tableEngine);
+                }
+            } else {
+                command.setTableEngine(readUniqueIdentifier());
+            }
         } else if (database.getSettings().defaultTableEngine != null) {
             command.setTableEngine(database.getSettings().defaultTableEngine);
+        }
+        if (readIf("CHARSET")) {
+            read("=");
+            read("UTF8");
         }
         if (temp) {
             if (readIf("ON")) {

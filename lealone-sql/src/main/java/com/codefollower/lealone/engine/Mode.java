@@ -113,6 +113,16 @@ public class Mode {
      * The function LOG() uses base 10 instead of E.
      */
     public boolean logIsLogBase10;
+    
+    /**
+     * SERIAL and BIGSERIAL columns are not automatically primary keys.
+     */
+    public boolean serialColumnIsNotPK;
+    
+    /**
+     * Swap the parameters of the CONVERT function.
+     */
+    public boolean swapConvertFunctionParameters;
 
     private final String name;
 
@@ -147,6 +157,7 @@ public class Mode {
         mode.squareBracketQuotedNames = true;
         mode.uniqueIndexSingleNull = true;
         mode.allowPlusForStringConcat = true;
+        mode.swapConvertFunctionParameters = true;
         add(mode);
 
         mode = new Mode("MySQL");
@@ -166,6 +177,7 @@ public class Mode {
         mode.supportOffsetFetch = true;
         mode.systemColumns = true;
         mode.logIsLogBase10 = true;
+        mode.serialColumnIsNotPK = true;
         add(mode);
     }
 

@@ -16,6 +16,7 @@ import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.store.PageStore;
 
 /**
@@ -88,8 +89,8 @@ public class PageDelegateIndex extends PageIndex {
         return -1;
     }
 
-    public double getCost(Session session, int[] masks) {
-        return 10 * getCostRangeIndex(masks, mainIndex.getRowCount(session));
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+        return 10 * getCostRangeIndex(masks, mainIndex.getRowCount(session), sortOrder);
     }
 
     public boolean needRebuild() {

@@ -73,6 +73,8 @@ public abstract class FilePath {
                     "com.codefollower.lealone.store.fs.FilePathDisk",
                     "com.codefollower.lealone.store.fs.FilePathMem",
                     "com.codefollower.lealone.store.fs.FilePathMemLZF",
+                    "com.codefollower.lealone.store.fs.FilePathNioMem",
+                    "com.codefollower.lealone.store.fs.FilePathNioMemLZF",
                     "com.codefollower.lealone.store.fs.FilePathSplit",
                     "com.codefollower.lealone.store.fs.FilePathNio",
                     "com.codefollower.lealone.store.fs.FilePathNioMapped",

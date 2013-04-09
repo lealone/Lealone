@@ -25,6 +25,7 @@ import com.codefollower.lealone.expression.ExpressionColumn;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.util.StringUtils;
@@ -163,7 +164,7 @@ public class TableFilter implements ColumnResolver {
         if (indexConditions.size() == 0) {
             item = new PlanItem();
             item.setIndex(table.getScanIndex(s));
-            item.cost = item.getIndex().getCost(s, null);
+            item.cost = item.getIndex().getCost(s, null, null);
         } else {
             int len = table.getColumns().length;
             int[] masks = new int[len];
@@ -179,7 +180,11 @@ public class TableFilter implements ColumnResolver {
                     }
                 }
             }
-            item = table.getBestPlanItem(s, masks);
+            SortOrder sortOrder = null;
+            if (select != null) {
+                sortOrder = select.prepareOrder();
+            }
+            item = table.getBestPlanItem(s, masks, sortOrder);
             // The more index conditions, the earlier the table.
             // This is to ensure joins without indexes run quickly:
             // x (x.a=10); y (x.b=y.b) - see issue 113

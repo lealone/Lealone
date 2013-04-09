@@ -24,6 +24,7 @@ import com.codefollower.lealone.result.LocalResult;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.util.IntArray;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.SmallLRUCache;
@@ -110,7 +111,7 @@ public class ViewIndex extends BaseIndex {
         double cost;
     }
 
-    public synchronized double getCost(Session session, int[] masks) {
+    public synchronized double getCost(Session session, int[] masks, SortOrder sortOrder) {
         if (recursive) {
             return 1000;
         }

@@ -154,6 +154,10 @@ public class Select extends Query {
         this.group = group;
     }
 
+    public ArrayList<Expression> getGroupBy() {
+        return group;
+    }
+
     public HashMap<Expression, Object> getCurrentGroup() {
         return currentGroup;
     }
@@ -1233,6 +1237,10 @@ public class Select extends Query {
         this.having = having;
     }
 
+    public Expression getHaving() {
+        return having;
+    }
+
     public int getColumnCount() {
         return visibleColumnCount;
     }
@@ -1409,5 +1417,9 @@ public class Select extends Query {
             return true;
         }
         return false;
+    }
+
+    public SortOrder prepareOrder() {
+        return sort;
     }
 }

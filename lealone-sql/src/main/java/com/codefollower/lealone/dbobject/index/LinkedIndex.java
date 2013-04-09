@@ -18,6 +18,7 @@ import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.value.Value;
@@ -135,8 +136,8 @@ public class LinkedIndex extends BaseIndex {
         }
     }
 
-    public double getCost(Session session, int[] masks) {
-        return 100 + getCostRangeIndex(masks, rowCount + Constants.COST_ROW_OFFSET);
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+        return 100 + getCostRangeIndex(masks, rowCount + Constants.COST_ROW_OFFSET, sortOrder);
     }
 
     public void remove(Session session) {

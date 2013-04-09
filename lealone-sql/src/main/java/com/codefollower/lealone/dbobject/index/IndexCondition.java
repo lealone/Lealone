@@ -59,12 +59,19 @@ public class IndexCondition {
     public static final int ALWAYS_FALSE = 8;
 
     private final Column column;
+
+    /**
+     * see constants in {@link Comparison}
+     */
     private final int compareType;
 
     private final Expression expression;
     private List<Expression> expressionList;
     private Query expressionQuery;
 
+    /**
+     * @param compareType the comparison type, see constants in {@link Comparison}
+     */
     private IndexCondition(int compareType, ExpressionColumn column, Expression expression) {
         this.compareType = compareType;
         this.column = column == null ? null : column.getColumn();
@@ -74,7 +81,7 @@ public class IndexCondition {
     /**
      * Create an index condition with the given parameters.
      *
-     * @param compareType the comparison type
+     * @param compareType the comparison type, see constants in {@link Comparison}
      * @param column the column
      * @param expression the expression
      * @return the index condition

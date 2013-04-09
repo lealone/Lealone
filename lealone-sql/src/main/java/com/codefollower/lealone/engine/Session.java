@@ -51,6 +51,7 @@ import com.codefollower.lealone.value.ValueString;
  * mode, this object resides on the server side and communicates with a
  * SessionRemote object on the client side.
  */
+//TODO 合并MVStore的更新(2013-04-09前)
 public class Session extends SessionWithState {
 
     /**
@@ -696,6 +697,11 @@ public class Session extends SessionWithState {
                         table.setModified();
                         localTempTables.remove(table.getName());
                         table.removeChildrenAndResources(this);
+                        if (closeSession) {
+                            // need to commit, otherwise recovery might
+                            // ignore the table removal
+                            database.commit(this);
+                        }
                     } else if (table.getOnCommitTruncate()) {
                         table.truncate(this);
                     }

@@ -1614,10 +1614,9 @@ public class PageStore implements CacheWriter {
         int type = row.getValue(1).getInt();
         int parent = row.getValue(2).getInt();
         int rootPageId = row.getValue(3).getInt();
-        String options = row.getValue(4).getString();
+        String[] options = StringUtils.arraySplit(row.getValue(4).getString(), ',', false);
         String columnList = row.getValue(5).getString();
         String[] columns = StringUtils.arraySplit(columnList, ',', false);
-        String[] ops = StringUtils.arraySplit(options, ',', false);
         Index meta;
         if (trace.isDebugEnabled()) {
             trace.debug("addMeta id="+ id +" type=" + type +
@@ -1643,13 +1642,17 @@ public class PageStore implements CacheWriter {
             data.schema = metaSchema;
             data.tableName = "T" + id;
             data.id = id;
-            data.temporary = ops[2].equals("temp");
+            data.temporary = options[2].equals("temp");
             data.persistData = true;
             data.persistIndexes = true;
             data.create = false;
             data.session = session;
             RegularTable table = new RegularTable(data);
-            CompareMode mode = CompareMode.getInstance(ops[0], Integer.parseInt(ops[1]));
+            boolean binaryUnsigned = false;
+            if (options.length > 3) {
+                binaryUnsigned = Boolean.parseBoolean(options[3]);
+            }
+            CompareMode mode = CompareMode.getInstance(options[0], Integer.parseInt(options[1]), binaryUnsigned);
             table.setCompareMode(mode);
             meta = table.getScanIndex(session);
         } else {
@@ -1675,7 +1678,7 @@ public class PageStore implements CacheWriter {
                 cols[i] = ic;
             }
             IndexType indexType;
-            if (ops[3].equals("d")) {
+            if (options[3].equals("d")) {
                 indexType = IndexType.createPrimaryKey(true, false);
                 Column[] tableColumns = table.getColumns();
                 for (IndexColumn indexColumn : cols) {
@@ -1747,6 +1750,7 @@ public class PageStore implements CacheWriter {
             if (index instanceof PageDelegateIndex) {
                 options += "d";
             }
+            options += "," + mode.isBinaryUnsigned();
             Row row = metaTable.getTemplateRow();
             row.setValue(0, ValueInt.get(index.getId()));
             row.setValue(1, ValueInt.get(type));

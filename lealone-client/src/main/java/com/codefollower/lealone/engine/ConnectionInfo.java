@@ -216,7 +216,17 @@ public class ConnectionInfo implements Cloneable {
             }
             String normalizedName = FileUtils.unwrap(FileUtils.toRealPath(n));
             if (normalizedName.equals(absDir) || !normalizedName.startsWith(absDir)) {
-                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " + absDir);
+                // database name matches the baseDir or
+                // database name is clearly outside of the baseDir
+                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " +
+                        absDir);
+            }
+            if (normalizedName.charAt(absDir.length()) != '/') {
+                // database must be within the directory
+                // (with baseDir=/test, the database name must not be
+                // /test2/x and not /test2)
+                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " +
+                        absDir);
             }
             if (!absolute) {
                 name = prefix + dir + SysProperties.FILE_SEPARATOR + FileUtils.unwrap(name);

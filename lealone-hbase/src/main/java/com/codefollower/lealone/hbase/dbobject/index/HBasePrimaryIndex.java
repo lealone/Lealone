@@ -38,6 +38,7 @@ import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.result.SortOrder;
 
 public class HBasePrimaryIndex extends BaseIndex {
     public HBasePrimaryIndex(Table table, int id, IndexColumn[] columns, IndexType indexType) {
@@ -91,7 +92,7 @@ public class HBasePrimaryIndex extends BaseIndex {
     }
 
     @Override
-    public double getCost(Session session, int[] masks) {
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         return 0;
     }
 

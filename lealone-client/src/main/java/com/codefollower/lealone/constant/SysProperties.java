@@ -145,9 +145,15 @@ public class SysProperties {
 
     /**
      * System property <code>console.stream</code> (default: true).<br />
-     * H2 Console: stream query results.
+     * Lealone Console: stream query results.
      */
     public static final boolean CONSOLE_STREAM = getProperty("console.stream", true);
+    
+    /**
+     * System property <code>consoleTimeout</code> (default: 1800000).<br />
+     * Lealone Console: session timeout in milliseconds. The default is 30 minutes.
+     */
+    public static final int CONSOLE_TIMEOUT = getProperty("consoleTimeout", 30 * 60 * 1000);
 
     /**
      * System property <code>datasource.trace.level</code> (default: 1).<br />

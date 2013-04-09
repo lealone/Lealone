@@ -197,7 +197,7 @@ public abstract class Database implements DataHandler {
     public void init(ConnectionInfo ci, String cipher) {
         String name = ci.getName();
         this.dbSettings = ci.getDbSettings();
-        this.compareMode = CompareMode.getInstance(null, 0);
+        this.compareMode = CompareMode.getInstance(null, 0, false);
         //this.persistent = ci.isPersistent();
         this.filePasswordHash = ci.getFilePasswordHash();
         this.databaseName = name;

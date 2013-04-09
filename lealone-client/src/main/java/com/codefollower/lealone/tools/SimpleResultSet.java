@@ -2200,7 +2200,7 @@ public class SimpleResultSet implements ResultSet, ResultSetMetaData {
      * @return true if the result set was closed
      */
     public boolean isClosed() {
-        return rows == null;
+        return rows == null && source == null;
     }
 
     /**

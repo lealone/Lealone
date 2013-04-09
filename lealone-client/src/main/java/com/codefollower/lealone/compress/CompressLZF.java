@@ -49,6 +49,8 @@
 
 package com.codefollower.lealone.compress;
 
+import java.nio.ByteBuffer;
+
 /**
  * <p>
  * This class implements the LZF lossless data compression algorithm. LZF is a
@@ -116,17 +118,33 @@ public final class CompressLZF implements Compressor {
     }
 
     /**
-     * Return byte with lower 2 bytes being byte at index, then index+1.
+     * Return the integer with the first two bytes 0, then the bytes at the
+     * index, then at index+1.
      */
     private static int first(byte[] in, int inPos) {
         return (in[inPos] << 8) | (in[inPos + 1] & 255);
     }
 
     /**
-     * Shift v 1 byte left, add value at index inPos+2.
+     * Return the integer with the first two bytes 0, then the bytes at the
+     * index, then at index+1.
+     */
+    private static int first(ByteBuffer in, int inPos) {
+        return (in.get(inPos) << 8) | (in.get(inPos + 1) & 255);
+    }
+
+    /**
+     * Shift the value 1 byte left, and add the byte at index inPos+2.
      */
     private static int next(int v, byte[] in, int inPos) {
         return (v << 8) | (in[inPos + 2] & 255);
+    }
+
+    /**
+     * Shift the value 1 byte left, and add the byte at index inPos+2.
+     */
+    private static int next(int v, ByteBuffer in, int inPos) {
+        return (v << 8) | (in.get(inPos + 2) & 255);
     }
 
     /**
@@ -235,6 +253,114 @@ public final class CompressLZF implements Compressor {
         return outPos;
     }
 
+    /**
+     * Compress a number of bytes.
+     *
+     * @param in the input data
+     * @param out the output area
+     * @param outPos the offset at the output array
+     * @return the end position
+     */
+    public int compress(ByteBuffer in, byte[] out, int outPos) {
+        int inPos = in.position();
+        int inLen = in.capacity() - inPos;
+        if (cachedHashTable == null) {
+            cachedHashTable = new int[HASH_SIZE];
+        }
+        int[] hashTab = cachedHashTable;
+        int literals = 0;
+        outPos++;
+        int future = first(in, 0);
+        while (inPos < inLen - 4) {
+            byte p2 = in.get(inPos + 2);
+            // next
+            future = (future << 8) + (p2 & 255);
+            int off = hash(future);
+            int ref = hashTab[off];
+            hashTab[off] = inPos;
+            // if (ref < inPos
+            //       && ref > 0
+            //       && (off = inPos - ref - 1) < MAX_OFF
+            //       && in[ref + 2] == p2
+            //       && (((in[ref] & 255) << 8) | (in[ref + 1] & 255)) ==
+            //           ((future >> 8) & 0xffff)) {
+            if (ref < inPos
+                        && ref > 0
+                        && (off = inPos - ref - 1) < MAX_OFF
+                        && in.get(ref + 2) == p2
+                        && in.get(ref + 1) == (byte) (future >> 8)
+                        && in.get(ref) == (byte) (future >> 16)) {
+                // match
+                int maxLen = inLen - inPos - 2;
+                if (maxLen > MAX_REF) {
+                    maxLen = MAX_REF;
+                }
+                if (literals == 0) {
+                    // multiple back-references,
+                    // so there is no literal run control byte
+                    outPos--;
+                } else {
+                    // set the control byte at the start of the literal run
+                    // to store the number of literals
+                    out[outPos - literals - 1] = (byte) (literals - 1);
+                    literals = 0;
+                }
+                int len = 3;
+                while (len < maxLen && in.get(ref + len) == in.get(inPos + len)) {
+                    len++;
+                }
+                len -= 2;
+                if (len < 7) {
+                    out[outPos++] = (byte) ((off >> 8) + (len << 5));
+                } else {
+                    out[outPos++] = (byte) ((off >> 8) + (7 << 5));
+                    out[outPos++] = (byte) (len - 7);
+                }
+                out[outPos++] = (byte) off;
+                // move one byte forward to allow for a literal run control byte
+                outPos++;
+                inPos += len;
+                // rebuild the future, and store the last bytes to the hashtable.
+                // Storing hashes of the last bytes in back-reference improves
+                // the compression ratio and only reduces speed slightly.
+                future = first(in, inPos);
+                future = next(future, in, inPos);
+                hashTab[hash(future)] = inPos++;
+                future = next(future, in, inPos);
+                hashTab[hash(future)] = inPos++;
+            } else {
+                // copy one byte from input to output as part of literal
+                out[outPos++] = in.get(inPos++);
+                literals++;
+                // at the end of this literal chunk, write the length
+                // to the control byte and start a new chunk
+                if (literals == MAX_LITERAL) {
+                    out[outPos - literals - 1] = (byte) (literals - 1);
+                    literals = 0;
+                    // move ahead one byte to allow for the
+                    // literal run control byte
+                    outPos++;
+                }
+            }
+        }
+        // write the remaining few bytes as literals
+        while (inPos < inLen) {
+            out[outPos++] = in.get(inPos++);
+            literals++;
+            if (literals == MAX_LITERAL) {
+                out[outPos - literals - 1] = (byte) (literals - 1);
+                literals = 0;
+                outPos++;
+            }
+        }
+        // writes the final literal run length to the control byte
+        out[outPos - literals - 1] = (byte) (literals - 1);
+        if (literals == 0) {
+            outPos--;
+        }
+        return outPos;
+    }
+
     public void expand(byte[] in, int inPos, int inLen, byte[] out, int outPos, int outLen) {
         // if ((inPos | outPos | outLen) < 0) {
         if (inPos < 0 || outPos < 0 || outLen < 0) {
@@ -246,6 +372,9 @@ public final class CompressLZF implements Compressor {
                 // literal run of length = ctrl + 1,
                 ctrl++;
                 // copy to output and move forward this many bytes
+                // while (ctrl-- > 0) {
+                //     out[outPos++] = in[inPos++];
+                // }
                 System.arraycopy(in, inPos, out, outPos, ctrl);
                 outPos += ctrl;
                 inPos += ctrl;
@@ -280,6 +409,53 @@ public final class CompressLZF implements Compressor {
                 }
             }
         } while (outPos < outLen);
+    }
+
+    /**
+     * Expand a number of compressed bytes.
+     *
+     * @param in the compressed data
+     * @param out the output area
+     */
+    public static void expand(ByteBuffer in, ByteBuffer out) {
+        do {
+            int ctrl = in.get() & 255;
+            if (ctrl < MAX_LITERAL) {
+                // literal run of length = ctrl + 1,
+                ctrl++;
+                // copy to output and move forward this many bytes
+                // (maybe slice would be faster)
+                for (int i = 0; i < ctrl; i++) {
+                    out.put(in.get());
+                }
+            } else {
+                // back reference
+                // the highest 3 bits are the match length
+                int len = ctrl >> 5;
+                // if the length is maxed, add the next byte to the length
+                if (len == 7) {
+                    len += in.get() & 255;
+                }
+                // minimum back-reference is 3 bytes,
+                // so 2 was subtracted before storing size
+                len += 2;
+
+                // ctrl is now the offset for a back-reference...
+                // the logical AND operation removes the length bits
+                ctrl = -((ctrl & 0x1f) << 8) - 1;
+
+                // the next byte augments/increases the offset
+                ctrl -= in.get() & 255;
+
+                // copy the back-reference bytes from the given
+                // location in output to current position
+                // (maybe slice would be faster)
+                ctrl += out.position();
+                for (int i = 0; i < len; i++) {
+                    out.put(out.get(ctrl++));
+                }
+            }
+        } while (out.position() < out.capacity());
     }
 
     public int getAlgorithm() {

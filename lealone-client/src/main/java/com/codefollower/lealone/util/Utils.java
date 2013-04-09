@@ -241,14 +241,14 @@ public class Utils {
      * @param data2 the second byte array (must not be null)
      * @return the result of the comparison (-1, 1 or 0)
      */
-    public static int compareNotNull(byte[] data1, byte[] data2) {
+    public static int compareNotNullUnsigned(byte[] data1, byte[] data2) {
         if (data1 == data2) {
             return 0;
         }
         int len = Math.min(data1.length, data2.length);
         for (int i = 0; i < len; i++) {
-            int b = data1[i] & 255;
-            int b2 = data2[i] & 255;
+            int b = data1[i] & 0xff;
+            int b2 = data2[i] & 0xff;
             if (b != b2) {
                 return b > b2 ? 1 : -1;
             }
@@ -468,6 +468,9 @@ public class Utils {
     private static <X> void partialQuickSort(X[] array, int low, int high,
             Comparator<? super X> comp, int start, int end) {
         if (low > end || high < start || (low > start && high < end)) {
+            return;
+        }
+        if (low == high) {
             return;
         }
         int i = low, j = high;

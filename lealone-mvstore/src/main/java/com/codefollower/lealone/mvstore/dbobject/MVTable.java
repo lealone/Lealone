@@ -34,7 +34,8 @@ import com.codefollower.lealone.dbobject.table.TableBase;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.Trace;
-import com.codefollower.lealone.mvstore.MVStore;
+import com.codefollower.lealone.mvstore.dbobject.TransactionStore.Transaction;
+import com.codefollower.lealone.mvstore.engine.MVSession;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.util.MathUtils;
@@ -48,7 +49,7 @@ import com.codefollower.lealone.value.Value;
 public class MVTable extends TableBase {
 
     private final String storeName;
-    private final MVStore store;
+    private final TransactionStore store;
     private MVPrimaryIndex primaryIndex;
     private ArrayList<Index> indexes = New.arrayList();
     private long lastModificationId;
@@ -68,7 +69,7 @@ public class MVTable extends TableBase {
      */
     private boolean waitForLock;
 
-    public MVTable(CreateTableData data, String storeName, MVStore store) {
+    public MVTable(CreateTableData data, String storeName, TransactionStore store) {
         super(data);
         nextAnalyze = database.getSettings().analyzeAuto;
         this.storeName = storeName;
@@ -106,7 +107,7 @@ public class MVTable extends TableBase {
         if (!force && database.isMultiVersion()) {
             // MVCC: update, delete, and insert use a shared lock.
             // Select doesn't lock except when using FOR UPDATE and
-            // the system property lealone.selectForUpdateMvcc
+            // the system property h2.selectForUpdateMvcc
             // is not enabled
             if (exclusive) {
                 exclusive = false;
@@ -355,7 +356,6 @@ public class MVTable extends TableBase {
      * @param key the primary key
      * @return the row
      */
-    @Override
     public Row getRow(Session session, long key) {
         return primaryIndex.getRow(session, key);
     }
@@ -470,7 +470,7 @@ public class MVTable extends TableBase {
         return first.column.getColumnId();
     }
 
-    private void addRowsToIndex(Session session, ArrayList<Row> list, Index index) {
+    private static void addRowsToIndex(Session session, ArrayList<Row> list, Index index) {
         final Index idx = index;
         Collections.sort(list, new Comparator<Row>() {
             public int compare(Row r1, Row r2) {
@@ -481,7 +481,6 @@ public class MVTable extends TableBase {
             index.add(session, row);
         }
         list.clear();
-        storeIfRequired();
     }
 
     @Override
@@ -510,7 +509,6 @@ public class MVTable extends TableBase {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        storeIfRequired();
     }
 
     @Override
@@ -522,9 +520,8 @@ public class MVTable extends TableBase {
         }
         rowCount = 0;
         changesSinceAnalyze = 0;
-        storeIfRequired();
     }
-
+   
     @Override
     public void addRow(Session session, Row row) {
         lastModificationId = database.getNextModificationDataId();
@@ -563,7 +560,6 @@ public class MVTable extends TableBase {
             throw de;
         }
         analyzeIfRequired(session);
-        storeIfRequired();
     }
 
     private void analyzeIfRequired(Session session) {
@@ -677,13 +673,21 @@ public class MVTable extends TableBase {
         // ok
     }
 
-    private void storeIfRequired() {
-        if (store.getUnsavedPageCount() > 1000) {
-            MVTableEngine.store(store);
+    /**
+     * Get the transaction to use for this session.
+     *
+     * @param session the session
+     * @return the transaction
+     */
+    Transaction getTransaction(Session session) {
+        if (session == null) {
+            // TODO need to commit/rollback the transaction
+            return store.begin();
         }
+        return ((MVSession)session).getTransaction(store);
     }
 
-    public MVStore getStore() {
+    public TransactionStore getStore() {
         return store;
     }
 
@@ -697,6 +701,10 @@ public class MVTable extends TableBase {
 
     public String toString() {
         return getSQL();
+    }
+    
+    public boolean isMVStore() {
+        return true;
     }
 
 }
