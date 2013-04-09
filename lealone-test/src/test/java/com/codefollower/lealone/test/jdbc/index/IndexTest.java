@@ -27,12 +27,15 @@ public class IndexTest extends TestBase {
     @Test
     public void run() throws Exception {
         //stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int, f3 int)");
+        //stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int)");
 
         //stmt.executeUpdate("CREATE PRIMARY KEY HASH ON IndexTest(f1)");
-        stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON IndexTest(f1)");
+        //stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON IndexTest(f1)");
 
-        stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON IndexTest(f2)");
+        //stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON IndexTest(f2)");
+
+        //insert();
+        select();
 
         //stmt.executeUpdate("ALTER INDEX idx2 RENAME TO idx22");
 
@@ -45,9 +48,14 @@ public class IndexTest extends TestBase {
 
     }
 
-    void testInsert() throws Exception {
-        stmt.executeUpdate("INSERT INTO IndexTest(_rowkey_, f1, f2, f3) VALUES('01', 300, 10)");
-        stmt.executeUpdate("INSERT INTO IndexTest(_rowkey_, f1, f2, f3) VALUES('02', 100, 20)");
-        stmt.executeUpdate("INSERT INTO IndexTest(_rowkey_, f1, f2, f3) VALUES('03', 200, 30)");
+    void insert() throws Exception {
+        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2) VALUES(300, 30)");
+        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2) VALUES(100, 10)");
+        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2) VALUES(200, 20)");
+    }
+
+    void select() throws Exception {
+        sql = "SELECT f1, f2 FROM IndexTest WHERE f1>=200";
+        printResultSet();
     }
 }
