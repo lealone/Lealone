@@ -134,9 +134,9 @@ public class Zipper {
         lastFullAbortedTimestamp = startTimestamp;
     }
 
-    public void encodeLargestIncrease(ChannelBuffer buffer, long largestTimestamp) {
+    public void encodeLargestDeletedTimestamp(ChannelBuffer buffer, long largestDeletedTimestamp) {
         buffer.writeByte(TSOMessage.LargestDeletedTimestampReport);
-        buffer.writeLong(largestTimestamp);
+        buffer.writeLong(largestDeletedTimestamp);
     }
 
     public TSOMessage decodeMessage(ChannelBuffer buffer) {

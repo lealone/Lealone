@@ -48,6 +48,13 @@ class CommitHashMap {
     private final Cache startCommitMapping;
     private final Cache rowsCommitMapping;
 
+    private final AtomicLong abortedSnapshot = new AtomicLong();
+
+    // set of half aborted transactions
+    // TODO: set the initial capacity in a smarter way
+    final Set<AbortedTransaction> halfAborted = Collections.newSetFromMap(new ConcurrentHashMap<AbortedTransaction, Boolean>(
+            10000));
+
     /**
      * Constructs a new, empty hashtable with a default size of 1000
      */
@@ -87,15 +94,12 @@ class CommitHashMap {
 
     public void setCommittedTimestamp(long startTimestamp, long commitTimestamp) {
         long oldCommitTS = startCommitMapping.set(startTimestamp, commitTimestamp);
-
         largestDeletedTimestamp = Math.max(oldCommitTS, largestDeletedTimestamp);
     }
 
-    // set of half aborted transactions
-    // TODO: set the initial capacity in a smarter way
-    Set<AbortedTransaction> halfAborted = Collections.newSetFromMap(new ConcurrentHashMap<AbortedTransaction, Boolean>(10000));
-
-    private AtomicLong abortedSnapshot = new AtomicLong();
+    public long getLargestDeletedTimestamp() {
+        return largestDeletedTimestamp;
+    }
 
     long getAndIncrementAbortedSnapshot() {
         return abortedSnapshot.getAndIncrement();
@@ -116,7 +120,4 @@ class CommitHashMap {
         return halfAborted.contains(new AbortedTransaction(startTimestamp, 0));
     }
 
-    public long getLargestDeletedTimestamp() {
-        return largestDeletedTimestamp;
-    }
 }

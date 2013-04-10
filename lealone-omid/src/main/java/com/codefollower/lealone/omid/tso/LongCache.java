@@ -27,8 +27,8 @@ public class LongCache implements Cache {
         this.associativity = associativity;
     }
 
-    /* (non-Javadoc)
-     * @see com.yahoo.omid.tso.Cache#set(long, long)
+    /** (non-Javadoc)
+     * @see Cache#set(long, long)
      */
     @Override
     public long set(long key, long value) {
@@ -52,8 +52,8 @@ public class LongCache implements Cache {
         return oldestValue;
     }
 
-    /* (non-Javadoc)
-     * @see com.yahoo.omid.tso.Cache#get(long)
+    /** (non-Javadoc)
+     * @see Cache#get(long)
      */
     @Override
     public long get(long key) {

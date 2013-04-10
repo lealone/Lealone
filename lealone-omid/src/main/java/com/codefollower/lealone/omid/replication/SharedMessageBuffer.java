@@ -152,9 +152,9 @@ public class SharedMessageBuffer {
         zipper.encodeFullAbort(writeBuffer, startTimestamp);
     }
 
-    public void writeLargestIncrease(long largestTimestamp) {
+    public void writeLargestDeletedTimestamp(long largestDeletedTimestamp) {
         checkBufferSpace();
-        zipper.encodeLargestIncrease(writeBuffer, largestTimestamp);
+        zipper.encodeLargestDeletedTimestamp(writeBuffer, largestDeletedTimestamp);
     }
 
     private void checkBufferSpace() {

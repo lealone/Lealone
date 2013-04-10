@@ -139,7 +139,7 @@ public class TestSharedMessageBuffer {
             expectedMessages.add(new AbortedTransactionReport(firstTS));
             break;
         case 3:
-            smb.writeLargestIncrease(firstTS);
+            smb.writeLargestDeletedTimestamp(firstTS);
             expectedMessages.add(new LargestDeletedTimestampReport(firstTS));
             break;
         }

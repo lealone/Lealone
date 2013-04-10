@@ -442,7 +442,7 @@ public class TSOHandler extends SimpleChannelHandler {
                                     sharedState.hashmap.setHalfAborted(id);
                                     queueHalfAbort(id);
                                 }
-                                queueLargestIncrease(sharedState.largestDeletedTimestamp);
+                                queueLargestDeletedTimestamp(sharedState.largestDeletedTimestamp);
                             }
                         }
                         if (sharedState.largestDeletedTimestamp > sharedState.previousLargestDeletedTimestamp
@@ -505,9 +505,7 @@ public class TSOHandler extends SimpleChannelHandler {
                 sharedState.nextBatch = new ArrayList<ChannelAndMessage>(sharedState.nextBatch.size() + 5);
                 sharedState.baos.reset();
             }
-
         }
-
     }
 
     /**
@@ -539,7 +537,6 @@ public class TSOHandler extends SimpleChannelHandler {
 
             // We send the message directly. If after a failure the state is
             // inconsistent we'll detect it
-
         }
     }
 
@@ -555,8 +552,8 @@ public class TSOHandler extends SimpleChannelHandler {
         sharedState.sharedMessageBuffer.writeFullAbort(startTimestamp);
     }
 
-    private void queueLargestIncrease(long largestTimestamp) {
-        sharedState.sharedMessageBuffer.writeLargestIncrease(largestTimestamp);
+    private void queueLargestDeletedTimestamp(long largestDeletedTimestamp) {
+        sharedState.sharedMessageBuffer.writeLargestDeletedTimestamp(largestDeletedTimestamp);
     }
 
 }

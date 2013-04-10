@@ -96,7 +96,7 @@ public class TSOState {
      * The hash map to to keep track of recently committed rows
      * each bucket is about 20 byte, so the initial capacity is 20MB
      */
-    public CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS);
+    public final CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS);
 
     public Uncommited uncommited;
 
