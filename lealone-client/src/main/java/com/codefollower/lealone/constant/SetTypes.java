@@ -204,7 +204,9 @@ public class SetTypes {
      * The type of a SET BINARY_COLLATION  statement.
      */
     public static final int BINARY_COLLATION = 38;
-    
+
+    public static final int SERVER_TYPE = 39;
+
     private static final ArrayList<String> TYPES = New.arrayList();
 
     private SetTypes() {
@@ -252,6 +254,7 @@ public class SetTypes {
         list.add(QUERY_TIMEOUT, "QUERY_TIMEOUT");
         list.add(REDO_LOG_BINARY, "REDO_LOG_BINARY");
         list.add(BINARY_COLLATION, "BINARY_COLLATION");
+        list.add(SERVER_TYPE, "SERVER_TYPE");
     }
 
     /**

@@ -31,14 +31,14 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.omid.client.RowKeyFamily;
 import com.codefollower.lealone.omid.client.SyncAbortCompleteCallback;
-import com.codefollower.lealone.omid.client.TransactionManager;
-import com.codefollower.lealone.omid.client.TransactionState;
+import com.codefollower.lealone.omid.transaction.TransactionManager;
+import com.codefollower.lealone.omid.transaction.TransactionState;
 
 public class TransactionManagerTest {
     public static void main(String[] args) throws Exception {
         Configuration conf = HBaseConfiguration.create();
         TransactionManager tm = new TransactionManager(conf);
-        TransactionState ts = tm.beginTransaction();
+        TransactionState ts = (TransactionState) tm.begin();
 
         Put put = new Put(Bytes.toBytes("2002"));
         put.add(Bytes.toBytes("f"), Bytes.toBytes("c"), Bytes.toBytes("2002"));
@@ -56,11 +56,11 @@ public class TransactionManagerTest {
         c.await();
 
         for (int i = 0; i < 60; i++) {
-            ts = tm.beginTransaction();
+            ts = (TransactionState) tm.begin();
             put = new Put(Bytes.toBytes("2003"));
             put.add(Bytes.toBytes("f"), Bytes.toBytes("c"), Bytes.toBytes("2003"));
             put(ts, put);
-            tm.tryCommit(ts);
+            tm.commit(ts);
         }
 
         //TransactionManager.close();

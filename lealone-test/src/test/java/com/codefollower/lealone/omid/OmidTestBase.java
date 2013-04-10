@@ -105,7 +105,7 @@ public class OmidTestBase {
 
         // HBase setup
         hbaseConf = HBaseConfiguration.create();
-        hbaseConf.set("hbase.coprocessor.region.classes", "com.codefollower.lealone.omid.client.regionserver.Compacter");
+        hbaseConf.set("hbase.coprocessor.region.classes", "com.codefollower.lealone.omid.regionserver.Compacter");
         hbaseConf.setInt("hbase.hregion.memstore.flush.size", 100 * 1024);
         hbaseConf.setInt("hbase.regionserver.nbreservationblocks", 1);
         hbaseConf.set("tso.host", "localhost");

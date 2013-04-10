@@ -24,9 +24,9 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.codefollower.lealone.omid.client.TransactionManager;
-import com.codefollower.lealone.omid.client.TransactionState;
-import com.codefollower.lealone.omid.client.TransactionalTable;
+import com.codefollower.lealone.omid.transaction.TransactionManager;
+import com.codefollower.lealone.omid.transaction.Transaction;
+import com.codefollower.lealone.omid.transaction.TTable;
 
 public class TestMultiplePut extends OmidTestBase {
     private static final Log LOG = LogFactory.getLog(TestMultiplePut.class);
@@ -38,8 +38,8 @@ public class TestMultiplePut extends OmidTestBase {
             byte[] col1 = Bytes.toBytes("value1");
             byte[] col2 = Bytes.toBytes("value2");
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable table1 = new TransactionalTable(hbaseConf, TEST_TABLE);
-            TransactionState t = tm.beginTransaction();
+            TTable table1 = new TTable(hbaseConf, TEST_TABLE);
+            Transaction t = tm.begin();
             int val = 1000;
             byte[] data = Bytes.toBytes(val);
             Put put1 = new Put(data);
@@ -48,7 +48,7 @@ public class TestMultiplePut extends OmidTestBase {
             Put put2 = new Put(data);
             put2.add(family, col2, data);
             table1.put(t, put2);
-            tm.tryCommit(t);
+            tm.commit(t);
             table1.close();
 
             assertTrue("Invalid value in table", verifyValue(Bytes.toBytes(TEST_TABLE), data, family, col1, data));
@@ -66,8 +66,8 @@ public class TestMultiplePut extends OmidTestBase {
             byte[] col = Bytes.toBytes("value");
 
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable table1 = new TransactionalTable(hbaseConf, TEST_TABLE);
-            TransactionState t = tm.beginTransaction();
+            TTable table1 = new TTable(hbaseConf, TEST_TABLE);
+            Transaction t = tm.begin();
             int num = 50;
             for (int j = 0; j <= num; j++) {
                 byte[] data = Bytes.toBytes(j);
@@ -75,7 +75,7 @@ public class TestMultiplePut extends OmidTestBase {
                 put.add(family, col, data);
                 table1.put(t, put);
             }
-            tm.tryCommit(t);
+            tm.commit(t);
             table1.close();
 
             byte[] data = Bytes.toBytes(0);

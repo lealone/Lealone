@@ -13,17 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. See accompanying LICENSE file.
  */
+package com.codefollower.lealone.omid.tso;
 
-package com.codefollower.lealone.omid.client;
+public interface Cache {
 
-public class TransactionException extends Exception {
-    private static final long serialVersionUID = 1L;
+    public abstract long set(long key, long value);
 
-    public TransactionException(String reason) {
-        super(reason);
-    }
+    public abstract long get(long key);
 
-    public TransactionException(String reason, Exception e) {
-        super(reason, e);
-    }
 }

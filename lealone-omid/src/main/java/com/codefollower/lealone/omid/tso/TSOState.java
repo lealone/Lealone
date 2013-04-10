@@ -35,7 +35,7 @@ public class TSOState {
     /**
      * Hash map load factor
      */
-    public static final float LOAD_FACTOR = 0.5f;
+    public static final float LOAD_FACTOR = 0.5f; //TODO 未使用
 
     /**
      * The maximum entries kept in TSO
@@ -96,7 +96,7 @@ public class TSOState {
      * The hash map to to keep track of recently committed rows
      * each bucket is about 20 byte, so the initial capacity is 20MB
      */
-    public final CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS, LOAD_FACTOR);
+    public CommitHashMap hashmap = new CommitHashMap(MAX_ITEMS);
 
     public Uncommited uncommited;
 
@@ -137,7 +137,8 @@ public class TSOState {
      * @param startTimestamp
      */
     protected void processCommit(long startTimestamp, long commitTimestamp) {
-        largestDeletedTimestamp = hashmap.setCommitted(startTimestamp, commitTimestamp, largestDeletedTimestamp);
+        hashmap.setCommittedTimestamp(startTimestamp, commitTimestamp);
+        largestDeletedTimestamp = hashmap.getLargestDeletedTimestamp();
     }
 
     /**

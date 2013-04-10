@@ -52,6 +52,7 @@ import com.codefollower.lealone.omid.tso.messages.CommitQueryResponse;
 import com.codefollower.lealone.omid.tso.messages.CommitRequest;
 import com.codefollower.lealone.omid.tso.messages.CommitResponse;
 import com.codefollower.lealone.omid.tso.messages.FullAbortRequest;
+import com.codefollower.lealone.omid.tso.messages.LargestDeletedTimestampReport;
 import com.codefollower.lealone.omid.tso.messages.TimestampRequest;
 import com.codefollower.lealone.omid.tso.messages.TimestampResponse;
 import com.codefollower.lealone.omid.tso.persistence.LoggerException;
@@ -61,7 +62,6 @@ import com.codefollower.lealone.omid.tso.persistence.LoggerException.Code;
 
 /**
  * ChannelHandler for the TSO Server
- * @author maysam
  *
  */
 public class TSOHandler extends SimpleChannelHandler {
@@ -321,6 +321,7 @@ public class TSOHandler extends SimpleChannelHandler {
                     buffer.initializeIndexes();
                 }
             }
+            channel.write(new LargestDeletedTimestampReport(sharedState.largestDeletedTimestamp));
             for (AbortedTransaction halfAborted : sharedState.hashmap.halfAborted) {
                 channel.write(new AbortedTransactionReport(halfAborted.getStartTimestamp()));
             }
@@ -378,34 +379,35 @@ public class TSOHandler extends SimpleChannelHandler {
         ByteArrayOutputStream baos = sharedState.baos;
         DataOutputStream toWAL = sharedState.toWAL;
         synchronized (sharedState) {
-            //0. check if it should abort
+            // 0. check if it should abort
             if (msg.startTimestamp < timestampOracle.first()) {
                 reply.committed = false;
                 LOG.warn("Aborting transaction after restarting TSO");
-            } else if (msg.startTimestamp < sharedState.largestDeletedTimestamp) {
-                // Too old
-                reply.committed = false;//set as abort
+            } else if (msg.rows.length > 0 && msg.startTimestamp < sharedState.largestDeletedTimestamp) {
+                // Too old and not read only
+                reply.committed = false;// set as abort
                 LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX " + sharedState.largestDeletedTimestamp);
             } else {
-                //1. check the write-write conflicts
+                // 1. check the write-write conflicts
                 for (RowKey r : msg.rows) {
                     long value;
-                    value = sharedState.hashmap.get(r.getRow(), r.getTable(), r.hashCode());
+                    value = sharedState.hashmap.getLatestWriteForRow(r.hashCode());
                     if (value != 0 && value > msg.startTimestamp) {
-                        reply.committed = false;//set as abort
+                        reply.committed = false;// set as abort
                         break;
                     } else if (value == 0 && sharedState.largestDeletedTimestamp > msg.startTimestamp) {
-                        //then it could have been committed after start timestamp but deleted by recycling
+                        // then it could have been committed after start
+                        // timestamp but deleted by recycling
                         LOG.warn("Old transaction {Start timestamp  " + msg.startTimestamp + "} {Largest deleted timestamp "
                                 + sharedState.largestDeletedTimestamp + "}");
-                        reply.committed = false;//set as abort
+                        reply.committed = false;// set as abort
                         break;
                     }
                 }
             }
 
             if (reply.committed) {
-                //2. commit
+                // 2. commit
                 try {
                     long commitTimestamp = timestampOracle.next(toWAL);
                     sharedState.uncommited.commit(commitTimestamp);
@@ -422,10 +424,10 @@ public class TSOHandler extends SimpleChannelHandler {
                         long oldLargestDeletedTimestamp = sharedState.largestDeletedTimestamp;
 
                         for (RowKey r : msg.rows) {
-                            sharedState.largestDeletedTimestamp = sharedState.hashmap.put(r.getRow(), r.getTable(),
-                                    commitTimestamp, r.hashCode(), oldLargestDeletedTimestamp);
+                            sharedState.hashmap.putLatestWriteForRow(r.hashCode(), commitTimestamp);
                         }
 
+                        sharedState.largestDeletedTimestamp = sharedState.hashmap.getLargestDeletedTimestamp();
                         sharedState.processCommit(msg.startTimestamp, commitTimestamp);
                         if (sharedState.largestDeletedTimestamp > oldLargestDeletedTimestamp) {
                             toWAL.writeByte(LoggerProtocol.LARGEST_DELETED_TIMESTAMP);
@@ -454,15 +456,15 @@ public class TSOHandler extends SimpleChannelHandler {
                         }
                     }
                 } catch (IOException e) {
-                    LOG.error("failed to handle CommitRequest", e);
+                    e.printStackTrace();
                 }
-            } else { //add it to the aborted list
+            } else { // add it to the aborted list
                 abortCount++;
                 try {
                     toWAL.writeByte(LoggerProtocol.ABORT);
                     toWAL.writeLong(msg.startTimestamp);
                 } catch (IOException e) {
-                    LOG.error("failed to handle abort wal", e);
+                    e.printStackTrace();
                 }
                 sharedState.processAbort(msg.startTimestamp);
 
@@ -480,7 +482,8 @@ public class TSOHandler extends SimpleChannelHandler {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("Going to add record of size " + sharedState.baos.size());
                 }
-                //sharedState.lh.asyncAddEntry(baos.toByteArray(), this, sharedState.nextBatch);
+                // sharedState.lh.asyncAddEntry(baos.toByteArray(), this,
+                // sharedState.nextBatch);
                 sharedState.addRecord(baos.toByteArray(), new AddRecordCallback() {
                     @Override
                     public void addRecordComplete(int rc, Object ctx) {
@@ -515,25 +518,28 @@ public class TSOHandler extends SimpleChannelHandler {
         reply.queryTimestamp = msg.queryTimestamp;
         synchronized (sharedState) {
             queries++;
-            //1. check the write-write conflicts
+            // 1. check the write-write conflicts
             long value;
             value = sharedState.hashmap.getCommittedTimestamp(msg.queryTimestamp);
-            if (value != 0) { //it exists
+            if (value != 0) { // it exists
                 reply.commitTimestamp = value;
-                reply.committed = value < msg.startTimestamp;//set as abort
+                reply.committed = value < msg.startTimestamp;// set as abort
             } else if (sharedState.hashmap.isHalfAborted(msg.queryTimestamp))
                 reply.committed = false;
             else if (sharedState.uncommited.isUncommited(msg.queryTimestamp))
                 reply.committed = false;
             else
                 reply.retry = true;
-            //         else if (sharedState.largestDeletedTimestamp >= msg.queryTimestamp) 
-            //            reply.committed = true;
+            // else if (sharedState.largestDeletedTimestamp >=
+            // msg.queryTimestamp)
+            // reply.committed = true;
             // TODO retry needed? isnt it just fully aborted?
 
             ctx.getChannel().write(reply);
 
-            // We send the message directly. If after a failure the state is inconsistent we'll detect it
+            // We send the message directly. If after a failure the state is
+            // inconsistent we'll detect it
+
         }
     }
 

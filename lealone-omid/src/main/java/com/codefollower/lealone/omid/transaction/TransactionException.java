@@ -14,8 +14,17 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.codefollower.lealone.omid.client;
+package com.codefollower.lealone.omid.transaction;
 
-public class CommitUnsuccessfulException extends Exception {
-    private static final long serialVersionUID = 1L;
+public class TransactionException extends Exception {
+
+    private static final long serialVersionUID = 7273525983622126275L;
+
+    public TransactionException(String reason) {
+        super(reason);
+    }
+
+    public TransactionException(String reason, Exception e) {
+        super(reason, e);
+    }
 }

@@ -19,26 +19,10 @@
  */
 package com.codefollower.lealone.test.start;
 
-import java.io.File;
-
 import com.codefollower.lealone.omid.tso.TSOServer;
 
-/**
- * 
- * 如果出现java.lang.UnsatisfiedLinkError: no tso-commithashmap in java.library.path
- * 
- * 请加上VM参数: -Djava.library.path=<tso-commithashmap path> (见下面的输出信息"tso-commithashmap path: ")
- * 
- * 如: -Djava.library.path=E:\lealone\git\lealone-test\src\test\resources
- *
- */
 public class TSOServerStarter {
     public static void main(String[] args) throws Exception {
-        System.out.println("tso-commithashmap path: " + new File("src/test/resources").getCanonicalPath());
-        //这种方式无效
-        //System.setProperty("java.library.path", new File("src/test/resources").getCanonicalPath() + File.pathSeparatorChar
-        //        + System.getProperty("java.library.path"));
-
         args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha", "-ensemble", "1", "-quorum", "1" };
         TSOServer.main(args);
     }

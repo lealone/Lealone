@@ -49,7 +49,7 @@ public class ThroughputMonitor extends Thread {
 
             long oldQueries = TSOHandler.queries;
             for (;;) {
-                Thread.sleep(1000);
+                Thread.sleep(10000);
 
                 long endTime = System.currentTimeMillis();
                 long newCounter = TSOHandler.getTransferredBytes();

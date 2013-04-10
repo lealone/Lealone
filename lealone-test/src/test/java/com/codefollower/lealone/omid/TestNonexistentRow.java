@@ -26,9 +26,9 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.codefollower.lealone.omid.client.TransactionManager;
-import com.codefollower.lealone.omid.client.TransactionState;
-import com.codefollower.lealone.omid.client.TransactionalTable;
+import com.codefollower.lealone.omid.transaction.TransactionManager;
+import com.codefollower.lealone.omid.transaction.Transaction;
+import com.codefollower.lealone.omid.transaction.TTable;
 
 public class TestNonexistentRow extends OmidTestBase {
     private static final Log LOG = LogFactory.getLog(TestNonexistentRow.class);
@@ -37,10 +37,10 @@ public class TestNonexistentRow extends OmidTestBase {
     public void testMultiPutSameRow() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable table1 = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable table1 = new TTable(hbaseConf, TEST_TABLE);
 
             int num = 10;
-            TransactionState t = tm.beginTransaction();
+            Transaction t = tm.begin();
             for (int j = 0; j < num; j++) {
                 byte[] data = Bytes.toBytes(j);
                 Put put = new Put(data);
@@ -53,7 +53,7 @@ public class TestNonexistentRow extends OmidTestBase {
 
             assertTrue("Found a row that should not exist", r.isEmpty());
 
-            tm.tryCommit(t);
+            tm.commit(t);
         } catch (Exception e) {
             LOG.error("Exception in test", e);
             throw e;

@@ -48,31 +48,18 @@ public class RowKey {
     }
 
     public String toString() {
-        return new String(tableId) + ":" + new String(rowId);
+        return Bytes.toString(tableId) + ":" + Bytes.toString(rowId);
     }
 
     public static RowKey readObject(ChannelBuffer aInputStream) {
-        int hash = aInputStream.readInt();
-        short len = aInputStream.readByte();
-        //      byte[] rowId = RowKeyBuffer.nextRowKey(len);
-        byte[] rowId = new byte[len];
-        aInputStream.readBytes(rowId, 0, len);
-        len = aInputStream.readByte();
-        //      byte[] tableId = RowKeyBuffer.nextRowKey(len);
-        byte[] tableId = new byte[len];
-        aInputStream.readBytes(tableId, 0, len);
-        RowKey rk = new RowKey(rowId, tableId);
-        rk.hash = hash;
+        RowKey rk = new RowKey(null, null);
+        rk.hash = aInputStream.readInt();
         return rk;
     }
 
     public void writeObject(DataOutputStream aOutputStream) throws IOException {
         hashCode();
         aOutputStream.writeInt(hash);
-        aOutputStream.writeByte(rowId.length);
-        aOutputStream.write(rowId, 0, rowId.length);
-        aOutputStream.writeByte(tableId.length);
-        aOutputStream.write(tableId, 0, tableId.length);
     }
 
     public boolean equals(Object obj) {
@@ -88,25 +75,9 @@ public class RowKey {
         if (hash != 0) {
             return hash;
         }
-        //hash is the xor or row and table id
-        /*int h = 0;
-        for(int i =0; i < Math.min(8, rowId.length); i++){
-          h <<= 8;
-          h ^= (int)rowId[i] & 0xFF;
-        }
-        hash = h;
-        h = 0;
-        for(int i =0; i < Math.min(8,tableId.length); i++){
-          h <<= 8;
-          h ^= (int)tableId[i] & 0xFF;
-        }
-        hash ^= h;
-        return hash;*/
         byte[] key = Arrays.copyOf(tableId, tableId.length + rowId.length);
         System.arraycopy(rowId, 0, key, tableId.length, rowId.length);
         hash = MurmurHash.getInstance().hash(key, 0, key.length, 0xdeadbeef);
-        //return MurmurHash3.MurmurHash3_x64_32(rowId, 0xDEADBEEF);
-        //	    return (31*Arrays.hashCode(tableId)) + Arrays.hashCode(rowId);
         return hash;
     }
 }

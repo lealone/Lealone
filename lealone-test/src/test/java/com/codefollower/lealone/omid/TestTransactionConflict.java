@@ -33,10 +33,10 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.codefollower.lealone.omid.client.CommitUnsuccessfulException;
-import com.codefollower.lealone.omid.client.TransactionManager;
-import com.codefollower.lealone.omid.client.TransactionState;
-import com.codefollower.lealone.omid.client.TransactionalTable;
+import com.codefollower.lealone.omid.transaction.RollbackException;
+import com.codefollower.lealone.omid.transaction.TransactionManager;
+import com.codefollower.lealone.omid.transaction.Transaction;
+import com.codefollower.lealone.omid.transaction.TTable;
 
 public class TestTransactionConflict extends OmidTestBase {
     private static final Log LOG = LogFactory.getLog(TestTransactionConflict.class);
@@ -44,12 +44,12 @@ public class TestTransactionConflict extends OmidTestBase {
     @Test
     public void runTestWriteWriteConflict() throws Exception {
         TransactionManager tm = new TransactionManager(hbaseConf);
-        TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-        TransactionState t1 = tm.beginTransaction();
+        Transaction t1 = tm.begin();
         LOG.info("Transaction created " + t1);
 
-        TransactionState t2 = tm.beginTransaction();
+        Transaction t2 = tm.begin();
         LOG.info("Transaction created" + t2);
 
         byte[] row = Bytes.toBytes("test-simple");
@@ -66,13 +66,13 @@ public class TestTransactionConflict extends OmidTestBase {
         p2.add(fam, col, data2);
         tt.put(t2, p2);
 
-        tm.tryCommit(t2);
+        tm.commit(t2);
 
         boolean aborted = false;
         try {
-            tm.tryCommit(t1);
+            tm.commit(t1);
             assertTrue("Transaction commited successfully", false);
-        } catch (CommitUnsuccessfulException e) {
+        } catch (RollbackException e) {
             aborted = true;
         }
         assertTrue("Transaction didn't raise exception", aborted);
@@ -81,7 +81,7 @@ public class TestTransactionConflict extends OmidTestBase {
     @Test
     public void runTestMultiTableConflict() throws Exception {
         TransactionManager tm = new TransactionManager(hbaseConf);
-        TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
         String table2 = TEST_TABLE + 2;
 
         HBaseAdmin admin = new HBaseAdmin(hbaseConf);
@@ -99,12 +99,12 @@ public class TestTransactionConflict extends OmidTestBase {
             admin.enableTable(table2);
         }
 
-        TransactionalTable tt2 = new TransactionalTable(hbaseConf, table2);
+        TTable tt2 = new TTable(hbaseConf, table2);
 
-        TransactionState t1 = tm.beginTransaction();
+        Transaction t1 = tm.begin();
         LOG.info("Transaction created " + t1);
 
-        TransactionState t2 = tm.beginTransaction();
+        Transaction t2 = tm.begin();
         LOG.info("Transaction created" + t2);
 
         byte[] row = Bytes.toBytes("test-simple");
@@ -126,18 +126,18 @@ public class TestTransactionConflict extends OmidTestBase {
         p2.add(fam, col, data2);
         tt2.put(t2, p2);
 
-        tm.tryCommit(t2);
+        tm.commit(t2);
 
         boolean aborted = false;
         try {
-            tm.tryCommit(t1);
+            tm.commit(t1);
             assertTrue("Transaction commited successfully", false);
-        } catch (CommitUnsuccessfulException e) {
+        } catch (RollbackException e) {
             aborted = true;
         }
         assertTrue("Transaction didn't raise exception", aborted);
 
-        ResultScanner rs = tt2.getScanner(Bytes.toBytes(TEST_FAMILY));
+        ResultScanner rs = tt2.getHTable().getScanner(Bytes.toBytes(TEST_FAMILY));
         int count = 0;
         Result r;
         while ((r = rs.next()) != null) {
@@ -149,12 +149,12 @@ public class TestTransactionConflict extends OmidTestBase {
     @Test
     public void runTestCleanupAfterConflict() throws Exception {
         TransactionManager tm = new TransactionManager(hbaseConf);
-        TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-        TransactionState t1 = tm.beginTransaction();
+        Transaction t1 = tm.begin();
         LOG.info("Transaction created " + t1);
 
-        TransactionState t2 = tm.beginTransaction();
+        Transaction t2 = tm.begin();
         LOG.info("Transaction created" + t2);
 
         byte[] row = Bytes.toBytes("test-simple");
@@ -168,7 +168,7 @@ public class TestTransactionConflict extends OmidTestBase {
         tt.put(t1, p);
 
         Get g = new Get(row).setMaxVersions();
-        Result r = tt.get(g);
+        Result r = tt.getHTable().get(g);
         assertEquals("Unexpected size for read.", 1, r.size());
         assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
                 Bytes.equals(data1, r.getValue(fam, col)));
@@ -177,25 +177,25 @@ public class TestTransactionConflict extends OmidTestBase {
         p2.add(fam, col, data2);
         tt.put(t2, p2);
 
-        r = tt.get(g);
+        r = tt.getHTable().get(g);
         assertEquals("Unexpected size for read.", 2, r.size());
         r = tt.get(t2, g);
         assertEquals("Unexpected size for read.", 1, r.size());
         assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
                 Bytes.equals(data2, r.getValue(fam, col)));
 
-        tm.tryCommit(t1);
+        tm.commit(t1);
 
         boolean aborted = false;
         try {
-            tm.tryCommit(t2);
+            tm.commit(t2);
             assertTrue("Transaction commited successfully", false);
-        } catch (CommitUnsuccessfulException e) {
+        } catch (RollbackException e) {
             aborted = true;
         }
         assertTrue("Transaction didn't raise exception", aborted);
 
-        r = tt.get(g);
+        r = tt.getHTable().get(g);
         assertEquals("Unexpected size for read.", 1, r.size());
         assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
                 Bytes.equals(data1, r.getValue(fam, col)));
@@ -205,9 +205,9 @@ public class TestTransactionConflict extends OmidTestBase {
     public void testCleanupWithDeleteRow() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             int rowcount = 10;
@@ -226,9 +226,9 @@ public class TestTransactionConflict extends OmidTestBase {
                 p.add(fam, col, data1);
                 tt.put(t1, p);
             }
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState t2 = tm.beginTransaction();
+            Transaction t2 = tm.begin();
             LOG.info("Transaction created " + t2);
             Delete d = new Delete(modrow);
             tt.delete(t2, d);
@@ -243,24 +243,24 @@ public class TestTransactionConflict extends OmidTestBase {
             }
             assertEquals("Wrong count", rowcount - 1, count);
 
-            TransactionState t3 = tm.beginTransaction();
+            Transaction t3 = tm.begin();
             LOG.info("Transaction created " + t3);
             Put p = new Put(modrow);
             p.add(fam, col, data2);
             tt.put(t3, p);
 
-            tm.tryCommit(t3);
+            tm.commit(t3);
 
             boolean aborted = false;
             try {
-                tm.tryCommit(t2);
+                tm.commit(t2);
                 assertTrue("Didn't abort", false);
-            } catch (CommitUnsuccessfulException e) {
+            } catch (RollbackException e) {
                 aborted = true;
             }
             assertTrue("Didn't raise exception", aborted);
 
-            TransactionState tscan = tm.beginTransaction();
+            Transaction tscan = tm.begin();
             rs = tt.getScanner(tscan, new Scan());
             r = rs.next();
             count = 0;

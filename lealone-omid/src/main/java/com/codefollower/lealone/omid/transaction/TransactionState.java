@@ -14,22 +14,27 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.codefollower.lealone.omid.client;
+package com.codefollower.lealone.omid.transaction;
 
 import java.util.HashSet;
 import java.util.Set;
 
+import com.codefollower.lealone.omid.client.RowKeyFamily;
+import com.codefollower.lealone.omid.client.TSOClient;
+
 /**
- *
- * This class contains the required information to represent an Omid's transaction, including the set of rows modified.
+ * 
+ * This class contains the required information to represent an Omid's
+ * transaction, including the set of rows modified.
  * 
  */
-public class TransactionState {
+public class TransactionState implements Transaction {
+    private boolean rollbackOnly;
     private long startTimestamp;
     private long commitTimestamp;
     private Set<RowKeyFamily> rows;
 
-    TSOClient tsoclient;
+    public TSOClient tsoclient;
 
     TransactionState(long startTimestamp, TSOClient client) {
         this.rows = new HashSet<RowKeyFamily>();
@@ -60,5 +65,14 @@ public class TransactionState {
 
     public String toString() {
         return "Transaction-" + Long.toHexString(startTimestamp);
+    }
+
+    @Override
+    public void setRollbackOnly() {
+        rollbackOnly = true;
+    }
+
+    public boolean isRollbackOnly() {
+        return rollbackOnly;
     }
 }

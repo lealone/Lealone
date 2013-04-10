@@ -45,6 +45,7 @@ import com.codefollower.lealone.omid.tso.messages.CommitQueryRequest;
 import com.codefollower.lealone.omid.tso.messages.CommitRequest;
 import com.codefollower.lealone.omid.tso.messages.CommitResponse;
 import com.codefollower.lealone.omid.tso.messages.FullAbortRequest;
+import com.codefollower.lealone.omid.tso.messages.LargestDeletedTimestampReport;
 import com.codefollower.lealone.omid.tso.messages.TimestampRequest;
 
 /**
@@ -156,7 +157,10 @@ public class TestClientHandler extends TSOClient {
     @SuppressWarnings("unchecked")
     public <T extends TSOMessage> T receiveMessage(Class<T> type) {
         try {
-            TSOMessage msg = messageQueue.poll(5000, TimeUnit.SECONDS);
+            TSOMessage msg;
+            do {
+                msg = messageQueue.poll(5000, TimeUnit.SECONDS);
+            } while (msg instanceof LargestDeletedTimestampReport);
             assertNotNull("Reception of message timed out", msg);
             assertThat(msg, is(type));
             return (T) msg;

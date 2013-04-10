@@ -36,8 +36,8 @@ import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
 import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
-import com.codefollower.lealone.omid.client.TransactionManager;
-import com.codefollower.lealone.omid.client.TransactionState;
+import com.codefollower.lealone.omid.transaction.TransactionManager;
+import com.codefollower.lealone.omid.transaction.TransactionState;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SubqueryResult;
 
@@ -122,7 +122,7 @@ public class HBaseSession extends Session {
                 if (tm == null)
                     tm = new TransactionManager(HBaseUtils.getConfiguration());
 
-                ts = tm.beginTransaction();
+                ts = (TransactionState) tm.begin();
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -140,7 +140,7 @@ public class HBaseSession extends Session {
         super.commit(ddl);
         if (ts != null) {
             try {
-                tm.tryCommit(ts);
+                tm.commit(ts);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -153,7 +153,7 @@ public class HBaseSession extends Session {
         super.rollback();
         if (ts != null) {
             try {
-                tm.abort(ts);
+                tm.rollback(ts);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }

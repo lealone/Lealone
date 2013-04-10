@@ -347,11 +347,11 @@ public class ClientHandler extends TSOClient {
                 return;
 
             if (curMessage == 0) {
-                LOG.warn("No more message");
+                LOG.info("No more messages, stopping benchmark");
                 // wait for all outstanding msgs and then close the channel
                 // if (outstandingTransactions.intValue() == 0) {
                 if (outstandingTransactions == 0) {
-                    LOG.warn("Close channel");
+                    LOG.info("Close channel");
                     channel.close().addListener(new ChannelFutureListener() {
                         public void operationComplete(ChannelFuture future) {
                             answer.offer(true);

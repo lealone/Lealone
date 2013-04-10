@@ -49,7 +49,7 @@ import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.omid.client.RowKeyFamily;
-import com.codefollower.lealone.omid.client.TransactionState;
+import com.codefollower.lealone.omid.transaction.TransactionState;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StringUtils;

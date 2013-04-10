@@ -27,9 +27,9 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.codefollower.lealone.omid.client.TransactionManager;
-import com.codefollower.lealone.omid.client.TransactionState;
-import com.codefollower.lealone.omid.client.TransactionalTable;
+import com.codefollower.lealone.omid.transaction.TransactionManager;
+import com.codefollower.lealone.omid.transaction.Transaction;
+import com.codefollower.lealone.omid.transaction.TTable;
 
 public class TestAbortTransaction extends OmidTestBase {
     private static final Log LOG = LogFactory.getLog(TestAbortTransaction.class);
@@ -38,9 +38,9 @@ public class TestAbortTransaction extends OmidTestBase {
     public void runTestInterleaveScan() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             byte[] fam = Bytes.toBytes(TEST_FAMILY);
@@ -58,9 +58,9 @@ public class TestAbortTransaction extends OmidTestBase {
                 p.add(fam, col, data1);
                 tt.put(t1, p);
             }
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState t2 = tm.beginTransaction();
+            Transaction t2 = tm.begin();
             Put p = new Put(modrow);
             p.add(fam, col, data2);
             tt.put(t2, p);
@@ -80,9 +80,9 @@ public class TestAbortTransaction extends OmidTestBase {
             }
 
             assertTrue("Expected 1 row modified, but " + modifiedrows + " are.", modifiedrows == 1);
-            tm.abort(t2);
+            tm.rollback(t2);
 
-            TransactionState tscan = tm.beginTransaction();
+            Transaction tscan = tm.begin();
             rs = tt.getScanner(tscan, new Scan().setStartRow(startrow).setStopRow(stoprow).addColumn(fam, col));
             r = rs.next();
             while (r != null) {

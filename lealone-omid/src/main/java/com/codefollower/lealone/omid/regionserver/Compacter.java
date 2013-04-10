@@ -13,8 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License. See accompanying LICENSE file.
  */
-
-package com.codefollower.lealone.omid.client.regionserver;
+package com.codefollower.lealone.omid.regionserver;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -173,8 +172,8 @@ public class Compacter extends BaseRegionObserver {
         }
 
         @Override
-        public boolean next(List<KeyValue> results, int limit, String metric) throws IOException {
-            return next(results, limit);
+        public boolean next(List<KeyValue> result, int limit, String metric) throws IOException {
+            return next(result, limit);
         }
 
     }
@@ -183,6 +182,7 @@ public class Compacter extends BaseRegionObserver {
         @Override
         public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
             Object message = e.getMessage();
+            //         System.out.println("Received " + message);
             if (message instanceof MinimumTimestamp) {
                 Compacter.this.minTimestamp = ((MinimumTimestamp) message).getTimestamp();
             } else {

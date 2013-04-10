@@ -30,9 +30,9 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.codefollower.lealone.omid.client.TransactionManager;
-import com.codefollower.lealone.omid.client.TransactionState;
-import com.codefollower.lealone.omid.client.TransactionalTable;
+import com.codefollower.lealone.omid.transaction.TransactionManager;
+import com.codefollower.lealone.omid.transaction.Transaction;
+import com.codefollower.lealone.omid.transaction.TTable;
 
 public class TestBasicTransaction extends OmidTestBase {
     private static final Log LOG = LogFactory.getLog(TestBasicTransaction.class);
@@ -41,7 +41,7 @@ public class TestBasicTransaction extends OmidTestBase {
     public void testTimestampsOfTwoRowsInstertedAfterCommitOfSingleTransactionAreEquals() throws Exception {
 
         TransactionManager tm = new TransactionManager(hbaseConf);
-        TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         byte[] rowName1 = Bytes.toBytes("row1");
         byte[] rowName2 = Bytes.toBytes("row2");
@@ -50,7 +50,7 @@ public class TestBasicTransaction extends OmidTestBase {
         byte[] dataValue1 = Bytes.toBytes("testWrite-1");
         byte[] dataValue2 = Bytes.toBytes("testWrite-2");
 
-        TransactionState tx1 = tm.beginTransaction();
+        Transaction tx1 = tm.begin();
 
         Put row1 = new Put(rowName1);
         row1.add(famName1, colName1, dataValue1);
@@ -59,20 +59,20 @@ public class TestBasicTransaction extends OmidTestBase {
         row2.add(famName1, colName1, dataValue2);
         tt.put(tx1, row2);
 
-        tm.tryCommit(tx1);
+        tm.commit(tx1);
 
         tt.close();
 
         // Checks
         Get getResultRow1 = new Get(rowName1).setMaxVersions(1);
-        Result result1 = tt.get(getResultRow1);
+        Result result1 = tt.getHTable().get(getResultRow1);
         byte[] val1 = result1.getValue(famName1, colName1);
         assertTrue("Unexpected value for row 1 in col 1: " + Bytes.toString(val1),
                 Bytes.equals(dataValue1, result1.getValue(famName1, colName1)));
         long tsRow1 = result1.raw()[0].getTimestamp();
 
         Get getResultRow2 = new Get(rowName2).setMaxVersions(1);
-        Result result2 = tt.get(getResultRow2);
+        Result result2 = tt.getHTable().get(getResultRow2);
         byte[] val2 = result2.getValue(famName1, colName1);
         assertTrue("Unexpected value for row 2 in col 1: " + Bytes.toString(val2),
                 Bytes.equals(dataValue2, result2.getValue(famName1, colName1)));
@@ -87,7 +87,7 @@ public class TestBasicTransaction extends OmidTestBase {
             throws Exception {
 
         TransactionManager tm = new TransactionManager(hbaseConf);
-        TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+        TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
         byte[] rowName1 = Bytes.toBytes("row1");
         byte[] rowName2 = Bytes.toBytes("row2");
@@ -99,7 +99,7 @@ public class TestBasicTransaction extends OmidTestBase {
         byte[] dataValue3 = Bytes.toBytes("testWrite-3");
         byte[] dataValue4 = Bytes.toBytes("testWrite-4");
 
-        TransactionState tx1 = tm.beginTransaction();
+        Transaction tx1 = tm.begin();
 
         Put row1 = new Put(rowName1);
         row1.add(famName1, colName1, dataValue1);
@@ -108,9 +108,9 @@ public class TestBasicTransaction extends OmidTestBase {
         row2.add(famName1, colName1, dataValue2);
         tt.put(tx1, row2);
 
-        tm.tryCommit(tx1);
+        tm.commit(tx1);
 
-        TransactionState tx2 = tm.beginTransaction();
+        Transaction tx2 = tm.begin();
 
         row1 = new Put(rowName1);
         row1.add(famName1, colName1, dataValue3);
@@ -119,13 +119,13 @@ public class TestBasicTransaction extends OmidTestBase {
         row2.add(famName1, colName1, dataValue4);
         tt.put(tx2, row2);
 
-        tm.tryCommit(tx2);
+        tm.commit(tx2);
 
         tt.close();
 
         // Checks
         Get getResultRow1 = new Get(rowName1).setMaxVersions(2);
-        Result result1 = tt.get(getResultRow1);
+        Result result1 = tt.getHTable().get(getResultRow1);
         byte[] val1 = result1.getValue(famName1, colName1);
         assertTrue("Unexpected value for row 1 in col 1: " + Bytes.toString(val1),
                 Bytes.equals(dataValue3, result1.getValue(famName1, colName1)));
@@ -134,7 +134,7 @@ public class TestBasicTransaction extends OmidTestBase {
         long previousTsRow1 = result1.raw()[1].getTimestamp();
 
         Get getResultRow2 = new Get(rowName2).setMaxVersions(2);
-        Result result2 = tt.get(getResultRow2);
+        Result result2 = tt.getHTable().get(getResultRow2);
         byte[] val2 = result2.getValue(famName1, colName1);
         assertTrue("Unexpected value for row 2 in col 1: " + Bytes.toString(val2),
                 Bytes.equals(dataValue4, result2.getValue(famName1, colName1)));
@@ -153,9 +153,9 @@ public class TestBasicTransaction extends OmidTestBase {
     public void runTestSimple() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             byte[] row = Bytes.toBytes("test-simple");
@@ -167,17 +167,17 @@ public class TestBasicTransaction extends OmidTestBase {
             Put p = new Put(row);
             p.add(fam, col, data1);
             tt.put(t1, p);
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState tread = tm.beginTransaction();
-            TransactionState t2 = tm.beginTransaction();
+            Transaction tread = tm.begin();
+            Transaction t2 = tm.begin();
             p = new Put(row);
             p.add(fam, col, data2);
             tt.put(t2, p);
-            tm.tryCommit(t2);
+            tm.commit(t2);
 
             Get g = new Get(row).setMaxVersions(1);
-            Result r = tt.get(g);
+            Result r = tt.getHTable().get(g);
             assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
                     Bytes.equals(data2, r.getValue(fam, col)));
 
@@ -194,9 +194,9 @@ public class TestBasicTransaction extends OmidTestBase {
     public void runTestManyVersions() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             byte[] row = Bytes.toBytes("test-simple");
@@ -208,18 +208,18 @@ public class TestBasicTransaction extends OmidTestBase {
             Put p = new Put(row);
             p.add(fam, col, data1);
             tt.put(t1, p);
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
             for (int i = 0; i < 5; ++i) {
-                TransactionState t2 = tm.beginTransaction();
+                Transaction t2 = tm.begin();
                 p = new Put(row);
                 p.add(fam, col, data2);
                 tt.put(t2, p);
             }
-            TransactionState tread = tm.beginTransaction();
+            Transaction tread = tm.begin();
 
             Get g = new Get(row).setMaxVersions(1);
-            Result r = tt.get(g);
+            Result r = tt.getHTable().get(g);
             assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
                     Bytes.equals(data2, r.getValue(fam, col)));
 
@@ -236,9 +236,9 @@ public class TestBasicTransaction extends OmidTestBase {
     public void runTestInterleave() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             byte[] row = Bytes.toBytes("test-interleave");
@@ -250,21 +250,21 @@ public class TestBasicTransaction extends OmidTestBase {
             Put p = new Put(row);
             p.add(fam, col, data1);
             tt.put(t1, p);
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState t2 = tm.beginTransaction();
+            Transaction t2 = tm.begin();
             p = new Put(row);
             p.add(fam, col, data2);
             tt.put(t2, p);
 
-            TransactionState tread = tm.beginTransaction();
+            Transaction tread = tm.begin();
             Get g = new Get(row).setMaxVersions(1);
             Result r = tt.get(tread, g);
             assertTrue("Unexpected value for SI read " + tread + ": " + Bytes.toString(r.getValue(fam, col)),
                     Bytes.equals(data1, r.getValue(fam, col)));
-            tm.tryCommit(t2);
+            tm.commit(t2);
 
-            r = tt.get(g);
+            r = tt.getHTable().get(g);
             assertTrue("Unexpected value for read: " + Bytes.toString(r.getValue(fam, col)),
                     Bytes.equals(data2, r.getValue(fam, col)));
 
@@ -278,9 +278,9 @@ public class TestBasicTransaction extends OmidTestBase {
     public void runTestInterleaveScan() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             byte[] fam = Bytes.toBytes(TEST_FAMILY);
@@ -298,14 +298,14 @@ public class TestBasicTransaction extends OmidTestBase {
                 p.add(fam, col, data1);
                 tt.put(t1, p);
             }
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState t2 = tm.beginTransaction();
+            Transaction t2 = tm.begin();
             Put p = new Put(modrow);
             p.add(fam, col, data2);
             tt.put(t2, p);
 
-            TransactionState tscan = tm.beginTransaction();
+            Transaction tscan = tm.begin();
             ResultScanner rs = tt.getScanner(tscan, new Scan().setStartRow(startrow).setStopRow(stoprow));
             Result r = rs.next();
             int i = 0;
@@ -319,10 +319,10 @@ public class TestBasicTransaction extends OmidTestBase {
                         Bytes.equals(data1, r.getValue(fam, col)));
                 r = rs.next();
             }
-            tm.tryCommit(t2);
+            tm.commit(t2);
 
             int modifiedrows = 0;
-            tscan = tm.beginTransaction();
+            tscan = tm.begin();
             rs = tt.getScanner(tscan, new Scan().setStartRow(startrow).setStopRow(stoprow));
             r = rs.next();
             while (r != null) {
@@ -348,9 +348,9 @@ public class TestBasicTransaction extends OmidTestBase {
     public void runTestDeleteCol() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             int rowcount = 10;
@@ -372,14 +372,14 @@ public class TestBasicTransaction extends OmidTestBase {
                 p.add(fam, colB, data2);
                 tt.put(t1, p);
             }
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState t2 = tm.beginTransaction();
+            Transaction t2 = tm.begin();
             Delete d = new Delete(modrow);
             d.deleteColumn(fam, colA);
             tt.delete(t2, d);
 
-            TransactionState tscan = tm.beginTransaction();
+            Transaction tscan = tm.begin();
             ResultScanner rs = tt.getScanner(tscan, new Scan());
             Result r = rs.next();
             colAcount = 0;
@@ -397,9 +397,9 @@ public class TestBasicTransaction extends OmidTestBase {
             }
             assertTrue("Expected all these numbers to be the same " + colAcount + "," + colBcount + "," + rowcount,
                     (colAcount == colBcount) && (colAcount == rowcount));
-            tm.tryCommit(t2);
+            tm.commit(t2);
 
-            tscan = tm.beginTransaction();
+            tscan = tm.begin();
             rs = tt.getScanner(tscan, new Scan());
             r = rs.next();
 
@@ -428,9 +428,9 @@ public class TestBasicTransaction extends OmidTestBase {
     public void runTestDeleteRow() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             int rowcount = 10;
@@ -448,13 +448,13 @@ public class TestBasicTransaction extends OmidTestBase {
                 p.add(fam, col, data1);
                 tt.put(t1, p);
             }
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState t2 = tm.beginTransaction();
+            Transaction t2 = tm.begin();
             Delete d = new Delete(modrow);
             tt.delete(t2, d);
 
-            TransactionState tscan = tm.beginTransaction();
+            Transaction tscan = tm.begin();
             ResultScanner rs = tt.getScanner(tscan, new Scan());
             Result r = rs.next();
             count = 0;
@@ -465,9 +465,9 @@ public class TestBasicTransaction extends OmidTestBase {
             }
             assertTrue("Expected " + rowcount + " rows but " + count + " found", count == rowcount);
 
-            tm.tryCommit(t2);
+            tm.commit(t2);
 
-            tscan = tm.beginTransaction();
+            tscan = tm.begin();
             rs = tt.getScanner(tscan, new Scan());
             r = rs.next();
             count = 0;

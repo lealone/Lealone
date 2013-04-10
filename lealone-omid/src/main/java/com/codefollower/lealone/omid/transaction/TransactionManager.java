@@ -14,7 +14,7 @@
  * limitations under the License. See accompanying LICENSE file.
  */
 
-package com.codefollower.lealone.omid.client;
+package com.codefollower.lealone.omid.transaction;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,40 +30,48 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
 
+import com.codefollower.lealone.omid.client.AbortCompleteCallback;
+import com.codefollower.lealone.omid.client.RowKeyFamily;
+import com.codefollower.lealone.omid.client.SyncAbortCompleteCallback;
+import com.codefollower.lealone.omid.client.SyncCommitCallback;
+import com.codefollower.lealone.omid.client.SyncCreateCallback;
+import com.codefollower.lealone.omid.client.TSOClient;
+
 /**
  * Provides the methods necessary to create and commit transactions.
- *
- * @see TransactionalTable
- *
+ * 
+ * @see TTable
+ * 
  */
 public class TransactionManager {
-    private static final Log LOG = LogFactory.getLog(TransactionManager.class);
-    private static TSOClient tsoclient = null;
+    private static final Log LOG = LogFactory.getLog(TSOClient.class);
 
-    private final Configuration conf;
-    private final HashMap<byte[], HTable> tableCache = new HashMap<byte[], HTable>();
+    static TSOClient tsoclient = null;
+    private static Object lock = new Object();
+    private Configuration conf;
+    private HashMap<byte[], HTable> tableCache;
 
-    public TransactionManager(Configuration conf) throws TransactionException, IOException {
+    public TransactionManager(Configuration conf) throws IOException {
         this.conf = conf;
-        if (tsoclient == null) {
-            synchronized (TransactionManager.class) {
-                if (tsoclient == null) {
-                    tsoclient = new TSOClient(conf);
-                }
+        synchronized (lock) {
+            if (tsoclient == null) {
+                tsoclient = new TSOClient(conf);
             }
         }
+        tableCache = new HashMap<byte[], HTable>();
     }
 
     /**
      * Starts a new transaction.
-     *
-     * This method returns an opaque {@link TransactionState} object, used by {@link TransactionalTable}'s methods
-     * for performing operations on a given transaction.
-     *
+     * 
+     * This method returns an opaque {@link Transaction} object, used by
+     * {@link TTable}'s methods for performing operations on a given
+     * transaction.
+     * 
      * @return Opaque object which identifies one transaction.
      * @throws TransactionException
      */
-    public TransactionState beginTransaction() throws TransactionException {
+    public Transaction begin() throws TransactionException {
         SyncCreateCallback cb = new SyncCreateCallback();
         try {
             tsoclient.getNewTimestamp(cb);
@@ -79,17 +87,30 @@ public class TransactionManager {
     }
 
     /**
-     * Commits a transaction. If the transaction is aborted it automatically rollbacks the changes and
-     * throws a {@link CommitUnsuccessfulException}.
-     *
-     * @param transactionState Object identifying the transaction to be committed.
-     * @throws CommitUnsuccessfulException
+     * Commits a transaction. If the transaction is aborted it automatically
+     * rollbacks the changes and throws a {@link RollbackException}.
+     * 
+     * @param transaction
+     *            Object identifying the transaction to be committed.
+     * @throws RollbackException
      * @throws TransactionException
      */
-    public void tryCommit(TransactionState transactionState) throws CommitUnsuccessfulException, TransactionException {
+    public void commit(Transaction transaction) throws RollbackException, TransactionException {
         if (LOG.isTraceEnabled()) {
-            LOG.trace("tryCommit " + transactionState.getStartTimestamp());
+            LOG.trace("commit " + transaction);
         }
+
+        if (!(transaction instanceof TransactionState)) {
+            throw new IllegalArgumentException("transaction should be an instance of " + TransactionState.class);
+        }
+        TransactionState transactionState = (TransactionState) transaction;
+
+        // Check rollbackOnly status
+        if (transactionState.isRollbackOnly()) {
+            rollback(transactionState);
+            throw new RollbackException();
+        }
+
         SyncCommitCallback cb = new SyncCommitCallback();
         try {
             tsoclient.commit(transactionState.getStartTimestamp(), transactionState.getRows(), cb);
@@ -108,25 +129,31 @@ public class TransactionManager {
 
         if (cb.getResult() == TSOClient.Result.ABORTED) {
             cleanup(transactionState);
-            throw new CommitUnsuccessfulException();
+            throw new RollbackException();
         }
         transactionState.setCommitTimestamp(cb.getCommitTimestamp());
     }
 
     /**
      * Aborts a transaction and automatically rollbacks the changes.
-     *
-     * @param transactionState Object identifying the transaction to be committed.
-     * @throws TransactionException
+     * 
+     * @param transaction
+     *            Object identifying the transaction to be committed.
      */
-    public void abort(TransactionState transactionState) throws TransactionException {
+    public void rollback(Transaction transaction) {
         if (LOG.isTraceEnabled()) {
-            LOG.trace("abort " + transactionState.getStartTimestamp());
+            LOG.trace("abort " + transaction);
         }
+
+        if (!(transaction instanceof TransactionState)) {
+            throw new IllegalArgumentException("transaction should be an instance of " + TransactionState.class);
+        }
+        TransactionState transactionState = (TransactionState) transaction;
+
         try {
             tsoclient.abort(transactionState.getStartTimestamp());
         } catch (Exception e) {
-            throw new TransactionException("Could not abort", e);
+            LOG.warn("Couldn't notify TSO about the abort", e);
         }
 
         if (LOG.isTraceEnabled()) {
@@ -138,7 +165,7 @@ public class TransactionManager {
         cleanup(transactionState);
     }
 
-    private void cleanup(final TransactionState transactionState) throws TransactionException {
+    private void cleanup(final TransactionState transactionState) {
         Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
         for (final RowKeyFamily rowkey : transactionState.getRows()) {
             List<Delete> batch = deleteBatches.get(rowkey.getTable());
@@ -155,24 +182,41 @@ public class TransactionManager {
             }
             batch.add(delete);
         }
+
+        boolean cleanupFailed = false;
+        List<HTable> tablesToFlush = new ArrayList<HTable>();
         for (final Entry<byte[], List<Delete>> entry : deleteBatches.entrySet()) {
             try {
                 HTable table = tableCache.get(entry.getKey());
                 if (table == null) {
                     table = new HTable(conf, entry.getKey());
+                    table.setAutoFlush(false, true);
                     tableCache.put(entry.getKey(), table);
                 }
                 table.delete(entry.getValue());
+                tablesToFlush.add(table);
             } catch (IOException ioe) {
-                throw new TransactionException("Could not clean up for table " + entry.getKey(), ioe);
+                cleanupFailed = true;
             }
+        }
+        for (HTable table : tablesToFlush) {
+            try {
+                table.flushCommits();
+            } catch (IOException e) {
+                cleanupFailed = true;
+            }
+        }
+
+        if (cleanupFailed) {
+            LOG.warn("Cleanup failed, some values not deleted");
+            // we can't notify the TSO of completion
+            return;
         }
         AbortCompleteCallback cb = new SyncAbortCompleteCallback();
         try {
             tsoclient.completeAbort(transactionState.getStartTimestamp(), cb);
         } catch (IOException ioe) {
-            throw new TransactionException("Could not notify TSO about cleanup completion for transaction "
-                    + transactionState.getStartTimestamp(), ioe);
+            LOG.warn("Coudldn't notify the TSO of rollback completion", ioe);
         }
     }
 }

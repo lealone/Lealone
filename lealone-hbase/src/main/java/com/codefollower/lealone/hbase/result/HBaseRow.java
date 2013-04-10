@@ -69,6 +69,7 @@ public class HBaseRow extends Row {
     public void setForUpdate(boolean forUpdate) {
         this.forUpdate = forUpdate;
     }
+
     public Result getResult() {
         return result;
     }

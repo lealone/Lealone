@@ -32,9 +32,9 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import com.codefollower.lealone.omid.client.TransactionManager;
-import com.codefollower.lealone.omid.client.TransactionState;
-import com.codefollower.lealone.omid.client.TransactionalTable;
+import com.codefollower.lealone.omid.transaction.TransactionManager;
+import com.codefollower.lealone.omid.transaction.Transaction;
+import com.codefollower.lealone.omid.transaction.TTable;
 
 public class TestCompaction extends OmidTestBase {
     private static final Log LOG = LogFactory.getLog(TestCompaction.class);
@@ -43,9 +43,9 @@ public class TestCompaction extends OmidTestBase {
     public void testDeleteOld() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
             LOG.info("Transaction created " + t1);
 
             byte[] row = Bytes.toBytes("test-simple");
@@ -58,37 +58,37 @@ public class TestCompaction extends OmidTestBase {
             Put p = new Put(row);
             p.add(fam, col, data1);
             tt.put(t1, p);
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState t2 = tm.beginTransaction();
+            Transaction t2 = tm.begin();
             p = new Put(row);
             p.add(fam, col, data2);
             tt.put(t2, p);
-            tm.tryCommit(t2);
+            tm.commit(t2);
 
             for (int i = 0; i < 500; ++i) {
-                t2 = tm.beginTransaction();
+                t2 = tm.begin();
                 p = new Put(row);
                 p.add(fam, col2, data2);
                 tt.put(t2, p);
-                tm.tryCommit(t2);
+                tm.commit(t2);
             }
 
             HBaseAdmin admin = new HBaseAdmin(hbaseConf);
             admin.flush(TEST_TABLE);
 
             for (int i = 0; i < 500; ++i) {
-                t2 = tm.beginTransaction();
+                t2 = tm.begin();
                 p = new Put(row);
                 p.add(fam, col2, data2);
                 tt.put(t2, p);
-                tm.tryCommit(t2);
+                tm.commit(t2);
             }
 
             Get g = new Get(row);
             g.setMaxVersions();
             g.addColumn(fam, col2);
-            Result r = tt.get(g);
+            Result r = tt.getHTable().get(g);
             int size = r.getColumn(fam, col2).size();
             LOG.info("Size before compaction : " + size);
 
@@ -99,13 +99,13 @@ public class TestCompaction extends OmidTestBase {
             g = new Get(row);
             g.setMaxVersions();
             g.addColumn(fam, col);
-            r = tt.get(g);
-            assertEquals(1, r.getColumn(fam, col).size());
+            r = tt.getHTable().get(g);
+            assertEquals(r.getColumn(fam, col).toString(), 1, r.getColumn(fam, col).size());
 
             g = new Get(row);
             g.setMaxVersions();
             g.addColumn(fam, col2);
-            r = tt.get(g);
+            r = tt.getHTable().get(g);
             LOG.info("Size after compaction " + r.getColumn(fam, col2).size());
             assertThat(r.getColumn(fam, col2).size(), is(lessThan(size)));
         } catch (Exception e) {
@@ -118,9 +118,9 @@ public class TestCompaction extends OmidTestBase {
     public void testLimitEqualToColumns() throws Exception {
         try {
             TransactionManager tm = new TransactionManager(hbaseConf);
-            TransactionalTable tt = new TransactionalTable(hbaseConf, TEST_TABLE);
+            TTable tt = new TTable(hbaseConf, TEST_TABLE);
 
-            TransactionState t1 = tm.beginTransaction();
+            Transaction t1 = tm.begin();
 
             byte[] row = Bytes.toBytes("test-simple");
             byte[] row2 = Bytes.toBytes("test-simple2");
@@ -138,49 +138,49 @@ public class TestCompaction extends OmidTestBase {
                 p.add(fam, Bytes.add(col, Bytes.toBytes(i)), data);
             }
             tt.put(t1, p);
-            tm.tryCommit(t1);
+            tm.commit(t1);
 
-            TransactionState t2 = tm.beginTransaction();
+            Transaction t2 = tm.begin();
             p = new Put(row2);
             for (int i = 0; i < 10; ++i) {
                 p.add(fam, Bytes.add(col, Bytes.toBytes(i)), data);
             }
             tt.put(t2, p);
-            tm.tryCommit(t2);
+            tm.commit(t2);
 
             // fill with data
             for (int i = 0; i < 500; ++i) {
-                t2 = tm.beginTransaction();
+                t2 = tm.begin();
                 p = new Put(row4);
                 p.add(fam, col11, data2);
                 tt.put(t2, p);
-                tm.tryCommit(t2);
+                tm.commit(t2);
             }
 
             HBaseAdmin admin = new HBaseAdmin(hbaseConf);
             admin.flush(TEST_TABLE);
 
-            TransactionState t3 = tm.beginTransaction();
+            Transaction t3 = tm.begin();
             p = new Put(row3);
             for (int i = 0; i < 10; ++i) {
                 p.add(fam, Bytes.add(col, Bytes.toBytes(i)), data);
             }
             tt.put(t3, p);
-            tm.tryCommit(t3);
+            tm.commit(t3);
 
             // fill with data
             for (int i = 0; i < 500; ++i) {
-                t2 = tm.beginTransaction();
+                t2 = tm.begin();
                 p = new Put(row4);
                 p.add(fam, col11, data2);
                 tt.put(t2, p);
-                tm.tryCommit(t2);
+                tm.commit(t2);
             }
 
             Get g = new Get(row);
             g.setMaxVersions();
             g.addColumn(fam, col1);
-            Result r = tt.get(g);
+            Result r = tt.getHTable().get(g);
             int size = r.getColumn(fam, col1).size();
             LOG.info("Size before compaction : " + size);
 
@@ -191,7 +191,7 @@ public class TestCompaction extends OmidTestBase {
             Scan s = new Scan(row);
             s.setMaxVersions();
             s.addColumn(fam, col1);
-            ResultScanner rs = tt.getScanner(s);
+            ResultScanner rs = tt.getHTable().getScanner(s);
             int count = 0;
             while ((r = rs.next()) != null) {
                 count += r.getColumn(fam, col1).size();
