@@ -456,7 +456,7 @@ public class TSOHandler extends SimpleChannelHandler {
                         }
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOG.error("failed to handle CommitRequest", e);
                 }
             } else { // add it to the aborted list
                 abortCount++;
@@ -464,7 +464,7 @@ public class TSOHandler extends SimpleChannelHandler {
                     toWAL.writeByte(LoggerProtocol.ABORT);
                     toWAL.writeLong(msg.startTimestamp);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOG.error("failed to handle abort wal", e);
                 }
                 sharedState.processAbort(msg.startTimestamp);
 

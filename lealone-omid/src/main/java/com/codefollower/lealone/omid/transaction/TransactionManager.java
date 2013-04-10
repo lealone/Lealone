@@ -44,21 +44,21 @@ import com.codefollower.lealone.omid.client.TSOClient;
  * 
  */
 public class TransactionManager {
-    private static final Log LOG = LogFactory.getLog(TSOClient.class);
+    private static final Log LOG = LogFactory.getLog(TransactionManager.class);
+    private static TSOClient tsoclient = null;
 
-    static TSOClient tsoclient = null;
-    private static Object lock = new Object();
-    private Configuration conf;
-    private HashMap<byte[], HTable> tableCache;
+    private final Configuration conf;
+    private final HashMap<byte[], HTable> tableCache = new HashMap<byte[], HTable>();
 
-    public TransactionManager(Configuration conf) throws IOException {
+    public TransactionManager(Configuration conf) throws TransactionException, IOException {
         this.conf = conf;
-        synchronized (lock) {
-            if (tsoclient == null) {
-                tsoclient = new TSOClient(conf);
+        if (tsoclient == null) {
+            synchronized (TransactionManager.class) {
+                if (tsoclient == null) {
+                    tsoclient = new TSOClient(conf);
+                }
             }
         }
-        tableCache = new HashMap<byte[], HTable>();
     }
 
     /**

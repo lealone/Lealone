@@ -34,7 +34,7 @@ public class TransactionState implements Transaction {
     private long commitTimestamp;
     private Set<RowKeyFamily> rows;
 
-    public TSOClient tsoclient;
+    TSOClient tsoclient;
 
     TransactionState(long startTimestamp, TSOClient client) {
         this.rows = new HashSet<RowKeyFamily>();

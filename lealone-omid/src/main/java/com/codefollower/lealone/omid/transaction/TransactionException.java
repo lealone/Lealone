@@ -18,7 +18,7 @@ package com.codefollower.lealone.omid.transaction;
 
 public class TransactionException extends Exception {
 
-    private static final long serialVersionUID = 7273525983622126275L;
+    private static final long serialVersionUID = 1L;
 
     public TransactionException(String reason) {
         super(reason);
