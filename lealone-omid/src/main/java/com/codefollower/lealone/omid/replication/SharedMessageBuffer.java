@@ -33,32 +33,33 @@ import org.jboss.netty.channel.Channels;
 
 public class SharedMessageBuffer {
     private static final Log LOG = LogFactory.getLog(SharedMessageBuffer.class);
-
     private static final int MAX_MESSAGE_SIZE = 30;
 
-    ReadersAwareBuffer pastBuffer = new ReadersAwareBuffer();
-    ReadersAwareBuffer currentBuffer = new ReadersAwareBuffer();
-    ChannelBuffer writeBuffer = currentBuffer.buffer;
-    BlockingQueue<ReadersAwareBuffer> bufferPool = new LinkedBlockingQueue<ReadersAwareBuffer>();
-    Zipper zipper = new Zipper();
-    Set<ReadingBuffer> readingBuffers = new TreeSet<SharedMessageBuffer.ReadingBuffer>();
+    private final BlockingQueue<ReadersAwareBuffer> readersAwareBufferPool = new LinkedBlockingQueue<ReadersAwareBuffer>();
+    private final Zipper zipper = new Zipper();
+    private final Set<ReadingBuffer> readingBuffers = new TreeSet<SharedMessageBuffer.ReadingBuffer>();
+
+    private ReadersAwareBuffer pastReadersAwareBuffer = new ReadersAwareBuffer();
+    private ReadersAwareBuffer currentReadersAwareBuffer = new ReadersAwareBuffer();
+    private ChannelBuffer writeChannelBuffer = currentReadersAwareBuffer.buffer;
 
     public class ReadingBuffer implements Comparable<ReadingBuffer> {
-        private ChannelBuffer readBuffer;
+        private final ChannelHandlerContext ctx;
+        private final Channel channel;
+
+        private ReadersAwareBuffer readingReadersAwareBuffer;
+        private ChannelBuffer readChannelBuffer;
         private int readerIndex = 0;
-        private ReadersAwareBuffer readingBuffer;
-        private ChannelHandlerContext ctx;
-        private Channel channel;
 
         private ReadingBuffer(ChannelHandlerContext ctx) {
-            this.channel = ctx.getChannel();
             this.ctx = ctx;
+            this.channel = ctx.getChannel();
         }
 
         public void initializeIndexes() {
-            this.readingBuffer = currentBuffer;
-            this.readBuffer = readingBuffer.buffer;
-            this.readerIndex = readBuffer.writerIndex();
+            this.readingReadersAwareBuffer = currentReadersAwareBuffer;
+            this.readChannelBuffer = readingReadersAwareBuffer.buffer;
+            this.readerIndex = readChannelBuffer.writerIndex();
         }
 
         /**
@@ -72,24 +73,24 @@ public class SharedMessageBuffer {
          * @return the deltaSO for the associated client
          */
         public ChannelBuffer flush(ChannelFuture future) {
-            int readable = readBuffer.readableBytes() - readerIndex;
+            int readable = readChannelBuffer.readableBytes() - readerIndex;
 
-            if (readable == 0 && readingBuffer != pastBuffer) {
+            if (readable == 0 && readingReadersAwareBuffer != pastReadersAwareBuffer) {
                 return ChannelBuffers.EMPTY_BUFFER;
             }
 
-            ChannelBuffer deltaSO = readBuffer.slice(readerIndex, readable);
-            addFinishedWriteListener(future, readingBuffer);
-            readingBuffer.increaseReaders();
+            ChannelBuffer deltaSO = readChannelBuffer.slice(readerIndex, readable);
+            addFinishedWriteListener(future, readingReadersAwareBuffer);
+            readingReadersAwareBuffer.increaseReaders();
             readerIndex += readable;
-            if (readingBuffer == pastBuffer) {
-                readingBuffer = currentBuffer;
-                readBuffer = readingBuffer.buffer;
+            if (readingReadersAwareBuffer == pastReadersAwareBuffer) {
+                readingReadersAwareBuffer = currentReadersAwareBuffer;
+                readChannelBuffer = readingReadersAwareBuffer.buffer;
                 readerIndex = 0;
-                readable = readBuffer.readableBytes();
-                deltaSO = ChannelBuffers.wrappedBuffer(deltaSO, readBuffer.slice(readerIndex, readable));
-                addFinishedWriteListener(future, readingBuffer);
-                readingBuffer.increaseReaders();
+                readable = readChannelBuffer.readableBytes();
+                deltaSO = ChannelBuffers.wrappedBuffer(deltaSO, readChannelBuffer.slice(readerIndex, readable));
+                addFinishedWriteListener(future, readingReadersAwareBuffer);
+                readingReadersAwareBuffer.increaseReaders();
                 readerIndex += readable;
             }
 
@@ -102,7 +103,7 @@ public class SharedMessageBuffer {
                 public void operationComplete(ChannelFuture future) throws Exception {
                     buffer.decreaseReaders();
                     if (buffer.isReadyForPool()) {
-                        bufferPool.add(buffer);
+                        readersAwareBufferPool.add(buffer);
                     }
                 }
             });
@@ -139,49 +140,51 @@ public class SharedMessageBuffer {
 
     public void writeCommit(long startTimestamp, long commitTimestamp) {
         checkBufferSpace();
-        zipper.encodeCommit(writeBuffer, startTimestamp, commitTimestamp);
+        zipper.encodeCommit(writeChannelBuffer, startTimestamp, commitTimestamp);
     }
 
     public void writeHalfAbort(long startTimestamp) {
         checkBufferSpace();
-        zipper.encodeHalfAbort(writeBuffer, startTimestamp);
+        zipper.encodeHalfAbort(writeChannelBuffer, startTimestamp);
     }
 
     public void writeFullAbort(long startTimestamp) {
         checkBufferSpace();
-        zipper.encodeFullAbort(writeBuffer, startTimestamp);
+        zipper.encodeFullAbort(writeChannelBuffer, startTimestamp);
     }
 
     public void writeLargestDeletedTimestamp(long largestDeletedTimestamp) {
         checkBufferSpace();
-        zipper.encodeLargestDeletedTimestamp(writeBuffer, largestDeletedTimestamp);
+        zipper.encodeLargestDeletedTimestamp(writeChannelBuffer, largestDeletedTimestamp);
     }
 
     private void checkBufferSpace() {
-        if (writeBuffer.writableBytes() < MAX_MESSAGE_SIZE) {
+        if (writeChannelBuffer.writableBytes() < MAX_MESSAGE_SIZE) {
             nextBuffer();
         }
     }
 
     private void nextBuffer() {
-        LOG.debug("Switching buffers");
+        if (LOG.isDebugEnabled())
+            LOG.debug("Switching buffers");
 
         // mark past buffer as scheduled for pool when all pending operations finish
-        pastBuffer.scheduleForPool();
+        pastReadersAwareBuffer.scheduleForPool();
 
         for (final ReadingBuffer rb : readingBuffers) {
-            if (rb.readingBuffer == pastBuffer) {
+            if (rb.readingReadersAwareBuffer == pastReadersAwareBuffer) {
                 ChannelFuture future = Channels.future(rb.channel);
                 ChannelBuffer cb = rb.flush(future);
                 Channels.write(rb.ctx, future, cb);
             }
         }
 
-        pastBuffer = currentBuffer;
-        currentBuffer = bufferPool.poll();
-        if (currentBuffer == null) {
-            currentBuffer = new ReadersAwareBuffer();
+        pastReadersAwareBuffer = currentReadersAwareBuffer;
+        currentReadersAwareBuffer = readersAwareBufferPool.poll();
+        if (currentReadersAwareBuffer == null) {
+            currentReadersAwareBuffer = new ReadersAwareBuffer();
+            LOG.warn("Allocated a new ReadersAwareBuffer");
         }
-        writeBuffer = currentBuffer.buffer;
+        writeChannelBuffer = currentReadersAwareBuffer.buffer;
     }
 }

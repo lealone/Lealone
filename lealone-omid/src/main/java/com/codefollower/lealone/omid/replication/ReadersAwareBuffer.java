@@ -16,25 +16,19 @@
 
 package com.codefollower.lealone.omid.replication;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 
 public class ReadersAwareBuffer {
-    private static final Log LOG = LogFactory.getLog(ReadersAwareBuffer.class);
-
     private static final int CAPACITY = 1024 * 1024;
+    public static long nBuffers;
 
-    public ChannelBuffer buffer;
+    public final ChannelBuffer buffer;
     private int pendingReaders = 0;
     private boolean scheduledForPool;
 
-    public static long nBuffers;
-
     public ReadersAwareBuffer() {
         nBuffers++;
-        LOG.warn("Allocated buffer");
         buffer = ChannelBuffers.directBuffer(CAPACITY);
     }
 
