@@ -103,6 +103,7 @@ public class SharedMessageBuffer {
                 public void operationComplete(ChannelFuture future) throws Exception {
                     buffer.decreaseReaders();
                     if (buffer.isReadyForPool()) {
+                        buffer.reset();
                         readersAwareBufferPool.add(buffer);
                     }
                 }
