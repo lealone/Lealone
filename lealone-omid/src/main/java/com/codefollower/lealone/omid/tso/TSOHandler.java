@@ -20,9 +20,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -118,7 +118,7 @@ public class TSOHandler extends SimpleChannelHandler {
     private ScheduledFuture<?> flushFuture;
     private boolean finish;
 
-    private final Map<Channel, ReadingBuffer> messageBuffersMap = new HashMap<Channel, ReadingBuffer>();
+    private final Map<Channel, ReadingBuffer> messageBuffersMap = new ConcurrentHashMap<Channel, ReadingBuffer>();
     private final Object sharedMsgBufLock = new Object();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Object callbackLock = new Object();
@@ -259,6 +259,7 @@ public class TSOHandler extends SimpleChannelHandler {
         synchronized (sharedMsgBufLock) {
             sharedState.sharedMessageBuffer.removeReadingBuffer(ctx);
         }
+        messageBuffersMap.remove(ctx.getChannel());
     }
 
     @Override
@@ -300,25 +301,19 @@ public class TSOHandler extends SimpleChannelHandler {
             }
         }
 
-        ReadingBuffer buffer;
         Channel channel = ctx.getChannel();
-        boolean bootstrap = false;
-        synchronized (messageBuffersMap) {
-            buffer = messageBuffersMap.get(channel);
-            if (buffer == null) {
-                synchronized (sharedMsgBufLock) {
-                    bootstrap = true;
-                    buffer = sharedState.sharedMessageBuffer.getReadingBuffer(ctx);
-                    messageBuffersMap.put(channel, buffer);
-                    LOG.warn("Channel connected: " + messageBuffersMap.size());
-                }
+        ReadingBuffer readingBuffer = messageBuffersMap.get(channel);
+        if (readingBuffer == null) {
+            synchronized (sharedMsgBufLock) {
+                readingBuffer = sharedState.sharedMessageBuffer.getReadingBuffer(ctx);
+                messageBuffersMap.put(channel, readingBuffer);
+                LOG.info("Channel connected: " + messageBuffersMap.size());
             }
-        }
-        if (bootstrap) {
+
             synchronized (sharedState) {
                 synchronized (sharedMsgBufLock) {
-                    channel.write(buffer.getZipperState());
-                    buffer.initializeIndexes();
+                    channel.write(readingBuffer.getZipperState());
+                    readingBuffer.initializeIndexes();
                 }
             }
             channel.write(new LargestDeletedTimestampReport(sharedState.largestDeletedTimestamp));
@@ -326,10 +321,11 @@ public class TSOHandler extends SimpleChannelHandler {
                 channel.write(new AbortedTransactionReport(halfAborted.getStartTimestamp()));
             }
         }
+
         ChannelBuffer cb;
         ChannelFuture future = Channels.future(channel);
         synchronized (sharedMsgBufLock) {
-            cb = buffer.flush(future);
+            cb = readingBuffer.flush(future);
         }
         Channels.write(ctx, future, cb);
         Channels.write(channel, new TimestampResponse(timestamp));
