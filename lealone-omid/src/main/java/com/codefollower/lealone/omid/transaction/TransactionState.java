@@ -29,12 +29,12 @@ import com.codefollower.lealone.omid.client.TSOClient;
  * 
  */
 public class TransactionState implements Transaction {
-    private boolean rollbackOnly;
-    private long startTimestamp;
-    private long commitTimestamp;
-    private Set<RowKeyFamily> rows;
 
-    TSOClient tsoclient;
+    final TSOClient tsoclient;
+    private final Set<RowKeyFamily> rows;
+    private final long startTimestamp;
+    private long commitTimestamp;
+    private boolean rollbackOnly;
 
     TransactionState(long startTimestamp, TSOClient client) {
         this.rows = new HashSet<RowKeyFamily>();

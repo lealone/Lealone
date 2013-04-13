@@ -43,19 +43,19 @@ public class ThroughputMonitor extends Thread {
             return;
         }
         try {
-            long oldCounter = TSOHandler.getTransferredBytes();
-            long oldAbortCount = TSOHandler.abortCount;
+            long oldCounter = TSOHandler.commitCounter.longValue();
+            long oldAbortCount = TSOHandler.abortCounter.longValue();
             long startTime = System.currentTimeMillis();
 
-            long oldQueries = TSOHandler.queries;
+            long oldQueries = TSOHandler.commitQueryCounter.longValue();
             for (;;) {
                 Thread.sleep(10000);
 
                 long endTime = System.currentTimeMillis();
-                long newCounter = TSOHandler.getTransferredBytes();
-                long newAbortCount = TSOHandler.abortCount;
+                long newCounter = TSOHandler.commitCounter.longValue();
+                long newAbortCount = TSOHandler.abortCounter.longValue();
 
-                long newQueries = TSOHandler.queries;
+                long newQueries = TSOHandler.commitQueryCounter.longValue();
 
                 if (TSOPipelineFactory.bwhandler != null) {
                     TSOPipelineFactory.bwhandler.measure();

@@ -29,7 +29,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -81,26 +81,15 @@ public class TSOHandler extends SimpleChannelHandler {
         }
     }
 
-    /**
-     * Bytes monitor
-     */
-    public static final AtomicInteger transferredBytes = new AtomicInteger();
-
-    /**
-     * Returns the number of transferred bytes
-     * @return the number of transferred bytes
-     */
-    public static long getTransferredBytes() {
-        return transferredBytes.longValue();
-    }
-
-    public static int abortCount = 0;
-    public static long queries = 0;
+    public static final AtomicLong commitCounter = new AtomicLong();
+    public static final AtomicLong abortCounter = new AtomicLong();
+    public static final AtomicLong commitQueryCounter = new AtomicLong();
 
     /**
      * Channel Group
      */
     private final ChannelGroup channelGroup;
+
     /**
      * Timestamp Oracle
      */
@@ -283,7 +272,7 @@ public class TSOHandler extends SimpleChannelHandler {
         } else if (msg instanceof CommitQueryRequest) {
             handle((CommitQueryRequest) msg, ctx);
         } else if (msg instanceof AbortRequest) {
-            handle((AbortRequest) msg, ctx);
+            handleHalfAbort(((AbortRequest) msg).startTimestamp);
         }
     }
 
@@ -331,19 +320,20 @@ public class TSOHandler extends SimpleChannelHandler {
         Channels.write(channel, new TimestampResponse(timestamp));
     }
 
-    private void handle(AbortRequest msg, ChannelHandlerContext ctx) {
+    private void handleHalfAbort(long startTimestamp) {
+        abortCounter.incrementAndGet();
+
         synchronized (sharedState) {
             DataOutputStream toWAL = sharedState.toWAL;
             try {
                 toWAL.writeByte(LoggerProtocol.ABORT);
-                toWAL.writeLong(msg.startTimestamp);
+                toWAL.writeLong(startTimestamp);
             } catch (IOException e) {
                 LOG.error("failed to write abort wal", e);
             }
-            abortCount++;
-            sharedState.processAbort(msg.startTimestamp);
+            sharedState.processHalfAbort(startTimestamp);
             synchronized (sharedMsgBufLock) {
-                queueHalfAbort(msg.startTimestamp);
+                queueHalfAbort(startTimestamp);
             }
         }
     }
@@ -382,20 +372,12 @@ public class TSOHandler extends SimpleChannelHandler {
             } else if (msg.rows.length > 0 && msg.startTimestamp < sharedState.largestDeletedTimestamp) {
                 // Too old and not read only
                 reply.committed = false;// set as abort
-                LOG.warn("Too old starttimestamp: ST " + msg.startTimestamp + " MAX " + sharedState.largestDeletedTimestamp);
+                LOG.warn("Too old startTimestamp: ST " + msg.startTimestamp + " MAX " + sharedState.largestDeletedTimestamp);
             } else {
                 // 1. check the write-write conflicts
                 for (RowKey r : msg.rows) {
-                    long value;
-                    value = sharedState.hashmap.getLatestWriteForRow(r.hashCode());
+                    long value = sharedState.hashmap.getLatestWriteForRow(r.hashCode());
                     if (value != 0 && value > msg.startTimestamp) {
-                        reply.committed = false;// set as abort
-                        break;
-                    } else if (value == 0 && sharedState.largestDeletedTimestamp > msg.startTimestamp) {
-                        // then it could have been committed after start
-                        // timestamp but deleted by recycling
-                        LOG.warn("Old transaction {Start timestamp  " + msg.startTimestamp + "} {Largest deleted timestamp "
-                                + sharedState.largestDeletedTimestamp + "}");
                         reply.committed = false;// set as abort
                         break;
                     }
@@ -455,21 +437,10 @@ public class TSOHandler extends SimpleChannelHandler {
                     LOG.error("failed to handle CommitRequest", e);
                 }
             } else { // add it to the aborted list
-                abortCount++;
-                try {
-                    toWAL.writeByte(LoggerProtocol.ABORT);
-                    toWAL.writeLong(msg.startTimestamp);
-                } catch (IOException e) {
-                    LOG.error("failed to handle abort wal", e);
-                }
-                sharedState.processAbort(msg.startTimestamp);
-
-                synchronized (sharedMsgBufLock) {
-                    queueHalfAbort(msg.startTimestamp);
-                }
+                handleHalfAbort(msg.startTimestamp);
             }
 
-            TSOHandler.transferredBytes.incrementAndGet();
+            commitCounter.incrementAndGet();
 
             ChannelAndMessage cam = new ChannelAndMessage(ctx, reply);
 
@@ -508,10 +479,11 @@ public class TSOHandler extends SimpleChannelHandler {
      * Handle the CommitQueryRequest message
      */
     private void handle(CommitQueryRequest msg, ChannelHandlerContext ctx) {
+        commitQueryCounter.incrementAndGet();
+
         CommitQueryResponse reply = new CommitQueryResponse(msg.startTimestamp);
         reply.queryTimestamp = msg.queryTimestamp;
         synchronized (sharedState) {
-            queries++;
             // 1. check the write-write conflicts
             long value;
             value = sharedState.hashmap.getCommittedTimestamp(msg.queryTimestamp);

@@ -28,7 +28,7 @@ public class Uncommited {
 
     private static final int BKT_NUMBER = 1 << 10; // 2 ^ 10
 
-    private Bucket buckets[] = new Bucket[BKT_NUMBER];
+    private final Bucket buckets[] = new Bucket[BKT_NUMBER];
     private int firstUncommitedBucket = 0;
     private long firstUncommitedAbsolute = 0;
     private int lastOpenedBucket = 0;

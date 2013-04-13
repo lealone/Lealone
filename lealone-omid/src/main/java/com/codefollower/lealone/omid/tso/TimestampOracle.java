@@ -49,7 +49,7 @@ public class TimestampOracle {
      * Constructor
      */
     public TimestampOracle() {
-        this.last = 0;
+        last = 0;
     }
 
     /**
@@ -59,9 +59,11 @@ public class TimestampOracle {
      */
     public void initialize(long timestamp) {
         LOG.info("Initializing timestamp oracle");
-        this.last = this.first = Math.max(this.last, timestamp + TIMESTAMP_BATCH);
-        maxTimestamp = this.first + 1; // max timestamp will be persisted
-        LOG.info("First: " + this.first + ", Last: " + this.last);
+
+        last = first = Math.max(last, timestamp + TIMESTAMP_BATCH);
+        maxTimestamp = first + 1; // max timestamp will be persisted
+
+        LOG.info("First: " + first + ", Last: " + last);
     }
 
     /**
@@ -75,12 +77,6 @@ public class TimestampOracle {
             maxTimestamp += TIMESTAMP_BATCH;
             toWal.writeByte(LoggerProtocol.TIMESTAMP_ORACLE);
             toWal.writeLong(maxTimestamp);
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("Logging TimestampOracle " + maxTimestamp);
-            }
-        }
-        if (LOG.isTraceEnabled()) {
-            LOG.trace("Next timestamp: " + last);
         }
 
         return last;
@@ -96,6 +92,6 @@ public class TimestampOracle {
 
     @Override
     public String toString() {
-        return "TimestampOracle: " + last;
+        return "TimestampOracle(first: " + first + ", last: " + last + ")";
     }
 }

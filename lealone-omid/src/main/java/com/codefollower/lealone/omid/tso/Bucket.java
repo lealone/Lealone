@@ -20,21 +20,15 @@ import java.util.BitSet;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 public class Bucket {
-
-    private static final Log LOG = LogFactory.getLog(Bucket.class);
-
     private static final long BUCKET_SIZE = 32768; // 2 ^ 15
 
-    private BitSet transactions = new BitSet((int) BUCKET_SIZE);
+    private final BitSet transactions = new BitSet((int) BUCKET_SIZE);
+    private final int position;
 
     private int transactionsCommited = 0;
     private int firstUncommited = 0;
     private boolean closed = false;
-    private int position;
 
     public Bucket(int position) {
         this.position = position;
@@ -57,8 +51,6 @@ public class Bucket {
         if (allCommited()) {
             return aborted;
         }
-
-        LOG.trace("Performing scanning...");
 
         for (int i = transactions.nextClearBit(firstUncommited); i >= 0 && i <= lastCommited; i = transactions
                 .nextClearBit(i + 1)) {
