@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -62,6 +63,7 @@ import com.codefollower.lealone.omid.tso.persistence.LoggerException.Code;
 
 /**
  * ChannelHandler for the TSO Server
+ * 一个TSO Server只对应一个TSOHandler实例
  *
  */
 public class TSOHandler extends SimpleChannelHandler {
@@ -71,9 +73,9 @@ public class TSOHandler extends SimpleChannelHandler {
     /*
      * Wrapper for Channel and Message
      */
-    public static class ChannelAndMessage {
-        ChannelHandlerContext ctx;
-        TSOMessage msg;
+    private static class ChannelAndMessage {
+        final ChannelHandlerContext ctx;
+        final TSOMessage msg;
 
         ChannelAndMessage(ChannelHandlerContext c, TSOMessage m) {
             ctx = c;
@@ -106,6 +108,7 @@ public class TSOHandler extends SimpleChannelHandler {
 
     private ScheduledFuture<?> flushFuture;
     private boolean finish;
+    private List<ChannelAndMessage> nextBatch = new ArrayList<ChannelAndMessage>();
 
     private final Map<Channel, ReadingBuffer> messageBuffersMap = new ConcurrentHashMap<Channel, ReadingBuffer>();
     private final Object sharedMsgBufLock = new Object();
@@ -130,13 +133,9 @@ public class TSOHandler extends SimpleChannelHandler {
             if (finish) {
                 return;
             }
-            if (sharedState.nextBatch.size() > 0) {
+            if (nextBatch.size() > 0) {
                 synchronized (sharedState) {
-                    if (sharedState.nextBatch.size() > 0) {
-                        if (LOG.isTraceEnabled()) {
-                            LOG.trace("Flushing log batch.");
-                            LOG.trace("Adding record, size: " + sharedState.baos.size());
-                        }
+                    if (nextBatch.size() > 0) {
                         addRecord();
                         if (flushFuture.cancel(false)) {
                             scheduleFlushThread();
@@ -210,8 +209,8 @@ public class TSOHandler extends SimpleChannelHandler {
                     }
                 }
             }
-        }, sharedState.nextBatch);
-        sharedState.nextBatch = new ArrayList<ChannelAndMessage>(sharedState.nextBatch.size() + 5);
+        }, nextBatch);
+        nextBatch = new ArrayList<ChannelAndMessage>(nextBatch.size() + 5);
         sharedState.baos.reset();
     }
 
@@ -436,7 +435,7 @@ public class TSOHandler extends SimpleChannelHandler {
             }
 
             commitCounter.incrementAndGet();
-            sharedState.nextBatch.add(new ChannelAndMessage(ctx, reply));
+            nextBatch.add(new ChannelAndMessage(ctx, reply));
 
             if (sharedState.baos.size() >= batchSize) {
                 if (LOG.isTraceEnabled()) {

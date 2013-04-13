@@ -18,9 +18,6 @@ package com.codefollower.lealone.omid.tso;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.util.ArrayList;
-import java.util.List;
-
 import com.codefollower.lealone.omid.replication.SharedMessageBuffer;
 import com.codefollower.lealone.omid.tso.persistence.StateLogger;
 import com.codefollower.lealone.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
@@ -105,7 +102,6 @@ public class TSOState {
      */
     public final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     public final DataOutputStream toWAL = new DataOutputStream(baos);
-    public List<TSOHandler.ChannelAndMessage> nextBatch = new ArrayList<TSOHandler.ChannelAndMessage>();
 
     public TSOState(TimestampOracle timestampOracle) {
         this(null, timestampOracle);
