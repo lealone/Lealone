@@ -23,7 +23,7 @@ import com.codefollower.lealone.omid.tso.TSOServer;
 
 public class TSOServerStarter {
     public static void main(String[] args) throws Exception {
-        args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha", "-ensemble", "1", "-quorum", "1" };
+        args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha", "-ensemble", "1", "-quorum", "1", "-batch", "1024" };
         TSOServer.main(args);
     }
 }

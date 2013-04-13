@@ -124,6 +124,30 @@ public class TSOHandler extends SimpleChannelHandler {
         }
     };
 
+    private final class FlushThread implements Runnable {
+        @Override
+        public void run() {
+            if (finish) {
+                return;
+            }
+            if (sharedState.nextBatch.size() > 0) {
+                synchronized (sharedState) {
+                    if (sharedState.nextBatch.size() > 0) {
+                        if (LOG.isTraceEnabled()) {
+                            LOG.trace("Flushing log batch.");
+                            LOG.trace("Adding record, size: " + sharedState.baos.size());
+                        }
+                        addRecord();
+                        if (flushFuture.cancel(false)) {
+                            scheduleFlushThread();
+                        }
+                    }
+                }
+            }
+            scheduleFlushThread();
+        }
+    }
+
     /**
      * Constructor
      * @param channelGroup
@@ -170,65 +194,37 @@ public class TSOHandler extends SimpleChannelHandler {
         sharedState.addRecord(baos.toByteArray(), noCallback, null);
     }
 
-    public void start() {
-        scheduleFlushThread();
-    }
-
-    public void stop() {
-        finish = true;
+    private void addRecord() {
+        sharedState.addRecord(sharedState.baos.toByteArray(), new AddRecordCallback() {
+            @Override
+            public void addRecordComplete(int rc, Object ctx) {
+                if (rc != Code.OK) {
+                    LOG.warn("Write failed: " + LoggerException.getMessage(rc));
+                } else {
+                    synchronized (callbackLock) {
+                        @SuppressWarnings("unchecked")
+                        ArrayList<ChannelAndMessage> theBatch = (ArrayList<ChannelAndMessage>) ctx;
+                        for (ChannelAndMessage cam : theBatch) {
+                            Channels.write(cam.ctx, Channels.succeededFuture(cam.ctx.getChannel()), cam.msg);
+                        }
+                    }
+                }
+            }
+        }, sharedState.nextBatch);
+        sharedState.nextBatch = new ArrayList<ChannelAndMessage>(sharedState.nextBatch.size() + 5);
+        sharedState.baos.reset();
     }
 
     private void scheduleFlushThread() {
         flushFuture = scheduledExecutor.schedule(flushThread, TSOState.FLUSH_TIMEOUT, TimeUnit.MILLISECONDS);
     }
 
-    private void flush() {
-        synchronized (sharedState) {
-            if (LOG.isTraceEnabled()) {
-                LOG.trace("Adding record, size: " + sharedState.baos.size());
-            }
-            sharedState.addRecord(sharedState.baos.toByteArray(), new AddRecordCallback() {
-                @Override
-                public void addRecordComplete(int rc, Object ctx) {
-                    if (rc != Code.OK) {
-                        LOG.warn("Write failed: " + LoggerException.getMessage(rc));
-                    } else {
-                        synchronized (callbackLock) {
-                            @SuppressWarnings("unchecked")
-                            ArrayList<ChannelAndMessage> theBatch = (ArrayList<ChannelAndMessage>) ctx;
-                            for (ChannelAndMessage cam : theBatch) {
-                                Channels.write(cam.ctx, Channels.succeededFuture(cam.ctx.getChannel()), cam.msg);
-                            }
-                        }
-                    }
-                }
-            }, sharedState.nextBatch);
-            sharedState.nextBatch = new ArrayList<ChannelAndMessage>(sharedState.nextBatch.size() + 5);
-            sharedState.baos.reset();
-            if (flushFuture.cancel(false)) {
-                scheduleFlushThread();
-            }
-        }
+    public void start() {
+        scheduleFlushThread();
     }
 
-    private class FlushThread implements Runnable {
-        @Override
-        public void run() {
-            if (finish) {
-                return;
-            }
-            if (sharedState.nextBatch.size() > 0) {
-                synchronized (sharedState) {
-                    if (sharedState.nextBatch.size() > 0) {
-                        if (LOG.isTraceEnabled()) {
-                            LOG.trace("Flushing log batch.");
-                        }
-                        flush();
-                    }
-                }
-            }
-            scheduleFlushThread();
-        }
+    public void stop() {
+        finish = true;
     }
 
     /**
@@ -362,7 +358,6 @@ public class TSOHandler extends SimpleChannelHandler {
      */
     private void handle(CommitRequest msg, ChannelHandlerContext ctx) {
         CommitResponse reply = new CommitResponse(msg.startTimestamp);
-        ByteArrayOutputStream baos = sharedState.baos;
         DataOutputStream toWAL = sharedState.toWAL;
         synchronized (sharedState) {
             // 0. check if it should abort
@@ -441,36 +436,14 @@ public class TSOHandler extends SimpleChannelHandler {
             }
 
             commitCounter.incrementAndGet();
+            sharedState.nextBatch.add(new ChannelAndMessage(ctx, reply));
 
-            ChannelAndMessage cam = new ChannelAndMessage(ctx, reply);
-
-            sharedState.nextBatch.add(cam);
             if (sharedState.baos.size() >= batchSize) {
                 if (LOG.isTraceEnabled()) {
                     LOG.trace("Going to add record of size " + sharedState.baos.size());
                 }
-                // sharedState.lh.asyncAddEntry(baos.toByteArray(), this,
-                // sharedState.nextBatch);
-                sharedState.addRecord(baos.toByteArray(), new AddRecordCallback() {
-                    @Override
-                    public void addRecordComplete(int rc, Object ctx) {
-                        if (rc != Code.OK) {
-                            LOG.warn("Write failed: " + LoggerException.getMessage(rc));
 
-                        } else {
-                            synchronized (callbackLock) {
-                                @SuppressWarnings("unchecked")
-                                ArrayList<ChannelAndMessage> theBatch = (ArrayList<ChannelAndMessage>) ctx;
-                                for (ChannelAndMessage cam : theBatch) {
-                                    Channels.write(cam.ctx, Channels.succeededFuture(cam.ctx.getChannel()), cam.msg);
-                                }
-                            }
-
-                        }
-                    }
-                }, sharedState.nextBatch);
-                sharedState.nextBatch = new ArrayList<ChannelAndMessage>(sharedState.nextBatch.size() + 5);
-                sharedState.baos.reset();
+                addRecord();
             }
         }
     }
