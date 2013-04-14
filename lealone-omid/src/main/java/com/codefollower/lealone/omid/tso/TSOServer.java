@@ -102,7 +102,6 @@ public class TSOServer implements Runnable {
 
         LOG.info("PARAM MAX_ITEMS: " + TSOState.MAX_ITEMS);
         LOG.info("PARAM BATCH_SIZE: " + config.getBatchSize());
-        LOG.info("PARAM LOAD_FACTOR: " + TSOState.LOAD_FACTOR);
         LOG.info("PARAM MAX_THREADS: " + maxThreads);
 
         final TSOHandler handler = new TSOHandler(channelGroup, state, config.getBatchSize());

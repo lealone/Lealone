@@ -29,32 +29,18 @@ import com.codefollower.lealone.omid.tso.persistence.LoggerException.Code;
  * @author maysam
  */
 public class TSOState {
-    /**
-     * Hash map load factor
-     */
-    public static final float LOAD_FACTOR = 0.5f; //TODO 未使用
 
     /**
      * The maximum entries kept in TSO
      */
     public static final int MAX_ITEMS = getMaxItems();
-    public static final int MAX_COMMITS = getMaxCommits();
     public static final int FLUSH_TIMEOUT = getFlushTimeout();
 
-    //正常情况下，下面三个参数都不设置，所以System.getProperty返回null，
+    //正常情况下，下面两个参数都不设置，所以System.getProperty返回null，
     //虽然能够捕获到异常，但是可以避免的，只要调用System.getProperty时设置默认值即可。
     private static int getMaxItems() {
         try {
             return Integer.valueOf(System.getProperty("omid.maxItems", "100"));
-        } catch (Exception e) {
-            // ignore, use default
-            return 100;
-        }
-    }
-
-    private static int getMaxCommits() {
-        try {
-            return Integer.valueOf(System.getProperty("omid.maxCommits", "100"));
         } catch (Exception e) {
             // ignore, use default
             return 100;

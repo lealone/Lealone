@@ -51,20 +51,15 @@ import com.codefollower.lealone.omid.client.RowKeyFamily;
  */
 public class TTable {
 
-    public static long getsPerformed = 0;
-    public static long elementsGotten = 0;
-    public static long elementsRead = 0;
-    public static long extraGetsPerformed = 0;
-    public static double extraVersionsAvg = 3;
-
     /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
-    private static int CACHE_VERSIONS_OVERHEAD = 3;
-    /** Average number of versions needed to reach the right snapshot */
-    public double versionsAvg = 3;
-    /** How fast do we adapt the average */
-    private static final double alpha = 0.975;
+    private static final int CACHE_VERSIONS_OVERHEAD = 3;
 
-    private HTable table;
+    /** How fast do we adapt the average */
+    private static final double ALPHA = 0.975;
+
+    /** Average number of versions needed to reach the right snapshot */
+    private double versionsAvg = 3;
+    private final HTable table;
 
     public TTable(Configuration conf, byte[] tableName) throws IOException {
         table = new HTable(conf, tableName);
@@ -107,7 +102,6 @@ public class TTable {
                 }
             }
         }
-        getsPerformed++;
         // Return the KVs that belong to the transaction snapshot, ask for more
         // versions if needed
         return new Result(filter(transaction, table.get(tsget).list(), requestedVersions));
@@ -280,7 +274,7 @@ public class TTable {
                 }
                 validRead = true;
                 // Update versionsAvg: increase it quickly, decrease it slowly
-                versionsAvg = versionsProcessed > versionsAvg ? versionsProcessed : alpha * versionsAvg + (1 - alpha)
+                versionsAvg = versionsProcessed > versionsAvg ? versionsProcessed : ALPHA * versionsAvg + (1 - ALPHA)
                         * versionsProcessed;
             } else {
                 // Uncomitted, keep track of oldest uncommitted timestamp
