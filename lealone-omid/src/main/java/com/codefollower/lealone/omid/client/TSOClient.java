@@ -72,10 +72,12 @@ import com.codefollower.lealone.omid.tso.serialization.TSOEncoder;
 public class TSOClient extends SimpleChannelHandler {
     private static final Log LOG = LogFactory.getLog(TSOClient.class);
 
-    public static long askedTSO = 0;
-
     public enum Result {
         OK, ABORTED
+    };
+
+    private enum State {
+        DISCONNECTED, CONNECTING, CONNECTED, RETRY_CONNECT_WAIT
     };
 
     private Queue<CreateCallback> createCallbacks;
@@ -97,9 +99,8 @@ public class TSOClient extends SimpleChannelHandler {
     private int retryDelayMs;
     private Timer retryTimer;
 
-    private enum State {
-        DISCONNECTED, CONNECTING, CONNECTED, RETRY_CONNECT_WAIT
-    };
+    private ArrayBlockingQueue<Op> queuedOps;
+    private State state;
 
     private interface Op {
         public void execute(Channel channel);
@@ -301,10 +302,6 @@ public class TSOClient extends SimpleChannelHandler {
         }
     }
 
-    private ArrayBlockingQueue<Op> queuedOps;
-
-    private State state;
-
     public TSOClient(Configuration conf) throws IOException {
         state = State.DISCONNECTED;
         queuedOps = new ArrayBlockingQueue<Op>(200);
@@ -346,6 +343,9 @@ public class TSOClient extends SimpleChannelHandler {
     }
 
     private State connectIfNeeded() throws IOException {
+        if (state == State.CONNECTED) { //多数情况下都是CONNECTED，所以在synchronized前检测一下，避免不必要的同步
+            return state;
+        }
         synchronized (state) {
             if (state == State.CONNECTED || state == State.CONNECTING) {
                 return state;
@@ -479,7 +479,7 @@ public class TSOClient extends SimpleChannelHandler {
             return transaction <= largestDeletedTimestamp;
         if (transaction <= largestDeletedTimestamp)
             return true;
-        askedTSO++;
+
         SyncCommitQueryCallback cb = new SyncCommitQueryCallback();
         isCommitted(startTimestamp, transaction, cb);
         try {
