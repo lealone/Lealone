@@ -83,7 +83,7 @@ public class TransactionManager {
             throw new TransactionException("Error retrieving timestamp", cb.getException());
         }
 
-        return new TransactionState(cb.getStartTimestamp(), tsoclient);
+        return new Transaction(cb.getStartTimestamp(), tsoclient);
     }
 
     /**
@@ -100,20 +100,15 @@ public class TransactionManager {
             LOG.trace("commit " + transaction);
         }
 
-        if (!(transaction instanceof TransactionState)) {
-            throw new IllegalArgumentException("transaction should be an instance of " + TransactionState.class);
-        }
-        TransactionState transactionState = (TransactionState) transaction;
-
         // Check rollbackOnly status
-        if (transactionState.isRollbackOnly()) {
-            rollback(transactionState);
+        if (transaction.isRollbackOnly()) {
+            rollback(transaction);
             throw new RollbackException();
         }
 
         SyncCommitCallback cb = new SyncCommitCallback();
         try {
-            tsoclient.commit(transactionState.getStartTimestamp(), transactionState.getRows(), cb);
+            tsoclient.commit(transaction.getStartTimestamp(), transaction.getRows(), cb);
             cb.await();
         } catch (Exception e) {
             throw new TransactionException("Could not commit", e);
@@ -123,15 +118,15 @@ public class TransactionManager {
         }
 
         if (LOG.isTraceEnabled()) {
-            LOG.trace("doneCommit " + transactionState.getStartTimestamp() + " TS_c: " + cb.getCommitTimestamp() + " Success: "
+            LOG.trace("doneCommit " + transaction.getStartTimestamp() + " TS_c: " + cb.getCommitTimestamp() + " Success: "
                     + (cb.getResult() == TSOClient.Result.OK));
         }
 
         if (cb.getResult() == TSOClient.Result.ABORTED) {
-            cleanup(transactionState);
+            cleanup(transaction);
             throw new RollbackException();
         }
-        transactionState.setCommitTimestamp(cb.getCommitTimestamp());
+        transaction.setCommitTimestamp(cb.getCommitTimestamp());
     }
 
     /**
@@ -145,39 +140,34 @@ public class TransactionManager {
             LOG.trace("abort " + transaction);
         }
 
-        if (!(transaction instanceof TransactionState)) {
-            throw new IllegalArgumentException("transaction should be an instance of " + TransactionState.class);
-        }
-        TransactionState transactionState = (TransactionState) transaction;
-
         try {
-            tsoclient.abort(transactionState.getStartTimestamp());
+            tsoclient.abort(transaction.getStartTimestamp());
         } catch (Exception e) {
             LOG.warn("Couldn't notify TSO about the abort", e);
         }
 
         if (LOG.isTraceEnabled()) {
-            LOG.trace("doneAbort " + transactionState.getStartTimestamp());
+            LOG.trace("doneAbort " + transaction.getStartTimestamp());
         }
 
         // Make sure its commit timestamp is 0, so the cleanup does the right job
-        transactionState.setCommitTimestamp(0);
-        cleanup(transactionState);
+        transaction.setCommitTimestamp(0);
+        cleanup(transaction);
     }
 
-    private void cleanup(final TransactionState transactionState) {
+    private void cleanup(final Transaction transaction) {
         Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
-        for (final RowKeyFamily rowkey : transactionState.getRows()) {
+        for (final RowKeyFamily rowkey : transaction.getRows()) {
             List<Delete> batch = deleteBatches.get(rowkey.getTable());
             if (batch == null) {
                 batch = new ArrayList<Delete>();
                 deleteBatches.put(rowkey.getTable(), batch);
             }
-            Delete delete = new Delete(rowkey.getRow(), transactionState.getStartTimestamp(), null);
+            Delete delete = new Delete(rowkey.getRow(), transaction.getStartTimestamp(), null);
             //Delete delete = new Delete(rowkey.getRow());
             for (Entry<byte[], List<KeyValue>> entry : rowkey.getFamilies().entrySet()) {
                 for (KeyValue kv : entry.getValue()) {
-                    delete.deleteColumn(entry.getKey(), kv.getQualifier(), transactionState.getStartTimestamp());
+                    delete.deleteColumn(entry.getKey(), kv.getQualifier(), transaction.getStartTimestamp());
                 }
             }
             batch.add(delete);
@@ -214,7 +204,7 @@ public class TransactionManager {
         }
         AbortCompleteCallback cb = new SyncAbortCompleteCallback();
         try {
-            tsoclient.completeAbort(transactionState.getStartTimestamp(), cb);
+            tsoclient.completeAbort(transaction.getStartTimestamp(), cb);
         } catch (IOException ioe) {
             LOG.warn("Coudldn't notify the TSO of rollback completion", ioe);
         }

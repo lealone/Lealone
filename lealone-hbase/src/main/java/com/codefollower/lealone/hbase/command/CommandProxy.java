@@ -49,7 +49,7 @@ import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.omid.client.RowKeyFamily;
-import com.codefollower.lealone.omid.transaction.TransactionState;
+import com.codefollower.lealone.omid.transaction.Transaction;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StringUtils;
@@ -211,8 +211,8 @@ public class CommandProxy extends Command {
             proxyCommand.setFetchSize(super.getFetchSize());
         }
         setProxyCommandParameters();
-        if (originalSession.getTransactionState() != null)
-            proxyCommand.setStartTimestamp(originalSession.getTransactionState().getStartTimestamp());
+        if (originalSession.getTransaction() != null)
+            proxyCommand.setStartTimestamp(originalSession.getTransaction().getStartTimestamp());
         return proxyCommand.executeQuery(maxrows, scrollable);
     }
 
@@ -222,15 +222,15 @@ public class CommandProxy extends Command {
             parseRowKey();
         }
         setProxyCommandParameters();
-        TransactionState ts = originalSession.getTransactionState();
-        if (ts != null)
-            proxyCommand.setStartTimestamp(ts.getStartTimestamp());
+        Transaction transaction = originalSession.getTransaction();
+        if (transaction != null)
+            proxyCommand.setStartTimestamp(transaction.getStartTimestamp());
         int updateCount = proxyCommand.executeUpdate();
-        if (ts != null && originalPrepared instanceof HBasePrepared) {
+        if (transaction != null && originalPrepared instanceof HBasePrepared) {
             HBasePrepared hp = (HBasePrepared) originalPrepared;
             byte[] tableName = hp.getTableNameAsBytes();
             for (byte[] rowKey : proxyCommand.getTransactionalRowKeys()) {
-                ts.addRow(new RowKeyFamily(rowKey, tableName, EMPTY_MAP));
+                transaction.addRow(new RowKeyFamily(rowKey, tableName, EMPTY_MAP));
             }
         }
 

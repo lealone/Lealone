@@ -186,7 +186,7 @@ public class CommandParallel implements CommandInterface {
             for (int i = 0; i < size; i++) {
                 updateCount += futures.get(i).get();
 
-                if (originalSession.getTransactionState() != null)
+                if (originalSession.getTransaction() != null)
                     rowKeys.addAll(Arrays.asList(commands.get(i).getTransactionalRowKeys()));
             }
         } catch (Exception e) {

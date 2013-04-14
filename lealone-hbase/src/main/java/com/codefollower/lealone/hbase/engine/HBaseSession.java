@@ -37,7 +37,7 @@ import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.omid.transaction.TransactionManager;
-import com.codefollower.lealone.omid.transaction.TransactionState;
+import com.codefollower.lealone.omid.transaction.Transaction;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SubqueryResult;
 
@@ -59,7 +59,7 @@ public class HBaseSession extends Session {
     private Properties originalProperties;
 
     private TransactionManager tm;
-    private TransactionState ts;
+    private Transaction transaction;
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
@@ -117,12 +117,12 @@ public class HBaseSession extends Session {
     @Override
     public void setAutoCommit(boolean autoCommit) {
         super.setAutoCommit(autoCommit);
-        if (!autoCommit && ts == null) { //TODO 是否考虑支持嵌套事务
+        if (!autoCommit && transaction == null) { //TODO 是否考虑支持嵌套事务
             try {
                 if (tm == null)
                     tm = new TransactionManager(HBaseUtils.getConfiguration());
 
-                ts = (TransactionState) tm.begin();
+                transaction = tm.begin();
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -138,30 +138,30 @@ public class HBaseSession extends Session {
     @Override
     public void commit(boolean ddl) {
         super.commit(ddl);
-        if (ts != null) {
+        if (transaction != null) {
             try {
-                tm.commit(ts);
+                tm.commit(transaction);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
-            ts = null;
+            transaction = null;
         }
     }
 
     @Override
     public void rollback() {
         super.rollback();
-        if (ts != null) {
+        if (transaction != null) {
             try {
-                tm.rollback(ts);
+                tm.rollback(transaction);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
-            ts = null;
+            transaction = null;
         }
     }
 
-    public TransactionState getTransactionState() {
-        return ts;
+    public Transaction getTransaction() {
+        return transaction;
     }
 }

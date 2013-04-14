@@ -32,42 +32,45 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.codefollower.lealone.omid.client.RowKeyFamily;
 import com.codefollower.lealone.omid.client.SyncAbortCompleteCallback;
 import com.codefollower.lealone.omid.transaction.TransactionManager;
-import com.codefollower.lealone.omid.transaction.TransactionState;
+import com.codefollower.lealone.omid.transaction.Transaction;
 
 public class TransactionManagerTest {
     public static void main(String[] args) throws Exception {
         Configuration conf = HBaseConfiguration.create();
         TransactionManager tm = new TransactionManager(conf);
-        TransactionState ts = (TransactionState) tm.begin();
+        Transaction t = tm.begin();
 
         Put put = new Put(Bytes.toBytes("2002"));
         put.add(Bytes.toBytes("f"), Bytes.toBytes("c"), Bytes.toBytes("2002"));
-        put(ts, put);
+        put(t, put);
 
         //tm.tryCommit(ts);
         //System.out.println(ts.tsoclient.validRead(ts.getCommitTimestamp(), ts.getStartTimestamp()));
         //System.out.println(ts.tsoclient.validRead(8, ts.getStartTimestamp()));
 
-        ts.tsoclient.abort(ts.getStartTimestamp());
-        System.out.println(ts.tsoclient.validRead(ts.getStartTimestamp() - 1, ts.getStartTimestamp()));
+        t.tsoclient.abort(t.getStartTimestamp());
+        System.out.println(t.tsoclient.validRead(t.getStartTimestamp() - 1, t.getStartTimestamp()));
 
         SyncAbortCompleteCallback c = new SyncAbortCompleteCallback();
-        ts.tsoclient.completeAbort(ts.getStartTimestamp(), c);
+        t.tsoclient.completeAbort(t.getStartTimestamp(), c);
         c.await();
 
-        for (int i = 0; i < 60; i++) {
-            ts = (TransactionState) tm.begin();
-            put = new Put(Bytes.toBytes("2003"));
+        for (int i = 0; i < 1000; i++) {
+            //t = tm.begin();
+            //put = new Put(Bytes.toBytes("2003"));
+            put = new Put(Bytes.toBytes("" + (2003 + i)));
             put.add(Bytes.toBytes("f"), Bytes.toBytes("c"), Bytes.toBytes("2003"));
-            put(ts, put);
-            tm.commit(ts);
+            put(t, put);
+            //tm.commit(t);
         }
+
+        tm.commit(t);
 
         //TransactionManager.close();
     }
 
-    public static void put(TransactionState transactionState, Put put) throws IOException, IllegalArgumentException {
-        final long startTimestamp = transactionState.getStartTimestamp();
+    public static void put(Transaction t, Put put) throws IOException, IllegalArgumentException {
+        final long startTimestamp = t.getStartTimestamp();
         // create put with correct ts
         final Put tsput = new Put(put.getRow(), startTimestamp); //把事务的开始时间戳放到Put里
         Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
@@ -78,6 +81,6 @@ public class TransactionManagerTest {
         }
 
         // should add the table as well
-        transactionState.addRow(new RowKeyFamily(tsput.getRow(), Bytes.toBytes("mytable"), tsput.getFamilyMap()));
+        t.addRow(new RowKeyFamily(tsput.getRow(), Bytes.toBytes("mytable"), tsput.getFamilyMap()));
     }
 }
