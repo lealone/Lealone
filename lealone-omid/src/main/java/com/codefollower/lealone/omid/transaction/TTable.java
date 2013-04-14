@@ -85,26 +85,26 @@ public class TTable {
     public Result get(Transaction transaction, final Get get) throws IOException {
         final int requestedVersions = (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD);
         final long readTimestamp = transaction.getStartTimestamp();
-        final Get tsget = new Get(get.getRow());
+        final Get tget = new Get(get.getRow());
         TimeRange timeRange = get.getTimeRange();
         long startTime = timeRange.getMin();
         long endTime = Math.min(timeRange.getMax(), readTimestamp + 1);
-        tsget.setTimeRange(startTime, endTime).setMaxVersions(requestedVersions);
+        tget.setTimeRange(startTime, endTime).setMaxVersions(requestedVersions);
         Map<byte[], NavigableSet<byte[]>> kvs = get.getFamilyMap();
         for (Map.Entry<byte[], NavigableSet<byte[]>> entry : kvs.entrySet()) {
             byte[] family = entry.getKey();
             NavigableSet<byte[]> qualifiers = entry.getValue();
             if (qualifiers == null || qualifiers.isEmpty()) {
-                tsget.addFamily(family);
+                tget.addFamily(family);
             } else {
                 for (byte[] qualifier : qualifiers) {
-                    tsget.addColumn(family, qualifier);
+                    tget.addColumn(family, qualifier);
                 }
             }
         }
         // Return the KVs that belong to the transaction snapshot, ask for more
         // versions if needed
-        return new Result(filter(transaction, table.get(tsget).list(), requestedVersions));
+        return new Result(filter(transaction, table.get(tget).list(), requestedVersions));
     }
 
     /**
@@ -178,18 +178,18 @@ public class TTable {
     public void put(Transaction transaction, Put put) throws IOException, IllegalArgumentException {
         final long startTimestamp = transaction.getStartTimestamp();
         // create put with correct ts
-        final Put tsput = new Put(put.getRow(), startTimestamp);
+        final Put tput = new Put(put.getRow(), startTimestamp);
         Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
         for (List<KeyValue> kvl : kvs.values()) {
             for (KeyValue kv : kvl) {
-                tsput.add(new KeyValue(kv.getRow(), kv.getFamily(), kv.getQualifier(), startTimestamp, kv.getValue()));
+                tput.add(new KeyValue(kv.getRow(), kv.getFamily(), kv.getQualifier(), startTimestamp, kv.getValue()));
             }
         }
 
         // should add the table as well
-        transaction.addRow(new RowKeyFamily(tsput.getRow(), getTableName(), tsput.getFamilyMap()));
+        transaction.addRow(new RowKeyFamily(tput.getRow(), getTableName(), tput.getFamilyMap()));
 
-        table.put(tsput);
+        table.put(tput);
     }
 
     /**
@@ -204,10 +204,10 @@ public class TTable {
      *             if a remote or network exception occurs.
      */
     public ResultScanner getScanner(Transaction transaction, Scan scan) throws IOException {
-        Scan tsscan = new Scan(scan);
-        tsscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
-        tsscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
-        TransactionalClientScanner scanner = new TransactionalClientScanner(transaction, getConfiguration(), tsscan,
+        Scan tscan = new Scan(scan);
+        tscan.setMaxVersions((int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
+        tscan.setTimeRange(0, transaction.getStartTimestamp() + 1);
+        TransactionalClientScanner scanner = new TransactionalClientScanner(transaction, getConfiguration(), tscan,
                 getTableName(), (int) (versionsAvg + CACHE_VERSIONS_OVERHEAD));
         return scanner;
     }
@@ -228,10 +228,11 @@ public class TTable {
      * @throws IOException
      */
     private List<KeyValue> filter(Transaction transaction, List<KeyValue> kvs, int localVersions) throws IOException {
-        final int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
         if (kvs == null) {
             return Collections.emptyList();
         }
+
+        final int requestVersions = localVersions * 2 + CACHE_VERSIONS_OVERHEAD;
 
         long startTimestamp = transaction.getStartTimestamp();
         // Filtered kvs
