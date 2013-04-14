@@ -45,7 +45,7 @@ import com.codefollower.lealone.omid.client.TSOClient;
  */
 public class TransactionManager {
     private static final Log LOG = LogFactory.getLog(TransactionManager.class);
-    private static TSOClient tsoclient = null;
+    static TSOClient tsoclient = null;
 
     private final Configuration conf;
     private final HashMap<byte[], HTable> tableCache = new HashMap<byte[], HTable>();
@@ -83,7 +83,7 @@ public class TransactionManager {
             throw new TransactionException("Error retrieving timestamp", cb.getException());
         }
 
-        return new Transaction(cb.getStartTimestamp(), tsoclient);
+        return new Transaction(cb.getStartTimestamp());
     }
 
     /**

@@ -48,11 +48,11 @@ public class TransactionManagerTest {
         //System.out.println(ts.tsoclient.validRead(ts.getCommitTimestamp(), ts.getStartTimestamp()));
         //System.out.println(ts.tsoclient.validRead(8, ts.getStartTimestamp()));
 
-        t.tsoclient.abort(t.getStartTimestamp());
-        System.out.println(t.tsoclient.validRead(t.getStartTimestamp() - 1, t.getStartTimestamp()));
+        TransactionManager.tsoclient.abort(t.getStartTimestamp());
+        System.out.println(TransactionManager.tsoclient.validRead(t.getStartTimestamp() - 1, t.getStartTimestamp()));
 
         SyncAbortCompleteCallback c = new SyncAbortCompleteCallback();
-        t.tsoclient.completeAbort(t.getStartTimestamp(), c);
+        TransactionManager.tsoclient.completeAbort(t.getStartTimestamp(), c);
         c.await();
 
         for (int i = 0; i < 1000; i++) {

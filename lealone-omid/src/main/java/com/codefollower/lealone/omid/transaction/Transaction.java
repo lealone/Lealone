@@ -20,7 +20,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.codefollower.lealone.omid.client.RowKeyFamily;
-import com.codefollower.lealone.omid.client.TSOClient;
 
 /**
  * 
@@ -29,18 +28,15 @@ import com.codefollower.lealone.omid.client.TSOClient;
  * 
  */
 public class Transaction {
-
-    final TSOClient tsoclient;
     private final Set<RowKeyFamily> rows;
     private final long startTimestamp;
     private long commitTimestamp;
     private boolean rollbackOnly;
 
-    Transaction(long startTimestamp, TSOClient client) {
+    Transaction(long startTimestamp) {
         this.rows = new HashSet<RowKeyFamily>();
         this.startTimestamp = startTimestamp;
         this.commitTimestamp = 0;
-        this.tsoclient = client;
     }
 
     public long getStartTimestamp() {

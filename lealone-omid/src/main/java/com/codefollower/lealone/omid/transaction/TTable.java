@@ -273,7 +273,7 @@ public class TTable {
                 continue;
             }
             versionsProcessed++;
-            if (transaction.tsoclient.validRead(kv.getTimestamp(), startTimestamp)) {
+            if (TransactionManager.tsoclient.validRead(kv.getTimestamp(), startTimestamp)) {
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {
                     filtered.add(kv);
