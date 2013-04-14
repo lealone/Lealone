@@ -180,12 +180,12 @@ public class TSOClient extends SimpleChannelHandler {
 
     private class CommitQueryOp implements Op {
         long startTimestamp;
-        long pendingWriteTimestamp;
+        long queryTimestamp;
         CommitQueryCallback cb;
 
-        CommitQueryOp(long startTimestamp, long pendingWriteTimestamp, CommitQueryCallback cb) {
+        CommitQueryOp(long startTimestamp, long queryTimestamp, CommitQueryCallback cb) {
             this.startTimestamp = startTimestamp;
-            this.pendingWriteTimestamp = pendingWriteTimestamp;
+            this.queryTimestamp = queryTimestamp;
             this.cb = cb;
         }
 
@@ -200,7 +200,7 @@ public class TSOClient extends SimpleChannelHandler {
                     isCommittedCallbacks.put(startTimestamp, callbacks);
                 }
 
-                CommitQueryRequest qr = new CommitQueryRequest(startTimestamp, pendingWriteTimestamp);
+                CommitQueryRequest qr = new CommitQueryRequest(startTimestamp, queryTimestamp);
                 ChannelFuture f = channel.write(qr);
                 f.addListener(new ChannelFutureListener() {
                     public void operationComplete(ChannelFuture future) {
@@ -392,8 +392,8 @@ public class TSOClient extends SimpleChannelHandler {
         withConnection(new NewTimestampOp(cb));
     }
 
-    public void isCommitted(long startTimestamp, long pendingWriteTimestamp, CommitQueryCallback cb) throws IOException {
-        withConnection(new CommitQueryOp(startTimestamp, pendingWriteTimestamp, cb));
+    public void isCommitted(long startTimestamp, long queryTimestamp, CommitQueryCallback cb) throws IOException {
+        withConnection(new CommitQueryOp(startTimestamp, queryTimestamp, cb));
     }
 
     public void abort(long transactionId) throws IOException {
@@ -467,21 +467,21 @@ public class TSOClient extends SimpleChannelHandler {
         }
     }
 
-    public boolean validRead(long transaction, long startTimestamp) throws IOException {
-        if (transaction == startTimestamp)
+    public boolean validRead(long queryTimestamp, long startTimestamp) throws IOException {
+        if (queryTimestamp == startTimestamp)
             return true;
-        if (aborted.contains(transaction))
+        if (aborted.contains(queryTimestamp))
             return false;
-        long commitTimestamp = committed.getCommit(transaction);
+        long commitTimestamp = committed.getCommit(queryTimestamp);
         if (commitTimestamp != -1)
             return commitTimestamp <= startTimestamp;
-        if (hasConnectionTimestamp && transaction > connectionTimestamp)
-            return transaction <= largestDeletedTimestamp;
-        if (transaction <= largestDeletedTimestamp)
+        if (hasConnectionTimestamp && queryTimestamp > connectionTimestamp)
+            return queryTimestamp <= largestDeletedTimestamp;
+        if (queryTimestamp <= largestDeletedTimestamp)
             return true;
 
         SyncCommitQueryCallback cb = new SyncCommitQueryCallback();
-        isCommitted(startTimestamp, transaction, cb);
+        isCommitted(startTimestamp, queryTimestamp, cb);
         try {
             cb.await();
         } catch (InterruptedException e) {
