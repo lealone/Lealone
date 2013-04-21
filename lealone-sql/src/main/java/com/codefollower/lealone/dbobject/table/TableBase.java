@@ -56,7 +56,7 @@ public abstract class TableBase extends Table {
     private volatile Session lockExclusive;
     private HashSet<Session> lockShared;
     private Trace traceLock;
-    private long lastModificationId;
+    protected long lastModificationId;
     private int changesSinceAnalyze;
     private int nextAnalyze;
     private Column rowIdColumn;

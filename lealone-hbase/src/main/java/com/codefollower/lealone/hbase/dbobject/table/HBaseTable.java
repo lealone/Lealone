@@ -222,9 +222,30 @@ public class HBaseTable extends TableBase {
 
     @Override
     public void addRow(Session session, Row row) {
-        for (int i = 0, size = indexes.size(); i < size; i++) {
-            Index index = indexes.get(i);
-            index.add(session, row);
+        lastModificationId = database.getNextModificationDataId();
+
+        int i = 0;
+        try {
+            for (int size = indexes.size(); i < size; i++) {
+                Index index = indexes.get(i);
+                index.add(session, row);
+            }
+            rowCount++;
+        } catch (Throwable e) {
+            try {
+                while (--i >= 0) {
+                    Index index = indexes.get(i);
+                    index.remove(session, row);
+                }
+            } catch (DbException e2) {
+                // this could happen, for example on failure in the storage
+                // but if that is not the case it means there is something wrong
+                // with the database
+                trace.error(e2, "could not undo operation");
+                throw e2;
+            }
+            DbException de = DbException.convert(e);
+            throw de;
         }
     }
 
@@ -256,9 +277,28 @@ public class HBaseTable extends TableBase {
 
     @Override
     public void removeRow(Session session, Row row) {
-        for (int i = indexes.size() - 1; i >= 0; i--) {
-            Index index = indexes.get(i);
-            index.remove(session, row);
+        lastModificationId = database.getNextModificationDataId();
+        int i = indexes.size() - 1;
+        try {
+            for (; i >= 0; i--) {
+                Index index = indexes.get(i);
+                index.remove(session, row);
+            }
+            rowCount--;
+        } catch (Throwable e) {
+            try {
+                while (++i < indexes.size()) {
+                    Index index = indexes.get(i);
+                    index.add(session, row);
+                }
+            } catch (DbException e2) {
+                // this could happen, for example on failure in the storage
+                // but if that is not the case it means there is something wrong
+                // with the database
+                trace.error(e2, "could not undo operation");
+                throw e2;
+            }
+            throw DbException.convert(e);
         }
     }
 

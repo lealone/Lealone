@@ -26,14 +26,7 @@ import com.codefollower.lealone.test.jdbc.TestBase;
 public class IndexTest extends TestBase {
     @Test
     public void run() throws Exception {
-        //stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
-        //stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int)");
-
-        //stmt.executeUpdate("CREATE PRIMARY KEY HASH ON IndexTest(f1)");
-        //stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON IndexTest(f1)");
-
-        //stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON IndexTest(f2)");
-
+        //init();
         //insert();
         select();
 
@@ -45,6 +38,14 @@ public class IndexTest extends TestBase {
         //stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO schema0.idx1");
 
         //stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO idx1");
+
+    }
+
+    void init() throws Exception {
+        //stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int)");
+        stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON IndexTest(f1)");
+        stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON IndexTest(f2)");
 
     }
 

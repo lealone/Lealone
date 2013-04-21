@@ -119,10 +119,7 @@ public class HBaseSession extends Session {
         super.setAutoCommit(autoCommit);
         if (!autoCommit && transaction == null) { //TODO 是否考虑支持嵌套事务
             try {
-                if (tm == null)
-                    tm = new TransactionManager(HBaseUtils.getConfiguration());
-
-                transaction = tm.begin();
+                transaction = getTransactionManager().begin();
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -163,5 +160,15 @@ public class HBaseSession extends Session {
 
     public Transaction getTransaction() {
         return transaction;
+    }
+
+    public TransactionManager getTransactionManager() {
+        try {
+            if (tm == null)
+                tm = new TransactionManager(HBaseUtils.getConfiguration());
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+        return tm;
     }
 }
