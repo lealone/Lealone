@@ -18,7 +18,7 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 ## 有哪些应用场景?
 
 * 使用Lealone的分布式SQL引擎，可使用类似MySQL的SQL语法和标准JDBC API读写HBase中的数据，
-  支持各种DDL，支持触发器、自定义函数、视图、Join、子查询、Order By、Group By、聚合。
+  支持分布式事务、索引、各种DDL，支持触发器、自定义函数、视图、Join、子查询、Order By、Group By、聚合。
 
 * 对于Client/Server架构的传统单机RDBMS的场景，也可使用Lealone。
 
@@ -64,11 +64,7 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 ## Roadmap
 
-* 实现分布式事务
-
-* 实现全局分布式索引
-
-* Join、子查询性能优化
+* Join、子查询、索引性能优化
 
 * OLAP存储引擎
 
