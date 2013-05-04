@@ -27,7 +27,6 @@ import com.codefollower.lealone.tools.CompressTool;
 import com.codefollower.lealone.util.IOUtils;
 import com.codefollower.lealone.util.MathUtils;
 import com.codefollower.lealone.util.New;
-import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.util.Utils;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueLob;
@@ -200,7 +199,7 @@ public class LobStorage {
         if (SysProperties.LOB_IN_DATABASE) {
             int precision;
             if (type == Value.CLOB) {
-                precision = StringUtils.utf8Decode(small).length();
+                precision = new String(small, Constants.UTF8).length();
             } else {
                 precision = small.length;
             }
@@ -835,7 +834,7 @@ public class LobStorage {
             if (len < 0) {
                 buffer = null;
             } else {
-                buffer = StringUtils.utf8Encode(new String(charBuffer, 0, len));
+                buffer = new String(charBuffer, 0, len).getBytes(Constants.UTF8);
                 length += len;
                 remaining -= len;
             }

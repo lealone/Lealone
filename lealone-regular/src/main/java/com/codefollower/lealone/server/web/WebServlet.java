@@ -18,8 +18,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.util.New;
-import com.codefollower.lealone.util.StringUtils;
 
 /**
  * This servlet lets the H2 Console be used in a standard servlet container
@@ -129,12 +129,12 @@ public class WebServlet extends HttpServlet {
         byte[] bytes = server.getFile(file);
         if (bytes == null) {
             resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-            bytes = StringUtils.utf8Encode("File not found: " + file);
+            bytes = ("File not found: " + file).getBytes(Constants.UTF8);
         } else {
             if (session != null && file.endsWith(".jsp")) {
-                String page = StringUtils.utf8Decode(bytes);
+                String page = new String(bytes, Constants.UTF8);
                 page = PageParser.parse(page, session.map);
-                bytes = StringUtils.utf8Encode(page);
+                bytes = page.getBytes(Constants.UTF8);
             }
             resp.setContentType(mimeType);
             if (!cache) {

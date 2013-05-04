@@ -105,7 +105,6 @@ public class JdbcConnection extends TraceObject implements Connection {
                     ci.setBaseDir(baseDir);
                 }
             }
-            checkJavaVersion();
             // this will return an embedded or server connection
             session = new SessionRemote(ci).connectEmbeddedOrServer(false);
             trace = session.getTrace();
@@ -1095,16 +1094,6 @@ public class JdbcConnection extends TraceObject implements Connection {
     }
 
     // =============================================================
-
-    private static void checkJavaVersion() {
-        try {
-            // check for existence of this class (avoiding Class . forName)
-            Class<?> clazz = java.sql.Savepoint.class;
-            clazz.getClass();
-        } catch (NoClassDefFoundError e) {
-            throw DbException.get(ErrorCode.UNSUPPORTED_JAVA_VERSION);
-        }
-    }
 
     /**
      * Prepare an command. This will parse the SQL statement.

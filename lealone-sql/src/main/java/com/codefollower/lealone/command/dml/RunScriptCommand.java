@@ -9,6 +9,7 @@ package com.codefollower.lealone.command.dml;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.Prepared;
@@ -31,7 +32,7 @@ public class RunScriptCommand extends ScriptBase {
      */
     private static final char UTF8_BOM = '\uFEFF';
 
-    private String charset = Constants.UTF8;
+    private Charset charset = Constants.UTF8;
 
     public RunScriptCommand(Session session) {
         super(session);
@@ -85,7 +86,7 @@ public class RunScriptCommand extends ScriptBase {
         }
     }
 
-    public void setCharset(String charset) {
+    public void setCharset(Charset charset) {
         this.charset = charset;
     }
 

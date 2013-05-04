@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import com.codefollower.lealone.compress.CompressLZF;
 import com.codefollower.lealone.compress.Compressor;
+import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.mvstore.cache.CacheLongKeyLIRS;
 import com.codefollower.lealone.mvstore.cache.FilePathCache;
 import com.codefollower.lealone.mvstore.type.StringDataType;
@@ -601,8 +602,7 @@ public class MVStore {
         fileReadCount++;
         DataUtils.readFully(file, 0, buff);
         for (int i = 0; i < 3 * BLOCK_SIZE; i += BLOCK_SIZE) {
-            String s = DataUtils.utf8Decode(buff.array(), i, BLOCK_SIZE)
-                    .trim();
+            String s = new String(buff.array(), i, BLOCK_SIZE, Constants.UTF8).trim();
             HashMap<String, String> m = DataUtils.parseMap(s);
             String f = m.remove("fletcher");
             if (f == null) {
@@ -614,8 +614,8 @@ public class MVStore {
             } catch (NumberFormatException e) {
                 check = -1;
             }
-            s = s.substring(0, s.lastIndexOf("fletcher") - 1) + " ";
-            byte[] bytes = DataUtils.utf8Encode(s);
+            s = s.substring(0, s.lastIndexOf("fletcher") - 1);
+            byte[] bytes = s.getBytes(Constants.UTF8);
             int checksum = DataUtils.getFletcher32(bytes, bytes.length / 2 * 2);
             if (check != checksum) {
                 continue;
@@ -641,10 +641,10 @@ public class MVStore {
         fileHeader.put("rootChunk", "" + rootChunkStart);
         fileHeader.put("version", "" + currentVersion);
         DataUtils.appendMap(buff, fileHeader);
-        byte[] bytes = DataUtils.utf8Encode(buff.toString() + " ");
+        byte[] bytes = buff.toString().getBytes(Constants.UTF8);
         int checksum = DataUtils.getFletcher32(bytes, bytes.length / 2 * 2);
         DataUtils.appendMap(buff, "fletcher", Integer.toHexString(checksum));
-        bytes = DataUtils.utf8Encode(buff.toString());
+        bytes = buff.toString().getBytes(Constants.UTF8);
         DataUtils.checkArgument(bytes.length <= BLOCK_SIZE,
                 "File header too large: {0}", buff);
         return bytes;
@@ -1095,9 +1095,11 @@ public class MVStore {
             return true;
         }
         for (MVMap<?, ?> m : maps.values()) {
-            long v = m.getVersion();
-            if (v >= 0 && v >= lastStoredVersion) {
-                return true;
+            if (!m.isClosed()) {
+                long v = m.getVersion();
+                if (v >= 0 && v >= lastStoredVersion) {
+                    return true;
+                }
             }
         }
         return false;
@@ -1280,7 +1282,9 @@ public class MVStore {
         // we need to keep temporary pages,
         // to support reading old versions and rollback
         if (pos == 0) {
-            unsavedPageCount--;
+            // the value could be smaller than 0 because
+            // in some cases a page is allocated without a store 
+            unsavedPageCount = Math.max(0, unsavedPageCount - 1);
             return;
         }
         // this could result in a cache miss
@@ -1737,9 +1741,13 @@ public class MVStore {
         }
         store(true);
     }
-    
+
     public boolean isReadOnly() {
         return readOnly;
+    }
+
+    public boolean isClosed() {
+        return closed;
     }
 
     /**

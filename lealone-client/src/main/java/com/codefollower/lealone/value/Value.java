@@ -9,6 +9,7 @@ package com.codefollower.lealone.value;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.StringReader;
 import java.lang.ref.SoftReference;
 import java.math.BigDecimal;
 import java.sql.Date;
@@ -19,6 +20,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 
+import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.message.DbException;
@@ -26,7 +28,6 @@ import com.codefollower.lealone.store.DataHandler;
 import com.codefollower.lealone.store.LobStorage;
 import com.codefollower.lealone.tools.SimpleResultSet;
 import com.codefollower.lealone.util.DateTimeUtils;
-import com.codefollower.lealone.util.IOUtils;
 import com.codefollower.lealone.util.MathUtils;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.util.Utils;
@@ -427,7 +428,7 @@ public abstract class Value {
     }
 
     public Reader getReader() {
-        return IOUtils.getReaderFromString(getString());
+        return new StringReader(getString());
     }
 
     /**
@@ -619,7 +620,6 @@ public abstract class Value {
                 break;
             }
             case DECIMAL: {
-                // convert to string is required for JDK 1.4
                 switch (getType()) {
                 case BOOLEAN:
                     return ValueDecimal.get(BigDecimal.valueOf(getBoolean().booleanValue() ? 1 : 0));
@@ -643,6 +643,7 @@ public abstract class Value {
                     if (Float.isInfinite(f) || Float.isNaN(f)) {
                         throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, "" + f);
                     }
+                    // better rounding behavior than BigDecimal.valueOf(f)
                     return ValueDecimal.get(new BigDecimal(Float.toString(f)));
                 }
                 }
@@ -833,7 +834,7 @@ public abstract class Value {
             case FLOAT:
                 return ValueFloat.get(Float.parseFloat(s.trim()));
             case CLOB:
-                return LobStorage.createSmallLob(CLOB, StringUtils.utf8Encode(s));
+                return LobStorage.createSmallLob(CLOB, s.getBytes(Constants.UTF8));
             case BLOB:
                 return LobStorage.createSmallLob(BLOB, StringUtils.convertHexToBytes(s.trim()));
             case ARRAY:

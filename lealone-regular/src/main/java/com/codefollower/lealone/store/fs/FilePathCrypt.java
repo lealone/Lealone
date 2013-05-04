@@ -15,6 +15,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.util.Arrays;
 
+import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.security.AES;
 import com.codefollower.lealone.security.BlockCipher;
 import com.codefollower.lealone.security.SHA256;
@@ -44,7 +45,7 @@ public class FilePathCrypt extends FilePathWrapper {
     public FileChannel open(String mode) throws IOException {
         String[] parsed = parse(name);
         FileChannel file = FileUtils.open(parsed[1], mode);
-        byte[] passwordBytes = DataUtils.utf8Encode(parsed[0]);
+        byte[] passwordBytes = parsed[0].getBytes(Constants.UTF8);
         return new FileCrypt(name, passwordBytes, file);
     }
 

@@ -1419,7 +1419,7 @@ public class Select extends Query {
         return false;
     }
 
-    public SortOrder prepareOrder() {
+    public SortOrder getSortOrder() {
         return sort;
     }
 }

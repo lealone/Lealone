@@ -172,6 +172,16 @@ public class ConditionAndOr extends Condition {
                 if (added != null) {
                     return added.optimize(session);
                 }
+            } else if (left instanceof ConditionInConstantSet && right instanceof Comparison) {
+                Expression added = ((ConditionInConstantSet) left).getAdditional(session, (Comparison) right);
+                if (added != null) {
+                    return added.optimize(session);
+                }
+            } else if (right instanceof ConditionInConstantSet && left instanceof Comparison) {
+                Expression added = ((ConditionInConstantSet) right).getAdditional(session, (Comparison) left);
+                if (added != null) {
+                    return added.optimize(session);
+                }
             }
         }
         // TODO optimization: convert .. OR .. to UNION if the cost is lower

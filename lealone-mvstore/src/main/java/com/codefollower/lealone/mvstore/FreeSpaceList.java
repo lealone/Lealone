@@ -16,11 +16,11 @@ import com.codefollower.lealone.util.DataUtils;
  */
 public class FreeSpaceList {
 
-    /** 
-     * The first 2 pages are occupied by the file header. 
+    /**
+     * The first 2 pages are occupied by the file header.
      */
     private static final int FIRST_FREE_PAGE = 2;
-    
+
     /**
      * The maximum number of pages. Smaller than than MAX_VALUE to avoid
      * overflow errors during arithmetic operations.
@@ -32,7 +32,7 @@ public class FreeSpaceList {
     public FreeSpaceList() {
         clear();
     }
-    
+
     /**
      * Reset the list.
      */
@@ -43,7 +43,7 @@ public class FreeSpaceList {
 
     /**
      * Allocate a number of pages.
-     * 
+     *
      * @param length the number of bytes to allocate
      * @return the position in pages
      */
@@ -60,7 +60,7 @@ public class FreeSpaceList {
 
     /**
      * Mark a chunk as used.
-     * 
+     *
      * @param c the chunk
      */
     public synchronized void markUsed(Chunk c) {
@@ -112,7 +112,7 @@ public class FreeSpaceList {
 
     /**
      * Mark the chunk as free.
-     * 
+     *
      * @param c the chunk
      */
     public synchronized void markFree(Chunk c) {
@@ -180,18 +180,18 @@ public class FreeSpaceList {
         }
         return buff.toString();
     }
-    
+
     /**
      * A range of free pages.
      */
     private static final class PageRange {
-        
-        /** 
+
+        /**
          * The starting point, in pages.
          */
         public int start;
-        
-        /** 
+
+        /**
          * The length, in pages.
          */
         public int length;

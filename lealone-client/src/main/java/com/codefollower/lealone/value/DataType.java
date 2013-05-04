@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
 
+import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.engine.SessionInterface;
@@ -33,7 +34,6 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.store.LobStorage;
 import com.codefollower.lealone.tools.SimpleResultSet;
 import com.codefollower.lealone.util.New;
-import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.util.Utils;
 
 /**
@@ -48,30 +48,6 @@ public class DataType {
      * ResultSet (OracleTypes.CURSOR = -10).
      */
     public static final int TYPE_RESULT_SET = -10;
-
-    /**
-     * This constant is used for JDK 1.5 compatibility
-     * and equal to java.sql.Types.LONGNVARCHAR
-     */
-    public static final int TYPE_LONGNVARCHAR = -16;
-
-    /**
-     * This constant is used for JDK 1.5 compatibility
-     * and equal to java.sql.Types.NCHAR
-     */
-    public static final int TYPE_NCHAR = -15;
-
-    /**
-     * This constant is used for JDK 1.5 compatibility
-     * and equal to java.sql.Types.NVARCHAR
-     */
-    public static final int TYPE_NVARCHAR = -9;
-
-    /**
-     * This constant is used for JDK 1.5 compatibility
-     * and equal to java.sql.Types.NCLOB
-     */
-    public static final int TYPE_NCLOB = 2011;
 
     /**
      * The list of types. An ArrayList so that Tomcat doesn't set it to null
@@ -564,7 +540,7 @@ public class DataType {
             }
             case Value.CLOB: {
                 if (session == null) {
-                    v = LobStorage.createSmallLob(Value.CLOB, StringUtils.utf8Encode(rs.getString(columnIndex)));
+                    v = LobStorage.createSmallLob(Value.CLOB, rs.getString(columnIndex).getBytes(Constants.UTF8));
                 } else {
                     Reader in = rs.getCharacterStream(columnIndex);
                     if (in == null) {
@@ -736,12 +712,12 @@ public class DataType {
     public static int convertSQLTypeToValueType(int sqlType) {
         switch(sqlType) {
         case Types.CHAR:
-        case TYPE_NCHAR:
+        case Types.NCHAR:
             return Value.STRING_FIXED;
         case Types.VARCHAR:
         case Types.LONGVARCHAR:
-        case TYPE_NVARCHAR:
-        case TYPE_LONGNVARCHAR:
+        case Types.NVARCHAR:
+        case Types.LONGNVARCHAR:
             return Value.STRING;
         case Types.NUMERIC:
         case Types.DECIMAL:
@@ -778,7 +754,7 @@ public class DataType {
         case Types.BLOB:
             return Value.BLOB;
         case Types.CLOB:
-        case TYPE_NCLOB:
+        case Types.NCLOB:
             return Value.CLOB;
         case Types.NULL:
             return Value.NULL;

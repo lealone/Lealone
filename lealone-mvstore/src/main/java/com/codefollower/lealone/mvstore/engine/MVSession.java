@@ -31,7 +31,6 @@ public class MVSession extends Session {
 
     private Transaction transaction;
     private long startStatement = -1;
-    private long statementVersion;
 
     public MVSession(Database database, User user, int id) {
         super(database, user, id);
@@ -78,16 +77,15 @@ public class MVSession extends Session {
     public Transaction getTransaction(TransactionStore store) {
         if (transaction == null) {
             transaction = store.begin();
-            statementVersion = -1;
+            startStatement = -1;
         }
         return transaction;
     }
 
-    public long getStatementVersion() {
+    public long getStatementSavepoint() {
         if (startStatement == -1) {
             startStatement = transaction.setSavepoint();
-            statementVersion = transaction.getCurrentVersion();
         }
-        return statementVersion;
+        return startStatement;
     }
 }

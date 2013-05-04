@@ -77,6 +77,11 @@ public class DataUtils {
     private static final byte[] EMPTY_BYTES = {};
 
     /**
+     * The maximum byte to grow a buffer at a time.
+     */
+    private static final int MAX_GROW = 16 * 1024 * 1024;
+
+    /**
      * Get the length of the variable size int.
      *
      * @param x the value
@@ -646,55 +651,6 @@ public class DataUtils {
     }
 
     /**
-     * Convert the text to UTF-8 format. For the Unicode characters
-     * 0xd800-0xdfff only one byte is returned.
-     *
-     * @param s the text
-     * @return the UTF-8 representation
-     */
-    public static byte[] utf8Encode(String s) {
-        try {
-            return s.getBytes(Constants.UTF8);
-        } catch (Exception e) {
-            // UnsupportedEncodingException
-            throw newIllegalArgumentException("UTF-8 not supported", e);
-        }
-    }
-
-    /**
-     * Convert a UTF-8 representation of a text to the text.
-     *
-     * @param utf8 the UTF-8 representation
-     * @return the text
-     */
-    public static String utf8Decode(byte[] utf8) {
-        try {
-            return new String(utf8, Constants.UTF8);
-        } catch (Exception e) {
-            // UnsupportedEncodingException
-            throw newIllegalArgumentException("UTF-8 not supported", e);
-        }
-    }
-
-    /**
-     * Convert a UTF-8 representation of a text to the text using the given
-     * offset and length.
-     *
-     * @param bytes the UTF-8 representation
-     * @param offset the offset in the bytes array
-     * @param length the number of bytes
-     * @return the text
-     */
-    public static String utf8Decode(byte[] bytes, int offset, int length) {
-        try {
-            return new String(bytes, offset, length, Constants.UTF8);
-        } catch (Exception e) {
-            // UnsupportedEncodingException
-            throw newIllegalArgumentException("UTF-8 not supported", e);
-        }
-    }
-
-    /**
      * Create an array of bytes with the given size. If this is not possible
      * because not enough memory is available, an OutOfMemoryError with the
      * requested size in the message is thrown.
@@ -739,8 +695,7 @@ public class DataUtils {
     private static ByteBuffer grow(ByteBuffer buff, int len) {
         len = buff.remaining() + len;
         int capacity = buff.capacity();
-        // grow at most 1 MB at a time
-        len = Math.max(len, Math.min(capacity + 1024 * 1024, capacity * 2));
+        len = Math.max(len, Math.min(capacity + MAX_GROW, capacity * 2));
         ByteBuffer temp = ByteBuffer.allocate(len);
         buff.flip();
         temp.put(buff);

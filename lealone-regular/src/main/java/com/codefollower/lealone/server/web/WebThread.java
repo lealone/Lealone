@@ -149,10 +149,10 @@ class WebThread extends WebApp implements Runnable {
                 bytes = server.getFile(file);
                 if (bytes == null) {
                     message = "HTTP/1.0 404 Not Found\r\n";
-                    bytes = StringUtils.utf8Encode("File not found: " + file);
+                    bytes = ("File not found: " + file).getBytes(Constants.UTF8);
                 } else {
                     if (session != null && file.endsWith(".jsp")) {
-                        String page = StringUtils.utf8Decode(bytes);
+                        String page = new String(bytes, Constants.UTF8);
                         if (SysProperties.CONSOLE_STREAM) {
                             Iterator<String> it = (Iterator<String>) session.map.remove("chunks");
                             if (it != null) {
@@ -166,7 +166,7 @@ class WebThread extends WebApp implements Runnable {
                                 while (it.hasNext()) {
                                     String s = it.next();
                                     s = PageParser.parse(s, session.map);
-                                    bytes = StringUtils.utf8Encode(s);
+                                    bytes = s.getBytes(Constants.UTF8);
                                     if (bytes.length == 0) {
                                         continue;
                                     }
@@ -182,7 +182,7 @@ class WebThread extends WebApp implements Runnable {
                             }
                         }
                         page = PageParser.parse(page, session.map);
-                        bytes = StringUtils.utf8Encode(page);
+                        bytes = page.getBytes(Constants.UTF8);
                     }
                     message = "HTTP/1.1 200 OK\r\n";
                     message += "Content-Type: " + mimeType + "\r\n";

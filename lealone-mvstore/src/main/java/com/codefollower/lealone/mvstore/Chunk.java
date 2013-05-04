@@ -47,7 +47,7 @@ public class Chunk {
      * The total number of pages in this chunk.
      */
     int pageCount;
-    
+
     /**
      * The number of pages still alive.
      */

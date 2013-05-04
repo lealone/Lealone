@@ -39,7 +39,7 @@ public class MVPrimaryIndex extends BaseIndex {
 
     private final MVTable mvTable;
     private String mapName;
-    private MVMap.Builder<Value, Value> mapBuilder;
+    private TransactionMap<Value, Value> dataMap;
     private long lastKey;
     private int mainIndexColumn = -1;
 
@@ -56,12 +56,11 @@ public class MVPrimaryIndex extends BaseIndex {
         ValueDataType valueType = new ValueDataType(
                 db.getCompareMode(), db, sortTypes);
         mapName = getName() + "_" + getId();
-        mapBuilder = new MVMap.Builder<Value, Value>().
+        MVMap.Builder<Value, Value> mapBuilder = new MVMap.Builder<Value, Value>().
                 keyType(keyType).
                 valueType(valueType);
-        TransactionMap<Value, Value> map = getMap(null);
-        Value k = map.lastKey();
-        map.getTransaction().commit();
+        dataMap = mvTable.getTransaction(null).openMap(mapName, mapBuilder);
+        Value k = dataMap.lastKey();
         lastKey = k == null ? 0 : k.getLong();
     }
 
@@ -75,7 +74,6 @@ public class MVPrimaryIndex extends BaseIndex {
         rename(newName + "_DATA");
         String newMapName = newName + "_DATA_" + getId();
         map.renameMap(newMapName);
-        map.getTransaction().commit();
         mapName = newMapName;
     }
 
@@ -110,12 +108,24 @@ public class MVPrimaryIndex extends BaseIndex {
             Long c = row.getValue(mainIndexColumn).getLong();
             row.setKey(c);
         }
-        Value[] array = new Value[columns.length];
-        for (int i = 0; i < array.length; i++) {
-            array[i] = row.getValue(i);
+
+        if (mvTable.getContainsLargeObject()) {
+            for (int i = 0, len = row.getColumnCount(); i < len; i++) {
+                Value v = row.getValue(i);
+                Value v2 = v.link(database, getId());
+                if (v2.isLinked()) {
+                    session.unlinkAtCommitStop(v2);
+                }
+                if (v != v2) {
+                    row.setValue(i, v2);
+                }
+            }
         }
+        
         TransactionMap<Value, Value> map = getMap(session);
-        if (map.containsKey(ValueLong.get(row.getKey()))) {
+        Value key = ValueLong.get(row.getKey());
+        Value old = map.getLatest(key);
+        if (old != null) {
             String sql = "PRIMARY KEY ON " + table.getSQL();
             if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
                 sql +=  "(" + indexColumns[mainIndexColumn].getSQL() + ")";
@@ -124,12 +134,20 @@ public class MVPrimaryIndex extends BaseIndex {
             e.setSource(this);
             throw e;
         }
-        map.put(ValueLong.get(row.getKey()), ValueArray.get(array));
+        map.put(key, ValueArray.get(row.getValueList()));
         lastKey = Math.max(lastKey, row.getKey());
     }
 
     @Override
     public void remove(Session session, Row row) {
+        if (mvTable.getContainsLargeObject()) {
+            for (int i = 0, len = row.getColumnCount(); i < len; i++) {
+                Value v = row.getValue(i);
+                if (v.isLinked()) {
+                    session.unlinkAtCommit(v);
+                }
+            }
+        }
         TransactionMap<Value, Value> map = getMap(session);
         Value old = map.remove(ValueLong.get(row.getKey()));
         if (old == null) {
@@ -180,8 +198,7 @@ public class MVPrimaryIndex extends BaseIndex {
 
     @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
-        TransactionMap<Value, Value> map = getMap(session);
-        long cost = 10 * (map.getSize() + Constants.COST_ROW_OFFSET);
+        long cost = 10 * (dataMap.map.getSize() + Constants.COST_ROW_OFFSET);
         return cost;
     }
 
@@ -216,11 +233,12 @@ public class MVPrimaryIndex extends BaseIndex {
     @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
         TransactionMap<Value, Value> map = getMap(session);
-        if (map.getSize() == 0) {
+        Value v = first ? map.firstKey() : map.lastKey();
+        if (v == null) {
             return new MVStoreCursor(session, Collections.<Value>emptyList().iterator(), 0);
         }
-        long key = first ? map.firstKey().getLong() : map.lastKey().getLong();
-        MVStoreCursor cursor = new MVStoreCursor(session, 
+        long key = v.getLong();
+        MVStoreCursor cursor = new MVStoreCursor(session,
                 Arrays.asList((Value) ValueLong.get(key)).iterator(), key);
         cursor.next();
         return cursor;
@@ -239,10 +257,7 @@ public class MVPrimaryIndex extends BaseIndex {
 
     @Override
     public long getRowCountApproximation() {
-        TransactionMap<Value, Value> map = getMap(null);
-        long size = map.getSize();
-        map.getTransaction().commit();
-        return size;
+        return dataMap.map.getSize();
     }
 
     public long getDiskSpaceUsed() {
@@ -287,6 +302,25 @@ public class MVPrimaryIndex extends BaseIndex {
     Cursor find(Session session, long first, long last) {
         TransactionMap<Value, Value> map = getMap(session);
         return new MVStoreCursor(session, map.keyIterator(ValueLong.get(first)), last);
+    }
+    
+    public boolean isRowIdIndex() {
+        return true;
+    }
+
+    /**
+     * Get the map to store the data.
+     *
+     * @param session the session
+     * @return the map
+     */
+    TransactionMap<Value, Value> getMap(Session session) {
+        if (session == null) {
+            return dataMap;
+        }
+        Transaction t = mvTable.getTransaction(session);
+        long savepoint = ((MVSession) session).getStatementSavepoint();
+        return dataMap.getInstance(t, savepoint);
     }
 
     /**
@@ -337,25 +371,6 @@ public class MVPrimaryIndex extends BaseIndex {
             return false;
         }
 
-    }
-
-    public boolean isRowIdIndex() {
-        return true;
-    }
-
-    /**
-     * Get the map to store the data.
-     *
-     * @param session the session
-     * @return the map
-     */
-    TransactionMap<Value, Value> getMap(Session session) {
-        if (session == null) {
-            return mvTable.getTransaction(null).openMap(mapName, -1, mapBuilder);
-        }
-        Transaction t = mvTable.getTransaction(session);
-        long version = ((MVSession)session).getStatementVersion();
-        return t.openMap(mapName, version, mapBuilder);
     }
 
 }

@@ -241,8 +241,8 @@ public class Function extends Expression implements FunctionCall {
         addFunction("LENGTH", LENGTH, 1, Value.LONG);
         // 2 or 3 arguments
         addFunction("LOCATE", LOCATE, VAR_ARGS, Value.INT);
-     // alias for MSSQLServer
-        addFunction("CHARINDEX", LOCATE, VAR_ARGS, Value.INT); 
+        // alias for MSSQLServer
+        addFunction("CHARINDEX", LOCATE, VAR_ARGS, Value.INT);
         // same as LOCATE with 2 arguments
         addFunction("POSITION", LOCATE, 2, Value.INT);
         addFunction("INSTR", INSTR, VAR_ARGS, Value.INT);
@@ -657,10 +657,10 @@ public class Function extends Expression implements FunctionCall {
             result = ValueString.get(StringUtils.javaDecode(v0.getString()));
             break;
         case STRINGTOUTF8:
-            result = ValueBytes.getNoCopy(StringUtils.utf8Encode(v0.getString()));
+            result = ValueBytes.getNoCopy(v0.getString().getBytes(Constants.UTF8));
             break;
         case UTF8TOSTRING:
-            result = ValueString.get(StringUtils.utf8Decode(v0.getBytesNoCopy()));
+            result = ValueString.get(new String(v0.getBytesNoCopy(), Constants.UTF8));
             break;
         case XMLCOMMENT:
             result = ValueString.get(StringUtils.xmlComment(v0.getString()));

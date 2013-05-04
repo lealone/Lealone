@@ -51,7 +51,7 @@ import com.codefollower.lealone.value.ValueString;
  * mode, this object resides on the server side and communicates with a
  * SessionRemote object on the client side.
  */
-//TODO 合并MVStore的更新(2013-04-09前)
+//TODO 合并MVStore的更新(2013-04-09、2013-05-04)
 public class Session extends SessionWithState {
 
     /**

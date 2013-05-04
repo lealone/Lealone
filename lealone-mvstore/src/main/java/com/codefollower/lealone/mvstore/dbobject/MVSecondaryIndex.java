@@ -44,7 +44,7 @@ public class MVSecondaryIndex extends BaseIndex {
 
     private final int keyColumns;
     private String mapName;
-    private MVMap.Builder<Value, Value> mapBuilder;
+    private TransactionMap<Value, Value> dataMap;
 
     public MVSecondaryIndex(Database db, MVTable table, int id, String indexName,
                 IndexColumn[] columns, IndexType indexType) {
@@ -65,9 +65,10 @@ public class MVSecondaryIndex extends BaseIndex {
         ValueDataType keyType = new ValueDataType(
                 db.getCompareMode(), db, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
-        mapBuilder = new MVMap.Builder<Value, Value>().
+        MVMap.Builder<Value, Value> mapBuilder = new MVMap.Builder<Value, Value>().
                 keyType(keyType).
                 valueType(valueType);
+        dataMap = mvTable.getTransaction(null).openMap(mapName, mapBuilder);
     }
 
     private static void checkIndexColumnTypes(IndexColumn[] columns) {
@@ -88,7 +89,6 @@ public class MVSecondaryIndex extends BaseIndex {
         TransactionMap<Value, Value> map = getMap(null);
         String newMapName = newName + "_" + getId();
         map.renameMap(newMapName);
-        map.getTransaction().commit();
         mapName = newMapName;
         super.rename(newName);
     }
@@ -174,8 +174,7 @@ public class MVSecondaryIndex extends BaseIndex {
 
     @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
-        TransactionMap<Value, Value> map = getMap(session);
-        return 10 * getCostRangeIndex(masks, map.getSize(), sortOrder);
+        return 10 * getCostRangeIndex(masks, dataMap.map.getSize(), sortOrder);
     }
 
     @Override
@@ -219,10 +218,7 @@ public class MVSecondaryIndex extends BaseIndex {
 
     @Override
     public boolean needRebuild() {
-        TransactionMap<Value, Value> map = getMap(null);
-        boolean result = map.getSize() == 0;
-        map.getTransaction().commit();
-        return result;
+        return dataMap.map.getSize() == 0;
     }
 
     @Override
@@ -233,10 +229,7 @@ public class MVSecondaryIndex extends BaseIndex {
 
     @Override
     public long getRowCountApproximation() {
-        TransactionMap<Value, Value> map = getMap(null);
-        long size = map.getSize();
-        map.getTransaction().commit();
-        return size;
+        return dataMap.map.getSize();
     }
 
     public long getDiskSpaceUsed() {
@@ -247,6 +240,21 @@ public class MVSecondaryIndex extends BaseIndex {
     @Override
     public void checkRename() {
         // ok
+    }
+    
+    /**
+     * Get the map to store the data.
+     *
+     * @param session the session
+     * @return the map
+     */
+    TransactionMap<Value, Value> getMap(Session session) {
+        if (session == null) {
+            return dataMap;
+        }
+        Transaction t = mvTable.getTransaction(session);
+        long savepoint = ((MVSession) session).getStatementSavepoint();
+        return dataMap.getInstance(t, savepoint);
     }
 
     /**
@@ -308,21 +316,6 @@ public class MVSecondaryIndex extends BaseIndex {
             return false;
         }
 
-    }
-
-    /**
-     * Get the map to store the data.
-     *
-     * @param session the session
-     * @return the map
-     */
-    TransactionMap<Value, Value> getMap(Session session) {
-        if (session == null) {
-            return mvTable.getTransaction(null).openMap(mapName, -1, mapBuilder);
-        }
-        Transaction t = mvTable.getTransaction(session);
-        long version = ((MVSession)session).getStatementVersion();
-        return t.openMap(mapName, version, mapBuilder);
     }
 
 }
