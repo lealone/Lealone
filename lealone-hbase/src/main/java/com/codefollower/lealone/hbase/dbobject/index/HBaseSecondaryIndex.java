@@ -131,7 +131,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
     @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
-        return 0;
+        return 10 * getCostRangeIndex(masks, 100, sortOrder);
     }
 
     @Override

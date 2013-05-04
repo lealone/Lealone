@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Result;
 
+import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.dbobject.index.BaseIndex;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.index.IndexType;
@@ -93,7 +94,7 @@ public class HBasePrimaryIndex extends BaseIndex {
 
     @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
-        return 0;
+        return 10 * Constants.COST_ROW_OFFSET + 100;
     }
 
     @Override
