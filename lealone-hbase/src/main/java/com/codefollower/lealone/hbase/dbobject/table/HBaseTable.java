@@ -196,7 +196,7 @@ public class HBaseTable extends TableBase {
                 column.setPrimaryKey(true);
             }
 
-            if (cols.length == 1 && cols[0].column.isRowKeyColumn())
+            if (cols.length == 1)
                 isDelegateIndex = true;
         }
         boolean isSessionTemporary = isTemporary() && !isGlobalTemporary();

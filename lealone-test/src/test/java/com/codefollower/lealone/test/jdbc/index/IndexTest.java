@@ -26,8 +26,8 @@ import com.codefollower.lealone.test.jdbc.TestBase;
 public class IndexTest extends TestBase {
     @Test
     public void run() throws Exception {
-        //init();
-        //insert();
+        init();
+        insert();
         select();
 
         //stmt.executeUpdate("ALTER INDEX idx2 RENAME TO idx22");
@@ -47,6 +47,8 @@ public class IndexTest extends TestBase {
         stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON IndexTest(f1)");
         stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON IndexTest(f2)");
 
+        //stmt.executeUpdate("ALTER INDEX idx0 RENAME TO idx2");
+
     }
 
     void insert() throws Exception {
@@ -56,7 +58,10 @@ public class IndexTest extends TestBase {
     }
 
     void select() throws Exception {
-        sql = "SELECT f1, f2 FROM IndexTest WHERE f1>=200";
+        sql = "SELECT f1, f2 FROM IndexTest WHERE f1 >= 200";
+        printResultSet();
+
+        sql = "SELECT f1, f2 FROM IndexTest WHERE f2 >= 20";
         printResultSet();
     }
 }
