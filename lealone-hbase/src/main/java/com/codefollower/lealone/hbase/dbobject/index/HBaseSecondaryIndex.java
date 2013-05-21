@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.index.BaseIndex;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.index.IndexType;
@@ -45,6 +46,7 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.result.SortOrder;
+import com.codefollower.lealone.value.Value;
 
 public class HBaseSecondaryIndex extends BaseIndex {
 
@@ -55,10 +57,23 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
     public HBaseSecondaryIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
         initBaseIndex(table, id, indexName, columns, indexType);
+        if (!database.isStarting()) {
+            checkIndexColumnTypes(columns);
+        }
         try {
             indexTable = new HTable(HBaseUtils.getConfiguration(), indexName);
         } catch (IOException e) {
             throw DbException.convert(e);
+        }
+    }
+
+    private static void checkIndexColumnTypes(IndexColumn[] columns) {
+        for (IndexColumn c : columns) {
+            int type = c.column.getType();
+            if (type == Value.CLOB || type == Value.BLOB) {
+                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1,
+                        "Index on BLOB or CLOB column: " + c.column.getCreateSQL());
+            }
         }
     }
 
