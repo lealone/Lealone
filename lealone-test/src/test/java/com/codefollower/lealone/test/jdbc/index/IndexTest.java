@@ -19,6 +19,11 @@
  */
 package com.codefollower.lealone.test.jdbc.index;
 
+import static org.junit.Assert.assertEquals;
+
+import java.sql.SQLException;
+
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.codefollower.lealone.test.jdbc.TestBase;
@@ -29,39 +34,49 @@ public class IndexTest extends TestBase {
         init();
         insert();
         select();
-
-        //stmt.executeUpdate("ALTER INDEX idx2 RENAME TO idx22");
-
-        //stmt.executeUpdate("DROP INDEX IF EXISTS idx22");
-
-        //stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS schema0 AUTHORIZATION sa");
-        //stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO schema0.idx1");
-
-        //stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO idx1");
-
     }
 
     void init() throws Exception {
         //stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int)");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
         stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON IndexTest(f1)");
         stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON IndexTest(f2)");
+        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx2 ON IndexTest(f3, f2)");
 
         //stmt.executeUpdate("ALTER INDEX idx0 RENAME TO idx2");
 
     }
 
     void insert() throws Exception {
-        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2) VALUES(300, 30)");
-        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2) VALUES(100, 10)");
-        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2) VALUES(200, 20)");
+        //stmt.executeUpdate("DELETE FROM IndexTest");
+        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(300, 30, 'a')");
+        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 10, 'b')");
+        stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'c')");
+        try {
+            stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'c')");
+            Assert.fail("insert duplicate key: 20");
+        } catch (SQLException e) {
+            //e.printStackTrace();
+        }
     }
 
     void select() throws Exception {
-        sql = "SELECT f1, f2 FROM IndexTest WHERE f1 >= 200";
+        sql = "SELECT f1, f2, f3 FROM IndexTest WHERE f1 >= 200";
         printResultSet();
 
-        sql = "SELECT f1, f2 FROM IndexTest WHERE f2 >= 20";
+        sql = "SELECT count(*) FROM IndexTest WHERE f1 >= 200";
+        assertEquals(2, getIntValue(1, true));
+
+        sql = "SELECT f1, f2, f3 FROM IndexTest WHERE f2 >= 20";
         printResultSet();
+
+        sql = "SELECT count(*) FROM IndexTest WHERE f2 >= 20";
+        assertEquals(2, getIntValue(1, true));
+
+        sql = "SELECT f1, f2, f3 FROM IndexTest WHERE f3 >= 'b' AND f3 <= 'c'";
+        printResultSet();
+
+        sql = "SELECT count(*) FROM IndexTest WHERE f3 >= 'b' AND f3 <= 'c'";
+        assertEquals(2, getIntValue(1, true));
     }
 }

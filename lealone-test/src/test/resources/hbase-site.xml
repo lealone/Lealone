@@ -261,4 +261,9 @@
 		<value>2000</value>
 	</property>
 
+	<property>
+		<name>hbase.regionserver.lease.period</name>
+		<value>6000000</value>
+	</property>
+
 </configuration>

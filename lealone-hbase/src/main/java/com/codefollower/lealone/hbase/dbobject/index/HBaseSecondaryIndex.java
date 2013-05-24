@@ -20,15 +20,19 @@
 package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.constant.ErrorCode;
@@ -40,31 +44,50 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
+import com.codefollower.lealone.hbase.type.ValueDataType;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.value.Value;
+import com.codefollower.lealone.value.ValueArray;
+import com.codefollower.lealone.value.ValueBytes;
+import com.codefollower.lealone.value.ValueNull;
 
 public class HBaseSecondaryIndex extends BaseIndex {
 
-    private final static byte[] FAMILY = Bytes.toBytes("cf");
-    private final static byte[] ROWKEY = Bytes.toBytes("rk");
+    final static byte[] FAMILY = Bytes.toBytes("f");
+    final static byte[] ROWKEY = Bytes.toBytes("c");
 
-    private final HTable indexTable;
+    private final static byte[] ZERO = { (byte) 0 };
+
+    final HTable indexTable;
+    final ValueDataType keyType;
+    private final int keyColumns;
+
+    private ByteBuffer buffer = ByteBuffer.allocate(256);
 
     public HBaseSecondaryIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
         initBaseIndex(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }
+        keyColumns = columns.length + 1; //多加了一列，最后一列对应rowKey
+        int[] sortTypes = new int[keyColumns];
+        for (int i = 0; i < columns.length; i++) {
+            sortTypes[i] = columns[i].sortType;
+        }
+        sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
+        keyType = new ValueDataType(table.getDatabase().getCompareMode(), table.getDatabase(), sortTypes);
         try {
             indexTable = new HTable(HBaseUtils.getConfiguration(), indexName);
         } catch (IOException e) {
             throw DbException.convert(e);
         }
+
     }
 
     private static void checkIndexColumnTypes(IndexColumn[] columns) {
@@ -90,25 +113,109 @@ public class HBaseSecondaryIndex extends BaseIndex {
     public void add(Session session, Row row) {
         try {
             Put oldPut = ((HBaseRow) row).getPut();
-            Put newPut = new Put(getIndexRowKey(row));
-            newPut.add(FAMILY, ROWKEY, oldPut.getTimeStamp(), oldPut.getRow());
+
+            if (indexType.isUnique()) {
+                byte[] key = getKey(row, null);
+                Result r;
+                try {
+                    r = indexTable.get(new Get(key));
+                    Scan scan = new Scan(key, getKey(row, oldPut.getRow()));
+                    scan.addColumn(HBaseSecondaryIndex.FAMILY, HBaseSecondaryIndex.ROWKEY);
+                    ResultScanner resultScanner = indexTable.getScanner(scan);
+                    r = resultScanner.next();
+                    resultScanner.close();
+                } catch (IOException e) {
+                    throw DbException.convert(e);
+                }
+                if (r != null && !r.isEmpty()) {
+                    buffer.clear();
+                    buffer.put(r.getRow());
+                    buffer.flip();
+                    ValueArray array = (ValueArray) keyType.read(buffer);
+
+                    SearchRow r2 = getRow(array.getList());
+                    if (compareRows(row, r2) == 0) {
+                        if (!containsNullAndAllowMultipleNull(r2)) {
+                            throw getDuplicateKeyException();
+                        }
+                    }
+                }
+            }
+
+            Put newPut = new Put(getKey(row, oldPut.getRow()));
+            newPut.add(FAMILY, ROWKEY, ZERO);
             indexTable.put(newPut);
         } catch (IOException e) {
             throw DbException.convert(e);
         }
     }
 
-    private byte[] getIndexRowKey(Row row) {
-        if (columns.length == 1)
-            return HBaseUtils.toBytes(row.getValue(columns[0].getColumnId()));
-        StringBuilder buff = new StringBuilder();
-        for (Column c : columns) {
-            if (buff.length() > 0)
-                buff.append("_");
-            int idx = c.getColumnId();
-            buff.append(row.getValue(idx).getString());
+    private byte[] getKey(SearchRow r, byte[] rowKey) {
+        if (r == null) {
+            return null;
         }
-        return HBaseUtils.toBytes(buff.toString());
+
+        buffer.clear();
+        Value[] array = new Value[keyColumns];
+        for (int i = 0; i < columns.length; i++) {
+            Column c = columns[i];
+            int idx = c.getColumnId();
+            array[i] = r.getValue(idx);
+            if (array[i] == null)
+                array[i] = ValueNull.INSTANCE;
+        }
+        if (rowKey != null)
+            array[keyColumns - 1] = ValueBytes.getNoCopy(rowKey);
+        else
+            array[keyColumns - 1] = ValueNull.INSTANCE;
+        buffer = keyType.write(buffer, ValueArray.get(array));
+        buffer.limit(buffer.position());
+        buffer.position(0);
+
+        return Bytes.toBytes(buffer);
+    }
+
+    //因为HBase在进行scan时查询的记录范围是startKey <= row < endKey(也就是不包含endKey)
+    //而SQL是startKey <= row <= endKey
+    //所以需要在原有的endKey上面多加一些额外的字节才会返回endKey
+    private byte[] getLastKey(SearchRow r, byte[] rowKey) {
+        if (r == null) {
+            return null;
+        }
+
+        buffer.clear();
+        int keyColumns = this.keyColumns + 1;
+        Value[] array = new Value[keyColumns];
+        for (int i = 0; i < columns.length; i++) {
+            Column c = columns[i];
+            int idx = c.getColumnId();
+            array[i] = r.getValue(idx);
+            if (array[i] == null)
+                array[i] = ValueNull.INSTANCE;
+        }
+        if (rowKey != null)
+            array[keyColumns - 2] = ValueBytes.getNoCopy(rowKey);
+        else
+            array[keyColumns - 2] = ValueNull.INSTANCE;
+        array[keyColumns - 1] = ValueNull.INSTANCE;
+        buffer = keyType.write(buffer, ValueArray.get(array));
+        buffer.limit(buffer.position());
+        buffer.position(0);
+
+        return Bytes.toBytes(buffer);
+    }
+
+    SearchRow getRow(Value[] array) {
+        SearchRow searchRow = getTable().getTemplateRow();
+        searchRow.setRowKey((array[array.length - 1]));
+        Column[] cols = getColumns();
+        for (int i = 0, size = array.length - 1; i < size; i++) {
+            Column c = cols[i];
+            int idx = c.getColumnId();
+            Value v = array[i];
+            searchRow.setValue(idx, v);
+        }
+        return searchRow;
     }
 
     @Override
@@ -136,12 +243,14 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
     @Override
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        return new HBaseSecondaryIndexCursor(filter, first, last);
+        byte[] startRow = getKey(first, null);
+        byte[] stopRow = getLastKey(last, null);
+        return new HBaseSecondaryIndexCursor((HBaseTable) getTable(), this, startRow, stopRow);
     }
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        throw DbException.getUnsupportedException("find(Session, SearchRow, SearchRow)");
+        return find((TableFilter) null, first, last);
     }
 
     @Override
