@@ -232,9 +232,16 @@ public class HBaseTable extends TableBase {
         return index;
     }
 
+    public void setStartTimestamp(Session session, Row row) {
+        if (row.getStartTimestamp() == null) {
+            row.setStartTimestamp(((HBaseSession) session).getTransaction().getStartTimestamp());
+        }
+    }
+
     @Override
     public void addRow(Session session, Row row) {
         lastModificationId = database.getNextModificationDataId();
+        setStartTimestamp(session, row);
 
         int i = 0;
         try {

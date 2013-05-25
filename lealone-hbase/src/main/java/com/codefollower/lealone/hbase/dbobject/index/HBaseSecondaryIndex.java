@@ -24,6 +24,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -171,7 +172,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
         }
         try {
             Put newPut = new Put(getKey(row));
-            newPut.add(PSEUDO_FAMILY, PSEUDO_COLUMN, ZERO);
+            newPut.add(PSEUDO_FAMILY, PSEUDO_COLUMN, row.getStartTimestamp().longValue(), ZERO);
             indexTable.put(newPut);
         } catch (IOException e) {
             throw DbException.convert(e);
@@ -281,11 +282,18 @@ public class HBaseSecondaryIndex extends BaseIndex {
             return;
         try {
             Delete delete;
-            byte[] key = getKey(row);
-            if (row.getStartTimestamp() != null)
-                delete = new Delete(key, row.getStartTimestamp(), null);
-            else
-                delete = new Delete(key);
+            Result result = ((HBaseRow) row).getResult();
+            if (result != null) { //delete from语句需要先把要删除的记录get或scan出来，此时用原始的Result的时间戳
+                delete = new Delete(result.getRow());
+                if (result != null) {
+                    for (KeyValue kv : result.list()) {
+                        delete.deleteColumn(kv.getFamily(), kv.getQualifier(), kv.getTimestamp());
+                    }
+                }
+            } else { //rollback的场景
+                delete = new Delete(getKey(row));
+                delete.deleteColumn(PSEUDO_FAMILY, PSEUDO_FAMILY, row.getStartTimestamp().longValue());
+            }
             indexTable.delete(delete);
         } catch (IOException e) {
             throw DbException.convert(e);

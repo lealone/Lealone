@@ -20,9 +20,12 @@
 package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.dbobject.index.BaseIndex;
@@ -34,7 +37,6 @@ import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
@@ -64,17 +66,25 @@ public class HBasePrimaryIndex extends BaseIndex {
             return;
         try {
             Delete delete;
-            if (row.getStartTimestamp() != null)
-                delete = new Delete(HBaseUtils.toBytes(row.getRowKey()), row.getStartTimestamp(), null);
-            else {
-                Result result = ((HBaseRow) row).getResult();
-                delete = new Delete(HBaseUtils.toBytes(row.getRowKey()));
+            Result result = ((HBaseRow) row).getResult();
+            if (result != null) { //delete from语句需要先把要删除的记录get或scan出来，此时用原始的Result的时间戳
+                delete = new Delete(result.getRow());
                 if (result != null) {
                     for (KeyValue kv : result.list()) {
                         delete.deleteColumn(kv.getFamily(), kv.getQualifier(), kv.getTimestamp());
                     }
                 }
+            } else { //rollback的场景
+                Put put = ((HBaseRow) row).getPut();
+                delete = new Delete(put.getRow());
+                long startTimestamp = row.getStartTimestamp().longValue();
+                for (Map.Entry<byte[], List<KeyValue>> e : put.getFamilyMap().entrySet()) {
+                    for (KeyValue kv : e.getValue()) {
+                        delete.deleteColumn(e.getKey(), kv.getQualifier(), startTimestamp);
+                    }
+                }
             }
+
             ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
         } catch (IOException e) {
             throw new RuntimeException(e);
