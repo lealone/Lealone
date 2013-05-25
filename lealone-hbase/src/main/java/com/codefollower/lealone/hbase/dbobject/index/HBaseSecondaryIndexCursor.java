@@ -38,7 +38,6 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
-import com.codefollower.lealone.value.ValueArray;
 import com.codefollower.lealone.value.ValueString;
 
 public class HBaseSecondaryIndexCursor implements Cursor {
@@ -57,7 +56,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         this.columns = hbaseTable.getColumns();
 
         Scan scan = new Scan(startRow, stopRow);
-        scan.addColumn(HBaseSecondaryIndex.FAMILY, HBaseSecondaryIndex.ROWKEY);
+        scan.addColumn(HBaseSecondaryIndex.PSEUDO_FAMILY, HBaseSecondaryIndex.PSEUDO_COLUMN);
         try {
             resultScanner = index.indexTable.getScanner(scan);
             dataTable = new HTable(HBaseUtils.getConfiguration(), index.getTable().getName());
@@ -130,8 +129,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
 
         readBuffer.put(result.getRow());
         readBuffer.flip();
-        ValueArray key = (ValueArray) index.keyType.read(readBuffer);
-        searchRow = index.getRow(key.getList());
+        searchRow = index.getRow(index.decode(readBuffer));
 
         return true;
     }

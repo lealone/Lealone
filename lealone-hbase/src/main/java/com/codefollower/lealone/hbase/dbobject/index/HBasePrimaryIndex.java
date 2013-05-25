@@ -24,7 +24,6 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Result;
-
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.dbobject.index.BaseIndex;
 import com.codefollower.lealone.dbobject.index.Cursor;

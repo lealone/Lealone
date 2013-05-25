@@ -48,7 +48,7 @@ public class IndexTest extends TestBase {
     }
 
     void insert() throws Exception {
-        //stmt.executeUpdate("DELETE FROM IndexTest");
+        stmt.executeUpdate("DELETE FROM IndexTest");
         stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(300, 30, 'a')");
         stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 10, 'b')");
         stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'c')");
@@ -61,6 +61,9 @@ public class IndexTest extends TestBase {
     }
 
     void select() throws Exception {
+        sql = "SELECT f1, f2, f3 FROM IndexTest";
+        printResultSet();
+
         sql = "SELECT f1, f2, f3 FROM IndexTest WHERE f1 >= 200";
         printResultSet();
 

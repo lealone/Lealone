@@ -90,14 +90,15 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     @Override
     protected Row createRow(int columnLen, Expression[] expr, int rowId) {
         HBaseRow row = (HBaseRow) table.getTemplateRow();
-        row.setRowKey(ValueString.get(getRowKey()));
+        ValueString rowKey = ValueString.get(getRowKey());
+        row.setRowKey(rowKey);
         row.setRegionName(regionNameAsBytes);
 
         Put put;
         if (getCommand().getStartTimestamp() != null)
-            put = new Put(Bytes.toBytes(getRowKey()), Long.valueOf(getCommand().getStartTimestamp()));
+            put = new Put(HBaseUtils.toBytes(rowKey), Long.valueOf(getCommand().getStartTimestamp()));
         else
-            put = new Put(Bytes.toBytes(getRowKey()));
+            put = new Put(HBaseUtils.toBytes(rowKey));
         row.setPut(put);
         Column c;
         Value v;

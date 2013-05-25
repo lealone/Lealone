@@ -194,6 +194,7 @@ public class HBaseTable extends TableBase {
                     throw DbException.get(ErrorCode.COLUMN_MUST_NOT_BE_NULLABLE_1, column.getName());
                 }
                 column.setPrimaryKey(true);
+                column.setRowKeyColumn(true);
             }
 
             if (cols.length == 1)
