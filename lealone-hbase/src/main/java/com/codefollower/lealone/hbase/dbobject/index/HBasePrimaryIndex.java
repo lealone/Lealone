@@ -69,10 +69,8 @@ public class HBasePrimaryIndex extends BaseIndex {
             Result result = ((HBaseRow) row).getResult();
             if (result != null) { //delete from语句需要先把要删除的记录get或scan出来，此时用原始的Result的时间戳
                 delete = new Delete(result.getRow());
-                if (result != null) {
-                    for (KeyValue kv : result.list()) {
-                        delete.deleteColumn(kv.getFamily(), kv.getQualifier(), kv.getTimestamp());
-                    }
+                for (KeyValue kv : result.list()) {
+                    delete.deleteColumn(kv.getFamily(), kv.getQualifier(), kv.getTimestamp());
                 }
             } else { //rollback的场景
                 Put put = ((HBaseRow) row).getPut();

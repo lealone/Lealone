@@ -24,7 +24,6 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
@@ -107,7 +106,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
             ResultScanner resultScanner = indexTable.getScanner(new Scan());
             Result result = resultScanner.next();
             while (result != null) {
-                System.out.println("Result " + toStringBinary(result.getRow()));
+                System.out.println("Result " + Bytes.toStringBinary(result.getRow()) + " " + result);
                 result = resultScanner.next();
             }
             resultScanner.close();
@@ -277,23 +276,19 @@ public class HBaseSecondaryIndex extends BaseIndex {
     }
 
     @Override
-    public void remove(Session session, Row row) {
+    public void remove(Session session, Row row) { //参数row是主表的记录，并不是索引表的记录
         if (((HBaseRow) row).isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
             return;
         try {
-            Delete delete;
+            long startTimestamp;
             Result result = ((HBaseRow) row).getResult();
             if (result != null) { //delete from语句需要先把要删除的记录get或scan出来，此时用原始的Result的时间戳
-                delete = new Delete(result.getRow());
-                if (result != null) {
-                    for (KeyValue kv : result.list()) {
-                        delete.deleteColumn(kv.getFamily(), kv.getQualifier(), kv.getTimestamp());
-                    }
-                }
+                startTimestamp = result.list().get(0).getTimestamp();
             } else { //rollback的场景
-                delete = new Delete(getKey(row));
-                delete.deleteColumn(PSEUDO_FAMILY, PSEUDO_FAMILY, row.getStartTimestamp().longValue());
+                startTimestamp = row.getStartTimestamp().longValue();
             }
+            Delete delete = new Delete(getKey(row));
+            delete.deleteColumn(PSEUDO_FAMILY, PSEUDO_COLUMN, startTimestamp);
             indexTable.delete(delete);
         } catch (IOException e) {
             throw DbException.convert(e);
