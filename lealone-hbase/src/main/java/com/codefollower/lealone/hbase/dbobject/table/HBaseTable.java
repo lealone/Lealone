@@ -499,9 +499,11 @@ public class HBaseTable extends TableBase {
     @Override
     public void removeChildrenAndResources(Session session) {
         int size = indexes.size();
+        //删除索引后会同时从indexes数组中自动删除，所以需要copy一份出来，否则会抛出java.lang.IndexOutOfBoundsException
+        ArrayList<Index> indexesCopy = new ArrayList<Index>(indexes);
         int i = 1;
         while (size > 1 && i < size) {
-            Index index = indexes.get(i++);
+            Index index = indexesCopy.get(i++);
             if (!index.getIndexType().getBelongsToConstraint() && getName() != null) {
                 database.removeSchemaObject(session, index);
             }
