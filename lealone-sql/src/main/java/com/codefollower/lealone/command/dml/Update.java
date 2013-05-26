@@ -107,7 +107,7 @@ public class Update extends Prepared {
                 if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
                     Row oldRow = tableFilter.get();
                     Row newRow = table.getTemplateRow();
-                    newRow.setStartTimestamp(getCommand().getStartTimestamp());
+                    newRow.setTransactionId(getCommand().getTransactionId());
                     getCommand().addRowKey(oldRow.getRowKey());
                     for (int i = 0; i < columnCount; i++) {
                         Expression newExpr = expressionMap.get(columns[i]);

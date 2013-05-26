@@ -51,7 +51,7 @@ public class CommandParallel implements CommandInterface {
     private final String sql;
     private final List<CommandInterface> commands; //保证不会为null且size>=2
 
-    private Long startTimestamp;
+    private long transactionId = -1;
     private List<byte[]> rowKeys;
 
     public CommandParallel(HBaseSession originalSession, CommandProxy commandProxy, //
@@ -173,7 +173,7 @@ public class CommandParallel implements CommandInterface {
         List<Future<Integer>> futures = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
-            c.setStartTimestamp(startTimestamp);
+            c.setTransactionId(transactionId);
             futures.add(pool.submit(new Callable<Integer>() {
                 public Integer call() throws Exception {
                     return c.executeUpdate();
@@ -231,12 +231,17 @@ public class CommandParallel implements CommandInterface {
     }
 
     @Override
-    public Long getStartTimestamp() {
-        return startTimestamp;
+    public long getTransactionId() {
+        return transactionId;
     }
 
     @Override
-    public void setStartTimestamp(Long startTimestamp) {
-        this.startTimestamp = startTimestamp;
+    public void setTransactionId(long transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    @Override
+    public boolean isDistributedTransaction() {
+        return transactionId >= 0;
     }
 }

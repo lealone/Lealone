@@ -28,7 +28,7 @@ public class Row implements SearchRow {
     private int sessionId;
     private Value rowKey;
 
-    private Long startTimestamp;
+    private long transactionId = -1;
 
     public Value getRowKey() {
         return rowKey;
@@ -38,12 +38,12 @@ public class Row implements SearchRow {
         this.rowKey = rowKey;
     }
 
-    public Long getStartTimestamp() {
-        return startTimestamp;
+    public long getTransactionId() {
+        return transactionId;
     }
 
-    public void setStartTimestamp(Long startTimestamp) {
-        this.startTimestamp = startTimestamp;
+    public void setTransactionId(Long transactionId) {
+        this.transactionId = transactionId;
     }
 
     public Row(Value[] data, int memory) {

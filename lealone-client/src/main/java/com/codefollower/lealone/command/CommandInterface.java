@@ -508,7 +508,24 @@ public interface CommandInterface {
 
     byte[][] getTransactionalRowKeys();
 
-    void setStartTimestamp(Long startTimestamp);
+    /**
+     * 设置事务ID，如果事务ID大于等于0，说明此命令正在一个分布式事务中执行
+     * 
+     * @param transactionId 事务ID
+     */
+    void setTransactionId(long transactionId);
 
-    Long getStartTimestamp();
+    /**
+     * 获取当前命令的事务ID，如果事务ID大于等于0，说明此命令正在一个分布式事务中执行
+     * 
+     * @return 事务ID
+     */
+    long getTransactionId();
+
+    /**
+     * 当前命令是否包含在一个分布式事务中
+     * 
+     * @return 如果事务ID大于等于0，说明此命令正在一个分布式事务中执行，此时返回true，否则返回false
+     */
+    boolean isDistributedTransaction();
 }

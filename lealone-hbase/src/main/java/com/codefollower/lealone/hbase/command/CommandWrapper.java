@@ -93,12 +93,17 @@ class CommandWrapper implements CommandInterface {
     }
 
     @Override
-    public void setStartTimestamp(Long startTimestamp) {
-        c.setStartTimestamp(startTimestamp);
+    public void setTransactionId(long transactionId) {
+        c.setTransactionId(transactionId);
     }
 
     @Override
-    public Long getStartTimestamp() {
-        return c.getStartTimestamp();
+    public long getTransactionId() {
+        return c.getTransactionId();
+    }
+
+    @Override
+    public boolean isDistributedTransaction() {
+        return c.isDistributedTransaction();
     }
 }

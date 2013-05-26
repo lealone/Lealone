@@ -171,7 +171,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
         }
         try {
             Put newPut = new Put(getKey(row));
-            newPut.add(PSEUDO_FAMILY, PSEUDO_COLUMN, row.getStartTimestamp().longValue(), ZERO);
+            newPut.add(PSEUDO_FAMILY, PSEUDO_COLUMN, row.getTransactionId(), ZERO);
             indexTable.put(newPut);
         } catch (IOException e) {
             throw DbException.convert(e);
@@ -280,15 +280,15 @@ public class HBaseSecondaryIndex extends BaseIndex {
         if (((HBaseRow) row).isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
             return;
         try {
-            long startTimestamp;
+            long timestamp;
             Result result = ((HBaseRow) row).getResult();
             if (result != null) { //delete from语句需要先把要删除的记录get或scan出来，此时用原始的Result的时间戳
-                startTimestamp = result.list().get(0).getTimestamp();
+                timestamp = result.list().get(0).getTimestamp();
             } else { //rollback的场景
-                startTimestamp = row.getStartTimestamp().longValue();
+                timestamp = row.getTransactionId();
             }
             Delete delete = new Delete(getKey(row));
-            delete.deleteColumn(PSEUDO_FAMILY, PSEUDO_COLUMN, startTimestamp);
+            delete.deleteColumn(PSEUDO_FAMILY, PSEUDO_COLUMN, timestamp);
             indexTable.delete(delete);
         } catch (IOException e) {
             throw DbException.convert(e);

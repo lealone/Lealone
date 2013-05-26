@@ -39,6 +39,10 @@ public class Transaction {
         this.commitTimestamp = 0;
     }
 
+    public long getTransactionId() {
+        return startTimestamp;
+    }
+
     public long getStartTimestamp() {
         return startTimestamp;
     }

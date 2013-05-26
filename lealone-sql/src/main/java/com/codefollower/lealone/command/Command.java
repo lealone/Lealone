@@ -51,7 +51,7 @@ public abstract class Command implements CommandInterface {
 
     private boolean canReuse;
     protected int fetchSize;
-    private Long startTimestamp;
+    private long transactionId = -1;
     private ArrayList<Value> rowKeys = new ArrayList<Value>();
 
     protected Command(Session session, String sql) {
@@ -153,7 +153,7 @@ public abstract class Command implements CommandInterface {
     private void stop() {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
-        if (!isTransactional()) {
+        if (!isDistributedTransaction()) {
             session.commit(true);
         } else if (session.getAutoCommit()) {
             session.commit(false);
@@ -357,13 +357,18 @@ public abstract class Command implements CommandInterface {
     }
 
     @Override
-    public Long getStartTimestamp() {
-        return startTimestamp;
+    public long getTransactionId() {
+        return transactionId;
     }
 
     @Override
-    public void setStartTimestamp(Long startTimestamp) {
-        this.startTimestamp = startTimestamp;
+    public void setTransactionId(long transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    @Override
+    public boolean isDistributedTransaction() {
+        return transactionId >= 0;
     }
 
     public void addRowKey(Value rowKey) {

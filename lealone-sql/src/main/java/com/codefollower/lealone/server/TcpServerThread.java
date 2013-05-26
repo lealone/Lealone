@@ -347,7 +347,7 @@ public class TcpServerThread implements Runnable {
             int id = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
             if (isTransactional)
-                command.setStartTimestamp(Long.valueOf(transfer.readLong()));
+                command.setTransactionId(Long.valueOf(transfer.readLong()));
             setParameters(command);
             int old = session.getModificationId();
             int updateCount;

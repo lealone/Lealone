@@ -75,10 +75,10 @@ public class HBasePrimaryIndex extends BaseIndex {
             } else { //rollback的场景
                 Put put = ((HBaseRow) row).getPut();
                 delete = new Delete(put.getRow());
-                long startTimestamp = row.getStartTimestamp().longValue();
+                long timestamp = row.getTransactionId();
                 for (Map.Entry<byte[], List<KeyValue>> e : put.getFamilyMap().entrySet()) {
                     for (KeyValue kv : e.getValue()) {
-                        delete.deleteColumn(e.getKey(), kv.getQualifier(), startTimestamp);
+                        delete.deleteColumn(e.getKey(), kv.getQualifier(), timestamp);
                     }
                 }
             }

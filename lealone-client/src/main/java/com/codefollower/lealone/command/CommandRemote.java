@@ -41,7 +41,7 @@ public class CommandRemote implements CommandInterface {
     private final int created;
 
     private byte[][] transactionalRowKeys;
-    private Long startTimestamp;
+    private long transactionId = -1;
 
     public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
         this.transferList = transferList;
@@ -142,12 +142,12 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    if (startTimestamp == null) {
+                    if (isDistributedTransaction()) {
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_TRANSACTIONAL_QUERY).writeInt(id).writeInt(objectId)
+                                .writeInt(maxRows).writeLong(transactionId);
+                    } else {
                         session.traceOperation("COMMAND_EXECUTE_QUERY", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_QUERY).writeInt(id).writeInt(objectId).writeInt(maxRows);
-                    } else {
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_TRANSACTIONAL_QUERY).writeInt(id).writeInt(objectId)
-                                .writeInt(maxRows).writeLong(startTimestamp.longValue());
                     }
                     int fetch;
                     if (session.isClustered() || scrollable) {
@@ -190,17 +190,10 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    if (startTimestamp == null) {
-                        session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_UPDATE).writeInt(id);
-                        sendParameters(transfer);
-                        session.done(transfer);
-                        updateCount = transfer.readInt();
-                        autoCommit = transfer.readBoolean();
-                    } else {
+                    if (isDistributedTransaction()) {
                         session.traceOperation("COMMAND_EXECUTE_TRANSACTIONAL_UPDATE", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_TRANSACTIONAL_UPDATE).writeInt(id)
-                                .writeLong(startTimestamp.longValue());
+                                .writeLong(transactionId);
                         sendParameters(transfer);
                         session.done(transfer);
                         updateCount = transfer.readInt();
@@ -209,6 +202,13 @@ public class CommandRemote implements CommandInterface {
                         transactionalRowKeys = new byte[rowKeyCount][];
                         for (int j = 0; j < rowKeyCount; j++)
                             transactionalRowKeys[j] = transfer.readBytes();
+                    } else {
+                        session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_UPDATE).writeInt(id);
+                        sendParameters(transfer);
+                        session.done(transfer);
+                        updateCount = transfer.readInt();
+                        autoCommit = transfer.readBoolean();
                     }
                 } catch (IOException e) {
                     session.removeServer(e, i--, ++count);
@@ -294,12 +294,17 @@ public class CommandRemote implements CommandInterface {
     }
 
     @Override
-    public Long getStartTimestamp() {
-        return startTimestamp;
+    public long getTransactionId() {
+        return transactionId;
     }
 
     @Override
-    public void setStartTimestamp(Long startTimestamp) {
-        this.startTimestamp = startTimestamp;
+    public void setTransactionId(long transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    @Override
+    public boolean isDistributedTransaction() {
+        return transactionId >= 0;
     }
 }

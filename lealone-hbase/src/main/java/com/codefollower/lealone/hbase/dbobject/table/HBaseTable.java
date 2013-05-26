@@ -232,16 +232,16 @@ public class HBaseTable extends TableBase {
         return index;
     }
 
-    public void setStartTimestamp(Session session, Row row) {
-        if (row.getStartTimestamp() == null) {
-            row.setStartTimestamp(((HBaseSession) session).getTransaction().getStartTimestamp());
+    private void setTransactionId(Session session, Row row) {
+        if (row.getTransactionId() < 0) {
+            row.setTransactionId(((HBaseSession) session).getTransaction().getTransactionId());
         }
     }
 
     @Override
     public void addRow(Session session, Row row) {
         lastModificationId = database.getNextModificationDataId();
-        setStartTimestamp(session, row);
+        setTransactionId(session, row);
 
         int i = 0;
         try {
@@ -281,8 +281,8 @@ public class HBaseTable extends TableBase {
             o.setForUpdate(true);
             n.setRegionName(o.getRegionName());
             n.setRowKey(o.getRowKey());
-            if (prepared.getCommand().getStartTimestamp() != null)
-                put = new Put(HBaseUtils.toBytes(n.getRowKey()), Long.valueOf(prepared.getCommand().getStartTimestamp()));
+            if (prepared.getCommand().isDistributedTransaction())
+                put = new Put(HBaseUtils.toBytes(n.getRowKey()), prepared.getCommand().getTransactionId());
             else
                 put = new Put(HBaseUtils.toBytes(n.getRowKey()));
             for (int i = 0; i < columnCount; i++) {
