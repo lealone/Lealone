@@ -22,6 +22,7 @@ package com.codefollower.lealone.hbase.result;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 
+import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.value.Value;
 
@@ -30,6 +31,7 @@ public class HBaseRow extends Row {
     private Put put;
     private boolean forUpdate = false;
     private Result result;
+    private HBaseTable table;
 
     public HBaseRow(Value[] data, int memory) {
         super(data, memory);
@@ -73,4 +75,13 @@ public class HBaseRow extends Row {
     public Result getResult() {
         return result;
     }
+
+    public HBaseTable getTable() {
+        return table;
+    }
+
+    public void setTable(HBaseTable table) {
+        this.table = table;
+    }
+
 }

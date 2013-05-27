@@ -233,8 +233,19 @@ public class HBaseTable extends TableBase {
     }
 
     private void setTransactionId(Session session, Row row) {
-        if (row.getTransactionId() < 0) {
+        //        if (row.getTransactionId() < 0) {
+        //            row.setTransactionId(((HBaseSession) session).getTransaction().getTransactionId());
+        //        }
+        //        
+        if (((HBaseSession) session).getTransaction() != null) {
             row.setTransactionId(((HBaseSession) session).getTransaction().getTransactionId());
+        }
+    }
+
+    private void log(Session session, Row row) {
+        if (((HBaseSession) session).getTransaction() != null) {
+            ((HBaseRow) row).setTable(this);
+            ((HBaseSession) session).log(getTableNameAsBytes(), row);
         }
     }
 
@@ -250,6 +261,8 @@ public class HBaseTable extends TableBase {
                 index.add(session, row);
             }
             rowCount++;
+
+            log(session, row);
         } catch (Throwable e) {
             try {
                 while (--i >= 0) {
@@ -297,6 +310,8 @@ public class HBaseTable extends TableBase {
     @Override
     public void removeRow(Session session, Row row) {
         lastModificationId = database.getNextModificationDataId();
+        setTransactionId(session, row);
+
         int i = indexes.size() - 1;
         try {
             for (; i >= 0; i--) {
@@ -304,6 +319,8 @@ public class HBaseTable extends TableBase {
                 index.remove(session, row);
             }
             rowCount--;
+
+            log(session, row);
         } catch (Throwable e) {
             try {
                 while (++i < indexes.size()) {

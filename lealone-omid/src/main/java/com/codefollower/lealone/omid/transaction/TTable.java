@@ -69,6 +69,10 @@ public class TTable {
         this(conf, Bytes.toBytes(tableName));
     }
 
+    public TTable(HTable table) throws IOException {
+        this.table = table;
+    }
+
     /**
      * Extracts certain cells from a given row.
      * 

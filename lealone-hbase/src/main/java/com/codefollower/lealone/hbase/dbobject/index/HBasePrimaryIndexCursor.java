@@ -20,6 +20,7 @@
 package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,6 +41,7 @@ import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
+import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
@@ -108,7 +110,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
                 startKey = HBaseUtils.toBytes(startValue);
             if (endValue != null)
                 endKey = HBaseUtils.toBytes(endValue);
-
+            scan.setMaxVersions(1);
             try {
                 HRegionInfo info = session.getRegionServer().getRegionInfo(regionName);
                 if (Bytes.compareTo(startKey, info.getStartKey()) >= 0)
@@ -162,7 +164,6 @@ public class HBasePrimaryIndexCursor implements Cursor {
         }
         if (result != null && index < result.length) {
             Result r = result[index];
-
             Value[] data = new Value[columnCount];
             Value rowKey = ValueString.get(Bytes.toString(r.getRow()));
             if (columns != null) {
@@ -201,6 +202,21 @@ public class HBasePrimaryIndexCursor implements Cursor {
 
         try {
             result = session.getRegionServer().next(scannerId, fetchSize);
+            ArrayList<Result> list = new ArrayList<Result>(result.length);
+            try {
+                for (int i = 0; i < result.length; i++) {
+                    Result r = result[i];
+
+                    r = new Result(Filter.filter(session.getRegionServer(), regionName, session.getTransaction(), r.list(), 1));
+                    if (!r.isEmpty())
+                        list.add(r);
+                }
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+
+            result = list.toArray(new Result[0]);
+
             index = 0;
         } catch (IOException e) {
             throw new RuntimeException(e);

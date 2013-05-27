@@ -61,8 +61,8 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     public static final int SESSION_UNDO_LOG_POS = 16;
     public static final int LOB_READ = 17;
 
-    public static final int COMMAND_EXECUTE_TRANSACTIONAL_QUERY = 100;
-    public static final int COMMAND_EXECUTE_TRANSACTIONAL_UPDATE = 101;
+    public static final int COMMAND_EXECUTE_DISTRIBUTED_QUERY = 100;
+    public static final int COMMAND_EXECUTE_DISTRIBUTED_UPDATE = 101;
 
     public static final int STATUS_ERROR = 0;
     public static final int STATUS_OK = 1;

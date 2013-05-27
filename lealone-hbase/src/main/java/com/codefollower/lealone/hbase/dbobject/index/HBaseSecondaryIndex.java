@@ -43,9 +43,11 @@ import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.omid.transaction.TTable;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.result.SortOrder;
@@ -99,85 +101,6 @@ public class HBaseSecondaryIndex extends BaseIndex {
         }
     }
 
-    void printIndexTable() {
-        //if (indexType.isUnique()) {
-        System.out.println();
-        try {
-            ResultScanner resultScanner = indexTable.getScanner(new Scan());
-            Result result = resultScanner.next();
-            while (result != null) {
-                System.out.println("Result " + Bytes.toStringBinary(result.getRow()) + " " + result);
-                result = resultScanner.next();
-            }
-            resultScanner.close();
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
-        //}
-    }
-
-    public static String toStringBinary(final byte[] b) {
-        if (b == null)
-            return "null";
-        return toStringBinary(b, 0, b.length);
-    }
-
-    public static String toStringBinary(final byte[] b, int off, int len) {
-        StringBuilder result = new StringBuilder();
-        try {
-            String first = new String(b, off, len, "ISO-8859-1");
-            for (int i = 0; i < first.length(); ++i) {
-                int ch = first.charAt(i) & 0xFF;
-
-                result.append(String.format("\\x%02X", ch));
-            }
-        } catch (UnsupportedEncodingException e) {
-        }
-        return result.toString();
-    }
-
-    @Override
-    public void add(Session session, Row row) {
-        if (indexType.isUnique()) {
-            byte[] key = getKey(row);
-            Result r;
-            try {
-                Scan scan = new Scan(key, (byte[]) null);
-                scan.setCaching(1);
-                scan.addColumn(PSEUDO_FAMILY, PSEUDO_COLUMN);
-                ResultScanner resultScanner = indexTable.getScanner(scan);
-                r = resultScanner.next();
-                resultScanner.close();
-            } catch (IOException e) {
-                throw DbException.convert(e);
-            }
-            if (r != null && !r.isEmpty()) {
-                //                System.out.println();
-                //                System.out.println("Start   " + toStringBinary(key));
-                //                System.out.println("ResultA " + toStringBinary(r.getRow()));
-                //                System.out.println("ResultA " + Bytes.toStringBinary(r.getRow()));
-                //                printIndexTable();
-
-                buffer.clear();
-                buffer.put(r.getRow());
-                buffer.flip();
-                SearchRow r2 = getRow(decode(buffer));
-                if (compareRows(row, r2) == 0) {
-                    if (!containsNullAndAllowMultipleNull(r2)) {
-                        throw getDuplicateKeyException();
-                    }
-                }
-            }
-        }
-        try {
-            Put newPut = new Put(getKey(row));
-            newPut.add(PSEUDO_FAMILY, PSEUDO_COLUMN, row.getTransactionId(), ZERO);
-            indexTable.put(newPut);
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
-    }
-
     private byte[] getKey(SearchRow r) {
         if (r == null) {
             return null;
@@ -215,8 +138,6 @@ public class HBaseSecondaryIndex extends BaseIndex {
         }
         buffer.putInt(Integer.MAX_VALUE);
         buffer.flip();
-        System.out.println("lastKey " + toStringBinary(Bytes.toBytes(buffer)));
-        printIndexTable();
         return Bytes.toBytes(buffer);
     }
 
@@ -276,20 +197,77 @@ public class HBaseSecondaryIndex extends BaseIndex {
     }
 
     @Override
+    public void add(Session session, Row row) {
+        if (indexType.isUnique()) {
+            byte[] key = getKey(row);
+            Result r;
+            try {
+                Scan scan = new Scan(key, (byte[]) null);
+                scan.setCaching(1);
+                scan.addColumn(PSEUDO_FAMILY, PSEUDO_COLUMN);
+                TTable ttable = new TTable(indexTable);
+                ResultScanner resultScanner = ttable.getScanner(((HBaseSession) session).getTransaction(), scan);
+                r = resultScanner.next();
+                resultScanner.close();
+            } catch (IOException e) {
+                throw DbException.convert(e);
+            }
+            if (r != null && !r.isEmpty()) {
+                buffer.clear();
+                buffer.put(r.getRow());
+                buffer.flip();
+                SearchRow r2 = getRow(decode(buffer));
+                if (compareRows(row, r2) == 0) {
+                    if (!containsNullAndAllowMultipleNull(r2)) {
+                        throw getDuplicateKeyException();
+                    }
+                }
+            }
+        }
+        try {
+            //分两种场景:
+            //1. 以insert into这类SQL语句插入记录
+            //   这种场景用正常的Put操作
+            //
+            //2. 以delete from这类SQL语句删除记录时出错了
+            //   这种方式实际上并不真的删除原有记录，而是插入一条值为null的新版本记录，出错时撤消，
+            //   所以要用Delete
+            if (((HBaseRow) row).getResult() == null) {
+                Put newPut = new Put(getKey(row));
+                newPut.add(PSEUDO_FAMILY, PSEUDO_COLUMN, row.getTransactionId(), ZERO);
+                indexTable.put(newPut);
+            } else {
+                Delete delete = new Delete(getKey(row));
+                delete.deleteColumn(PSEUDO_FAMILY, PSEUDO_COLUMN, row.getTransactionId());
+                indexTable.delete(delete);
+            }
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    @Override
     public void remove(Session session, Row row) { //参数row是主表的记录，并不是索引表的记录
         if (((HBaseRow) row).isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
             return;
         try {
-            long timestamp;
-            Result result = ((HBaseRow) row).getResult();
-            if (result != null) { //delete from语句需要先把要删除的记录get或scan出来，此时用原始的Result的时间戳
-                timestamp = result.list().get(0).getTimestamp();
-            } else { //rollback的场景
-                timestamp = row.getTransactionId();
+            //分两种场景:
+            //1. 以delete from这类SQL语句删除记录
+            //   这种场景会把要删除的记录找出来，此时用put的方式，不能直接用Delete，因为用Delete后如果当前事务未提交
+            //   那么其它并发事务就找不到之前的记录版本
+            //
+            //2. 在进行insert时出错了
+            //   比如此索引后面有一个唯一索引，往唯一索引insert了重复值，那么就出错，此时立即撤消，
+            //   因为是新记录，所以要用Delete
+            if (((HBaseRow) row).getResult() != null) {
+                Put put = new Put(getKey(row));
+                put.add(PSEUDO_FAMILY, PSEUDO_COLUMN, row.getTransactionId(), null);
+                indexTable.put(put);
+            } else {
+                Delete delete = new Delete(getKey(row));
+                delete.deleteColumn(PSEUDO_FAMILY, PSEUDO_COLUMN, row.getTransactionId());
+                indexTable.delete(delete);
             }
-            Delete delete = new Delete(getKey(row));
-            delete.deleteColumn(PSEUDO_FAMILY, PSEUDO_COLUMN, timestamp);
-            indexTable.delete(delete);
         } catch (IOException e) {
             throw DbException.convert(e);
         }
@@ -297,14 +275,14 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
     @Override
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        byte[] startRow = getKey(first);
-        byte[] stopRow = getLastKey(last);
-        return new HBaseSecondaryIndexCursor((HBaseTable) getTable(), this, startRow, stopRow);
+        return find(filter.getSession(), first, last);
     }
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        return find((TableFilter) null, first, last);
+        byte[] startRow = getKey(first);
+        byte[] stopRow = getLastKey(last);
+        return new HBaseSecondaryIndexCursor((HBaseSession) session, (HBaseTable) getTable(), this, startRow, stopRow);
     }
 
     @Override
@@ -383,5 +361,45 @@ public class HBaseSecondaryIndex extends BaseIndex {
             admin.disableTable(indexName);
             admin.deleteTable(indexName);
         }
+    }
+
+    //debug only
+    void printIndexTable() {
+        //if (indexType.isUnique()) {
+        System.out.println();
+        try {
+            ResultScanner resultScanner = indexTable.getScanner(new Scan());
+            Result result = resultScanner.next();
+            while (result != null) {
+                System.out.println("Result " + Bytes.toStringBinary(result.getRow()) + " " + result);
+                result = resultScanner.next();
+            }
+            resultScanner.close();
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
+        //}
+    }
+
+    //debug only
+    static String toStringBinary(final byte[] b) {
+        if (b == null)
+            return "null";
+        return toStringBinary(b, 0, b.length);
+    }
+
+    //debug only
+    static String toStringBinary(final byte[] b, int off, int len) {
+        StringBuilder result = new StringBuilder();
+        try {
+            String first = new String(b, off, len, "ISO-8859-1");
+            for (int i = 0; i < first.length(); ++i) {
+                int ch = first.charAt(i) & 0xFF;
+
+                result.append(String.format("\\x%02X", ch));
+            }
+        } catch (UnsupportedEncodingException e) {
+        }
+        return result.toString();
     }
 }

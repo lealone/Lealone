@@ -19,6 +19,7 @@
  */
 package com.codefollower.lealone.test.jdbc.index;
 
+import static junit.framework.Assert.assertEquals;
 import static org.junit.Assert.assertEquals;
 
 import java.sql.SQLException;
@@ -34,6 +35,9 @@ public class IndexTest extends TestBase {
         init();
         insert();
         select();
+
+        testCommit();
+        testRollback();
     }
 
     void init() throws Exception {
@@ -47,6 +51,10 @@ public class IndexTest extends TestBase {
 
     }
 
+    void delete() throws Exception {
+        stmt.executeUpdate("DELETE FROM IndexTest");
+    }
+
     void insert() throws Exception {
         stmt.executeUpdate("DELETE FROM IndexTest");
         stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(300, 30, 'a')");
@@ -58,6 +66,39 @@ public class IndexTest extends TestBase {
         } catch (SQLException e) {
             //e.printStackTrace();
         }
+    }
+
+    void testCommit() throws Exception {
+        try {
+            conn.setAutoCommit(false);
+            insert();
+            conn.commit();
+        } finally {
+            conn.setAutoCommit(true);
+        }
+
+        sql = "SELECT count(*) FROM IndexTest";
+        assertEquals(3, getIntValue(1, true));
+
+        sql = "DELETE FROM IndexTest";
+        assertEquals(3, stmt.executeUpdate(sql));
+
+        sql = "SELECT count(*) FROM IndexTest";
+        assertEquals(0, getIntValue(1, true));
+    }
+
+    void testRollback() throws Exception {
+        try {
+            conn.setAutoCommit(false);
+            insert();
+            conn.rollback();
+        } finally {
+            conn.setAutoCommit(true);
+        }
+
+        sql = "SELECT count(*) FROM IndexTest";
+        assertEquals(0, getIntValue(1, true));
+
     }
 
     void select() throws Exception {

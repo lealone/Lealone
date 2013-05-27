@@ -32,9 +32,12 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.omid.transaction.TTable;
+import com.codefollower.lealone.omid.transaction.Transaction;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
@@ -42,24 +45,28 @@ import com.codefollower.lealone.value.ValueString;
 
 public class HBaseSecondaryIndexCursor implements Cursor {
     private final ByteBuffer readBuffer = ByteBuffer.allocate(256);
-    private final HTable dataTable;
+    private final TTable dataTable;
     private final HBaseSecondaryIndex index;
     private final ResultScanner resultScanner;
+    private final Transaction transaction;
 
     private final Column[] columns;
 
     private SearchRow searchRow;
     private Row row;
 
-    public HBaseSecondaryIndexCursor(HBaseTable hbaseTable, HBaseSecondaryIndex index, byte[] startRow, byte[] stopRow) {
+    public HBaseSecondaryIndexCursor(HBaseSession session, HBaseTable hbaseTable, HBaseSecondaryIndex index, byte[] startRow,
+            byte[] stopRow) {
         this.index = index;
-        this.columns = hbaseTable.getColumns();
+        columns = hbaseTable.getColumns();
+        transaction = session.getTransaction();
 
         Scan scan = new Scan(startRow, stopRow);
         scan.addColumn(HBaseSecondaryIndex.PSEUDO_FAMILY, HBaseSecondaryIndex.PSEUDO_COLUMN);
         try {
-            resultScanner = index.indexTable.getScanner(scan);
-            dataTable = new HTable(HBaseUtils.getConfiguration(), index.getTable().getName());
+            dataTable = new TTable(new HTable(HBaseUtils.getConfiguration(), index.getTable().getName()));
+            TTable ttable = new TTable(index.indexTable);
+            resultScanner = ttable.getScanner(session.getTransaction(), scan);
         } catch (IOException e) {
             throw DbException.convert(e);
         }
@@ -70,8 +77,9 @@ public class HBaseSecondaryIndexCursor implements Cursor {
             dataTable.close();
         } catch (IOException e) {
             throw DbException.convert(e);
+        } finally {
+            resultScanner.close();
         }
-        resultScanner.close();
     }
 
     @Override
@@ -80,7 +88,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
             if (searchRow != null) {
                 Result r;
                 try {
-                    r = dataTable.get(new Get(HBaseUtils.toBytes(searchRow.getRowKey())));
+                    r = dataTable.get(transaction, new Get(HBaseUtils.toBytes(searchRow.getRowKey())));
                 } catch (IOException e) {
                     throw DbException.convert(e);
                 }
@@ -117,7 +125,9 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         row = null;
         Result result;
         try {
-            result = resultScanner.next();
+            do {
+                result = resultScanner.next();
+            } while (result != null && result.isEmpty());
         } catch (IOException e) {
             close();
             throw DbException.convert(e);

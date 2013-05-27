@@ -153,7 +153,7 @@ public abstract class Command implements CommandInterface {
     private void stop() {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
-        if (!isDistributedTransaction()) {
+        if (!isTransactional()) {
             session.commit(true);
         } else if (session.getAutoCommit()) {
             session.commit(false);

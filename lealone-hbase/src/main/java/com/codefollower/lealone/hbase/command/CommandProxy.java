@@ -22,11 +22,9 @@ package com.codefollower.lealone.hbase.command;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.util.Bytes;
 
@@ -48,15 +46,11 @@ import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
-import com.codefollower.lealone.omid.client.RowKeyFamily;
-import com.codefollower.lealone.omid.transaction.Transaction;
 import com.codefollower.lealone.result.ResultInterface;
-import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 
 public class CommandProxy extends Command {
-    private static final Map<byte[], List<KeyValue>> EMPTY_MAP = New.hashMap();
     private final HBaseSession originalSession;
     private final Prepared originalPrepared;
     private final ArrayList<? extends ParameterInterface> originalParams;
@@ -200,39 +194,53 @@ public class CommandProxy extends Command {
         }
     }
 
-    @Override
-    public ResultInterface executeQuery(int maxrows, boolean scrollable) {
+    private void prepare() {
         //TcpServerThread在处理COMMAND_EXECUTE_QUERY和COMMAND_EXECUTE_UPDATE时，
         //如果存在参数，则在setParameters方法中调用Command.getParameters()为每个Parameter赋值，
         //所以如果是参数化的SQL，则需要解析rowKey。
         if (isParameterized) {
             parseRowKey();
+        }
+
+        setProxyCommandParameters();
+
+        if (originalPrepared instanceof HBasePrepared) {
+            if (originalSession.getTransaction() == null //
+                    && !isDistributedTransaction() //
+                    && (!(originalPrepared instanceof DefineCommand))) {
+                originalSession.beginTransaction();
+            }
+            if (isDistributedTransaction()) {
+                proxyCommand.setTransactionId(getTransactionId());
+            } else if (!(originalPrepared instanceof DefineCommand) && originalSession.getTransaction() != null) {
+                proxyCommand.setTransactionId(originalSession.getTransaction().getTransactionId());
+            }
+        }
+    }
+
+    @Override
+    public ResultInterface executeQuery(int maxrows, boolean scrollable) {
+        prepare();
+
+        if (isParameterized) {
             //此时是一条新的proxyCommand，所以要设置fetchSize
             proxyCommand.setFetchSize(super.getFetchSize());
         }
-        setProxyCommandParameters();
-        if (originalSession.getTransaction() != null)
-            proxyCommand.setTransactionId(originalSession.getTransaction().getStartTimestamp());
         return proxyCommand.executeQuery(maxrows, scrollable);
     }
 
     @Override
     public int executeUpdate() {
-        if (isParameterized) {
-            parseRowKey();
-        }
-        setProxyCommandParameters();
-        Transaction transaction = originalSession.getTransaction();
-        if (transaction != null)
-            proxyCommand.setTransactionId(transaction.getStartTimestamp());
+        prepare();
+
         int updateCount = proxyCommand.executeUpdate();
-        if (transaction != null && originalPrepared instanceof HBasePrepared) {
-            HBasePrepared hp = (HBasePrepared) originalPrepared;
-            byte[] tableName = hp.getTableNameAsBytes();
-            for (byte[] rowKey : proxyCommand.getTransactionalRowKeys()) {
-                transaction.addRow(new RowKeyFamily(rowKey, tableName, EMPTY_MAP));
-            }
-        }
+        //        if (originalPrepared instanceof HBasePrepared) {
+        //            HBasePrepared hp = (HBasePrepared) originalPrepared;
+        //            byte[] tableName = hp.getTableNameAsBytes();
+        //            for (byte[] rowKey : proxyCommand.getTransactionalRowKeys()) {
+        //                originalSession.getTransaction().addRow(new RowKeyFamily(rowKey, tableName, EMPTY_MAP));
+        //            }
+        //        }
 
         if (!originalSession.getDatabase().isMaster() && originalPrepared instanceof DefineCommand) {
             originalSession.getDatabase().refreshMetaTable();

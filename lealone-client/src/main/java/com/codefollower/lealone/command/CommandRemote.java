@@ -143,7 +143,8 @@ public class CommandRemote implements CommandInterface {
                 Transfer transfer = transferList.get(i);
                 try {
                     if (isDistributedTransaction()) {
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_TRANSACTIONAL_QUERY).writeInt(id).writeInt(objectId)
+                        session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
                                 .writeInt(maxRows).writeLong(transactionId);
                     } else {
                         session.traceOperation("COMMAND_EXECUTE_QUERY", id);
@@ -191,8 +192,8 @@ public class CommandRemote implements CommandInterface {
                 Transfer transfer = transferList.get(i);
                 try {
                     if (isDistributedTransaction()) {
-                        session.traceOperation("COMMAND_EXECUTE_TRANSACTIONAL_UPDATE", id);
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_TRANSACTIONAL_UPDATE).writeInt(id)
+                        session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id)
                                 .writeLong(transactionId);
                         sendParameters(transfer);
                         session.done(transfer);

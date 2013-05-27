@@ -45,7 +45,7 @@ import com.codefollower.lealone.omid.client.TSOClient;
  */
 public class TransactionManager {
     private static final Log LOG = LogFactory.getLog(TransactionManager.class);
-    static TSOClient tsoclient = null;
+    public static TSOClient tsoclient = null;
 
     private final Configuration conf;
     private final HashMap<byte[], HTable> tableCache = new HashMap<byte[], HTable>();
@@ -96,6 +96,12 @@ public class TransactionManager {
      * @throws TransactionException
      */
     public void commit(Transaction transaction) throws RollbackException, TransactionException {
+        commit(transaction, true);
+    }
+
+    public void commit(Transaction transaction, boolean deleteRows) throws RollbackException, TransactionException {
+        if (transaction.getRows().length == 0)
+            return;
         if (LOG.isTraceEnabled()) {
             LOG.trace("commit " + transaction);
         }
@@ -123,7 +129,7 @@ public class TransactionManager {
         }
 
         if (cb.getResult() == TSOClient.Result.ABORTED) {
-            cleanup(transaction);
+            cleanup(transaction, deleteRows);
             throw new RollbackException();
         }
         transaction.setCommitTimestamp(cb.getCommitTimestamp());
@@ -136,6 +142,10 @@ public class TransactionManager {
      *            Object identifying the transaction to be committed.
      */
     public void rollback(Transaction transaction) {
+        rollback(transaction, true);
+    }
+
+    public void rollback(Transaction transaction, boolean deleteRows) {
         if (LOG.isTraceEnabled()) {
             LOG.trace("abort " + transaction);
         }
@@ -152,55 +162,57 @@ public class TransactionManager {
 
         // Make sure its commit timestamp is 0, so the cleanup does the right job
         transaction.setCommitTimestamp(0);
-        cleanup(transaction);
+        cleanup(transaction, deleteRows);
     }
 
-    private void cleanup(final Transaction transaction) {
-        Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
-        for (final RowKeyFamily rowkey : transaction.getRows()) {
-            List<Delete> batch = deleteBatches.get(rowkey.getTable());
-            if (batch == null) {
-                batch = new ArrayList<Delete>();
-                deleteBatches.put(rowkey.getTable(), batch);
+    private void cleanup(final Transaction transaction, boolean deleteRows) {
+        if (deleteRows) {
+            Map<byte[], List<Delete>> deleteBatches = new HashMap<byte[], List<Delete>>();
+            for (final RowKeyFamily rowkey : transaction.getRows()) {
+                List<Delete> batch = deleteBatches.get(rowkey.getTable());
+                if (batch == null) {
+                    batch = new ArrayList<Delete>();
+                    deleteBatches.put(rowkey.getTable(), batch);
+                }
+                //Delete delete = new Delete(rowkey.getRow(), transaction.getStartTimestamp(), null);
+                Delete delete = new Delete(rowkey.getRow());
+                for (Entry<byte[], List<KeyValue>> entry : rowkey.getFamilies().entrySet()) {
+                    for (KeyValue kv : entry.getValue()) {
+                        delete.deleteColumn(entry.getKey(), kv.getQualifier(), transaction.getStartTimestamp());
+                    }
+                }
+                batch.add(delete);
             }
-            Delete delete = new Delete(rowkey.getRow(), transaction.getStartTimestamp(), null);
-            //Delete delete = new Delete(rowkey.getRow());
-            for (Entry<byte[], List<KeyValue>> entry : rowkey.getFamilies().entrySet()) {
-                for (KeyValue kv : entry.getValue()) {
-                    delete.deleteColumn(entry.getKey(), kv.getQualifier(), transaction.getStartTimestamp());
+
+            boolean cleanupFailed = false;
+            List<HTable> tablesToFlush = new ArrayList<HTable>();
+            for (final Entry<byte[], List<Delete>> entry : deleteBatches.entrySet()) {
+                try {
+                    HTable table = tableCache.get(entry.getKey());
+                    if (table == null) {
+                        table = new HTable(conf, entry.getKey());
+                        table.setAutoFlush(false, true);
+                        tableCache.put(entry.getKey(), table);
+                    }
+                    table.delete(entry.getValue());
+                    tablesToFlush.add(table);
+                } catch (IOException ioe) {
+                    cleanupFailed = true;
                 }
             }
-            batch.add(delete);
-        }
-
-        boolean cleanupFailed = false;
-        List<HTable> tablesToFlush = new ArrayList<HTable>();
-        for (final Entry<byte[], List<Delete>> entry : deleteBatches.entrySet()) {
-            try {
-                HTable table = tableCache.get(entry.getKey());
-                if (table == null) {
-                    table = new HTable(conf, entry.getKey());
-                    table.setAutoFlush(false, true);
-                    tableCache.put(entry.getKey(), table);
+            for (HTable table : tablesToFlush) {
+                try {
+                    table.flushCommits();
+                } catch (IOException e) {
+                    cleanupFailed = true;
                 }
-                table.delete(entry.getValue());
-                tablesToFlush.add(table);
-            } catch (IOException ioe) {
-                cleanupFailed = true;
             }
-        }
-        for (HTable table : tablesToFlush) {
-            try {
-                table.flushCommits();
-            } catch (IOException e) {
-                cleanupFailed = true;
-            }
-        }
 
-        if (cleanupFailed) {
-            LOG.warn("Cleanup failed, some values not deleted");
-            // we can't notify the TSO of completion
-            return;
+            if (cleanupFailed) {
+                LOG.warn("Cleanup failed, some values not deleted");
+                // we can't notify the TSO of completion
+                return;
+            }
         }
         AbortCompleteCallback cb = new SyncAbortCompleteCallback();
         try {
