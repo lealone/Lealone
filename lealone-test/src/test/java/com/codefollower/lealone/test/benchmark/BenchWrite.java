@@ -72,11 +72,16 @@ public class BenchWrite {
         initHTable();
         initPreparedStatement();
 
-        int count = 1;
+        int count = 10;
         long total = 0;
 
+        for (int i = 0; i < count; i++) {
+            total += testStatement();
+        }
+        p("avg", total / count);
         p();
 
+        total = 0;
         for (int i = 0; i < count; i++) {
             total += testStatement();
         }
