@@ -42,7 +42,7 @@ import org.jboss.netty.util.internal.ConcurrentHashMap;
  * hash) which could cause the eviction of a very recent timestamp
  */
 
-class CommitHashMap {
+public class CommitHashMap {
 
     private long largestDeletedTimestamp;
     private final Cache startCommitMapping;

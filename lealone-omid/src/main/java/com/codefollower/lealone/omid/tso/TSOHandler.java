@@ -370,8 +370,8 @@ public class TSOHandler extends SimpleChannelHandler {
             } else {
                 // 1. check the write-write conflicts
                 for (RowKey r : msg.rows) {
-                    long value = sharedState.hashmap.getLatestWriteForRow(r.hashCode());
-                    if (value != 0 && value > msg.startTimestamp) {
+                    long commitTimestamp = sharedState.hashmap.getLatestWriteForRow(r.hashCode());
+                    if (commitTimestamp != 0 && commitTimestamp > msg.startTimestamp) {
                         reply.committed = false;// set as abort
                         break;
                     }

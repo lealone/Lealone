@@ -528,4 +528,8 @@ public interface CommandInterface {
      * @return 如果事务ID大于等于0，说明此命令正在一个分布式事务中执行，此时返回true，否则返回false
      */
     boolean isDistributedTransaction();
+
+    int commitDistributedTransaction(long transactionId, long commitTimestamp);
+
+    int rollbackDistributedTransaction(long transactionId);
 }

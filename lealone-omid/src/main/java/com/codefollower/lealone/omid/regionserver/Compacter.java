@@ -25,6 +25,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.KeyValue;
@@ -48,9 +50,9 @@ import com.codefollower.lealone.omid.client.ColumnWrapper;
 import com.codefollower.lealone.omid.tso.messages.MinimumTimestamp;
 
 public class Compacter extends BaseRegionObserver {
-
-    private static ExecutorService bossExecutor = Executors.newCachedThreadPool();
-    private static ExecutorService workerExecutor = Executors.newCachedThreadPool();
+    private static final Log LOG = LogFactory.getLog(Compacter.class);
+    private static final ExecutorService bossExecutor = Executors.newCachedThreadPool();
+    private static final ExecutorService workerExecutor = Executors.newCachedThreadPool();
     private volatile long minTimestamp;
     private ClientBootstrap bootstrap;
     private ChannelFactory factory;
@@ -58,7 +60,7 @@ public class Compacter extends BaseRegionObserver {
 
     @Override
     public void start(CoprocessorEnvironment e) throws IOException {
-        System.out.println("Starting compacter");
+        LOG.info("Starting compacter");
         Configuration conf = e.getConfiguration();
         factory = new NioClientSocketChannelFactory(bossExecutor, workerExecutor, 3);
         bootstrap = new ClientBootstrap(factory);
@@ -82,10 +84,10 @@ public class Compacter extends BaseRegionObserver {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 if (future.isSuccess()) {
-                    System.out.println("Compacter connected!");
+                    LOG.info("Compacter connected!");
                     channel = future.getChannel();
                 } else {
-                    System.out.println("Connection failed");
+                    LOG.info("Connection failed");
                 }
             }
         });
@@ -93,12 +95,12 @@ public class Compacter extends BaseRegionObserver {
 
     @Override
     public void stop(CoprocessorEnvironment e) throws IOException {
-        System.out.println("Stoping compacter");
+        LOG.info("Stoping compacter");
         if (channel != null) {
-            System.out.println("Calling close");
+            LOG.info("Calling close");
             channel.close();
         }
-        System.out.println("Compacter stopped");
+        LOG.info("Compacter stopped");
     }
 
     @Override
@@ -119,7 +121,7 @@ public class Compacter extends BaseRegionObserver {
         public CompacterScanner(InternalScanner internalScanner, long minTimestamp) {
             this.minTimestamp = minTimestamp;
             this.internalScanner = internalScanner;
-            System.out.println("Created scanner with " + minTimestamp);
+            LOG.info("Created compacter scanner with minTimestamp: " + minTimestamp);
         }
 
         @Override
@@ -146,7 +148,8 @@ public class Compacter extends BaseRegionObserver {
                     if (columnsSeen.add(column) || kv.getTimestamp() > minTimestamp) {
                         result.add(kv);
                     } else {
-                        System.out.println("Discarded " + kv);
+                        if (LOG.isDebugEnabled())
+                            LOG.debug("Discarded " + kv);
                     }
                 }
                 if (raw.size() < toReceive || toReceive == -1) {
@@ -182,11 +185,11 @@ public class Compacter extends BaseRegionObserver {
         @Override
         public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
             Object message = e.getMessage();
-            //         System.out.println("Received " + message);
             if (message instanceof MinimumTimestamp) {
                 Compacter.this.minTimestamp = ((MinimumTimestamp) message).getTimestamp();
             } else {
-                System.out.println("Wtf " + message);
+                if (LOG.isDebugEnabled())
+                    LOG.debug("Received " + message);
             }
         }
     }

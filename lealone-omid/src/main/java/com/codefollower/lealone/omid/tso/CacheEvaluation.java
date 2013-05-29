@@ -22,7 +22,7 @@ import java.util.Random;
 
 public class CacheEvaluation {
 
-    final static int ENTRIES = 150000000;
+    final static int ENTRIES = 150000;
     final static int WARMUP_ROUNDS = 2;
     final static int ROUNDS = 4;
     final static double HOT_PERC = 1;

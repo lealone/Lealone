@@ -388,4 +388,14 @@ public abstract class Command implements CommandInterface {
         }
         return keys;
     }
+
+    @Override
+    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
+        return session.commitDistributedTransaction(transactionId, commitTimestamp);
+    }
+
+    @Override
+    public int rollbackDistributedTransaction(long transactionId) {
+        return session.rollbackDistributedTransaction(transactionId);
+    }
 }

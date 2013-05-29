@@ -63,6 +63,8 @@ public class SessionRemote extends SessionWithState implements DataHandler {
 
     public static final int COMMAND_EXECUTE_DISTRIBUTED_QUERY = 100;
     public static final int COMMAND_EXECUTE_DISTRIBUTED_UPDATE = 101;
+    public static final int COMMAND_EXECUTE_DISTRIBUTED_COMMIT = 102;
+    public static final int COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK = 103;
 
     public static final int STATUS_ERROR = 0;
     public static final int STATUS_OK = 1;

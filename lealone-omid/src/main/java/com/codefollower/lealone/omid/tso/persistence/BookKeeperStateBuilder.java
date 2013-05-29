@@ -304,9 +304,13 @@ public class BookKeeperStateBuilder implements StateBuilder {
     @Override
     public void shutdown() {
         try {
-            zk.close();
+            if (zk != null)
+                zk.close();
         } catch (InterruptedException e) {
             LOG.error("Error while shutting down", e);
+        } finally {
+            zk = null;
+            lp = null;
         }
     }
 

@@ -208,7 +208,7 @@ public class CommandProxy extends Command {
             if (originalSession.getTransaction() == null //
                     && !isDistributedTransaction() //
                     && (!(originalPrepared instanceof DefineCommand))) {
-                originalSession.beginTransaction();
+                originalSession.beginTransaction(this);
             }
             if (isDistributedTransaction()) {
                 proxyCommand.setTransactionId(getTransactionId());
@@ -326,6 +326,16 @@ public class CommandProxy extends Command {
     @Override
     public byte[][] getTransactionalRowKeys() {
         return proxyCommand.getTransactionalRowKeys();
+    }
+
+    @Override
+    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
+        return proxyCommand.commitDistributedTransaction(transactionId, commitTimestamp);
+    }
+
+    @Override
+    public int rollbackDistributedTransaction(long transactionId) {
+        return proxyCommand.rollbackDistributedTransaction(transactionId);
     }
 
     CommandInterface getCommandInterface(String url, String sql) throws Exception {

@@ -86,6 +86,21 @@ public class TransactionManager {
         return new Transaction(cb.getStartTimestamp());
     }
 
+    public long getNewTimestamp() throws TransactionException {
+        SyncCreateCallback cb = new SyncCreateCallback();
+        try {
+            tsoclient.getNewTimestamp(cb);
+            cb.await();
+        } catch (Exception e) {
+            throw new TransactionException("Could not get new timestamp", e);
+        }
+        if (cb.getException() != null) {
+            throw new TransactionException("Error retrieving timestamp", cb.getException());
+        }
+
+        return cb.getStartTimestamp();
+    }
+
     /**
      * Commits a transaction. If the transaction is aborted it automatically
      * rollbacks the changes and throws a {@link RollbackException}.

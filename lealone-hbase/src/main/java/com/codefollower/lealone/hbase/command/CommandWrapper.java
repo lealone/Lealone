@@ -106,4 +106,14 @@ class CommandWrapper implements CommandInterface {
     public boolean isDistributedTransaction() {
         return c.isDistributedTransaction();
     }
+
+    @Override
+    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
+        return c.commitDistributedTransaction(transactionId, commitTimestamp);
+    }
+
+    @Override
+    public int rollbackDistributedTransaction(long transactionId) {
+        return c.rollbackDistributedTransaction(transactionId);
+    }
 }

@@ -366,11 +366,52 @@ public class TcpServerThread implements Runnable {
                 status = getState(old);
             }
             transfer.writeInt(status).writeInt(updateCount).writeBoolean(session.getAutoCommit());
-            if (isDistributedTransaction) {
-                transfer.writeInt(command.getTransactionalRowKeys().length);
-                for (byte[] rowKey : command.getTransactionalRowKeys())
-                    transfer.writeBytes(rowKey);
+//            if (isDistributedTransaction) {
+//                transfer.writeInt(command.getTransactionalRowKeys().length);
+//                for (byte[] rowKey : command.getTransactionalRowKeys())
+//                    transfer.writeBytes(rowKey);
+//            }
+            transfer.flush();
+            break;
+        }
+        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT: {
+            int id = transfer.readInt();
+            long transactionId= transfer.readLong();
+            long commitTimestamp= transfer.readLong();
+            Command command = (Command) cache.getObject(id, false);
+            int old = session.getModificationId();
+            @SuppressWarnings("unused")
+            int updateCount;
+            synchronized (session) {
+                updateCount = command.commitDistributedTransaction(transactionId, commitTimestamp);
             }
+            int status;
+            if (session.isClosed()) {
+                status = SessionRemote.STATUS_CLOSED;
+            } else {
+                status = getState(old);
+            }
+            transfer.writeInt(status); //TODO updateCount
+            transfer.flush();
+            break;
+        }
+        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK: {
+            int id = transfer.readInt();
+            long transactionId= transfer.readLong();
+            Command command = (Command) cache.getObject(id, false);
+            int old = session.getModificationId();
+            @SuppressWarnings("unused")
+            int updateCount;
+            synchronized (session) {
+                updateCount = command.rollbackDistributedTransaction(transactionId);
+            }
+            int status;
+            if (session.isClosed()) {
+                status = SessionRemote.STATUS_CLOSED;
+            } else {
+                status = getState(old);
+            }
+            transfer.writeInt(status); //TODO updateCount
             transfer.flush();
             break;
         }

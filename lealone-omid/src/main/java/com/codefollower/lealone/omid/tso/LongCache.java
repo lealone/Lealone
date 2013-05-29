@@ -18,13 +18,13 @@ package com.codefollower.lealone.omid.tso;
 public class LongCache implements Cache {
 
     private final long[] cache;
-    private final int size;
     private final int associativity;
+    private final int mask;
 
     public LongCache(int size, int associativity) {
-        this.size = size;
         this.cache = new long[2 * (size + associativity)];
         this.associativity = associativity;
+        this.mask = size - 1;
     }
 
     /** (non-Javadoc)
@@ -68,7 +68,7 @@ public class LongCache implements Cache {
     }
 
     private int index(long hash) {
-        return (int) (Math.abs(hash) % size);
+        return (int) (Math.abs(hash) & mask);
     }
 
 }

@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
+import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.dml.Query;
 import com.codefollower.lealone.dbobject.Schema;
@@ -44,12 +45,16 @@ import com.codefollower.lealone.omid.client.RowKeyFamily;
 import com.codefollower.lealone.omid.transaction.TransactionException;
 import com.codefollower.lealone.omid.transaction.TransactionManager;
 import com.codefollower.lealone.omid.transaction.Transaction;
+import com.codefollower.lealone.omid.tso.CommitHashMap;
+import com.codefollower.lealone.omid.tso.RowKey;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SubqueryResult;
 import com.codefollower.lealone.util.New;
 
 public class HBaseSession extends Session {
     private static final Map<byte[], List<KeyValue>> EMPTY_MAP = New.hashMap();
+    private static final CommitHashMap commitHashMap = new CommitHashMap();
+    private static final HBaseTransactionStatusTable transactionStatusTable = new HBaseTransactionStatusTable();
 
     /**
      * HBase的HMaster对象，master和regionServer不可能同时非null
@@ -68,6 +73,7 @@ public class HBaseSession extends Session {
 
     private TransactionManager tm;
     private Transaction transaction;
+    private Command currentCommand;
 
     private final List<HBaseRow> undoRows = New.arrayList();
 
@@ -147,7 +153,10 @@ public class HBaseSession extends Session {
         super.commit(ddl);
         if (transaction != null) {
             try {
-                tm.commit(transaction, false); //使用false值，当commit失败时不让TransactionManager通过HTable的方式删除记录
+                long commitTimestamp = tm.getNewTimestamp();
+                currentCommand.commitDistributedTransaction(transaction.getTransactionId(), commitTimestamp);
+                transactionStatusTable.addRecord(transaction.getTransactionId(), commitTimestamp);
+                //tm.commit(transaction, false); //使用false值，当commit失败时不让TransactionManager通过HTable的方式删除记录
             } catch (Exception e) {
                 rollback();
                 throw DbException.convert(e);
@@ -155,6 +164,7 @@ public class HBaseSession extends Session {
             transaction = null;
         }
         undoRows.clear();
+        transaction = null;
     }
 
     @Override
@@ -165,7 +175,7 @@ public class HBaseSession extends Session {
                 tm.rollback(transaction, false); //使用false值，当commit失败时不让TransactionManager通过HTable的方式删除记录
 
                 transaction = null; //使得在undo时不会重新记log
-                undo();
+                undo(); //TODO 其实没有必要undo，当执行前面的tm.rollback时在TSO已经记下事务被中止了，查询时不会返回被rollback的记录
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -185,9 +195,10 @@ public class HBaseSession extends Session {
         return transaction;
     }
 
-    public Transaction beginTransaction() {
+    public Transaction beginTransaction(Command currentCommand) {
         if (transaction == null) {
             try {
+                this.currentCommand = currentCommand;
                 transaction = getTransactionManager().begin();
             } catch (TransactionException e) {
                 throw DbException.convert(e);
@@ -211,5 +222,44 @@ public class HBaseSession extends Session {
             undoRows.add((HBaseRow) row);
             transaction.addRow(new RowKeyFamily(HBaseUtils.toBytes(row.getRowKey()), tableName, EMPTY_MAP));
         }
+    }
+
+    @Override
+    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
+        if (transaction != null) {
+            synchronized (HBaseSession.class) {
+                long timestampOracle = Long.MIN_VALUE;
+                if (transactionId < timestampOracle) { //TODO
+                    throw new RuntimeException("Aborting transaction after restarting TSO");
+                } else if (transaction.getRows().length > 0 && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
+                    // Too old and not read only
+                    throw new RuntimeException("Too old startTimestamp: ST " + transactionId + " MAX "
+                            + commitHashMap.getLargestDeletedTimestamp());
+                } else {
+                    // 1. check the write-write conflicts
+                    for (RowKey r : transaction.getRows()) {
+                        long oldCommitTimestamp = commitHashMap.getLatestWriteForRow(r.hashCode());
+                        if (oldCommitTimestamp != 0 && oldCommitTimestamp > transactionId) {
+                            throw new RuntimeException("Write-write conflict: oldCommitTimestamp " + oldCommitTimestamp
+                                    + ", startTimestamp " + transactionId);
+                        }
+                    }
+
+                    for (RowKey r : transaction.getRows()) {
+                        commitHashMap.putLatestWriteForRow(r.hashCode(), commitTimestamp);
+                    }
+                }
+
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public int rollbackDistributedTransaction(long transactionId) {
+        if (transaction != null) {
+
+        }
+        return 0;
     }
 }

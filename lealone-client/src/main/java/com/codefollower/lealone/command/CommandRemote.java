@@ -199,10 +199,10 @@ public class CommandRemote implements CommandInterface {
                         session.done(transfer);
                         updateCount = transfer.readInt();
                         autoCommit = transfer.readBoolean();
-                        int rowKeyCount = transfer.readInt();
-                        transactionalRowKeys = new byte[rowKeyCount][];
-                        for (int j = 0; j < rowKeyCount; j++)
-                            transactionalRowKeys[j] = transfer.readBytes();
+                        //int rowKeyCount = transfer.readInt();
+                        //transactionalRowKeys = new byte[rowKeyCount][];
+                        //for (int j = 0; j < rowKeyCount; j++)
+                        //    transactionalRowKeys[j] = transfer.readBytes();
                     } else {
                         session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_UPDATE).writeInt(id);
@@ -307,5 +307,41 @@ public class CommandRemote implements CommandInterface {
     @Override
     public boolean isDistributedTransaction() {
         return transactionId >= 0;
+    }
+
+    @Override
+    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
+        synchronized (session) {
+            for (int i = 0, count = 0; i < transferList.size(); i++) {
+                Transfer transfer = transferList.get(i);
+                try {
+                    session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_COMMIT", id);
+                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeInt(id).writeLong(transactionId)
+                            .writeLong(commitTimestamp);
+                    session.done(transfer);
+                    
+                } catch (IOException e) {
+                    session.removeServer(e, i--, ++count);
+                }
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public int rollbackDistributedTransaction(long transactionId) {
+        synchronized (session) {
+            for (int i = 0, count = 0; i < transferList.size(); i++) {
+                Transfer transfer = transferList.get(i);
+                try {
+                    session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK", id);
+                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK).writeInt(id).writeLong(transactionId);
+                    session.done(transfer);
+                } catch (IOException e) {
+                    session.removeServer(e, i--, ++count);
+                }
+            }
+        }
+        return 0;
     }
 }

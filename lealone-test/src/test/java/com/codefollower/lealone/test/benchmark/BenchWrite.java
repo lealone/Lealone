@@ -72,31 +72,38 @@ public class BenchWrite {
         initHTable();
         initPreparedStatement();
 
-        int count = 10;
+        int count = 1;
+        long total = 0;
 
         p();
 
         for (int i = 0; i < count; i++) {
-            testStatement();
+            total += testStatement();
         }
-
+        p("avg", total / count);
         p();
 
+        total = 0;
         for (int i = 0; i < count; i++) {
-            testPreparedStatement();
+            total += testPreparedStatement();
         }
-
+        p("avg", total / count);
         p();
 
-        for (int i = 0; i < count; i++) {
-            testHBase();
-        }
+        total = 0;
 
+        for (int i = 0; i < count; i++) {
+            total += testHBase();
+        }
+        p("avg", total / count);
         p();
 
+        total = 0;
+
         for (int i = 0; i < count; i++) {
-            testHBaseBatch();
+            total += testHBaseBatch();
         }
+        p("avg", total / count);
     }
 
     void init() throws Exception {
@@ -120,9 +127,9 @@ public class BenchWrite {
                 + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary float))");
     }
 
-    int count = 10200;
+    int count = 10010;
 
-    void testHBase() throws Exception {
+    long testHBase() throws Exception {
         long start = System.nanoTime();
         for (int i = 10000; i < count; i++) {
             Put put = new Put(b("RK" + i));
@@ -134,9 +141,11 @@ public class BenchWrite {
         }
         long end = System.nanoTime();
         p("testHBase()", end - start);
+
+        return end - start;
     }
 
-    void testHBaseBatch() throws Exception {
+    long testHBaseBatch() throws Exception {
         List<Put> puts = new ArrayList<Put>();
 
         long start = System.nanoTime();
@@ -151,6 +160,8 @@ public class BenchWrite {
         t.put(puts);
         long end = System.nanoTime();
         p("testHBaseBatch()", end - start);
+
+        return end - start;
     }
 
     void p(String m, long v) {
@@ -161,7 +172,8 @@ public class BenchWrite {
         System.out.println();
     }
 
-    void testPreparedStatement() throws Exception {
+    long testPreparedStatement() throws Exception {
+        conn.setAutoCommit(false);
         long start = System.nanoTime();
         for (int i = 10000; i < count; i++) {
             ps.setString(1, "RK" + i);
@@ -171,11 +183,16 @@ public class BenchWrite {
             ps.setFloat(5, 3000.50F);
             ps.executeUpdate();
         }
+        conn.commit();
         long end = System.nanoTime();
         p("testPreparedStatement()", end - start);
+        conn.setAutoCommit(true);
+
+        return end - start;
     }
 
-    void testStatement() throws Exception {
+    long testStatement() throws Exception {
+        conn.setAutoCommit(false);
         long start = System.nanoTime();
         StringBuilder s = null;
         for (int i = 10000; i < count; i++) {
@@ -187,7 +204,11 @@ public class BenchWrite {
             s.append(3000.50F).append(")");
             stmt.executeUpdate(s.toString());
         }
+        conn.commit();
         long end = System.nanoTime();
         p("testStatement()", end - start);
+        conn.setAutoCommit(true);
+
+        return end - start;
     }
 }

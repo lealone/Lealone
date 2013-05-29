@@ -19,6 +19,7 @@ package com.codefollower.lealone.omid.tso;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import com.codefollower.lealone.omid.replication.SharedMessageBuffer;
+import com.codefollower.lealone.omid.tso.persistence.HBaseStateLogger;
 import com.codefollower.lealone.omid.tso.persistence.StateLogger;
 import com.codefollower.lealone.omid.tso.persistence.LoggerAsyncCallback.AddRecordCallback;
 import com.codefollower.lealone.omid.tso.persistence.LoggerException.Code;
@@ -94,7 +95,8 @@ public class TSOState {
     }
 
     public TSOState(StateLogger logger, TimestampOracle timestampOracle) {
-        this.logger = logger;
+        if (logger == null)
+            this.logger = new HBaseStateLogger();
         this.timestampOracle = timestampOracle;
         this.previousLargestDeletedTimestamp = this.timestampOracle.get();
         this.largestDeletedTimestamp = this.previousLargestDeletedTimestamp;

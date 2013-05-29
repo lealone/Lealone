@@ -230,12 +230,12 @@
 		<name>hbase.regionserver.metahandler.count</name>
 		<value>2</value>
 	</property>
-
+<!-- 
 	<property>
 		<name>hbase.hregion.memstore.flush.size</name>
 		<value>102400</value>
 	</property>
-
+ -->
 	<property>
 		<name>hbase.hregion.memstore.block.multiplier</name>
 		<value>4</value>

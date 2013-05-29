@@ -23,7 +23,15 @@ import com.codefollower.lealone.omid.tso.TSOServer;
 
 public class TSOServerStarter {
     public static void main(String[] args) throws Exception {
-        args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha", "-ensemble", "1", "-quorum", "1", "-batch", "1024" };
+        //args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha", "-ensemble", "1", "-quorum", "1", "-batch", "1024" };
+        //args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha", "-ensemble", "1", "-quorum", "1", "-batch", "8192" };
+        
+        
+        //args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ensemble", "1", "-quorum", "1", "-batch", "8192" };
+        
+        args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234", "-ha", "-ensemble", "1", "-quorum", "1", "-batch", "0" };
+        //args = new String[] { "-zk", "127.0.0.1:2181", "-port", "1234","-ensemble", "1", "-quorum", "1", "-batch", "0" };
+        
         TSOServer.main(args);
     }
 }

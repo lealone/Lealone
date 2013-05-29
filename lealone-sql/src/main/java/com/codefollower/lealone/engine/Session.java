@@ -1266,4 +1266,12 @@ public class Session extends SessionWithState {
     public Sequence createSequence(Schema schema, int id, String name, boolean belongsToTable) {
         return new Sequence(schema, id, name, belongsToTable);
     }
+
+    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
+        return 0;
+    }
+
+    public int rollbackDistributedTransaction(long transactionId) {
+        return 0;
+    }
 }
