@@ -40,7 +40,6 @@ public class CommandRemote implements CommandInterface {
     private boolean readonly;
     private final int created;
 
-    private byte[][] transactionalRowKeys;
     private long transactionId = -1;
 
     public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
@@ -199,10 +198,6 @@ public class CommandRemote implements CommandInterface {
                         session.done(transfer);
                         updateCount = transfer.readInt();
                         autoCommit = transfer.readBoolean();
-                        //int rowKeyCount = transfer.readInt();
-                        //transactionalRowKeys = new byte[rowKeyCount][];
-                        //for (int j = 0; j < rowKeyCount; j++)
-                        //    transactionalRowKeys[j] = transfer.readBytes();
                     } else {
                         session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_UPDATE).writeInt(id);
@@ -290,11 +285,6 @@ public class CommandRemote implements CommandInterface {
     }
 
     @Override
-    public byte[][] getTransactionalRowKeys() {
-        return transactionalRowKeys;
-    }
-
-    @Override
     public long getTransactionId() {
         return transactionId;
     }
@@ -319,7 +309,6 @@ public class CommandRemote implements CommandInterface {
                     transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeInt(id).writeLong(transactionId)
                             .writeLong(commitTimestamp);
                     session.done(transfer);
-                    
                 } catch (IOException e) {
                     session.removeServer(e, i--, ++count);
                 }

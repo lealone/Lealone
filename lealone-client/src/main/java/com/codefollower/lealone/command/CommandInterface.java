@@ -506,8 +506,6 @@ public interface CommandInterface {
 
     void setFetchSize(int fetchSize);
 
-    byte[][] getTransactionalRowKeys();
-
     /**
      * 设置事务ID，如果事务ID大于等于0，说明此命令正在一个分布式事务中执行
      * 

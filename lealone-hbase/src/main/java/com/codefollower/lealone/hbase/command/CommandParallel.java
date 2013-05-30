@@ -51,7 +51,6 @@ public class CommandParallel implements CommandInterface {
     private final List<CommandInterface> commands; //保证不会为null且size>=2
 
     private long transactionId = -1;
-    private List<byte[]> rowKeys;
 
     public CommandParallel(HBaseSession originalSession, CommandProxy commandProxy, //
             byte[] tableName, List<byte[]> startKeys, String sql, Prepared originalPrepared) {
@@ -180,13 +179,8 @@ public class CommandParallel implements CommandInterface {
             }));
         }
         try {
-            if (rowKeys == null)
-                rowKeys = New.arrayList();
             for (int i = 0; i < size; i++) {
                 updateCount += futures.get(i).get();
-
-                //if (originalSession.getTransaction() != null)
-                //    rowKeys.addAll(Arrays.asList(commands.get(i).getTransactionalRowKeys()));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -222,11 +216,6 @@ public class CommandParallel implements CommandInterface {
         for (int i = 0; i < size; i++) {
             commands.get(i).setFetchSize(fetchSize);
         }
-    }
-
-    @Override
-    public byte[][] getTransactionalRowKeys() {
-        return rowKeys.toArray(new byte[0][0]);
     }
 
     @Override

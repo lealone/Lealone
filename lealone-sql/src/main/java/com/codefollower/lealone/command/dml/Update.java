@@ -108,7 +108,6 @@ public class Update extends Prepared {
                     Row oldRow = tableFilter.get();
                     Row newRow = table.getTemplateRow();
                     newRow.setTransactionId(getCommand().getTransactionId());
-                    getCommand().addRowKey(oldRow.getRowKey());
                     for (int i = 0; i < columnCount; i++) {
                         Expression newExpr = expressionMap.get(columns[i]);
                         Value newValue;

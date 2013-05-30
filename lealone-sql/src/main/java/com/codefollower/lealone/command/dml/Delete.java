@@ -91,7 +91,6 @@ public class Delete extends Prepared {
                 }
                 Row row = rows.next();
                 row.setTransactionId(getCommand().getTransactionId());
-                getCommand().addRowKey(row.getRowKey());
                 table.removeRow(session, row);
                 session.log(table, UndoLogRecord.DELETE, row);
             }

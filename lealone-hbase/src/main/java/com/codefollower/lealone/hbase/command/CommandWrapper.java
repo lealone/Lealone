@@ -88,11 +88,6 @@ class CommandWrapper implements CommandInterface {
     }
 
     @Override
-    public byte[][] getTransactionalRowKeys() {
-        return c.getTransactionalRowKeys();
-    }
-
-    @Override
     public void setTransactionId(long transactionId) {
         c.setTransactionId(transactionId);
     }

@@ -125,7 +125,6 @@ public class Insert extends Prepared implements ResultTarget {
                 Expression[] expr = list.get(x);
                 Row newRow = createRow(columnLen, expr, x);
                 newRow.setTransactionId(getCommand().getTransactionId());
-                getCommand().addRowKey(newRow.getRowKey());
 				rowNumber++;
 				table.validateConvertUpdateSequence(session, newRow);
 				boolean done = table.fireBeforeRow(session, null, newRow);

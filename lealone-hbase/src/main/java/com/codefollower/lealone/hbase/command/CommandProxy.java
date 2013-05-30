@@ -234,13 +234,6 @@ public class CommandProxy extends Command {
         prepare();
 
         int updateCount = proxyCommand.executeUpdate();
-        //        if (originalPrepared instanceof HBasePrepared) {
-        //            HBasePrepared hp = (HBasePrepared) originalPrepared;
-        //            byte[] tableName = hp.getTableNameAsBytes();
-        //            for (byte[] rowKey : proxyCommand.getTransactionalRowKeys()) {
-        //                originalSession.getTransaction().addRow(new RowKeyFamily(rowKey, tableName, EMPTY_MAP));
-        //            }
-        //        }
 
         if (!originalSession.getDatabase().isMaster() && originalPrepared instanceof DefineCommand) {
             originalSession.getDatabase().refreshMetaTable();
@@ -321,11 +314,6 @@ public class CommandProxy extends Command {
     public void setTransactionId(long transactionId) {
         proxyCommand.setTransactionId(transactionId);
         super.setTransactionId(transactionId);
-    }
-
-    @Override
-    public byte[][] getTransactionalRowKeys() {
-        return proxyCommand.getTransactionalRowKeys();
     }
 
     @Override

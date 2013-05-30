@@ -6,7 +6,6 @@
  */
 package com.codefollower.lealone.command;
 
-import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
@@ -20,7 +19,6 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.Trace;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.util.MathUtils;
-import com.codefollower.lealone.value.Value;
 
 /**
  * Represents a SQL statement. This object is only used on the server side.
@@ -52,7 +50,6 @@ public abstract class Command implements CommandInterface {
     private boolean canReuse;
     protected int fetchSize;
     private long transactionId = -1;
-    private ArrayList<Value> rowKeys = new ArrayList<Value>();
 
     protected Command(Session session, String sql) {
         this.session = session;
@@ -369,24 +366,6 @@ public abstract class Command implements CommandInterface {
     @Override
     public boolean isDistributedTransaction() {
         return transactionId >= 0;
-    }
-
-    public void addRowKey(Value rowKey) {
-        rowKeys.add(rowKey);
-    }
-
-    @Override
-    public byte[][] getTransactionalRowKeys() {
-        int size = rowKeys.size();
-        byte[][] keys = new byte[size][];
-        for (int i = 0; i < size; i++) {
-            try {
-                keys[i] = rowKeys.get(i).getString().getBytes("UTF-8");
-            } catch (UnsupportedEncodingException e) {
-                keys[i] = rowKeys.get(i).getString().getBytes();
-            }
-        }
-        return keys;
     }
 
     @Override
