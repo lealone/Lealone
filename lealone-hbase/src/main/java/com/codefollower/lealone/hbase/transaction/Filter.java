@@ -32,8 +32,8 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
 public class Filter {
-    private static Committed committed = new Committed();
-    private static Set<Long> aborted = Collections.synchronizedSet(new HashSet<Long>(1000));
+    public final static Committed committed = new Committed();
+    private final static Set<Long> aborted = Collections.synchronizedSet(new HashSet<Long>(1000));
     private static long largestDeletedTimestamp;
     private static long connectionTimestamp = 0;
     private static boolean hasConnectionTimestamp = false;
@@ -117,7 +117,7 @@ public class Filter {
             return false;
         long commitTimestamp = committed.getCommit(queryTimestamp);
 
-        if (commitTimestamp != -2)
+        if (commitTimestamp == -2)
             return false;
         else if (commitTimestamp != -1)
             return commitTimestamp <= startTimestamp;

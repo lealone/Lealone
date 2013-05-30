@@ -24,20 +24,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.NavigableMap;
 import java.util.NavigableSet;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.ClientScanner;
-import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
@@ -109,91 +104,6 @@ public class TTable {
         // Return the KVs that belong to the transaction snapshot, ask for more
         // versions if needed
         return new Result(filter(transaction, table.get(tget).list(), requestedVersions));
-    }
-
-    /**
-     * Deletes the specified cells/row.
-     * 
-     * @param delete
-     *            The object that specifies what to delete.
-     * @throws IOException
-     *             if a remote or network exception occurs.
-     */
-    public void delete(Transaction transaction, Delete delete) throws IOException {
-        final long startTimestamp = transaction.getStartTimestamp();
-        boolean issueGet = false;
-
-        final Put deleteP = new Put(delete.getRow(), startTimestamp);
-        final Get deleteG = new Get(delete.getRow());
-        Map<byte[], List<KeyValue>> fmap = delete.getFamilyMap();
-        if (fmap.isEmpty()) {
-            issueGet = true;
-        }
-        for (List<KeyValue> kvl : fmap.values()) {
-            for (KeyValue kv : kvl) {
-                switch (KeyValue.Type.codeToType(kv.getType())) {
-                case DeleteColumn:
-                    deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, null);
-                    break;
-                case DeleteFamily:
-                    deleteG.addFamily(kv.getFamily());
-                    issueGet = true;
-                    break;
-                case Delete:
-                    if (kv.getTimestamp() == HConstants.LATEST_TIMESTAMP) {
-                        deleteP.add(kv.getFamily(), kv.getQualifier(), startTimestamp, null);
-                        break;
-                    } else {
-                        throw new UnsupportedOperationException("Cannot delete specific versions on Snapshot Isolation.");
-                    }
-                }
-            }
-        }
-        if (issueGet) {
-            // It's better to perform a transactional get to avoid deleting more
-            // than necessary
-            Result result = this.get(transaction, deleteG);
-            for (Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> entryF : result.getMap().entrySet()) {
-                byte[] family = entryF.getKey();
-                for (Entry<byte[], NavigableMap<Long, byte[]>> entryQ : entryF.getValue().entrySet()) {
-                    byte[] qualifier = entryQ.getKey();
-                    deleteP.add(family, qualifier, null);
-                }
-            }
-        }
-
-        transaction.addRow(new RowKeyFamily(delete.getRow(), getTableName(), deleteP.getFamilyMap()));
-
-        table.put(deleteP);
-    }
-
-    /**
-     * Puts some data in the table.
-     * <p>
-     * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
-     * until the internal buffer is full.
-     * 
-     * @param put
-     *            The data to put.
-     * @throws IOException
-     *             if a remote or network exception occurs.
-     * @since 0.20.0
-     */
-    public void put(Transaction transaction, Put put) throws IOException, IllegalArgumentException {
-        final long startTimestamp = transaction.getStartTimestamp();
-        // create put with correct ts
-        final Put tput = new Put(put.getRow(), startTimestamp);
-        Map<byte[], List<KeyValue>> kvs = put.getFamilyMap();
-        for (List<KeyValue> kvl : kvs.values()) {
-            for (KeyValue kv : kvl) {
-                tput.add(new KeyValue(kv.getRow(), kv.getFamily(), kv.getQualifier(), startTimestamp, kv.getValue()));
-            }
-        }
-
-        // should add the table as well
-        transaction.addRow(new RowKeyFamily(tput.getRow(), getTableName(), tput.getFamilyMap()));
-
-        table.put(tput);
     }
 
     /**
@@ -392,28 +302,6 @@ public class TTable {
         return !result.isEmpty();
     }
 
-    /*
-     * @Override public void batch(Transaction transaction, List<? extends Row>
-     * actions, Object[] results) throws IOException, InterruptedException { //
-     * TODO Auto-generated method stub
-     * 
-     * }
-     * 
-     * @Override public Object[] batch(Transaction transaction, List<? extends
-     * Row> actions) throws IOException, InterruptedException { // TODO
-     * Auto-generated method stub return null; }
-     * 
-     * @Override public <R> void batchCallback(Transaction transaction, List<?
-     * extends Row> actions, Object[] results, Callback<R> callback) throws
-     * IOException, InterruptedException { // TODO Auto-generated method stub
-     * 
-     * }
-     * 
-     * @Override public <R> Object[] batchCallback(List<? extends Row> actions,
-     * Callback<R> callback) throws IOException, InterruptedException { // TODO
-     * Auto-generated method stub return null; }
-     */
-
     /**
      * Extracts certain cells from the given rows, in batch.
      * 
@@ -470,49 +358,6 @@ public class TTable {
         Scan scan = new Scan();
         scan.addColumn(family, qualifier);
         return getScanner(transaction, scan);
-    }
-
-    /**
-     * Puts some data in the table, in batch.
-     * <p>
-     * If {@link #isAutoFlush isAutoFlush} is false, the update is buffered
-     * until the internal buffer is full.
-     * <p>
-     * This can be used for group commit, or for submitting user defined
-     * batches. The writeBuffer will be periodically inspected while the List is
-     * processed, so depending on the List size the writeBuffer may flush not at
-     * all, or more than once.
-     * 
-     * @param puts
-     *            The list of mutations to apply. The batch put is done by
-     *            aggregating the iteration of the Puts over the write buffer at
-     *            the client-side for a single RPC call.
-     * @throws IOException
-     *             if a remote or network exception occurs.
-     */
-    public void put(Transaction transaction, List<Put> puts) throws IOException {
-        for (Put put : puts) {
-            put(transaction, put);
-        }
-    }
-
-    /**
-     * Deletes the specified cells/rows in bulk.
-     * 
-     * @param deletes
-     *            List of things to delete. List gets modified by this method
-     *            (in particular it gets re-ordered, so the order in which the
-     *            elements are inserted in the list gives no guarantee as to the
-     *            order in which the {@link Delete}s are executed).
-     * @throws IOException
-     *             if a remote or network exception occurs. In that case the
-     *             {@code deletes} argument will contain the {@link Delete}
-     *             instances that have not be successfully applied.
-     */
-    public void delete(Transaction transaction, List<Delete> deletes) throws IOException {
-        for (Delete delete : deletes) {
-            delete(transaction, delete);
-        }
     }
 
     /**

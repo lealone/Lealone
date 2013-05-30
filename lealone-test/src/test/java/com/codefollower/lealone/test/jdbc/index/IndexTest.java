@@ -32,12 +32,12 @@ import com.codefollower.lealone.test.jdbc.TestBase;
 public class IndexTest extends TestBase {
     @Test
     public void run() throws Exception {
-        //init();
-        //        insert();
-        //        select();
+        init();
+        insert();
+        select();
 
         testCommit();
-        //testRollback();
+        testRollback();
     }
 
     void init() throws Exception {

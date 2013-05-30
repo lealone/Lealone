@@ -20,10 +20,8 @@
 package com.codefollower.lealone.hbase.engine;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
@@ -40,9 +38,9 @@ import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.transaction.CommitHashMap;
+import com.codefollower.lealone.hbase.transaction.Filter;
 import com.codefollower.lealone.hbase.transaction.HBaseTransactionStatusTable;
 import com.codefollower.lealone.hbase.transaction.RowKey;
-import com.codefollower.lealone.hbase.transaction.RowKeyFamily;
 import com.codefollower.lealone.hbase.transaction.Transaction;
 import com.codefollower.lealone.hbase.transaction.TransactionException;
 import com.codefollower.lealone.hbase.transaction.TransactionManager;
@@ -53,7 +51,6 @@ import com.codefollower.lealone.result.SubqueryResult;
 import com.codefollower.lealone.util.New;
 
 public class HBaseSession extends Session {
-    private static final Map<byte[], List<KeyValue>> EMPTY_MAP = New.hashMap();
     private static final CommitHashMap commitHashMap = new CommitHashMap();
     private static final HBaseTransactionStatusTable transactionStatusTable = HBaseTransactionStatusTable.getInstance();
 
@@ -72,7 +69,6 @@ public class HBaseSession extends Session {
      */
     private Properties originalProperties;
 
-    private TransactionManager tm;
     private Transaction transaction;
     private Command currentCommand;
 
@@ -136,7 +132,7 @@ public class HBaseSession extends Session {
         super.setAutoCommit(autoCommit);
         //        if (!autoCommit && transaction == null) { //TODO 是否考虑支持嵌套事务
         //            try {
-        //                transaction = getTransactionManager().begin();
+        //                transaction = TransactionManager.getNewTransaction();
         //            } catch (Exception e) {
         //                throw DbException.convert(e);
         //            }
@@ -151,37 +147,37 @@ public class HBaseSession extends Session {
 
     @Override
     public void commit(boolean ddl) {
-        super.commit(ddl);
         if (transaction != null) {
             try {
-                long commitTimestamp = tm.getNewTimestamp();
-                currentCommand.commitDistributedTransaction(transaction.getTransactionId(), commitTimestamp);
-                transactionStatusTable.addRecord(transaction.getTransactionId(), commitTimestamp);
-                //tm.commit(transaction, false); //使用false值，当commit失败时不让TransactionManager通过HTable的方式删除记录
+                long tid = transaction.getTransactionId();
+                long commitTimestamp = TransactionManager.getNewTimestamp();
+                currentCommand.commitDistributedTransaction(tid, commitTimestamp);
+                transactionStatusTable.addRecord(tid, commitTimestamp);
+                Filter.committed.commit(tid, commitTimestamp);
             } catch (Exception e) {
                 rollback();
                 throw DbException.convert(e);
+            } finally {
+                endTransaction();
             }
-            transaction = null;
         }
-        undoRows.clear();
-        transaction = null;
+
+        super.commit(ddl);
     }
 
     @Override
     public void rollback() {
-        super.rollback();
         if (transaction != null) {
             try {
-                tm.rollback(transaction, false); //使用false值，当commit失败时不让TransactionManager通过HTable的方式删除记录
-
-                transaction = null; //使得在undo时不会重新记log
-                undo(); //TODO 其实没有必要undo，当执行前面的tm.rollback时在TSO已经记下事务被中止了，查询时不会返回被rollback的记录
+                currentCommand.rollbackDistributedTransaction(transaction.getTransactionId());
             } catch (Exception e) {
                 throw DbException.convert(e);
+            } finally {
+                endTransaction();
             }
         }
-        undoRows.clear();
+
+        super.rollback();
     }
 
     private void undo() {
@@ -196,11 +192,16 @@ public class HBaseSession extends Session {
         return transaction;
     }
 
+    private void endTransaction() {
+        transaction = null;
+        undoRows.clear();
+    }
+
     public Transaction beginTransaction(Command currentCommand) {
         if (transaction == null) {
             try {
                 this.currentCommand = currentCommand;
-                transaction = getTransactionManager().begin();
+                transaction = TransactionManager.getNewTransaction();
             } catch (TransactionException e) {
                 throw DbException.convert(e);
             }
@@ -208,26 +209,16 @@ public class HBaseSession extends Session {
         return transaction;
     }
 
-    public TransactionManager getTransactionManager() {
-        try {
-            if (tm == null)
-                tm = new TransactionManager(HBaseUtils.getConfiguration());
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        }
-        return tm;
-    }
-
     public void log(byte[] tableName, Row row) {
         if (transaction != null) {
             undoRows.add((HBaseRow) row);
-            transaction.addRow(new RowKeyFamily(HBaseUtils.toBytes(row.getRowKey()), tableName, EMPTY_MAP));
+            transaction.addRow(new RowKey(HBaseUtils.toBytes(row.getRowKey()), tableName));
         }
     }
 
     @Override
     public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
-        if (transaction != null) {
+        if (transaction != null && transaction.getTransactionId() == transactionId) {
             synchronized (HBaseSession.class) {
                 long timestampOracle = Long.MIN_VALUE;
                 if (transactionId < timestampOracle) { //TODO
@@ -250,7 +241,6 @@ public class HBaseSession extends Session {
                         commitHashMap.putLatestWriteForRow(r.hashCode(), commitTimestamp);
                     }
                 }
-
             }
         }
         return 0;
@@ -258,8 +248,8 @@ public class HBaseSession extends Session {
 
     @Override
     public int rollbackDistributedTransaction(long transactionId) {
-        if (transaction != null) {
-
+        if (transaction != null && transaction.getTransactionId() == transactionId) {
+            undo();
         }
         return 0;
     }
