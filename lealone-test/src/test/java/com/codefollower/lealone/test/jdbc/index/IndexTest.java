@@ -33,8 +33,8 @@ public class IndexTest extends TestBase {
     @Test
     public void run() throws Exception {
         //init();
-//        insert();
-//        select();
+        //        insert();
+        //        select();
 
         testCommit();
         //testRollback();

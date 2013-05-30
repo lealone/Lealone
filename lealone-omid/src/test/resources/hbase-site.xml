@@ -1,0 +1,269 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!-- /** * Copyright 2010 The Apache Software Foundation * * Licensed to 
+	the Apache Software Foundation (ASF) under one * or more contributor license 
+	agreements. See the NOTICE file * distributed with this work for additional 
+	information * regarding copyright ownership. The ASF licenses this file * 
+	to you under the Apache License, Version 2.0 (the * "License"); you may not 
+	use this file except in compliance * with the License. You may obtain a copy 
+	of the License at * * http://www.apache.org/licenses/LICENSE-2.0 * * Unless 
+	required by applicable law or agreed to in writing, software * distributed 
+	under the License is distributed on an "AS IS" BASIS, * WITHOUT WARRANTIES 
+	OR CONDITIONS OF ANY KIND, either express or implied. * See the License for 
+	the specific language governing permissions and * limitations under the License. 
+	*/ -->
+<configuration>
+	<!-- change it if necessary -->
+	<property>
+		<name>lealone.test.dir</name>
+		<value>E:/lealone/test</value>
+	</property>
+
+
+	<!-- lealone properties -->
+	<!-- ************************************************* -->
+	<property>
+		<name>hbase.coprocessor.master.classes</name>
+		<value>com.codefollower.lealone.hbase.engine.HBaseMasterObserver</value>
+	</property>
+
+	<property>
+		<name>hbase.regionserver.impl</name>
+		<value>com.codefollower.lealone.hbase.engine.HBaseRegionServer</value>
+	</property>
+
+	<property>
+		<name>lealone.master.tcp.port</name>
+		<value>9091</value>
+		<description>
+			The tcp port the lealone master server should bind to.
+		</description>
+	</property>
+
+	<property>
+		<name>lealone.regionserver.tcp.port</name>
+		<value>9092</value>
+		<description>
+			The tcp port the lealone region server should bind to.
+		</description>
+	</property>
+
+	<property>
+		<name>lealone.args</name>
+		<value>-tcpAllowOthers, -tcpDaemon</value>
+		<description>
+			The lealone server start args.
+		</description>
+	</property>
+
+	<!-- zookeeper properties -->
+	<!-- ************************************************* -->
+	<property>
+		<name>hbase.zookeeper.property.tickTime</name>
+		<value>2000</value>
+		<description>
+			The number of milliseconds of each tick
+		</description>
+	</property>
+
+	<property>
+		<name>hbase.zookeeper.property.initLimit</name>
+		<value>10</value>
+		<description>
+			The number of ticks that the initial synchronization
+			phase can take
+		</description>
+	</property>
+
+	<property>
+		<name>hbase.zookeeper.property.syncLimit</name>
+		<value>5</value>
+		<description>
+			The number of ticks that can pass between sending a
+			request and getting an acknowledgement
+		</description>
+	</property>
+
+	<property>
+		<name>hbase.zookeeper.property.dataDir</name>
+		<value>${lealone.test.dir}/zookeeper</value>
+		<description>
+			the directory where the snapshot is stored.
+		</description>
+	</property>
+
+	<property>
+		<name>hbase.zookeeper.property.clientPort</name>
+		<value>2181</value>
+		<description>
+			the port at which the clients will connect
+		</description>
+	</property>
+
+	<!-- omid properties -->
+	<!-- ************************************************* -->
+	<property>
+		<name>tso.host</name>
+		<value>localhost</value>
+	</property>
+	<property>
+		<name>tso.port</name>
+		<value>1234</value>
+	</property>
+
+	<!-- hbase properties -->
+	<!-- ************************************************* -->
+	<property>
+		<name>hbase.tmp.dir</name>
+		<value>${lealone.test.dir}</value>
+	</property>
+
+	<property>
+		<name>hbase.rootdir</name>
+		<value>file:///${lealone.test.dir}/hbase</value>
+	</property>
+
+	<property>
+		<name>hbase.regionserver.maxlogs</name>
+		<value>-1</value>
+	</property>
+	<!-- <property> <name>hbase.defaults.for.version</name> <value>0.94.0</value> 
+		</property> -->
+	<property>
+		<name>hbase.cluster.distributed</name>
+		<value>true</value>
+	</property>
+
+	<property>
+		<name>hbase.rpc.timeout</name>
+		<value>300000000</value>
+	</property>
+
+	<property>
+		<name>zookeeper.session.timeout</name>
+		<value>120000</value>
+	</property>
+
+	<!-- <property> <name>hbase.regionserver.dns.interface</name> <value>127.0.0.1</value> 
+		</property> <property> <name>hbase.regionserver.dns.nameserver</name> <value>127.0.0.1</value> 
+		</property> -->
+
+	<!-- <property> <name>hbase.master.wait.on.regionservers.timeout</name> 
+		<value>1200000000</value> </property> -->
+
+	<!-- <property> <name>hbase.master.assignment.timeoutmonitor.period</name> 
+		<value>-1</value> </property> -->
+
+	<property>
+		<name>hbase.master.assignment.timeoutmonitor.period</name>
+		<value>3000000</value>
+	</property>
+
+	<property>
+		<name>hbase.master.assignment.timeoutmonitor.timeout</name>
+		<value>300000000</value>
+	</property>
+
+	<property>
+		<name>hbase.client.retries.number</name>
+		<value>2</value>
+	</property>
+
+	<property>
+		<name>hbase.ipc.client.tcpnodelay</name>
+		<value>true</value>
+	</property>
+
+	<property>
+		<name>hbase.client.pause</name>
+		<value>100</value>
+	</property>
+
+	<property>
+		<name>hbase.zookeeper.quorum</name>
+		<value>127.0.0.1</value>
+	</property>
+
+	<property>
+		<name>hbase.replication</name>
+		<value>false</value>
+	</property>
+
+	<property>
+		<name>hbase.hstore.compaction.min</name>
+		<value>2</value>
+	</property>
+
+	<property>
+		<name>hbase.rs.cacheblocksonwrite</name>
+		<value>true</value>
+	</property>
+
+	<!-- <property> <name>hfile.format.version</name> <value>2</value> </property> -->
+
+	<property>
+		<name>hbase.balancer.period</name>
+		<value>4800000</value>
+	</property>
+
+	<property>
+		<name>hbase.master.distributed.log.splitting</name>
+		<value>false</value>
+	</property>
+
+	<property>
+		<name>hbase.master.handler.count</name>
+		<value>2</value>
+	</property>
+
+	<property>
+		<name>ipc.server.read.threadpool.size</name>
+		<value>2</value>
+	</property>
+
+	<property>
+		<name>hbase.regionserver.handler.count</name>
+		<value>2</value>
+	</property>
+
+	<property>
+		<name>hbase.regionserver.metahandler.count</name>
+		<value>2</value>
+	</property>
+<!-- 
+	<property>
+		<name>hbase.hregion.memstore.flush.size</name>
+		<value>102400</value>
+	</property>
+ -->
+	<property>
+		<name>hbase.hregion.memstore.block.multiplier</name>
+		<value>4</value>
+	</property>
+
+	<property>
+		<name>hbase.hstore.compaction.min</name>
+		<value>2</value>
+	</property>
+
+	<property>
+		<name>hbase.hstore.blockingStoreFiles</name>
+		<value>3</value>
+	</property>
+
+	<property>
+		<name>hbase.hstore.blockingWaitTime</name>
+		<value>2000</value>
+	</property>
+
+	<property>
+		<name>hbase.server.thread.wakefrequency</name>
+		<value>2000</value>
+	</property>
+
+	<property>
+		<name>hbase.regionserver.lease.period</name>
+		<value>6000000</value>
+	</property>
+
+</configuration>

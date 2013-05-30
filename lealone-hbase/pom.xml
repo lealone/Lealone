@@ -20,12 +20,6 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.codefollower.lealone</groupId>
-			<artifactId>lealone-omid</artifactId>
-			<version>${lealone.version}</version>
-		</dependency>
-
-		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
 			<version>1.1.1</version>

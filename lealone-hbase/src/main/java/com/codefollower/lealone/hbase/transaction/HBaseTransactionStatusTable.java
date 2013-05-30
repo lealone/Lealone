@@ -17,15 +17,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.hbase.engine;
+package com.codefollower.lealone.hbase.transaction;
 
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.MurmurHash;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -57,6 +59,12 @@ public class HBaseTransactionStatusTable {
         }
     }
 
+    private final static HBaseTransactionStatusTable st = new HBaseTransactionStatusTable();
+
+    public static HBaseTransactionStatusTable getInstance() {
+        return st;
+    }
+
     private final HTable table;
 
     public HBaseTransactionStatusTable() {
@@ -72,8 +80,8 @@ public class HBaseTransactionStatusTable {
         byte[] tid = Bytes.toBytes(transactionId);
         int rowKey = MurmurHash.getInstance().hash(tid, 0, tid.length, 0xdeadbeef);
         Put put = new Put(Bytes.toBytes(rowKey));
-        put.add(FAMILY, START_TIMESTAMP, tid);
-        put.add(FAMILY, COMMIT_TIMESTAMP, Bytes.toBytes(commitTimestamp));
+        put.add(FAMILY, START_TIMESTAMP, transactionId, tid);
+        put.add(FAMILY, COMMIT_TIMESTAMP, transactionId, Bytes.toBytes(commitTimestamp));
         try {
             table.put(put);
         } catch (IOException e) {
@@ -85,5 +93,20 @@ public class HBaseTransactionStatusTable {
         byte[] tid = Bytes.toBytes(transactionId);
         int rowKey = MurmurHash.getInstance().hash(tid, 0, tid.length, 0xdeadbeef);
         return Bytes.toBytes(rowKey);
+    }
+
+    public long query(long transactionId) {
+        Get get = new Get(toHash(transactionId));
+        get.setTimeStamp(transactionId);
+        get.addColumn(FAMILY, COMMIT_TIMESTAMP);
+        try {
+            Result r = table.get(get);
+            if (r != null && !r.isEmpty())
+                return Bytes.toLong(r.getValue(FAMILY, COMMIT_TIMESTAMP));
+            else
+                return -1;
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 }

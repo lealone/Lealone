@@ -39,14 +39,15 @@ import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
+import com.codefollower.lealone.hbase.transaction.CommitHashMap;
+import com.codefollower.lealone.hbase.transaction.HBaseTransactionStatusTable;
+import com.codefollower.lealone.hbase.transaction.RowKey;
+import com.codefollower.lealone.hbase.transaction.RowKeyFamily;
+import com.codefollower.lealone.hbase.transaction.Transaction;
+import com.codefollower.lealone.hbase.transaction.TransactionException;
+import com.codefollower.lealone.hbase.transaction.TransactionManager;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
-import com.codefollower.lealone.omid.client.RowKeyFamily;
-import com.codefollower.lealone.omid.transaction.TransactionException;
-import com.codefollower.lealone.omid.transaction.TransactionManager;
-import com.codefollower.lealone.omid.transaction.Transaction;
-import com.codefollower.lealone.omid.tso.CommitHashMap;
-import com.codefollower.lealone.omid.tso.RowKey;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SubqueryResult;
 import com.codefollower.lealone.util.New;
@@ -54,7 +55,7 @@ import com.codefollower.lealone.util.New;
 public class HBaseSession extends Session {
     private static final Map<byte[], List<KeyValue>> EMPTY_MAP = New.hashMap();
     private static final CommitHashMap commitHashMap = new CommitHashMap();
-    private static final HBaseTransactionStatusTable transactionStatusTable = new HBaseTransactionStatusTable();
+    private static final HBaseTransactionStatusTable transactionStatusTable = HBaseTransactionStatusTable.getInstance();
 
     /**
      * HBase的HMaster对象，master和regionServer不可能同时非null

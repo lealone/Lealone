@@ -22,17 +22,15 @@ package com.codefollower.lealone.test.start;
 import java.util.List;
 
 import org.apache.bookkeeper.proto.BookieServer;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.ZooDefs.Ids;
 
-import com.codefollower.lealone.hbase.util.HBaseUtils;
-import com.codefollower.lealone.store.fs.FileUtils;
-
 public class BookieServerStarter {
-    private static String testDir = HBaseUtils.getConfiguration().get("lealone.test.dir");
+    private static String testDir = HBaseConfiguration.create().get("lealone.test.dir");
 
     public static void main(String[] args) throws Exception {
         //建立必须的bookkeeper节点
@@ -45,7 +43,7 @@ public class BookieServerStarter {
         zk.close();
 
         //删除临时测试目录
-        FileUtils.deleteRecursive(testDir + "/bookkeeper", true);
+        //FileUtils.deleteRecursive(testDir + "/bookkeeper", true);
 
         String journalDirectory = testDir + "/bookkeeper/journalDirectory";
         String ledgerDirectories = testDir + "/bookkeeper/ledgerDirectories";

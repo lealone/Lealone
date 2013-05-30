@@ -1,20 +1,23 @@
-package com.codefollower.lealone.hbase.dbobject.index;
+package com.codefollower.lealone.hbase.transaction;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
-import com.codefollower.lealone.omid.client.ColumnWrapper;
-import com.codefollower.lealone.omid.transaction.Transaction;
-import com.codefollower.lealone.omid.transaction.TransactionManager;
-
 public class Filter {
+    private static Committed committed = new Committed();
+    private static Set<Long> aborted = Collections.synchronizedSet(new HashSet<Long>(1000));
+    private static long largestDeletedTimestamp;
+    private static long connectionTimestamp = 0;
+    private static boolean hasConnectionTimestamp = false;
 
     /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
     private static final int CACHE_VERSIONS_OVERHEAD = 3;
@@ -62,7 +65,7 @@ public class Filter {
                 continue;
             }
             versionsProcessed++;
-            if (TransactionManager.tsoclient.validRead(kv.getTimestamp(), startTimestamp)) {
+            if (validRead(kv.getTimestamp(), startTimestamp)) {
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {
                     filtered.add(kv);
@@ -86,5 +89,31 @@ public class Filter {
         }
         Collections.sort(filtered, KeyValue.COMPARATOR);
         return filtered;
+    }
+
+    public static boolean validRead(long queryTimestamp, long startTimestamp) throws IOException {
+        if (queryTimestamp == startTimestamp)
+            return true;
+        if (aborted.contains(queryTimestamp))
+            return false;
+        long commitTimestamp = committed.getCommit(queryTimestamp);
+
+        if (commitTimestamp != -2)
+            return false;
+        else if (commitTimestamp != -1)
+            return commitTimestamp <= startTimestamp;
+        if (hasConnectionTimestamp && queryTimestamp > connectionTimestamp)
+            return queryTimestamp <= largestDeletedTimestamp;
+        if (queryTimestamp <= largestDeletedTimestamp)
+            return true;
+
+        commitTimestamp = HBaseTransactionStatusTable.getInstance().query(queryTimestamp);
+        if (commitTimestamp != -1) {
+            committed.commit(queryTimestamp, commitTimestamp);
+            return true;
+        } else {
+            committed.commit(queryTimestamp, -2);
+            return false;
+        }
     }
 }

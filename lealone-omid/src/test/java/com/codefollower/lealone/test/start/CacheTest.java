@@ -1,6 +1,6 @@
-package com.codefollower.lealone.test.benchmark;
+package com.codefollower.lealone.test.start;
 
-import com.codefollower.lealone.mvstore.cache.CacheLongKeyLIRS;
+import com.codefollower.lealone.omid.tso.CacheLongKeyLIRS;
 import com.codefollower.lealone.omid.tso.GuavaCache;
 import com.codefollower.lealone.omid.tso.LongCache;
 
