@@ -19,8 +19,6 @@
 		<module>lealone-regular</module>
 		<module>lealone-mvstore</module>
 		<module>lealone-hbase</module>
-		<module>lealone-olap</module>
-		<module>lealone-omid</module>
 		<module>lealone-test</module>
 	</modules>
 
