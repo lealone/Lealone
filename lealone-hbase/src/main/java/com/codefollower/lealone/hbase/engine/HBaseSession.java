@@ -70,12 +70,18 @@ public class HBaseSession extends Session {
     private Properties originalProperties;
 
     private Transaction transaction;
+    private Transaction nontransaction;
     private Command currentCommand;
 
     private final List<HBaseRow> undoRows = New.arrayList();
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
+        try {
+            nontransaction = TransactionManager.getNewTransaction();
+        } catch (TransactionException e) {
+            throw DbException.convert(e);
+        }
     }
 
     public HMaster getMaster() {
@@ -147,7 +153,7 @@ public class HBaseSession extends Session {
 
     @Override
     public void commit(boolean ddl) {
-        if (transaction != null) {
+        if (!getAutoCommit() && transaction != null) {
             try {
                 long tid = transaction.getTransactionId();
                 long commitTimestamp = TransactionManager.getNewTimestamp();
@@ -167,7 +173,7 @@ public class HBaseSession extends Session {
 
     @Override
     public void rollback() {
-        if (transaction != null) {
+        if (!getAutoCommit() && transaction != null) {
             try {
                 currentCommand.rollbackDistributedTransaction(transaction.getTransactionId());
             } catch (Exception e) {
@@ -198,6 +204,8 @@ public class HBaseSession extends Session {
     }
 
     public Transaction beginTransaction(Command currentCommand) {
+        if (getAutoCommit())
+            transaction = nontransaction;
         if (transaction == null) {
             try {
                 this.currentCommand = currentCommand;
@@ -210,7 +218,7 @@ public class HBaseSession extends Session {
     }
 
     public void log(byte[] tableName, Row row) {
-        if (transaction != null) {
+        if (!getAutoCommit() && transaction != null) {
             undoRows.add((HBaseRow) row);
             transaction.addRow(new RowKey(HBaseUtils.toBytes(row.getRowKey()), tableName));
         }
