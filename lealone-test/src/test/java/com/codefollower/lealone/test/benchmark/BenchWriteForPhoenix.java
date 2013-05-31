@@ -32,20 +32,20 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
-public class BenchWrite {
+public class BenchWriteForPhoenix {
     public static void main(String[] args) throws Exception {
-        new BenchWrite().run();
+        new BenchWriteForPhoenix().run();
     }
 
     Connection conn;
     Statement stmt;
     PreparedStatement ps;
 
-    byte[] cf = b("CF");
-    byte[] id = b("ID");
-    byte[] name = b("NAME");
-    byte[] age = b("AGE");
-    byte[] salary = b("SALARY");
+    byte[] cf = b("_0");
+    byte[] id = b("id");
+    byte[] name = b("name");
+    byte[] age = b("age");
+    byte[] salary = b("salary");
 
     Configuration conf = HBaseConfiguration.create();
     HTable t;
@@ -70,6 +70,8 @@ public class BenchWrite {
         init();
         createTable();
         initHTable();
+
+        conn.setAutoCommit(true);
         initPreparedStatement();
 
         int count = 10;
@@ -95,6 +97,12 @@ public class BenchWrite {
         p("avg", total / count);
         p();
 
+        //      conn.commit();
+
+        //      java.sql.ResultSet  rs=   stmt.executeQuery("select count(*) from BenchWrite2");
+        //      rs.next();
+        //      System.out.println(rs.getString(1));
+
         total = 0;
 
         for (int i = 0; i < count; i++) {
@@ -112,24 +120,23 @@ public class BenchWrite {
     }
 
     void init() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:9092/hbasedb";
-        conn = DriverManager.getConnection(url, "sa", "");
+        Class.forName("com.salesforce.phoenix.jdbc.PhoenixDriver");
+        conn = DriverManager.getConnection("jdbc:phoenix:localhost");
         stmt = conn.createStatement();
-        stmt.executeUpdate("SET DB_CLOSE_DELAY -1"); //不马上关闭数据库
-
     }
 
     void initHTable() throws Exception {
-        t = new HTable(conf, b("BENCHWRITE"));
+        t = new HTable(conf, b("BENCHWRITE2"));
     }
 
     void initPreparedStatement() throws Exception {
-        ps = conn.prepareStatement("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES(?, ?, ?, ?, ?)");
+        ps = conn.prepareStatement("UPSERT INTO BenchWrite2(rowkey, id, name, age, salary) VALUES(?, ?, ?, ?, ?)");
     }
 
     void createTable() throws Exception {
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS BenchWrite(" //
-                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary float))");
+        stmt.executeUpdate("DROP TABLE IF EXISTS BenchWrite2");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS BenchWrite2(" //
+                + "rowkey varchar(50) not null primary key, id INTEGER, name varchar(500), age BIGINT, salary DECIMAL )");
     }
 
     int count = 11000;
@@ -139,7 +146,7 @@ public class BenchWrite {
         for (int i = 10000; i < count; i++) {
             Put put = new Put(b("RK" + i));
             put.add(cf, id, b(i));
-            put.add(cf, name, b("zhh-2009"));
+            put.add(cf, name, b("zhhh2009"));
             put.add(cf, age, b(30L));
             put.add(cf, salary, b(3000.50F));
             t.put(put);
@@ -157,7 +164,7 @@ public class BenchWrite {
         for (int i = 10000; i < count; i++) {
             Put put = new Put(b("RK" + i));
             put.add(cf, id, b(i));
-            put.add(cf, name, b("zhh-2009"));
+            put.add(cf, name, b("zhhh2009"));
             put.add(cf, age, b(30L));
             put.add(cf, salary, b(3000.50F));
             puts.add(put);
@@ -183,7 +190,7 @@ public class BenchWrite {
         for (int i = 10000; i < count; i++) {
             ps.setString(1, "RK" + i);
             ps.setInt(2, i);
-            ps.setString(3, "zhh-2009");
+            ps.setString(3, "zhhh2009");
             ps.setLong(4, 30L);
             ps.setFloat(5, 3000.50F);
             ps.executeUpdate();
@@ -201,10 +208,10 @@ public class BenchWrite {
         long start = System.nanoTime();
         StringBuilder s = null;
         for (int i = 10000; i < count; i++) {
-            s = new StringBuilder("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES(");
+            s = new StringBuilder("UPSERT INTO BenchWrite2(rowkey, id, name, age, salary) VALUES(");
             s.append("'RK").append(i).append("',");
             s.append(i).append(",");
-            s.append("'zhh-2009',");
+            s.append("'zhhh2009',");
             s.append(30L).append(",");
             s.append(3000.50F).append(")");
             stmt.executeUpdate(s.toString());
