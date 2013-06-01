@@ -233,10 +233,6 @@ public class HBaseTable extends TableBase {
     }
 
     private void setTransactionId(Session session, Row row) {
-        //        if (row.getTransactionId() < 0) {
-        //            row.setTransactionId(((HBaseSession) session).getTransaction().getTransactionId());
-        //        }
-        //        
         if (((HBaseSession) session).getTransaction() != null) {
             row.setTransactionId(((HBaseSession) session).getTransaction().getTransactionId());
         }

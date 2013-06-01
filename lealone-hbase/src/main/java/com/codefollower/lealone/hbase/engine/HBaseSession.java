@@ -70,18 +70,12 @@ public class HBaseSession extends Session {
     private Properties originalProperties;
 
     private Transaction transaction;
-    private Transaction nontransaction;
     private Command currentCommand;
 
     private final List<HBaseRow> undoRows = New.arrayList();
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
-        try {
-            nontransaction = TransactionManager.getNewTransaction();
-        } catch (TransactionException e) {
-            throw DbException.convert(e);
-        }
     }
 
     public HMaster getMaster() {
@@ -153,13 +147,17 @@ public class HBaseSession extends Session {
 
     @Override
     public void commit(boolean ddl) {
-        if (!getAutoCommit() && transaction != null) {
+        if (transaction != null) {
             try {
                 long tid = transaction.getTransactionId();
-                long commitTimestamp = TransactionManager.getNewTimestamp();
-                currentCommand.commitDistributedTransaction(tid, commitTimestamp);
-                transactionStatusTable.addRecord(tid, commitTimestamp);
-                Filter.committed.commit(tid, commitTimestamp);
+                if (getAutoCommit()) {
+                    Filter.committed.commit(tid, tid);
+                } else {
+                    long commitTimestamp = TransactionManager.getNewTimestamp();
+                    currentCommand.commitDistributedTransaction(tid, commitTimestamp);
+                    transactionStatusTable.addRecord(tid, commitTimestamp);
+                    Filter.committed.commit(tid, commitTimestamp);
+                }
             } catch (Exception e) {
                 rollback();
                 throw DbException.convert(e);
@@ -199,17 +197,20 @@ public class HBaseSession extends Session {
     }
 
     private void endTransaction() {
+        currentCommand = null;
         transaction = null;
         undoRows.clear();
     }
 
     public Transaction beginTransaction(Command currentCommand) {
-        if (getAutoCommit())
-            transaction = nontransaction;
         if (transaction == null) {
             try {
                 this.currentCommand = currentCommand;
-                transaction = TransactionManager.getNewTransaction();
+                //TODO 如何做到不从TSO远程取时间戳
+                if (getAutoCommit())
+                    transaction = TransactionManager.getNewTransaction();
+                else
+                    transaction = TransactionManager.getNewTransaction();
             } catch (TransactionException e) {
                 throw DbException.convert(e);
             }

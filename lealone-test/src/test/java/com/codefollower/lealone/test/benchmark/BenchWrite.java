@@ -97,6 +97,24 @@ public class BenchWrite {
 
         total = 0;
 
+        total = 0;
+        for (int i = 0; i < count; i++) {
+            total += testTransactionalStatement();
+        }
+        p("avg", total / count);
+        p();
+
+        total = 0;
+
+        total = 0;
+        for (int i = 0; i < count; i++) {
+            total += testTransactionalPreparedStatement();
+        }
+        p("avg", total / count);
+        p();
+
+        total = 0;
+
         for (int i = 0; i < count; i++) {
             total += testHBase();
         }
@@ -132,7 +150,7 @@ public class BenchWrite {
                 + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary float))");
     }
 
-    int count = 11000;
+    int count = 10100;
 
     long testHBase() throws Exception {
         long start = System.nanoTime();
@@ -178,7 +196,6 @@ public class BenchWrite {
     }
 
     long testPreparedStatement() throws Exception {
-        //conn.setAutoCommit(false);
         long start = System.nanoTime();
         for (int i = 10000; i < count; i++) {
             ps.setString(1, "RK" + i);
@@ -188,16 +205,13 @@ public class BenchWrite {
             ps.setFloat(5, 3000.50F);
             ps.executeUpdate();
         }
-        //conn.commit();
         long end = System.nanoTime();
         p("testPreparedStatement()", end - start);
-        //conn.setAutoCommit(true);
 
         return end - start;
     }
 
     long testStatement() throws Exception {
-        //conn.setAutoCommit(false);
         long start = System.nanoTime();
         StringBuilder s = null;
         for (int i = 10000; i < count; i++) {
@@ -209,10 +223,48 @@ public class BenchWrite {
             s.append(3000.50F).append(")");
             stmt.executeUpdate(s.toString());
         }
-        //conn.commit();
         long end = System.nanoTime();
         p("testStatement()", end - start);
-        //conn.setAutoCommit(true);
+
+        return end - start;
+    }
+
+    long testTransactionalPreparedStatement() throws Exception {
+        conn.setAutoCommit(false);
+        long start = System.nanoTime();
+        for (int i = 10000; i < count; i++) {
+            ps.setString(1, "RK" + i);
+            ps.setInt(2, i);
+            ps.setString(3, "zhh-2009");
+            ps.setLong(4, 30L);
+            ps.setFloat(5, 3000.50F);
+            ps.executeUpdate();
+        }
+        conn.commit();
+        long end = System.nanoTime();
+        p("testTransactionalPreparedStatement()", end - start);
+        conn.setAutoCommit(true);
+
+        return end - start;
+    }
+
+    long testTransactionalStatement() throws Exception {
+        conn.setAutoCommit(false);
+        long start = System.nanoTime();
+        StringBuilder s = null;
+        for (int i = 10000; i < count; i++) {
+            s = new StringBuilder("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES(");
+            s.append("'RK").append(i).append("',");
+            s.append(i).append(",");
+            s.append("'zhh-2009',");
+            s.append(30L).append(",");
+            s.append(3000.50F).append(")");
+            stmt.executeUpdate(s.toString());
+        }
+        conn.commit();
+        long end = System.nanoTime();
+        p("testTransactionalStatement()", end - start);
+        conn.setAutoCommit(true);
 
         return end - start;
     }
