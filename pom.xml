@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<properties>
-		<lealone.version>0.12-SNAPSHOT</lealone.version>
+		<lealone.version>0.12.0-SNAPSHOT</lealone.version>
 	</properties>
 
 	<name>lealone project</name>
@@ -11,8 +11,8 @@
 	<groupId>com.codefollower.lealone</groupId>
 	<artifactId>lealone</artifactId>
 	<packaging>pom</packaging>
-	<version>0.1.0</version>
-	
+	<version>0.12.0</version>
+
 	<modules>
 		<module>lealone-client</module>
 		<module>lealone-sql</module>
@@ -94,6 +94,31 @@
 			</plugins>
 		</pluginManagement>
 	</build>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>commons-logging</groupId>
+				<artifactId>commons-logging</artifactId>
+				<version>1.1.1</version>
+				<scope>provided</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.hbase</groupId>
+				<artifactId>hbase</artifactId>
+				<version>0.94.4</version>
+				<scope>provided</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.hadoop</groupId>
+				<artifactId>hadoop-core</artifactId>
+				<version>1.0.4</version>
+				<scope>provided</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
 		<dependency>
