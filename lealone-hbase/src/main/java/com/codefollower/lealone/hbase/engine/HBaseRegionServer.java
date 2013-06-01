@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 
 import com.codefollower.lealone.hbase.server.HBaseTcpServer;
+import com.codefollower.lealone.hbase.transaction.TimestampService;
 
 /**
  * 
@@ -30,8 +31,14 @@ import com.codefollower.lealone.hbase.server.HBaseTcpServer;
  *
  */
 public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HRegionServer {
+    private final TimestampService timestampService = new TimestampService();
+
     public HBaseRegionServer(Configuration conf) throws IOException, InterruptedException {
         super(conf);
+    }
+
+    public TimestampService getTimestampService() {
+        return timestampService;
     }
 
     @Override
@@ -39,6 +46,8 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
         HBaseTcpServer server = new HBaseTcpServer(this);
         server.start();
         try {
+            //TODO 从某个地方按RegionServer取出lastMaxTimestamp
+            //timestampService.initialize(lastMaxTimestamp);
             super.run();
         } finally {
             server.stop();

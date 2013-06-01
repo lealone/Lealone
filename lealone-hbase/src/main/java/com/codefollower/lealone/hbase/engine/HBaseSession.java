@@ -19,8 +19,11 @@
  */
 package com.codefollower.lealone.hbase.engine;
 
+import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
@@ -41,13 +44,12 @@ import com.codefollower.lealone.hbase.transaction.CommitHashMap;
 import com.codefollower.lealone.hbase.transaction.Filter;
 import com.codefollower.lealone.hbase.transaction.HBaseTransactionStatusTable;
 import com.codefollower.lealone.hbase.transaction.RowKey;
-import com.codefollower.lealone.hbase.transaction.Transaction;
-import com.codefollower.lealone.hbase.transaction.TransactionException;
-import com.codefollower.lealone.hbase.transaction.TransactionManager;
+import com.codefollower.lealone.hbase.transaction.TimestampService;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SubqueryResult;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 import com.codefollower.lealone.util.New;
 
 public class HBaseSession extends Session {
@@ -69,10 +71,14 @@ public class HBaseSession extends Session {
      */
     private Properties originalProperties;
 
-    private Transaction transaction;
     private Command currentCommand;
+    private TimestampService timestampService;
+    private boolean isFirst;
+
+    private DistributedTransaction dt;
 
     private final List<HBaseRow> undoRows = New.arrayList();
+    private final Set<RowKey> rowKeys = new HashSet<RowKey>();
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
@@ -92,6 +98,9 @@ public class HBaseSession extends Session {
 
     public void setRegionServer(HRegionServer regionServer) {
         this.regionServer = regionServer;
+        if (regionServer != null) //不管Master的情况
+            this.timestampService = ((com.codefollower.lealone.hbase.engine.HBaseRegionServer) regionServer)
+                    .getTimestampService();
     }
 
     public Properties getOriginalProperties() {
@@ -128,34 +137,17 @@ public class HBaseSession extends Session {
     }
 
     @Override
-    public void setAutoCommit(boolean autoCommit) {
-        super.setAutoCommit(autoCommit);
-        //        if (!autoCommit && transaction == null) { //TODO 是否考虑支持嵌套事务
-        //            try {
-        //                transaction = TransactionManager.getNewTransaction();
-        //            } catch (Exception e) {
-        //                throw DbException.convert(e);
-        //            }
-        //        }
-    }
-
-    @Override
-    public void begin() {
-        super.begin();
-        setAutoCommit(false);
-    }
-
-    @Override
     public void commit(boolean ddl) {
-        if (transaction != null) {
+        if (dt != null) {
             try {
-                long tid = transaction.getTransactionId();
-                if (getAutoCommit()) {
-                    Filter.committed.commit(tid, tid);
-                } else {
-                    long commitTimestamp = TransactionManager.getNewTimestamp();
-                    currentCommand.commitDistributedTransaction(tid, commitTimestamp);
-                    transactionStatusTable.addRecord(tid, commitTimestamp);
+                if (!getAutoCommit()) {
+                    long tid = dt.getTransactionId();
+                    long commitTimestamp = timestampService.nextOdd();
+                    dt.setCommitTimestamp(commitTimestamp);
+                    currentCommand.commitDistributedTransaction();
+                    if (isFirst) {
+                        transactionStatusTable.addRecord(dt);
+                    }
                     Filter.committed.commit(tid, commitTimestamp);
                 }
             } catch (Exception e) {
@@ -171,9 +163,9 @@ public class HBaseSession extends Session {
 
     @Override
     public void rollback() {
-        if (!getAutoCommit() && transaction != null) {
+        if (dt != null && !getAutoCommit()) {
             try {
-                currentCommand.rollbackDistributedTransaction(transaction.getTransactionId());
+                currentCommand.rollbackDistributedTransaction();
             } catch (Exception e) {
                 throw DbException.convert(e);
             } finally {
@@ -192,53 +184,39 @@ public class HBaseSession extends Session {
         undoRows.clear();
     }
 
-    public Transaction getTransaction() {
-        return transaction;
+    public DistributedTransaction getTransaction() {
+        return dt;
     }
 
     private void endTransaction() {
         currentCommand = null;
-        transaction = null;
+        dt = null;
         undoRows.clear();
-    }
-
-    public Transaction beginTransaction(Command currentCommand) {
-        if (transaction == null) {
-            try {
-                this.currentCommand = currentCommand;
-                //TODO 如何做到不从TSO远程取时间戳
-                if (getAutoCommit())
-                    transaction = TransactionManager.getNewTransaction();
-                else
-                    transaction = TransactionManager.getNewTransaction();
-            } catch (TransactionException e) {
-                throw DbException.convert(e);
-            }
-        }
-        return transaction;
+        rowKeys.clear();
     }
 
     public void log(byte[] tableName, Row row) {
-        if (!getAutoCommit() && transaction != null) {
+        if (!getAutoCommit() && dt != null) {
             undoRows.add((HBaseRow) row);
-            transaction.addRow(new RowKey(HBaseUtils.toBytes(row.getRowKey()), tableName));
+            rowKeys.add(new RowKey(HBaseUtils.toBytes(row.getRowKey()), tableName));
         }
     }
 
     @Override
-    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
-        if (transaction != null && transaction.getTransactionId() == transactionId) {
+    public void commitDistributedTransaction(DistributedTransaction dt) {
+        if (dt == this.dt) {
+            long transactionId = dt.getTransactionId();
             synchronized (HBaseSession.class) {
                 long timestampOracle = Long.MIN_VALUE;
                 if (transactionId < timestampOracle) { //TODO
                     throw new RuntimeException("Aborting transaction after restarting TSO");
-                } else if (transaction.getRows().length > 0 && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
+                } else if (!rowKeys.isEmpty() && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
                     // Too old and not read only
                     throw new RuntimeException("Too old startTimestamp: ST " + transactionId + " MAX "
                             + commitHashMap.getLargestDeletedTimestamp());
                 } else {
                     // 1. check the write-write conflicts
-                    for (RowKey r : transaction.getRows()) {
+                    for (RowKey r : rowKeys) {
                         long oldCommitTimestamp = commitHashMap.getLatestWriteForRow(r.hashCode());
                         if (oldCommitTimestamp != 0 && oldCommitTimestamp > transactionId) {
                             throw new RuntimeException("Write-write conflict: oldCommitTimestamp " + oldCommitTimestamp
@@ -246,20 +224,48 @@ public class HBaseSession extends Session {
                         }
                     }
 
-                    for (RowKey r : transaction.getRows()) {
-                        commitHashMap.putLatestWriteForRow(r.hashCode(), commitTimestamp);
+                    for (RowKey r : rowKeys) {
+                        commitHashMap.putLatestWriteForRow(r.hashCode(), dt.getCommitTimestamp());
                     }
                 }
             }
         }
-        return 0;
     }
 
     @Override
-    public int rollbackDistributedTransaction(long transactionId) {
-        if (transaction != null && transaction.getTransactionId() == transactionId) {
+    public void rollbackDistributedTransaction(DistributedTransaction dt) {
+        if (dt == this.dt) {
             undo();
         }
-        return 0;
+    }
+
+    public void beginTransaction(DistributedTransaction dt, Command currentCommand, boolean isDistributedTransaction,
+            boolean isFirst) {
+        if (this.dt == null) {
+            try {
+                dt.setAutoCommit(getAutoCommit());
+                this.dt = dt;
+                long transactionId;
+                if (isDistributedTransaction || !getAutoCommit())
+                    transactionId = timestampService.nextOdd();
+                else
+                    transactionId = timestampService.nextEven();
+
+                this.dt.setTransactionId(transactionId);
+            } catch (IOException e) {
+                throw DbException.convert(e);
+            }
+        }
+
+        this.currentCommand = currentCommand;
+        this.isFirst = isFirst;
+    }
+
+    public DistributedTransaction getDistributedTransaction() {
+        return dt;
+    }
+
+    public boolean isFirst() {
+        return isFirst;
     }
 }

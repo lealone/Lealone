@@ -8,7 +8,6 @@ package com.codefollower.lealone.command;
 
 import java.io.IOException;
 import java.util.ArrayList;
-
 import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.expression.ParameterInterface;
@@ -19,6 +18,7 @@ import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.ResultRemote;
 import com.codefollower.lealone.result.ResultRemoteCursor;
 import com.codefollower.lealone.result.ResultRemoteInMemory;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.value.Transfer;
 import com.codefollower.lealone.value.Value;
@@ -40,7 +40,7 @@ public class CommandRemote implements CommandInterface {
     private boolean readonly;
     private final int created;
 
-    private long transactionId = -1;
+    private DistributedTransaction dt;
 
     public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
         this.transferList = transferList;
@@ -141,13 +141,14 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    if (isDistributedTransaction()) {
+                    if (dt != null && dt.isAutoCommit()) {
                         session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
-                                .writeInt(maxRows).writeLong(transactionId);
+                                .writeInt(maxRows);
                     } else {
                         session.traceOperation("COMMAND_EXECUTE_QUERY", id);
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_QUERY).writeInt(id).writeInt(objectId).writeInt(maxRows);
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_QUERY) //
+                                .writeInt(id).writeInt(objectId).writeInt(maxRows);
                     }
                     int fetch;
                     if (session.isClustered() || scrollable) {
@@ -190,14 +191,15 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    if (isDistributedTransaction()) {
+                    if (dt != null && dt.isAutoCommit()) {
                         session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id)
-                                .writeLong(transactionId);
+                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
                         sendParameters(transfer);
                         session.done(transfer);
                         updateCount = transfer.readInt();
                         autoCommit = transfer.readBoolean();
+                        dt.setTransactionId(transfer.readLong());
+                        dt.setHostAndPort(transfer.readString());
                     } else {
                         session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_UPDATE).writeInt(id);
@@ -285,52 +287,45 @@ public class CommandRemote implements CommandInterface {
     }
 
     @Override
-    public long getTransactionId() {
-        return transactionId;
-    }
-
-    @Override
-    public void setTransactionId(long transactionId) {
-        this.transactionId = transactionId;
-    }
-
-    @Override
-    public boolean isDistributedTransaction() {
-        return transactionId >= 0;
-    }
-
-    @Override
-    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
+    public void commitDistributedTransaction() {
         synchronized (session) {
             for (int i = 0, count = 0; i < transferList.size(); i++) {
                 Transfer transfer = transferList.get(i);
                 try {
                     session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_COMMIT", id);
-                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeInt(id).writeLong(transactionId)
-                            .writeLong(commitTimestamp);
+                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeInt(id);
                     session.done(transfer);
+                    dt.setCommitTimestamp(transfer.readLong());
                 } catch (IOException e) {
                     session.removeServer(e, i--, ++count);
                 }
             }
         }
-        return 0;
     }
 
     @Override
-    public int rollbackDistributedTransaction(long transactionId) {
+    public void rollbackDistributedTransaction() {
         synchronized (session) {
             for (int i = 0, count = 0; i < transferList.size(); i++) {
                 Transfer transfer = transferList.get(i);
                 try {
                     session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK", id);
-                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK).writeInt(id).writeLong(transactionId);
+                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK).writeInt(id);
                     session.done(transfer);
                 } catch (IOException e) {
                     session.removeServer(e, i--, ++count);
                 }
             }
         }
-        return 0;
+    }
+
+    @Override
+    public void setDistributedTransaction(DistributedTransaction dt) {
+        this.dt = dt;
+    }
+
+    @Override
+    public DistributedTransaction getDistributedTransaction() {
+        return dt;
     }
 }

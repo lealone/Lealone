@@ -35,11 +35,11 @@ import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.transaction.TTable;
-import com.codefollower.lealone.hbase.transaction.Transaction;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueString;
 

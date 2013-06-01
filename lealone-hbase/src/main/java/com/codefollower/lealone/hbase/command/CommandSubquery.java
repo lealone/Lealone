@@ -77,5 +77,4 @@ public class CommandSubquery extends Command {
     public Prepared getPrepared() {
         return query;
     }
-
 }

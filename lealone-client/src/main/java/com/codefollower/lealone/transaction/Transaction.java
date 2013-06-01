@@ -17,32 +17,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.hbase.tso.messages;
+package com.codefollower.lealone.transaction;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
+public interface Transaction {
+    long getTransactionId();
 
-import org.jboss.netty.buffer.ChannelBuffer;
+    long getStartTimestamp();
 
-/**
- * The interface the identified the messages sent to TSO
- * @author maysam
- *
- */
-public interface TSOMessage {
-
-    final public byte TimestampRequest = (byte) 0xc0;
-    final public byte TimestampResponse = (byte) 0xc1;
-
-    /*
-     * Deserialize function
-     * We use ChannelBuffer instead of DataInputStream because the performance is better
-     */
-    public void readObject(ChannelBuffer aInputStream);
-
-    /*
-     * Serialize function
-     */
-    public void writeObject(DataOutputStream aOutputStream) throws IOException;
-
+    long getCommitTimestamp();
 }

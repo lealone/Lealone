@@ -20,12 +20,12 @@
 package com.codefollower.lealone.hbase.command;
 
 import java.util.ArrayList;
-
 import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.result.ResultInterface;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 
 class CommandWrapper implements CommandInterface {
     private Command c;
@@ -88,27 +88,23 @@ class CommandWrapper implements CommandInterface {
     }
 
     @Override
-    public void setTransactionId(long transactionId) {
-        c.setTransactionId(transactionId);
+    public void setDistributedTransaction(DistributedTransaction dt) {
+        c.setDistributedTransaction(dt);
     }
 
     @Override
-    public long getTransactionId() {
-        return c.getTransactionId();
+    public DistributedTransaction getDistributedTransaction() {
+        return c.getDistributedTransaction();
     }
 
     @Override
-    public boolean isDistributedTransaction() {
-        return c.isDistributedTransaction();
+    public void commitDistributedTransaction() {
+        c.commitDistributedTransaction();
     }
 
     @Override
-    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
-        return c.commitDistributedTransaction(transactionId, commitTimestamp);
+    public void rollbackDistributedTransaction() {
+        c.rollbackDistributedTransaction();
     }
 
-    @Override
-    public int rollbackDistributedTransaction(long transactionId) {
-        return c.rollbackDistributedTransaction(transactionId);
-    }
 }

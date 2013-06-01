@@ -95,8 +95,8 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         row.setRegionName(regionNameAsBytes);
 
         Put put;
-        if (getCommand().isDistributedTransaction())
-            put = new Put(HBaseUtils.toBytes(rowKey), getCommand().getTransactionId());
+        if (getCommand().getDistributedTransaction() != null)
+            put = new Put(HBaseUtils.toBytes(rowKey), getCommand().getDistributedTransaction().getTransactionId());
         else
             put = new Put(HBaseUtils.toBytes(rowKey));
         row.setPut(put);

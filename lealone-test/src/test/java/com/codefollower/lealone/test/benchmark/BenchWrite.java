@@ -150,7 +150,7 @@ public class BenchWrite {
                 + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary float))");
     }
 
-    int count = 10100;
+    int count = 1100;
 
     long testHBase() throws Exception {
         long start = System.nanoTime();

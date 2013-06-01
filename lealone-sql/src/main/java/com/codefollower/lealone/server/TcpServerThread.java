@@ -31,6 +31,7 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultColumn;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.store.LobStorage;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 import com.codefollower.lealone.util.IOUtils;
 import com.codefollower.lealone.util.SmallLRUCache;
 import com.codefollower.lealone.util.SmallMap;
@@ -317,8 +318,9 @@ public class TcpServerThread implements Runnable {
             int maxRows = transfer.readInt();
             int fetchSize = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
-            if (isDistributedTransaction)
-                command.setTransactionId(transfer.readLong());
+            if (isDistributedTransaction && command.getDistributedTransaction() == null) {
+                command.setDistributedTransaction(new DistributedTransaction());
+            }
             command.setFetchSize(fetchSize);
             setParameters(command);
             int old = session.getModificationId();
@@ -351,8 +353,9 @@ public class TcpServerThread implements Runnable {
         case SessionRemote.COMMAND_EXECUTE_UPDATE: {
             int id = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
-            if (isDistributedTransaction)
-                command.setTransactionId(transfer.readLong());
+            if (isDistributedTransaction && command.getDistributedTransaction() == null) {
+                command.setDistributedTransaction(new DistributedTransaction());
+            }
             setParameters(command);
             int old = session.getModificationId();
             int updateCount;
@@ -366,24 +369,19 @@ public class TcpServerThread implements Runnable {
                 status = getState(old);
             }
             transfer.writeInt(status).writeInt(updateCount).writeBoolean(session.getAutoCommit());
-//            if (isDistributedTransaction) {
-//                transfer.writeInt(command.getTransactionalRowKeys().length);
-//                for (byte[] rowKey : command.getTransactionalRowKeys())
-//                    transfer.writeBytes(rowKey);
-//            }
+            if (isDistributedTransaction) {
+                transfer.writeLong(command.getDistributedTransaction().getTransactionId());
+                transfer.writeString(command.getDistributedTransaction().getHostAndPort());
+            }
             transfer.flush();
             break;
         }
         case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT: {
             int id = transfer.readInt();
-            long transactionId= transfer.readLong();
-            long commitTimestamp= transfer.readLong();
             Command command = (Command) cache.getObject(id, false);
             int old = session.getModificationId();
-            @SuppressWarnings("unused")
-            int updateCount;
             synchronized (session) {
-                updateCount = command.commitDistributedTransaction(transactionId, commitTimestamp);
+                command.commitDistributedTransaction();
             }
             int status;
             if (session.isClosed()) {
@@ -391,19 +389,17 @@ public class TcpServerThread implements Runnable {
             } else {
                 status = getState(old);
             }
-            transfer.writeInt(status); //TODO updateCount
+            transfer.writeInt(status);
+            transfer.writeLong(command.getDistributedTransaction().getCommitTimestamp());
             transfer.flush();
             break;
         }
         case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK: {
             int id = transfer.readInt();
-            long transactionId= transfer.readLong();
             Command command = (Command) cache.getObject(id, false);
             int old = session.getModificationId();
-            @SuppressWarnings("unused")
-            int updateCount;
             synchronized (session) {
-                updateCount = command.rollbackDistributedTransaction(transactionId);
+                command.rollbackDistributedTransaction();
             }
             int status;
             if (session.isClosed()) {
@@ -411,7 +407,7 @@ public class TcpServerThread implements Runnable {
             } else {
                 status = getState(old);
             }
-            transfer.writeInt(status); //TODO updateCount
+            transfer.writeInt(status);
             transfer.flush();
             break;
         }

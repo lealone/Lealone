@@ -20,6 +20,8 @@
 package com.codefollower.lealone.hbase.transaction;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Set;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -29,14 +31,15 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.MurmurHash;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 
 public class HBaseTransactionStatusTable {
     private final static byte[] TABLE_NAME = Bytes.toBytes("LEALONE_TRANSACTION_STATUS_TABLE");
     final static byte[] FAMILY = Bytes.toBytes("f");
-    final static byte[] START_TIMESTAMP = Bytes.toBytes("s");
+    //final static byte[] START_TIMESTAMP = Bytes.toBytes("t");
+    final static byte[] SERVER = Bytes.toBytes("s");
     final static byte[] COMMIT_TIMESTAMP = Bytes.toBytes("c");
 
     public synchronized static void createTableIfNotExists() throws Exception {
@@ -76,35 +79,60 @@ public class HBaseTransactionStatusTable {
         }
     }
 
-    public void addRecord(long transactionId, long commitTimestamp) {
-        byte[] tid = Bytes.toBytes(transactionId);
-        int rowKey = MurmurHash.getInstance().hash(tid, 0, tid.length, 0xdeadbeef);
-        Put put = new Put(Bytes.toBytes(rowKey));
-        put.add(FAMILY, START_TIMESTAMP, transactionId, tid);
-        put.add(FAMILY, COMMIT_TIMESTAMP, transactionId, Bytes.toBytes(commitTimestamp));
-        try {
-            table.put(put);
-        } catch (IOException e) {
-            throw DbException.convert(e);
+    public void addRecord(DistributedTransaction transaction) {
+        Set<DistributedTransaction> distributedTransactions = transaction.getChildren();
+        if (distributedTransactions != null && !distributedTransactions.isEmpty()) {
+            StringBuilder buff = new StringBuilder();
+            for (DistributedTransaction dt : distributedTransactions) {
+                if (buff.length() > 0)
+                    buff.append(',');
+
+                buff.append(dt.getHostAndPort()).append(':').append(dt.getTransactionId());
+            }
+
+            ArrayList<Put> list = new ArrayList<Put>(distributedTransactions.size());
+            String serverStr = buff.toString();
+
+            byte[] rowKey;
+            Put put;
+
+            for (DistributedTransaction dt : distributedTransactions) {
+                buff.setLength(0);
+                rowKey = Bytes.toBytes(buff.append(dt.getHostAndPort()).append(':').append(dt.getTransactionId()).toString());
+                put = new Put(rowKey);
+                put.add(FAMILY, SERVER, dt.getTransactionId(), Bytes.toBytes(serverStr));
+                put.add(FAMILY, COMMIT_TIMESTAMP, dt.getTransactionId(), Bytes.toBytes(dt.getCommitTimestamp()));
+                list.add(put);
+            }
+
+            try {
+                table.put(list);
+            } catch (IOException e) {
+                throw DbException.convert(e);
+            }
         }
     }
 
-    public byte[] toHash(long transactionId) {
-        byte[] tid = Bytes.toBytes(transactionId);
-        int rowKey = MurmurHash.getInstance().hash(tid, 0, tid.length, 0xdeadbeef);
-        return Bytes.toBytes(rowKey);
-    }
-
-    public long query(long transactionId) {
-        Get get = new Get(toHash(transactionId));
-        get.setTimeStamp(transactionId);
-        get.addColumn(FAMILY, COMMIT_TIMESTAMP);
+    public long query(String hostAndPort, long queryTimestamp) {
+        Get get = new Get(Bytes.toBytes(hostAndPort + "." + Long.toString(queryTimestamp)));
+        get.setTimeStamp(queryTimestamp);
         try {
+            long commitTimestamp = -1;
             Result r = table.get(get);
-            if (r != null && !r.isEmpty())
-                return Bytes.toLong(r.getValue(FAMILY, COMMIT_TIMESTAMP));
-            else
-                return -1;
+            if (r != null && !r.isEmpty()) {
+                commitTimestamp = Bytes.toLong(r.getValue(FAMILY, COMMIT_TIMESTAMP));
+                String serverStr = Bytes.toString(r.getValue(FAMILY, SERVER));
+                String[] servers = serverStr.split(",");
+                for (String server : servers) {
+                    get = new Get(Bytes.toBytes(server));
+                    r = table.get(get);
+                    if (r == null || r.isEmpty()) {
+                        commitTimestamp = -1;
+                        break;
+                    }
+                }
+            }
+            return commitTimestamp;
         } catch (IOException e) {
             throw DbException.convert(e);
         }

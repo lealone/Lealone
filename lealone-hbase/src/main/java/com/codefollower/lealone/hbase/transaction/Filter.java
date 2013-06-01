@@ -31,6 +31,8 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
+import com.codefollower.lealone.transaction.Transaction;
+
 public class Filter {
     public final static Committed committed = new Committed();
     private final static Set<Long> aborted = Collections.synchronizedSet(new HashSet<Long>(1000));
@@ -84,7 +86,7 @@ public class Filter {
                 continue;
             }
             versionsProcessed++;
-            if (validRead(kv.getTimestamp(), startTimestamp)) {
+            if (validRead(regionServer.getServerName().getHostAndPort(), kv.getTimestamp(), startTimestamp)) {
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {
                     filtered.add(kv);
@@ -110,8 +112,10 @@ public class Filter {
         return filtered;
     }
 
-    public static boolean validRead(long queryTimestamp, long startTimestamp) throws IOException {
+    public static boolean validRead(String hostAndPort, long queryTimestamp, long startTimestamp) throws IOException {
         if (queryTimestamp == startTimestamp)
+            return true;
+        if (queryTimestamp < startTimestamp & queryTimestamp % 2 == 0)
             return true;
         if (aborted.contains(queryTimestamp))
             return false;
@@ -126,7 +130,7 @@ public class Filter {
         if (queryTimestamp <= largestDeletedTimestamp)
             return true;
 
-        commitTimestamp = HBaseTransactionStatusTable.getInstance().query(queryTimestamp);
+        commitTimestamp = HBaseTransactionStatusTable.getInstance().query(hostAndPort, queryTimestamp);
         if (commitTimestamp != -1) {
             committed.commit(queryTimestamp, commitTimestamp);
             return true;

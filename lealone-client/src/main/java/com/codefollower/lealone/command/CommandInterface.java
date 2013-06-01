@@ -7,9 +7,9 @@
 package com.codefollower.lealone.command;
 
 import java.util.ArrayList;
-
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.result.ResultInterface;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 
 /**
  * Represents a SQL statement.
@@ -506,28 +506,11 @@ public interface CommandInterface {
 
     void setFetchSize(int fetchSize);
 
-    /**
-     * 设置事务ID，如果事务ID大于等于0，说明此命令正在一个分布式事务中执行
-     * 
-     * @param transactionId 事务ID
-     */
-    void setTransactionId(long transactionId);
+    void setDistributedTransaction(DistributedTransaction dt);
 
-    /**
-     * 获取当前命令的事务ID，如果事务ID大于等于0，说明此命令正在一个分布式事务中执行
-     * 
-     * @return 事务ID
-     */
-    long getTransactionId();
+    DistributedTransaction getDistributedTransaction();
 
-    /**
-     * 当前命令是否包含在一个分布式事务中
-     * 
-     * @return 如果事务ID大于等于0，说明此命令正在一个分布式事务中执行，此时返回true，否则返回false
-     */
-    boolean isDistributedTransaction();
+    void commitDistributedTransaction();
 
-    int commitDistributedTransaction(long transactionId, long commitTimestamp);
-
-    int rollbackDistributedTransaction(long transactionId);
+    void rollbackDistributedTransaction();
 }

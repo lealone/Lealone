@@ -26,7 +26,6 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 
-import com.codefollower.lealone.hbase.tso.server.TSOServer;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.store.fs.FileUtils;
 
@@ -36,9 +35,6 @@ public class HMasterStarter {
     public static void main(String[] args) throws Exception {
         //删除临时测试目录
         FileUtils.deleteRecursive(conf.get("lealone.test.dir"), true);
-
-        //启动TSOServer
-        new TSOServerThread().start();
 
         new ZookeeperThread().start();
         Thread.sleep(1000);
@@ -54,16 +50,6 @@ public class HMasterStarter {
             zooKeeperCluster.setDefaultClientPort(zkClientPort);
             try {
                 zooKeeperCluster.startup(zkDataPath);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    static class TSOServerThread extends Thread {
-        public void run() {
-            try {
-                TSOServer.main(new String[] { "1234" });
             } catch (Exception e) {
                 e.printStackTrace();
             }

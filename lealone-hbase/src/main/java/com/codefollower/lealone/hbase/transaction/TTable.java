@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.NavigableSet;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.ClientScanner;
@@ -37,7 +38,8 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.TimeRange;
-import org.apache.hadoop.hbase.util.Bytes;
+
+import com.codefollower.lealone.transaction.Transaction;
 
 /**
  * Provides transactional methods for accessing and modifying a given snapshot
@@ -55,14 +57,6 @@ public class TTable {
     /** Average number of versions needed to reach the right snapshot */
     private double versionsAvg = 3;
     private final HTable table;
-
-    public TTable(Configuration conf, byte[] tableName) throws IOException {
-        table = new HTable(conf, tableName);
-    }
-
-    public TTable(Configuration conf, String tableName) throws IOException {
-        this(conf, Bytes.toBytes(tableName));
-    }
 
     public TTable(HTable table) throws IOException {
         this.table = table;
@@ -182,7 +176,8 @@ public class TTable {
                 continue;
             }
             versionsProcessed++;
-            if (Filter.validRead(kv.getTimestamp(), startTimestamp)) {
+            HRegionLocation location = table.getRegionLocation(kv.getRow(), false);
+            if (Filter.validRead(location.getHostnamePort(), kv.getTimestamp(), startTimestamp)) {
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {
                     filtered.add(kv);

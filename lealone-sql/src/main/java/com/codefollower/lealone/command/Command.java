@@ -8,7 +8,6 @@ package com.codefollower.lealone.command;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.constant.ErrorCode;
@@ -18,6 +17,7 @@ import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.Trace;
 import com.codefollower.lealone.result.ResultInterface;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 import com.codefollower.lealone.util.MathUtils;
 
 /**
@@ -49,7 +49,7 @@ public abstract class Command implements CommandInterface {
 
     private boolean canReuse;
     protected int fetchSize;
-    private long transactionId = -1;
+    private DistributedTransaction dt;
 
     protected Command(Session session, String sql) {
         this.session = session;
@@ -354,27 +354,21 @@ public abstract class Command implements CommandInterface {
     }
 
     @Override
-    public long getTransactionId() {
-        return transactionId;
+    public void commitDistributedTransaction() {
+        session.commitDistributedTransaction(dt);
     }
 
     @Override
-    public void setTransactionId(long transactionId) {
-        this.transactionId = transactionId;
+    public void rollbackDistributedTransaction() {
+        session.rollbackDistributedTransaction(dt);
+    }
+    @Override
+    public void setDistributedTransaction(DistributedTransaction dt) {
+        this.dt = dt;
     }
 
     @Override
-    public boolean isDistributedTransaction() {
-        return transactionId >= 0;
-    }
-
-    @Override
-    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
-        return session.commitDistributedTransaction(transactionId, commitTimestamp);
-    }
-
-    @Override
-    public int rollbackDistributedTransaction(long transactionId) {
-        return session.rollbackDistributedTransaction(transactionId);
+    public DistributedTransaction getDistributedTransaction() {
+        return dt;
     }
 }

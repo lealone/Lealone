@@ -47,6 +47,7 @@ import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.result.ResultInterface;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 
@@ -205,15 +206,17 @@ public class CommandProxy extends Command {
         setProxyCommandParameters();
 
         if (originalPrepared instanceof HBasePrepared) {
-            if (originalSession.getTransaction() == null //
-                    && !isDistributedTransaction() //
-                    && (!(originalPrepared instanceof DefineCommand))) {
-                originalSession.beginTransaction(this);
-            }
-            if (isDistributedTransaction()) {
-                proxyCommand.setTransactionId(getTransactionId());
-            } else if (!(originalPrepared instanceof DefineCommand) && originalSession.getTransaction() != null) {
-                proxyCommand.setTransactionId(originalSession.getTransaction().getTransactionId());
+            if (getDistributedTransaction() == null) {
+                if (originalSession.getDistributedTransaction() == null) {
+                    DistributedTransaction dt = new DistributedTransaction();
+                    originalSession.beginTransaction(dt, this, false, true);
+                }
+
+                proxyCommand.setDistributedTransaction(originalSession.getDistributedTransaction());
+            } else {
+                if (originalSession.getDistributedTransaction() == null) {
+                    originalSession.beginTransaction(getDistributedTransaction(), this, true, false);
+                }
             }
         }
     }
@@ -234,6 +237,14 @@ public class CommandProxy extends Command {
         prepare();
 
         int updateCount = proxyCommand.executeUpdate();
+
+        if (originalSession.getTransaction() != null && originalSession.isFirst()) {
+            if (proxyCommand instanceof CommandParallel) {
+                originalSession.getTransaction().addChildren(((CommandParallel) proxyCommand).getDistributedTransactions());
+            } else {
+                originalSession.getTransaction().addChild(proxyCommand.getDistributedTransaction());
+            }
+        }
 
         if (!originalSession.getDatabase().isMaster() && originalPrepared instanceof DefineCommand) {
             originalSession.getDatabase().refreshMetaTable();
@@ -311,19 +322,24 @@ public class CommandProxy extends Command {
     }
 
     @Override
-    public void setTransactionId(long transactionId) {
-        proxyCommand.setTransactionId(transactionId);
-        super.setTransactionId(transactionId);
+    public void setDistributedTransaction(DistributedTransaction dt) {
+        proxyCommand.setDistributedTransaction(dt);
+        super.setDistributedTransaction(dt);
     }
 
     @Override
-    public int commitDistributedTransaction(long transactionId, long commitTimestamp) {
-        return proxyCommand.commitDistributedTransaction(transactionId, commitTimestamp);
+    public DistributedTransaction getDistributedTransaction() {
+        return proxyCommand.getDistributedTransaction();
     }
 
     @Override
-    public int rollbackDistributedTransaction(long transactionId) {
-        return proxyCommand.rollbackDistributedTransaction(transactionId);
+    public void commitDistributedTransaction() {
+        proxyCommand.commitDistributedTransaction();
+    }
+
+    @Override
+    public void rollbackDistributedTransaction() {
+        proxyCommand.rollbackDistributedTransaction();
     }
 
     CommandInterface getCommandInterface(String url, String sql) throws Exception {

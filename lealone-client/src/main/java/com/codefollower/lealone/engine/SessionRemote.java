@@ -100,6 +100,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     private Transfer initTransfer(ConnectionInfo ci, String db, String server) throws IOException {
         Socket socket = NetUtils.createSocket(server, Constants.DEFAULT_TCP_PORT, ci.isSSL());
         Transfer trans = new Transfer(this);
+        trans.setServerName(server);
         trans.setSocket(socket);
         trans.setSSL(ci.isSSL());
         trans.init();

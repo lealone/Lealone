@@ -21,6 +21,7 @@ package com.codefollower.lealone.hbase.command;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
@@ -41,6 +42,7 @@ import com.codefollower.lealone.hbase.result.HBaseSerializedResult;
 import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.result.ResultInterface;
+import com.codefollower.lealone.transaction.DistributedTransaction;
 import com.codefollower.lealone.util.New;
 
 public class CommandParallel implements CommandInterface {
@@ -49,8 +51,7 @@ public class CommandParallel implements CommandInterface {
     private final Prepared originalPrepared;
     private final String sql;
     private final List<CommandInterface> commands; //保证不会为null且size>=2
-
-    private long transactionId = -1;
+    private DistributedTransaction dt;
 
     public CommandParallel(HBaseSession originalSession, CommandProxy commandProxy, //
             byte[] tableName, List<byte[]> startKeys, String sql, Prepared originalPrepared) {
@@ -144,6 +145,7 @@ public class CommandParallel implements CommandInterface {
         List<ResultInterface> results = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
+            c.setDistributedTransaction(dt);
             futures.add(pool.submit(new Callable<ResultInterface>() {
                 public ResultInterface call() throws Exception {
                     return c.executeQuery(maxRows, scrollable);
@@ -171,7 +173,7 @@ public class CommandParallel implements CommandInterface {
         List<Future<Integer>> futures = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
-            c.setTransactionId(transactionId);
+            c.setDistributedTransaction(dt);
             futures.add(pool.submit(new Callable<Integer>() {
                 public Integer call() throws Exception {
                     return c.executeUpdate();
@@ -219,65 +221,67 @@ public class CommandParallel implements CommandInterface {
     }
 
     @Override
-    public long getTransactionId() {
-        return transactionId;
-    }
-
-    @Override
-    public void setTransactionId(long transactionId) {
-        this.transactionId = transactionId;
-    }
-
-    @Override
-    public boolean isDistributedTransaction() {
-        return transactionId >= 0;
-    }
-
-    @Override
-    public int commitDistributedTransaction(final long transactionId, final long commitTimestamp) {
-        int updateCount = 0;
+    public void commitDistributedTransaction() {
         int size = commands.size();
-        List<Future<Integer>> futures = New.arrayList(size);
+        List<Future<Void>> futures = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
-            c.setTransactionId(transactionId);
-            futures.add(pool.submit(new Callable<Integer>() {
-                public Integer call() throws Exception {
-                    return c.commitDistributedTransaction(transactionId, commitTimestamp);
+            c.setDistributedTransaction(dt);
+            futures.add(pool.submit(new Callable<Void>() {
+                public Void call() throws Exception {
+                    c.commitDistributedTransaction();
+                    return null;
                 }
             }));
         }
         try {
             for (int i = 0; i < size; i++) {
-                updateCount += futures.get(i).get();
+                futures.get(i).get();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return updateCount;
     }
 
     @Override
-    public int rollbackDistributedTransaction(final long transactionId) {
-        int updateCount = 0;
+    public void rollbackDistributedTransaction() {
         int size = commands.size();
-        List<Future<Integer>> futures = New.arrayList(size);
+        List<Future<Void>> futures = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
-            c.setTransactionId(transactionId);
-            futures.add(pool.submit(new Callable<Integer>() {
-                public Integer call() throws Exception {
-                    return c.rollbackDistributedTransaction(transactionId);
+            c.setDistributedTransaction(dt);
+            futures.add(pool.submit(new Callable<Void>() {
+                public Void call() throws Exception {
+                    c.rollbackDistributedTransaction();
+                    return null;
                 }
             }));
         }
         try {
             for (int i = 0; i < size; i++) {
-                updateCount += futures.get(i).get();
+                futures.get(i).get();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return updateCount;
+    }
+
+    public Set<DistributedTransaction> getDistributedTransactions() {
+        int size = commands.size();
+        Set<DistributedTransaction> distributedTransactions = New.hashSet();
+        for (int i = 0; i < size; i++) {
+            distributedTransactions.add(commands.get(i).getDistributedTransaction());
+        }
+        return distributedTransactions;
+    }
+
+    @Override
+    public void setDistributedTransaction(DistributedTransaction dt) {
+        this.dt = dt;
+    }
+
+    @Override
+    public DistributedTransaction getDistributedTransaction() {
+        return dt;
     }
 }

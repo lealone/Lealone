@@ -233,8 +233,11 @@ public class HBaseTable extends TableBase {
     }
 
     private void setTransactionId(Session session, Row row) {
-        if (((HBaseSession) session).getTransaction() != null) {
-            row.setTransactionId(((HBaseSession) session).getTransaction().getTransactionId());
+        HBaseSession hs = (HBaseSession) session;
+        if (hs.getTransaction() != null) {
+            if (hs.getTransaction().getHostAndPort() == null)
+                hs.getTransaction().setHostAndPort(hs.getRegionServer().getServerName().getHostAndPort());
+            row.setTransactionId(hs.getTransaction().getTransactionId());
         }
     }
 
@@ -290,8 +293,9 @@ public class HBaseTable extends TableBase {
             o.setForUpdate(true);
             n.setRegionName(o.getRegionName());
             n.setRowKey(o.getRowKey());
-            if (prepared.getCommand().isDistributedTransaction())
-                put = new Put(HBaseUtils.toBytes(n.getRowKey()), prepared.getCommand().getTransactionId());
+            if (prepared.getCommand().getDistributedTransaction() != null)
+                put = new Put(HBaseUtils.toBytes(n.getRowKey()), prepared.getCommand().getDistributedTransaction()
+                        .getTransactionId());
             else
                 put = new Put(HBaseUtils.toBytes(n.getRowKey()));
             for (int i = 0; i < columnCount; i++) {

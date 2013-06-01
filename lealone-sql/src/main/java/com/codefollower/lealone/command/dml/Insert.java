@@ -124,7 +124,7 @@ public class Insert extends Prepared implements ResultTarget {
                 setCurrentRowNumber(x + 1);
                 Expression[] expr = list.get(x);
                 Row newRow = createRow(columnLen, expr, x);
-                newRow.setTransactionId(getCommand().getTransactionId());
+                newRow.setTransactionId(getCommand().getDistributedTransaction().getTransactionId());
 				rowNumber++;
 				table.validateConvertUpdateSequence(session, newRow);
 				boolean done = table.fireBeforeRow(session, null, newRow);
@@ -154,7 +154,7 @@ public class Insert extends Prepared implements ResultTarget {
 
 	public void addRow(Value[] values) { //TODO 增加rowKey到getCommand()
 		Row newRow = table.getTemplateRow();
-		newRow.setTransactionId(getCommand().getTransactionId());
+		newRow.setTransactionId(getCommand().getDistributedTransaction().getTransactionId());
 		setCurrentRowNumber(++rowNumber);
 		for (int j = 0, len = columns.length; j < len; j++) {
 			Column c = columns[j];

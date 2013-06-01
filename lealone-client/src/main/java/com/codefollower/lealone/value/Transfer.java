@@ -56,6 +56,7 @@ public class Transfer {
     private boolean ssl;
     private int version;
     private byte[] lobMacSalt;
+    private String serverName;
 
     /**
      * Create a new transfer object for the specified session.
@@ -66,6 +67,13 @@ public class Transfer {
         this.session = session;
     }
 
+    public String getServerName() {
+        return serverName;
+    }
+
+    public void setServerName(String serverName) {
+        this.serverName = serverName;
+    }
     /**
      * Set the socket this object uses.
      *

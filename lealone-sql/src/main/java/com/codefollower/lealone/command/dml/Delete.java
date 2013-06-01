@@ -90,7 +90,7 @@ public class Delete extends Prepared {
                     checkCanceled();
                 }
                 Row row = rows.next();
-                row.setTransactionId(getCommand().getTransactionId());
+                row.setTransactionId(getCommand().getDistributedTransaction().getTransactionId());
                 table.removeRow(session, row);
                 session.log(table, UndoLogRecord.DELETE, row);
             }
