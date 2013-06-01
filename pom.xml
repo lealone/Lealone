@@ -107,7 +107,7 @@
 			<dependency>
 				<groupId>org.apache.hbase</groupId>
 				<artifactId>hbase</artifactId>
-				<version>0.94.4</version>
+				<version>0.94.2</version>
 				<scope>provided</scope>
 			</dependency>
 
