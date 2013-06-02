@@ -29,7 +29,7 @@ import com.codefollower.lealone.hbase.util.HBaseUtils;
 public class MetaDataAdmin {
     public final static String META_DATA_PREFIX = Constants.PROJECT_NAME + "_";
 
-    public synchronized static void dropTableIfExists(byte[] tableName) throws IOException{
+    public synchronized static void dropTableIfExists(byte[] tableName) throws IOException {
         HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
         if (admin.tableExists(tableName)) {
             admin.disableTable(tableName);

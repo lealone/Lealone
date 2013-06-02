@@ -207,15 +207,15 @@ public class HBaseSession extends Session {
         if (dt == this.dt) {
             long transactionId = dt.getTransactionId();
             synchronized (HBaseSession.class) {
-                long timestampOracle = Long.MIN_VALUE;
-                if (transactionId < timestampOracle) { //TODO
-                    throw new RuntimeException("Aborting transaction after restarting TSO");
+                if (transactionId < timestampService.first()) {
+                    //1. 事务开始时间不能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
+                    throw new RuntimeException("Aborting transaction after restarting region server");
                 } else if (!rowKeys.isEmpty() && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
-                    // Too old and not read only
+                    //2. Too old and not read only
                     throw new RuntimeException("Too old startTimestamp: ST " + transactionId + " MAX "
                             + commitHashMap.getLargestDeletedTimestamp());
                 } else {
-                    // 1. check the write-write conflicts
+                    //3. write-write冲突检测
                     for (RowKey r : rowKeys) {
                         long oldCommitTimestamp = commitHashMap.getLatestWriteForRow(r.hashCode());
                         if (oldCommitTimestamp != 0 && oldCommitTimestamp > transactionId) {

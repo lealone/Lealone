@@ -31,7 +31,7 @@ public class TimestampService {
             Constants.PROJECT_NAME_PREFIX + "timestamp.batch", 100000);
 
     private final TimestampServiceTable timestampServiceTable;
-    private long first;
+    private final long first;
     private long last;
     private long maxTimestamp;
 
@@ -43,6 +43,10 @@ public class TimestampService {
         } catch (IOException e) {
             throw DbException.convert(e);
         }
+    }
+
+    public long first() {
+        return first;
     }
 
     private void addBatch() throws IOException {
