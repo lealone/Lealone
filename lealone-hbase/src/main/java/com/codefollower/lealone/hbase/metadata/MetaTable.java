@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.hbase.dbobject.table;
+package com.codefollower.lealone.hbase.metadata;
 
 import java.util.List;
 
@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
+import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.engine.MetaRecord;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -53,10 +54,11 @@ import com.codefollower.lealone.value.ValueString;
  */
 public class MetaTable {
     private final static byte[] EMPTY_BYTE_ARRAY = new byte[0];
-    private final static int DEFAULT_MAX_REDO_RECORDS = 5000;
+    private final static int DEFAULT_MAX_REDO_RECORDS = HBaseUtils.getConfiguration().getInt(
+            Constants.PROJECT_NAME_PREFIX + "max.redo.records", 5000);
 
-    private final static byte[] META_TABLE_NAME = Bytes.toBytes("LEALONE_META_TABLE");
-    private final static byte[] REDO_TABLE_NAME = Bytes.toBytes("LEALONE_REDO_TABLE");
+    private final static byte[] META_TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "meta_table");
+    private final static byte[] REDO_TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "redo_table");
     private final static byte[] FAMILY = Bytes.toBytes("info");
     private final static byte[] ID = Bytes.toBytes("id");
     private final static byte[] OBJECT_TYPE = Bytes.toBytes("type");

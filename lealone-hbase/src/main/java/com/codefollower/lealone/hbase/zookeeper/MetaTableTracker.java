@@ -24,7 +24,7 @@ import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
-import com.codefollower.lealone.hbase.dbobject.table.MetaTable;
+import com.codefollower.lealone.hbase.metadata.MetaTable;
 
 public class MetaTableTracker extends ZooKeeperListener {
     private final MetaTable table;

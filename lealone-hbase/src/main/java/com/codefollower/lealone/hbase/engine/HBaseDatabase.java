@@ -34,7 +34,7 @@ import com.codefollower.lealone.engine.DatabaseEngine;
 import com.codefollower.lealone.engine.MetaRecord;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTableEngine;
-import com.codefollower.lealone.hbase.dbobject.table.MetaTable;
+import com.codefollower.lealone.hbase.metadata.MetaTable;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.util.New;
 
