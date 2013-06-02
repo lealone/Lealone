@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
+import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.transaction.Transaction;
 
 public class Filter {
@@ -130,7 +131,7 @@ public class Filter {
         if (queryTimestamp <= largestDeletedTimestamp)
             return true;
 
-        commitTimestamp = HBaseTransactionStatusTable.getInstance().query(hostAndPort, queryTimestamp);
+        commitTimestamp = TransactionStatusTable.getInstance().query(hostAndPort, queryTimestamp);
         if (commitTimestamp != -1) {
             committed.commit(queryTimestamp, commitTimestamp);
             return true;

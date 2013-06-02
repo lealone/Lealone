@@ -21,22 +21,33 @@ package com.codefollower.lealone.hbase.transaction;
 
 import java.io.IOException;
 
+import com.codefollower.lealone.constant.Constants;
+import com.codefollower.lealone.hbase.metadata.TimestampServiceTable;
+import com.codefollower.lealone.hbase.util.HBaseUtils;
+import com.codefollower.lealone.message.DbException;
+
 public class TimestampService {
-    private static final long TIMESTAMP_BATCH = 100000;
+    private static final long TIMESTAMP_BATCH = HBaseUtils.getConfiguration().getLong(
+            Constants.PROJECT_NAME_PREFIX + "timestamp.batch", 100000);
 
-    private long first = 0;
-    private long last = 0;
-    private long maxTimestamp = 0;
+    private final TimestampServiceTable timestampServiceTable;
+    private long first;
+    private long last;
+    private long maxTimestamp;
 
-    public void initialize(long lastMaxTimestamp) {
-        first = last = maxTimestamp = lastMaxTimestamp;
-
-        addBatch();
+    public TimestampService(String hostAndPort) {
+        try {
+            timestampServiceTable = new TimestampServiceTable(hostAndPort);
+            first = last = maxTimestamp = timestampServiceTable.getLastMaxTimestamp();
+            addBatch();
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 
-    private void addBatch() {
+    private void addBatch() throws IOException {
         maxTimestamp += TIMESTAMP_BATCH;
-        // TODO 持久化最大值
+        timestampServiceTable.updateLastMaxTimestamp(maxTimestamp);
     }
 
     public synchronized long nextOdd() throws IOException {
@@ -64,14 +75,6 @@ public class TimestampService {
             delta = 1;
         last += delta;
         return last;
-    }
-
-    public long first() {
-        return first;
-    }
-
-    public long last() {
-        return first;
     }
 
     @Override

@@ -31,13 +31,15 @@ import com.codefollower.lealone.hbase.transaction.TimestampService;
  *
  */
 public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HRegionServer {
-    private final TimestampService timestampService = new TimestampService();
+    private TimestampService timestampService;
 
     public HBaseRegionServer(Configuration conf) throws IOException, InterruptedException {
         super(conf);
     }
 
     public TimestampService getTimestampService() {
+        if (timestampService == null)
+            timestampService = new TimestampService(getServerName().getHostAndPort());
         return timestampService;
     }
 
@@ -46,8 +48,6 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
         HBaseTcpServer server = new HBaseTcpServer(this);
         server.start();
         try {
-            //TODO 从某个地方按RegionServer取出lastMaxTimestamp
-            //timestampService.initialize(lastMaxTimestamp);
             super.run();
         } finally {
             server.stop();

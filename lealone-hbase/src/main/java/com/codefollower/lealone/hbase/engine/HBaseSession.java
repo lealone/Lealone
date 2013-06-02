@@ -38,11 +38,11 @@ import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
+import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.transaction.CommitHashMap;
 import com.codefollower.lealone.hbase.transaction.Filter;
-import com.codefollower.lealone.hbase.transaction.HBaseTransactionStatusTable;
 import com.codefollower.lealone.hbase.transaction.RowKey;
 import com.codefollower.lealone.hbase.transaction.TimestampService;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -54,7 +54,7 @@ import com.codefollower.lealone.util.New;
 
 public class HBaseSession extends Session {
     private static final CommitHashMap commitHashMap = new CommitHashMap();
-    private static final HBaseTransactionStatusTable transactionStatusTable = HBaseTransactionStatusTable.getInstance();
+    private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
 
     /**
      * HBase的HMaster对象，master和regionServer不可能同时非null

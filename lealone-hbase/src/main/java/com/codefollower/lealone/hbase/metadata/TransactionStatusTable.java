@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.hbase.transaction;
+package com.codefollower.lealone.hbase.metadata;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,42 +35,38 @@ import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.transaction.DistributedTransaction;
 
-public class HBaseTransactionStatusTable {
-    private final static byte[] TABLE_NAME = Bytes.toBytes("LEALONE_TRANSACTION_STATUS_TABLE");
-    final static byte[] FAMILY = Bytes.toBytes("f");
+public class TransactionStatusTable {
+    private final static byte[] TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "transaction_status_table");
+    private final static byte[] FAMILY = Bytes.toBytes("f");
     //final static byte[] START_TIMESTAMP = Bytes.toBytes("t");
-    final static byte[] SERVER = Bytes.toBytes("s");
-    final static byte[] COMMIT_TIMESTAMP = Bytes.toBytes("c");
+    private final static byte[] SERVER = Bytes.toBytes("s");
+    private final static byte[] COMMIT_TIMESTAMP = Bytes.toBytes("c");
 
     public synchronized static void createTableIfNotExists() throws Exception {
         HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
-        HColumnDescriptor hcd = new HColumnDescriptor(FAMILY);
-        hcd.setMaxVersions(Integer.MAX_VALUE);
-
-        HTableDescriptor htd = new HTableDescriptor(TABLE_NAME);
-        htd.addFamily(hcd);
         if (!admin.tableExists(TABLE_NAME)) {
+            HColumnDescriptor hcd = new HColumnDescriptor(FAMILY);
+            hcd.setMaxVersions(Integer.MAX_VALUE);
+
+            HTableDescriptor htd = new HTableDescriptor(TABLE_NAME);
+            htd.addFamily(hcd);
             admin.createTable(htd);
         }
     }
 
     public synchronized static void dropTableIfExists() throws Exception {
-        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
-        if (admin.tableExists(TABLE_NAME)) {
-            admin.disableTable(TABLE_NAME);
-            admin.deleteTable(TABLE_NAME);
-        }
+        MetaDataAdmin.dropTableIfExists(TABLE_NAME);
     }
 
-    private final static HBaseTransactionStatusTable st = new HBaseTransactionStatusTable();
+    private final static TransactionStatusTable st = new TransactionStatusTable();
 
-    public static HBaseTransactionStatusTable getInstance() {
+    public static TransactionStatusTable getInstance() {
         return st;
     }
 
     private final HTable table;
 
-    public HBaseTransactionStatusTable() {
+    private TransactionStatusTable() {
         try {
             createTableIfNotExists();
             table = new HTable(HBaseUtils.getConfiguration(), TABLE_NAME);
