@@ -25,11 +25,17 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 public abstract class BenchWrite {
@@ -123,6 +129,30 @@ public abstract class BenchWrite {
             total += testHBaseBatch();
         }
         avg();
+
+        new HBaseAdmin(conf).flush(tableName.toUpperCase());
+        regions();
+        //scan();
+    }
+
+    public void regions() throws Exception {
+        HTable t = new HTable(conf, tableName.toUpperCase());
+        for (Map.Entry<HRegionInfo, ServerName> e : t.getRegionLocations().entrySet()) {
+            HRegionInfo info = e.getKey();
+            System.out.println("info.getEncodedName()=" + info.getEncodedName());
+            ServerName server = e.getValue();
+
+            System.out.println("HRegionInfo = " + info.getRegionNameAsString());
+            System.out.println("ServerName = " + server);
+            System.out.println();
+        }
+    }
+
+    void scan() throws Exception {
+        HTable t = new HTable(conf, tableName.toUpperCase());
+        for (Result r : t.getScanner(new Scan())) {
+            System.out.println("rowKey: " + Bytes.toString(r.getRow()) + ", value: " + r);
+        }
     }
 
     void init() throws Exception {
@@ -174,7 +204,6 @@ public abstract class BenchWrite {
         t.put(puts);
         long end = System.nanoTime();
         p("testHBaseBatch()", end - start);
-
         return end - start;
     }
 

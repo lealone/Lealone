@@ -28,12 +28,12 @@ public class BenchWriteForPseudoDistributedMode extends BenchWrite {
 
     //endKey-startKey的值就是一个事务中包含的写操作个数
     public BenchWriteForPseudoDistributedMode(int startKey, int endKey) {
-        super("BenchWriteForStandaloneMode", startKey, endKey);
+        super("BenchWriteForPseudoDistributedMode", startKey, endKey);
     }
 
     public void createTable() throws Exception {
         stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS " + tableName + " (" //
-                + "SPLIT KEYS('10300'), " //预分region
+                + "SPLIT KEYS('PK10300'), " //预分region
                 + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary float))");
     }
 }
