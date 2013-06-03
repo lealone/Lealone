@@ -266,4 +266,9 @@
 		<value>6000000</value>
 	</property>
 
+	<property>
+		<name>hbase.master.wait.on.regionservers.timeout</name>
+		<value>450000</value>
+	</property>
+
 </configuration>

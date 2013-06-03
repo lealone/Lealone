@@ -32,10 +32,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
-public class BenchWrite {
-    public static void main(String[] args) throws Exception {
-        new BenchWrite().run();
-    }
+public abstract class BenchWrite {
 
     Connection conn;
     Statement stmt;
@@ -49,6 +46,17 @@ public class BenchWrite {
 
     Configuration conf = HBaseConfiguration.create();
     HTable t;
+    String tableName;
+    int startKey;
+    int endKey;
+    int loop = 10;
+
+    //endKey-startKey的值就是一个事务中包含的写操作个数
+    public BenchWrite(String tableName, int startKey, int endKey) {
+        this.tableName = tableName;
+        this.startKey = startKey;
+        this.endKey = endKey;
+    }
 
     byte[] b(String v) {
         return Bytes.toBytes(v);
@@ -66,67 +74,55 @@ public class BenchWrite {
         return Bytes.toBytes(v);
     }
 
-    void run() throws Exception {
+    long total = 0;
+
+    void avg() {
+        p("----------------------------");
+        p("rows: " + (endKey - startKey) + ", loop: " + loop + ", avg", total / loop);
+        p();
+        total = 0;
+    }
+
+    public void run() throws Exception {
         init();
         createTable();
         initHTable();
         initPreparedStatement();
 
-        int count = 10;
-        long total = 0;
-
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < loop; i++) {
             total += testStatement();
         }
-        p("avg", total / count);
-        p();
+        avg();
 
-        total = 0;
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < loop; i++) {
             total += testStatement();
         }
-        p("avg", total / count);
-        p();
+        avg();
 
-        total = 0;
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < loop; i++) {
             total += testPreparedStatement();
         }
-        p("avg", total / count);
-        p();
+        avg();
 
-        total = 0;
-
-        total = 0;
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < loop; i++) {
             total += testTransactionalStatement();
         }
-        p("avg", total / count);
-        p();
+        avg();
 
-        total = 0;
-
-        total = 0;
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < loop; i++) {
             total += testTransactionalPreparedStatement();
         }
-        p("avg", total / count);
-        p();
+        avg();
 
-        total = 0;
-
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < loop; i++) {
             total += testHBase();
         }
-        p("avg", total / count);
-        p();
+        avg();
 
-        total = 0;
-
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < loop; i++) {
             total += testHBaseBatch();
         }
-        p("avg", total / count);
+        avg();
     }
 
     void init() throws Exception {
@@ -138,23 +134,18 @@ public class BenchWrite {
     }
 
     void initHTable() throws Exception {
-        t = new HTable(conf, b("BENCHWRITE"));
+        t = new HTable(conf, b(tableName.toUpperCase()));
     }
 
     void initPreparedStatement() throws Exception {
-        ps = conn.prepareStatement("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES(?, ?, ?, ?, ?)");
+        ps = conn.prepareStatement("INSERT INTO " + tableName + "(_rowkey_, id, name, age, salary) VALUES(?, ?, ?, ?, ?)");
     }
 
-    void createTable() throws Exception {
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS BenchWrite(" //
-                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary float))");
-    }
-
-    int count = 10100;
+    public abstract void createTable() throws Exception;
 
     long testHBase() throws Exception {
         long start = System.nanoTime();
-        for (int i = 10000; i < count; i++) {
+        for (int i = startKey; i < endKey; i++) {
             Put put = new Put(b("RK" + i));
             put.add(cf, id, b(i));
             put.add(cf, name, b("zhh-2009"));
@@ -172,7 +163,7 @@ public class BenchWrite {
         List<Put> puts = new ArrayList<Put>();
 
         long start = System.nanoTime();
-        for (int i = 10000; i < count; i++) {
+        for (int i = startKey; i < endKey; i++) {
             Put put = new Put(b("RK" + i));
             put.add(cf, id, b(i));
             put.add(cf, name, b("zhh-2009"));
@@ -195,9 +186,13 @@ public class BenchWrite {
         System.out.println();
     }
 
+    void p(String str) {
+        System.out.println(str);
+    }
+
     long testPreparedStatement() throws Exception {
         long start = System.nanoTime();
-        for (int i = 10000; i < count; i++) {
+        for (int i = startKey; i < endKey; i++) {
             ps.setString(1, "RK" + i);
             ps.setInt(2, i);
             ps.setString(3, "zhh-2009");
@@ -214,8 +209,8 @@ public class BenchWrite {
     long testStatement() throws Exception {
         long start = System.nanoTime();
         StringBuilder s = null;
-        for (int i = 10000; i < count; i++) {
-            s = new StringBuilder("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES(");
+        for (int i = startKey; i < endKey; i++) {
+            s = new StringBuilder("INSERT INTO " + tableName + "(_rowkey_, id, name, age, salary) VALUES(");
             s.append("'RK").append(i).append("',");
             s.append(i).append(",");
             s.append("'zhh-2009',");
@@ -232,7 +227,7 @@ public class BenchWrite {
     long testTransactionalPreparedStatement() throws Exception {
         conn.setAutoCommit(false);
         long start = System.nanoTime();
-        for (int i = 10000; i < count; i++) {
+        for (int i = startKey; i < endKey; i++) {
             ps.setString(1, "RK" + i);
             ps.setInt(2, i);
             ps.setString(3, "zhh-2009");
@@ -252,8 +247,8 @@ public class BenchWrite {
         conn.setAutoCommit(false);
         long start = System.nanoTime();
         StringBuilder s = null;
-        for (int i = 10000; i < count; i++) {
-            s = new StringBuilder("INSERT INTO BenchWrite(_rowkey_, id, name, age, salary) VALUES(");
+        for (int i = startKey; i < endKey; i++) {
+            s = new StringBuilder("INSERT INTO " + tableName + "(_rowkey_, id, name, age, salary) VALUES(");
             s.append("'RK").append(i).append("',");
             s.append(i).append(",");
             s.append("'zhh-2009',");
