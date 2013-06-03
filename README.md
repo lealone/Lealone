@@ -10,9 +10,12 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 * 是一个可用于HBase的分布式SQL引擎
 
+* 支持高性能的分布式事务(一个非常新颖的**基于局部时间戳的多版本冲突与有效性检测的事务模型**)
+
 * 是对[H2关系数据库](http://www.h2database.com/html/main.html)的改进和扩展
 
 * 是一个100%纯Java的、将BigTable和RDBMS融合的数据库
+
 
 
 ## 有哪些应用场景?
