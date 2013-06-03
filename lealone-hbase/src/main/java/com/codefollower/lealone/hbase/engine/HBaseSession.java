@@ -22,13 +22,19 @@ package com.codefollower.lealone.hbase.engine;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.util.Threads;
 
-import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.dml.Query;
 import com.codefollower.lealone.dbobject.Schema;
@@ -36,6 +42,7 @@ import com.codefollower.lealone.dbobject.User;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
 import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
@@ -49,12 +56,13 @@ import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SubqueryResult;
-import com.codefollower.lealone.transaction.DistributedTransaction;
+import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.New;
 
 public class HBaseSession extends Session {
     private static final CommitHashMap commitHashMap = new CommitHashMap();
     private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
+    private static ThreadPoolExecutor pool;
 
     /**
      * HBase的HMaster对象，master和regionServer不可能同时非null
@@ -71,17 +79,39 @@ public class HBaseSession extends Session {
      */
     private Properties originalProperties;
 
-    private Command currentCommand;
     private TimestampService timestampService;
-    private boolean isFirst;
 
-    private DistributedTransaction dt;
+    private Transaction transaction;
 
     private final List<HBaseRow> undoRows = New.arrayList();
     private final Set<RowKey> rowKeys = new HashSet<RowKey>();
 
+    private Map<String, SessionRemote> sessionRemoteCache = New.hashMap();
+    private Map<String, SessionRemote> sessionRemoteCacheMaybeWithMaster = New.hashMap();
+
+    public void addSessionRemote(String url, SessionRemote sessionRemote, boolean isMaster) {
+        sessionRemoteCacheMaybeWithMaster.put(url, sessionRemote);
+        if (!isMaster)
+            sessionRemoteCache.put(url, sessionRemote);
+    }
+
+    public SessionRemote getSessionRemote(String url) {
+        return sessionRemoteCacheMaybeWithMaster.get(url);
+    }
+
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
+
+        if (pool == null) {
+            synchronized (HBaseSession.class) {
+                if (pool == null) {
+                    //TODO 可配置的线程池参数
+                    pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
+                            Threads.newDaemonThreadFactory(HBaseSession.class.getSimpleName()));
+                    pool.allowCoreThreadTimeOut(true);
+                }
+            }
+        }
     }
 
     public HMaster getMaster() {
@@ -137,25 +167,54 @@ public class HBaseSession extends Session {
     }
 
     @Override
+    public void setAutoCommit(boolean autoCommit) {
+        super.setAutoCommit(autoCommit);
+        if (!autoCommit && transaction == null) {
+            beginTransaction();
+        }
+    }
+
+    @Override
+    public void begin() {
+        super.begin();
+        setAutoCommit(false);
+    }
+
+    public Transaction getTransaction() {
+        if (transaction == null)
+            beginTransaction();
+        return transaction;
+    }
+
+    @Override
     public void commit(boolean ddl) {
-        if (dt != null) {
-            try {
-                if (!getAutoCommit()) {
-                    long tid = dt.getTransactionId();
-                    long commitTimestamp = timestampService.nextOdd();
-                    dt.setCommitTimestamp(commitTimestamp);
-                    currentCommand.commitDistributedTransaction();
-                    if (isFirst) {
-                        transactionStatusTable.addRecord(dt);
+        try {
+            if (transaction != null) {
+                if (!getAutoCommit() && !undoRows.isEmpty()) {
+                    if (isRoot()) {
+                        if (sessionRemoteCache.size() > 0)
+                            parallelCommit();
+                        long tid = transaction.getTransactionId();
+                        long commitTimestamp = timestampService.nextOdd();
+                        transaction.setCommitTimestamp(commitTimestamp);
+                        transaction.setHostAndPort(getHostAndPort());
+                        checkConflict();
+                        transactionStatusTable.addRecord(transaction);
+                        Filter.committed.commit(tid, commitTimestamp);
+                    } else {
+                        long tid = transaction.getTransactionId();
+                        long commitTimestamp = timestampService.nextOdd();
+                        transaction.setCommitTimestamp(commitTimestamp);
+                        checkConflict();
+                        Filter.committed.commit(tid, commitTimestamp);
                     }
-                    Filter.committed.commit(tid, commitTimestamp);
                 }
-            } catch (Exception e) {
-                rollback();
-                throw DbException.convert(e);
-            } finally {
-                endTransaction();
             }
+        } catch (Exception e) {
+            rollback();
+            throw DbException.convert(e);
+        } finally {
+            endTransaction();
         }
 
         super.commit(ddl);
@@ -163,49 +222,101 @@ public class HBaseSession extends Session {
 
     @Override
     public void rollback() {
-        if (dt != null && !getAutoCommit()) {
-            try {
-                currentCommand.rollbackDistributedTransaction();
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            } finally {
-                endTransaction();
-            }
-        }
+        try {
+            if (transaction != null && !getAutoCommit()) {
+                if (isRoot() && sessionRemoteCache.size() > 0) {
+                    parallelRollback();
+                }
 
+                undo();
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        } finally {
+            endTransaction();
+        }
         super.rollback();
+    }
+
+    private void parallelCommit() {
+        parallel(true);
+    }
+
+    private void parallelRollback() {
+        parallel(false);
+    }
+
+    private void parallel(final boolean commit) {
+        int size = sessionRemoteCache.size();
+        List<Future<Void>> futures = New.arrayList(size);
+        for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
+            futures.add(pool.submit(new Callable<Void>() {
+                public Void call() throws Exception {
+                    if (commit) {
+                        sessionRemote.commitTransaction();
+                        transaction.addChild(sessionRemote.getTransaction());
+                    } else {
+                        sessionRemote.rollbackTransaction();
+                    }
+                    return null;
+                }
+            }));
+        }
+        try {
+            for (int i = 0; i < size; i++) {
+                futures.get(i).get();
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     private void undo() {
         for (int i = undoRows.size() - 1; i >= 0; i--) {
             HBaseRow row = undoRows.get(i);
-            row.getTable().removeRow(this, row);
+            row.getTable().removeRow(this, row, true);
         }
         undoRows.clear();
     }
 
-    public DistributedTransaction getTransaction() {
-        return dt;
+    private void beginTransaction() {
+        if (transaction == null) {
+            transaction = new Transaction();
+            transaction.setAutoCommit(getAutoCommit());
+            try {
+                if (getAutoCommit())
+                    transaction.setTransactionId(timestampService.nextEven());
+                else
+                    transaction.setTransactionId(timestampService.nextOdd());
+            } catch (IOException e) {
+                throw DbException.convert(e);
+            }
+        }
     }
 
-    private void endTransaction() {
-        currentCommand = null;
-        dt = null;
+    public void endTransaction() {
+        transaction = null;
         undoRows.clear();
         rowKeys.clear();
+
+        for (SessionRemote sessionRemote : sessionRemoteCache.values()) {
+            sessionRemote.setTransaction(null);
+        }
+
+        if (!isRoot())
+            super.setAutoCommit(true);
     }
 
     public void log(byte[] tableName, Row row) {
-        if (!getAutoCommit() && dt != null) {
+        if (!getAutoCommit() && transaction != null) {
             undoRows.add((HBaseRow) row);
             rowKeys.add(new RowKey(HBaseUtils.toBytes(row.getRowKey()), tableName));
         }
     }
 
-    @Override
-    public void commitDistributedTransaction(DistributedTransaction dt) {
-        if (dt == this.dt) {
-            long transactionId = dt.getTransactionId();
+    private void checkConflict() {
+        if (transaction != null) {
+            long transactionId = transaction.getTransactionId();
             synchronized (HBaseSession.class) {
                 if (transactionId < timestampService.first()) {
                     //1. 事务开始时间不能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
@@ -225,7 +336,7 @@ public class HBaseSession extends Session {
                     }
 
                     for (RowKey r : rowKeys) {
-                        commitHashMap.putLatestWriteForRow(r.hashCode(), dt.getCommitTimestamp());
+                        commitHashMap.putLatestWriteForRow(r.hashCode(), transaction.getCommitTimestamp());
                     }
                 }
             }
@@ -233,39 +344,19 @@ public class HBaseSession extends Session {
     }
 
     @Override
-    public void rollbackDistributedTransaction(DistributedTransaction dt) {
-        if (dt == this.dt) {
-            undo();
+    public void close() {
+        for (SessionRemote sessionRemote : sessionRemoteCache.values()) {
+            sessionRemote.close();
         }
+        sessionRemoteCache = null;
+        super.close();
     }
 
-    public void beginTransaction(DistributedTransaction dt, Command currentCommand, boolean isDistributedTransaction,
-            boolean isFirst) {
-        if (this.dt == null) {
-            try {
-                dt.setAutoCommit(getAutoCommit());
-                this.dt = dt;
-                long transactionId;
-                if (isDistributedTransaction || !getAutoCommit())
-                    transactionId = timestampService.nextOdd();
-                else
-                    transactionId = timestampService.nextEven();
-
-                this.dt.setTransactionId(transactionId);
-            } catch (IOException e) {
-                throw DbException.convert(e);
-            }
-        }
-
-        this.currentCommand = currentCommand;
-        this.isFirst = isFirst;
-    }
-
-    public DistributedTransaction getDistributedTransaction() {
-        return dt;
-    }
-
-    public boolean isFirst() {
-        return isFirst;
+    @Override
+    public String getHostAndPort() {
+        if (regionServer != null)
+            return regionServer.getServerName().getHostAndPort();
+        else
+            return master.getServerName().getHostAndPort();
     }
 }

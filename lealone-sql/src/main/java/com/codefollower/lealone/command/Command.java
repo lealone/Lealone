@@ -17,7 +17,7 @@ import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.Trace;
 import com.codefollower.lealone.result.ResultInterface;
-import com.codefollower.lealone.transaction.DistributedTransaction;
+import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.MathUtils;
 
 /**
@@ -49,7 +49,7 @@ public abstract class Command implements CommandInterface {
 
     private boolean canReuse;
     protected int fetchSize;
-    private DistributedTransaction dt;
+    private Transaction transaction;
 
     protected Command(Session session, String sql) {
         this.session = session;
@@ -354,21 +354,12 @@ public abstract class Command implements CommandInterface {
     }
 
     @Override
-    public void commitDistributedTransaction() {
-        session.commitDistributedTransaction(dt);
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
     }
 
     @Override
-    public void rollbackDistributedTransaction() {
-        session.rollbackDistributedTransaction(dt);
-    }
-    @Override
-    public void setDistributedTransaction(DistributedTransaction dt) {
-        this.dt = dt;
-    }
-
-    @Override
-    public DistributedTransaction getDistributedTransaction() {
-        return dt;
+    public Transaction getTransaction() {
+        return transaction;
     }
 }

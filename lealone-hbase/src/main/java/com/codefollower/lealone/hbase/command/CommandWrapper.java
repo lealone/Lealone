@@ -25,7 +25,7 @@ import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.result.ResultInterface;
-import com.codefollower.lealone.transaction.DistributedTransaction;
+import com.codefollower.lealone.transaction.Transaction;
 
 class CommandWrapper implements CommandInterface {
     private Command c;
@@ -88,23 +88,13 @@ class CommandWrapper implements CommandInterface {
     }
 
     @Override
-    public void setDistributedTransaction(DistributedTransaction dt) {
-        c.setDistributedTransaction(dt);
+    public void setTransaction(Transaction transaction) {
+        c.setTransaction(transaction);
     }
 
     @Override
-    public DistributedTransaction getDistributedTransaction() {
-        return c.getDistributedTransaction();
-    }
-
-    @Override
-    public void commitDistributedTransaction() {
-        c.commitDistributedTransaction();
-    }
-
-    @Override
-    public void rollbackDistributedTransaction() {
-        c.rollbackDistributedTransaction();
+    public Transaction getTransaction() {
+        return c.getTransaction();
     }
 
 }

@@ -47,7 +47,7 @@ import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.result.ResultInterface;
-import com.codefollower.lealone.transaction.DistributedTransaction;
+import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 
@@ -205,20 +205,8 @@ public class CommandProxy extends Command {
 
         setProxyCommandParameters();
 
-        if (originalPrepared instanceof HBasePrepared) {
-            if (getDistributedTransaction() == null) {
-                if (originalSession.getDistributedTransaction() == null) {
-                    DistributedTransaction dt = new DistributedTransaction();
-                    originalSession.beginTransaction(dt, this, false, true);
-                }
-
-                proxyCommand.setDistributedTransaction(originalSession.getDistributedTransaction());
-            } else {
-                if (originalSession.getDistributedTransaction() == null) {
-                    originalSession.beginTransaction(getDistributedTransaction(), this, true, false);
-                }
-            }
-        }
+        if (!(originalPrepared instanceof DefineCommand))
+            setTransaction(originalSession.getTransaction());
     }
 
     @Override
@@ -229,26 +217,23 @@ public class CommandProxy extends Command {
             //此时是一条新的proxyCommand，所以要设置fetchSize
             proxyCommand.setFetchSize(super.getFetchSize());
         }
-        return proxyCommand.executeQuery(maxrows, scrollable);
+        try {
+            return proxyCommand.executeQuery(maxrows, scrollable);
+        } finally {
+            if (originalSession.getAutoCommit())
+                originalSession.endTransaction();
+        }
     }
 
     @Override
     public int executeUpdate() {
         prepare();
-
         int updateCount = proxyCommand.executeUpdate();
-
-        if (originalSession.getTransaction() != null && originalSession.isFirst()) {
-            if (proxyCommand instanceof CommandParallel) {
-                originalSession.getTransaction().addChildren(((CommandParallel) proxyCommand).getDistributedTransactions());
-            } else {
-                originalSession.getTransaction().addChild(proxyCommand.getDistributedTransaction());
-            }
-        }
+        if (originalSession.getAutoCommit())
+            originalSession.endTransaction();
 
         if (!originalSession.getDatabase().isMaster() && originalPrepared instanceof DefineCommand) {
             originalSession.getDatabase().refreshMetaTable();
-
             try {
                 HBaseUtils.reset(); //执行完DDL后，元数据已变动，清除HConnection中的相关缓存
             } catch (IOException e) {
@@ -322,29 +307,35 @@ public class CommandProxy extends Command {
     }
 
     @Override
-    public void setDistributedTransaction(DistributedTransaction dt) {
-        proxyCommand.setDistributedTransaction(dt);
-        super.setDistributedTransaction(dt);
+    public void setTransaction(Transaction transaction) {
+        proxyCommand.setTransaction(transaction);
+        super.setTransaction(transaction);
     }
 
     @Override
-    public DistributedTransaction getDistributedTransaction() {
-        return proxyCommand.getDistributedTransaction();
-    }
-
-    @Override
-    public void commitDistributedTransaction() {
-        proxyCommand.commitDistributedTransaction();
-    }
-
-    @Override
-    public void rollbackDistributedTransaction() {
-        proxyCommand.rollbackDistributedTransaction();
+    public Transaction getTransaction() {
+        return proxyCommand.getTransaction();
     }
 
     CommandInterface getCommandInterface(String url, String sql) throws Exception {
-        //TODO 如何重用SessionInterface
-        SessionInterface si = getSessionInterface(originalSession.getOriginalProperties(), url);
+        SessionInterface si = originalSession.getSessionRemote(url);
+        boolean isNew = false;
+        if (si == null) {
+            isNew = true;
+            si = getSessionInterface(originalSession.getOriginalProperties(), url);
+        }
+        if (si instanceof SessionRemote) {
+            SessionRemote sessionRemote = (SessionRemote) si;
+
+            if (sessionRemote.getTransaction() == null && !(originalPrepared instanceof DefineCommand)) {
+                Transaction t = new Transaction();
+                t.setAutoCommit(originalSession.getAutoCommit());
+                sessionRemote.setTransaction(t);
+            }
+
+            if (isNew)
+                originalSession.addSessionRemote(url, sessionRemote, (originalPrepared instanceof DefineCommand));
+        }
         CommandInterface commandInterface = si.prepareCommand(sql, -1); //此时fetchSize还未知
 
         //传递最初的参数值到新的CommandInterface

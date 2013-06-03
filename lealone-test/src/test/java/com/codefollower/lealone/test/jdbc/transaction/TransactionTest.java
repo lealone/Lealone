@@ -23,9 +23,12 @@ import static junit.framework.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -43,6 +46,12 @@ public class TransactionTest extends TestBase {
     public void run() throws Exception {
         //stmt.executeUpdate("DROP TABLE IF EXISTS TransactionTest");
         createTableIfNotExists("TransactionTest");
+        regions();
+        insert();
+
+        sql = "SELECT count(*) FROM TransactionTest";
+        assertEquals(12, getIntValue(1, true));
+
         testCommit();
         testRollback();
         //delete();
@@ -97,6 +106,14 @@ public class TransactionTest extends TestBase {
     }
 
     void testCommit() throws Exception {
+        sql = "SELECT * FROM TransactionTest";
+        printResultSet();
+        sql = "DELETE FROM TransactionTest";
+        stmt.executeUpdate(sql);
+        scan();
+
+        sql = "SELECT count(*) FROM TransactionTest";
+        assertEquals(0, getIntValue(1, true));
         try {
             conn.setAutoCommit(false);
             insert();
@@ -105,6 +122,7 @@ public class TransactionTest extends TestBase {
             conn.setAutoCommit(true);
         }
 
+        System.out.println();
         scan();
 
         sql = "SELECT count(*) FROM TransactionTest";
@@ -117,6 +135,8 @@ public class TransactionTest extends TestBase {
     }
 
     void testRollback() throws Exception {
+        sql = "DELETE FROM TransactionTest";
+        stmt.executeUpdate(sql);
         try {
             conn.setAutoCommit(false);
             insert();
@@ -124,7 +144,7 @@ public class TransactionTest extends TestBase {
         } finally {
             conn.setAutoCommit(true);
         }
-
+        System.out.println();
         scan();
         sql = "SELECT count(*) FROM TransactionTest";
         assertEquals(0, getIntValue(1, true));
@@ -135,6 +155,19 @@ public class TransactionTest extends TestBase {
         HTable t = new HTable(conf, "TRANSACTIONTEST");
         for (Result r : t.getScanner(new Scan())) {
             System.out.println(r);
+        }
+    }
+
+    public void regions() throws Exception {
+        HTable t = new HTable(conf, "TRANSACTIONTEST");
+        for (Map.Entry<HRegionInfo, ServerName> e : t.getRegionLocations().entrySet()) {
+            HRegionInfo info = e.getKey();
+            System.out.println("info.getEncodedName()=" + info.getEncodedName());
+            ServerName server = e.getValue();
+
+            System.out.println("HRegionInfo = " + info.getRegionNameAsString());
+            System.out.println("ServerName = " + server);
+            System.out.println();
         }
     }
 }

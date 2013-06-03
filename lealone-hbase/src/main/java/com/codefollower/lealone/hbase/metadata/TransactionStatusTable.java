@@ -33,7 +33,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
-import com.codefollower.lealone.transaction.DistributedTransaction;
+import com.codefollower.lealone.transaction.Transaction;
 
 public class TransactionStatusTable {
     private final static byte[] TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "transaction_status_table");
@@ -75,29 +75,30 @@ public class TransactionStatusTable {
         }
     }
 
-    public void addRecord(DistributedTransaction transaction) {
-        Set<DistributedTransaction> distributedTransactions = transaction.getChildren();
-        if (distributedTransactions != null && !distributedTransactions.isEmpty()) {
+    public void addRecord(Transaction transaction) {
+        Set<Transaction> transactions = transaction.getChildren();
+        transactions.add(transaction);
+        if (transactions != null && !transactions.isEmpty()) {
             StringBuilder buff = new StringBuilder();
-            for (DistributedTransaction dt : distributedTransactions) {
+            for (Transaction t : transactions) {
                 if (buff.length() > 0)
                     buff.append(',');
 
-                buff.append(dt.getHostAndPort()).append(':').append(dt.getTransactionId());
+                buff.append(t.getHostAndPort()).append(':').append(t.getTransactionId());
             }
 
-            ArrayList<Put> list = new ArrayList<Put>(distributedTransactions.size());
+            ArrayList<Put> list = new ArrayList<Put>(transactions.size());
             String serverStr = buff.toString();
 
             byte[] rowKey;
             Put put;
 
-            for (DistributedTransaction dt : distributedTransactions) {
+            for (Transaction t : transactions) {
                 buff.setLength(0);
-                rowKey = Bytes.toBytes(buff.append(dt.getHostAndPort()).append(':').append(dt.getTransactionId()).toString());
+                rowKey = Bytes.toBytes(buff.append(t.getHostAndPort()).append(':').append(t.getTransactionId()).toString());
                 put = new Put(rowKey);
-                put.add(FAMILY, SERVER, dt.getTransactionId(), Bytes.toBytes(serverStr));
-                put.add(FAMILY, COMMIT_TIMESTAMP, dt.getTransactionId(), Bytes.toBytes(dt.getCommitTimestamp()));
+                put.add(FAMILY, SERVER, t.getTransactionId(), Bytes.toBytes(serverStr));
+                put.add(FAMILY, COMMIT_TIMESTAMP, t.getTransactionId(), Bytes.toBytes(t.getCommitTimestamp()));
                 list.add(put);
             }
 

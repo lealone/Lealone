@@ -9,7 +9,7 @@ package com.codefollower.lealone.command;
 import java.util.ArrayList;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.result.ResultInterface;
-import com.codefollower.lealone.transaction.DistributedTransaction;
+import com.codefollower.lealone.transaction.Transaction;
 
 /**
  * Represents a SQL statement.
@@ -506,11 +506,7 @@ public interface CommandInterface {
 
     void setFetchSize(int fetchSize);
 
-    void setDistributedTransaction(DistributedTransaction dt);
+    void setTransaction(Transaction transaction);
 
-    DistributedTransaction getDistributedTransaction();
-
-    void commitDistributedTransaction();
-
-    void rollbackDistributedTransaction();
+    Transaction getTransaction();
 }

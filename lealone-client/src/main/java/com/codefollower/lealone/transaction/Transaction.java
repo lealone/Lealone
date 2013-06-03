@@ -19,10 +19,97 @@
  */
 package com.codefollower.lealone.transaction;
 
-public interface Transaction {
-    long getTransactionId();
+import java.util.Set;
 
-    long getStartTimestamp();
+import com.codefollower.lealone.util.New;
 
-    long getCommitTimestamp();
+public class Transaction {
+
+    private final Set<Transaction> children = New.hashSet();
+
+    private long transactionId;
+    private long commitTimestamp;
+    private String hostAndPort;
+    private boolean autoCommit = true;
+
+    public Set<Transaction> getChildren() {
+        return children;
+    }
+
+    public void addChildren(Set<Transaction> dts) {
+        children.addAll(dts);
+    }
+
+    public void addChild(Transaction dt) {
+        children.add(dt);
+    }
+
+    public long getStartTimestamp() {
+        return transactionId;
+    }
+
+    public long getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(long transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    public long getCommitTimestamp() {
+        return commitTimestamp;
+    }
+
+    public void setCommitTimestamp(long commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
+    }
+
+    public String getHostAndPort() {
+        return hostAndPort;
+    }
+
+    public void setHostAndPort(String hostAndPort) {
+        this.hostAndPort = hostAndPort;
+    }
+
+    public boolean isAutoCommit() {
+        return autoCommit;
+    }
+
+    public void setAutoCommit(boolean autoCommit) {
+        this.autoCommit = autoCommit;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((hostAndPort == null) ? 0 : hostAndPort.hashCode());
+        result = prime * result + (int) (transactionId ^ (transactionId >>> 32));
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Transaction other = (Transaction) obj;
+        if (hostAndPort == null) {
+            if (other.hostAndPort != null)
+                return false;
+        } else if (!hostAndPort.equals(other.hostAndPort))
+            return false;
+        if (transactionId != other.transactionId)
+            return false;
+        return true;
+    }
+
+    public String toString() {
+        return "T-" + transactionId;
+    }
+
 }

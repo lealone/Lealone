@@ -41,7 +41,7 @@ public class IndexTest extends TestBase {
     }
 
     void init() throws Exception {
-        stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
+        //stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
         stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON IndexTest(f1)");
         stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON IndexTest(f2)");

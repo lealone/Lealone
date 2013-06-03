@@ -54,6 +54,7 @@ public class TimestampService {
         timestampServiceTable.updateLastMaxTimestamp(maxTimestamp);
     }
 
+    //事务用奇数版本号
     public synchronized long nextOdd() throws IOException {
         if (last >= maxTimestamp)
             addBatch();
@@ -68,6 +69,7 @@ public class TimestampService {
         return last;
     }
 
+    //非事务用偶数版本号
     public synchronized long nextEven() throws IOException {
         if (last >= maxTimestamp)
             addBatch();

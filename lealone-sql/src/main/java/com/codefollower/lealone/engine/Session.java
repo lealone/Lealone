@@ -39,7 +39,7 @@ import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SubqueryResult;
 import com.codefollower.lealone.store.DataHandler;
 import com.codefollower.lealone.store.LobStorage;
-import com.codefollower.lealone.transaction.DistributedTransaction;
+import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.SmallLRUCache;
 import com.codefollower.lealone.value.Value;
@@ -113,6 +113,8 @@ public class Session extends SessionWithState {
     private int objectId;
     protected final int queryCacheSize;
     protected SmallLRUCache<String, Command> queryCache;
+
+    private boolean isRoot = true;
 
     public Session(Database database, User user, int id) {
         this.database = database;
@@ -1268,9 +1270,19 @@ public class Session extends SessionWithState {
         return new Sequence(schema, id, name, belongsToTable);
     }
 
-    public void commitDistributedTransaction(DistributedTransaction dt) {
+    public boolean isRoot() {
+        return isRoot;
     }
 
-    public void rollbackDistributedTransaction(DistributedTransaction dt) {
+    public void setRoot(boolean isRoot) {
+        this.isRoot = isRoot;
+    }
+
+    public String getHostAndPort() {
+        return null;
+    }
+
+    public Transaction getTransaction() {
+        return null;
     }
 }

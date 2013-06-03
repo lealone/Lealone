@@ -41,6 +41,7 @@ import com.codefollower.lealone.dbobject.index.IndexType;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.TableBase;
+import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.ddl.Options;
 import com.codefollower.lealone.hbase.dbobject.index.HBaseDelegateIndex;
@@ -73,8 +74,11 @@ public class HBaseTable extends TableBase {
 
     private boolean isColumnsModified;
 
+    private Database database;
+
     public HBaseTable(CreateTableData data) {
         super(data);
+        database = data.session.getDatabase();
         isStatic = true;
         tableName = data.tableName;
         tableNameAsBytes = HBaseUtils.toBytes(tableName);
@@ -97,6 +101,7 @@ public class HBaseTable extends TableBase {
     public HBaseTable(Session session, Schema schema, int id, String name, Map<String, ArrayList<Column>> columnsMap,
             ArrayList<Column> columns, HTableDescriptor htd, byte[][] splitKeys) {
         super(schema, id, name, true, true, HBaseTableEngine.class.getName(), false);
+        database = session.getDatabase();
         isStatic = false;
         tableName = name;
         tableNameAsBytes = HBaseUtils.toBytes(tableName);
@@ -235,8 +240,6 @@ public class HBaseTable extends TableBase {
     private void setTransactionId(Session session, Row row) {
         HBaseSession hs = (HBaseSession) session;
         if (hs.getTransaction() != null) {
-            if (hs.getTransaction().getHostAndPort() == null)
-                hs.getTransaction().setHostAndPort(hs.getRegionServer().getServerName().getHostAndPort());
             row.setTransactionId(hs.getTransaction().getTransactionId());
         }
     }
@@ -293,9 +296,8 @@ public class HBaseTable extends TableBase {
             o.setForUpdate(true);
             n.setRegionName(o.getRegionName());
             n.setRowKey(o.getRowKey());
-            if (prepared.getCommand().getDistributedTransaction() != null)
-                put = new Put(HBaseUtils.toBytes(n.getRowKey()), prepared.getCommand().getDistributedTransaction()
-                        .getTransactionId());
+            if (prepared.getCommand().getTransaction() != null)
+                put = new Put(HBaseUtils.toBytes(n.getRowKey()), prepared.getCommand().getTransaction().getTransactionId());
             else
                 put = new Put(HBaseUtils.toBytes(n.getRowKey()));
             for (int i = 0; i < columnCount; i++) {
@@ -309,6 +311,10 @@ public class HBaseTable extends TableBase {
 
     @Override
     public void removeRow(Session session, Row row) {
+        removeRow(session, row, false);
+    }
+
+    public void removeRow(Session session, Row row, boolean isUndo) {
         lastModificationId = database.getNextModificationDataId();
         setTransactionId(session, row);
 
@@ -320,7 +326,8 @@ public class HBaseTable extends TableBase {
             }
             rowCount--;
 
-            log(session, row);
+            if (!isUndo)
+                log(session, row);
         } catch (Throwable e) {
             try {
                 while (++i < indexes.size()) {

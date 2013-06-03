@@ -27,6 +27,7 @@ import com.codefollower.lealone.store.DataHandler;
 import com.codefollower.lealone.store.FileStore;
 import com.codefollower.lealone.store.LobStorage;
 import com.codefollower.lealone.store.fs.FileUtils;
+import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.MathUtils;
 import com.codefollower.lealone.util.NetUtils;
 import com.codefollower.lealone.util.New;
@@ -92,6 +93,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     private DatabaseEventListener eventListener;
     private LobStorage lobStorage;
     private boolean cluster;
+    private Transaction transaction;
 
     public SessionRemote(ConnectionInfo ci) {
         this.connectionInfo = ci;
@@ -731,4 +733,38 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         return 1;
     }
 
+    public void commitTransaction() {
+        for (int i = 0, count = 0; i < transferList.size(); i++) {
+            Transfer transfer = transferList.get(i);
+            try {
+                transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT);
+                done(transfer);
+                transaction.setTransactionId(transfer.readLong());
+                transaction.setCommitTimestamp(transfer.readLong());
+                transaction.setHostAndPort(transfer.readString());
+            } catch (IOException e) {
+                removeServer(e, i--, ++count);
+            }
+        }
+    }
+
+    public void rollbackTransaction() {
+        for (int i = 0, count = 0; i < transferList.size(); i++) {
+            Transfer transfer = transferList.get(i);
+            try {
+                transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
+                done(transfer);
+            } catch (IOException e) {
+                removeServer(e, i--, ++count);
+            }
+        }
+    }
+
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
+    }
+
+    public Transaction getTransaction() {
+        return transaction;
+    }
 }
