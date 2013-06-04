@@ -67,6 +67,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     }
 
     public HBaseTcpServer(HRegionServer regionServer) {
+        ZooKeeperAdmin.createBaseZNodes();
         initConf(regionServer.getConfiguration());
         tcpPort = getRegionServerTcpPort(regionServer.getConfiguration());
         serverName = regionServer.getServerName();
@@ -138,7 +139,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
 
     private void init(Configuration conf) {
         ArrayList<String> args = new ArrayList<String>();
-        for (String arg : conf.getStrings(Constants.PROJECT_NAME_PREFIX + "args")) {
+        for (String arg : conf.getStrings(Constants.PROJECT_NAME_PREFIX + "args", "-tcpAllowOthers", "-tcpDaemon")) {
             int pos = arg.indexOf('=');
             if (pos == -1) {
                 args.add(arg.trim());

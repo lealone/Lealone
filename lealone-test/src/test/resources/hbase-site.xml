@@ -100,17 +100,6 @@
 		</description>
 	</property>
 
-	<!-- omid properties -->
-	<!-- ************************************************* -->
-	<property>
-		<name>tso.host</name>
-		<value>localhost</value>
-	</property>
-	<property>
-		<name>tso.port</name>
-		<value>1234</value>
-	</property>
-
 	<!-- hbase properties -->
 	<!-- ************************************************* -->
 	<property>
