@@ -27,6 +27,7 @@ import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.AlterSequence;
 import com.codefollower.lealone.command.dml.Delete;
 import com.codefollower.lealone.command.dml.Insert;
+import com.codefollower.lealone.command.dml.Merge;
 import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.command.dml.Update;
 import com.codefollower.lealone.constant.ErrorCode;
@@ -42,6 +43,7 @@ import com.codefollower.lealone.hbase.command.ddl.CreateHBaseTable;
 import com.codefollower.lealone.hbase.command.ddl.Options;
 import com.codefollower.lealone.hbase.command.dml.HBaseDelete;
 import com.codefollower.lealone.hbase.command.dml.HBaseInsert;
+import com.codefollower.lealone.hbase.command.dml.HBaseMerge;
 import com.codefollower.lealone.hbase.command.dml.HBaseSelect;
 import com.codefollower.lealone.hbase.command.dml.HBaseUpdate;
 import com.codefollower.lealone.hbase.command.dml.InTheRegion;
@@ -317,6 +319,11 @@ public class HBaseParser extends Parser {
     @Override
     public Select createSelect(Session session) {
         return new HBaseSelect(session);
+    }
+
+    @Override
+    public Merge createMerge(Session session) {
+        return new HBaseMerge(session);
     }
 
 }

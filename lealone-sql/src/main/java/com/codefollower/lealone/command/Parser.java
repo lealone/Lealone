@@ -934,7 +934,7 @@ public class Parser {
     }
 
     private Merge parseMerge() {
-        Merge command = new Merge(session);
+        Merge command = createMerge(session);
         currentPrepared = command;
         read("INTO");
         Table table = readTableOrView();
@@ -5537,5 +5537,9 @@ public class Parser {
 
     public Select createSelect(Session session) {
         return new Select(session);
+    }
+
+    public Merge createMerge(Session session) {
+        return new Merge(session);
     }
 }

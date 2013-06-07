@@ -35,6 +35,7 @@ import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.DefineCommand;
 import com.codefollower.lealone.command.dml.Delete;
 import com.codefollower.lealone.command.dml.Insert;
+import com.codefollower.lealone.command.dml.Merge;
 import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.command.dml.Update;
 import com.codefollower.lealone.engine.ConnectionInfo;
@@ -123,7 +124,7 @@ public class CommandProxy extends Command {
     private void parseHBasePrepared(Command originalCommand) throws Exception {
         HBasePrepared hp = (HBasePrepared) originalPrepared;
 
-        if (originalPrepared instanceof Insert) {
+        if (originalPrepared instanceof Insert || originalPrepared instanceof Merge) {
             String tableName = hp.getTableName();
             String rowKey = hp.getRowKey();
             if (rowKey == null)

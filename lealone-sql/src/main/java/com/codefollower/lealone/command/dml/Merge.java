@@ -34,12 +34,12 @@ import com.codefollower.lealone.value.Value;
  */
 public class Merge extends Prepared {
 
-    private Table table;
-    private Column[] columns;
-    private Column[] keys;
-    private final ArrayList<Expression[]> list = New.arrayList();
-    private Query query;
-    private Prepared update;
+    protected Table table;
+    protected Column[] columns;
+    protected Column[] keys;
+    protected final ArrayList<Expression[]> list = New.arrayList();
+    protected Query query;
+    protected Prepared update;
 
     public Merge(Session session) {
         super(session);
