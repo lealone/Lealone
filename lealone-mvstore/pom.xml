@@ -15,7 +15,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>com.codefollower.lealone</groupId>
-			<artifactId>lealone-regular</artifactId>
+			<artifactId>lealone-sql</artifactId>
 			<version>${lealone.version}</version>
 		</dependency>
 	</dependencies>

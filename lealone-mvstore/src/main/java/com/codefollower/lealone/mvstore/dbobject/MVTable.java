@@ -28,7 +28,6 @@ import com.codefollower.lealone.dbobject.index.IndexType;
 import com.codefollower.lealone.dbobject.index.MultiVersionIndex;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.IndexColumn;
-import com.codefollower.lealone.dbobject.table.RegularTable;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableBase;
 import com.codefollower.lealone.engine.Session;
@@ -235,7 +234,7 @@ public class MVTable extends TableBase {
                     buff.append(", ");
                 }
                 buff.append(t.toString());
-                if (t instanceof RegularTable) {
+                if (t instanceof MVTable) {
                     if (((MVTable) t).lockExclusive == s) {
                         buff.append(" (exclusive)");
                     } else {
@@ -250,7 +249,7 @@ public class MVTable extends TableBase {
 
     public ArrayList<Session> checkDeadlock(Session session, Session clash, Set<Session> visited) {
         // only one deadlock check at any given time
-        synchronized (RegularTable.class) {
+        synchronized (MVTable.class) {
             if (clash == null) {
                 // verification is started
                 clash = session;
