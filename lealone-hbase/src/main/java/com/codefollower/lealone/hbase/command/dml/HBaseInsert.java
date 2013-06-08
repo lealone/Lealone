@@ -29,6 +29,7 @@ import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionInterface;
+import com.codefollower.lealone.engine.UndoLogRecord;
 import com.codefollower.lealone.expression.Expression;
 import com.codefollower.lealone.hbase.command.CommandProxy;
 import com.codefollower.lealone.hbase.command.HBasePrepared;
@@ -44,8 +45,6 @@ import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueString;
 import com.codefollower.lealone.value.ValueUuid;
 
-//TODO
-//可Insert多条记录，但是因为不支持事务，所以有可能出现部分Insert成功、部分Insert失败。
 public class HBaseInsert extends Insert implements HBasePrepared {
     private final HBaseSession session;
     private String regionName;
@@ -53,6 +52,7 @@ public class HBaseInsert extends Insert implements HBasePrepared {
 
     private StatementBuilder alterTable;
     private ArrayList<Column> alterColumns;
+    private boolean isBatch = false;
 
     public HBaseInsert(Session session) {
         super(session);
@@ -60,8 +60,23 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     }
 
     @Override
+    public void setSortedInsertMode(boolean sortedInsertMode) {
+        //不使用sortedInsertMode，因为只有在PageStore中才用得到
+    }
+
+    @Override
+    public void prepare() {
+        if (session.getAutoCommit() && (query != null || list.size() > 1)) {
+            session.setAutoCommit(false);
+            isBatch = true;
+        }
+    }
+
+    @Override
     public int update() {
         HBaseTable table = ((HBaseTable) this.table);
+        //当在Parser中解析insert语句时，如果insert中的一些字段是新的，那么会标注字段列表已修改了，
+        //并且新字段的类型是未知的，只有在执行insert时再由字段值的实际类型确定字段的类型。
         if (table.isColumnsModified()) {
             alterTable = new StatementBuilder("ALTER TABLE ");
             //不能使用ALTER TABLE t ADD COLUMN(f1 int, f2 int)这样的语法，因为有可能多个RS都在执行这种语句，在Master那会有冲突
@@ -69,8 +84,9 @@ public class HBaseInsert extends Insert implements HBasePrepared {
 
             alterColumns = New.arrayList();
         }
-        int updateCount = super.update();
         try {
+            int updateCount = super.update();
+
             if (table.isColumnsModified()) {
                 table.setColumnsModified(false);
                 SessionInterface si = CommandProxy
@@ -81,16 +97,23 @@ public class HBaseInsert extends Insert implements HBasePrepared {
                 }
                 si.close();
             }
+            if (isBatch)
+                session.commit(false);
+            return updateCount;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            if (isBatch)
+                session.rollback();
+            throw DbException.convert(e);
+        } finally {
+            if (isBatch)
+                session.setAutoCommit(true);
         }
-        return updateCount;
     }
 
     @Override
     protected Row createRow(int columnLen, Expression[] expr, int rowId) {
         HBaseRow row = (HBaseRow) table.getTemplateRow();
-        ValueString rowKey = ValueString.get(getRowKey());
+        ValueString rowKey = ValueString.get(getRowKey(rowId));
         row.setRowKey(rowKey);
         row.setRegionName(regionNameAsBytes);
 
@@ -133,6 +156,50 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     }
 
     @Override
+    public void addRow(Value[] values) {
+        HBaseRow row = (HBaseRow) table.getTemplateRow();
+        ValueString rowKey = ValueString.get(getRowKey());
+        row.setRowKey(rowKey);
+        row.setRegionName(regionNameAsBytes);
+
+        Put put;
+        if (getCommand().getTransaction() != null)
+            put = new Put(HBaseUtils.toBytes(rowKey), getCommand().getTransaction().getTransactionId());
+        else
+            put = new Put(HBaseUtils.toBytes(rowKey));
+        row.setPut(put);
+        Column c;
+        Value v;
+
+        setCurrentRowNumber(++rowNumber);
+        for (int j = 0, len = columns.length; j < len; j++) {
+            c = columns[j];
+            int index = c.getColumnId();
+            try {
+                v = values[j];
+                if (c.isTypeUnknown()) {
+                    c.setType(v.getType());
+                    if (alterColumns != null)
+                        alterColumns.add(c);
+                }
+                v = c.convert(values[j]);
+                row.setValue(index, v);
+
+                put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
+            } catch (DbException ex) {
+                throw setRow(ex, rowNumber, getSQL(values));
+            }
+        }
+        table.validateConvertUpdateSequence(session, row);
+        boolean done = table.fireBeforeRow(session, null, row);
+        if (!done) {
+            table.addRow(session, row);
+            session.log(table, UndoLogRecord.INSERT, row);
+            table.fireAfterRow(session, null, row, false);
+        }
+    }
+
+    @Override
     public boolean isDistributedSQL() {
         return true;
     }
@@ -149,12 +216,18 @@ public class HBaseInsert extends Insert implements HBasePrepared {
 
     @Override
     public String getRowKey() {
-        int index = 0;
-        for (Column c : columns) {
-            if (c.isRowKeyColumn()) {
-                return list.get(0)[index].getValue(session).getString();
+        return getRowKey(0);
+    }
+    
+    public String getRowKey(int rowIndex) {
+        if (!list.isEmpty() && list.get(rowIndex).length > 0) {
+            int columnIndex = 0;
+            for (Column c : columns) {
+                if (c.isRowKeyColumn()) {
+                    return list.get(rowIndex)[columnIndex].getValue(session).getString();
+                }
+                columnIndex++;
             }
-            index++;
         }
         if (table.isStatic())
             return ValueUuid.getNewRandom().getString();

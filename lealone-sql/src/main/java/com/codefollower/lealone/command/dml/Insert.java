@@ -76,7 +76,6 @@ public class Insert extends Prepared implements ResultTarget {
 	}
 
 	public int update() {
-
 		Index index = null;
 		if (sortedInsertMode) {
 			index = table.getScanIndex(session);
