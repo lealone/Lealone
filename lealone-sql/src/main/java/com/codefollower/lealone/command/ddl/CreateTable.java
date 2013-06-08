@@ -9,7 +9,6 @@ package com.codefollower.lealone.command.ddl;
 import java.util.ArrayList;
 
 import com.codefollower.lealone.command.CommandInterface;
-import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.command.dml.Query;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.Schema;
@@ -169,20 +168,21 @@ public class CreateTable extends SchemaCommand {
                 command.update();
             }
             if (asQuery != null) {
-                boolean old = session.isUndoLogEnabled();
-                try {
-                    session.setUndoLogEnabled(false);
-                    Insert insert = null;
-                    insert = new Insert(session);
-                    insert.setSortedInsertMode(sortedInsertMode);
-                    insert.setQuery(asQuery);
-                    insert.setTable(table);
-                    insert.setInsertFromSelect(true);
-                    insert.prepare();
-                    insert.update();
-                } finally {
-                    session.setUndoLogEnabled(old);
-                }
+                //                boolean old = session.isUndoLogEnabled();
+                //                try {
+                //                    session.setUndoLogEnabled(false);
+                //                    Insert insert = null;
+                //                    insert = new Insert(session);
+                //                    insert.setSortedInsertMode(sortedInsertMode);
+                //                    insert.setQuery(asQuery);
+                //                    insert.setTable(table);
+                //                    insert.setInsertFromSelect(true);
+                //                    insert.prepare();
+                //                    insert.update();
+                //                } finally {
+                //                    session.setUndoLogEnabled(old);
+                //                }
+                session.insertAsQuery(asQuery, sortedInsertMode, table);
             }
         } catch (DbException e) {
             db.checkPowerOff();

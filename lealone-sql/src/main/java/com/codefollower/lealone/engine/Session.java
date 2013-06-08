@@ -14,6 +14,7 @@ import java.util.Random;
 import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.Prepared;
+import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.command.dml.Query;
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.constant.ErrorCode;
@@ -1284,5 +1285,22 @@ public class Session extends SessionWithState {
 
     public Transaction getTransaction() {
         return null;
+    }
+
+    public void insertAsQuery(Query asQuery, boolean sortedInsertMode, Table table) {
+        boolean old = isUndoLogEnabled();
+        try {
+            setUndoLogEnabled(false);
+            Insert insert = null;
+            insert = new Insert(this);
+            insert.setSortedInsertMode(sortedInsertMode);
+            insert.setQuery(asQuery);
+            insert.setTable(table);
+            insert.setInsertFromSelect(true);
+            insert.prepare();
+            insert.update();
+        } finally {
+            setUndoLogEnabled(old);
+        }
     }
 }

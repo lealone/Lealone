@@ -35,7 +35,9 @@ import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.util.Threads;
 
+import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
+import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.command.dml.Query;
 import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.User;
@@ -284,10 +286,11 @@ public class HBaseSession extends Session {
             transaction = new Transaction();
             transaction.setAutoCommit(getAutoCommit());
             try {
-                if (getAutoCommit())
-                    transaction.setTransactionId(timestampService.nextEven());
-                else
-                    transaction.setTransactionId(timestampService.nextOdd());
+                if (timestampService != null)
+                    if (getAutoCommit())
+                        transaction.setTransactionId(timestampService.nextEven());
+                    else
+                        transaction.setTransactionId(timestampService.nextOdd());
             } catch (IOException e) {
                 throw DbException.convert(e);
             }
@@ -358,5 +361,26 @@ public class HBaseSession extends Session {
             return regionServer.getServerName().getHostAndPort();
         else
             return master.getServerName().getHostAndPort();
+    }
+
+    @Override
+    public void insertAsQuery(Query asQuery, boolean sortedInsertMode, Table table) {
+        boolean old = isUndoLogEnabled();
+        try {
+            setUndoLogEnabled(false);
+            Insert insert = null;
+            insert = new Insert(this);
+            insert.setSortedInsertMode(sortedInsertMode);
+            insert.setQuery(asQuery);
+            insert.setTable(table);
+            insert.setInsertFromSelect(true);
+            insert.prepare();
+            Command c = createParser().prepareCommand(insert.getPlanSQL());
+            //CommandProxy c = new CommandProxy(this, insert.getPlanSQL(), insert.getCommand());
+            c.executeUpdate();
+            //insert.update();
+        } finally {
+            setUndoLogEnabled(old);
+        }
     }
 }
