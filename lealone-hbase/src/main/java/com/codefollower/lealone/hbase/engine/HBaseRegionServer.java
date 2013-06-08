@@ -22,6 +22,7 @@ package com.codefollower.lealone.hbase.engine;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 
+import com.codefollower.lealone.hbase.server.HBasePgServer;
 import com.codefollower.lealone.hbase.server.HBaseTcpServer;
 import com.codefollower.lealone.hbase.transaction.TimestampService;
 
@@ -47,10 +48,14 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
     public void run() {
         HBaseTcpServer server = new HBaseTcpServer(this);
         server.start();
+
+        HBasePgServer pgServer = new HBasePgServer(this);
+        pgServer.start();
         try {
             super.run();
         } finally {
             server.stop();
+            pgServer.stop();
         }
     }
 }

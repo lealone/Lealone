@@ -60,6 +60,8 @@ public class ConnectionInfo implements Cloneable {
     private boolean embedded;
     private SessionFactory sessionFactory;
     private boolean dynamic;
+    
+    private SessionInterface session;
 
     /**
      * Create a connection info object.
@@ -710,6 +712,14 @@ public class ConnectionInfo implements Cloneable {
             zkAdmin = new ZooKeeperAdmin(quorum, sessionTimeout);
         }
         return zkAdmin.getOnlineServer();
+    }
+
+    public void setSession(SessionInterface session) {
+        this.session = session;
+    }
+
+    public SessionInterface getSession() {
+        return session;
     }
 
 }

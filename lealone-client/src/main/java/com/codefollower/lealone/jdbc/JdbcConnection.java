@@ -106,7 +106,10 @@ public class JdbcConnection extends TraceObject implements Connection {
                 }
             }
             // this will return an embedded or server connection
-            session = new SessionRemote(ci).connectEmbeddedOrServer(false);
+            if (ci.getSession() != null)
+                session = ci.getSession();
+            else
+                session = new SessionRemote(ci).connectEmbeddedOrServer(false);
             trace = session.getTrace();
             int id = getNextId(TraceObject.CONNECTION);
             setTrace(trace, TraceObject.CONNECTION, id);

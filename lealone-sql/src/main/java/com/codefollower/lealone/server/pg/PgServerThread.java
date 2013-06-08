@@ -53,22 +53,22 @@ public class PgServerThread implements Runnable {
     private Connection conn;
     private boolean stop;
     private DataInputStream dataInRaw;
-    private DataInputStream dataIn;
+    protected DataInputStream dataIn;
     private OutputStream out;
     private int messageType;
     private ByteArrayOutputStream outBuffer;
     private DataOutputStream dataOut;
     private Thread thread;
     private boolean initDone;
-    private String userName;
-    private String databaseName;
+    protected String userName;
+    protected String databaseName;
     private int processId;
     private String clientEncoding = SysProperties.PG_DEFAULT_CLIENT_ENCODING;
     private String dateStyle = "ISO";
     private final HashMap<String, Prepared> prepared = new CaseInsensitiveMap<Prepared>();
     private final HashMap<String, Portal> portals = new CaseInsensitiveMap<Portal>();
 
-    PgServerThread(Socket socket, PgServer server) {
+    protected PgServerThread(Socket socket, PgServer server) {
         this.server = server;
         this.socket = socket;
     }
@@ -119,6 +119,27 @@ public class PgServerThread implements Runnable {
 
     private void readFully(byte[] buff) throws IOException {
         dataIn.readFully(buff);
+    }
+
+    protected JdbcConnection createJdbcConnection(String password) throws SQLException {
+        Properties info = new Properties();
+        info.put("MODE", "PostgreSQL");
+        info.put("USER", userName);
+        info.put("PASSWORD", password);
+        String url = "jdbc:lealone:" + databaseName;
+        ConnectionInfo ci = new ConnectionInfo(url, info);
+        String baseDir = server.getBaseDir();
+        if (baseDir == null) {
+            baseDir = SysProperties.getBaseDir();
+        }
+        if (baseDir != null) {
+            ci.setBaseDir(baseDir);
+        }
+        if (server.getIfExists()) {
+            ci.setProperty("IFEXISTS", "TRUE");
+        }
+
+        return new JdbcConnection(ci, false);
     }
 
     private void process() throws IOException {
@@ -179,23 +200,24 @@ public class PgServerThread implements Runnable {
             server.trace("PasswordMessage");
             String password = readString();
             try {
-                Properties info = new Properties();
-                info.put("MODE", "PostgreSQL");
-                info.put("USER", userName);
-                info.put("PASSWORD", password);
-                String url = "jdbc:lealone:" + databaseName;
-                ConnectionInfo ci = new ConnectionInfo(url, info);
-                String baseDir = server.getBaseDir();
-                if (baseDir == null) {
-                    baseDir = SysProperties.getBaseDir();
-                }
-                if (baseDir != null) {
-                    ci.setBaseDir(baseDir);
-                }
-                if (server.getIfExists()) {
-                    ci.setProperty("IFEXISTS", "TRUE");
-                }
-                conn = new JdbcConnection(ci, false);
+//                Properties info = new Properties();
+//                info.put("MODE", "PostgreSQL");
+//                info.put("USER", userName);
+//                info.put("PASSWORD", password);
+//                String url = "jdbc:lealone:" + databaseName;
+//                ConnectionInfo ci = new ConnectionInfo(url, info);
+//                String baseDir = server.getBaseDir();
+//                if (baseDir == null) {
+//                    baseDir = SysProperties.getBaseDir();
+//                }
+//                if (baseDir != null) {
+//                    ci.setBaseDir(baseDir);
+//                }
+//                if (server.getIfExists()) {
+//                    ci.setProperty("IFEXISTS", "TRUE");
+//                }
+//                conn = new JdbcConnection(ci, false);
+                conn = createJdbcConnection(password);
                 // can not do this because when called inside
                 // DriverManager.getConnection, a deadlock occurs
                 // conn = DriverManager.getConnection(url, userName, password);

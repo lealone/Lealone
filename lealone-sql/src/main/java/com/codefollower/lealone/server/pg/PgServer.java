@@ -185,10 +185,10 @@ public class PgServer implements Service {
                     trace("Connection not allowed");
                     s.close();
                 } else {
-                    PgServerThread c = new PgServerThread(s, this);
+                    PgServerThread c = createPgServerThread(s);
                     running.add(c);
                     c.setProcessId(running.size());
-                    Thread thread = new Thread(c, threadName+" thread");
+                    Thread thread = new Thread(c, threadName + " thread");
                     thread.setDaemon(isDaemon);
                     c.setThread(thread);
                     thread.start();
@@ -199,6 +199,10 @@ public class PgServer implements Service {
                 e.printStackTrace();
             }
         }
+    }
+
+    protected PgServerThread createPgServerThread(Socket socket) {
+        return new PgServerThread(socket, this);
     }
 
     public void stop() {
@@ -246,7 +250,7 @@ public class PgServer implements Service {
         }
     }
 
-    String getBaseDir() {
+    public String getBaseDir() {
         return baseDir;
     }
 
@@ -262,7 +266,7 @@ public class PgServer implements Service {
         return "H2 PG Server";
     }
 
-    boolean getIfExists() {
+    public boolean getIfExists() {
         return ifExists;
     }
 
