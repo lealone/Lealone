@@ -7,10 +7,10 @@
 		<version>0.12.0</version>
 	</parent>
 
-	<artifactId>lealone-regular</artifactId>
+	<artifactId>lealone-pagestore</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
-	<name>lealone regular</name>
+	<name>lealone pagestore</name>
 
 	<dependencies>
 		<dependency>

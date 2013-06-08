@@ -58,11 +58,11 @@
 
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.lealone:lealone-regular</include>
+				<include>com.codefollower.lealone:lealone-pagestore</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>lealone-regular</outputDirectory>
+				<outputDirectory>lealone-pagestore</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
