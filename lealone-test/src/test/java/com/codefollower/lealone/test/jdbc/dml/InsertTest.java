@@ -27,6 +27,7 @@ public class InsertTest extends TestBase {
     @Test
     public void run() throws Exception {
         createTableIfNotExists("InsertTest");
+        createTableIfNotExists("InsertTest2");
         testInsert();
         testSelect();
     }
@@ -50,6 +51,13 @@ public class InsertTest extends TestBase {
 
         stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) "
                 + "VALUES('78', 'a1', 'b', 12), ('79', 'a1', 'b', 12)");
+
+        stmt.executeUpdate("INSERT INTO InsertTest2(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('80', 'a1', 'b', 51)");
+        stmt.executeUpdate("INSERT INTO InsertTest2(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('81', 'a1', 'b', 61)");
+
+        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) "
+                + " SELECT _rowkey_, f1, cf1.f2, cf2.f3 FROM InsertTest2");
+
     }
 
     void testSelect() throws Exception {

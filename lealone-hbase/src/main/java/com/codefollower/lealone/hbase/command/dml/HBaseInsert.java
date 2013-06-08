@@ -36,8 +36,10 @@ import com.codefollower.lealone.hbase.command.HBasePrepared;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
+import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StatementBuilder;
@@ -62,6 +64,11 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     @Override
     public void setSortedInsertMode(boolean sortedInsertMode) {
         //不使用sortedInsertMode，因为只有在PageStore中才用得到
+    }
+
+    @Override
+    public void setInsertFromSelect(boolean value) {
+        //不使用insertFromSelect
     }
 
     @Override
@@ -200,6 +207,11 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     }
 
     @Override
+    protected ResultInterface getResultInterface() {
+        return new HBaseSubqueryResult((HBaseSession) session, query, 0);
+    }
+
+    @Override
     public boolean isDistributedSQL() {
         return true;
     }
@@ -218,7 +230,7 @@ public class HBaseInsert extends Insert implements HBasePrepared {
     public String getRowKey() {
         return getRowKey(0);
     }
-    
+
     public String getRowKey(int rowIndex) {
         if (!list.isEmpty() && list.get(rowIndex).length > 0) {
             int columnIndex = 0;

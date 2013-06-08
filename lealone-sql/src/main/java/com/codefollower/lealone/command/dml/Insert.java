@@ -137,9 +137,9 @@ public class Insert extends Prepared implements ResultTarget {
 		} else {
 			table.lock(session, true, false);
 			if (insertFromSelect) {
-				query.query(0, this);
+			    query.query(0, this);
 			} else {
-				ResultInterface rows = query.query(0);
+				ResultInterface rows = getResultInterface();
 				while (rows.next()) {
 					Value[] r = rows.currentRow();
 					addRow(r);
@@ -151,7 +151,11 @@ public class Insert extends Prepared implements ResultTarget {
 		return rowNumber;
 	}
 
-	public void addRow(Value[] values) { //TODO 增加rowKey到getCommand()
+    protected ResultInterface getResultInterface() {
+        return query.query(0);
+    }
+
+    public void addRow(Value[] values) { //TODO 增加rowKey到getCommand()
 		Row newRow = table.getTemplateRow();
 		newRow.setTransactionId(getCommand().getTransaction().getTransactionId());
 		setCurrentRowNumber(++rowNumber);
