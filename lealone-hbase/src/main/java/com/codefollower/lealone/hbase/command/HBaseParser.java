@@ -30,6 +30,7 @@ import com.codefollower.lealone.command.dml.Delete;
 import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.command.dml.Merge;
 import com.codefollower.lealone.command.dml.Select;
+import com.codefollower.lealone.command.dml.TransactionCommand;
 import com.codefollower.lealone.command.dml.Update;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.Schema;
@@ -41,6 +42,7 @@ import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.ddl.AlterSequenceNextValueMargin;
 import com.codefollower.lealone.hbase.command.ddl.CreateColumnFamily;
 import com.codefollower.lealone.hbase.command.ddl.CreateHBaseTable;
+import com.codefollower.lealone.hbase.command.ddl.DefineCommandWrapper;
 import com.codefollower.lealone.hbase.command.ddl.Options;
 import com.codefollower.lealone.hbase.command.dml.HBaseDelete;
 import com.codefollower.lealone.hbase.command.dml.HBaseInsert;
@@ -301,10 +303,10 @@ public class HBaseParser extends Parser {
 
         //1. Master只允许处理DDL
         //2. RegionServer碰到DDL时都转给Master处理
-        if (session.isMaster() && !(p instanceof DefineCommand)) {
+        if (session.isMaster() && !(p instanceof DefineCommand) && !(p instanceof TransactionCommand)) {
             throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
         } else if (p instanceof DefineCommand && session.isRegionServer()) {
-            p = new MasterDDLPrepared(session, p, sql);
+            p = new DefineCommandWrapper(session, (DefineCommand) p, sql);
         }
         return p;
     }

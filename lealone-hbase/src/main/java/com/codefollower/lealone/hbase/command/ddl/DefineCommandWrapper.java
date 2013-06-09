@@ -17,14 +17,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.hbase.command;
+package com.codefollower.lealone.hbase.command.ddl;
 
 import java.io.IOException;
 import java.util.ArrayList;
 
 import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.CommandInterface;
-import com.codefollower.lealone.command.Prepared;
+import com.codefollower.lealone.command.ddl.DefineCommand;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
@@ -34,76 +34,16 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 
 //只重写了update、query两个方法
-public class MasterDDLPrepared extends Prepared {
+public class DefineCommandWrapper extends DefineCommand {
     private final HBaseSession session;
-    private final Prepared delegate;
+    private final DefineCommand dc;
     private final String sql;
 
-    public MasterDDLPrepared(Session session, Prepared delegate, String sql) {
+    public DefineCommandWrapper(Session session, DefineCommand dc, String sql) {
         super(session);
         this.session = (HBaseSession) session;
-        this.delegate = delegate;
+        this.dc = dc;
         this.sql = sql;
-    }
-
-    @Override
-    public int hashCode() {
-        return delegate.hashCode();
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return delegate.isTransactional();
-    }
-
-    @Override
-    public ResultInterface queryMeta() {
-        return delegate.queryMeta();
-    }
-
-    @Override
-    public int getType() {
-        return delegate.getType();
-    }
-
-    @Override
-    public boolean isReadOnly() {
-        return delegate.isReadOnly();
-    }
-
-    @Override
-    public boolean needRecompile() {
-        return delegate.needRecompile();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return delegate.equals(obj);
-    }
-
-    @Override
-    public void setParameterList(ArrayList<Parameter> parameters) {
-        delegate.setParameterList(parameters);
-    }
-
-    @Override
-    public ArrayList<Parameter> getParameters() {
-        return delegate.getParameters();
-    }
-
-    @Override
-    public void setCommand(Command command) {
-        delegate.setCommand(command);
-    }
-
-    @Override
-    public boolean isQuery() {
-        return delegate.isQuery();
-    }
-
-    @Override
-    public void prepare() {
-        delegate.prepare();
     }
 
     @Override
@@ -138,62 +78,127 @@ public class MasterDDLPrepared extends Prepared {
     }
 
     @Override
+    public boolean isReadOnly() {
+        return dc.isReadOnly();
+    }
+
+    @Override
+    public ResultInterface queryMeta() {
+        return dc.queryMeta();
+    }
+
+    @Override
+    public void setTransactional(boolean transactional) {
+        dc.setTransactional(transactional);
+    }
+
+    @Override
+    public boolean isTransactional() {
+        return dc.isTransactional();
+    }
+
+    @Override
+    public int hashCode() {
+        return dc.hashCode();
+    }
+
+    @Override
+    public int getType() {
+        return dc.getType();
+    }
+
+    @Override
+    public boolean needRecompile() {
+        return dc.needRecompile();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return dc.equals(obj);
+    }
+
+    @Override
+    public void setParameterList(ArrayList<Parameter> parameters) {
+        dc.setParameterList(parameters);
+    }
+
+    @Override
+    public ArrayList<Parameter> getParameters() {
+        return dc.getParameters();
+    }
+
+    @Override
+    public void setCommand(Command command) {
+        dc.setCommand(command);
+    }
+
+    @Override
+    public boolean isQuery() {
+        return dc.isQuery();
+    }
+
+    @Override
+    public void prepare() {
+        dc.prepare();
+    }
+
+    @Override
     public void setSQL(String sql) {
-        delegate.setSQL(sql);
+        dc.setSQL(sql);
     }
 
     @Override
     public String getSQL() {
-        return delegate.getSQL();
+        return dc.getSQL();
     }
 
     @Override
     public String getPlanSQL() {
-        return delegate.getPlanSQL();
+        return dc.getPlanSQL();
     }
 
     @Override
     public void checkCanceled() {
-        delegate.checkCanceled();
+        dc.checkCanceled();
     }
 
     @Override
     public void setObjectId(int i) {
-        delegate.setObjectId(i);
+        dc.setObjectId(i);
     }
 
     @Override
     public void setSession(Session currentSession) {
-        delegate.setSession(currentSession);
+        dc.setSession(currentSession);
     }
 
     @Override
     public void setPrepareAlways(boolean prepareAlways) {
-        delegate.setPrepareAlways(prepareAlways);
+        dc.setPrepareAlways(prepareAlways);
     }
 
     @Override
     public int getCurrentRowNumber() {
-        return delegate.getCurrentRowNumber();
+        return dc.getCurrentRowNumber();
     }
 
     @Override
     public String toString() {
-        return delegate.toString();
+        return dc.toString();
     }
 
     @Override
     public boolean isCacheable() {
-        return delegate.isCacheable();
+        return dc.isCacheable();
     }
 
     @Override
     public boolean isDistributedSQL() {
-        return delegate.isDistributedSQL();
+        return dc.isDistributedSQL();
     }
 
     @Override
     public Command getCommand() {
-        return delegate.getCommand();
+        return dc.getCommand();
     }
 }
