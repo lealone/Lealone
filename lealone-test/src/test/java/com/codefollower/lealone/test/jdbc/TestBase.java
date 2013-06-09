@@ -41,7 +41,7 @@ public class TestBase {
     protected ResultSet rs;
     protected String sql;
     protected String db = "hbasedb";
-    protected static String url = "jdbc:lealone:tcp://localhost:9092/hbasedb";
+    protected static String url = "jdbc:lealone:tcp://localhost:9091/hbasedb";
 
     public static String getURL() {
         return url;

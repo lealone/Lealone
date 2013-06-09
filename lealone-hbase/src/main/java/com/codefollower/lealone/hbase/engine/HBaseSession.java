@@ -124,6 +124,10 @@ public class HBaseSession extends Session {
         this.master = master;
     }
 
+    public boolean isMaster() {
+        return master != null;
+    }
+
     public HRegionServer getRegionServer() {
         return regionServer;
     }
@@ -133,6 +137,10 @@ public class HBaseSession extends Session {
         if (regionServer != null) //不管Master的情况
             this.timestampService = ((com.codefollower.lealone.hbase.engine.HBaseRegionServer) regionServer)
                     .getTimestampService();
+    }
+
+    public boolean isRegionServer() {
+        return regionServer != null;
     }
 
     public Properties getOriginalProperties() {

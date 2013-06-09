@@ -25,6 +25,7 @@ import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.AlterSequence;
+import com.codefollower.lealone.command.ddl.DefineCommand;
 import com.codefollower.lealone.command.dml.Delete;
 import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.command.dml.Merge;
@@ -49,13 +50,16 @@ import com.codefollower.lealone.hbase.command.dml.HBaseUpdate;
 import com.codefollower.lealone.hbase.command.dml.InTheRegion;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
+import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.util.New;
 
 public class HBaseParser extends Parser {
+    private final HBaseSession session;
 
     public HBaseParser(Session session) {
         super(session);
+        this.session = (HBaseSession) session;
     }
 
     @Override
@@ -292,9 +296,23 @@ public class HBaseParser extends Parser {
     }
 
     @Override
+    protected Prepared parse(String sql) {
+        Prepared p = super.parse(sql);
+
+        //1. Master只允许处理DDL
+        //2. RegionServer碰到DDL时都转给Master处理
+        if (session.isMaster() && !(p instanceof DefineCommand)) {
+            throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
+        } else if (p instanceof DefineCommand && session.isRegionServer()) {
+            p = new MasterDDLPrepared(session, p, sql);
+        }
+        return p;
+    }
+
+    @Override
     public Command prepareCommand(String sql, boolean isLocal) {
         Command command = super.prepareCommand(sql, isLocal);
-        if (isLocal)
+        if (isLocal || command.getPrepared() instanceof DefineCommand)
             return command;
         //sql有可能在本机执行，也可能需要继续转发给其他节点
         command = new CommandProxy(this, sql, command);

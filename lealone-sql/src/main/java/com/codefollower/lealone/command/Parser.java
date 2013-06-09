@@ -250,7 +250,7 @@ public class Parser {
      * @param sql the SQL statement to parse
      * @return the prepared object
      */
-    Prepared parse(String sql) {
+    protected Prepared parse(String sql) {
         Prepared p;
         try {
             // first, try the fast variant
