@@ -19,6 +19,7 @@
  */
 package com.codefollower.lealone.hbase.command;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 import com.codefollower.lealone.command.Command;
@@ -28,6 +29,8 @@ import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
+import com.codefollower.lealone.hbase.util.HBaseUtils;
+import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 
 //只重写了update、query两个方法
@@ -110,6 +113,7 @@ public class MasterDDLPrepared extends Prepared {
             return c.executeUpdate();
         } finally {
             c.close();
+            refreshMetaTable();
         }
     }
 
@@ -120,6 +124,16 @@ public class MasterDDLPrepared extends Prepared {
             return c.executeQuery(maxRows, false);
         } finally {
             c.close();
+            refreshMetaTable();
+        }
+    }
+
+    private void refreshMetaTable() {
+        session.getDatabase().refreshMetaTable();
+        try {
+            HBaseUtils.reset(); //执行完DDL后，元数据已变动，清除HConnection中的相关缓存
+        } catch (IOException e) {
+            throw DbException.convert(e);
         }
     }
 
