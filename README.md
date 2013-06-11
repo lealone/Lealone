@@ -12,20 +12,17 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 * 支持高性能的分布式事务，使用一个非常新颖的 **基于局部时间戳的多版本冲突与有效性检测的事务模型**
 
-* 是对[H2关系数据库](http://www.h2database.com/html/main.html)的改进和扩展
-
-* 是一个100%纯Java的、将BigTable和RDBMS融合的数据库
+* 是对[H2关系数据库](http://www.h2database.com/html/main.html)SQL引擎的改进和扩展
 
 
 
-## 有哪些应用场景?
+## 有哪些特性?
 
-* 使用Lealone的分布式SQL引擎，可使用类似MySQL的SQL语法和标准JDBC API读写HBase中的数据，
-  支持分布式事务、索引、各种DDL，支持触发器、自定义函数、视图、Join、子查询、Order By、Group By、聚合。
+* 支持MySQL、PostgreSQL的SQL语法
 
-* 对于Client/Server架构的传统单机RDBMS的场景，也可使用Lealone。
+* 支持JDBC 4.0规范
 
-* 如果应用想不经过网络直接读写数据库，可使用嵌入式Lealone。
+* 支持分布式事务、索引、各种DDL，支持触发器、自定义函数、视图、Join、子查询、Order By、Group By、聚合
 
 
 ## 运行需要
