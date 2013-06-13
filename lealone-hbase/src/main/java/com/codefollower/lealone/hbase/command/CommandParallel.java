@@ -21,6 +21,7 @@ package com.codefollower.lealone.hbase.command;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
@@ -46,11 +47,45 @@ import com.codefollower.lealone.util.New;
 
 public class CommandParallel implements CommandInterface {
     private static ThreadPoolExecutor pool;
+
+    private static void initPool() {
+        if (pool == null) {
+            synchronized (CommandParallel.class) {
+                if (pool == null) {
+                    //TODO 可配置的线程池参数
+                    pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
+                            Threads.newDaemonThreadFactory(CommandParallel.class.getSimpleName()));
+                    pool.allowCoreThreadTimeOut(true);
+                }
+            }
+        }
+    }
+
     private final HBaseSession originalSession;
     private final Prepared originalPrepared;
     private final String sql;
     private final List<CommandInterface> commands; //保证不会为null且size>=2
     private Transaction transaction;
+
+    public CommandParallel(HBaseSession originalSession, String[] regionNames, Prepared originalPrepared) {
+        this.originalSession = originalSession;
+        this.originalPrepared = originalPrepared;
+        this.sql = originalPrepared.getPlanSQL();
+        this.commands = new ArrayList<CommandInterface>(regionNames.length);
+
+        initPool();
+
+        for (String regionName : regionNames) {
+            HBaseSession newSession = createHBaseSession();
+            Command c = newSession.prepareLocal(planSQL());
+            HBasePrepared hp = (HBasePrepared) c.getPrepared();
+            hp.setRegionName(regionName);
+            commands.add(new CommandWrapper(c, newSession)); //newSession在Command关闭的时候自动关闭
+        }
+
+        //设置默认fetchSize，当执行Update、Delete之类的操作时也需要先抓取记录然后再判断记录是否满足条件。
+        setFetchSize(SysProperties.SERVER_RESULT_SET_FETCH_SIZE);
+    }
 
     public CommandParallel(HBaseSession originalSession, CommandProxy commandProxy, //
             byte[] tableName, List<byte[]> startKeys, String sql, Prepared originalPrepared) {
@@ -64,17 +99,11 @@ public class CommandParallel implements CommandInterface {
         this.sql = sql;
         this.commands = new ArrayList<CommandInterface>(startKeys.size());
 
+        initPool();
+
         try {
-            if (pool == null) {
-                synchronized (CommandParallel.class) {
-                    if (pool == null) {
-                        //TODO 可配置的线程池参数
-                        pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
-                                Threads.newDaemonThreadFactory(CommandParallel.class.getSimpleName()));
-                        pool.allowCoreThreadTimeOut(true);
-                    }
-                }
-            }
+            Map<String, List<HBaseRegionInfo>> servers = New.hashMap();
+            List<HBaseRegionInfo> list;
             for (byte[] startKey : startKeys) {
                 HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
                 if (CommandProxy.isLocal(originalSession, hri)) {
@@ -84,9 +113,20 @@ public class CommandParallel implements CommandInterface {
                     hp.setRegionName(hri.getRegionName());
                     commands.add(new CommandWrapper(c, newSession)); //newSession在Command关闭的时候自动关闭
                 } else {
-                    commands.add(commandProxy.getCommandInterface(hri.getRegionServerURL(),
-                            CommandProxy.createSQL(hri.getRegionName(), planSQL())));
+                    //commands.add(commandProxy.getCommandInterface(hri.getRegionServerURL(),
+                    //        CommandProxy.createSQL(hri.getRegionName(), planSQL())));
+
+                    list = servers.get(hri.getRegionServerURL());
+                    if (list == null) {
+                        list = New.arrayList();
+                        servers.put(hri.getRegionServerURL(), list);
+                    }
+                    list.add(hri);
                 }
+            }
+
+            for (Map.Entry<String, List<HBaseRegionInfo>> e : servers.entrySet()) {
+                commands.add(commandProxy.getCommandInterface(e.getKey(), CommandProxy.createSQL(e.getValue(), planSQL())));
             }
 
             //设置默认fetchSize，当执行Update、Delete之类的操作时也需要先抓取记录然后再判断记录是否满足条件。
@@ -100,6 +140,8 @@ public class CommandParallel implements CommandInterface {
         //必须使用新Session，否则在并发执行Command类的executeUpdate或executeQuery时因为使用session对象来同步所以会造成死锁
         HBaseSession newSession = (HBaseSession) originalSession.getDatabase().createSession(originalSession.getUser());
         newSession.setRegionServer(originalSession.getRegionServer());
+        newSession.setTransaction(originalSession.getTransaction());
+        newSession.setAutoCommit(originalSession.getAutoCommit());
         return newSession;
     }
 

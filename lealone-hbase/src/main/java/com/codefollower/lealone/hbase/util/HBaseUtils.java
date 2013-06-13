@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NavigableMap;
 import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -340,4 +342,35 @@ public class HBaseUtils {
         return MetaScanner.allTableRegions(conf, tableName, false);
     }
 
+    public static NavigableMap<HRegionInfo, ServerName> getRegionLocations(byte[] tableName, byte[] startKey, byte[] endKey)
+            throws IOException {
+        NavigableMap<HRegionInfo, ServerName> regions = MetaScanner.allTableRegions(conf, tableName, false);
+
+        if (startKey == null) {
+            startKey = HConstants.EMPTY_START_ROW;
+        }
+        if (endKey == null) {
+            endKey = HConstants.EMPTY_END_ROW;
+        }
+
+        NavigableMap<HRegionInfo, ServerName> result = new TreeMap<HRegionInfo, ServerName>();
+
+        Set<HRegionInfo> keys = regions.keySet();
+        byte[] start, end;
+        for (HRegionInfo region : keys) {
+            start = region.getStartKey();
+            end = region.getEndKey();
+            if (Bytes.compareTo(startKey, start) >= 0) {
+                if (Bytes.equals(end, HConstants.EMPTY_END_ROW) || Bytes.compareTo(startKey, end) < 0) {
+                    result.put(region, regions.get(region));
+                }
+            } else if (Bytes.equals(endKey, HConstants.EMPTY_END_ROW) || //
+                    Bytes.compareTo(start, endKey) <= 0) { //原先代码是<=，因为coprocessorExec的语义是要包含endKey的
+                result.put(region, regions.get(region));
+            } else {
+                break; // past stop
+            }
+        }
+        return result;
+    }
 }

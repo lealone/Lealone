@@ -366,6 +366,17 @@ public class CommandProxy extends Command {
         return buff.toString();
     }
 
+    public static String createSQL(List<HBaseRegionInfo> list, String sql) {
+        StringBuilder buff = new StringBuilder("IN THE REGION ");
+        for (int i = 0, size = list.size(); i < size; i++) {
+            if (i > 0)
+                buff.append(',');
+            buff.append(StringUtils.quoteStringSQL(list.get(i).getRegionName()));
+        }
+        buff.append(" ").append(sql);
+        return buff.toString();
+    }
+
     public static boolean isLocal(Session s, HBaseRegionInfo hri) throws Exception {
         HBaseSession session = (HBaseSession) s;
         if (hri == null)

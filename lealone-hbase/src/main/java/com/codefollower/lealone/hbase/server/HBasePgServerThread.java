@@ -39,27 +39,27 @@ public class HBasePgServerThread extends PgServerThread {
         this.server = server;
     }
 
-//    @Override
-//    protected JdbcConnection createJdbcConnection(String password) throws SQLException {
-//        Properties info = new Properties();
-//        info.put("MODE", "PostgreSQL");
-//        info.put("USER", userName);
-//        info.put("PASSWORD", password);
-//        String url = "jdbc:lealone:" + databaseName;
-//        ConnectionInfo ci = new ConnectionInfo(url, info);
-//        String baseDir = server.getBaseDir();
-//        if (baseDir == null) {
-//            baseDir = SysProperties.getBaseDir();
-//        }
-//        if (baseDir != null) {
-//            ci.setBaseDir(baseDir);
-//        }
-//        if (server.getIfExists()) {
-//            ci.setProperty("IFEXISTS", "TRUE");
-//        }
-//
-//        return new JdbcConnection(ci, false);
-//    }
+    //    @Override
+    //    protected JdbcConnection createJdbcConnection(String password) throws SQLException {
+    //        Properties info = new Properties();
+    //        info.put("MODE", "PostgreSQL");
+    //        info.put("USER", userName);
+    //        info.put("PASSWORD", password);
+    //        String url = "jdbc:lealone:" + databaseName;
+    //        ConnectionInfo ci = new ConnectionInfo(url, info);
+    //        String baseDir = server.getBaseDir();
+    //        if (baseDir == null) {
+    //            baseDir = SysProperties.getBaseDir();
+    //        }
+    //        if (baseDir != null) {
+    //            ci.setBaseDir(baseDir);
+    //        }
+    //        if (server.getIfExists()) {
+    //            ci.setProperty("IFEXISTS", "TRUE");
+    //        }
+    //
+    //        return new JdbcConnection(ci, false);
+    //    }
 
     @Override
     protected JdbcConnection createJdbcConnection(String password) throws SQLException {

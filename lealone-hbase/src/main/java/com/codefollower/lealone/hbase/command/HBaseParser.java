@@ -75,9 +75,17 @@ public class HBaseParser extends Parser {
     }
 
     private Prepared parseInTheRegion() {
-        String regionName = readString();
+        String[] regionNames = parseRegionNames();
         Prepared p = parsePrepared();
-        return new InTheRegion(session, regionName, p);
+        return new InTheRegion(session, regionNames, p);
+    }
+
+    private String[] parseRegionNames() {
+        ArrayList<String> regionNames = New.arrayList();
+        do {
+            regionNames.add(readString());
+        } while (readIf(","));
+        return regionNames.toArray(new String[regionNames.size()]);
     }
 
     @Override

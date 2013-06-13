@@ -22,17 +22,24 @@ package com.codefollower.lealone.hbase.command.dml;
 import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.command.HBasePrepared;
+import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.result.ResultInterface;
 
 public class InTheRegion extends Prepared {
     private Prepared originalPrepared;
     private String regionName;
+    private CommandParallel commandParallel;
 
-    public InTheRegion(Session session, String regionName, Prepared prepared) {
+    public InTheRegion(Session session, String[] regionNames, Prepared prepared) {
         super(session);
-        this.regionName = regionName;
+        this.regionName = regionNames[0];
         this.originalPrepared = prepared;
+
+        if (regionNames.length > 1) {
+            commandParallel = new CommandParallel((HBaseSession) session, regionNames, prepared);
+        }
     }
 
     public String getRegionName() {
@@ -100,12 +107,18 @@ public class InTheRegion extends Prepared {
 
     @Override
     public int update() {
-        return originalPrepared.update();
+        if (commandParallel != null)
+            return commandParallel.executeUpdate();
+        else
+            return originalPrepared.update();
     }
 
     @Override
     public ResultInterface query(int maxrows) {
-        return originalPrepared.query(maxrows);
+        if (commandParallel != null)
+            return commandParallel.executeQuery(maxrows, false);
+        else
+            return originalPrepared.query(maxrows);
     }
 
     public void setCommand(Command command) {

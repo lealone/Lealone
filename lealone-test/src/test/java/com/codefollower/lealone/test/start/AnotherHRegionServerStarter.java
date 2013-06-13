@@ -41,6 +41,7 @@ public class AnotherHRegionServerStarter {
         int hbaseRegionServerPort = 60020;
         int hbaseRegionServerInfoPort = 60030;
         int lealoneRegionServerTcpPort = 9092;
+        int lealoneRegionServerPgPort = 5435;
 
         //        new Thread(new MyHRegionServerCommandLine(regionServerClass, conf, args, hbaseRegionServerPort,
         //                hbaseRegionServerInfoPort, lealoneRegionServerTcpPort)).start();
@@ -48,9 +49,10 @@ public class AnotherHRegionServerStarter {
         hbaseRegionServerPort = 60021;
         hbaseRegionServerInfoPort = 60031;
         lealoneRegionServerTcpPort = 9093;
+        lealoneRegionServerPgPort = 5436;
 
         new Thread(new MyHRegionServerCommandLine(regionServerClass, conf, args, hbaseRegionServerPort,
-                hbaseRegionServerInfoPort, lealoneRegionServerTcpPort)).start();
+                hbaseRegionServerInfoPort, lealoneRegionServerTcpPort, lealoneRegionServerPgPort)).start();
     }
 
     static class MyHRegionServerCommandLine extends HRegionServerCommandLine implements Runnable {
@@ -59,13 +61,15 @@ public class AnotherHRegionServerStarter {
         String args[];
 
         public MyHRegionServerCommandLine(Class<? extends HRegionServer> clazz, Configuration conf, String args[],
-                int hbaseRegionServerPort, int hbaseRegionServerInfoPort, int lealoneRegionServerTcpPort) {
+                int hbaseRegionServerPort, int hbaseRegionServerInfoPort, int lealoneRegionServerTcpPort,
+                int lealoneRegionServerPgPort) {
             super(clazz);
             this.conf = new Configuration(conf);
             this.args = args;
             this.conf.setInt("hbase.regionserver.port", hbaseRegionServerPort);
             this.conf.setInt("hbase.regionserver.info.port", hbaseRegionServerInfoPort);
             this.conf.setInt("lealone.regionserver.tcp.port", lealoneRegionServerTcpPort);
+            this.conf.setInt("lealone.regionserver.pg.port", lealoneRegionServerPgPort);
         }
 
         @Override

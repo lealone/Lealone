@@ -196,6 +196,10 @@ public class HBaseSession extends Session {
         return transaction;
     }
 
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
+    }
+
     @Override
     public void commit(boolean ddl) {
         try {
