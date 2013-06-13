@@ -1,4 +1,4 @@
-## Lealone名字的由来?
+## Lealone名字的由来
 
 Lealone 发音 ['li:ləʊn]
 这是我新造的英文单词，灵感来自于在淘宝工作期间办公桌上那些叫绿萝的室内植物，一直想做个项目以它命名。 
@@ -6,7 +6,7 @@ Lealone 发音 ['li:ləʊn]
 Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现在的心境：思路辽阔但又孤独。
 反过来念更有意思。
 
-## Lealone是什么?
+## Lealone是什么
 
 * 是一个可用于HBase的分布式SQL引擎
 
@@ -16,7 +16,7 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 
 
-## 有哪些特性?
+## 有哪些特性
 
 * 支持MySQL、PostgreSQL的SQL语法
 
@@ -27,14 +27,14 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 ## 运行需要
 
-* HBase 0.94.2 或更高 (0.96未测试)
+* HBase 0.94.2 或更高 (只支持0.94系列版本)
 * JDK 6 或更高 (JDK 7未测试)
 
 
 ## 构建需要
 
-* HBase 0.94.2 或更高 (0.96未测试)
-* JDK 6 或更高 (JDK 7未测试)
+* HBase 0.94.2 或更高 (只支持0.94系列版本)
+* JDK 6 (不支持JDK 7)
 * Maven 2或更高
 
 
