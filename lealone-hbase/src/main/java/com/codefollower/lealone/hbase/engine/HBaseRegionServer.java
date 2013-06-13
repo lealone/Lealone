@@ -49,13 +49,18 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
         HBaseTcpServer server = new HBaseTcpServer(this);
         server.start();
 
-        HBasePgServer pgServer = new HBasePgServer(this);
-        pgServer.start();
+        HBasePgServer pgServer = null;
+        if (HBasePgServer.isPgServerEnable(getConfiguration())) {
+            pgServer = new HBasePgServer(this);
+            pgServer.start();
+        }
+
         try {
             super.run();
         } finally {
             server.stop();
-            pgServer.stop();
+            if (pgServer != null)
+                pgServer.stop();
         }
     }
 }

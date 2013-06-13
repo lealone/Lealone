@@ -49,6 +49,10 @@ public class HBasePgServer extends PgServer implements Runnable {
         return conf.getInt(Constants.PROJECT_NAME_PREFIX + "regionserver.pg.port", PgServer.DEFAULT_PORT);
     }
 
+    public static boolean isPgServerEnable(Configuration conf) {
+        return conf.getBoolean(Constants.PROJECT_NAME_PREFIX + "pg.server.enable", false);
+    }
+
     private final int pgPort;
     private final ServerName serverName;
 
@@ -84,7 +88,7 @@ public class HBasePgServer extends PgServer implements Runnable {
     @Override
     public void start() {
         super.start();
-        //TcpPortTracker.createTcpPortEphemeralNode(serverName, pgPort, master != null);
+        TcpPortTracker.createTcpPortEphemeralNode(serverName, pgPort, master != null); //TODO 解决与TCP节点冲突问题
 
         String name = getName() + " (" + getURL() + ")";
         Thread t = new Thread(this, name);
@@ -100,7 +104,7 @@ public class HBasePgServer extends PgServer implements Runnable {
             super.stop();
             log.info("Stopped lealone pg server");
         } finally {
-            //TcpPortTracker.deleteTcpPortEphemeralNode(serverName, pgPort, master != null);
+            TcpPortTracker.deleteTcpPortEphemeralNode(serverName, pgPort, master != null);
         }
     }
 
