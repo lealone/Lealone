@@ -77,6 +77,8 @@ public class HBaseInsert extends Insert implements HBasePrepared {
             session.setAutoCommit(false);
             isBatch = true;
         }
+
+        super.prepare();
     }
 
     @Override
@@ -208,7 +210,7 @@ public class HBaseInsert extends Insert implements HBasePrepared {
 
     @Override
     protected ResultInterface getResultInterface() {
-        return new HBaseSubqueryResult((HBaseSession) session, query, 0);
+        return new HBaseSubqueryResult(session, query, 0);
     }
 
     @Override

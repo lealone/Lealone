@@ -23,13 +23,13 @@ import com.codefollower.lealone.command.dml.Update;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.HBasePrepared;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
 
-//TODO
-//可Update多条记录，但是因为不支持事务，所以有可能出现部分Update成功、部分Update失败。
 public class HBaseUpdate extends Update implements HBasePrepared {
     private String regionName;
+    private boolean isBatch = false;
 
     public HBaseUpdate(Session session) {
         super(session);
@@ -37,8 +37,30 @@ public class HBaseUpdate extends Update implements HBasePrepared {
 
     @Override
     public void prepare() {
+        if (session.getAutoCommit()) {
+            session.setAutoCommit(false);
+            isBatch = true;
+        }
         super.prepare();
         tableFilter.setPrepared(this);
+    }
+
+    @Override
+    public int update() {
+        try {
+            int updateCount = super.update();
+
+            if (isBatch)
+                session.commit(false);
+            return updateCount;
+        } catch (Exception e) {
+            if (isBatch)
+                session.rollback();
+            throw DbException.convert(e);
+        } finally {
+            if (isBatch)
+                session.setAutoCommit(true);
+        }
     }
 
     @Override
