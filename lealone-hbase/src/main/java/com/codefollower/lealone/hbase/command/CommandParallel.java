@@ -39,6 +39,7 @@ import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.hbase.command.merge.HBaseMergedResult;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseSerializedResult;
+import com.codefollower.lealone.hbase.result.HBaseSortedResult;
 import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.result.ResultInterface;
@@ -178,7 +179,7 @@ public class CommandParallel implements CommandInterface {
         //originalSelect.isGroupQuery()如果是false，那么按org.apache.hadoop.hbase.client.ClientScanner的功能来实现。
         //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery，
         //对于GroupQuery需要把Select语句同时发给相关的RegionServer，得到结果后再合并。
-        if (!originalSelect.isGroupQuery())
+        if (!originalSelect.isGroupQuery() && originalSelect.getSortOrder() == null)
             return new HBaseSerializedResult(commands, maxRows, scrollable);
 
         int size = commands.size();
@@ -200,6 +201,9 @@ public class CommandParallel implements CommandInterface {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
+        if (!originalSelect.isGroupQuery() && originalSelect.getSortOrder() != null)
+            return new HBaseSortedResult(originalSelect.getSortOrder(), results);
 
         String newSQL = originalSelect.getPlanSQL(true);
         Select newSelect = (Select) createHBaseSession().prepare(newSQL, true);
