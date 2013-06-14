@@ -35,21 +35,21 @@ public class SelectTest extends TestBase {
     }
 
     void testInsert() throws Exception {
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('01', 'a1', 'b', 51)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('01', 'a1', 'a', 51)");
         stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('02', 'a1', 'b', 61)");
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('03', 'a1', 'b', 61)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('03', 'a1', 'c', 61)");
 
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('25', 'a2', 'b', 51)");
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('26', 'a2', 'b', 61)");
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('27', 'a2', 'b', 61)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('25', 'a2', 'd', 51)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('26', 'a2', 'e', 61)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('27', 'a2', 'f', 61)");
 
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('50', 'a1', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('51', 'a2', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('52', 'a1', 'b', 12)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('50', 'a1', 'g', 12)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('51', 'a2', 'h', 12)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('52', 'a1', 'i', 12)");
 
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a1', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'b', 12)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a1', 'j', 12)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'k', 12)");
+        stmt.executeUpdate("INSERT INTO SelectTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'l', 12)");
     }
 
     void testSelect() throws Exception {
@@ -63,6 +63,7 @@ public class SelectTest extends TestBase {
         where();
         orderBy();
         groupBy();
+        limit();
     }
 
     private void where() throws Exception {
@@ -85,6 +86,16 @@ public class SelectTest extends TestBase {
         sql = "SELECT f1, count(f1) FROM SelectTest GROUP BY f1";
         sql = "SELECT f1, count(f1) FROM SelectTest GROUP BY f1 HAVING f1 >= 'a1'";
         printResultSet();
+    }
+
+    private void limit() throws Exception {
+        sql = "SELECT f1, f2, cf2.f3 FROM SelectTest ORDER BY f2 desc LIMIT 2 OFFSET 1";
+        assertEquals("k", getStringValue(2, true));
+        //printResultSet();
+
+        sql = "SELECT f1, f2, cf2.f3 FROM SelectTest ORDER BY f2 desc LIMIT 2";
+        assertEquals("l", getStringValue(2, true));
+        //printResultSet();
     }
 
     void testAggregate() throws Exception {

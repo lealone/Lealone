@@ -21,26 +21,58 @@ package com.codefollower.lealone.hbase.result;
 
 import java.util.List;
 
+import com.codefollower.lealone.command.dml.Select;
+import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.result.DelegatedResult;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.value.Value;
+import com.codefollower.lealone.value.ValueNull;
 
 public class HBaseSortedResult extends DelegatedResult {
-    private static Value[] END = new Value[0];
+    private static final Value[] END = new Value[0];
     private final SortOrder sort;
     private final ResultInterface[] results;
+    private final int limit;
     private final int size;
     private int rowCount = -1;
     private Value[] currentRow;
     private Value[][] currentRows;
 
-    public HBaseSortedResult(SortOrder sort, List<ResultInterface> results) {
-        this.sort = sort;
+    private int rowNumber;
+
+    public HBaseSortedResult(int maxRows, Session session, Select select, List<ResultInterface> results) {
+        this.sort = select.getSortOrder();
         this.results = results.toArray(new ResultInterface[results.size()]);
         this.result = this.results[0];
         this.size = this.results.length;
         currentRows = new Value[size][];
+
+        int limitRows = maxRows == 0 ? -1 : maxRows;
+        if (select.getLimit() != null) {
+            Value v = select.getLimit().getValue(session);
+            int l = v == ValueNull.INSTANCE ? -1 : v.getInt();
+            if (limitRows < 0) {
+                limitRows = l;
+            } else if (l >= 0) {
+                limitRows = Math.min(l, limitRows);
+            }
+        }
+
+        int offset;
+        if (select.getOffset() != null) {
+            offset = select.getOffset().getValue(session).getInt();
+        } else {
+            offset = 0;
+        }
+
+        if (limitRows >= 0)
+            rowCount = limitRows;
+
+        limit = limitRows + offset;
+
+        for (int i = 0; i < offset; i++)
+            next();
     }
 
     @Override
@@ -56,6 +88,12 @@ public class HBaseSortedResult extends DelegatedResult {
 
     @Override
     public boolean next() {
+        if (limit == 0 || (limit > 0 && rowNumber >= limit)) {
+            currentRow = null;
+            return false;
+        }
+        rowNumber++;
+
         int next = -1;
         Value[] row = null;
         for (int i = 0; i < size; i++) {
@@ -101,10 +139,10 @@ public class HBaseSortedResult extends DelegatedResult {
 
     @Override
     public int getRowCount() {
-        int c = 0;
-        if (rowCount == -2)
+        if (rowCount == -2) //前一次调用getRowCount()计算得出results中至少有一个是无法确定rowCount的
             return -1;
-        if (rowCount == -1) {
+        if (rowCount == -1) { //第一次调用getRowCount()
+            int c = 0;
             for (int i = 0; i < size; i++) {
                 if (results[i].getRowCount() == -1) {
                     rowCount = -2;
@@ -113,8 +151,10 @@ public class HBaseSortedResult extends DelegatedResult {
                     c += results[i].getRowCount();
                 }
             }
+            rowCount = c;
+            return c;
+        } else {
+            return rowCount;
         }
-        rowCount = c;
-        return c;
     }
 }

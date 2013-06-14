@@ -147,10 +147,15 @@ public class CommandParallel implements CommandInterface {
     }
 
     private String planSQL() {
-        if (originalPrepared.isQuery() && ((Select) originalPrepared).isGroupQuery())
-            return ((Select) originalPrepared).getPlanSQL(true);
-        else
-            return sql;
+        if (originalPrepared.isQuery()) {
+            Select select = (Select) originalPrepared;
+            if (select.isGroupQuery())
+                return select.getPlanSQL(true);
+            else if (select.getSortOrder() != null && select.getOffset() != null) //分布式排序时不使用Offset
+                return select.getPlanSQL(false, false);
+        }
+
+        return sql;
     }
 
     @Override
@@ -203,7 +208,7 @@ public class CommandParallel implements CommandInterface {
         }
 
         if (!originalSelect.isGroupQuery() && originalSelect.getSortOrder() != null)
-            return new HBaseSortedResult(originalSelect.getSortOrder(), results);
+            return new HBaseSortedResult(maxRows, originalSession, originalSelect, results);
 
         String newSQL = originalSelect.getPlanSQL(true);
         Select newSelect = (Select) createHBaseSession().prepare(newSQL, true);
