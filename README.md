@@ -28,13 +28,13 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 ## 运行需要
 
 * HBase 0.94.2 或更高 (只支持0.94系列版本)
-* JDK 6 或更高 (JDK 7未测试)
+* JDK 6 或 JDK 7
 
 
 ## 构建需要
 
 * HBase 0.94.2 或更高 (只支持0.94系列版本)
-* JDK 6 (不支持JDK 7)
+* JDK 6 (不支持JDK 7, Lealone未实现新引入的JDBC 4.1 API)
 * Maven 2或更高
 
 
