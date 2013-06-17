@@ -91,6 +91,9 @@ public class HBaseInsert extends Insert {
             session.setAutoCommit(false);
             isBatch = true;
         }
+
+        super.prepare();
+
         if (query != null) {
             int index = -1;
             for (Column c : columns) {
@@ -101,8 +104,6 @@ public class HBaseInsert extends Insert {
                 }
             }
         }
-
-        super.prepare();
     }
 
     @Override
