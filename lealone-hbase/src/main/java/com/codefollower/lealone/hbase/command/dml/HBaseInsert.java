@@ -50,15 +50,14 @@ import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
-import com.codefollower.lealone.value.ValueString;
 import com.codefollower.lealone.value.ValueUuid;
 
 public class HBaseInsert extends Insert {
+    private final Map<String, Map<String, List<String>>> servers = New.hashMap();
     private final HBaseSession session;
     private StatementBuilder alterTable;
     private ArrayList<Column> alterColumns;
     private boolean isBatch = false;
-    private final Map<String, Map<String, List<String>>> servers = New.hashMap();
     private int rowKeyColumnIndex = -1;
 
     public HBaseInsert(Session session) {
@@ -124,9 +123,8 @@ public class HBaseInsert extends Insert {
             if (!servers.isEmpty()) {
                 List<CommandInterface> commands = New.arrayList(servers.size());
                 for (Map.Entry<String, Map<String, List<String>>> e : servers.entrySet()) {
-                    String server = e.getKey();
-                    CommandRemote c = SessionRemotePool.getCommandRemote(session, getParameters(), server, getPlanSQL(e
-                            .getValue().entrySet()));
+                    CommandRemote c = SessionRemotePool.getCommandRemote(session, getParameters(), e.getKey(), //
+                            getPlanSQL(e.getValue().entrySet()));
 
                     commands.add(c);
                 }
@@ -158,7 +156,7 @@ public class HBaseInsert extends Insert {
         }
     }
 
-    protected static String getPlanSQL(Value[] values) {
+    private static String getPlanSQL(Value[] values) {
         StatementBuilder buff = new StatementBuilder();
         buff.append('(');
         for (Value v : values) {
@@ -173,7 +171,7 @@ public class HBaseInsert extends Insert {
         return buff.toString();
     }
 
-    protected static String getPlanSQL(Expression[] list) {
+    private static String getPlanSQL(Expression[] list) {
         StatementBuilder buff = new StatementBuilder();
         buff.append('(');
         for (Expression e : list) {
@@ -188,7 +186,7 @@ public class HBaseInsert extends Insert {
         return buff.toString();
     }
 
-    public String getPlanSQL(Set<Map.Entry<String, List<String>>> regions) {
+    private String getPlanSQL(Set<Map.Entry<String, List<String>>> regions) {
         StatementBuilder buff = new StatementBuilder();
         boolean first = true;
         for (Map.Entry<String, List<String>> entry : regions) {
@@ -267,9 +265,7 @@ public class HBaseInsert extends Insert {
 
     @Override
     protected Row createRow(int columnLen, Expression[] expr, int rowId) {
-        ValueString rowKey = ValueString.get(getRowKey(rowId));
-
-        HBaseRow row = createRow(rowKey, getPlanSQL(expr));
+        HBaseRow row = createRow(getRowKey(rowId), getPlanSQL(expr));
         if (row == null)
             return null;
 
@@ -308,8 +304,7 @@ public class HBaseInsert extends Insert {
 
     @Override
     public void addRow(Value[] values) {
-        Value rowKey = getRowKey(values);
-        HBaseRow row = createRow(rowKey, getPlanSQL(values));
+        HBaseRow row = createRow(getRowKey(values), getPlanSQL(values));
         if (row == null)
             return;
 
@@ -357,33 +352,34 @@ public class HBaseInsert extends Insert {
         return true;
     }
 
-    public byte[] getTableNameAsBytes() {
+    private byte[] getTableNameAsBytes() {
         return ((HBaseTable) table).getTableNameAsBytes();
     }
 
-    public Value getRowKey(Value[] values) {
-        if (rowKeyColumnIndex == -1) {
-            if (table.isStatic())
-                return ValueUuid.getNewRandom();
-            else
-                throw new RuntimeException("do not find rowKey field");
-        }
-        return values[rowKeyColumnIndex];
+    private Value getRowKey(Value[] values) {
+        if (rowKeyColumnIndex == -1)
+            return getRowKey();
+        else
+            return values[rowKeyColumnIndex];
     }
 
-    public String getRowKey(int rowIndex) {
+    private Value getRowKey(int rowIndex) {
         if (!list.isEmpty() && list.get(rowIndex).length > 0) {
             int columnIndex = 0;
             for (Column c : columns) {
                 if (c.isRowKeyColumn()) {
-                    return list.get(rowIndex)[columnIndex].getValue(session).getString();
+                    return list.get(rowIndex)[columnIndex].getValue(session);
                 }
                 columnIndex++;
             }
         }
-        if (table.isStatic())
-            return ValueUuid.getNewRandom().getString();
-        return null;
+        return getRowKey();
     }
 
+    private Value getRowKey() {
+        if (table.isStatic())
+            return ValueUuid.getNewRandom();
+        else
+            throw new RuntimeException("do not find rowKey field");
+    }
 }
