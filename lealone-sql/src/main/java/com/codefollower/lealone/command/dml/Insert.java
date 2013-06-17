@@ -156,9 +156,9 @@ public class Insert extends Prepared implements ResultTarget {
         return query.query(0);
     }
 
-    public void addRow(Value[] values) { //TODO 增加rowKey到getCommand()
+    @Override
+    public void addRow(Value[] values) {
         Row newRow = table.getTemplateRow();
-        newRow.setTransactionId(getCommand().getTransaction().getTransactionId());
         setCurrentRowNumber(++rowNumber);
         for (int j = 0, len = columns.length; j < len; j++) {
             Column c = columns[j];

@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.hbase.client.Put;
+
+import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.dml.Insert;
@@ -56,11 +58,21 @@ public class HBaseInsert extends Insert {
     private StatementBuilder alterTable;
     private ArrayList<Column> alterColumns;
     private boolean isBatch = false;
-    private final Map<String, Map<String, List<Expression[]>>> servers = New.hashMap();
+    private final Map<String, Map<String, List<String>>> servers = New.hashMap();
+    private int rowKeyColumnIndex = -1;
 
     public HBaseInsert(Session session) {
         super(session);
         this.session = (HBaseSession) session;
+    }
+
+    @Override
+    public void setCommand(Command command) {
+        super.setCommand(command);
+        //不设置query
+        if (query != null) {
+            query.setCommand(null);
+        }
     }
 
     @Override
@@ -78,6 +90,16 @@ public class HBaseInsert extends Insert {
         if (session.getAutoCommit() && (query != null || list.size() > 1)) {
             session.setAutoCommit(false);
             isBatch = true;
+        }
+        if (query != null) {
+            int index = -1;
+            for (Column c : columns) {
+                index++;
+                if (c.isRowKeyColumn()) {
+                    rowKeyColumnIndex = index;
+                    break;
+                }
+            }
         }
 
         super.prepare();
@@ -100,7 +122,7 @@ public class HBaseInsert extends Insert {
 
             if (!servers.isEmpty()) {
                 List<CommandInterface> commands = New.arrayList(servers.size());
-                for (Map.Entry<String, Map<String, List<Expression[]>>> e : servers.entrySet()) {
+                for (Map.Entry<String, Map<String, List<String>>> e : servers.entrySet()) {
                     String server = e.getKey();
                     CommandRemote c = SessionRemotePool.getCommandRemote(session, getParameters(), server, getPlanSQL(e
                             .getValue().entrySet()));
@@ -135,10 +157,40 @@ public class HBaseInsert extends Insert {
         }
     }
 
-    public String getPlanSQL(Set<Map.Entry<String, List<Expression[]>>> regions) {
+    protected static String getPlanSQL(Value[] values) {
+        StatementBuilder buff = new StatementBuilder();
+        buff.append('(');
+        for (Value v : values) {
+            buff.appendExceptFirst(", ");
+            if (v == null) {
+                buff.append("NULL");
+            } else {
+                buff.append(v.getSQL());
+            }
+        }
+        buff.append(')');
+        return buff.toString();
+    }
+
+    protected static String getPlanSQL(Expression[] list) {
+        StatementBuilder buff = new StatementBuilder();
+        buff.append('(');
+        for (Expression e : list) {
+            buff.appendExceptFirst(", ");
+            if (e == null) {
+                buff.append("DEFAULT");
+            } else {
+                buff.append(e.getSQL());
+            }
+        }
+        buff.append(')');
+        return buff.toString();
+    }
+
+    public String getPlanSQL(Set<Map.Entry<String, List<String>>> regions) {
         StatementBuilder buff = new StatementBuilder();
         boolean first = true;
-        for (Map.Entry<String, List<Expression[]>> entry : regions) {
+        for (Map.Entry<String, List<String>> entry : regions) {
             if (!first) {
                 buff.append(";");
                 buff.append('\n');
@@ -167,45 +219,33 @@ public class HBaseInsert extends Insert {
             if (entry.getValue().size() > 1) {
                 buff.append('\n');
             }
-            for (Expression[] expr : entry.getValue()) {
+            for (String value : entry.getValue()) {
                 if (row++ > 0) {
                     buff.append(",\n");
                 }
-                buff.append('(');
-                buff.resetCount();
-                for (Expression e : expr) {
-                    buff.appendExceptFirst(", ");
-                    if (e == null) {
-                        buff.append("DEFAULT");
-                    } else {
-                        buff.append(e.getSQL());
-                    }
-                }
-                buff.append(')');
+                buff.append(value);
             }
         }
         return buff.toString();
     }
 
-    @Override
-    protected Row createRow(int columnLen, Expression[] expr, int rowId) {
-        ValueString rowKey = ValueString.get(getRowKey(rowId));
+    private HBaseRow createRow(Value rowKey, String value) {
         byte[] rowKeyAsBytes = HBaseUtils.toBytes(rowKey);
 
         HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(getTableNameAsBytes(), rowKeyAsBytes);
         if (!HBaseUtils.isLocal(session, hri)) {
-            Map<String, List<Expression[]>> regions = servers.get(hri.getRegionServerURL());
+            Map<String, List<String>> regions = servers.get(hri.getRegionServerURL());
             if (regions == null) {
                 regions = New.hashMap();
                 servers.put(hri.getRegionServerURL(), regions);
             }
 
-            List<Expression[]> values = regions.get(hri.getRegionName());
+            List<String> values = regions.get(hri.getRegionName());
             if (values == null) {
                 values = New.arrayList();
                 regions.put(hri.getRegionName(), values);
             }
-            values.add(expr);
+            values.add(value);
 
             return null;
         }
@@ -220,6 +260,19 @@ public class HBaseInsert extends Insert {
         else
             put = new Put(HBaseUtils.toBytes(rowKey));
         row.setPut(put);
+
+        return row;
+    }
+
+    @Override
+    protected Row createRow(int columnLen, Expression[] expr, int rowId) {
+        ValueString rowKey = ValueString.get(getRowKey(rowId));
+
+        HBaseRow row = createRow(rowKey, getPlanSQL(expr));
+        if (row == null)
+            return null;
+
+        Put put = row.getPut();
         Column c;
         Value v;
         Expression e;
@@ -254,23 +307,20 @@ public class HBaseInsert extends Insert {
 
     @Override
     public void addRow(Value[] values) {
-        HBaseRow row = (HBaseRow) table.getTemplateRow();
-        ValueString rowKey = ValueString.get(getRowKey());
-        row.setRowKey(rowKey);
-        //row.setRegionName(regionNameAsBytes); //TODO
+        Value rowKey = getRowKey(values);
+        HBaseRow row = createRow(rowKey, getPlanSQL(values));
+        if (row == null)
+            return;
 
-        Put put;
-        if (getCommand().getTransaction() != null)
-            put = new Put(HBaseUtils.toBytes(rowKey), getCommand().getTransaction().getTransactionId());
-        else
-            put = new Put(HBaseUtils.toBytes(rowKey));
-        row.setPut(put);
+        Put put = row.getPut();
         Column c;
         Value v;
 
         setCurrentRowNumber(++rowNumber);
         for (int j = 0, len = columns.length; j < len; j++) {
             c = columns[j];
+            if (!((HBaseTable) this.table).isStatic() && c.isRowKeyColumn())
+                continue;
             int index = c.getColumnId();
             try {
                 v = values[j];
@@ -310,8 +360,14 @@ public class HBaseInsert extends Insert {
         return ((HBaseTable) table).getTableNameAsBytes();
     }
 
-    public String getRowKey() {
-        return getRowKey(0);
+    public Value getRowKey(Value[] values) {
+        if (rowKeyColumnIndex == -1) {
+            if (table.isStatic())
+                return ValueUuid.getNewRandom();
+            else
+                throw new RuntimeException("do not find rowKey field");
+        }
+        return values[rowKeyColumnIndex];
     }
 
     public String getRowKey(int rowIndex) {
