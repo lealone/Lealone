@@ -55,6 +55,7 @@ import com.codefollower.lealone.value.Value;
 public class CommandProxy extends Command {
     private final HBaseSession originalSession;
     private final Prepared originalPrepared;
+    private final Command originalCommand;
     private final ArrayList<? extends ParameterInterface> originalParams;
 
     /**
@@ -70,6 +71,7 @@ public class CommandProxy extends Command {
     public CommandProxy(Session originalSession, String sql, Command originalCommand) {
         super(originalSession, sql);
         this.originalSession = (HBaseSession) originalSession;
+        this.originalCommand = originalCommand;
         originalPrepared = originalCommand.getPrepared();
         originalParams = originalCommand.getParameters();
 
@@ -87,7 +89,6 @@ public class CommandProxy extends Command {
     }
 
     private void parseRowKey() {
-        Command originalCommand = originalPrepared.getCommand();
         try {
             //1. DDL类型的SQL全转向Master处理
             if (originalPrepared instanceof DefineCommand) {

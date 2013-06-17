@@ -20,41 +20,43 @@
 package com.codefollower.lealone.hbase.command.dml;
 
 import java.util.ArrayList;
-
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.util.Bytes;
-
 import com.codefollower.lealone.command.CommandInterface;
+import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionInterface;
 import com.codefollower.lealone.engine.UndoLogRecord;
 import com.codefollower.lealone.expression.Expression;
+import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.command.CommandProxy;
-import com.codefollower.lealone.hbase.command.HBasePrepared;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
+import com.codefollower.lealone.hbase.engine.SessionRemotePool;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
+import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StatementBuilder;
+import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueString;
 import com.codefollower.lealone.value.ValueUuid;
 
-public class HBaseInsert extends Insert implements HBasePrepared {
+public class HBaseInsert extends Insert {
     private final HBaseSession session;
-    private String regionName;
-    private byte[] regionNameAsBytes;
-
     private StatementBuilder alterTable;
     private ArrayList<Column> alterColumns;
     private boolean isBatch = false;
+    private final Map<String, Map<String, List<Expression[]>>> servers = New.hashMap();
 
     public HBaseInsert(Session session) {
         super(session);
@@ -96,6 +98,19 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         try {
             int updateCount = super.update();
 
+            if (!servers.isEmpty()) {
+                List<CommandInterface> commands = New.arrayList(servers.size());
+                for (Map.Entry<String, Map<String, List<Expression[]>>> e : servers.entrySet()) {
+                    String server = e.getKey();
+                    CommandRemote c = SessionRemotePool.getCommandRemote(session, getParameters(), server, getPlanSQL(e
+                            .getValue().entrySet()));
+
+                    commands.add(c);
+                }
+
+                updateCount += CommandParallel.executeUpdate(commands, session.getTransaction());
+            }
+
             if (table.isColumnsModified()) {
                 table.setColumnsModified(false);
                 SessionInterface si = CommandProxy
@@ -116,19 +131,92 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         } finally {
             if (isBatch)
                 session.setAutoCommit(true);
+            servers.clear();
         }
+    }
+
+    public String getPlanSQL(Set<Map.Entry<String, List<Expression[]>>> regions) {
+        StatementBuilder buff = new StatementBuilder();
+        boolean first = true;
+        for (Map.Entry<String, List<Expression[]>> entry : regions) {
+            if (!first) {
+                buff.append(";");
+                buff.append('\n');
+            } else {
+                first = false;
+            }
+            buff.append("IN THE REGION ");
+            buff.append(StringUtils.quoteStringSQL(entry.getKey()));
+            buff.append('\n');
+            buff.append("INSERT INTO ");
+            buff.append(table.getSQL()).append('(');
+            buff.resetCount();
+            for (Column c : columns) {
+                buff.appendExceptFirst(", ");
+                buff.append(c.getSQL());
+            }
+            buff.append(")\n");
+            if (insertFromSelect) {
+                buff.append("DIRECT ");
+            }
+            if (sortedInsertMode) {
+                buff.append("SORTED ");
+            }
+            buff.append("VALUES ");
+            int row = 0;
+            if (entry.getValue().size() > 1) {
+                buff.append('\n');
+            }
+            for (Expression[] expr : entry.getValue()) {
+                if (row++ > 0) {
+                    buff.append(",\n");
+                }
+                buff.append('(');
+                buff.resetCount();
+                for (Expression e : expr) {
+                    buff.appendExceptFirst(", ");
+                    if (e == null) {
+                        buff.append("DEFAULT");
+                    } else {
+                        buff.append(e.getSQL());
+                    }
+                }
+                buff.append(')');
+            }
+        }
+        return buff.toString();
     }
 
     @Override
     protected Row createRow(int columnLen, Expression[] expr, int rowId) {
-        HBaseRow row = (HBaseRow) table.getTemplateRow();
         ValueString rowKey = ValueString.get(getRowKey(rowId));
+        byte[] rowKeyAsBytes = HBaseUtils.toBytes(rowKey);
+
+        HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(getTableNameAsBytes(), rowKeyAsBytes);
+        if (!HBaseUtils.isLocal(session, hri)) {
+            Map<String, List<Expression[]>> regions = servers.get(hri.getRegionServerURL());
+            if (regions == null) {
+                regions = New.hashMap();
+                servers.put(hri.getRegionServerURL(), regions);
+            }
+
+            List<Expression[]> values = regions.get(hri.getRegionName());
+            if (values == null) {
+                values = New.arrayList();
+                regions.put(hri.getRegionName(), values);
+            }
+            values.add(expr);
+
+            return null;
+        }
+
+        HBaseRow row = (HBaseRow) table.getTemplateRow();
         row.setRowKey(rowKey);
-        row.setRegionName(regionNameAsBytes);
+        row.setRegionName(hri.getRegionNameAsBytes());
 
         Put put;
-        if (getCommand().getTransaction() != null)
-            put = new Put(HBaseUtils.toBytes(rowKey), getCommand().getTransaction().getTransactionId());
+        if (session.getTransaction() != null)
+            put = new Put(HBaseUtils.toBytes(rowKey), session.getTransaction().getTransactionId());
         else
             put = new Put(HBaseUtils.toBytes(rowKey));
         row.setPut(put);
@@ -169,7 +257,7 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         HBaseRow row = (HBaseRow) table.getTemplateRow();
         ValueString rowKey = ValueString.get(getRowKey());
         row.setRowKey(rowKey);
-        row.setRegionName(regionNameAsBytes);
+        //row.setRegionName(regionNameAsBytes); //TODO
 
         Put put;
         if (getCommand().getTransaction() != null)
@@ -218,17 +306,10 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         return true;
     }
 
-    @Override
-    public String getTableName() {
-        return table.getName();
-    }
-
-    @Override
     public byte[] getTableNameAsBytes() {
         return ((HBaseTable) table).getTableNameAsBytes();
     }
 
-    @Override
     public String getRowKey() {
         return getRowKey(0);
     }
@@ -248,24 +329,4 @@ public class HBaseInsert extends Insert implements HBasePrepared {
         return null;
     }
 
-    @Override
-    public Value getStartRowKeyValue() {
-        return ValueString.get(getRowKey());
-    }
-
-    @Override
-    public Value getEndRowKeyValue() {
-        return ValueString.get(getRowKey());
-    }
-
-    @Override
-    public String getRegionName() {
-        return regionName;
-    }
-
-    @Override
-    public void setRegionName(String regionName) {
-        this.regionName = regionName;
-        this.regionNameAsBytes = Bytes.toBytes(regionName);
-    }
 }

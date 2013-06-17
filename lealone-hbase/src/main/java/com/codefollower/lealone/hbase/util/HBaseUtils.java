@@ -44,6 +44,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
 import com.codefollower.lealone.constant.ErrorCode;
+import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.value.Value;
@@ -240,11 +241,11 @@ public class HBaseUtils {
         }
     }
 
-    public static String getMasterURL() throws IOException {
+    public static String getMasterURL() {
         return createURL(ZooKeeperAdmin.getMasterAddress());
     }
 
-    public static ServerName getMasterServerName() throws IOException {
+    public static ServerName getMasterServerName() {
         return ZooKeeperAdmin.getMasterAddress();
     }
 
@@ -269,13 +270,17 @@ public class HBaseUtils {
         return createURL(regionLocation);
     }
 
-    public static HBaseRegionInfo getHBaseRegionInfo(String tableName, String rowKey) throws IOException {
+    public static HBaseRegionInfo getHBaseRegionInfo(String tableName, String rowKey) {
         return getHBaseRegionInfo(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
     }
 
-    public static HBaseRegionInfo getHBaseRegionInfo(byte[] tableName, byte[] rowKey) throws IOException {
-        HRegionLocation regionLocation = getConnection().locateRegion(tableName, rowKey);
-        return new HBaseRegionInfo(regionLocation);
+    public static HBaseRegionInfo getHBaseRegionInfo(byte[] tableName, byte[] rowKey) {
+        try {
+            HRegionLocation regionLocation = getConnection().locateRegion(tableName, rowKey);
+            return new HBaseRegionInfo(regionLocation);
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 
     //-----------------以下代码来自org.apache.hadoop.hbase.client.HTable---------------------------//
@@ -373,4 +378,21 @@ public class HBaseUtils {
         }
         return result;
     }
+
+    public static boolean isLocal(HBaseSession session, HBaseRegionInfo hri) {
+        if (hri == null)
+            return false;
+        ServerName sn = null;
+        if (session.getMaster() != null)
+            sn = HBaseUtils.getMasterServerName();
+        else if (session.getRegionServer() != null)
+            sn = session.getRegionServer().getServerName();
+        if (sn == null)
+            return false;
+
+        if (hri.getHostname().equalsIgnoreCase(sn.getHostname()) && hri.getTcpPort() == ZooKeeperAdmin.getTcpPort(sn))
+            return true;
+        return false;
+    }
+
 }

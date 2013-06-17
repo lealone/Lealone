@@ -19,20 +19,19 @@
  */
 package com.codefollower.lealone.hbase.engine;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import com.codefollower.lealone.command.CommandInterface;
+import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.engine.ConnectionInfo;
-import com.codefollower.lealone.engine.SessionInterface;
 import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
-import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.New;
 
 public class SessionRemotePool {
@@ -51,15 +50,42 @@ public class SessionRemotePool {
         return sessionRemoteCacheMaybeWithMaster.get(url);
     }
 
+    public static CommandRemote getCommandRemote(HBaseSession originalSession, List<Parameter> parameters, String url, String sql)
+            throws Exception {
+        SessionRemote sessionRemote = originalSession.getSessionRemote(url);
+        boolean isNew = false;
+        if (sessionRemote == null) {
+            isNew = true;
+            sessionRemote = getSessionRemote(originalSession.getOriginalProperties(), url);
+        }
+
+        if (sessionRemote.getTransaction() == null) {
+            Transaction t = new Transaction();
+            t.setAutoCommit(originalSession.getAutoCommit());
+            sessionRemote.setTransaction(t);
+        }
+
+        if (isNew)
+            originalSession.addSessionRemote(url, sessionRemote, false);
+
+        CommandRemote commandRemote = (CommandRemote) sessionRemote.prepareCommand(sql, -1); //此时fetchSize还未知
+
+        //传递最初的参数值到新的CommandInterface
+        if (parameters != null) {
+            ArrayList<? extends ParameterInterface> newParams = commandRemote.getParameters();
+            for (int i = 0, size = parameters.size(); i < size; i++) {
+                newParams.get(i).setValue(parameters.get(i).getParamValue(), true);
+            }
+        }
+
+        return commandRemote;
+    }
+
     public static SessionRemote getMasterSessionRemote(Properties info) {
         if (masterSessionRemote == null) {
             synchronized (SessionRemotePool.class) {
                 if (masterSessionRemote == null) {
-                    try {
-                        masterSessionRemote = (SessionRemote) getSessionInterface(info, HBaseUtils.getMasterURL());
-                    } catch (IOException e) {
-                        throw DbException.convert(e);
-                    }
+                    masterSessionRemote = getSessionRemote(info, HBaseUtils.getMasterURL());
                 }
             }
         }
@@ -70,13 +96,13 @@ public class SessionRemotePool {
         return getCommandInterface(getMasterSessionRemote(info), sql, parameters);
     }
 
-    public static SessionInterface getSessionInterface(Properties info, String url) {
+    public static SessionRemote getSessionRemote(Properties info, String url) {
         Properties prop = new Properties();
         for (String key : info.stringPropertyNames())
             prop.setProperty(key, info.getProperty(key));
         ConnectionInfo ci = new ConnectionInfo(url, prop);
 
-        return new SessionRemote(ci).connectEmbeddedOrServer(false);
+        return (SessionRemote) new SessionRemote(ci).connectEmbeddedOrServer(false);
     }
 
     public static CommandInterface getCommandInterface(SessionRemote sessionRemote, String sql, List<Parameter> parameters) {

@@ -21,19 +21,20 @@ package com.codefollower.lealone.hbase.util;
 
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
-
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 
 public class HBaseRegionInfo {
     private final HRegionLocation regionLocation;
     private final HRegionInfo regionInfo;
     private final String regionName;
+    private final byte[] regionNameAsBytes;
     private final String regionServerURL;
 
     public HBaseRegionInfo(HRegionLocation regionLocation) {
         this.regionLocation = regionLocation;
         this.regionInfo = regionLocation.getRegionInfo();
         this.regionName = regionLocation.getRegionInfo().getRegionNameAsString();
+        this.regionNameAsBytes = regionLocation.getRegionInfo().getRegionName();
         this.regionServerURL = HBaseUtils.createURL(regionLocation);
     }
 
@@ -43,6 +44,10 @@ public class HBaseRegionInfo {
 
     public String getRegionName() {
         return regionName;
+    }
+
+    public byte[] getRegionNameAsBytes() {
+        return regionNameAsBytes;
     }
 
     public String getRegionServerURL() {
@@ -55,5 +60,18 @@ public class HBaseRegionInfo {
 
     public int getTcpPort() {
         return ZooKeeperAdmin.getTcpPort(regionLocation);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof HBaseRegionInfo)) {
+            return false;
+        }
+        return regionName.equals(((HBaseRegionInfo) o).regionName);
+    }
+
+    @Override
+    public int hashCode() {
+        return regionName.hashCode();
     }
 }

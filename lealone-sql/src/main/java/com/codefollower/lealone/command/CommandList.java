@@ -29,18 +29,19 @@ class CommandList extends Command {
         return command.getParameters();
     }
 
-    private void executeRemaining() {
+    private int executeRemaining() {
         Command remainingCommand = session.prepareLocal(remaining);
         if (remainingCommand.isQuery()) {
             remainingCommand.query(0);
+            return 0;
         } else {
-            remainingCommand.update();
+            return remainingCommand.update();
         }
     }
 
     public int update() {
         int updateCount = command.executeUpdate();
-        executeRemaining();
+        updateCount += executeRemaining();
         return updateCount;
     }
 

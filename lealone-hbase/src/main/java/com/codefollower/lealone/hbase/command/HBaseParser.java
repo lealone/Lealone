@@ -322,7 +322,8 @@ public class HBaseParser extends Parser {
     @Override
     public Command prepareCommand(String sql, boolean isLocal) {
         Command command = super.prepareCommand(sql, isLocal);
-        if (isLocal || command.getPrepared() instanceof DefineCommand)
+        Prepared p = command.getPrepared();
+        if (isLocal || p instanceof DefineCommand || p instanceof Insert)
             return command;
         //sql有可能在本机执行，也可能需要继续转发给其他节点
         command = new CommandProxy(this, sql, command);

@@ -47,19 +47,15 @@ import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.New;
 
 public class CommandParallel implements CommandInterface {
-    private static ThreadPoolExecutor pool;
+    private final static ThreadPoolExecutor pool = getPool();
 
-    private static void initPool() {
-        if (pool == null) {
-            synchronized (CommandParallel.class) {
-                if (pool == null) {
-                    //TODO 可配置的线程池参数
-                    pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
-                            Threads.newDaemonThreadFactory(CommandParallel.class.getSimpleName()));
-                    pool.allowCoreThreadTimeOut(true);
-                }
-            }
-        }
+    private static ThreadPoolExecutor getPool() {
+        //TODO 可配置的线程池 参数
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
+                Threads.newDaemonThreadFactory(CommandParallel.class.getSimpleName()));
+        pool.allowCoreThreadTimeOut(true);
+
+        return pool;
     }
 
     private final HBaseSession originalSession;
@@ -73,8 +69,6 @@ public class CommandParallel implements CommandInterface {
         this.originalPrepared = originalPrepared;
         this.sql = originalPrepared.getPlanSQL();
         this.commands = new ArrayList<CommandInterface>(regionNames.length);
-
-        initPool();
 
         for (String regionName : regionNames) {
             HBaseSession newSession = createHBaseSession();
@@ -99,8 +93,6 @@ public class CommandParallel implements CommandInterface {
         this.originalPrepared = originalPrepared;
         this.sql = sql;
         this.commands = new ArrayList<CommandInterface>(startKeys.size());
-
-        initPool();
 
         try {
             Map<String, List<HBaseRegionInfo>> servers = New.hashMap();
@@ -218,6 +210,15 @@ public class CommandParallel implements CommandInterface {
 
     @Override
     public int executeUpdate() {
+        return executeUpdate(commands, transaction);
+    }
+
+    public static int executeUpdate(List<CommandInterface> commands, Transaction transaction) {
+        if (commands.size() == 1) {
+            CommandInterface c = commands.get(0);
+            c.setTransaction(transaction);
+            return c.executeUpdate();
+        }
         int updateCount = 0;
         int size = commands.size();
         List<Future<Integer>> futures = New.arrayList(size);
