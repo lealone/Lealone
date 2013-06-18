@@ -53,6 +53,8 @@ public class SessionRemotePool {
     public static CommandRemote getCommandRemote(HBaseSession originalSession, List<Parameter> parameters, String url, String sql)
             throws Exception {
         SessionRemote sessionRemote = originalSession.getSessionRemote(url);
+        if (sessionRemote != null && sessionRemote.isClosed())
+            sessionRemote = null;
         boolean isNew = false;
         if (sessionRemote == null) {
             isNew = true;
@@ -82,9 +84,9 @@ public class SessionRemotePool {
     }
 
     public static SessionRemote getMasterSessionRemote(Properties info) {
-        if (masterSessionRemote == null) {
+        if (masterSessionRemote == null || masterSessionRemote.isClosed()) {
             synchronized (SessionRemotePool.class) {
-                if (masterSessionRemote == null) {
+                if (masterSessionRemote == null || masterSessionRemote.isClosed()) {
                     masterSessionRemote = getSessionRemote(info, HBaseUtils.getMasterURL());
                 }
             }

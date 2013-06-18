@@ -306,6 +306,8 @@ public class CommandProxy extends Command {
 
     CommandInterface getCommandInterface(String url, String sql) throws Exception {
         SessionInterface si = originalSession.getSessionRemote(url);
+        if (si != null && si.isClosed())
+            si = null;
         boolean isNew = false;
         if (si == null) {
             isNew = true;
