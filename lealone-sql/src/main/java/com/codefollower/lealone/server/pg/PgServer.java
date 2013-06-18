@@ -263,7 +263,7 @@ public class PgServer implements Service {
     }
 
     public String getName() {
-        return "H2 PG Server";
+        return "Lealone PG Server";
     }
 
     public boolean getIfExists() {

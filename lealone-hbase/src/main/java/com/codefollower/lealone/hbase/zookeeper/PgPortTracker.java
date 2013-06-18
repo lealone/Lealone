@@ -34,74 +34,74 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 
-public class TcpPortTracker extends ZooKeeperListener {
+public class PgPortTracker extends ZooKeeperListener {
 
     /*
-     * 包含Master他RegionServer的tcp端口
+     * 包含Master他RegionServer的pg端口
      * key是ServerName.getHostAndPort()
      */
-    private ConcurrentHashMap<String, Integer> tcpPortMap = new ConcurrentHashMap<String, Integer>();
+    private ConcurrentHashMap<String, Integer> pgPortMap = new ConcurrentHashMap<String, Integer>();
     private Abortable abortable;
 
-    private static String getTcpPortEphemeralNodePath(ServerName sn, int port, boolean isMaster) {
+    private static String getPgPortEphemeralNodePath(ServerName sn, int port, boolean isMaster) {
         String znode = (isMaster ? "M" : "S") + ":" + sn.getHostAndPort() + Addressing.HOSTNAME_PORT_SEPARATOR + port;
-        return ZKUtil.joinZNode(ZooKeeperAdmin.TCP_SERVER_NODE, znode);
+        return ZKUtil.joinZNode(ZooKeeperAdmin.PG_SERVER_NODE, znode);
     }
 
-    public static void createTcpPortEphemeralNode(ServerName sn, int port, boolean isMaster) {
+    public static void createPgPortEphemeralNode(ServerName sn, int port, boolean isMaster) {
         try {
             ZKUtil.createEphemeralNodeAndWatch(ZooKeeperAdmin.getZooKeeperWatcher(),
-                    getTcpPortEphemeralNodePath(sn, port, isMaster), HConstants.EMPTY_BYTE_ARRAY);
+                    getPgPortEphemeralNodePath(sn, port, isMaster), HConstants.EMPTY_BYTE_ARRAY);
         } catch (KeeperException e) {
-            throw new TcpPortTrackerException(e);
+            throw new PgPortTrackerException(e);
         }
     }
 
-    public static void deleteTcpPortEphemeralNode(ServerName sn, int port, boolean isMaster) {
+    public static void deletePgPortEphemeralNode(ServerName sn, int port, boolean isMaster) {
         try {
-            ZKUtil.deleteNode(ZooKeeperAdmin.getZooKeeperWatcher(), getTcpPortEphemeralNodePath(sn, port, isMaster));
+            ZKUtil.deleteNode(ZooKeeperAdmin.getZooKeeperWatcher(), getPgPortEphemeralNodePath(sn, port, isMaster));
         } catch (KeeperException e) {
-            throw new TcpPortTrackerException(e);
+            throw new PgPortTrackerException(e);
         }
     }
 
-    public TcpPortTracker(ZooKeeperWatcher watcher, Abortable abortable) {
+    public PgPortTracker(ZooKeeperWatcher watcher, Abortable abortable) {
         super(watcher);
         this.abortable = abortable;
     }
 
     public void start() throws KeeperException, IOException {
         watcher.registerListener(this);
-        List<String> servers = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.TCP_SERVER_NODE);
+        List<String> servers = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.PG_SERVER_NODE);
         add(servers);
     }
 
     private void add(final List<String> servers) throws IOException {
-        ConcurrentHashMap<String, Integer> tcpPortMap = new ConcurrentHashMap<String, Integer>();
+        ConcurrentHashMap<String, Integer> pgPortMap = new ConcurrentHashMap<String, Integer>();
         for (String n : servers) {
             n = ZKUtil.getNodeName(n);
             n = n.substring(2);
             int pos = n.lastIndexOf(Addressing.HOSTNAME_PORT_SEPARATOR);
-            tcpPortMap.put(n.substring(0, pos), Integer.parseInt(n.substring(pos + 1)));
+            pgPortMap.put(n.substring(0, pos), Integer.parseInt(n.substring(pos + 1)));
         }
 
-        this.tcpPortMap = tcpPortMap;
+        this.pgPortMap = pgPortMap;
     }
 
     @Override
     public void nodeDeleted(String path) {
-        if (path.startsWith(ZooKeeperAdmin.TCP_SERVER_NODE)) {
+        if (path.startsWith(ZooKeeperAdmin.PG_SERVER_NODE)) {
             String serverName = ZKUtil.getNodeName(path);
             serverName = serverName.substring(2);
-            tcpPortMap.remove(serverName.substring(0, serverName.lastIndexOf(Addressing.HOSTNAME_PORT_SEPARATOR)));
+            pgPortMap.remove(serverName.substring(0, serverName.lastIndexOf(Addressing.HOSTNAME_PORT_SEPARATOR)));
         }
     }
 
     @Override
     public void nodeChildrenChanged(String path) {
-        if (path.equals(ZooKeeperAdmin.TCP_SERVER_NODE)) {
+        if (path.equals(ZooKeeperAdmin.PG_SERVER_NODE)) {
             try {
-                List<String> servers = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.TCP_SERVER_NODE);
+                List<String> servers = ZKUtil.listChildrenAndWatchThem(watcher, ZooKeeperAdmin.PG_SERVER_NODE);
                 add(servers);
             } catch (IOException e) {
                 abortable.abort("Unexpected zk exception getting server nodes", e);
@@ -111,15 +111,15 @@ public class TcpPortTracker extends ZooKeeperListener {
         }
     }
 
-    public int getTcpPort(ServerName sn) {
-        return tcpPortMap.get(sn.getHostAndPort());
+    public int getPgPort(ServerName sn) {
+        return pgPortMap.get(sn.getHostAndPort());
     }
 
-    public int getTcpPort(HRegionLocation loc) {
-        return tcpPortMap.get(loc.getHostnamePort());
+    public int getPgPort(HRegionLocation loc) {
+        return pgPortMap.get(loc.getHostnamePort());
     }
 
-    public int getTcpPort(String hostAndPort) {
-        return tcpPortMap.get(hostAndPort);
+    public int getPgPort(String hostAndPort) {
+        return pgPortMap.get(hostAndPort);
     }
 }

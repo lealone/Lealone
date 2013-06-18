@@ -56,6 +56,11 @@
 		</description>
 	</property>
 
+	<property>
+		<name>lealone.pg.server.enable</name>
+		<value>true</value>
+	</property>
+
 	<!-- zookeeper properties -->
 	<!-- ************************************************* -->
 	<property>

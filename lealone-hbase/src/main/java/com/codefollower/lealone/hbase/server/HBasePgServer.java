@@ -33,7 +33,7 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTableEngine;
 import com.codefollower.lealone.hbase.engine.HBaseDatabaseEngine;
-import com.codefollower.lealone.hbase.zookeeper.TcpPortTracker;
+import com.codefollower.lealone.hbase.zookeeper.PgPortTracker;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.message.TraceSystem;
 import com.codefollower.lealone.server.pg.PgServer;
@@ -41,11 +41,11 @@ import com.codefollower.lealone.server.pg.PgServer;
 public class HBasePgServer extends PgServer implements Runnable {
     private static final Log log = LogFactory.getLog(HBasePgServer.class);
 
-    public static int getMasterTcpPort(Configuration conf) {
+    public static int getMasterPgPort(Configuration conf) {
         return conf.getInt(Constants.PROJECT_NAME_PREFIX + "master.pg.port", PgServer.DEFAULT_PORT - 1);
     }
 
-    public static int getRegionServerTcpPort(Configuration conf) {
+    public static int getRegionServerPgPort(Configuration conf) {
         return conf.getInt(Constants.PROJECT_NAME_PREFIX + "regionserver.pg.port", PgServer.DEFAULT_PORT);
     }
 
@@ -62,7 +62,7 @@ public class HBasePgServer extends PgServer implements Runnable {
     public HBasePgServer(HMaster master) {
         ZooKeeperAdmin.createBaseZNodes();
         initConf(master.getConfiguration());
-        pgPort = getMasterTcpPort(master.getConfiguration());
+        pgPort = getMasterPgPort(master.getConfiguration());
         serverName = master.getServerName();
         this.master = master;
         init(master.getConfiguration());
@@ -71,7 +71,7 @@ public class HBasePgServer extends PgServer implements Runnable {
     public HBasePgServer(HRegionServer regionServer) {
         ZooKeeperAdmin.createBaseZNodes();
         initConf(regionServer.getConfiguration());
-        pgPort = getRegionServerTcpPort(regionServer.getConfiguration());
+        pgPort = getRegionServerPgPort(regionServer.getConfiguration());
         serverName = regionServer.getServerName();
         this.regionServer = regionServer;
         init(regionServer.getConfiguration());
@@ -88,7 +88,7 @@ public class HBasePgServer extends PgServer implements Runnable {
     @Override
     public void start() {
         super.start();
-        TcpPortTracker.createTcpPortEphemeralNode(serverName, pgPort, master != null); //TODO 解决与TCP节点冲突问题
+        PgPortTracker.createPgPortEphemeralNode(serverName, pgPort, master != null);
 
         String name = getName() + " (" + getURL() + ")";
         Thread t = new Thread(this, name);
@@ -104,7 +104,7 @@ public class HBasePgServer extends PgServer implements Runnable {
             super.stop();
             log.info("Stopped lealone pg server");
         } finally {
-            TcpPortTracker.deleteTcpPortEphemeralNode(serverName, pgPort, master != null);
+            PgPortTracker.deletePgPortEphemeralNode(serverName, pgPort, master != null);
         }
     }
 
