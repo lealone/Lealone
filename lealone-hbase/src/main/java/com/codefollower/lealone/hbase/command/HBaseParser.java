@@ -312,7 +312,7 @@ public class HBaseParser extends Parser {
         //1. Master只允许处理DDL
         //2. RegionServer碰到DDL时都转给Master处理
         if (session.isMaster() && !(p instanceof DefineCommand) && !(p instanceof TransactionCommand)) {
-            throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
+            //throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
         } else if (p instanceof DefineCommand && session.isRegionServer()) {
             p = new DefineCommandWrapper(session, (DefineCommand) p, sql);
         }
@@ -323,7 +323,7 @@ public class HBaseParser extends Parser {
     public Command prepareCommand(String sql, boolean isLocal) {
         Command command = super.prepareCommand(sql, isLocal);
         Prepared p = command.getPrepared();
-        if (isLocal || p instanceof DefineCommand || p instanceof Insert)
+        if (isLocal || p instanceof DefineCommand || p instanceof Insert || p instanceof Merge)
             return command;
         //sql有可能在本机执行，也可能需要继续转发给其他节点
         command = new CommandProxy(this, sql, command);

@@ -29,7 +29,7 @@ public class MergeTest extends TestBase {
     @Test
     public void run() throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS MergeTest");
-        //如果id是primary key，那么在MERGE语句中KEY子句更省，默认用primary key
+        //如果id是primary key，那么在MERGE语句中KEY子句可省，默认用primary key
         //stmt.executeUpdate("CREATE TABLE IF NOT EXISTS MergeTest(id int not null primary key, name varchar(500) not null)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS MergeTest(id int, name varchar(500) as '123')");
 

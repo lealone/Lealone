@@ -34,8 +34,6 @@ import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.DefineCommand;
 import com.codefollower.lealone.command.dml.Delete;
-import com.codefollower.lealone.command.dml.Insert;
-import com.codefollower.lealone.command.dml.Merge;
 import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.command.dml.Update;
 import com.codefollower.lealone.engine.ConnectionInfo;
@@ -125,20 +123,7 @@ public class CommandProxy extends Command {
     private void parseHBasePrepared(Command originalCommand) throws Exception {
         HBasePrepared hp = (HBasePrepared) originalPrepared;
 
-        if (originalPrepared instanceof Insert || originalPrepared instanceof Merge) {
-            String tableName = hp.getTableName();
-            String rowKey = hp.getRowKey();
-            if (rowKey == null)
-                throw new RuntimeException("rowKey is null");
-
-            HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, rowKey);
-            if (isLocal(originalSession, hri)) {
-                hp.setRegionName(hri.getRegionName());
-                proxyCommand = originalCommand;
-            } else {
-                proxyCommand = getCommandInterface(hri.getRegionServerURL(), createSQL(hri.getRegionName(), sql));
-            }
-        } else if (originalPrepared instanceof Delete || originalPrepared instanceof Update //
+        if (originalPrepared instanceof Delete || originalPrepared instanceof Update //
                 || originalPrepared instanceof Select) {
             byte[] start = null;
             byte[] end = null;
