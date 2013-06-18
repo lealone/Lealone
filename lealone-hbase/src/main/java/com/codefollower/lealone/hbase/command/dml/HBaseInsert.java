@@ -50,6 +50,7 @@ import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
+import com.codefollower.lealone.value.ValueString;
 import com.codefollower.lealone.value.ValueUuid;
 
 public class HBaseInsert extends Insert {
@@ -229,6 +230,7 @@ public class HBaseInsert extends Insert {
     }
 
     private HBaseRow createRow(Value rowKey, String value) {
+        rowKey = ValueString.get(rowKey.getString());
         byte[] rowKeyAsBytes = HBaseUtils.toBytes(rowKey);
 
         HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(getTableNameAsBytes(), rowKeyAsBytes);

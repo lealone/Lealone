@@ -55,6 +55,7 @@ import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueNull;
+import com.codefollower.lealone.value.ValueString;
 import com.codefollower.lealone.value.ValueUuid;
 
 public class HBaseMerge extends Merge {
@@ -268,6 +269,7 @@ public class HBaseMerge extends Merge {
     }
 
     private HBaseRow createRow(Value rowKey, String value) {
+        rowKey = ValueString.get(rowKey.getString());
         byte[] rowKeyAsBytes = HBaseUtils.toBytes(rowKey);
 
         HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(getTableNameAsBytes(), rowKeyAsBytes);
