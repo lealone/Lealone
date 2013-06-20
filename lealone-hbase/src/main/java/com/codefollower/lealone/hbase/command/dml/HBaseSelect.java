@@ -27,6 +27,7 @@ import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
+import com.codefollower.lealone.result.ResultTarget;
 
 public class HBaseSelect extends Select implements WithWhereClause {
     private final WhereClauseSupport whereClauseSupport = new WhereClauseSupport();
@@ -44,14 +45,17 @@ public class HBaseSelect extends Select implements WithWhereClause {
     }
 
     @Override
-    public ResultInterface query(int maxrows) {
+    public ResultInterface query(int limit, ResultTarget target) {
+        boolean addRowToResultTarget = true;
+        ResultInterface result;
+
         if (isExecuteDirec()) {
-            return super.query(maxrows);
-        }
-        if (getLocalRegionNames() != null) {
+            result = super.query(limit, target);
+            addRowToResultTarget = false;
+        } else if (getLocalRegionNames() != null) {
             task = new Task();
             task.localRegions = Arrays.asList(getLocalRegionNames());
-            return CommandParallel.executeQuery((HBaseSession) session, task, this, maxrows, false);
+            result = CommandParallel.executeQuery((HBaseSession) session, task, this, limit, false);
         } else {
             try {
                 task = HBaseUtils.parseRowKey((HBaseSession) session, whereClauseSupport, this);
@@ -61,14 +65,23 @@ public class HBaseSelect extends Select implements WithWhereClause {
 
             if (task.localRegion != null) {
                 whereClauseSupport.setRegionName(task.localRegion);
-                return super.query(maxrows);
+                result = super.query(limit, target);
+                addRowToResultTarget = false;
             } else if (task.remoteCommand != null) {
                 task.remoteCommand.setFetchSize(getFetchSize());
-                return task.remoteCommand.executeQuery(maxrows, false);
+                result = task.remoteCommand.executeQuery(limit, false);
             } else {
-                return CommandParallel.executeQuery((HBaseSession) session, task, this, maxrows, false);
+                result = CommandParallel.executeQuery((HBaseSession) session, task, this, limit, false);
             }
         }
+
+        if (addRowToResultTarget && target != null) {
+            while (result.next()) {
+                target.addRow(result.currentRow());
+            }
+            result.reset();
+        }
+        return result;
     }
 
     @Override

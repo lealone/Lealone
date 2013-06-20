@@ -291,7 +291,7 @@ public abstract class Query extends Prepared {
      * @param target the target result (null will return the result)
      * @return the result set (if the target is not set).
      */
-    LocalResult query(int limit, ResultTarget target) {
+    public ResultInterface query(int limit, ResultTarget target) {
         fireBeforeSelectTriggers();
         if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
             return queryWithoutCache(limit, target);

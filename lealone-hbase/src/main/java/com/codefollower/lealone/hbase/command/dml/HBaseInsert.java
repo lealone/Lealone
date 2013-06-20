@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.hbase.client.Put;
 
-import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.dml.Insert;
@@ -66,22 +65,8 @@ public class HBaseInsert extends Insert {
     }
 
     @Override
-    public void setCommand(Command command) {
-        super.setCommand(command);
-        //不设置query
-        if (query != null) {
-            query.setCommand(null);
-        }
-    }
-
-    @Override
     public void setSortedInsertMode(boolean sortedInsertMode) {
         //不使用sortedInsertMode，因为只有在PageStore中才用得到
-    }
-
-    @Override
-    public void setInsertFromSelect(boolean value) {
-        //不使用insertFromSelect
     }
 
     @Override

@@ -68,5 +68,9 @@ public class InsertTest extends TestBase {
 
         sql = "INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) SELECT _rowkey_, f1, cf1.f2, cf2.f3 FROM InsertTest2";
         assertEquals(12, stmt.executeUpdate(sql));
+
+        sql = "INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) "
+                + "DIRECT SELECT _rowkey_, f1, cf1.f2, cf2.f3 FROM InsertTest2";
+        assertEquals(12, stmt.executeUpdate(sql));
     }
 }
