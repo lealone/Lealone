@@ -195,7 +195,7 @@ public class ViewIndex extends BaseIndex {
             Query left = union.getLeft();
             // to ensure the last result is not closed
             left.disableCache();
-            LocalResult r = left.query(0);
+            LocalResult r = (LocalResult)left.query(0);
             LocalResult result = union.getEmptyResult();
             while (r.next()) {
                 result.addRow(r.currentRow());
@@ -206,7 +206,7 @@ public class ViewIndex extends BaseIndex {
             // to ensure the last result is not closed
             right.disableCache();
             while (true) {
-                r = right.query(0);
+                r = (LocalResult)right.query(0);
                 if (r.getRowCount() == 0) {
                     break;
                 }

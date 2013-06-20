@@ -322,7 +322,7 @@ public class TcpServerThread implements Runnable {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            command.setFetchSize(fetchSize);
+            command.getPrepared().setFetchSize(fetchSize);
             setParameters(command);
             int old = session.getModificationId();
             ResultInterface result;

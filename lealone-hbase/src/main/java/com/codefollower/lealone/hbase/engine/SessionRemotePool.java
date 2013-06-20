@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
-import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.engine.ConnectionInfo;
 import com.codefollower.lealone.engine.SessionRemote;
@@ -50,8 +49,32 @@ public class SessionRemotePool {
         return sessionRemoteCacheMaybeWithMaster.get(url);
     }
 
-    public static CommandRemote getCommandRemote(HBaseSession originalSession, List<Parameter> parameters, String url, String sql)
-            throws Exception {
+    public static SessionRemote getSessionRemote(Properties info, String url) {
+        Properties prop = new Properties();
+        for (String key : info.stringPropertyNames())
+            prop.setProperty(key, info.getProperty(key));
+        ConnectionInfo ci = new ConnectionInfo(url, prop);
+
+        return (SessionRemote) new SessionRemote(ci).connectEmbeddedOrServer(false);
+    }
+
+    public static SessionRemote getMasterSessionRemote(Properties info) {
+        if (masterSessionRemote == null || masterSessionRemote.isClosed()) {
+            synchronized (SessionRemotePool.class) {
+                if (masterSessionRemote == null || masterSessionRemote.isClosed()) {
+                    masterSessionRemote = getSessionRemote(info, HBaseUtils.getMasterURL());
+                }
+            }
+        }
+        return masterSessionRemote;
+    }
+
+    public static CommandRemote getMasterCommandRemote(Properties info, String sql, List<Parameter> parameters) {
+        return getCommandRemote(getMasterSessionRemote(info), sql, parameters);
+    }
+
+    public static CommandRemote getCommandRemote(HBaseSession originalSession, List<Parameter> parameters, //
+            String url, String sql) throws Exception {
         SessionRemote sessionRemote = originalSession.getSessionRemote(url);
         if (sessionRemote != null && sessionRemote.isClosed())
             sessionRemote = null;
@@ -70,9 +93,13 @@ public class SessionRemotePool {
         if (isNew)
             originalSession.addSessionRemote(url, sessionRemote, false);
 
+        return getCommandRemote(sessionRemote, sql, parameters);
+    }
+
+    private static CommandRemote getCommandRemote(SessionRemote sessionRemote, String sql, List<Parameter> parameters) {
         CommandRemote commandRemote = (CommandRemote) sessionRemote.prepareCommand(sql, -1); //此时fetchSize还未知
 
-        //传递最初的参数值到新的CommandInterface
+        //传递最初的参数值到新的CommandRemote
         if (parameters != null) {
             ArrayList<? extends ParameterInterface> newParams = commandRemote.getParameters();
             for (int i = 0, size = parameters.size(); i < size; i++) {
@@ -81,43 +108,5 @@ public class SessionRemotePool {
         }
 
         return commandRemote;
-    }
-
-    public static SessionRemote getMasterSessionRemote(Properties info) {
-        if (masterSessionRemote == null || masterSessionRemote.isClosed()) {
-            synchronized (SessionRemotePool.class) {
-                if (masterSessionRemote == null || masterSessionRemote.isClosed()) {
-                    masterSessionRemote = getSessionRemote(info, HBaseUtils.getMasterURL());
-                }
-            }
-        }
-        return masterSessionRemote;
-    }
-
-    public static CommandInterface getMasterCommand(Properties info, String sql, List<Parameter> parameters) {
-        return getCommandInterface(getMasterSessionRemote(info), sql, parameters);
-    }
-
-    public static SessionRemote getSessionRemote(Properties info, String url) {
-        Properties prop = new Properties();
-        for (String key : info.stringPropertyNames())
-            prop.setProperty(key, info.getProperty(key));
-        ConnectionInfo ci = new ConnectionInfo(url, prop);
-
-        return (SessionRemote) new SessionRemote(ci).connectEmbeddedOrServer(false);
-    }
-
-    public static CommandInterface getCommandInterface(SessionRemote sessionRemote, String sql, List<Parameter> parameters) {
-        CommandInterface commandInterface = sessionRemote.prepareCommand(sql, -1); //此时fetchSize还未知
-
-        //传递最初的参数值到新的CommandInterface
-        if (parameters != null && !parameters.isEmpty()) {
-            ArrayList<? extends ParameterInterface> newParams = commandInterface.getParameters();
-            for (int i = 0, size = parameters.size(); i < size; i++) {
-                newParams.get(i).setValue(parameters.get(i).getParamValue(), true);
-            }
-        }
-
-        return commandInterface;
     }
 }

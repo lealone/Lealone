@@ -58,11 +58,15 @@ public class DeleteTest extends TestBase {
         sql = "DELETE FROM DeleteTest WHERE _rowkey_<= '25'";
         assertEquals(3, stmt.executeUpdate(sql));
 
+        sql = "DELETE FROM DeleteTest WHERE _rowkey_= '26'";
+        assertEquals(1, stmt.executeUpdate(sql));
+
         sql = "DELETE FROM DeleteTest WHERE _rowkey_> '25' AND _rowkey_< '50'";
-        assertEquals(2, stmt.executeUpdate(sql));
+        assertEquals(1, stmt.executeUpdate(sql));
 
         sql = "DELETE FROM DeleteTest WHERE _rowkey_>= '50'";
         assertEquals(6, stmt.executeUpdate(sql));
+
     }
 
 }

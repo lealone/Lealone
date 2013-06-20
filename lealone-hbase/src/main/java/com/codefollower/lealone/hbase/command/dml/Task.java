@@ -17,22 +17,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.hbase.command;
+package com.codefollower.lealone.hbase.command.dml;
 
-import com.codefollower.lealone.value.Value;
+import java.util.List;
 
-public interface HBasePrepared {
-    public String getTableName();
+import com.codefollower.lealone.command.CommandRemote;
 
-    public byte[] getTableNameAsBytes();
+public class Task {
+    public String localRegion;
+    public CommandRemote remoteCommand;
 
-    public String getRowKey();
-
-    public Value getStartRowKeyValue();
-
-    public Value getEndRowKeyValue();
-
-    public String getRegionName();
-
-    public void setRegionName(String regionName);
+    public List<String> localRegions;
+    public List<CommandRemote> remoteCommands;
 }

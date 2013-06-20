@@ -27,6 +27,7 @@ import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.engine.ConnectionInfo;
 import com.codefollower.lealone.hbase.engine.HBaseDatabaseEngine;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
+import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.jdbc.JdbcConnection;
 import com.codefollower.lealone.security.SHA256;
 import com.codefollower.lealone.server.pg.PgServerThread;
@@ -39,61 +40,21 @@ public class HBasePgServerThread extends PgServerThread {
         this.server = server;
     }
 
-    //    @Override
-    //    protected JdbcConnection createJdbcConnection(String password) throws SQLException {
-    //        Properties info = new Properties();
-    //        info.put("MODE", "PostgreSQL");
-    //        info.put("USER", userName);
-    //        info.put("PASSWORD", password);
-    //        String url = "jdbc:lealone:" + databaseName;
-    //        ConnectionInfo ci = new ConnectionInfo(url, info);
-    //        String baseDir = server.getBaseDir();
-    //        if (baseDir == null) {
-    //            baseDir = SysProperties.getBaseDir();
-    //        }
-    //        if (baseDir != null) {
-    //            ci.setBaseDir(baseDir);
-    //        }
-    //        if (server.getIfExists()) {
-    //            ci.setProperty("IFEXISTS", "TRUE");
-    //        }
-    //
-    //        return new JdbcConnection(ci, false);
-    //    }
-
     @Override
     protected JdbcConnection createJdbcConnection(String password) throws SQLException {
         byte[] userPasswordHash = hashPassword(userName, password.toCharArray());
-        byte[] filePasswordHash = null;
-
         Properties originalProperties = new Properties();
-
-        //        int len = dataIn.readInt();
-        //        String k, v;
-        //        for (int i = 0; i < len; i++) {
-        //            k = dataIn.readUTF();
-        //            v = dataIn.readUTF();
-        //            if (k.equalsIgnoreCase("_userPasswordHash_"))
-        //                userPasswordHash = v.getBytes();
-        //            else if (k.equalsIgnoreCase("_filePasswordHash_"))
-        //                filePasswordHash = v.getBytes();
-        //            else
-        //                originalProperties.setProperty(k, v);
-        //
-        //        }
-
         originalProperties.put("MODE", "PostgreSQL");
-        //        originalProperties.put("USER", userName);
-        //        originalProperties.put("PASSWORD", password);
+        originalProperties.put("USER", userName);
+        originalProperties.put("PASSWORD", password);
+        originalProperties.put("_userPasswordHash_", new String(userPasswordHash));
 
         String baseDir = server.getBaseDir();
         if (baseDir == null) {
             baseDir = SysProperties.getBaseDir();
         }
 
-        databaseName = "mem:" + databaseName; //TODO
-
-        ConnectionInfo ci = new ConnectionInfo(databaseName);
+        ConnectionInfo ci = new ConnectionInfo("mem:" + databaseName);
 
         if (baseDir != null) {
             ci.setBaseDir(baseDir);
@@ -103,22 +64,20 @@ public class HBasePgServerThread extends PgServerThread {
         }
 
         if (server.getMaster() != null)
-            ci.setOriginalURL("jdbc:lealone:" + server.getMaster().getServerName().getHostAndPort() + "/" + databaseName);
+            ci.setOriginalURL("jdbc:lealone:tcp://" //
+                    + server.getMaster().getServerName().getHostname()
+                    + ":"
+                    + ZooKeeperAdmin.getTcpPort(server.getMaster().getServerName()) + "/" + databaseName);
         else
-            ci.setOriginalURL("jdbc:lealone:" //
-                    + server.getRegionServer().getServerName().getHostAndPort() + "/" + databaseName);
+            ci.setOriginalURL("jdbc:lealone:tcp://" //
+                    + server.getRegionServer().getServerName().getHostname()
+                    + ":"
+                    + ZooKeeperAdmin.getTcpPort(server.getRegionServer().getServerName()) + "/" + databaseName);
         ci.setUserName(userName);
+        ci.setProperty("MODE", "PostgreSQL");
 
         ci.setUserPasswordHash(userPasswordHash);
-        ci.setFilePasswordHash(filePasswordHash);
-        ci.readProperties(originalProperties);
-
-        originalProperties.setProperty("user", userName);
-        originalProperties.setProperty("password", "");
-        if (userPasswordHash != null)
-            originalProperties.setProperty("_userPasswordHash_", new String(userPasswordHash));
-        //if (filePasswordHash != null)
-        //    originalProperties.setProperty("_filePasswordHash_", new String(filePasswordHash));
+        ci.setFilePasswordHash(null);
 
         if (server.getMaster() != null)
             ci.setProperty("SERVER_TYPE", "M");

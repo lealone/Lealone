@@ -21,7 +21,6 @@ package com.codefollower.lealone.hbase.command;
 
 import java.util.ArrayList;
 
-import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.AlterSequence;
@@ -49,7 +48,6 @@ import com.codefollower.lealone.hbase.command.dml.HBaseInsert;
 import com.codefollower.lealone.hbase.command.dml.HBaseMerge;
 import com.codefollower.lealone.hbase.command.dml.HBaseSelect;
 import com.codefollower.lealone.hbase.command.dml.HBaseUpdate;
-import com.codefollower.lealone.hbase.command.dml.InTheRegion;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
@@ -77,7 +75,8 @@ public class HBaseParser extends Parser {
     private Prepared parseInTheRegion() {
         String[] regionNames = parseRegionNames();
         Prepared p = parsePrepared();
-        return new InTheRegion(session, regionNames, p);
+        p.setLocalRegionNames(regionNames);
+        return p;
     }
 
     private String[] parseRegionNames() {
@@ -317,17 +316,6 @@ public class HBaseParser extends Parser {
             p = new DefineCommandWrapper(session, (DefineCommand) p, sql);
         }
         return p;
-    }
-
-    @Override
-    public Command prepareCommand(String sql, boolean isLocal) {
-        Command command = super.prepareCommand(sql, isLocal);
-        Prepared p = command.getPrepared();
-        if (isLocal || p instanceof DefineCommand || p instanceof Insert || p instanceof Merge)
-            return command;
-        //sql有可能在本机执行，也可能需要继续转发给其他节点
-        command = new CommandProxy(this, sql, command);
-        return command;
     }
 
     @Override

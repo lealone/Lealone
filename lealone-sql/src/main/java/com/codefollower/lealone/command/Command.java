@@ -17,7 +17,6 @@ import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.Trace;
 import com.codefollower.lealone.result.ResultInterface;
-import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.MathUtils;
 
 /**
@@ -48,8 +47,6 @@ public abstract class Command implements CommandInterface {
     protected final String sql;
 
     private boolean canReuse;
-    protected int fetchSize;
-    private Transaction transaction;
 
     protected Command(Session session, String sql) {
         this.session = session;
@@ -342,24 +339,4 @@ public abstract class Command implements CommandInterface {
     }
 
     public abstract Prepared getPrepared();
-
-    @Override
-    public int getFetchSize() {
-        return fetchSize;
-    }
-
-    @Override
-    public void setFetchSize(int fetchSize) {
-        this.fetchSize = fetchSize;
-    }
-
-    @Override
-    public void setTransaction(Transaction transaction) {
-        this.transaction = transaction;
-    }
-
-    @Override
-    public Transaction getTransaction() {
-        return transaction;
-    }
 }

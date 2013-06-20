@@ -296,8 +296,8 @@ public class HBaseTable extends TableBase {
             o.setForUpdate(true);
             n.setRegionName(o.getRegionName());
             n.setRowKey(o.getRowKey());
-            if (prepared.getCommand().getTransaction() != null)
-                put = new Put(HBaseUtils.toBytes(n.getRowKey()), prepared.getCommand().getTransaction().getTransactionId());
+            if (session.getTransaction() != null)
+                put = new Put(HBaseUtils.toBytes(n.getRowKey()), session.getTransaction().getTransactionId());
             else
                 put = new Put(HBaseUtils.toBytes(n.getRowKey()));
             for (int i = 0; i < columnCount; i++) {

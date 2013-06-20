@@ -25,6 +25,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Random;
 import java.util.Set;
@@ -43,10 +44,17 @@ import org.apache.hadoop.hbase.client.MetaScanner;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 
+import com.codefollower.lealone.command.Prepared;
+import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.constant.ErrorCode;
+import com.codefollower.lealone.hbase.command.dml.Task;
+import com.codefollower.lealone.hbase.command.dml.WhereClauseSupport;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
+import com.codefollower.lealone.hbase.engine.SessionRemotePool;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.util.New;
+import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueBoolean;
 import com.codefollower.lealone.value.ValueByte;
@@ -395,4 +403,111 @@ public class HBaseUtils {
         return false;
     }
 
+    public static Task parseRowKey(HBaseSession session, WhereClauseSupport whereClauseSupport, Prepared prepared)
+            throws Exception {
+
+        byte[] tableName = whereClauseSupport.getTableNameAsBytes();
+        Value startValue = whereClauseSupport.getStartRowKeyValue();
+        Value endValue = whereClauseSupport.getEndRowKeyValue();
+
+        String sql = prepared.getSQL();
+
+        byte[] start = null;
+        byte[] end = null;
+        if (startValue != null)
+            start = toBytes(startValue);
+        if (endValue != null)
+            end = toBytes(endValue);
+
+        if (start == null)
+            start = HConstants.EMPTY_START_ROW;
+        if (end == null)
+            end = HConstants.EMPTY_END_ROW;
+
+        boolean oneRegion = false;
+        List<byte[]> startKeys = null;
+        if (startValue != null && endValue != null && startValue == endValue)
+            oneRegion = true;
+
+        if (!oneRegion) {
+            startKeys = HBaseUtils.getStartKeysInRange(tableName, start, end);
+            if (startKeys == null || startKeys.isEmpty()) {
+                throw new RuntimeException("no regions for table: " + Bytes.toString(tableName) + " start: " + startValue
+                        + " end: " + endValue);
+            } else if (startKeys.size() == 1) {
+                oneRegion = true;
+                start = startKeys.get(0);
+            }
+        }
+
+        Task task = new Task();
+
+        if (oneRegion) {
+            HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, start);
+            if (isLocal(session, hri)) {
+                task.localRegion = hri.getRegionName();
+            } else {
+                task.remoteCommand = SessionRemotePool.getCommandRemote(session, prepared.getParameters(),
+                        hri.getRegionServerURL(), createSQL(hri.getRegionName(), sql));
+            }
+        } else {
+            try {
+                Map<String, List<HBaseRegionInfo>> servers = New.hashMap();
+                List<HBaseRegionInfo> list;
+                for (byte[] startKey : startKeys) {
+                    HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
+                    if (HBaseUtils.isLocal(session, hri)) {
+                        if (task.localRegions == null)
+                            task.localRegions = New.arrayList();
+
+                        task.localRegions.add(hri.getRegionName());
+                    } else {
+                        list = servers.get(hri.getRegionServerURL());
+                        if (list == null) {
+                            list = New.arrayList();
+                            servers.put(hri.getRegionServerURL(), list);
+                        }
+                        list.add(hri);
+                    }
+                }
+
+                String planSQL = sql;
+                if (prepared.isQuery()) {
+                    Select select = (Select) prepared;
+                    if (select.isGroupQuery())
+                        planSQL = select.getPlanSQL(true);
+                    else if (select.getSortOrder() != null && select.getOffset() != null) //分布式排序时不使用Offset
+                        planSQL = select.getPlanSQL(false, false);
+                }
+
+                for (Map.Entry<String, List<HBaseRegionInfo>> e : servers.entrySet()) {
+                    if (task.remoteCommands == null)
+                        task.remoteCommands = New.arrayList();
+                    task.remoteCommands.add(SessionRemotePool.getCommandRemote(session, prepared.getParameters(), e.getKey(),
+                            HBaseUtils.createSQL(e.getValue(), planSQL)));
+                }
+
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return task;
+    }
+
+    public static String createSQL(String regionName, String sql) {
+        StringBuilder buff = new StringBuilder("IN THE REGION ");
+        buff.append(StringUtils.quoteStringSQL(regionName)).append(" ").append(sql);
+        return buff.toString();
+    }
+
+    public static String createSQL(List<HBaseRegionInfo> list, String sql) {
+        StringBuilder buff = new StringBuilder("IN THE REGION ");
+        for (int i = 0, size = list.size(); i < size; i++) {
+            if (i > 0)
+                buff.append(',');
+            buff.append(StringUtils.quoteStringSQL(list.get(i).getRegionName()));
+        }
+        buff.append(" ").append(sql);
+        return buff.toString();
+    }
 }

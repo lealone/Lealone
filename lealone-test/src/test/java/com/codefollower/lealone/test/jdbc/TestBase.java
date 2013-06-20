@@ -23,12 +23,17 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Map;
 
 //import junit.framework.Assert;
 
 //import org.apache.hadoop.conf.Configuration;
 //import org.apache.hadoop.hbase.HBaseConfiguration;
 //import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.ServerName;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.util.Bytes;
 //import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
 //import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -231,5 +236,18 @@ public class TestBase {
         rs.close();
         rs = null;
         //System.out.println();
+    }
+
+    public void printRegions(String tableName) throws Exception {
+        HTable t = new HTable(HBaseConfiguration.create(), tableName.toUpperCase());
+        for (Map.Entry<HRegionInfo, ServerName> e : t.getRegionLocations().entrySet()) {
+            HRegionInfo info = e.getKey();
+            System.out.println("info.getEncodedName()=" + info.getEncodedName());
+            ServerName server = e.getValue();
+
+            System.out.println("HRegionInfo = " + info.getRegionNameAsString());
+            System.out.println("ServerName = " + server);
+            System.out.println();
+        }
     }
 }

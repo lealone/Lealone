@@ -266,6 +266,8 @@ public class HBaseSession extends Session {
         for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
             futures.add(pool.submit(new Callable<Void>() {
                 public Void call() throws Exception {
+                    if (sessionRemote.getTransaction() == null)
+                        return null;
                     if (commit) {
                         sessionRemote.commitTransaction();
                         transaction.addChild(sessionRemote.getTransaction());

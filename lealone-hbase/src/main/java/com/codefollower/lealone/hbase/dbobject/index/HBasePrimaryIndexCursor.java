@@ -31,11 +31,12 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.TableFilter;
-import com.codefollower.lealone.hbase.command.HBasePrepared;
+import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
@@ -65,15 +66,18 @@ public class HBasePrimaryIndexCursor implements Cursor {
 
     public HBasePrimaryIndexCursor(TableFilter filter, SearchRow first, SearchRow last) {
         session = (HBaseSession) filter.getSession();
-        HBasePrepared hp = (HBasePrepared) filter.getPrepared();
-        if (hp != null)
-            regionName = Bytes.toBytes(hp.getRegionName());
+        Prepared p = filter.getPrepared();
+        if (p instanceof WithWhereClause) {
+            regionName = Bytes.toBytes(((WithWhereClause) p).getWhereClauseSupport().getRegionName());
+        }
+
         if (regionName == null)
             throw new RuntimeException("regionName is null");
 
-        fetchSize = filter.getPrepared().getCommand().getFetchSize();
+        fetchSize = filter.getPrepared().getFetchSize();
         //非查询的操作一般不设置fetchSize，此时fetchSize为0，所以要设置一个默认值
-        if (fetchSize < 1 && !filter.getPrepared().isQuery())
+        //if (fetchSize < 1 && !filter.getPrepared().isQuery())
+        if (fetchSize < 1)
             fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
         rowKeyName = ((HBaseTable) filter.getTable()).getRowKeyName();

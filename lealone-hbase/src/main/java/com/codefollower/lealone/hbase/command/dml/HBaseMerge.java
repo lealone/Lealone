@@ -39,7 +39,6 @@ import com.codefollower.lealone.engine.UndoLogRecord;
 import com.codefollower.lealone.expression.Expression;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.hbase.command.CommandParallel;
-import com.codefollower.lealone.hbase.command.CommandProxy;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
@@ -129,13 +128,12 @@ public class HBaseMerge extends Merge {
                     commands.add(c);
                 }
 
-                updateCount += CommandParallel.executeUpdate(commands, session.getTransaction());
+                updateCount += CommandParallel.executeUpdate(commands);
             }
 
             if (table.isColumnsModified()) {
                 table.setColumnsModified(false);
-                SessionInterface si = CommandProxy
-                        .getSessionInterface(session.getOriginalProperties(), HBaseUtils.getMasterURL());
+                SessionInterface si = SessionRemotePool.getMasterSessionRemote(session.getOriginalProperties());
                 for (Column c : alterColumns) {
                     CommandInterface ci = si.prepareCommand(alterTable + c.getCreateSQL(true), 1);
                     ci.executeUpdate();
@@ -411,11 +409,6 @@ public class HBaseMerge extends Merge {
             }
         }
         return row;
-    }
-
-    @Override
-    public boolean isDistributedSQL() {
-        return true;
     }
 
     private byte[] getTableNameAsBytes() {

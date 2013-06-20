@@ -18,7 +18,6 @@ import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.ResultRemote;
 import com.codefollower.lealone.result.ResultRemoteCursor;
 import com.codefollower.lealone.result.ResultRemoteInMemory;
-import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.value.Transfer;
 import com.codefollower.lealone.value.Value;
@@ -39,8 +38,6 @@ public class CommandRemote implements CommandInterface {
     private boolean isQuery;
     private boolean readonly;
     private final int created;
-
-    private Transaction transaction;
 
     public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
         this.transferList = transferList;
@@ -141,7 +138,7 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    if (transaction != null && !transaction.isAutoCommit()) {
+                    if (session.getTransaction() != null && !session.getTransaction().isAutoCommit()) {
                         session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
                                 .writeInt(maxRows);
@@ -191,7 +188,7 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    if (transaction != null && !transaction.isAutoCommit()) {
+                    if (session.getTransaction() != null && !session.getTransaction().isAutoCommit()) {
                         session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
                     } else {
@@ -270,23 +267,7 @@ public class CommandRemote implements CommandInterface {
         return UNKNOWN;
     }
 
-    @Override
-    public int getFetchSize() {
-        return fetchSize;
-    }
-
-    @Override
     public void setFetchSize(int fetchSize) {
         this.fetchSize = fetchSize;
-    }
-
-    @Override
-    public void setTransaction(Transaction transaction) {
-        this.transaction = transaction;
-    }
-
-    @Override
-    public Transaction getTransaction() {
-        return transaction;
     }
 }

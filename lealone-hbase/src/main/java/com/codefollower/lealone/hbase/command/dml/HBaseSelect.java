@@ -19,77 +19,60 @@
  */
 package com.codefollower.lealone.hbase.command.dml;
 
+import java.util.Arrays;
 import com.codefollower.lealone.command.dml.Select;
-import com.codefollower.lealone.dbobject.table.TableView;
 import com.codefollower.lealone.engine.Session;
-import com.codefollower.lealone.hbase.command.HBasePrepared;
-import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.hbase.command.CommandParallel;
+import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
-import com.codefollower.lealone.result.SearchRow;
-import com.codefollower.lealone.value.Value;
+import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.result.ResultInterface;
 
-public class HBaseSelect extends Select implements HBasePrepared {
-    private String regionName;
+public class HBaseSelect extends Select implements WithWhereClause {
+    private final WhereClauseSupport whereClauseSupport = new WhereClauseSupport();
+    private Task task;
 
     public HBaseSelect(Session session) {
         super(session);
     }
 
     @Override
-    public boolean isDistributedSQL() {
-        if (topTableFilter.getTable().isDistributed())
-            return true;
-        return super.isDistributedSQL();
+    public void prepare() {
+        super.prepare();
+
+        whereClauseSupport.setTableFilter(topTableFilter);
     }
 
     @Override
-    public String getTableName() {
-        if ((topTableFilter.getTable() instanceof TableView))
-            return ((TableView) topTableFilter.getTable()).getTableName();
-        else
-            return topTableFilter.getTable().getName();
+    public ResultInterface query(int maxrows) {
+        if (isExecuteDirec()) {
+            return super.query(maxrows);
+        }
+        if (getLocalRegionNames() != null) {
+            task = new Task();
+            task.localRegions = Arrays.asList(getLocalRegionNames());
+            return CommandParallel.executeQuery((HBaseSession) session, task, this, maxrows, false);
+        } else {
+            try {
+                task = HBaseUtils.parseRowKey((HBaseSession) session, whereClauseSupport, this);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+
+            if (task.localRegion != null) {
+                whereClauseSupport.setRegionName(task.localRegion);
+                return super.query(maxrows);
+            } else if (task.remoteCommand != null) {
+                return task.remoteCommand.executeQuery(maxrows, false);
+            } else {
+                return CommandParallel.executeQuery((HBaseSession) session, task, this, maxrows, false);
+            }
+        }
     }
 
     @Override
-    public byte[] getTableNameAsBytes() {
-        if ((topTableFilter.getTable() instanceof TableView))
-            return HBaseUtils.toBytes(((TableView) topTableFilter.getTable()).getTableName());
-        else
-            return ((HBaseTable) topTableFilter.getTable()).getTableNameAsBytes();
-    }
-
-    @Override
-    public String getRowKey() {
-        Value rowKey = getStartRowKeyValue();
-        if (rowKey != null)
-            rowKey.getString();
-        return null;
-    }
-
-    @Override
-    public Value getStartRowKeyValue() {
-        SearchRow start = topTableFilter.getStartSearchRow();
-        if (start != null)
-            return start.getRowKey();
-        return null;
-    }
-
-    @Override
-    public Value getEndRowKeyValue() {
-        SearchRow end = topTableFilter.getEndSearchRow();
-        if (end != null)
-            return end.getRowKey();
-        return null;
-    }
-
-    @Override
-    public String getRegionName() {
-        return regionName;
-    }
-
-    @Override
-    public void setRegionName(String regionName) {
-        this.regionName = regionName;
+    public WhereClauseSupport getWhereClauseSupport() {
+        return whereClauseSupport;
     }
 
 }

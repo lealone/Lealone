@@ -48,7 +48,7 @@ public class DefineCommandWrapper extends DefineCommand {
 
     @Override
     public int update() {
-        CommandInterface c = SessionRemotePool.getMasterCommand(session.getOriginalProperties(), sql, getParameters());
+        CommandInterface c = SessionRemotePool.getMasterCommandRemote(session.getOriginalProperties(), sql, getParameters());
         try {
             return c.executeUpdate();
         } finally {
@@ -59,7 +59,7 @@ public class DefineCommandWrapper extends DefineCommand {
 
     @Override
     public ResultInterface query(int maxRows) {
-        CommandInterface c = SessionRemotePool.getMasterCommand(session.getOriginalProperties(), sql, getParameters());
+        CommandInterface c = SessionRemotePool.getMasterCommandRemote(session.getOriginalProperties(), sql, getParameters());
         try {
             return c.executeQuery(maxRows, false);
         } finally {
@@ -190,11 +190,6 @@ public class DefineCommandWrapper extends DefineCommand {
     @Override
     public boolean isCacheable() {
         return dc.isCacheable();
-    }
-
-    @Override
-    public boolean isDistributedSQL() {
-        return dc.isDistributedSQL();
     }
 
     @Override

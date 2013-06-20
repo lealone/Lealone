@@ -25,6 +25,7 @@ import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.expression.ValueExpression;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.LocalResult;
+import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.ResultTarget;
 import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.util.New;
@@ -279,7 +280,7 @@ public abstract class Query extends Prepared {
         return params;
     }
 
-    public LocalResult query(int maxrows) {
+    public ResultInterface query(int maxrows) {
         return query(maxrows, null);
     }
 

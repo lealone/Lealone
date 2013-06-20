@@ -9,7 +9,6 @@ package com.codefollower.lealone.command;
 import java.util.ArrayList;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.result.ResultInterface;
-import com.codefollower.lealone.transaction.Transaction;
 
 /**
  * Represents a SQL statement.
@@ -501,12 +500,4 @@ public interface CommandInterface {
      * @return the empty result
      */
     ResultInterface getMetaData();
-
-    int getFetchSize();
-
-    void setFetchSize(int fetchSize);
-
-    void setTransaction(Transaction transaction);
-
-    Transaction getTransaction();
 }

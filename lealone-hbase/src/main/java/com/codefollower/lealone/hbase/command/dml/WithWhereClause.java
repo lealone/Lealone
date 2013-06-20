@@ -17,25 +17,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.hbase.result;
+package com.codefollower.lealone.hbase.command.dml;
 
-import com.codefollower.lealone.command.dml.Query;
-import com.codefollower.lealone.dbobject.table.TableFilter;
-import com.codefollower.lealone.hbase.engine.HBaseSession;
-import com.codefollower.lealone.result.SubqueryResult;
-
-public class HBaseSubqueryResult extends SubqueryResult {
-
-    public HBaseSubqueryResult(HBaseSession session, Query query, int maxrows) {
-        result = query.query(maxrows);
-    }
-
-    public HBaseSubqueryResult(TableFilter filter) {
-        this((HBaseSession) filter.getSession(), filter.getSelect(), -1);
-    }
-
-    @Override
-    public void close() {
-        super.close();
-    }
+public interface WithWhereClause {
+    WhereClauseSupport getWhereClauseSupport();
 }

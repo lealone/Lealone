@@ -82,7 +82,7 @@ public class HBaseTcpServerThread extends TcpServerThread {
         ci.readProperties(originalProperties);
 
         originalProperties.setProperty("user", userName);
-        originalProperties.setProperty("password", "");
+        //originalProperties.setProperty("password", "");
         if (userPasswordHash != null)
             originalProperties.setProperty("_userPasswordHash_", new String(userPasswordHash));
         if (filePasswordHash != null)

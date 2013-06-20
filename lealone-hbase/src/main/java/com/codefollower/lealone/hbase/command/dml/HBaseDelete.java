@@ -19,17 +19,20 @@
  */
 package com.codefollower.lealone.hbase.command.dml;
 
+import java.util.concurrent.Callable;
+
 import com.codefollower.lealone.command.dml.Delete;
 import com.codefollower.lealone.engine.Session;
-import com.codefollower.lealone.hbase.command.HBasePrepared;
-import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.hbase.command.CommandParallel;
+import com.codefollower.lealone.hbase.engine.HBaseSession;
+import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
-import com.codefollower.lealone.result.SearchRow;
-import com.codefollower.lealone.value.Value;
 
-public class HBaseDelete extends Delete implements HBasePrepared {
-    private String regionName;
+public class HBaseDelete extends Delete implements WithWhereClause, Callable<Integer> {
+    private final WhereClauseSupport whereClauseSupport = new WhereClauseSupport();
+
     private boolean isBatch = false;
+    private Task task;
 
     public HBaseDelete(Session session) {
         super(session);
@@ -43,12 +46,30 @@ public class HBaseDelete extends Delete implements HBasePrepared {
         }
         super.prepare();
         tableFilter.setPrepared(this);
+        whereClauseSupport.setTableFilter(tableFilter);
     }
 
     @Override
     public int update() {
         try {
-            int updateCount = super.update();
+            int updateCount = 0;
+            if (getLocalRegionNames() != null) {
+                updateCount = call().intValue();
+            } else {
+                task = HBaseUtils.parseRowKey((HBaseSession) session, whereClauseSupport, this);
+
+                if (task.localRegion != null) {
+                    whereClauseSupport.setRegionName(task.localRegion);
+                    updateCount = super.update();
+                } else if (task.remoteCommand != null) {
+                    updateCount = task.remoteCommand.executeUpdate();
+                } else {
+                    if (task.remoteCommands == null)
+                        updateCount = call().intValue();
+                    else
+                        updateCount = CommandParallel.executeUpdate(task, this);
+                }
+            }
 
             if (isBatch)
                 session.commit(false);
@@ -64,52 +85,26 @@ public class HBaseDelete extends Delete implements HBasePrepared {
     }
 
     @Override
-    public boolean isDistributedSQL() {
-        return true;
+    public Integer call() throws Exception {
+        int updateCount = 0;
+
+        if (getLocalRegionNames() != null) {
+            for (String regionName : getLocalRegionNames()) {
+                whereClauseSupport.setRegionName(regionName);
+                updateCount += super.update();
+            }
+        } else if (task.localRegions != null && !task.localRegions.isEmpty()) {
+            for (String regionName : task.localRegions) {
+                whereClauseSupport.setRegionName(regionName);
+                updateCount += super.update();
+            }
+        }
+        return Integer.valueOf(updateCount);
     }
 
     @Override
-    public String getTableName() {
-        return tableFilter.getTable().getName();
-    }
-
-    @Override
-    public byte[] getTableNameAsBytes() {
-        return ((HBaseTable) tableFilter.getTable()).getTableNameAsBytes();
-    }
-
-    @Override
-    public String getRowKey() {
-        Value rowKey = getStartRowKeyValue();
-        if (rowKey != null)
-            rowKey.getString();
-        return null;
-    }
-
-    @Override
-    public Value getStartRowKeyValue() {
-        SearchRow start = tableFilter.getStartSearchRow();
-        if (start != null)
-            return start.getRowKey();
-        return null;
-    }
-
-    @Override
-    public Value getEndRowKeyValue() {
-        SearchRow end = tableFilter.getEndSearchRow();
-        if (end != null)
-            return end.getRowKey();
-        return null;
-    }
-
-    @Override
-    public String getRegionName() {
-        return regionName;
-    }
-
-    @Override
-    public void setRegionName(String regionName) {
-        this.regionName = regionName;
+    public WhereClauseSupport getWhereClauseSupport() {
+        return whereClauseSupport;
     }
 
 }

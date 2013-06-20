@@ -28,14 +28,14 @@ import com.codefollower.lealone.result.ResultInterface;
 public class HBaseSerializedResult extends DelegatedResult {
     private final static int UNKNOW_ROW_COUNT = -1;
     private final List<ResultInterface> results;
-    private final List<CommandInterface> commands;
+    private final List<? extends CommandInterface> commands;
     private final int maxRows;
     private final boolean scrollable;
 
     private final int size;
     private int index = 0;
 
-    public HBaseSerializedResult(List<CommandInterface> commands, int maxRows, boolean scrollable) {
+    public HBaseSerializedResult(List<? extends CommandInterface> commands, int maxRows, boolean scrollable) {
         this.results = null;
         this.commands = commands;
         this.maxRows = maxRows;

@@ -24,9 +24,9 @@ import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.Sequence;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionInterface;
-import com.codefollower.lealone.hbase.command.CommandProxy;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
+import com.codefollower.lealone.hbase.engine.SessionRemotePool;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.result.ResultInterface;
 
@@ -42,7 +42,7 @@ public class HBaseSequence extends Sequence {
         if (s.getRegionServer() != null) {
             SessionInterface si = null;
             try {
-                si = CommandProxy.getSessionInterface(s.getOriginalProperties(), HBaseUtils.getMasterURL());
+                si = SessionRemotePool.getSessionRemote(s.getOriginalProperties(), HBaseUtils.getMasterURL());
                 CommandInterface ci = si.prepareCommand("ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", 1);
                 //ci.executeUpdate();
                 ResultInterface ri = ci.executeQuery(-1, false);

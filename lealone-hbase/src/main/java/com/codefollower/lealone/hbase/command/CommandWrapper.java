@@ -20,81 +20,55 @@
 package com.codefollower.lealone.hbase.command;
 
 import java.util.ArrayList;
-import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.CommandInterface;
-import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.result.ResultInterface;
-import com.codefollower.lealone.transaction.Transaction;
 
 class CommandWrapper implements CommandInterface {
-    private Command c;
-    private Session session;
+    private Prepared p;
 
-    CommandWrapper(Command c, Session session) {
-        this.c = c;
-        this.session = session;
+    CommandWrapper(Prepared p) {
+        this.p = p;
     }
 
     @Override
     public int getCommandType() {
-        return c.getCommandType();
+        return UNKNOWN;
     }
 
     @Override
     public boolean isQuery() {
-        return c.isQuery();
+        return p.isQuery();
     }
 
     @Override
     public ArrayList<? extends ParameterInterface> getParameters() {
-        return c.getParameters();
+        return p.getParameters();
     }
 
     @Override
     public ResultInterface executeQuery(int maxRows, boolean scrollable) {
-        return c.executeQuery(maxRows, scrollable);
+        return p.query(maxRows);
     }
 
     @Override
     public int executeUpdate() {
-        return c.executeUpdate();
+        return p.update();
     }
 
     @Override
     public void close() {
-        session.close();
-        c.close();
+        p = null;
     }
 
     @Override
     public void cancel() {
-        c.cancel();
+        p.checkCanceled();
     }
 
     @Override
     public ResultInterface getMetaData() {
-        return c.getMetaData();
+        return p.queryMeta();
     }
-
-    @Override
-    public int getFetchSize() {
-        return c.getFetchSize();
-    }
-
-    @Override
-    public void setFetchSize(int fetchSize) {
-        c.setFetchSize(fetchSize);
-    }
-
-    @Override
-    public void setTransaction(Transaction transaction) {
-        c.setTransaction(transaction);
-    }
-
-    @Override
-    public Transaction getTransaction() {
-        return c.getTransaction();
-    }
-
 }

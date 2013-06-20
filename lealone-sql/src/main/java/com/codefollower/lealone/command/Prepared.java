@@ -10,6 +10,7 @@ import java.util.ArrayList;
 
 import com.codefollower.lealone.api.DatabaseEventListener;
 import com.codefollower.lealone.constant.ErrorCode;
+import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.expression.Expression;
@@ -82,7 +83,6 @@ public abstract class Prepared {
      * @return the result set
      */
     public abstract ResultInterface queryMeta();
-
 
     /**
      * Get the command type as defined in CommandInterface
@@ -422,11 +422,39 @@ public abstract class Prepared {
         return false;
     }
 
-    public boolean isDistributedSQL() {
-        return false;
-    }
-
     public Command getCommand() {
         return command;
+    }
+
+    private String[] localRegionNames;
+
+    public String[] getLocalRegionNames() {
+        return localRegionNames;
+    }
+
+    public void setLocalRegionNames(String[] localRegionNames) {
+        this.localRegionNames = localRegionNames;
+    }
+
+    private boolean executeDirec;
+
+    public boolean isExecuteDirec() {
+        return executeDirec;
+    }
+
+    public void setExecuteDirec(boolean executeDirec) {
+        this.executeDirec = executeDirec;
+    }
+
+    private int fetchSize = -1;
+
+    public int getFetchSize() {
+        if (fetchSize < 1)
+            return SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
+        return fetchSize;
+    }
+
+    public void setFetchSize(int fetchSize) {
+        this.fetchSize = fetchSize;
     }
 }
