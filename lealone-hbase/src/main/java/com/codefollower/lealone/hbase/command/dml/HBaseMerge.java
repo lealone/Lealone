@@ -43,7 +43,6 @@ import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
@@ -70,15 +69,6 @@ public class HBaseMerge extends Merge {
     public HBaseMerge(Session session) {
         super(session);
         this.session = (HBaseSession) session;
-    }
-
-    @Override
-    public void setCommand(Command command) {
-        super.setCommand(command);
-        //不设置query
-        if (query != null) {
-            query.setCommand(null);
-        }
     }
 
     @Override
@@ -248,7 +238,7 @@ public class HBaseMerge extends Merge {
                 count++;
             }
         } else {
-            ResultInterface rows = new HBaseSubqueryResult((HBaseSession) session, query, 0);
+            ResultInterface rows = query.query(0);
             count = 0;
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
             table.lock(session, true, false);

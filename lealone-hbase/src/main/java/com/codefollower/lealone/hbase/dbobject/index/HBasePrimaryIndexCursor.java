@@ -40,10 +40,10 @@ import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.transaction.Filter;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
@@ -61,7 +61,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
     private byte[] defaultColumnFamilyName;
     private int columnCount;
     private String rowKeyName;
-    private HBaseSubqueryResult subqueryResult;
+    private ResultInterface subqueryResult;
     private boolean isGet = false;
 
     public HBasePrimaryIndexCursor(TableFilter filter, SearchRow first, SearchRow last) {
@@ -105,7 +105,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
                 throw new RuntimeException(e);
             }
         } else if (filter.getSelect() != null && filter.getSelect().getTopTableFilter() != filter) {
-            subqueryResult = new HBaseSubqueryResult(filter);
+            subqueryResult = filter.getSelect().query(-1);
         } else {
             byte[] startKey = HConstants.EMPTY_BYTE_ARRAY;
             byte[] endKey = HConstants.EMPTY_BYTE_ARRAY;

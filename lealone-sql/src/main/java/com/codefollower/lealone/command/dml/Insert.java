@@ -140,7 +140,7 @@ public class Insert extends Prepared implements ResultTarget {
             if (insertFromSelect) {
                 query.query(0, this);
             } else {
-                ResultInterface rows = getResultInterface();
+                ResultInterface rows = query.query(0);
                 while (rows.next()) {
                     Value[] r = rows.currentRow();
                     addRow(r);
@@ -150,10 +150,6 @@ public class Insert extends Prepared implements ResultTarget {
         }
         table.fire(session, Trigger.INSERT, false);
         return rowNumber;
-    }
-
-    protected ResultInterface getResultInterface() {
-        return query.query(0);
     }
 
     @Override

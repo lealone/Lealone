@@ -49,7 +49,6 @@ import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
 import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.transaction.CommitHashMap;
 import com.codefollower.lealone.hbase.transaction.Filter;
 import com.codefollower.lealone.hbase.transaction.RowKey;
@@ -57,7 +56,6 @@ import com.codefollower.lealone.hbase.transaction.TimestampService;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
-import com.codefollower.lealone.result.SubqueryResult;
 import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.New;
 
@@ -154,11 +152,6 @@ public class HBaseSession extends Session {
     @Override
     public HBaseDatabase getDatabase() {
         return (HBaseDatabase) database;
-    }
-
-    @Override
-    public SubqueryResult createSubqueryResult(Query query, int maxrows) {
-        return new HBaseSubqueryResult(this, query, maxrows);
     }
 
     @Override

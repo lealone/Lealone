@@ -38,11 +38,9 @@ import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.result.HBaseSubqueryResult;
 import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
-import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StatementBuilder;
@@ -325,11 +323,6 @@ public class HBaseInsert extends Insert {
             session.log(table, UndoLogRecord.INSERT, row);
             table.fireAfterRow(session, null, row, false);
         }
-    }
-
-    @Override
-    protected ResultInterface getResultInterface() {
-        return new HBaseSubqueryResult(session, query, 0);
     }
 
     private byte[] getTableNameAsBytes() {
