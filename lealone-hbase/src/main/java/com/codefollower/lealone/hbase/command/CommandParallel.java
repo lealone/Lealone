@@ -116,6 +116,7 @@ public class CommandParallel {
 
         String newSQL = select.getPlanSQL(true);
         Select newSelect = (Select) session.prepare(newSQL, true);
+        newSelect.setExecuteDirec(true);
 
         return new HBaseMergedResult(results, newSelect, select);
     }

@@ -63,6 +63,7 @@ public class HBaseSelect extends Select implements WithWhereClause {
                 whereClauseSupport.setRegionName(task.localRegion);
                 return super.query(maxrows);
             } else if (task.remoteCommand != null) {
+                task.remoteCommand.setFetchSize(getFetchSize());
                 return task.remoteCommand.executeQuery(maxrows, false);
             } else {
                 return CommandParallel.executeQuery((HBaseSession) session, task, this, maxrows, false);
