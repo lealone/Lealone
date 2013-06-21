@@ -90,27 +90,6 @@ public class Insert extends Prepared implements ResultTarget {
         }
     }
 
-    protected Row createRow(int columnLen, Expression[] expr, int rowId) {
-        Row row = table.getTemplateRow();
-        for (int i = 0; i < columnLen; i++) {
-            Column c = columns[i];
-            int index = c.getColumnId();
-            Expression e = expr[i];
-            if (e != null) {
-                // e can be null (DEFAULT)
-                e = e.optimize(session);
-                try {
-                    Value v = c.convert(e.getValue(session));
-                    row.setValue(index, v);
-                } catch (DbException ex) {
-                    throw setRow(ex, rowId, getSQL(expr));
-                }
-            }
-        }
-
-        return row;
-    }
-
     private int insertRows() {
         session.getUser().checkRight(table, Right.INSERT);
         setCurrentRowNumber(0);
@@ -118,14 +97,18 @@ public class Insert extends Prepared implements ResultTarget {
         rowNumber = 0;
         int listSize = list.size();
         if (listSize > 0) {
-            int columnLen = columns.length;
             for (int x = 0; x < listSize; x++) {
-                setCurrentRowNumber(x + 1);
                 Expression[] expr = list.get(x);
-                Row newRow = createRow(columnLen, expr, x);
-                if (newRow == null)
-                    continue;
-                rowNumber++;
+                Row newRow;
+                try {
+                    newRow = createRow(expr, x);
+                    if (newRow == null) {
+                        continue;
+                    }
+                } catch (DbException ex) {
+                    throw setRow(ex, rowNumber + 1, getSQL(expr));
+                }
+                setCurrentRowNumber(++rowNumber);
                 table.validateConvertUpdateSequence(session, newRow);
                 boolean done = table.fireBeforeRow(session, null, newRow);
                 if (!done) {
@@ -154,18 +137,16 @@ public class Insert extends Prepared implements ResultTarget {
 
     @Override
     public void addRow(Value[] values) {
-        Row newRow = table.getTemplateRow();
-        setCurrentRowNumber(++rowNumber);
-        for (int j = 0, len = columns.length; j < len; j++) {
-            Column c = columns[j];
-            int index = c.getColumnId();
-            try {
-                Value v = c.convert(values[j]);
-                newRow.setValue(index, v);
-            } catch (DbException ex) {
-                throw setRow(ex, rowNumber, getSQL(values));
+        Row newRow;
+        try {
+            newRow = createRow(values);
+            if (newRow == null) {
+                return;
             }
+        } catch (DbException ex) {
+            throw setRow(ex, rowNumber + 1, getSQL(values));
         }
+        setCurrentRowNumber(++rowNumber);
         table.validateConvertUpdateSequence(session, newRow);
         boolean done = table.fireBeforeRow(session, null, newRow);
         if (!done) {
@@ -173,6 +154,35 @@ public class Insert extends Prepared implements ResultTarget {
             session.log(table, UndoLogRecord.INSERT, newRow);
             table.fireAfterRow(session, null, newRow, false);
         }
+    }
+
+    protected Row createRow(Expression[] expr, int rowId) {
+        Row row = table.getTemplateRow();
+        for (int i = 0, len = columns.length; i < len; i++) {
+            Column c = columns[i];
+            int index = c.getColumnId();
+            Expression e = expr[i];
+            if (e != null) {
+                // e can be null (DEFAULT)
+                e = e.optimize(session);
+                Value v = c.convert(e.getValue(session));
+                row.setValue(index, v);
+            }
+        }
+
+        return row;
+    }
+
+    protected Row createRow(Value[] values) {
+        Row newRow = table.getTemplateRow();
+        for (int j = 0, len = columns.length; j < len; j++) {
+            Column c = columns[j];
+            int index = c.getColumnId();
+            Value v = c.convert(values[j]);
+            newRow.setValue(index, v);
+        }
+
+        return newRow;
     }
 
     public int getRowCount() {

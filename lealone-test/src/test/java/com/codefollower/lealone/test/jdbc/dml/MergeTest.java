@@ -19,7 +19,11 @@
  */
 package com.codefollower.lealone.test.jdbc.dml;
 
+import static junit.framework.Assert.assertEquals;
+
 import java.sql.PreparedStatement;
+
+import junit.framework.Assert;
 
 import org.junit.Test;
 
@@ -35,15 +39,18 @@ public class MergeTest extends TestBase {
 
         stmt.executeUpdate("DROP TABLE IF EXISTS tmpSelectTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS tmpSelectTest(id int, name varchar(500))");
-        stmt.executeUpdate("INSERT INTO tmpSelectTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')");
+
+        sql = "INSERT INTO tmpSelectTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')";
+        assertEquals(3, stmt.executeUpdate(sql));
 
         //从另一表查数据，然后插入此表
         sql = "MERGE INTO MergeTest KEY(id) (SELECT * FROM tmpSelectTest)";
-        stmt.executeUpdate(sql);
+        assertEquals(3, stmt.executeUpdate(sql));
 
         sql = "MERGE INTO MergeTest KEY(id) VALUES()"; //这里会抛异常，但是异常信息很怪，算是H2的一个小bug
         try {
             stmt.executeUpdate(sql);
+            Assert.fail(sql);
         } catch (Exception e) {
             //Syntax error in SQL statement "UPDATE PUBLIC.MERGETEST SET  WHERE[*] ID=?"; expected "identifier"; 
             //SQL statement:UPDATE PUBLIC.MERGETEST SET  WHERE ID=? [42001-172]
@@ -55,11 +62,12 @@ public class MergeTest extends TestBase {
         //10 a
         //20 b
         sql = "MERGE INTO MergeTest KEY(id) VALUES(30, DEFAULT),(10, 'a'),(20, 'b')";
-        stmt.executeUpdate(sql);
+        assertEquals(3, stmt.executeUpdate(sql));
 
         try {
             sql = "MERGE INTO MergeTest KEY(id) VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')";
             stmt.executeUpdate(sql);
+            Assert.fail(sql);
         } catch (Exception e) {
             //org.h2.jdbc.JdbcSQLException: Column "ID" contains null values; 
             System.out.println(e.getMessage());
@@ -69,6 +77,7 @@ public class MergeTest extends TestBase {
         sql = "MERGE INTO MergeTest(name) KEY(id) (SELECT * FROM tmpSelectTest)";
         try {
             stmt.executeUpdate(sql);
+            Assert.fail(sql);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -77,6 +86,7 @@ public class MergeTest extends TestBase {
         sql = "MERGE INTO MergeTest(name) KEY(id) VALUES('abc')";
         try {
             stmt.executeUpdate(sql);
+            Assert.fail(sql);
         } catch (Exception e) {
             //Column "ID" contains null values;
             System.out.println(e.getMessage());

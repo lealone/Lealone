@@ -28,7 +28,6 @@ public class WhereClauseSupport {
     private TableFilter tableFilter;
     private byte[] tableNameAsBytes;
     private String regionName;
-    private String[] localRegionNames;
 
     public WhereClauseSupport() {
     }
@@ -63,22 +62,4 @@ public class WhereClauseSupport {
     public void setRegionName(String regionName) {
         this.regionName = regionName;
     }
-
-    public String[] getLocalRegionNames() {
-        return localRegionNames;
-    }
-
-    public void setLocalRegionNames(String[] localRegionNames) {
-        this.localRegionNames = localRegionNames;
-    }
-
-    //    @Override
-    //    public void setLocal(boolean local) {
-    //        this.local = local;
-    //    }
-    //
-    //    @Override
-    //    public boolean isLocal() {
-    //        return local;
-    //    }
 }

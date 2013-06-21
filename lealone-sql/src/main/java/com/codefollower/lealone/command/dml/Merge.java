@@ -85,25 +85,18 @@ public class Merge extends Prepared {
         if (list.size() > 0) {
             count = 0;
             for (int x = 0, size = list.size(); x < size; x++) {
-                setCurrentRowNumber(x + 1);
                 Expression[] expr = list.get(x);
-                Row newRow = table.getTemplateRow();
-                for (int i = 0, len = columns.length; i < len; i++) {
-                    Column c = columns[i];
-                    int index = c.getColumnId();
-                    Expression e = expr[i];
-                    if (e != null) {
-                        // e can be null (DEFAULT)
-                        try {
-                            Value v = c.convert(e.getValue(session));
-                            newRow.setValue(index, v);
-                        } catch (DbException ex) {
-                            throw setRow(ex, count, getSQL(expr));
-                        }
+                Row newRow;
+                try {
+                    newRow = createRow(expr, x);
+                    if (newRow == null) {
+                        continue;
                     }
+                } catch (DbException ex) {
+                    throw setRow(ex, count + 1, getSQL(expr));
                 }
+                setCurrentRowNumber(++count);
                 merge(newRow);
-                count++;
             }
         } else {
             ResultInterface rows = query.query(0);
@@ -111,26 +104,53 @@ public class Merge extends Prepared {
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
             table.lock(session, true, false);
             while (rows.next()) {
-                count++;
-                Value[] r = rows.currentRow();
-                Row newRow = table.getTemplateRow();
-                setCurrentRowNumber(count);
-                for (int j = 0; j < columns.length; j++) {
-                    Column c = columns[j];
-                    int index = c.getColumnId();
-                    try {
-                        Value v = c.convert(r[j]);
-                        newRow.setValue(index, v);
-                    } catch (DbException ex) {
-                        throw setRow(ex, count, getSQL(r));
+                Value[] values = rows.currentRow();
+                Row newRow;
+                try {
+                    newRow = createRow(values);
+                    if (newRow == null) {
+                        continue;
                     }
+                } catch (DbException ex) {
+                    throw setRow(ex, count + 1, getSQL(values));
                 }
+                setCurrentRowNumber(++count);
                 merge(newRow);
             }
             rows.close();
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, false);
         }
         return count;
+    }
+
+    protected Row createRow(Expression[] expr, int rowId) {
+        Row newRow = table.getTemplateRow();
+        for (int i = 0, len = columns.length; i < len; i++) {
+            Column c = columns[i];
+            int index = c.getColumnId();
+            Expression e = expr[i];
+            if (e != null) {
+                // e can be null (DEFAULT)
+                try {
+                    Value v = c.convert(e.getValue(session));
+                    newRow.setValue(index, v);
+                } catch (DbException ex) {
+                    throw setRow(ex, rowId, getSQL(expr));
+                }
+            }
+        }
+        return newRow;
+    }
+
+    protected Row createRow(Value[] values) {
+        Row newRow = table.getTemplateRow();
+        for (int j = 0; j < columns.length; j++) {
+            Column c = columns[j];
+            int index = c.getColumnId();
+            Value v = c.convert(values[j]);
+            newRow.setValue(index, v);
+        }
+        return newRow;
     }
 
     private void merge(Row row) {
