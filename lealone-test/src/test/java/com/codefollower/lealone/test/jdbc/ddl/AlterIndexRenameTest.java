@@ -29,14 +29,14 @@ public class AlterIndexRenameTest extends TestBase {
         stmt.executeUpdate("DROP TABLE IF EXISTS AlterIndexRenameTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS AlterIndexRenameTest (f1 int)");
 
-        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx0 ON AlterIndexRenameTest(f1)");
+        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS AlterIndexRenameTest_idx0 ON AlterIndexRenameTest(f1)");
 
-        //stmt.executeUpdate("ALTER INDEX idx0 RENAME TO idx1");
+        //stmt.executeUpdate("ALTER INDEX AlterIndexRenameTest_idx0 RENAME TO AlterIndexRenameTest_idx1");
 
         //stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS schema0 AUTHORIZATION sa");
-        //stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO schema0.idx1");
+        //stmt.executeUpdate("ALTER INDEX mydb.public.AlterIndexRenameTest_idx0 RENAME TO schema0.AlterIndexRenameTest_idx1");
 
-        stmt.executeUpdate("ALTER INDEX public.idx0 RENAME TO idx1");
+        stmt.executeUpdate("ALTER INDEX public.AlterIndexRenameTest_idx0 RENAME TO AlterIndexRenameTest_idx1");
 
     }
 
