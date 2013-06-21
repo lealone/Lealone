@@ -19,7 +19,10 @@
  */
 package com.codefollower.lealone.hbase.command.dml;
 
+import org.apache.hadoop.hbase.util.Bytes;
+
 import com.codefollower.lealone.dbobject.table.TableFilter;
+import com.codefollower.lealone.dbobject.table.TableView;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
@@ -34,7 +37,10 @@ public class WhereClauseSupport {
 
     public void setTableFilter(TableFilter tableFilter) {
         this.tableFilter = tableFilter;
-        tableNameAsBytes = ((HBaseTable) tableFilter.getTable()).getTableNameAsBytes();
+        if (tableFilter.getTable() instanceof TableView)
+            tableNameAsBytes = Bytes.toBytes(((TableView) tableFilter.getTable()).getTableName());
+        else
+            tableNameAsBytes = ((HBaseTable) tableFilter.getTable()).getTableNameAsBytes();
     }
 
     public byte[] getTableNameAsBytes() {
