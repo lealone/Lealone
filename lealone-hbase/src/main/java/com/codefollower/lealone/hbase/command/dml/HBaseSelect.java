@@ -23,6 +23,7 @@ import java.util.Arrays;
 import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.CommandParallel;
+import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
@@ -40,8 +41,10 @@ public class HBaseSelect extends Select implements WithWhereClause {
     @Override
     public void prepare() {
         super.prepare();
-
-        whereClauseSupport.setTableFilter(topTableFilter);
+        if (topTableFilter.getTable() instanceof HBaseTable)
+            whereClauseSupport.setTableFilter(topTableFilter);
+        else
+            setExecuteDirec(true);
     }
 
     @Override
