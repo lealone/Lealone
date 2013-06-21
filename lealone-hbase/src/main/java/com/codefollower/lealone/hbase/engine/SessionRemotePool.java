@@ -50,11 +50,24 @@ public class SessionRemotePool {
     }
 
     public static SessionRemote getSessionRemote(Properties info, String url) {
+        byte[] userPasswordHash = null;
+        byte[] filePasswordHash = null;
         Properties prop = new Properties();
-        for (String key : info.stringPropertyNames())
-            prop.setProperty(key, info.getProperty(key));
-        ConnectionInfo ci = new ConnectionInfo(url, prop);
+        String key;
+        for (Object o : info.keySet()) {
+            key = o.toString();
 
+            if (key.equalsIgnoreCase("_userPasswordHash_"))
+                userPasswordHash = (byte[]) info.get(key);
+            else if (key.equalsIgnoreCase("_filePasswordHash_"))
+                filePasswordHash = (byte[]) info.get(key);
+            else
+                prop.setProperty(key, info.getProperty(key));
+
+        }
+        ConnectionInfo ci = new ConnectionInfo(url, prop);
+        ci.setUserPasswordHash(userPasswordHash);
+        ci.setFilePasswordHash(filePasswordHash);
         return (SessionRemote) new SessionRemote(ci).connectEmbeddedOrServer(false);
     }
 

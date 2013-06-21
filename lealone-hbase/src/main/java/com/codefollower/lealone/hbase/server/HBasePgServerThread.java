@@ -31,6 +31,7 @@ import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.jdbc.JdbcConnection;
 import com.codefollower.lealone.security.SHA256;
 import com.codefollower.lealone.server.pg.PgServerThread;
+import com.codefollower.lealone.util.StringUtils;
 
 public class HBasePgServerThread extends PgServerThread {
     private HBasePgServer server;
@@ -42,12 +43,11 @@ public class HBasePgServerThread extends PgServerThread {
 
     @Override
     protected JdbcConnection createJdbcConnection(String password) throws SQLException {
-        byte[] userPasswordHash = hashPassword(userName, password.toCharArray());
+        byte[] userPasswordHash = hashPassword(StringUtils.toUpperEnglish(userName), password.toCharArray());
         Properties originalProperties = new Properties();
         originalProperties.put("MODE", "PostgreSQL");
         originalProperties.put("USER", userName);
-        originalProperties.put("PASSWORD", password);
-        originalProperties.put("_userPasswordHash_", new String(userPasswordHash));
+        originalProperties.put("_userPasswordHash_", userPasswordHash);
 
         String baseDir = server.getBaseDir();
         if (baseDir == null) {

@@ -47,17 +47,8 @@ public class HBaseTcpServerThread extends TcpServerThread {
         Properties originalProperties = new Properties();
 
         int len = transfer.readInt();
-        String k, v;
         for (int i = 0; i < len; i++) {
-            k = transfer.readString();
-            v = transfer.readString();
-            if (k.equalsIgnoreCase("_userPasswordHash_"))
-                userPasswordHash = v.getBytes();
-            else if (k.equalsIgnoreCase("_filePasswordHash_"))
-                filePasswordHash = v.getBytes();
-            else
-                originalProperties.setProperty(k, v);
-
+            originalProperties.setProperty(transfer.readString(), transfer.readString());
         }
         String baseDir = server.getBaseDir();
         if (baseDir == null) {
@@ -82,11 +73,10 @@ public class HBaseTcpServerThread extends TcpServerThread {
         ci.readProperties(originalProperties);
 
         originalProperties.setProperty("user", userName);
-        //originalProperties.setProperty("password", "");
         if (userPasswordHash != null)
-            originalProperties.setProperty("_userPasswordHash_", new String(userPasswordHash));
+            originalProperties.put("_userPasswordHash_", userPasswordHash);
         if (filePasswordHash != null)
-            originalProperties.setProperty("_filePasswordHash_", new String(filePasswordHash));
+            originalProperties.put("_filePasswordHash_", filePasswordHash);
 
         if (server.getMaster() != null)
             ci.setProperty("SERVER_TYPE", "M");
