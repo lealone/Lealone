@@ -26,6 +26,12 @@
 		</dependency>
 
 		<dependency>
+			<groupId>com.codefollower.lealone</groupId>
+			<artifactId>lealone-pagestore</artifactId>
+			<version>${lealone.version}</version>
+		</dependency>
+
+		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
 		</dependency>
