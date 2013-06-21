@@ -44,7 +44,13 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 
 ## 快速入门
+
 * [Lealone快速入门](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)
+
+
+## 使用Python访问Lealone
+
+* [使用Python访问Lealone](https://github.com/codefollower/Lealone/wiki/%E4%BD%BF%E7%94%A8Python%E8%AE%BF%E9%97%AELealone)
 
 
 ## 开发测试环境搭建
