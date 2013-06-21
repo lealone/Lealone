@@ -19,8 +19,12 @@
  */
 package com.codefollower.lealone.test.jdbc.ddl;
 
+import static junit.framework.Assert.assertEquals;
+
 import java.sql.Connection;
 import java.sql.SQLException;
+
+import junit.framework.Assert;
 
 import org.junit.Test;
 
@@ -66,13 +70,18 @@ public class CreateTriggerTest extends TestBase {
                 + " BEFORE INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest"
                 + " QUEUE 10 NOWAIT CALL \"com.codefollower.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
 
-        stmt.executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger2"
-                + " AFTER INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
-                + " QUEUE 10 NOWAIT CALL \"com.codefollower.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
+        try {
+            stmt.executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger2"
+                    + " AFTER INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
+                    + " QUEUE 10 NOWAIT CALL \"com.codefollower.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
+            Assert.fail("do not throw SQLException");
+        } catch (SQLException e) {
+            assertEquals(90005, e.getErrorCode());
+        }
 
         //INSTEAD OF也是BEFORE类型
         stmt.executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger3"
-                + " INSTEAD OF INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
+                + " INSTEAD OF INSERT,UPDATE,DELETE,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
                 + " QUEUE 10 NOWAIT CALL \"com.codefollower.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
 
         //这种语法可查入多条记录
