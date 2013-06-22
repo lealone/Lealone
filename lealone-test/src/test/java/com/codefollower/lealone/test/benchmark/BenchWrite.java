@@ -19,16 +19,10 @@
  */
 package com.codefollower.lealone.test.benchmark;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -38,24 +32,16 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
-public abstract class BenchWrite {
-
-    Connection conn;
-    Statement stmt;
-    PreparedStatement ps;
-
+public abstract class BenchWrite extends BenchBase {
     byte[] cf = b("CF");
     byte[] id = b("ID");
     byte[] name = b("NAME");
     byte[] age = b("AGE");
     byte[] salary = b("SALARY");
 
-    Configuration conf = HBaseConfiguration.create();
     HTable t;
-    String tableName;
     int startKey;
     int endKey;
-    int loop = 10;
 
     //endKey-startKey的值就是一个事务中包含的写操作个数
     public BenchWrite(String tableName, int startKey, int endKey) {
@@ -64,25 +50,8 @@ public abstract class BenchWrite {
         this.endKey = endKey;
     }
 
-    byte[] b(String v) {
-        return Bytes.toBytes(v);
-    }
-
-    byte[] b(long v) {
-        return Bytes.toBytes(v);
-    }
-
-    byte[] b(int v) {
-        return Bytes.toBytes(v);
-    }
-
-    byte[] b(float v) {
-        return Bytes.toBytes(v);
-    }
-
-    long total = 0;
-
-    void avg() {
+    @Override
+    public void avg() {
         p("----------------------------");
         p("rows: " + (endKey - startKey) + ", loop: " + loop + ", avg", total / loop);
         p();
@@ -155,14 +124,6 @@ public abstract class BenchWrite {
         }
     }
 
-    void init() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:9092/hbasedb";
-        conn = DriverManager.getConnection(url, "sa", "");
-        stmt = conn.createStatement();
-        stmt.executeUpdate("SET DB_CLOSE_DELAY -1"); //不马上关闭数据库
-
-    }
-
     void initHTable() throws Exception {
         t = new HTable(conf, b(tableName.toUpperCase()));
     }
@@ -205,18 +166,6 @@ public abstract class BenchWrite {
         long end = System.nanoTime();
         p("testHBaseBatch()", end - start);
         return end - start;
-    }
-
-    void p(String m, long v) {
-        System.out.println(m + ": " + v / 1000000 + " ms");
-    }
-
-    void p() {
-        System.out.println();
-    }
-
-    void p(String str) {
-        System.out.println(str);
     }
 
     long testPreparedStatement() throws Exception {
