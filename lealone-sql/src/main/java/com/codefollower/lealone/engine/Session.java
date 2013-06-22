@@ -1267,6 +1267,10 @@ public class Session extends SessionWithState {
         return new Parser(this);
     }
 
+    public Insert createInsert() {
+        return new Insert(this);
+    }
+
     public Sequence createSequence(Schema schema, int id, String name, boolean belongsToTable) {
         return new Sequence(schema, id, name, belongsToTable);
     }
@@ -1285,22 +1289,5 @@ public class Session extends SessionWithState {
 
     public Transaction getTransaction() {
         return null;
-    }
-
-    public void insertAsQuery(Query asQuery, boolean sortedInsertMode, Table table) {
-        boolean old = isUndoLogEnabled();
-        try {
-            setUndoLogEnabled(false);
-            Insert insert = null;
-            insert = new Insert(this);
-            insert.setSortedInsertMode(sortedInsertMode);
-            insert.setQuery(asQuery);
-            insert.setTable(table);
-            insert.setInsertFromSelect(true);
-            insert.prepare();
-            insert.update();
-        } finally {
-            setUndoLogEnabled(old);
-        }
     }
 }
