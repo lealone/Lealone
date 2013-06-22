@@ -1052,5 +1052,15 @@ public class JdbcStatement extends TraceObject implements Statement {
         return getTraceObjectName();
     }
 
+    //jdk1.7
+    public void closeOnCompletion() throws SQLException {
+        throw DbException.getUnsupportedException("closeOnCompletion()");
+    }
+
+    //jdk1.7
+    public boolean isCloseOnCompletion() throws SQLException {
+        throw DbException.getUnsupportedException("isCloseOnCompletion()");
+    }
+
 }
 

@@ -12,7 +12,10 @@ import java.io.PrintWriter;
 import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
+import java.util.logging.Logger;
+
 import javax.naming.Reference;
 import javax.naming.Referenceable;
 import javax.naming.StringRefAddr;
@@ -24,6 +27,7 @@ import javax.sql.XADataSource;
 
 import com.codefollower.lealone.Driver;
 import com.codefollower.lealone.jdbc.JdbcConnection;
+import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.TraceObject;
 import com.codefollower.lealone.util.StringUtils;
 
@@ -393,6 +397,11 @@ public class JdbcDataSource extends TraceObject
      */
     public String toString() {
         return getTraceObjectName() + ": url=" + url + " user=" + userName;
+    }
+
+    //jdk1.7
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+        throw DbException.getUnsupportedException("getParentLogger()");
     }
 
 }

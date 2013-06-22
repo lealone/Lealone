@@ -23,7 +23,10 @@ package com.codefollower.lealone.jdbcx;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
+import java.util.logging.Logger;
+
 import javax.sql.ConnectionEvent;
 import javax.sql.ConnectionEventListener;
 import javax.sql.ConnectionPoolDataSource;
@@ -325,6 +328,11 @@ public class JdbcConnectionPool implements DataSource, ConnectionEventListener {
         throw DbException.getUnsupportedException("isWrapperFor");
     }
 //*/
+
+    //jdk1.7
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+        throw DbException.getUnsupportedException("getParentLogger()");
+    }
 
     /**
      * [Not supported]

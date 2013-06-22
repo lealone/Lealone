@@ -3501,4 +3501,14 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
         return command;
     }
 
+    //jdk1.7
+    public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
+        throw DbException.getUnsupportedException("getObject(int, Class<T>)");
+    }
+
+    //jdk1.7
+    public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
+        throw DbException.getUnsupportedException("getObject(String, Class<T>)");
+    }
+
 }

@@ -10,7 +10,9 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.jdbc.JdbcConnection;
@@ -196,4 +198,8 @@ public class Driver implements java.sql.Driver {
         }
     }
 
+    //jdk1.7
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+        throw DbException.getUnsupportedException("getParentLogger()");
+    }
 }

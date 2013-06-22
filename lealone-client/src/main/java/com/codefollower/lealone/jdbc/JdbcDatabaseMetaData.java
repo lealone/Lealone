@@ -17,6 +17,7 @@ import java.sql.SQLException;
 
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.constant.SysProperties;
+import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.Trace;
 import com.codefollower.lealone.message.TraceObject;
 import com.codefollower.lealone.util.StatementBuilder;
@@ -2984,5 +2985,16 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
             prep.close();
         }
         return mode;
+    }
+
+    //jdk1.7
+    public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
+            throws SQLException {
+        throw DbException.getUnsupportedException("getPseudoColumns(String, String, String, String)");
+    }
+
+    //jdk1.7
+    public boolean generatedKeyAlwaysReturned() throws SQLException {
+        throw DbException.getUnsupportedException("generatedKeyAlwaysReturned()");
     }
 }

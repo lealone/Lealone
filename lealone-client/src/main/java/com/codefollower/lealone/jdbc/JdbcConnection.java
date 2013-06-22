@@ -23,6 +23,7 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Executor;
 
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.constant.Constants;
@@ -1773,6 +1774,31 @@ public class JdbcConnection extends TraceObject implements Connection {
      */
     public void setTraceLevel(int level) {
         trace.setLevel(level);
+    }
+
+    //jdk1.7
+    public void setSchema(String schema) throws SQLException {
+        throw DbException.getUnsupportedException("setSchema(String)");
+    }
+
+    //jdk1.7
+    public String getSchema() throws SQLException {
+        throw DbException.getUnsupportedException("getSchema()");
+    }
+
+    //jdk1.7
+    public void abort(Executor executor) throws SQLException {
+        throw DbException.getUnsupportedException("abort(Executor)");
+    }
+
+    //jdk1.7
+    public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
+        throw DbException.getUnsupportedException("setNetworkTimeout(Executor, int)");
+    }
+
+    //jdk1.7
+    public int getNetworkTimeout() throws SQLException {
+        throw DbException.getUnsupportedException("getNetworkTimeout()");
     }
 
 }
