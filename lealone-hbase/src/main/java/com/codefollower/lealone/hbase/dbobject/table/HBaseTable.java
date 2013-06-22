@@ -30,8 +30,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
-
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.CreateTableData;
 import com.codefollower.lealone.constant.ErrorCode;
@@ -547,18 +545,19 @@ public class HBaseTable extends TableBase {
     private static void createIfNotExists(Session session, String tableName, HTableDescriptor htd, byte[][] splitKeys) {
         try {
             HMaster master = ((HBaseSession) session).getMaster();
-            if (master != null && master.getTableDescriptors().get(tableName) == null) {
-                master.createTable(htd, splitKeys);
-                try {
-                    //确保表已可用
-                    while (true) {
-                        if (ZKTableReadOnly.isEnabledTable(master.getZooKeeperWatcher(), tableName))
-                            break;
-                        Thread.sleep(100);
-                    }
-                } catch (Exception e) {
-                    throw DbException.convert(e);
-                }
+            if (master != null && !HBaseUtils.getHBaseAdmin().tableExists(tableName)) {
+                HBaseUtils.getHBaseAdmin().createTable(htd, splitKeys);
+                //                master.createTable(htd, splitKeys);
+                //                try {
+                //                    //确保表已可用
+                //                    while (true) {
+                //                        if (ZKTableReadOnly.isEnabledTable(master.getZooKeeperWatcher(), tableName))
+                //                            break;
+                //                        Thread.sleep(100);
+                //                    }
+                //                } catch (Exception e) {
+                //                    throw DbException.convert(e);
+                //                }
             }
         } catch (IOException e) {
             throw DbException.convertIOException(e, "Failed to HMaster.createTable");
@@ -568,14 +567,19 @@ public class HBaseTable extends TableBase {
     private static void dropIfExists(Session session, String tableName) {
         try {
             HMaster master = ((HBaseSession) session).getMaster();
-            if (master != null && master.getTableDescriptors().get(tableName) != null) {
-                master.disableTable(Bytes.toBytes(tableName));
-                while (true) {
-                    if (ZKTableReadOnly.isDisabledTable(master.getZooKeeperWatcher(), tableName))
-                        break;
-                    Thread.sleep(100);
-                }
-                master.deleteTable(Bytes.toBytes(tableName));
+            //这种方式不准确，连续运行两次时，有一次取得到值，有一次取不到
+            //所以最准确的办法还是用HBaseAdmin检查
+            //if (master != null && master.getTableDescriptors().get(tableName) != null) {
+            if (master != null && HBaseUtils.getHBaseAdmin().tableExists(tableName)) {
+                HBaseUtils.getHBaseAdmin().disableTable(tableName);
+                HBaseUtils.getHBaseAdmin().deleteTable(tableName);
+                //                master.disableTable(Bytes.toBytes(tableName));
+                //                while (true) {
+                //                    if (ZKTableReadOnly.isDisabledTable(master.getZooKeeperWatcher(), tableName))
+                //                        break;
+                //                    Thread.sleep(100);
+                //                }
+                //                master.deleteTable(Bytes.toBytes(tableName));
             }
         } catch (Exception e) {
             throw DbException.convert(e); //Failed to HMaster.deleteTable
