@@ -75,9 +75,10 @@ public class TransactionStatusTable {
         }
     }
 
-    public void addRecord(Transaction transaction) {
+    public void addRecord(Transaction transaction, boolean isMaster) {
         Set<Transaction> transactions = transaction.getChildren();
-        transactions.add(transaction);
+        if (!isMaster)
+            transactions.add(transaction);
         if (transactions != null && !transactions.isEmpty()) {
             StringBuilder buff = new StringBuilder();
             for (Transaction t : transactions) {

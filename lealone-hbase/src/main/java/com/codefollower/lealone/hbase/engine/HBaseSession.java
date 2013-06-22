@@ -200,17 +200,21 @@ public class HBaseSession extends Session {
     public void commit(boolean ddl) {
         try {
             if (transaction != null) {
-                if (!getAutoCommit() && !undoRows.isEmpty()) {
+                if (!getAutoCommit() && (!undoRows.isEmpty() || isMaster())) { //从master发起的dml有可能没有undoRows
                     if (isRoot()) {
                         if (sessionRemoteCache.size() > 0)
                             parallelCommit();
-                        long tid = transaction.getTransactionId();
-                        long commitTimestamp = timestampService.nextOdd();
-                        transaction.setCommitTimestamp(commitTimestamp);
-                        transaction.setHostAndPort(getHostAndPort());
-                        checkConflict();
-                        transactionStatusTable.addRecord(transaction);
-                        Filter.committed.commit(tid, commitTimestamp);
+                        if (isMaster()) {
+                            transactionStatusTable.addRecord(transaction, isMaster());
+                        } else {
+                            long tid = transaction.getTransactionId();
+                            long commitTimestamp = timestampService.nextOdd();
+                            transaction.setCommitTimestamp(commitTimestamp);
+                            transaction.setHostAndPort(getHostAndPort());
+                            checkConflict();
+                            transactionStatusTable.addRecord(transaction, isMaster());
+                            Filter.committed.commit(tid, commitTimestamp);
+                        }
                     } else {
                         long tid = transaction.getTransactionId();
                         long commitTimestamp = timestampService.nextOdd();
