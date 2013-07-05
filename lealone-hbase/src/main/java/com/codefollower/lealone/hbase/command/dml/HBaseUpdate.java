@@ -33,12 +33,18 @@ public class HBaseUpdate extends Update implements UpdateOrDelete {
     @Override
     public void prepare() {
         super.prepare();
-        updateOrDeleteSupport.postPrepare(tableFilter);
+        if (tableFilter.getTable().isDistributed())
+            updateOrDeleteSupport.postPrepare(tableFilter);
+        else
+            setExecuteDirec(true);
     }
 
     @Override
     public int update() {
-        return updateOrDeleteSupport.update();
+        if (isExecuteDirec())
+            return super.update();
+        else
+            return updateOrDeleteSupport.update();
     }
 
     @Override

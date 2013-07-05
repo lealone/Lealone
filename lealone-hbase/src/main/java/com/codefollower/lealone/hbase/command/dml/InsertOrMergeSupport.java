@@ -30,6 +30,7 @@ import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.dml.Query;
 import com.codefollower.lealone.dbobject.table.Column;
+import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionInterface;
 import com.codefollower.lealone.expression.Expression;
@@ -73,8 +74,8 @@ public class InsertOrMergeSupport {
         this.isInsert = isInsert;
     }
 
-    public void postPrepare(HBaseTable table, Query query, ArrayList<Expression[]> list, Column[] columns, Column[] keys) {
-        this.table = table;
+    public void postPrepare(Table table, Query query, ArrayList<Expression[]> list, Column[] columns, Column[] keys) {
+        this.table = (HBaseTable) table;
         this.list = list;
         this.columns = columns;
         this.keys = keys;

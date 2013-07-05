@@ -22,7 +22,6 @@ package com.codefollower.lealone.hbase.command.dml;
 import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.expression.Expression;
-import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.value.Value;
 
@@ -42,12 +41,18 @@ public class HBaseInsert extends Insert implements InsertOrMerge {
     @Override
     public void prepare() {
         super.prepare();
-        insertOrMergeSupport.postPrepare(((HBaseTable) table), query, list, columns, null);
+        if (table.isDistributed())
+            insertOrMergeSupport.postPrepare(table, query, list, columns, null);
+        else
+            setExecuteDirec(true);
     }
 
     @Override
     public int update() {
-        return insertOrMergeSupport.update(insertFromSelect, sortedInsertMode, getParameters());
+        if (isExecuteDirec())
+            return super.update();
+        else
+            return insertOrMergeSupport.update(insertFromSelect, sortedInsertMode, getParameters());
     }
 
     @Override
