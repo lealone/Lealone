@@ -426,7 +426,7 @@ public abstract class Prepared {
         return command;
     }
 
-    private String[] localRegionNames;
+    protected String[] localRegionNames;
 
     public String[] getLocalRegionNames() {
         return localRegionNames;
