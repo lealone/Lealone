@@ -33,24 +33,36 @@ import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.dml.Select;
+import com.codefollower.lealone.constant.Constants;
+import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.dml.SQLRoutingInfo;
 import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.command.merge.HBaseMergedResult;
-import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseSerializedResult;
 import com.codefollower.lealone.hbase.result.HBaseSortedResult;
+import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.util.New;
 
 public class CommandParallel {
-    private final static ThreadPoolExecutor pool = getPool();
+    private final static ThreadPoolExecutor pool = initPool();
 
-    private static ThreadPoolExecutor getPool() {
-        //TODO 可配置的线程池 参数
-        ThreadPoolExecutor pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
-                Threads.newDaemonThreadFactory(CommandParallel.class.getSimpleName()));
+    private static ThreadPoolExecutor initPool() {
+        int corePoolSize = HBaseUtils.getConfiguration().getInt(Constants.PROJECT_NAME_PREFIX + "command.parallel.corePoolSize",
+                1);
+        int maximumPoolSize = HBaseUtils.getConfiguration().getInt(
+                Constants.PROJECT_NAME_PREFIX + "command.parallel.maximumPoolSize", 20);
+        int keepAliveTime = HBaseUtils.getConfiguration().getInt(
+                Constants.PROJECT_NAME_PREFIX + "command.parallel.keepAliveTime", 5);
+
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS,
+                new SynchronousQueue<Runnable>(), Threads.newDaemonThreadFactory(CommandParallel.class.getSimpleName()));
         pool.allowCoreThreadTimeOut(true);
 
+        return pool;
+    }
+
+    public static ThreadPoolExecutor getThreadPoolExecutor() {
         return pool;
     }
 
@@ -66,8 +78,9 @@ public class CommandParallel {
         return p.getSQL();
     }
 
-    public static ResultInterface executeQuery(HBaseSession session, SQLRoutingInfo sqlRoutingInfo, Select select,
-            final int maxRows, final boolean scrollable) {
+    public static ResultInterface executeQuery(Session session, SQLRoutingInfo sqlRoutingInfo, Select select, final int maxRows,
+            final boolean scrollable) {
+
         List<CommandInterface> commands = new ArrayList<CommandInterface>();
         if (sqlRoutingInfo.remoteCommands != null) {
             commands.addAll(sqlRoutingInfo.remoteCommands);

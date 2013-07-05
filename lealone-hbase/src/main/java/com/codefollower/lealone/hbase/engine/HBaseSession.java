@@ -27,14 +27,9 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.apache.hadoop.hbase.util.Threads;
-
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.User;
@@ -42,6 +37,7 @@ import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionRemote;
+import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.command.dml.HBaseInsert;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
@@ -60,7 +56,7 @@ import com.codefollower.lealone.util.New;
 public class HBaseSession extends Session {
     private static final CommitHashMap commitHashMap = new CommitHashMap();
     private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
-    private static ThreadPoolExecutor pool;
+    private static final ThreadPoolExecutor pool = CommandParallel.getThreadPoolExecutor();
 
     /**
      * HBase的HMaster对象，master和regionServer不可能同时非null
@@ -99,17 +95,6 @@ public class HBaseSession extends Session {
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
-
-        if (pool == null) {
-            synchronized (HBaseSession.class) {
-                if (pool == null) {
-                    //TODO 可配置的线程池参数
-                    pool = new ThreadPoolExecutor(1, 20, 5, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
-                            Threads.newDaemonThreadFactory(HBaseSession.class.getSimpleName()));
-                    pool.allowCoreThreadTimeOut(true);
-                }
-            }
-        }
     }
 
     public HMaster getMaster() {

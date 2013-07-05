@@ -57,7 +57,7 @@ public class HBaseSelect extends Select implements WithWhereClause {
         } else if (getLocalRegionNames() != null) {
             sqlRoutingInfo = new SQLRoutingInfo();
             sqlRoutingInfo.localRegions = Arrays.asList(getLocalRegionNames());
-            result = CommandParallel.executeQuery((HBaseSession) session, sqlRoutingInfo, this, limit, false);
+            result = CommandParallel.executeQuery(session, sqlRoutingInfo, this, limit, false);
         } else {
             try {
                 sqlRoutingInfo = HBaseUtils.getSQLRoutingInfo((HBaseSession) session, whereClauseSupport, this);
@@ -73,7 +73,7 @@ public class HBaseSelect extends Select implements WithWhereClause {
                 sqlRoutingInfo.remoteCommand.setFetchSize(getFetchSize());
                 result = sqlRoutingInfo.remoteCommand.executeQuery(limit, false);
             } else {
-                result = CommandParallel.executeQuery((HBaseSession) session, sqlRoutingInfo, this, limit, false);
+                result = CommandParallel.executeQuery(session, sqlRoutingInfo, this, limit, false);
             }
         }
 
