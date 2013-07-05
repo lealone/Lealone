@@ -23,10 +23,28 @@ import java.util.List;
 
 import com.codefollower.lealone.command.CommandRemote;
 
-public class Task {
+public class SQLRoutingInfo {
+    //localRegion/remoteCommand与localRegions/remoteCommands只会二选一
+    //localRegion与remoteCommand也只会二选一(或者localRegion为null，或者remoteCommand为null)
+    //localRegions与remoteCommands有可能不同时为null
+
+    /**
+     * 此SQL涉及的数据在本地RegionServer的某个Region里
+     */
     public String localRegion;
+
+    /**
+     * 此SQL涉及的数据在远程的某个RegionServer里, 建立一条到远程RegionServer的CommandRemote
+     */
     public CommandRemote remoteCommand;
 
+    /**
+     * 此SQL涉及的数据在本地RegionServer的多个Region里
+     */
     public List<String> localRegions;
+
+    /**
+     * 此SQL涉及的数据在远程的多个RegionServer里, 建立多条到远程RegionServer的CommandRemote
+     */
     public List<CommandRemote> remoteCommands;
 }

@@ -36,7 +36,7 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
     private final Prepared prepared;
 
     private boolean isBatch = false;
-    private Task task;
+    private SQLRoutingInfo sqlRoutingInfo;
 
     public UpdateOrDeleteSupport(Session session, UpdateOrDelete uod) {
         this.session = (HBaseSession) session;
@@ -59,18 +59,18 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
             if (prepared.getLocalRegionNames() != null) {
                 updateCount = call().intValue();
             } else {
-                task = HBaseUtils.parseRowKey(session, whereClauseSupport, prepared);
+                sqlRoutingInfo = HBaseUtils.getSQLRoutingInfo(session, whereClauseSupport, prepared);
 
-                if (task.localRegion != null) {
-                    whereClauseSupport.setRegionName(task.localRegion);
+                if (sqlRoutingInfo.localRegion != null) {
+                    whereClauseSupport.setRegionName(sqlRoutingInfo.localRegion);
                     updateCount = uod.internalUpdate();
-                } else if (task.remoteCommand != null) {
-                    updateCount = task.remoteCommand.executeUpdate();
+                } else if (sqlRoutingInfo.remoteCommand != null) {
+                    updateCount = sqlRoutingInfo.remoteCommand.executeUpdate();
                 } else {
-                    if (task.remoteCommands == null)
+                    if (sqlRoutingInfo.remoteCommands == null)
                         updateCount = call().intValue();
                     else
-                        updateCount = CommandParallel.executeUpdate(task, this);
+                        updateCount = CommandParallel.executeUpdate(sqlRoutingInfo, this);
                 }
             }
 
@@ -96,8 +96,8 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
                 whereClauseSupport.setRegionName(regionName);
                 updateCount += uod.internalUpdate();
             }
-        } else if (task.localRegions != null && !task.localRegions.isEmpty()) {
-            for (String regionName : task.localRegions) {
+        } else if (sqlRoutingInfo.localRegions != null && !sqlRoutingInfo.localRegions.isEmpty()) {
+            for (String regionName : sqlRoutingInfo.localRegions) {
                 whereClauseSupport.setRegionName(regionName);
                 updateCount += uod.internalUpdate();
             }

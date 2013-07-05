@@ -31,7 +31,7 @@ import com.codefollower.lealone.result.ResultTarget;
 
 public class HBaseSelect extends Select implements WithWhereClause {
     private final WhereClauseSupport whereClauseSupport = new WhereClauseSupport();
-    private Task task;
+    private SQLRoutingInfo sqlRoutingInfo;
 
     public HBaseSelect(Session session) {
         super(session);
@@ -55,25 +55,25 @@ public class HBaseSelect extends Select implements WithWhereClause {
             result = super.query(limit, target);
             addRowToResultTarget = false;
         } else if (getLocalRegionNames() != null) {
-            task = new Task();
-            task.localRegions = Arrays.asList(getLocalRegionNames());
-            result = CommandParallel.executeQuery((HBaseSession) session, task, this, limit, false);
+            sqlRoutingInfo = new SQLRoutingInfo();
+            sqlRoutingInfo.localRegions = Arrays.asList(getLocalRegionNames());
+            result = CommandParallel.executeQuery((HBaseSession) session, sqlRoutingInfo, this, limit, false);
         } else {
             try {
-                task = HBaseUtils.parseRowKey((HBaseSession) session, whereClauseSupport, this);
+                sqlRoutingInfo = HBaseUtils.getSQLRoutingInfo((HBaseSession) session, whereClauseSupport, this);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
 
-            if (task.localRegion != null) {
-                whereClauseSupport.setRegionName(task.localRegion);
+            if (sqlRoutingInfo.localRegion != null) {
+                whereClauseSupport.setRegionName(sqlRoutingInfo.localRegion);
                 result = super.query(limit, target);
                 addRowToResultTarget = false;
-            } else if (task.remoteCommand != null) {
-                task.remoteCommand.setFetchSize(getFetchSize());
-                result = task.remoteCommand.executeQuery(limit, false);
+            } else if (sqlRoutingInfo.remoteCommand != null) {
+                sqlRoutingInfo.remoteCommand.setFetchSize(getFetchSize());
+                result = sqlRoutingInfo.remoteCommand.executeQuery(limit, false);
             } else {
-                result = CommandParallel.executeQuery((HBaseSession) session, task, this, limit, false);
+                result = CommandParallel.executeQuery((HBaseSession) session, sqlRoutingInfo, this, limit, false);
             }
         }
 

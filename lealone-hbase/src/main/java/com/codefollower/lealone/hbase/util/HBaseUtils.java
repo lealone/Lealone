@@ -47,7 +47,7 @@ import org.apache.hadoop.hbase.util.Pair;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.constant.ErrorCode;
-import com.codefollower.lealone.hbase.command.dml.Task;
+import com.codefollower.lealone.hbase.command.dml.SQLRoutingInfo;
 import com.codefollower.lealone.hbase.command.dml.WhereClauseSupport;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
@@ -403,8 +403,8 @@ public class HBaseUtils {
         return false;
     }
 
-    public static Task parseRowKey(HBaseSession session, WhereClauseSupport whereClauseSupport, Prepared prepared)
-            throws Exception {
+    public static SQLRoutingInfo getSQLRoutingInfo( //
+            HBaseSession session, WhereClauseSupport whereClauseSupport, Prepared prepared) throws Exception {
 
         byte[] tableName = whereClauseSupport.getTableNameAsBytes();
         Value startValue = whereClauseSupport.getStartRowKeyValue();
@@ -440,14 +440,14 @@ public class HBaseUtils {
             }
         }
 
-        Task task = new Task();
+        SQLRoutingInfo sqlRoutingInfo = new SQLRoutingInfo();
 
         if (oneRegion) {
             HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, start);
             if (isLocal(session, hri)) {
-                task.localRegion = hri.getRegionName();
+                sqlRoutingInfo.localRegion = hri.getRegionName();
             } else {
-                task.remoteCommand = SessionRemotePool.getCommandRemote(session, prepared.getParameters(),
+                sqlRoutingInfo.remoteCommand = SessionRemotePool.getCommandRemote(session, prepared.getParameters(),
                         hri.getRegionServerURL(), createSQL(hri.getRegionName(), sql));
             }
         } else {
@@ -457,10 +457,10 @@ public class HBaseUtils {
                 for (byte[] startKey : startKeys) {
                     HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
                     if (HBaseUtils.isLocal(session, hri)) {
-                        if (task.localRegions == null)
-                            task.localRegions = New.arrayList();
+                        if (sqlRoutingInfo.localRegions == null)
+                            sqlRoutingInfo.localRegions = New.arrayList();
 
-                        task.localRegions.add(hri.getRegionName());
+                        sqlRoutingInfo.localRegions.add(hri.getRegionName());
                     } else {
                         list = servers.get(hri.getRegionServerURL());
                         if (list == null) {
@@ -481,17 +481,17 @@ public class HBaseUtils {
                 }
 
                 for (Map.Entry<String, List<HBaseRegionInfo>> e : servers.entrySet()) {
-                    if (task.remoteCommands == null)
-                        task.remoteCommands = New.arrayList();
-                    task.remoteCommands.add(SessionRemotePool.getCommandRemote(session, prepared.getParameters(), e.getKey(),
-                            HBaseUtils.createSQL(e.getValue(), planSQL)));
+                    if (sqlRoutingInfo.remoteCommands == null)
+                        sqlRoutingInfo.remoteCommands = New.arrayList();
+                    sqlRoutingInfo.remoteCommands.add(SessionRemotePool.getCommandRemote(session, prepared.getParameters(),
+                            e.getKey(), HBaseUtils.createSQL(e.getValue(), planSQL)));
                 }
 
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
-        return task;
+        return sqlRoutingInfo;
     }
 
     public static String createSQL(String regionName, String sql) {

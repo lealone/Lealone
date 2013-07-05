@@ -33,7 +33,7 @@ import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.dml.Select;
-import com.codefollower.lealone.hbase.command.dml.Task;
+import com.codefollower.lealone.hbase.command.dml.SQLRoutingInfo;
 import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.command.merge.HBaseMergedResult;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
@@ -66,17 +66,17 @@ public class CommandParallel {
         return p.getSQL();
     }
 
-    public static ResultInterface executeQuery(HBaseSession session, Task task, Select select, final int maxRows,
-            final boolean scrollable) {
+    public static ResultInterface executeQuery(HBaseSession session, SQLRoutingInfo sqlRoutingInfo, Select select,
+            final int maxRows, final boolean scrollable) {
         List<CommandInterface> commands = new ArrayList<CommandInterface>();
-        if (task.remoteCommands != null) {
-            commands.addAll(task.remoteCommands);
-            for (CommandRemote c : task.remoteCommands) {
+        if (sqlRoutingInfo.remoteCommands != null) {
+            commands.addAll(sqlRoutingInfo.remoteCommands);
+            for (CommandRemote c : sqlRoutingInfo.remoteCommands) {
                 c.setFetchSize(select.getFetchSize());
             }
         }
-        if (task.localRegions != null) {
-            for (String regionName : task.localRegions) {
+        if (sqlRoutingInfo.localRegions != null) {
+            for (String regionName : sqlRoutingInfo.localRegions) {
                 Prepared p = session.prepare(planSQL(select), true);
                 p.setExecuteDirec(true);
                 p.setFetchSize(select.getFetchSize());
@@ -147,9 +147,9 @@ public class CommandParallel {
         return updateCount;
     }
 
-    public static int executeUpdate(Task task, Callable<Integer> call) {
+    public static int executeUpdate(SQLRoutingInfo sqlRoutingInfo, Callable<Integer> call) {
         int updateCount = 0;
-        List<CommandRemote> commands = task.remoteCommands;
+        List<CommandRemote> commands = sqlRoutingInfo.remoteCommands;
         int size = commands.size() + 1;
         List<Future<Integer>> futures = New.arrayList(size);
         futures.add(pool.submit(call));
