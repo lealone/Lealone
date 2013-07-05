@@ -19,36 +19,6 @@
  */
 package com.codefollower.lealone.hbase.command.dml;
 
-import com.codefollower.lealone.command.dml.Update;
-import com.codefollower.lealone.engine.Session;
-
-public class HBaseUpdate extends Update implements UpdateOrDelete {
-    private final UpdateOrDeleteSupport updateOrDeleteSupport;
-
-    public HBaseUpdate(Session session) {
-        super(session);
-        updateOrDeleteSupport = new UpdateOrDeleteSupport(session, this);
-    }
-
-    @Override
-    public void prepare() {
-        super.prepare();
-        updateOrDeleteSupport.postPrepare(tableFilter);
-    }
-
-    @Override
-    public int update() {
-        return updateOrDeleteSupport.update();
-    }
-
-    @Override
-    public WhereClauseSupport getWhereClauseSupport() {
-        return updateOrDeleteSupport.getWhereClauseSupport();
-    }
-
-    @Override
-    public int internalUpdate() {
-        return super.update();
-    }
-
+public interface UpdateOrDelete extends WithWhereClause {
+    int internalUpdate();
 }
