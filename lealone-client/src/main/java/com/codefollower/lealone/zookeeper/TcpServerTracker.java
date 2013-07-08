@@ -29,7 +29,7 @@ import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.message.DbException;
 
 public class TcpServerTracker extends ZooKeeperListener {
-    private static final String TCP_SERVER_NODE = "/" + Constants.PROJECT_NAME + "/server";
+    private static final String TCP_SERVER_NODE = "/" + Constants.PROJECT_NAME + "/" + Constants.TCP_SERVER_NAME;
     private NavigableSet<String> servers = new TreeSet<String>();
 
     private String masterAddress;

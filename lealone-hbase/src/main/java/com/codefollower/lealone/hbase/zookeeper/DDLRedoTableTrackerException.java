@@ -19,22 +19,22 @@
  */
 package com.codefollower.lealone.hbase.zookeeper;
 
-public class MetaTableTrackerException extends RuntimeException {
+public class DDLRedoTableTrackerException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
-    public MetaTableTrackerException() {
+    public DDLRedoTableTrackerException() {
         super();
     }
 
-    public MetaTableTrackerException(String message) {
+    public DDLRedoTableTrackerException(String message) {
         super(message);
     }
 
-    public MetaTableTrackerException(String message, Throwable cause) {
+    public DDLRedoTableTrackerException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public MetaTableTrackerException(Throwable cause) {
+    public DDLRedoTableTrackerException(Throwable cause) {
         super(cause);
     }
 }

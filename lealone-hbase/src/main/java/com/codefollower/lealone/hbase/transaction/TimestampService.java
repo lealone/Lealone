@@ -31,7 +31,7 @@ public class TimestampService {
             Constants.PROJECT_NAME_PREFIX + "timestamp.batch", 100000);
 
     private final TimestampServiceTable timestampServiceTable;
-    private final long first;
+    private long first;
     private long last;
     private long maxTimestamp;
 
@@ -52,6 +52,12 @@ public class TimestampService {
     private void addBatch() throws IOException {
         maxTimestamp += TIMESTAMP_BATCH;
         timestampServiceTable.updateLastMaxTimestamp(maxTimestamp);
+    }
+
+    public synchronized void reset() throws IOException {
+        first = last = maxTimestamp = 0;
+        timestampServiceTable.updateLastMaxTimestamp(0);
+        addBatch();
     }
 
     //事务用奇数版本号

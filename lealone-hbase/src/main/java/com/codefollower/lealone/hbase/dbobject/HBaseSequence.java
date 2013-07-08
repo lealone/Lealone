@@ -24,7 +24,6 @@ import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.Sequence;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionInterface;
-import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -56,14 +55,7 @@ public class HBaseSequence extends Sequence {
                     si.close();
             }
         } else if (s.getMaster() != null) {
-            HBaseDatabase db = (HBaseDatabase) session.getDatabase();
-            boolean oldNeedToAddRedoRecord = db.isNeedToAddRedoRecord();
-            try {
-                db.setNeedToAddRedoRecord(false);
-                super.flush(session);
-            } finally {
-                db.setNeedToAddRedoRecord(oldNeedToAddRedoRecord);
-            }
+            super.flush(session);
         }
     }
 

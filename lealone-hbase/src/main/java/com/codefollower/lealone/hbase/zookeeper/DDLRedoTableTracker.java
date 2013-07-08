@@ -24,18 +24,18 @@ import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
-import com.codefollower.lealone.hbase.metadata.MetaTable;
+import com.codefollower.lealone.hbase.metadata.DDLRedoTable;
 
-public class MetaTableTracker extends ZooKeeperListener {
-    private final MetaTable table;
+public class DDLRedoTableTracker extends ZooKeeperListener {
+    private final DDLRedoTable table;
     private int redoPos;
 
-    public MetaTableTracker(ZooKeeperWatcher watcher, MetaTable table) {
+    public DDLRedoTableTracker(ZooKeeperWatcher watcher, DDLRedoTable table) {
         super(watcher);
         this.table = table;
     }
 
-    public void start() throws MetaTableTrackerException {
+    public void start() throws DDLRedoTableTrackerException {
         watcher.registerListener(this);
         redoPos = getRedoPos(true);
     }
@@ -53,14 +53,14 @@ public class MetaTableTracker extends ZooKeeperListener {
                 table.redoRecords(startPos, stopPos);
                 redoPos = newRedoPos;
             } catch (Exception e) {
-                throw new MetaTableTrackerException(e);
+                throw new DDLRedoTableTrackerException(e);
             }
         }
     }
 
     @Override
     public void nodeDataChanged(String path) {
-        if (path.equals(ZooKeeperAdmin.METATABLE_NODE)) {
+        if (path.equals(ZooKeeperAdmin.DDL_REDO_TABLE_NODE)) {
             refresh();
         }
     }
@@ -69,15 +69,15 @@ public class MetaTableTracker extends ZooKeeperListener {
         try {
             byte[] data = null;
             if (watch)
-                data = ZKUtil.getDataAndWatch(watcher, ZooKeeperAdmin.METATABLE_NODE);
+                data = ZKUtil.getDataAndWatch(watcher, ZooKeeperAdmin.DDL_REDO_TABLE_NODE);
             else
-                data = ZKUtil.getData(watcher, ZooKeeperAdmin.METATABLE_NODE);
+                data = ZKUtil.getData(watcher, ZooKeeperAdmin.DDL_REDO_TABLE_NODE);
             if (data != null && data.length > 0) {
                 return Bytes.toInt(data);
             }
             return 1;
         } catch (Exception e) {
-            throw new MetaTableTrackerException(e);
+            throw new DDLRedoTableTrackerException(e);
         }
     }
 }

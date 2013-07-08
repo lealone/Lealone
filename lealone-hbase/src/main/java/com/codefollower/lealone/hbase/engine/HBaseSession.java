@@ -101,8 +101,14 @@ public class HBaseSession extends Session {
         return master;
     }
 
+    public TimestampService getTimestampService() {
+        return timestampService;
+    }
+
     public void setMaster(HMaster master) {
         this.master = master;
+        if (master != null)
+            this.timestampService = HBaseMasterObserver.getTimestampService();
     }
 
     public boolean isMaster() {
@@ -115,7 +121,7 @@ public class HBaseSession extends Session {
 
     public void setRegionServer(HRegionServer regionServer) {
         this.regionServer = regionServer;
-        if (regionServer != null) //不管Master的情况
+        if (regionServer != null)
             this.timestampService = ((com.codefollower.lealone.hbase.engine.HBaseRegionServer) regionServer)
                     .getTimestampService();
     }

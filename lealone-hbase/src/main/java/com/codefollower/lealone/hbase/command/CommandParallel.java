@@ -66,16 +66,13 @@ public class CommandParallel {
         return pool;
     }
 
-    private static String planSQL(Prepared p) {
-        if (p.isQuery()) {
-            Select select = (Select) p;
-            if (select.isGroupQuery())
-                return select.getPlanSQL(true);
-            else if (select.getSortOrder() != null && select.getOffset() != null) //分布式排序时不使用Offset
-                return select.getPlanSQL(false, false);
-        }
-
-        return p.getSQL();
+    private static String planSQL(Select select) {
+        if (select.isGroupQuery())
+            return select.getPlanSQL(true);
+        else if (select.getSortOrder() != null && select.getOffset() != null) //分布式排序时不使用Offset
+            return select.getPlanSQL(false, false);
+        else
+            return select.getSQL();
     }
 
     public static ResultInterface executeQuery(Session session, SQLRoutingInfo sqlRoutingInfo, Select select, final int maxRows,

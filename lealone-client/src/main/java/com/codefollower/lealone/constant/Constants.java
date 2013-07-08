@@ -23,6 +23,8 @@ public class Constants {
      */
     public static final String PROJECT_NAME_PREFIX = PROJECT_NAME + ".";
 
+    public static final String TCP_SERVER_NAME = "tcp_server";
+
     /**
      * The build date is updated for each public release.
      */

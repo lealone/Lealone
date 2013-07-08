@@ -48,28 +48,46 @@ public class DefineCommandWrapper extends DefineCommand {
 
     @Override
     public int update() {
-        CommandInterface c = SessionRemotePool.getMasterCommandRemote(session.getOriginalProperties(), sql, getParameters());
-        try {
-            return c.executeUpdate();
-        } finally {
-            c.close();
-            refreshMetaTable();
+        if (isExecuteDirec()) {
+            return dc.update();
+        } else if (session.isMaster()) {
+            try {
+                int updateCount = dc.update();
+                session.getDatabase().addDDLRedoRecord(session, sql);
+                return updateCount;
+            } finally {
+            }
+        } else {
+            CommandInterface c = SessionRemotePool.getMasterCommandRemote(session.getOriginalProperties(), sql, getParameters());
+            try {
+                return c.executeUpdate();
+            } finally {
+                c.close();
+                refreshMetaTable();
+            }
         }
     }
 
     @Override
     public ResultInterface query(int maxRows) {
-        CommandInterface c = SessionRemotePool.getMasterCommandRemote(session.getOriginalProperties(), sql, getParameters());
-        try {
-            return c.executeQuery(maxRows, false);
-        } finally {
-            c.close();
-            refreshMetaTable();
+        if (session.isMaster()) {
+            try {
+                return dc.query(maxRows);
+            } finally {
+            }
+        } else {
+            CommandInterface c = SessionRemotePool.getMasterCommandRemote(session.getOriginalProperties(), sql, getParameters());
+            try {
+                return c.executeQuery(maxRows, false);
+            } finally {
+                c.close();
+                refreshMetaTable();
+            }
         }
     }
 
     private void refreshMetaTable() {
-        session.getDatabase().refreshMetaTable();
+        session.getDatabase().refreshDDLRedoTable();
         try {
             HBaseUtils.reset(); //执行完DDL后，元数据已变动，清除HConnection中的相关缓存
         } catch (IOException e) {

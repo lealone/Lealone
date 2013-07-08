@@ -34,8 +34,8 @@ import com.codefollower.lealone.hbase.util.HBaseUtils;
 
 public class ZooKeeperAdmin {
     public static final String LEALONE_NODE = "/" + Constants.PROJECT_NAME;
-    public static final String METATABLE_NODE = ZKUtil.joinZNode(LEALONE_NODE, "metatable");
-    public static final String TCP_SERVER_NODE = ZKUtil.joinZNode(LEALONE_NODE, "server");
+    public static final String DDL_REDO_TABLE_NODE = ZKUtil.joinZNode(LEALONE_NODE, "ddl_redo_table");
+    public static final String TCP_SERVER_NODE = ZKUtil.joinZNode(LEALONE_NODE, Constants.TCP_SERVER_NAME);
     public static final String PG_SERVER_NODE = ZKUtil.joinZNode(LEALONE_NODE, "pg_server");
 
     private static Abortable abortable = newAbortable();
@@ -75,7 +75,7 @@ public class ZooKeeperAdmin {
     public static void createBaseZNodes() {
         try {
             ZKUtil.createAndFailSilent(getZooKeeperWatcher(), LEALONE_NODE);
-            ZKUtil.createAndFailSilent(getZooKeeperWatcher(), METATABLE_NODE);
+            ZKUtil.createAndFailSilent(getZooKeeperWatcher(), DDL_REDO_TABLE_NODE);
             ZKUtil.createAndFailSilent(getZooKeeperWatcher(), TCP_SERVER_NODE);
             ZKUtil.createAndFailSilent(getZooKeeperWatcher(), PG_SERVER_NODE);
         } catch (Exception e) {

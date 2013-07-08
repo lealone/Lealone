@@ -299,7 +299,7 @@ public class HBaseParser extends Parser {
         try {
             return super.readTableOrView(tableName);
         } catch (Exception e) {
-            ((HBaseDatabase) database).refreshMetaTable();
+            ((HBaseDatabase) database).refreshDDLRedoTable();
             return super.readTableOrView(tableName);
         }
     }
@@ -312,7 +312,7 @@ public class HBaseParser extends Parser {
         //2. RegionServer碰到DDL时都转给Master处理
         if (session.isMaster() && !(p instanceof DefineCommand) && !(p instanceof TransactionCommand)) {
             //throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
-        } else if (p instanceof DefineCommand && session.isRegionServer()) {
+        } else if (p instanceof DefineCommand) {
             p = new DefineCommandWrapper(session, (DefineCommand) p, sql);
         }
         return p;

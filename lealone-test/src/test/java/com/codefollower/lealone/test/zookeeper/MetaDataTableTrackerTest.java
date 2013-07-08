@@ -31,35 +31,35 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.data.Stat;
 
 import com.codefollower.lealone.hbase.util.HBaseUtils;
-import com.codefollower.lealone.hbase.zookeeper.MetaTableTrackerException;
+import com.codefollower.lealone.hbase.zookeeper.DDLRedoTableTrackerException;
 
-public class H2MetaTableTrackerTest implements Abortable {
+public class MetaDataTableTrackerTest implements Abortable {
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
     @SuppressWarnings("unused")
     public static void main(String[] args) throws Exception {
-        H2MetaTableTrackerTest test1 = new H2MetaTableTrackerTest();
-        H2MetaTableTrackerTest test2 = new H2MetaTableTrackerTest();
-        H2MetaTableTrackerTest test3 = new H2MetaTableTrackerTest(false);
+        MetaDataTableTrackerTest test1 = new MetaDataTableTrackerTest();
+        MetaDataTableTrackerTest test2 = new MetaDataTableTrackerTest();
+        MetaDataTableTrackerTest test3 = new MetaDataTableTrackerTest(false);
 
-        ZKUtil.setData(test3.watcher, H2MetaTableTracker.NODE_NAME, Bytes.toBytes(System.currentTimeMillis()));
+        ZKUtil.setData(test3.watcher, MetaDataTableTracker.NODE_NAME, Bytes.toBytes(System.currentTimeMillis()));
         Thread.sleep(2000);
     }
 
     public static void main1(String[] args) throws Exception {
-        H2MetaTableTrackerTest test = new H2MetaTableTrackerTest();
+        MetaDataTableTrackerTest test = new MetaDataTableTrackerTest();
 
-        String node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(120));
+        String node = ZKUtil.joinZNode(MetaDataTableTracker.NODE_NAME, Integer.toString(120));
         ZKUtil.deleteNodeRecursively(test.watcher, node);
         //ZKUtil.deleteNodeFailSilent(test.watcher, node);
         ZKUtil.createAndWatch(test.watcher, node, EMPTY_BYTE_ARRAY);
         ZKUtil.createAndWatch(test.watcher, node + "/ddd", EMPTY_BYTE_ARRAY);
 
-        node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(130));
+        node = ZKUtil.joinZNode(MetaDataTableTracker.NODE_NAME, Integer.toString(130));
         ZKUtil.deleteNodeFailSilent(test.watcher, node);
         ZKUtil.createAndWatch(test.watcher, node, EMPTY_BYTE_ARRAY);
 
-        node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(140));
+        node = ZKUtil.joinZNode(MetaDataTableTracker.NODE_NAME, Integer.toString(140));
         ZKUtil.deleteNodeFailSilent(test.watcher, node);
         ZKUtil.createAndWatch(test.watcher, node, EMPTY_BYTE_ARRAY);
 
@@ -83,23 +83,23 @@ public class H2MetaTableTrackerTest implements Abortable {
         ZKUtil.getDataAndWatch(test.watcher, node, stat);
         System.out.println("stat.getVersion()=" + stat.getVersion());
 
-        node = ZKUtil.joinZNode(H2MetaTableTracker.NODE_NAME, Integer.toString(150));
+        node = ZKUtil.joinZNode(MetaDataTableTracker.NODE_NAME, Integer.toString(150));
         ZKUtil.createEphemeralNodeAndWatch(test.watcher, node, EMPTY_BYTE_ARRAY);
 
     }
 
     private final ZooKeeperWatcher watcher;
-    private final H2MetaTableTracker tracker;
+    private final MetaDataTableTracker tracker;
 
-    public H2MetaTableTrackerTest() throws Exception {
-        watcher = new ZooKeeperWatcher(HBaseUtils.getConfiguration(), "H2MetaTableTrackerTest", this);
-        tracker = new H2MetaTableTracker(watcher);
+    public MetaDataTableTrackerTest() throws Exception {
+        watcher = new ZooKeeperWatcher(HBaseUtils.getConfiguration(), "MetaDataTableTrackerTest", this);
+        tracker = new MetaDataTableTracker(watcher);
         tracker.start();
     }
 
-    public H2MetaTableTrackerTest(boolean start) throws Exception {
-        watcher = new ZooKeeperWatcher(HBaseUtils.getConfiguration(), "H2MetaTableTrackerTest", this);
-        tracker = new H2MetaTableTracker(watcher);
+    public MetaDataTableTrackerTest(boolean start) throws Exception {
+        watcher = new ZooKeeperWatcher(HBaseUtils.getConfiguration(), "MetaDataTableTrackerTest", this);
+        tracker = new MetaDataTableTracker(watcher);
         if (start)
             tracker.start();
     }
@@ -115,16 +115,16 @@ public class H2MetaTableTrackerTest implements Abortable {
         return false;
     }
 
-    public static class H2MetaTableTracker extends ZooKeeperListener {
+    public static class MetaDataTableTracker extends ZooKeeperListener {
         public static final String NODE_NAME = "/lealone/metatable2";
         private static final int NODE_NAME_LENGTH = NODE_NAME.length();
         private final NavigableSet<Integer> objectIDs = new TreeSet<Integer>();
 
-        public H2MetaTableTracker(ZooKeeperWatcher watcher) {
+        public MetaDataTableTracker(ZooKeeperWatcher watcher) {
             super(watcher);
         }
 
-        public void start() throws MetaTableTrackerException {
+        public void start() throws DDLRedoTableTrackerException {
             watcher.registerListener(this);
             try {
                 ZKUtil.createAndFailSilent(watcher, "/lealone");
@@ -136,7 +136,7 @@ public class H2MetaTableTrackerTest implements Abortable {
                 System.out.println("start: objectIDs=" + objectIDs);
                 add(objectIDs, false);
             } catch (Exception e) {
-                throw new MetaTableTrackerException(e);
+                throw new DDLRedoTableTrackerException(e);
             }
         }
 
@@ -189,7 +189,7 @@ public class H2MetaTableTrackerTest implements Abortable {
                     System.out.println("objectIDs=" + objectIDs);
                     add(objectIDs, true);
                 } catch (Exception e) {
-                    throw new MetaTableTrackerException(e);
+                    throw new DDLRedoTableTrackerException(e);
                 }
             }
         }
@@ -214,7 +214,7 @@ public class H2MetaTableTrackerTest implements Abortable {
                 try {
                     //int id = Integer.valueOf(path.substring(NODE_NAME_LENGTH + 1));
                 } catch (Exception e) {
-                    throw new MetaTableTrackerException(e);
+                    throw new DDLRedoTableTrackerException(e);
                 }
             }
         }

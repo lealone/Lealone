@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
 import org.apache.hadoop.hbase.master.HMaster;
 
 import com.codefollower.lealone.hbase.server.HBaseTcpServer;
+import com.codefollower.lealone.hbase.transaction.TimestampService;
 
 /**
  * 
@@ -35,11 +36,23 @@ import com.codefollower.lealone.hbase.server.HBaseTcpServer;
  */
 public class HBaseMasterObserver extends BaseMasterObserver {
     private static HBaseTcpServer server;
+    private static String hostAndPort;
+    private static TimestampService timestampService;
+
+    public static TimestampService getTimestampService() {
+        if (hostAndPort == null)
+            throw new IllegalStateException("TCP server is not started");
+        if (timestampService == null)
+            timestampService = new TimestampService(hostAndPort);
+        return timestampService;
+    }
 
     @Override
     public synchronized void start(CoprocessorEnvironment env) throws IOException {
         if (server == null) {
             HMaster m = (HMaster) ((MasterCoprocessorEnvironment) env).getMasterServices();
+            hostAndPort = m.getServerName().getHostAndPort();
+            timestampService = null;
             server = new HBaseTcpServer(m);
             server.start();
         }

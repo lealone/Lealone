@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Set;
 
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -37,26 +34,9 @@ import com.codefollower.lealone.transaction.Transaction;
 
 public class TransactionStatusTable {
     private final static byte[] TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "transaction_status_table");
-    private final static byte[] FAMILY = Bytes.toBytes("f");
     //final static byte[] START_TIMESTAMP = Bytes.toBytes("t");
     private final static byte[] SERVER = Bytes.toBytes("s");
     private final static byte[] COMMIT_TIMESTAMP = Bytes.toBytes("c");
-
-    public synchronized static void createTableIfNotExists() throws Exception {
-        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
-        if (!admin.tableExists(TABLE_NAME)) {
-            HColumnDescriptor hcd = new HColumnDescriptor(FAMILY);
-            hcd.setMaxVersions(Integer.MAX_VALUE);
-
-            HTableDescriptor htd = new HTableDescriptor(TABLE_NAME);
-            htd.addFamily(hcd);
-            admin.createTable(htd);
-        }
-    }
-
-    public synchronized static void dropTableIfExists() throws Exception {
-        MetaDataAdmin.dropTableIfExists(TABLE_NAME);
-    }
 
     private final static TransactionStatusTable st = new TransactionStatusTable();
 
@@ -68,7 +48,7 @@ public class TransactionStatusTable {
 
     private TransactionStatusTable() {
         try {
-            createTableIfNotExists();
+            MetaDataAdmin.createTableIfNotExists(TABLE_NAME);
             table = new HTable(HBaseUtils.getConfiguration(), TABLE_NAME);
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -98,8 +78,9 @@ public class TransactionStatusTable {
                 buff.setLength(0);
                 rowKey = Bytes.toBytes(buff.append(t.getHostAndPort()).append(':').append(t.getTransactionId()).toString());
                 put = new Put(rowKey);
-                put.add(FAMILY, SERVER, t.getTransactionId(), Bytes.toBytes(serverStr));
-                put.add(FAMILY, COMMIT_TIMESTAMP, t.getTransactionId(), Bytes.toBytes(t.getCommitTimestamp()));
+                put.add(MetaDataAdmin.DEFAULT_FAMILY, SERVER, t.getTransactionId(), Bytes.toBytes(serverStr));
+                put.add(MetaDataAdmin.DEFAULT_FAMILY, COMMIT_TIMESTAMP, t.getTransactionId(),
+                        Bytes.toBytes(t.getCommitTimestamp()));
                 list.add(put);
             }
 
@@ -118,8 +99,8 @@ public class TransactionStatusTable {
             long commitTimestamp = -1;
             Result r = table.get(get);
             if (r != null && !r.isEmpty()) {
-                commitTimestamp = Bytes.toLong(r.getValue(FAMILY, COMMIT_TIMESTAMP));
-                String serverStr = Bytes.toString(r.getValue(FAMILY, SERVER));
+                commitTimestamp = Bytes.toLong(r.getValue(MetaDataAdmin.DEFAULT_FAMILY, COMMIT_TIMESTAMP));
+                String serverStr = Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_FAMILY, SERVER));
                 String[] servers = serverStr.split(",");
                 for (String server : servers) {
                     get = new Get(Bytes.toBytes(server));

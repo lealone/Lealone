@@ -22,11 +22,9 @@ package com.codefollower.lealone.hbase.engine;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-
+import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.DbObject;
-import com.codefollower.lealone.dbobject.SchemaObject;
 import com.codefollower.lealone.dbobject.User;
 import com.codefollower.lealone.engine.ConnectionInfo;
 import com.codefollower.lealone.engine.Database;
@@ -34,34 +32,21 @@ import com.codefollower.lealone.engine.DatabaseEngine;
 import com.codefollower.lealone.engine.MetaRecord;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTableEngine;
-import com.codefollower.lealone.hbase.metadata.MetaTable;
+import com.codefollower.lealone.hbase.metadata.DDLRedoTable;
+import com.codefollower.lealone.hbase.metadata.MetaDataTable;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.util.New;
 
 public class HBaseDatabase extends Database {
 
-    public HBaseDatabase(DatabaseEngine dbEngine) {
-        super(dbEngine, false);
-    }
-
     private boolean isMaster;
     private boolean isRegionServer;
-    private MetaTable metaTable;
-    private HashMap<Integer, Pair> dbObjectMap;
+    private MetaDataTable metaDataTable;
+    private DDLRedoTable ddlRedoTable;
     private boolean fromZookeeper;
-    private boolean needToAddRedoRecord = true;
 
-    public boolean isNeedToAddRedoRecord() {
-        return needToAddRedoRecord;
-    }
-
-    public void setNeedToAddRedoRecord(boolean needToAddRedoRecord) {
-        this.needToAddRedoRecord = needToAddRedoRecord;
-    }
-
-    private static class Pair {
-        Session session;
-        DbObject dbObject;
+    public HBaseDatabase(DatabaseEngine dbEngine) {
+        super(dbEngine, false);
     }
 
     @Override
@@ -73,9 +58,12 @@ public class HBaseDatabase extends Database {
     public void init(ConnectionInfo ci, String cipher) {
         this.isMaster = "M".equalsIgnoreCase(ci.getProperty("SERVER_TYPE"));
         this.isRegionServer = "RS".equalsIgnoreCase(ci.getProperty("SERVER_TYPE"));
-        dbObjectMap = New.hashMap();
         setCloseDelay(-1); //session关闭时不马上关闭数据库
         super.init(ci, cipher);
+    }
+
+    public boolean isFromZookeeper() {
+        return fromZookeeper;
     }
 
     public boolean isMaster() {
@@ -86,22 +74,17 @@ public class HBaseDatabase extends Database {
         return isRegionServer;
     }
 
-    public boolean isFromZookeeper() {
-        return fromZookeeper;
-    }
-
-    public void refreshMetaTable() {
-        if (metaTable != null)
-            metaTable.getMetaTableTracker().refresh();
+    public void refreshDDLRedoTable() {
+        if (ddlRedoTable != null)
+            ddlRedoTable.getDDLRedoTableTracker().refresh();
     }
 
     @Override
     public synchronized void removeMeta(Session session, int id) {
         if (id > 0) {
             objectIds.clear(id);
-            dbObjectMap.remove(id);
-            if (!starting && isMaster && !fromZookeeper && metaTable != null)
-                metaTable.removeRecord(id);
+            if (!starting && isMaster && metaDataTable != null)
+                metaDataTable.removeRecord(id);
         }
     }
 
@@ -112,8 +95,9 @@ public class HBaseDatabase extends Database {
         starting = true;
 
         try {
-            metaTable = new MetaTable(this);
-            metaTable.loadMetaRecords(records);
+            ddlRedoTable = new DDLRedoTable(this);
+            metaDataTable = new MetaDataTable();
+            metaDataTable.loadMetaRecords(records);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -132,26 +116,12 @@ public class HBaseDatabase extends Database {
         return new HBaseSession(this, user, id);
     }
 
-    public void executeMetaRecord(MetaRecord rec) {
-        rec.execute(this, systemSession, eventListener);
-    }
-
-    public synchronized void removeDatabaseObject(int id) {
-        if (isMaster())
-            return;
+    public void executeSQL(String sql) {
         try {
             fromZookeeper = true;
-
-            Pair p = dbObjectMap.get(id);
-            //p为null时有可能是refresh时调用过了
-            if (p != null && p.dbObject != null) {
-                if (p.dbObject instanceof SchemaObject)
-                    removeSchemaObject(p.session, (SchemaObject) p.dbObject);
-                else
-                    removeDatabaseObject(p.session, p.dbObject);
-
-                isSysTableLockedThenUnlock(p.session);
-            }
+            Prepared p = systemSession.prepare(sql, true);
+            p.setExecuteDirec(true);
+            p.update();
         } finally {
             fromZookeeper = false;
         }
@@ -162,13 +132,9 @@ public class HBaseDatabase extends Database {
         int id = obj.getId();
         if (id > 0 && !obj.isTemporary()) {
             objectIds.set(id);
-            Pair p = new Pair();
-            p.session = session;
-            p.dbObject = obj;
-            dbObjectMap.put(id, p);
 
-            if (!starting && isMaster && !fromZookeeper && metaTable != null) {
-                metaTable.addRecord(new MetaRecord(obj));
+            if (!starting && isMaster && metaDataTable != null) {
+                metaDataTable.addRecord(new MetaRecord(obj));
             }
         }
     }
@@ -179,34 +145,27 @@ public class HBaseDatabase extends Database {
         int id = obj.getId();
         //removeMeta(session, id); //并不删除记录
         if (id > 0 && !starting) {
-            dbObjectMap.remove(id);
-            Pair p = new Pair();
-            p.session = session;
-            p.dbObject = obj;
-            dbObjectMap.put(id, p);
-
-            if (isMaster && !fromZookeeper && metaTable != null) {
-                metaTable.updateRecord(new MetaRecord(obj));
+            if (isMaster && metaDataTable != null) {
+                metaDataTable.updateRecord(new MetaRecord(obj));
             }
         }
-
     }
 
-    @Override
-    public synchronized void removeSchemaObject(Session session, SchemaObject obj) {
-        //父SchemaObject删除时会顺带删除子SchemaObject，但是又会从ZK上接收到删除子SchemaObject的请求
-        if (isRegionServer && dbObjectMap.get(obj.getId()) == null) {
-            return;
+    public synchronized void addDDLRedoRecord(HBaseSession session, String sql) {
+        if (!starting && isMaster && ddlRedoTable != null) {
+            ddlRedoTable.addRecord(session, sql);
         }
-        super.removeSchemaObject(session, obj);
     }
 
     @Override
     protected synchronized void close(boolean fromShutdownHook) {
         super.close(fromShutdownHook);
 
-        if (metaTable != null)
-            metaTable.close();
+        if (metaDataTable != null)
+            metaDataTable.close();
+
+        if (ddlRedoTable != null)
+            ddlRedoTable.close();
     }
 
     @Override

@@ -21,13 +21,33 @@ package com.codefollower.lealone.hbase.metadata;
 
 import java.io.IOException;
 
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 
 public class MetaDataAdmin {
     public final static String META_DATA_PREFIX = Constants.PROJECT_NAME + "_";
+    public final static byte[] DEFAULT_FAMILY = Bytes.toBytes("f");
+
+    public synchronized static void createTableIfNotExists(byte[] tableName) throws IOException {
+        createTableIfNotExists(tableName, DEFAULT_FAMILY);
+    }
+
+    public synchronized static void createTableIfNotExists(byte[] tableName, byte[] family) throws IOException {
+        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
+        if (!admin.tableExists(tableName)) {
+            HColumnDescriptor hcd = new HColumnDescriptor(family);
+            hcd.setMaxVersions(1); //只需要保留最新版本即可
+
+            HTableDescriptor htd = new HTableDescriptor(tableName);
+            htd.addFamily(hcd);
+            admin.createTable(htd);
+        }
+    }
 
     public synchronized static void dropTableIfExists(byte[] tableName) throws IOException {
         HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
