@@ -34,6 +34,8 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.KeeperException;
 
+import com.codefollower.lealone.message.DbException;
+
 public class PgPortTracker extends ZooKeeperListener {
 
     /*
@@ -53,7 +55,7 @@ public class PgPortTracker extends ZooKeeperListener {
             ZKUtil.createEphemeralNodeAndWatch(ZooKeeperAdmin.getZooKeeperWatcher(),
                     getPgPortEphemeralNodePath(sn, port, isMaster), HConstants.EMPTY_BYTE_ARRAY);
         } catch (KeeperException e) {
-            throw new PgPortTrackerException(e);
+            throw DbException.convert(e);
         }
     }
 
@@ -61,7 +63,7 @@ public class PgPortTracker extends ZooKeeperListener {
         try {
             ZKUtil.deleteNode(ZooKeeperAdmin.getZooKeeperWatcher(), getPgPortEphemeralNodePath(sn, port, isMaster));
         } catch (KeeperException e) {
-            throw new PgPortTrackerException(e);
+            throw DbException.convert(e);
         }
     }
 

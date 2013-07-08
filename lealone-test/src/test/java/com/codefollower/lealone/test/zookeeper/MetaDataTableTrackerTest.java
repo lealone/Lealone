@@ -31,7 +31,7 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.apache.zookeeper.data.Stat;
 
 import com.codefollower.lealone.hbase.util.HBaseUtils;
-import com.codefollower.lealone.hbase.zookeeper.DDLRedoTableTrackerException;
+import com.codefollower.lealone.message.DbException;
 
 public class MetaDataTableTrackerTest implements Abortable {
     public static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
@@ -124,7 +124,7 @@ public class MetaDataTableTrackerTest implements Abortable {
             super(watcher);
         }
 
-        public void start() throws DDLRedoTableTrackerException {
+        public void start() {
             watcher.registerListener(this);
             try {
                 ZKUtil.createAndFailSilent(watcher, "/lealone");
@@ -136,7 +136,7 @@ public class MetaDataTableTrackerTest implements Abortable {
                 System.out.println("start: objectIDs=" + objectIDs);
                 add(objectIDs, false);
             } catch (Exception e) {
-                throw new DDLRedoTableTrackerException(e);
+                throw DbException.convert(e);
             }
         }
 
@@ -189,7 +189,7 @@ public class MetaDataTableTrackerTest implements Abortable {
                     System.out.println("objectIDs=" + objectIDs);
                     add(objectIDs, true);
                 } catch (Exception e) {
-                    throw new DDLRedoTableTrackerException(e);
+                    throw DbException.convert(e);
                 }
             }
         }
@@ -214,7 +214,7 @@ public class MetaDataTableTrackerTest implements Abortable {
                 try {
                     //int id = Integer.valueOf(path.substring(NODE_NAME_LENGTH + 1));
                 } catch (Exception e) {
-                    throw new DDLRedoTableTrackerException(e);
+                    throw DbException.convert(e);
                 }
             }
         }

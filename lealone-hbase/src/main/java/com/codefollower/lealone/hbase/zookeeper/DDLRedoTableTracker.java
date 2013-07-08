@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
 import com.codefollower.lealone.hbase.metadata.DDLRedoTable;
+import com.codefollower.lealone.message.DbException;
 
 public class DDLRedoTableTracker extends ZooKeeperListener {
     private final DDLRedoTable table;
@@ -35,7 +36,7 @@ public class DDLRedoTableTracker extends ZooKeeperListener {
         this.table = table;
     }
 
-    public void start() throws DDLRedoTableTrackerException {
+    public void start() {
         watcher.registerListener(this);
         redoPos = getRedoPos(true);
     }
@@ -53,7 +54,7 @@ public class DDLRedoTableTracker extends ZooKeeperListener {
                 table.redoRecords(startPos, stopPos);
                 redoPos = newRedoPos;
             } catch (Exception e) {
-                throw new DDLRedoTableTrackerException(e);
+                throw DbException.convert(e);
             }
         }
     }
@@ -77,7 +78,7 @@ public class DDLRedoTableTracker extends ZooKeeperListener {
             }
             return 1;
         } catch (Exception e) {
-            throw new DDLRedoTableTrackerException(e);
+            throw DbException.convert(e);
         }
     }
 }
