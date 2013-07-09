@@ -1043,15 +1043,6 @@ public class TableFilter implements ColumnResolver {
 
     private boolean parsed = false;
 
-    public SearchRow[] getStartAndEndSearchRow() {
-        if (!parsed) {
-            parsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-
-        }
-        return new SearchRow[] { cursor.getStartSearchRow(), cursor.getEndSearchRow() };
-    }
-
     public SearchRow getStartSearchRow() {
         if (!parsed) {
             parsed = true;
