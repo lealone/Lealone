@@ -1123,10 +1123,6 @@ public class Select extends Query {
     }
 
     public String getPlanSQL(boolean isDistributed) {
-        return getPlanSQL(isDistributed, true);
-    }
-
-    public String getPlanSQL(boolean isDistributed, boolean withOffset) {
         // can not use the field sqlStatement because the parameter
         // indexes may be incorrect: ? may be in fact ?2 for a subquery
         // but indexes may be set manually as well
@@ -1207,10 +1203,18 @@ public class Select extends Query {
                 buff.append(StringUtils.unEnclose(o.getSQL()));
             }
         }
-        if (withOffset && limitExpr != null) {
-            buff.append("\nLIMIT ").append(StringUtils.unEnclose(limitExpr.getSQL(isDistributed)));
-            if (offsetExpr != null) {
-                buff.append(" OFFSET ").append(StringUtils.unEnclose(offsetExpr.getSQL(isDistributed)));
+        if (limitExpr != null) {
+            if (isDistributed) {
+                int limit = limitExpr.getValue(session).getInt();
+                if (offsetExpr != null)
+                    limit += offsetExpr.getValue(session).getInt();
+
+                buff.append("\nLIMIT ").append(limit);
+            } else {
+                buff.append("\nLIMIT ").append(StringUtils.unEnclose(limitExpr.getSQL(isDistributed)));
+                if (offsetExpr != null) {
+                    buff.append(" OFFSET ").append(StringUtils.unEnclose(offsetExpr.getSQL(isDistributed)));
+                }
             }
         }
         if (sampleSize != 0) {

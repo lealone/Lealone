@@ -368,6 +368,13 @@ public class HBaseUtils {
         return false;
     }
 
+    public static String getPlanSQL(Select select) {
+        if (select.isGroupQuery() || select.getLimit() != null)
+            return select.getPlanSQL(true);
+        else
+            return select.getSQL();
+    }
+
     public static SQLRoutingInfo getSQLRoutingInfo( //
             HBaseSession session, WhereClauseSupport whereClauseSupport, Prepared prepared) throws Exception {
 
@@ -437,13 +444,8 @@ public class HBaseUtils {
                 }
 
                 String planSQL = sql;
-                if (prepared.isQuery()) {
-                    Select select = (Select) prepared;
-                    if (select.isGroupQuery())
-                        planSQL = select.getPlanSQL(true);
-                    else if (select.getSortOrder() != null && select.getOffset() != null) //分布式排序时不使用Offset
-                        planSQL = select.getPlanSQL(false, false);
-                }
+                if (prepared.isQuery())
+                    planSQL = getPlanSQL((Select) prepared);
 
                 for (Map.Entry<String, List<HBaseRegionInfo>> e : servers.entrySet()) {
                     if (sqlRoutingInfo.remoteCommands == null)

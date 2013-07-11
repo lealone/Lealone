@@ -66,15 +66,6 @@ public class CommandParallel {
         return pool;
     }
 
-    private static String planSQL(Select select) {
-        if (select.isGroupQuery())
-            return select.getPlanSQL(true);
-        else if (select.getSortOrder() != null && select.getOffset() != null) //分布式排序时不使用Offset
-            return select.getPlanSQL(false, false);
-        else
-            return select.getSQL();
-    }
-
     public static ResultInterface executeQuery(Session session, SQLRoutingInfo sqlRoutingInfo, Select select, final int maxRows,
             final boolean scrollable) {
 
@@ -87,7 +78,7 @@ public class CommandParallel {
         }
         if (sqlRoutingInfo.localRegions != null) {
             for (String regionName : sqlRoutingInfo.localRegions) {
-                Prepared p = session.prepare(planSQL(select), true);
+                Prepared p = session.prepare(HBaseUtils.getPlanSQL(select), true);
                 p.setExecuteDirec(true);
                 p.setFetchSize(select.getFetchSize());
                 if (p instanceof WithWhereClause) {
