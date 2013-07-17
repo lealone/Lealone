@@ -64,6 +64,8 @@ public class SelectTest extends TestBase {
         orderBy();
         groupBy();
         limit();
+
+        tableAlias();
     }
 
     private void where() throws Exception {
@@ -96,6 +98,13 @@ public class SelectTest extends TestBase {
         sql = "SELECT f1, f2, cf2.f3 FROM SelectTest ORDER BY f2 desc LIMIT 2";
         assertEquals("l", getStringValue(2, true));
         //printResultSet();
+    }
+
+    private void tableAlias() throws Exception {
+        //当使用表别名时，不能使用"表别名.字段名"的形式，
+        //必须使用"表别名.列族名.字段名"
+        sql = "SELECT st.cf1.f1 FROM SelectTest st";
+        printResultSet();
     }
 
     void testAggregate() throws Exception {
