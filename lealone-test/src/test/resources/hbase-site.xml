@@ -33,6 +33,11 @@
 	</property>
 
 	<property>
+		<name>hbase.coprocessor.region.classes</name>
+		<value>org.apache.hadoop.hbase.coprocessor.AggregateImplementation</value>
+	</property>
+
+	<property>
 		<name>lealone.master.tcp.port</name>
 		<value>9091</value>
 		<description>

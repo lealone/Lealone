@@ -138,10 +138,10 @@ public abstract class BenchWrite extends BenchBase {
         long start = System.nanoTime();
         for (int i = startKey; i < endKey; i++) {
             Put put = new Put(b("RK" + i));
-            put.add(cf, id, b(i));
-            put.add(cf, name, b("zhh-2009"));
-            put.add(cf, age, b(30L));
-            put.add(cf, salary, b(3000.50F));
+            put.add(cf, id, 2, b(i));
+            put.add(cf, name, 2, b("zhh-2009"));
+            put.add(cf, age, 2, b(30L));
+            put.add(cf, salary, 2, b(3000.50F));
             t.put(put);
         }
         long end = System.nanoTime();
@@ -156,10 +156,10 @@ public abstract class BenchWrite extends BenchBase {
         long start = System.nanoTime();
         for (int i = startKey; i < endKey; i++) {
             Put put = new Put(b("RK" + i));
-            put.add(cf, id, b(i));
-            put.add(cf, name, b("zhh-2009"));
-            put.add(cf, age, b(30L));
-            put.add(cf, salary, b(3000.50F));
+            put.add(cf, id, 2, b(i));
+            put.add(cf, name, 2, b("zhh-2009"));
+            put.add(cf, age, 2, b(30L));
+            put.add(cf, salary, 2, b(3000.50F));
             puts.add(put);
         }
         t.put(puts);
