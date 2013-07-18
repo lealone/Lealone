@@ -50,6 +50,7 @@ public class JoinTest extends TestBase {
         stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(2, 20, 'b1', true)");
         stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(3, 30, 'a2', false)");
         stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(4, 40, 'b2', true)");
+        stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(5, 80, 'b2', true)");
 
         stmt.executeUpdate("insert into JoinTest2(_rowkey_, id2, name2) values(1, 60, 'a11')");
         stmt.executeUpdate("insert into JoinTest2(_rowkey_, id2, name2) values(2, 70, 'a11')");
@@ -103,6 +104,13 @@ public class JoinTest extends TestBase {
         sql = "SELECT rownum, * FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1._rowkey_ = 1 and JoinTest2._rowkey_ = 2";
 
         sql = "SELECT rownum, id, id2 FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1._rowkey_ = 1 and JoinTest2._rowkey_ = 2";
+
+        //sql = "SELECT rownum, * FROM JoinTest1";
+        //printResultSet();
+
+        sql = "SELECT rownum, t1.cf.id FROM JoinTest1 t1 JOIN JoinTest2 t2";
+
+        sql = "SELECT rownum, t1.cf.id FROM JoinTest1 t1 JOIN JoinTest2 t2 WHERE t1.cf.id = t2.cf.id2";
 
         //sql = "SELECT rownum, * FROM JoinTest1";
         printResultSet();

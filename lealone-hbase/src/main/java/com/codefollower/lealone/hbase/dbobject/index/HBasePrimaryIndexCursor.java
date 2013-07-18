@@ -36,6 +36,7 @@ import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.TableFilter;
+import com.codefollower.lealone.expression.Expression;
 import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
@@ -46,6 +47,7 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueString;
 
@@ -105,7 +107,16 @@ public class HBasePrimaryIndexCursor implements Cursor {
                 throw new RuntimeException(e);
             }
         } else if (filter.getSelect() != null && filter.getSelect().getTopTableFilter() != filter) {
-            subqueryResult = filter.getSelect().query(-1);
+            StringBuilder buff = new StringBuilder("SELECT * FROM ");
+            buff.append(filter.getTable().getSQL());
+            Expression filterCondition = filter.getFilterCondition();
+            if (filterCondition != null) {
+                buff.append(" WHERE ").append(StringUtils.unEnclose(filterCondition.getSQL()));
+            }
+            Prepared prepared = session.prepare(buff.toString(), true);
+            columns = Arrays.asList(filter.getTable().getColumns());
+            columnCount = columns.size();
+            subqueryResult = prepared.query(-1);
         } else {
             byte[] startKey = HConstants.EMPTY_BYTE_ARRAY;
             byte[] endKey = HConstants.EMPTY_BYTE_ARRAY;
@@ -160,7 +171,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
 
             Value rowKey = data2[0];
             if (columns != null) {
-                int i = 1;
+                int i = 0;
                 for (Column c : columns) {
                     data[c.getColumnId()] = data2[i++];
                 }
