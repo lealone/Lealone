@@ -109,14 +109,15 @@ public class ExpressionColumn extends Expression {
                 mapColumn(resolver, c, level);
                 return;
             }
+
+            if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
+                return;
+            }
+            if (schemaName != null && !database.equalsIdentifiers(schemaName, resolver.getSchemaName())) {
+                return;
+            }
+
             String fullColumnName = t.getFullColumnName(columnFamilyName, columnName);
-            //            for (Column col : resolver.getSelect().getColumns()) {
-            //                String n = col.getFullName();
-            //                if (database.equalsIdentifiers(fullColumnName, n)) {
-            //                    mapColumn(resolver, col, level);
-            //                    return;
-            //                }
-            //            }
             for (Column col : t.getColumns()) {
                 String n = col.getFullName();
                 if (database.equalsIdentifiers(fullColumnName, n)) {
@@ -125,9 +126,6 @@ public class ExpressionColumn extends Expression {
                     return;
                 }
             }
-            //            Column c = t.getColumn(fullColumnName);
-            //            resolver.getSelect().addColumn(c);
-            //            mapColumn(resolver, c, level);
             return;
         } else {
             if (columnFamilyName != null) {

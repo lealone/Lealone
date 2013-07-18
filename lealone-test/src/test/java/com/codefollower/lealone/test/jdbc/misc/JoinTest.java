@@ -19,6 +19,8 @@
  */
 package com.codefollower.lealone.test.jdbc.misc;
 
+import static junit.framework.Assert.assertEquals;
+
 import org.junit.Test;
 
 import com.codefollower.lealone.test.jdbc.TestBase;
@@ -105,15 +107,22 @@ public class JoinTest extends TestBase {
 
         sql = "SELECT rownum, id, id2 FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1._rowkey_ = 1 and JoinTest2._rowkey_ = 2";
 
-        //sql = "SELECT rownum, * FROM JoinTest1";
-        //printResultSet();
+        sql = "SELECT rownum, * FROM JoinTest1";
+        printResultSet();
 
         sql = "SELECT rownum, t1.cf.id FROM JoinTest1 t1 JOIN JoinTest2 t2";
 
         sql = "SELECT rownum, t1.cf.id FROM JoinTest1 t1 JOIN JoinTest2 t2 WHERE t1.cf.id = t2.cf.id2";
-
-        //sql = "SELECT rownum, * FROM JoinTest1";
         printResultSet();
+
+        sql = "SELECT count(*) FROM JoinTest1 t1 JOIN JoinTest2 t2 WHERE t1.cf.id = t2.cf.id2";
+        assertEquals(1, getIntValue(1, true));
+
+        sql = "SELECT t1.cf.name FROM JoinTest1 t1 join JoinTest4 t4 ON t1.cf.id = t4.cf.id";
+        printResultSet();
+
+        sql = "SELECT count(*) FROM JoinTest1 t1 join JoinTest4 t4 ON t1.cf.id = t4.cf.id";
+        assertEquals(4, getIntValue(1, true));
 
     }
 }
