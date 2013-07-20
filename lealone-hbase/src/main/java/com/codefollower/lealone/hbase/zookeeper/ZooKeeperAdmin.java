@@ -37,6 +37,7 @@ public class ZooKeeperAdmin {
     public static final String DDL_REDO_TABLE_NODE = ZKUtil.joinZNode(LEALONE_NODE, "ddl_redo_table");
     public static final String TCP_SERVER_NODE = ZKUtil.joinZNode(LEALONE_NODE, Constants.TCP_SERVER_NAME);
     public static final String PG_SERVER_NODE = ZKUtil.joinZNode(LEALONE_NODE, "pg_server");
+    public static final String REGION_LOCATION_CACHE_NODE = ZKUtil.joinZNode(LEALONE_NODE, "region_location_cache");
 
     private static Abortable abortable = newAbortable();
     private static ZooKeeperWatcher watcher;
@@ -78,6 +79,7 @@ public class ZooKeeperAdmin {
             ZKUtil.createAndFailSilent(getZooKeeperWatcher(), DDL_REDO_TABLE_NODE);
             ZKUtil.createAndFailSilent(getZooKeeperWatcher(), TCP_SERVER_NODE);
             ZKUtil.createAndFailSilent(getZooKeeperWatcher(), PG_SERVER_NODE);
+            ZKUtil.createAndFailSilent(getZooKeeperWatcher(), REGION_LOCATION_CACHE_NODE);
         } catch (Exception e) {
             throw new ZooKeeperAdminException("createBaseZNodes()", e);
         }

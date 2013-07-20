@@ -21,6 +21,7 @@ package com.codefollower.lealone.hbase.engine;
 
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
 
 import com.codefollower.lealone.hbase.server.HBasePgServer;
 import com.codefollower.lealone.hbase.server.HBaseTcpServer;
@@ -36,6 +37,12 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
 
     public HBaseRegionServer(Configuration conf) throws IOException, InterruptedException {
         super(conf);
+        String classes = conf.get(CoprocessorHost.REGION_COPROCESSOR_CONF_KEY, null);
+        if (classes == null)
+            classes = RegionLocationCacheObserver.class.getName();
+        else
+            classes += "," + RegionLocationCacheObserver.class.getName();
+        conf.set(CoprocessorHost.REGION_COPROCESSOR_CONF_KEY, classes);
     }
 
     public TimestampService getTimestampService() {
