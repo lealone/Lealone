@@ -1041,23 +1041,23 @@ public class TableFilter implements ColumnResolver {
         void accept(TableFilter f);
     }
 
-    private boolean parsed = false;
+    private boolean indexConditionsParsed = false;
 
     public void setIndexConditionsParsed(boolean parsed) {
-        this.parsed = false;
+        this.indexConditionsParsed = parsed;
     }
 
     public SearchRow getStartSearchRow() {
-        if (!parsed) {
-            parsed = true;
+        if (!indexConditionsParsed) {
+            indexConditionsParsed = true;
             cursor.parseIndexConditions(session, indexConditions);
         }
         return cursor.getStartSearchRow();
     }
 
     public SearchRow getEndSearchRow() {
-        if (!parsed) {
-            parsed = true;
+        if (!indexConditionsParsed) {
+            indexConditionsParsed = true;
             cursor.parseIndexConditions(session, indexConditions);
         }
         return cursor.getEndSearchRow();
