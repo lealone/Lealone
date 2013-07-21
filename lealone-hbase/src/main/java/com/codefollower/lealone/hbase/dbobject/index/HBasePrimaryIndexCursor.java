@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
@@ -47,6 +48,7 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
+import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueString;
@@ -217,13 +219,30 @@ public class HBasePrimaryIndexCursor implements Cursor {
             return false;
 
         try {
+            Transaction transaction = session.getTransaction();
+            List<KeyValue> kvs;
+            KeyValue kv;
+            Result r;
+            long queryTimestamp;
             result = session.getRegionServer().next(scannerId, fetchSize);
             ArrayList<Result> list = new ArrayList<Result>(result.length);
             try {
                 for (int i = 0; i < result.length; i++) {
-                    Result r = result[i];
+                    r = result[i];
+                    kvs = r.list();
+                    //当Result.isEmpty=true时，r.list()也返回null，所以这里不用再判断kvs.isEmpty
+                    if (kvs != null) {
+                        kv = kvs.get(0);
+                        queryTimestamp = kv.getTimestamp();
+                        if (queryTimestamp < transaction.getStartTimestamp() & queryTimestamp % 2 == 0) {
+                            if (kv.getValueLength() != 0) //kv已删除，不需要再处理
+                                list.add(r);
+                            continue;
+                        }
+                    }
 
-                    r = new Result(Filter.filter(session.getRegionServer(), regionName, session.getTransaction(), r.list(), 1));
+                    //TODO Filter.filter很慢
+                    r = new Result(Filter.filter(session.getRegionServer(), regionName, transaction, kvs, 1));
                     if (!r.isEmpty())
                         list.add(r);
                 }
