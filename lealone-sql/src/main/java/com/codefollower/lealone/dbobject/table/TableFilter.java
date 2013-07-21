@@ -1041,21 +1041,13 @@ public class TableFilter implements ColumnResolver {
         void accept(TableFilter f);
     }
 
-    private boolean parsed = false;
-
     public SearchRow getStartSearchRow() {
-        if (!parsed) {
-            parsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-        }
+        cursor.parseIndexConditions(session, indexConditions);
         return cursor.getStartSearchRow();
     }
 
     public SearchRow getEndSearchRow() {
-        if (!parsed) {
-            parsed = true;
-            cursor.parseIndexConditions(session, indexConditions);
-        }
+        cursor.parseIndexConditions(session, indexConditions);
         return cursor.getEndSearchRow();
     }
 
