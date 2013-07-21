@@ -377,7 +377,7 @@ public class HBaseUtils {
 
     public static SQLRoutingInfo getSQLRoutingInfo( //
             HBaseSession session, WhereClauseSupport whereClauseSupport, Prepared prepared) throws Exception {
-
+        whereClauseSupport.getTableFilter().setIndexConditionsParsed(false);
         byte[] tableName = whereClauseSupport.getTableNameAsBytes();
         Value startValue = whereClauseSupport.getStartRowKeyValue();
         Value endValue = whereClauseSupport.getEndRowKeyValue();

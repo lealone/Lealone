@@ -43,6 +43,10 @@ public class WhereClauseSupport {
             tableNameAsBytes = ((HBaseTable) tableFilter.getTable()).getTableNameAsBytes();
     }
 
+    public TableFilter getTableFilter() {
+        return tableFilter;
+    }
+
     public byte[] getTableNameAsBytes() {
         return tableNameAsBytes;
     }
