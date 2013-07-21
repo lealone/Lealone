@@ -143,6 +143,10 @@ public class BenchBase {
         return Bytes.toBytes(v);
     }
 
+    public byte[] b(double v) {
+        return Bytes.toBytes(v);
+    }
+
     public String s(byte[] bytes) {
         return Bytes.toString(bytes);
     }

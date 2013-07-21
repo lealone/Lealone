@@ -77,7 +77,7 @@ public class BenchAggregation extends BenchWrite {
     public void createTable() throws Exception {
         stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS " + tableName + " (" //
                 + "SPLIT KEYS('RK120000','RK140000','RK160000','RK180000'), " //预分region
-                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary float))");
+                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary double))");
     }
 
     long testCount() throws Exception {

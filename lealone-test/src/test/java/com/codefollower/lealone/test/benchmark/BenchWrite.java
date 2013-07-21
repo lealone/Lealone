@@ -141,7 +141,7 @@ public abstract class BenchWrite extends BenchBase {
             put.add(cf, id, 2, b(i));
             put.add(cf, name, 2, b("zhh-2009"));
             put.add(cf, age, 2, b(30L));
-            put.add(cf, salary, 2, b(3000.50F));
+            put.add(cf, salary, 2, b(3000.50D));
             t.put(put);
         }
         long end = System.nanoTime();
@@ -159,7 +159,7 @@ public abstract class BenchWrite extends BenchBase {
             put.add(cf, id, 2, b(i));
             put.add(cf, name, 2, b("zhh-2009"));
             put.add(cf, age, 2, b(30L));
-            put.add(cf, salary, 2, b(3000.50F));
+            put.add(cf, salary, 2, b(3000.50D));
             puts.add(put);
         }
         t.put(puts);
@@ -175,7 +175,7 @@ public abstract class BenchWrite extends BenchBase {
             ps.setInt(2, i);
             ps.setString(3, "zhh-2009");
             ps.setLong(4, 30L);
-            ps.setFloat(5, 3000.50F);
+            ps.setDouble(5, 3000.50D);
             ps.executeUpdate();
         }
         long end = System.nanoTime();
@@ -193,7 +193,7 @@ public abstract class BenchWrite extends BenchBase {
             s.append(i).append(",");
             s.append("'zhh-2009',");
             s.append(30L).append(",");
-            s.append(3000.50F).append(")");
+            s.append(3000.50D).append(")");
             stmt.executeUpdate(s.toString());
         }
         long end = System.nanoTime();
@@ -210,7 +210,7 @@ public abstract class BenchWrite extends BenchBase {
             ps.setInt(2, i);
             ps.setString(3, "zhh-2009");
             ps.setLong(4, 30L);
-            ps.setFloat(5, 3000.50F);
+            ps.setDouble(5, 3000.50D);
             ps.executeUpdate();
         }
         conn.commit();
@@ -231,7 +231,7 @@ public abstract class BenchWrite extends BenchBase {
             s.append(i).append(",");
             s.append("'zhh-2009',");
             s.append(30L).append(",");
-            s.append(3000.50F).append(")");
+            s.append(3000.50D).append(")");
             stmt.executeUpdate(s.toString());
         }
         conn.commit();

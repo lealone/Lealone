@@ -32,6 +32,6 @@ public class BenchWriteForStandaloneMode extends BenchWrite {
 
     public void createTable() throws Exception {
         stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS " + tableName + "(" //
-                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary float))");
+                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary double))");
     }
 }
