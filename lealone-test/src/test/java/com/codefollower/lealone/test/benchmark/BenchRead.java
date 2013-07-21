@@ -25,15 +25,10 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 
-public class BenchRead extends BenchWrite {
-    public static void main(String[] args) throws Exception {
-        new BenchRead(10000, 20000).run();
-    }
+public abstract class BenchRead extends BenchWrite {
 
-    private Scan scan;
-
-    public BenchRead(int startKey, int endKey) {
-        super("BENCHREAD", startKey, endKey);
+    public BenchRead(String tableName, int startKey, int endKey) {
+        super(tableName, startKey, endKey);
     }
 
     public void p_ns(String m, long v) {
@@ -48,17 +43,13 @@ public class BenchRead extends BenchWrite {
     }
 
     public void run() throws Exception {
-
-        scan = new Scan();
-        scan.addFamily(b("CF"));
-
         init();
         createTable();
         initHTable();
 
-        ps = conn.prepareStatement("select * from BenchRead where _rowkey_=?");
+        ps = conn.prepareStatement("select * from " + tableName + " where _rowkey_=?");
 
-        ResultSet rs = stmt.executeQuery("select * from BenchRead where _rowkey_='RK" + startKey + "'");
+        ResultSet rs = stmt.executeQuery("select * from " + tableName + " where _rowkey_='RK" + startKey + "'");
         if (!rs.next())
             testHBaseBatch();
         rs.close();
@@ -90,7 +81,7 @@ public class BenchRead extends BenchWrite {
         avg_ns();
 
         ps.close();
-        ps = conn.prepareStatement("select * from BenchRead where _rowkey_>=?");
+        ps = conn.prepareStatement("select * from " + tableName + " where _rowkey_>=?");
         step = 100;
         startKey = endKey - 1000;
         loop = (endKey - startKey) / step;
@@ -112,15 +103,9 @@ public class BenchRead extends BenchWrite {
 
     }
 
-    @Override
-    public void createTable() throws Exception {
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS " + tableName + " (" //
-                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary double))");
-    }
-
     long testGetStatement(int rk) throws Exception {
         long start = System.nanoTime();
-        stmt.executeQuery("select * from BenchRead where _rowkey_='RK" + rk + "'");
+        stmt.executeQuery("select * from " + tableName + " where _rowkey_='RK" + rk + "'");
         long end = System.nanoTime();
         p_ns("testGetStatement()", end - start);
         return end - start;
@@ -147,7 +132,7 @@ public class BenchRead extends BenchWrite {
 
     long testScanStatement(int rk) throws Exception {
         long start = System.nanoTime();
-        ResultSet rs = stmt.executeQuery("select * from BenchRead where _rowkey_>='RK" + rk + "'");
+        ResultSet rs = stmt.executeQuery("select * from " + tableName + " where _rowkey_>='RK" + rk + "'");
         int count = 0;
         while (rs.next())
             count++;
