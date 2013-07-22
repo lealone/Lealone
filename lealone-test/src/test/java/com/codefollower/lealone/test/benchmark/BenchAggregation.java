@@ -27,7 +27,7 @@ import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
 
 public class BenchAggregation extends BenchWrite {
     public static void main(String[] args) throws Exception {
-        new BenchAggregation(100000, 200000).run();
+        new BenchAggregation(1000000, 2000000).run();
     }
 
     private AggregationClient ac;
@@ -36,12 +36,26 @@ public class BenchAggregation extends BenchWrite {
     private Scan scan;
 
     public BenchAggregation(int startKey, int endKey) {
-        super("BENCHAGGREGATION", startKey, endKey);
-        loop = 3;
+        super("BenchAggregation", startKey, endKey);
+        loop = 2;
+    }
+
+    @Override
+    public void createTable() throws Exception {
+        StringBuilder s = new StringBuilder();
+        for (int i = startKey; i < endKey; i += 100000) {
+            if (i != startKey)
+                s.append(',');
+            s.append("'RK").append(i).append("'");
+        }
+
+        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS " + tableName + " (" //
+                + "SPLIT KEYS(" + s + "), " //预分region
+                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary double))");
     }
 
     public void run() throws Exception {
-        tableNameAsBytes = b(tableName);
+        tableNameAsBytes = b(tableName.toUpperCase());
         ci = new LongColumnInterpreter();
         scan = new Scan();
         scan.addFamily(b("CF"));
@@ -51,7 +65,9 @@ public class BenchAggregation extends BenchWrite {
         initHTable();
         ac = new AggregationClient(conf);
 
-        testHBaseBatch();
+        ResultSet rs = stmt.executeQuery("select * from " + tableName + " where _rowkey_='RK" + startKey + "'");
+        if (!rs.next())
+            testHBaseBatch();
 
         for (int i = 0; i < loop; i++) {
             total += testCount();
@@ -64,26 +80,24 @@ public class BenchAggregation extends BenchWrite {
         }
         avg();
 
+        stmt.setFetchSize(500);
+        for (int i = 0; i < loop; i++) {
+            total += testCount();
+        }
+        avg();
+
         for (int i = 0; i < loop; i++) {
             total += testHBaseCount();
         }
         avg();
-
-        //new HBaseAdmin(conf).flush(tableName);
-
-    }
-
-    @Override
-    public void createTable() throws Exception {
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS " + tableName + " (" //
-                + "SPLIT KEYS('RK120000','RK140000','RK160000','RK180000'), " //预分region
-                + "COLUMN FAMILY cf(id int, name varchar(500), age long, salary double))");
     }
 
     long testCount() throws Exception {
+        String sql = "select count(*) from " + tableName;
+        sql = "select count(*) from " + tableName + " where _rowkey_>='RK1900000'";
+
         long start = System.nanoTime();
-        //ResultSet r = stmt.executeQuery("select count(*) from BENCHAGGREGATION where _rowkey_<'RK180000'");
-        ResultSet r = stmt.executeQuery("select count(*) from BENCHAGGREGATION");
+        ResultSet r = stmt.executeQuery(sql);
         long end = System.nanoTime();
         p("testCount()", end - start);
         r.next();
@@ -95,6 +109,7 @@ public class BenchAggregation extends BenchWrite {
     long testHBaseCount() throws Exception {
         long start = System.nanoTime();
         long rowCount = 0;
+        scan.setStartRow(b("RK1900000"));
         try {
             rowCount = ac.rowCount(tableNameAsBytes, ci, scan);
         } catch (Throwable e) {

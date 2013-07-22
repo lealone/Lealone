@@ -161,6 +161,11 @@ public abstract class BenchWrite extends BenchBase {
             put.add(cf, age, 2, b(30L));
             put.add(cf, salary, 2, b(3000.50D));
             puts.add(put);
+
+            if (puts.size() > 200) {
+                t.put(puts);
+                puts.clear();
+            }
         }
         t.put(puts);
         long end = System.nanoTime();
