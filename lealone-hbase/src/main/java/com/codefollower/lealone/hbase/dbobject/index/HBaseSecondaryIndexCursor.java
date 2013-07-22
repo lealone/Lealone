@@ -21,20 +21,28 @@ package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.codefollower.lealone.command.Prepared;
+import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.table.Column;
+import com.codefollower.lealone.dbobject.table.TableFilter;
+import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.transaction.TTable;
+import com.codefollower.lealone.hbase.transaction.Filter;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
@@ -44,41 +52,70 @@ import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueString;
 
 public class HBaseSecondaryIndexCursor implements Cursor {
+    private final byte[] defaultColumnFamilyName;
     private final ByteBuffer readBuffer = ByteBuffer.allocate(256);
-    private final TTable dataTable;
-    private final HBaseSecondaryIndex index;
-    private final ResultScanner resultScanner;
-    private final Transaction transaction;
+    private final HBaseSecondaryIndex secondaryIndex;
+    private final HBaseSession session;
+    private int fetchSize;
+    private byte[] regionName = null;
 
-    private final Column[] columns;
-
+    private long scannerId;
+    private Result[] result;
+    private int index = -1;
+    private List<Column> columns;
     private SearchRow searchRow;
+    private long searchTimestamp;
     private Row row;
 
-    public HBaseSecondaryIndexCursor(HBaseSession session, HBaseTable hbaseTable, HBaseSecondaryIndex index, byte[] startRow,
-            byte[] stopRow) {
-        this.index = index;
-        columns = hbaseTable.getColumns();
-        transaction = session.getTransaction();
-
-        Scan scan = new Scan(startRow, stopRow);
-        scan.addColumn(HBaseSecondaryIndex.PSEUDO_FAMILY, HBaseSecondaryIndex.PSEUDO_COLUMN);
-        try {
-            dataTable = new TTable(new HTable(HBaseUtils.getConfiguration(), index.getTable().getName()));
-            TTable ttable = new TTable(index.indexTable);
-            resultScanner = ttable.getScanner(session.getTransaction(), scan);
-        } catch (IOException e) {
-            throw DbException.convert(e);
+    public HBaseSecondaryIndexCursor(HBaseSecondaryIndex index, TableFilter filter, byte[] startKey, byte[] endKey) {
+        defaultColumnFamilyName = Bytes.toBytes(((HBaseTable) filter.getTable()).getDefaultColumnFamilyName());
+        secondaryIndex = index;
+        session = (HBaseSession) filter.getSession();
+        Prepared p = filter.getPrepared();
+        if (p instanceof WithWhereClause) {
+            regionName = Bytes.toBytes(((WithWhereClause) p).getWhereClauseSupport().getRegionName());
         }
-    }
 
-    private void close() {
+        if (regionName == null)
+            throw new RuntimeException("regionName is null");
+
+        fetchSize = filter.getPrepared().getFetchSize();
+        //非查询的操作一般不设置fetchSize，此时fetchSize为0，所以要设置一个默认值
+        //if (fetchSize < 1 && !filter.getPrepared().isQuery())
+        if (fetchSize < 1)
+            fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
+
+        if (filter.getSelect() != null)
+            columns = filter.getSelect().getColumns(filter);
+        else
+            columns = Arrays.asList(filter.getTable().getColumns());
+
+        if (startKey == null)
+            startKey = HConstants.EMPTY_BYTE_ARRAY;
+        if (endKey == null)
+            endKey = HConstants.EMPTY_BYTE_ARRAY;
+
+        Scan scan = new Scan();
+        scan.setMaxVersions(1);
         try {
-            dataTable.close();
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        } finally {
-            resultScanner.close();
+            HRegionInfo info = session.getRegionServer().getRegionInfo(regionName);
+            if (Bytes.compareTo(startKey, info.getStartKey()) >= 0)
+                scan.setStartRow(startKey);
+            else
+                scan.setStartRow(info.getStartKey());
+
+            if (Bytes.equals(endKey, HConstants.EMPTY_BYTE_ARRAY))
+                scan.setStopRow(info.getEndKey());
+            else if (Bytes.compareTo(endKey, info.getEndKey()) < 0)
+                scan.setStopRow(endKey);
+            else
+                scan.setStopRow(info.getEndKey());
+
+            scan.addColumn(HBaseSecondaryIndex.PSEUDO_FAMILY, HBaseSecondaryIndex.PSEUDO_COLUMN);
+
+            scannerId = session.getRegionServer().openScanner(regionName, scan);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -88,12 +125,24 @@ public class HBaseSecondaryIndexCursor implements Cursor {
             if (searchRow != null) {
                 Result r;
                 try {
-                    r = dataTable.get(transaction, new Get(HBaseUtils.toBytes(searchRow.getRowKey())));
+                    Get get = new Get(HBaseUtils.toBytes(searchRow.getRowKey()));
+                    get.setTimeStamp(searchTimestamp);
+                    if (columns != null) {
+                        for (Column c : columns) {
+                            if (c.isRowKeyColumn())
+                                continue;
+                            else if (c.getColumnFamilyName() != null)
+                                get.addColumn(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes());
+                            else
+                                get.addColumn(defaultColumnFamilyName, c.getNameAsBytes());
+                        }
+                    }
+                    r = secondaryIndex.dataTable.get(get);
                 } catch (IOException e) {
                     throw DbException.convert(e);
                 }
                 if (r != null) {
-                    Value[] data = new Value[columns.length];
+                    Value[] data = new Value[columns.size()];
                     Value rowKey = ValueString.get(Bytes.toString(r.getRow()));
                     if (columns != null) {
                         int i = 0;
@@ -118,30 +167,67 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         return searchRow;
     }
 
+    private void setSearchRow() {
+        readBuffer.put(result[index].getRow());
+        readBuffer.flip();
+        searchRow = secondaryIndex.getRow(secondaryIndex.decode(readBuffer));
+        searchTimestamp = result[index].raw()[0].getTimestamp();
+    }
+
     @Override
     public boolean next() {
         readBuffer.clear();
         searchRow = null;
         row = null;
-        Result result;
+        index++;
+        if (result != null && index < result.length) {
+            setSearchRow();
+            return true;
+        }
+
+        Transaction transaction = session.getTransaction();
+        List<KeyValue> kvs;
+        KeyValue kv;
+        Result r;
+        long queryTimestamp;
         try {
-            do {
-                result = resultScanner.next();
-            } while (result != null && result.isEmpty());
-        } catch (IOException e) {
+            result = session.getRegionServer().next(scannerId, fetchSize);
+            ArrayList<Result> list = new ArrayList<Result>(result.length);
+            for (int i = 0; i < result.length; i++) {
+                r = result[i];
+                kvs = r.list();
+                //当Result.isEmpty=true时，r.list()也返回null，所以这里不用再判断kvs.isEmpty
+                if (kvs != null) {
+                    kv = kvs.get(0);
+                    queryTimestamp = kv.getTimestamp();
+                    if (queryTimestamp < transaction.getStartTimestamp() & queryTimestamp % 2 == 0) {
+                        if (kv.getValueLength() != 0) //kv已删除，不需要再处理
+                            list.add(r);
+                        continue;
+                    }
+                }
+
+                //TODO Filter.filter很慢
+                r = new Result(Filter.filter(session.getRegionServer(), regionName, transaction, kvs, 1));
+                if (!r.isEmpty())
+                    list.add(r);
+            }
+
+            result = list.toArray(new Result[0]);
+        } catch (Exception e) {
             close();
             throw DbException.convert(e);
         }
-        if (result == null) {
-            close();
-            return false;
+
+        index = 0;
+
+        if (result != null && result.length > 0) {
+            setSearchRow();
+            return true;
         }
 
-        readBuffer.put(result.getRow());
-        readBuffer.flip();
-        searchRow = index.getRow(index.decode(readBuffer));
-
-        return true;
+        close();
+        return false;
     }
 
     @Override
@@ -149,4 +235,11 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         return false;
     }
 
+    private void close() {
+        try {
+            session.getRegionServer().close(scannerId);
+        } catch (IOException e) {
+            //ignore
+        }
+    }
 }

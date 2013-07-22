@@ -42,7 +42,6 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
-import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.transaction.TTable;
@@ -63,6 +62,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
     private final static byte[] ZERO = { (byte) 0 };
 
     final HTable indexTable;
+    final HTable dataTable;
     private final int keyColumns;
 
     private ByteBuffer buffer = ByteBuffer.allocate(256);
@@ -76,10 +76,15 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
         try {
             indexTable = new HTable(HBaseUtils.getConfiguration(), indexName);
+            dataTable = new HTable(HBaseUtils.getConfiguration(), table.getName());
         } catch (IOException e) {
             throw DbException.convert(e);
         }
 
+    }
+
+    public byte[] getTableNameAsBytes() {
+        return indexTable.getTableName();
     }
 
     private static void checkIndexColumnTypes(IndexColumn[] columns) {
@@ -101,7 +106,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
         }
     }
 
-    private byte[] getKey(SearchRow r) {
+    public byte[] getKey(SearchRow r) {
         if (r == null) {
             return null;
         }
@@ -275,14 +280,14 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
     @Override
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        return find(filter.getSession(), first, last);
+        byte[] startRow = getKey(first);
+        byte[] stopRow = getLastKey(last);
+        return new HBaseSecondaryIndexCursor(this, filter, startRow, stopRow);
     }
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        byte[] startRow = getKey(first);
-        byte[] stopRow = getLastKey(last);
-        return new HBaseSecondaryIndexCursor((HBaseSession) session, (HBaseTable) getTable(), this, startRow, stopRow);
+        throw DbException.getUnsupportedException("find(Session, SearchRow, SearchRow)");
     }
 
     @Override

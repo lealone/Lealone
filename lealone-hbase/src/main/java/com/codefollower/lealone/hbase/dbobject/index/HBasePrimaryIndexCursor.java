@@ -195,8 +195,6 @@ public class HBasePrimaryIndexCursor implements Cursor {
                                 r.getValue(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes()), c.getType());
                 }
             }
-            Row row = new HBaseRow(regionName, rowKey, data, Row.MEMORY_CALCULATE, r);
-            row.setTransactionId(r.list().get(0).getTimestamp());
             return new HBaseRow(regionName, rowKey, data, Row.MEMORY_CALCULATE, r);
         }
         return null;

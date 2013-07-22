@@ -23,9 +23,11 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.dbobject.table.TableView;
+import com.codefollower.lealone.hbase.dbobject.index.HBaseSecondaryIndex;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.value.Value;
+import com.codefollower.lealone.value.ValueBytes;
 
 public class WhereClauseSupport {
     private TableFilter tableFilter;
@@ -48,20 +50,32 @@ public class WhereClauseSupport {
     }
 
     public byte[] getTableNameAsBytes() {
+        if (tableFilter.getIndex() instanceof HBaseSecondaryIndex) {
+            return ((HBaseSecondaryIndex) tableFilter.getIndex()).getTableNameAsBytes();
+        }
         return tableNameAsBytes;
     }
 
     public Value getStartRowKeyValue() {
         SearchRow start = tableFilter.getStartSearchRow();
-        if (start != null)
+
+        if (start != null) {
+            if (tableFilter.getIndex() instanceof HBaseSecondaryIndex) {
+                return ValueBytes.getNoCopy(((HBaseSecondaryIndex) tableFilter.getIndex()).getKey(start));
+            }
             return start.getRowKey();
+        }
         return null;
     }
 
     public Value getEndRowKeyValue() {
         SearchRow end = tableFilter.getEndSearchRow();
-        if (end != null)
+        if (end != null) {
+            if (tableFilter.getIndex() instanceof HBaseSecondaryIndex) {
+                return ValueBytes.getNoCopy(((HBaseSecondaryIndex) tableFilter.getIndex()).getKey(end));
+            }
             return end.getRowKey();
+        }
         return null;
     }
 
