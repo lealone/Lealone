@@ -51,7 +51,7 @@ public class CommandParallel {
         int corePoolSize = HBaseUtils.getConfiguration().getInt(Constants.PROJECT_NAME_PREFIX + "command.parallel.corePoolSize",
                 1);
         int maximumPoolSize = HBaseUtils.getConfiguration().getInt(
-                Constants.PROJECT_NAME_PREFIX + "command.parallel.maximumPoolSize", 20);
+                Constants.PROJECT_NAME_PREFIX + "command.parallel.maximumPoolSize", Integer.MAX_VALUE);
         int keepAliveTime = HBaseUtils.getConfiguration().getInt(
                 Constants.PROJECT_NAME_PREFIX + "command.parallel.keepAliveTime", 5);
 
