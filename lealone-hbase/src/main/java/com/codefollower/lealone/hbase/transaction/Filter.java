@@ -44,7 +44,6 @@ public class Filter {
     /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
     private static final int CACHE_VERSIONS_OVERHEAD = 3;
 
-    //改编自TTable.filter(Transaction, List<KeyValue>, int)
     public static List<KeyValue> filter(HRegionServer regionServer, byte[] regionName, Transaction transaction,
             List<KeyValue> kvs, int localVersions) throws IOException {
         if (kvs == null) {

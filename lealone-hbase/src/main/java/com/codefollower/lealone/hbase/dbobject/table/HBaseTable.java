@@ -209,7 +209,7 @@ public class HBaseTable extends TableBase {
 
             if (!isDelegateIndex) {
                 try {
-                    HBaseSecondaryIndex.createIndexTableIfNotExists(indexName);
+                    HBaseSecondaryIndex.createIndexTableIfNotExists(session, indexName);
                 } catch (Exception e) {
                     throw DbException.convert(e);
                 }

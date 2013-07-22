@@ -22,10 +22,7 @@ package com.codefollower.lealone.hbase.dbobject.index;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -33,6 +30,7 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.index.BaseIndex;
 import com.codefollower.lealone.dbobject.index.Cursor;
@@ -42,22 +40,22 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
-import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.transaction.TTable;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.result.SortOrder;
 import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueBytes;
 import com.codefollower.lealone.value.ValueNull;
+import com.codefollower.lealone.value.ValueString;
 
 public class HBaseSecondaryIndex extends BaseIndex {
 
-    final static byte[] PSEUDO_FAMILY = Bytes.toBytes("f");
-    final static byte[] PSEUDO_COLUMN = Bytes.toBytes("c");
+    final static byte[] PSEUDO_FAMILY = Bytes.toBytes("F");
+    final static byte[] PSEUDO_COLUMN = Bytes.toBytes("C");
 
     private final static byte[] ZERO = { (byte) 0 };
 
@@ -205,22 +203,14 @@ public class HBaseSecondaryIndex extends BaseIndex {
     public void add(Session session, Row row) {
         if (indexType.isUnique()) {
             byte[] key = getKey(row);
-            Result r;
-            try {
-                Scan scan = new Scan(key, (byte[]) null);
-                scan.setCaching(1);
-                scan.addColumn(PSEUDO_FAMILY, PSEUDO_COLUMN);
-                TTable ttable = new TTable(indexTable);
-                ResultScanner resultScanner = ttable.getScanner(((HBaseSession) session).getTransaction(), scan);
-                r = resultScanner.next();
-                resultScanner.close();
-            } catch (IOException e) {
-                throw DbException.convert(e);
-            }
-            if (r != null && !r.isEmpty()) {
+            Prepared p = session.prepare("select _rowkey_ from " + getName() + " where _rowkey_>=?", true);
+            p.getParameters().get(0).setValue(ValueString.get(Bytes.toString(key)));
+            ResultInterface r = p.query(1);
+            if (r.next()) {
                 buffer.clear();
-                buffer.put(r.getRow());
+                buffer.put(Bytes.toBytes(r.currentRow()[0].getString()));
                 buffer.flip();
+                r.close();
                 SearchRow r2 = getRow(decode(buffer));
                 if (compareRows(row, r2) == 0) {
                     if (!containsNullAndAllowMultipleNull(r2)) {
@@ -298,7 +288,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
     @Override
     public void remove(Session session) {
         try {
-            HBaseSecondaryIndex.dropIndexTableIfExists(getName());
+            HBaseSecondaryIndex.dropIndexTableIfExists(session, getName());
         } catch (Exception e) {
             throw DbException.convert(e);
         }
@@ -307,8 +297,8 @@ public class HBaseSecondaryIndex extends BaseIndex {
     @Override
     public void truncate(Session session) {
         try {
-            HBaseSecondaryIndex.dropIndexTableIfExists(getName());
-            HBaseSecondaryIndex.createIndexTableIfNotExists(getName());
+            HBaseSecondaryIndex.dropIndexTableIfExists(session, getName());
+            HBaseSecondaryIndex.createIndexTableIfNotExists(session, getName());
         } catch (Exception e) {
             throw DbException.convert(e);
         }
@@ -348,24 +338,33 @@ public class HBaseSecondaryIndex extends BaseIndex {
         return 0;
     }
 
-    public synchronized static void createIndexTableIfNotExists(String indexName) throws Exception {
-        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
-        HColumnDescriptor hcd = new HColumnDescriptor(PSEUDO_FAMILY);
-        hcd.setMaxVersions(3);
-
-        HTableDescriptor htd = new HTableDescriptor(indexName);
-        htd.addFamily(hcd);
-        if (!admin.tableExists(indexName)) {
-            admin.createTable(htd);
-        }
+    public synchronized static void createIndexTableIfNotExists(Session session, String indexName) throws Exception {
+        //        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
+        //        HColumnDescriptor hcd = new HColumnDescriptor(PSEUDO_FAMILY);
+        //        hcd.setMaxVersions(3);
+        //
+        //        HTableDescriptor htd = new HTableDescriptor(indexName);
+        //        htd.addFamily(hcd);
+        //        if (!admin.tableExists(indexName)) {
+        //            admin.createTable(htd);
+        //        }
+        //        
+        Prepared p = session.prepare("CREATE HBASE TABLE IF NOT EXISTS " + indexName + " (COLUMN FAMILY f(c char))", true);
+        p.setExecuteDirec(true);
+        p.update();
     }
 
-    public synchronized static void dropIndexTableIfExists(String indexName) throws Exception {
-        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
-        if (admin.tableExists(indexName)) {
-            admin.disableTable(indexName);
-            admin.deleteTable(indexName);
-        }
+    public synchronized static void dropIndexTableIfExists(Session session, String indexName) throws Exception {
+        //        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
+        //        if (admin.tableExists(indexName)) {
+        //            admin.disableTable(indexName);
+        //            admin.deleteTable(indexName);
+        //        }
+        //        
+        //session.prepare("DROP TABLE IF EXISTS " + indexName, true).update();
+        Prepared p = session.prepare("DROP TABLE IF EXISTS " + indexName, true);
+        p.setExecuteDirec(true);
+        p.update();
     }
 
     //debug only
