@@ -32,7 +32,7 @@ import com.codefollower.lealone.result.ResultInterface;
 public class HBaseMergedResult extends DelegatedResult {
     public HBaseMergedResult(List<ResultInterface> results, Select newSelect, Select oldSelect) {
         //1. 结果集串行化，为合并做准备
-        HBaseSerializedResult serializedResult = new HBaseSerializedResult(results);
+        HBaseSerializedResult serializedResult = new HBaseSerializedResult(results, oldSelect);
         Table table = newSelect.getTopTableFilter().getTable();
         newSelect.getTopTableFilter().setIndex(
                 new HBaseMergedIndex(serializedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType

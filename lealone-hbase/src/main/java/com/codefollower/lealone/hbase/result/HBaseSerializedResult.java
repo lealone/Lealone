@@ -22,6 +22,7 @@ package com.codefollower.lealone.hbase.result;
 import java.util.List;
 
 import com.codefollower.lealone.command.CommandInterface;
+import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.result.DelegatedResult;
 import com.codefollower.lealone.result.ResultInterface;
 
@@ -30,24 +31,28 @@ public class HBaseSerializedResult extends DelegatedResult {
     private final List<ResultInterface> results;
     private final List<? extends CommandInterface> commands;
     private final int maxRows;
+    private final int limitRows;
     private final boolean scrollable;
 
     private final int size;
     private int index = 0;
+    private int count = 0;
 
-    public HBaseSerializedResult(List<? extends CommandInterface> commands, int maxRows, boolean scrollable) {
+    public HBaseSerializedResult(List<? extends CommandInterface> commands, int maxRows, boolean scrollable, Select select) {
         this.results = null;
         this.commands = commands;
         this.maxRows = maxRows;
+        this.limitRows = select.getLimitRows();
         this.scrollable = scrollable;
         this.size = commands.size();
         nextResult();
     }
 
-    public HBaseSerializedResult(List<ResultInterface> results) {
+    public HBaseSerializedResult(List<ResultInterface> results, Select select) {
         this.results = results;
         this.commands = null;
         this.maxRows = -1;
+        this.limitRows = select.getLimitRows();
         this.scrollable = false;
         this.size = results.size();
         nextResult();
@@ -69,12 +74,16 @@ public class HBaseSerializedResult extends DelegatedResult {
 
     @Override
     public boolean next() {
+        count++;
+        if (limitRows >= 0 && count > limitRows)
+            return false;
         boolean next = result.next();
         if (!next) {
             next = nextResult();
             if (next)
                 next = result.next();
         }
+
         return next;
     }
 

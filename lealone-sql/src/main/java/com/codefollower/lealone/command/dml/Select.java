@@ -1430,4 +1430,12 @@ public class Select extends Query {
     public SortOrder getSortOrder() {
         return sort;
     }
+
+    public int getLimitRows() {
+        if (limitExpr != null) {
+            Value v = limitExpr.getValue(session);
+            return v == ValueNull.INSTANCE ? -1 : v.getInt();
+        } else
+            return -1;
+    }
 }

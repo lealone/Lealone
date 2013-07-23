@@ -19,7 +19,9 @@
  */
 package com.codefollower.lealone.test.jdbc.dml;
 
-import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.*;
+
+import java.sql.ResultSet;
 
 import org.junit.Test;
 
@@ -98,6 +100,17 @@ public class SelectTest extends TestBase {
         sql = "SELECT f1, f2, cf2.f3 FROM SelectTest ORDER BY f2 desc LIMIT 2";
         assertEquals("l", getStringValue(2, true));
         //printResultSet();
+
+        //TODO H2数据库不支持LIMIT和聚合函数一起用，会忽略lIMIT
+        sql = "SELECT count(*) FROM SelectTest LIMIT 1";
+        //assertEquals(1, getIntValue(1, true));
+
+        sql = "SELECT * FROM SelectTest LIMIT 1";
+        //printResultSet();
+        ResultSet rs = stmt.executeQuery(sql);
+        assertTrue(rs.next());
+        assertFalse(rs.next());
+        rs.close();
     }
 
     private void tableAlias() throws Exception {
