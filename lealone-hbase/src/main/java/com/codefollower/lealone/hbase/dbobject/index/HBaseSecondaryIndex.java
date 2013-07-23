@@ -20,14 +20,10 @@
 package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.command.Prepared;
@@ -339,71 +335,14 @@ public class HBaseSecondaryIndex extends BaseIndex {
     }
 
     public synchronized static void createIndexTableIfNotExists(Session session, String indexName) throws Exception {
-        //        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
-        //        HColumnDescriptor hcd = new HColumnDescriptor(PSEUDO_FAMILY);
-        //        hcd.setMaxVersions(3);
-        //
-        //        HTableDescriptor htd = new HTableDescriptor(indexName);
-        //        htd.addFamily(hcd);
-        //        if (!admin.tableExists(indexName)) {
-        //            admin.createTable(htd);
-        //        }
-        //        
         Prepared p = session.prepare("CREATE HBASE TABLE IF NOT EXISTS " + indexName + " (COLUMN FAMILY f(c char))", true);
         p.setExecuteDirec(true);
         p.update();
     }
 
     public synchronized static void dropIndexTableIfExists(Session session, String indexName) throws Exception {
-        //        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
-        //        if (admin.tableExists(indexName)) {
-        //            admin.disableTable(indexName);
-        //            admin.deleteTable(indexName);
-        //        }
-        //        
-        //session.prepare("DROP TABLE IF EXISTS " + indexName, true).update();
         Prepared p = session.prepare("DROP TABLE IF EXISTS " + indexName, true);
         p.setExecuteDirec(true);
         p.update();
-    }
-
-    //debug only
-    void printIndexTable() {
-        //if (indexType.isUnique()) {
-        System.out.println();
-        try {
-            ResultScanner resultScanner = indexTable.getScanner(new Scan());
-            Result result = resultScanner.next();
-            while (result != null) {
-                System.out.println("Result " + Bytes.toStringBinary(result.getRow()) + " " + result);
-                result = resultScanner.next();
-            }
-            resultScanner.close();
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
-        //}
-    }
-
-    //debug only
-    static String toStringBinary(final byte[] b) {
-        if (b == null)
-            return "null";
-        return toStringBinary(b, 0, b.length);
-    }
-
-    //debug only
-    static String toStringBinary(final byte[] b, int off, int len) {
-        StringBuilder result = new StringBuilder();
-        try {
-            String first = new String(b, off, len, "ISO-8859-1");
-            for (int i = 0; i < first.length(); ++i) {
-                int ch = first.charAt(i) & 0xFF;
-
-                result.append(String.format("\\x%02X", ch));
-            }
-        } catch (UnsupportedEncodingException e) {
-        }
-        return result.toString();
     }
 }
