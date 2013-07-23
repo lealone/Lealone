@@ -85,7 +85,7 @@ public class DDLRedoTable {
             }
 
             Put put = new Put(Bytes.toBytes(nextRedoPos));
-            put.add(MetaDataAdmin.DEFAULT_FAMILY, SQL, Bytes.toBytes(sql));
+            put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SQL, Bytes.toBytes(sql));
             table.put(put);
 
             nextRedoPos++;
@@ -102,7 +102,7 @@ public class DDLRedoTable {
         for (Result r : table.getScanner(scan)) {
             if (r.isEmpty())
                 continue;
-            database.executeSQL(Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_FAMILY, SQL)));
+            database.executeSQL(Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SQL)));
         }
     }
 

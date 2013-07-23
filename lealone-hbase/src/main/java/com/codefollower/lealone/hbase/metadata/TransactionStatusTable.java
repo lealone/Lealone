@@ -78,8 +78,8 @@ public class TransactionStatusTable {
                 buff.setLength(0);
                 rowKey = Bytes.toBytes(buff.append(t.getHostAndPort()).append(':').append(t.getTransactionId()).toString());
                 put = new Put(rowKey);
-                put.add(MetaDataAdmin.DEFAULT_FAMILY, SERVER, t.getTransactionId(), Bytes.toBytes(serverStr));
-                put.add(MetaDataAdmin.DEFAULT_FAMILY, COMMIT_TIMESTAMP, t.getTransactionId(),
+                put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SERVER, t.getTransactionId(), Bytes.toBytes(serverStr));
+                put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP, t.getTransactionId(),
                         Bytes.toBytes(t.getCommitTimestamp()));
                 list.add(put);
             }
@@ -99,8 +99,8 @@ public class TransactionStatusTable {
             long commitTimestamp = -1;
             Result r = table.get(get);
             if (r != null && !r.isEmpty()) {
-                commitTimestamp = Bytes.toLong(r.getValue(MetaDataAdmin.DEFAULT_FAMILY, COMMIT_TIMESTAMP));
-                String serverStr = Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_FAMILY, SERVER));
+                commitTimestamp = Bytes.toLong(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP));
+                String serverStr = Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SERVER));
                 String[] servers = serverStr.split(",");
                 for (String server : servers) {
                     get = new Get(Bytes.toBytes(server));

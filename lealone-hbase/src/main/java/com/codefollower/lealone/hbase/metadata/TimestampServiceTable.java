@@ -45,7 +45,7 @@ public class TimestampServiceTable {
 
     public void updateLastMaxTimestamp(long lastMaxTimestamp) throws IOException {
         Put put = new Put(hostAndPort);
-        put.add(MetaDataAdmin.DEFAULT_FAMILY, LAST_MAX_TIMESTAMP, Bytes.toBytes(lastMaxTimestamp));
+        put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, LAST_MAX_TIMESTAMP, Bytes.toBytes(lastMaxTimestamp));
         table.put(put);
     }
 
@@ -54,7 +54,7 @@ public class TimestampServiceTable {
         Get get = new Get(hostAndPort);
         Result r = table.get(get);
         if (r != null && !r.isEmpty()) {
-            lastMaxTimestamp = Bytes.toLong(r.getValue(MetaDataAdmin.DEFAULT_FAMILY, LAST_MAX_TIMESTAMP));
+            lastMaxTimestamp = Bytes.toLong(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, LAST_MAX_TIMESTAMP));
         }
 
         return lastMaxTimestamp;

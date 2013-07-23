@@ -36,6 +36,7 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.hbase.metadata.MetaDataAdmin;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
@@ -50,7 +51,7 @@ import com.codefollower.lealone.value.ValueString;
 
 public class HBaseSecondaryIndex extends BaseIndex {
 
-    final static byte[] PSEUDO_FAMILY = Bytes.toBytes("F");
+    final static byte[] PSEUDO_FAMILY = MetaDataAdmin.DEFAULT_COLUMN_FAMILY;
     final static byte[] PSEUDO_COLUMN = Bytes.toBytes("C");
 
     private final static byte[] ZERO = { (byte) 0 };
@@ -335,7 +336,9 @@ public class HBaseSecondaryIndex extends BaseIndex {
     }
 
     public synchronized static void createIndexTableIfNotExists(Session session, String indexName) throws Exception {
-        Prepared p = session.prepare("CREATE HBASE TABLE IF NOT EXISTS " + indexName + " (COLUMN FAMILY f(c char))", true);
+        Prepared p = session.prepare(
+                "CREATE HBASE TABLE IF NOT EXISTS " + indexName + " (COLUMN FAMILY " + Bytes.toString(PSEUDO_FAMILY) + "("
+                        + Bytes.toString(PSEUDO_COLUMN) + " char))", true);
         p.setExecuteDirec(true);
         p.update();
     }

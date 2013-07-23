@@ -31,10 +31,10 @@ import com.codefollower.lealone.hbase.util.HBaseUtils;
 
 public class MetaDataAdmin {
     public final static String META_DATA_PREFIX = Constants.PROJECT_NAME + "_";
-    public final static byte[] DEFAULT_FAMILY = Bytes.toBytes("f");
+    public final static byte[] DEFAULT_COLUMN_FAMILY = Bytes.toBytes("CF");
 
     public synchronized static void createTableIfNotExists(byte[] tableName) throws IOException {
-        createTableIfNotExists(tableName, DEFAULT_FAMILY);
+        createTableIfNotExists(tableName, DEFAULT_COLUMN_FAMILY);
     }
 
     public synchronized static void createTableIfNotExists(byte[] tableName, byte[] family) throws IOException {

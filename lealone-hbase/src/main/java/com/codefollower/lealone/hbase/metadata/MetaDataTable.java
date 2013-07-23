@@ -94,8 +94,8 @@ public class MetaDataTable {
 
     private void addMetaRecord(MetaRecord rec) throws Exception {
         Put put = new Put(Bytes.toBytes(rec.getId()));
-        put.add(MetaDataAdmin.DEFAULT_FAMILY, OBJECT_TYPE, Bytes.toBytes(rec.getObjectType()));
-        put.add(MetaDataAdmin.DEFAULT_FAMILY, SQL, Bytes.toBytes(rec.getSQL()));
+        put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, OBJECT_TYPE, Bytes.toBytes(rec.getObjectType()));
+        put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SQL, Bytes.toBytes(rec.getSQL()));
         table.put(put);
     }
 
@@ -107,9 +107,9 @@ public class MetaDataTable {
         //head 未使用
         //data[1] = null;
         //type
-        data[2] = ValueInt.get(Bytes.toInt(r.getValue(MetaDataAdmin.DEFAULT_FAMILY, OBJECT_TYPE)));
+        data[2] = ValueInt.get(Bytes.toInt(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, OBJECT_TYPE)));
         //sql
-        data[3] = ValueString.get(Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_FAMILY, SQL)));
+        data[3] = ValueString.get(Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SQL)));
         return new MetaRecord(new SimpleRow(data));
 
     }

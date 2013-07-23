@@ -47,6 +47,7 @@ import com.codefollower.lealone.hbase.dbobject.index.HBasePrimaryIndex;
 import com.codefollower.lealone.hbase.dbobject.index.HBaseSecondaryIndex;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
+import com.codefollower.lealone.hbase.metadata.MetaDataAdmin;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
@@ -57,7 +58,7 @@ import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.value.Value;
 
 public class HBaseTable extends TableBase {
-    private static final String STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME = "CF";
+    private static final String STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME = Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY);
 
     private final boolean isStatic;
     private final ArrayList<Index> indexes = New.arrayList();
