@@ -22,6 +22,7 @@ package com.codefollower.lealone.hbase.command;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -41,6 +42,7 @@ import com.codefollower.lealone.hbase.command.merge.HBaseMergedResult;
 import com.codefollower.lealone.hbase.result.HBaseSerializedResult;
 import com.codefollower.lealone.hbase.result.HBaseSortedResult;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
+import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.util.New;
 
@@ -109,7 +111,7 @@ public class CommandParallel {
                 results.add(futures.get(i).get());
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throwException(e);
         }
 
         if (!select.isGroupQuery() && select.getSortOrder() != null)
@@ -143,7 +145,7 @@ public class CommandParallel {
                 updateCount += futures.get(i).get();
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throwException(e);
         }
         return updateCount;
     }
@@ -167,8 +169,14 @@ public class CommandParallel {
                 updateCount += futures.get(i).get();
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throwException(e);
         }
         return updateCount;
+    }
+
+    private static void throwException(Throwable e) {
+        if (e instanceof ExecutionException)
+            e = ((ExecutionException) e).getCause();
+        throw DbException.convert(e);
     }
 }

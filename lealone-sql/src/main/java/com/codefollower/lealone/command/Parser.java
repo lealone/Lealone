@@ -223,7 +223,7 @@ public class Parser {
         try {
             Prepared p = parse(sql);
             p.prepare();
-            Command c = new CommandContainer(this, sql, p);
+            Command c = createCommand(p, sql);
             if (isToken(";")) {
                 String remaining = originalSQL.substring(parseIndex);
                 if (remaining.trim().length() != 0) {
@@ -5541,5 +5541,9 @@ public class Parser {
 
     public Merge createMerge(Session session) {
         return new Merge(session);
+    }
+
+    public Command createCommand(Prepared p, String sql) {
+        return new CommandContainer(this, sql, p);
     }
 }

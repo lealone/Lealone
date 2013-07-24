@@ -76,7 +76,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
         }
 
         if (regionName == null)
-            throw new RuntimeException("regionName is null");
+            throw DbException.convert(new NullPointerException("regionName is null"));
 
         fetchSize = filter.getPrepared().getFetchSize();
         //非查询的操作一般不设置fetchSize，此时fetchSize为0，所以要设置一个默认值
@@ -106,7 +106,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
                 if (r != null && !r.isEmpty())
                     result = new Result[] { r };
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw DbException.convert(e);
             }
         } else if (filter.getSelect() != null && filter.getSelect().getTopTableFilter() != filter) {
             StringBuilder buff = new StringBuilder("SELECT * FROM ");
@@ -143,7 +143,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
                 else
                     scan.setStopRow(info.getEndKey());
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw DbException.convert(e);
             }
 
             if (columns != null) {
@@ -160,7 +160,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
             try {
                 scannerId = session.getRegionServer().openScanner(regionName, scan);
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw DbException.convert(e);
             }
         }
     }
@@ -252,7 +252,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
 
             index = 0;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw DbException.convert(e);
         }
 
         if (result != null && result.length > 0)

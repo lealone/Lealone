@@ -27,6 +27,7 @@ import com.codefollower.lealone.engine.SessionInterface;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
+import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 
 public class HBaseSequence extends Sequence {
@@ -49,7 +50,7 @@ public class HBaseSequence extends Sequence {
                 valueWithMargin = ri.currentRow()[0].getLong();
                 value = valueWithMargin - increment * cacheSize;
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw DbException.convert(e);
             } finally {
                 if (si != null)
                     si.close();

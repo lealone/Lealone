@@ -69,7 +69,7 @@ public class HBasePrimaryIndex extends BaseIndex {
                 ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw DbException.convert(e);
         }
     }
 
@@ -106,7 +106,7 @@ public class HBasePrimaryIndex extends BaseIndex {
                 ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw DbException.convert(e);
         }
     }
 

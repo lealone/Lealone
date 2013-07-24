@@ -99,7 +99,7 @@ public class HBaseDatabase extends Database {
             metaDataTable = new MetaDataTable();
             metaDataTable.loadMetaRecords(records);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw DbException.convert(e);
         }
 
         Collections.sort(records);

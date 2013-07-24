@@ -21,6 +21,7 @@ package com.codefollower.lealone.hbase.command;
 
 import java.util.ArrayList;
 
+import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.AlterSequence;
@@ -29,7 +30,6 @@ import com.codefollower.lealone.command.dml.Delete;
 import com.codefollower.lealone.command.dml.Insert;
 import com.codefollower.lealone.command.dml.Merge;
 import com.codefollower.lealone.command.dml.Select;
-import com.codefollower.lealone.command.dml.TransactionCommand;
 import com.codefollower.lealone.command.dml.Update;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.Schema;
@@ -49,8 +49,10 @@ import com.codefollower.lealone.hbase.command.dml.HBaseMerge;
 import com.codefollower.lealone.hbase.command.dml.HBaseSelect;
 import com.codefollower.lealone.hbase.command.dml.HBaseUpdate;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
+import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.util.New;
 
@@ -308,11 +310,14 @@ public class HBaseParser extends Parser {
     protected Prepared parse(String sql) {
         Prepared p = super.parse(sql);
 
+        //TODO 
         //1. Master只允许处理DDL
         //2. RegionServer碰到DDL时都转给Master处理
-        if (session.isMaster() && !(p instanceof DefineCommand) && !(p instanceof TransactionCommand)) {
-            //throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
-        } else if (p instanceof DefineCommand) {
+        //        if (session.isMaster() && !(p instanceof DefineCommand) && !(p instanceof TransactionCommand)) {
+        //            throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
+        //        }
+
+        if (p instanceof DefineCommand) {
             p = new DefineCommandWrapper(session, (DefineCommand) p, sql);
         }
         return p;
@@ -343,4 +348,11 @@ public class HBaseParser extends Parser {
         return new HBaseMerge(session);
     }
 
+    @Override
+    public Command createCommand(Prepared p, String sql) {
+        if (HBaseUtils.getConfiguration().getBoolean(HBaseConstants.COMMAND_RETRYABLE, true))
+            return new RetryableCommand(this, sql, p);
+        else
+            return super.createCommand(p, sql);
+    }
 }

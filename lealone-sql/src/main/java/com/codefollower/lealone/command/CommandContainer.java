@@ -19,13 +19,13 @@ import com.codefollower.lealone.value.ValueNull;
  * Represents a single SQL statements.
  * It wraps a prepared statement.
  */
-class CommandContainer extends Command {
+public class CommandContainer extends Command {
 
-    private Prepared prepared;
+    protected Prepared prepared;
     private boolean readOnlyKnown;
     private boolean readOnly;
 
-    CommandContainer(Parser parser, String sql, Prepared prepared) {
+    protected CommandContainer(Parser parser, String sql, Prepared prepared) {
         super(parser, sql);
         prepared.setCommand(this);
         this.prepared = prepared;
@@ -73,10 +73,14 @@ class CommandContainer extends Command {
         start();
         session.setLastScopeIdentity(ValueNull.INSTANCE);
         prepared.checkParameters();
-        int updateCount = prepared.update();
+        int updateCount = updateInternal();
         prepared.trace(startTime, updateCount);
         setProgress(DatabaseEventListener.STATE_STATEMENT_END);
         return updateCount;
+    }
+
+    protected int updateInternal() {
+        return prepared.update();
     }
 
     public ResultInterface query(int maxrows) {
@@ -84,10 +88,14 @@ class CommandContainer extends Command {
         setProgress(DatabaseEventListener.STATE_STATEMENT_START);
         start();
         prepared.checkParameters();
-        ResultInterface result = prepared.query(maxrows);
+        ResultInterface result = queryInternal(maxrows);
         prepared.trace(startTime, result.getRowCount());
         setProgress(DatabaseEventListener.STATE_STATEMENT_END);
         return result;
+    }
+
+    protected ResultInterface queryInternal(int maxrows) {
+        return prepared.query(maxrows);
     }
 
     public boolean isReadOnly() {

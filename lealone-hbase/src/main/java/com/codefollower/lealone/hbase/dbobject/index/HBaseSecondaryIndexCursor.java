@@ -77,7 +77,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         }
 
         if (regionName == null)
-            throw new RuntimeException("regionName is null");
+            throw DbException.convert(new NullPointerException("regionName is null"));
 
         fetchSize = filter.getPrepared().getFetchSize();
         //非查询的操作一般不设置fetchSize，此时fetchSize为0，所以要设置一个默认值
@@ -115,7 +115,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
 
             scannerId = session.getRegionServer().openScanner(regionName, scan);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw DbException.convert(e);
         }
     }
 
