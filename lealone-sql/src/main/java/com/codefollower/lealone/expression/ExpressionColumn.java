@@ -128,7 +128,7 @@ public class ExpressionColumn extends Expression {
             }
             return;
         } else {
-            if (columnFamilyName != null) {
+            if (!(resolver instanceof SelectListColumnResolver) && columnFamilyName != null) {
                 schemaName = tableAlias;
                 tableAlias = columnFamilyName;
                 columnFamilyName = null;
