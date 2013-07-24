@@ -765,6 +765,10 @@ public class Parser {
         do {
             IndexColumn column = new IndexColumn();
             column.columnName = readColumnIdentifier();
+            if (readIf(".")) {
+                column.columnFamilyName = column.columnName;
+                column.columnName = readColumnIdentifier();
+            }
             columns.add(column);
             if (readIf("ASC")) {
                 // ignore

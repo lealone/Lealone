@@ -43,12 +43,23 @@ public class IndexTest extends TestBase {
     void init() throws Exception {
         //stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
-        stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON IndexTest(f1)");
-        stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON IndexTest(f2)");
-        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx2 ON IndexTest(f3, f2)");
+        stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS IndexTest_idx0 ON IndexTest(f1)");
+        stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS IndexTest_idx1 ON IndexTest(f2)");
+        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest_idx2 ON IndexTest(f3, f2)");
 
-        //stmt.executeUpdate("ALTER INDEX idx0 RENAME TO idx2");
+        indexFieldWithColumnFamilyPrefix();
+    }
 
+    void indexFieldWithColumnFamilyPrefix() throws Exception {
+        //IndexTest_idx3与IndexTest_idx1一样，只不过索引字段前可加列族前缀，
+        //用CREATE TABLE建立的表是单列族的静态表，列族名称是cf
+        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest_idx3 ON IndexTest(cf.f2)");
+
+        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS IndexTest2 (" //
+                + "COLUMN FAMILY cf(id int), COLUMN FAMILY cf2(id2 int))");
+
+        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest2_idx1 ON IndexTest2(cf.id)");
+        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest2_idx2 ON IndexTest2(cf2.id2)");
     }
 
     void delete() throws Exception {

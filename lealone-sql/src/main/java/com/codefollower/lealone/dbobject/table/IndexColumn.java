@@ -13,6 +13,10 @@ import com.codefollower.lealone.result.SortOrder;
  * indexes support descending sorted columns.
  */
 public class IndexColumn {
+    /**
+     * The column family name, may be null
+     */
+    public String columnFamilyName;
 
     /**
      * The column name.
@@ -72,7 +76,10 @@ public class IndexColumn {
      */
     public static void mapColumns(IndexColumn[] indexColumns, Table table) {
         for (IndexColumn col : indexColumns) {
-            col.column = table.getColumn(col.columnName);
+            if (col.columnFamilyName != null)
+                col.column = table.getColumn(col.columnFamilyName + "." + col.columnName);
+            else
+                col.column = table.getColumn(col.columnName);
         }
     }
 }
