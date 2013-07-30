@@ -125,7 +125,10 @@ public class CreateHBaseTable extends CreateTable {
         }
 
         htd.setValue(Options.ON_ROW_KEY_NAME, rowKeyName);
-        htd.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, defaultColumnFamilyName.toUpperCase()); //H2默认转大写
+        if (session.getDatabase().getSettings().databaseToUpper)
+            htd.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, defaultColumnFamilyName.toUpperCase());
+        else
+            htd.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, defaultColumnFamilyName);
 
         byte[][] splitKeys = null;
         if (this.splitKeys != null && this.splitKeys.size() > 0) {
