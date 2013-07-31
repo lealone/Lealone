@@ -38,17 +38,17 @@ public class DDLRedoTableTracker extends ZooKeeperListener {
 
     public void start() {
         watcher.registerListener(this);
-        redoPos = getRedoPos(true);
+        redoPos = getRedoPos();
     }
 
     public synchronized void refresh() {
-        int newRedoPos = getRedoPos(true);
+        int newRedoPos = getRedoPos();
         if (newRedoPos != redoPos) {
             int startPos = redoPos;
             int stopPos = newRedoPos;
 
             if (newRedoPos < startPos) { //Master重新计数了
-                startPos = 1;
+                startPos = getDefaultStartPos();
             }
             try {
                 table.redoRecords(startPos, stopPos);
@@ -66,19 +66,19 @@ public class DDLRedoTableTracker extends ZooKeeperListener {
         }
     }
 
-    public int getRedoPos(boolean watch) {
+    private int getRedoPos() {
         try {
-            byte[] data = null;
-            if (watch)
-                data = ZKUtil.getDataAndWatch(watcher, ZooKeeperAdmin.DDL_REDO_TABLE_NODE);
-            else
-                data = ZKUtil.getData(watcher, ZooKeeperAdmin.DDL_REDO_TABLE_NODE);
+            byte[] data = ZKUtil.getDataAndWatch(watcher, ZooKeeperAdmin.DDL_REDO_TABLE_NODE);
             if (data != null && data.length > 0) {
                 return Bytes.toInt(data);
             }
-            return 1;
+            return getDefaultStartPos();
         } catch (Exception e) {
             throw DbException.convert(e);
         }
+    }
+
+    private static int getDefaultStartPos() {
+        return 2;//见DDLRedoTable.addRecord(HBaseSession, String)，从2开始
     }
 }

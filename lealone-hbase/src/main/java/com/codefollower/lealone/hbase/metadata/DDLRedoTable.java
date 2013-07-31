@@ -52,7 +52,6 @@ public class DDLRedoTable {
     private final ZooKeeperWatcher watcher;
     private final DDLRedoTableTracker tracker;
     private final int maxRedoRecords;
-    private int nextRedoPos;
 
     public DDLRedoTable(HBaseDatabase database) throws Exception {
         MetaDataAdmin.createTableIfNotExists(TABLE_NAME);
@@ -63,7 +62,7 @@ public class DDLRedoTable {
         tracker = new DDLRedoTableTracker(watcher, this);
 
         maxRedoRecords = HBaseUtils.getConfiguration().getInt("lealone.max.redo.records", DEFAULT_MAX_DDL_REDO_RECORDS);
-        nextRedoPos = tracker.getRedoPos(false); //最初从1开始
+
         //master不需要监听redo_table的变化，因为redo_table的更新只能从master发起
         if (!database.isMaster())
             tracker.start();
@@ -73,23 +72,21 @@ public class DDLRedoTable {
         return tracker;
     }
 
+    //只能由master调用
     public void addRecord(HBaseSession session, String sql) {
         try {
-            long id = session.getTimestampService().nextEven();
+            int nextRedoPos = (int) session.getTimestampService().nextEven();
 
-            nextRedoPos = (int) id;
             if (nextRedoPos > maxRedoRecords) {
                 session.getTimestampService().reset();
-                session.getTimestampService().nextEven();
-                nextRedoPos = 1;
+                nextRedoPos = (int) session.getTimestampService().nextEven();
             }
 
             Put put = new Put(Bytes.toBytes(nextRedoPos));
             put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SQL, Bytes.toBytes(sql));
             table.put(put);
 
-            nextRedoPos++;
-            ZKUtil.setData(watcher, ZooKeeperAdmin.DDL_REDO_TABLE_NODE, Bytes.toBytes(nextRedoPos));
+            ZKUtil.setData(watcher, ZooKeeperAdmin.DDL_REDO_TABLE_NODE, Bytes.toBytes(++nextRedoPos));
         } catch (Exception e) {
             throw DbException.convert(e);
         }
