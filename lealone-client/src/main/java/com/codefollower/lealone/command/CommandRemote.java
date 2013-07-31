@@ -270,4 +270,8 @@ public class CommandRemote implements CommandInterface {
     public void setFetchSize(int fetchSize) {
         this.fetchSize = fetchSize;
     }
+
+    public int getId() {
+        return id;
+    }
 }

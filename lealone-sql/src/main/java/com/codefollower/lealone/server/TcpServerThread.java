@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import com.codefollower.lealone.command.Command;
+import com.codefollower.lealone.command.BackendBatchCommand;
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.constant.SysProperties;
@@ -33,6 +34,7 @@ import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.store.LobStorage;
 import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.IOUtils;
+import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.SmallLRUCache;
 import com.codefollower.lealone.util.SmallMap;
 import com.codefollower.lealone.util.StringUtils;
@@ -255,6 +257,26 @@ public class TcpServerThread implements Runnable {
         }
     }
 
+    private void executeBatch(int size, BackendBatchCommand command) throws IOException {
+        int old = session.getModificationId();
+        synchronized (session) {
+            command.executeUpdate();
+        }
+
+        int status;
+        if (session.isClosed()) {
+            status = SessionRemote.STATUS_CLOSED;
+        } else {
+            status = getState(old);
+        }
+        transfer.writeInt(status);
+        int[] result = command.getResult();
+        command.close();
+        for (int i = 0; i < size; i++)
+            transfer.writeInt(result[i]);
+        transfer.flush();
+    }
+
     private void process() throws IOException {
         int operation = transfer.readInt();
         boolean isDistributedTransaction = false;
@@ -406,6 +428,34 @@ public class TcpServerThread implements Runnable {
             }
             transfer.writeInt(status);
             transfer.flush();
+            break;
+        }
+        case SessionRemote.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT: {
+            int size = transfer.readInt();
+            ArrayList<String> batchCommands = New.arrayList(size);
+            for (int i = 0; i < size; i++)
+                batchCommands.add(transfer.readString());
+
+            BackendBatchCommand command = new BackendBatchCommand(session, batchCommands);
+            executeBatch(size, command);
+            break;
+        }
+        case SessionRemote.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT: {
+            int id = transfer.readInt();
+            int size = transfer.readInt();
+            Command preparedCommand = (Command) cache.getObject(id, false);
+            ArrayList<Value[]> batchParameters = New.arrayList(size);
+            int paramsSize = preparedCommand.getParameters().size();
+            Value[] values;
+            for (int i = 0; i < size; i++) {
+                values = new Value[paramsSize];
+                for (int j = 0; j < paramsSize; j++) {
+                    values[j] = transfer.readValue();
+                }
+                batchParameters.add(values);
+            }
+            BackendBatchCommand command = new BackendBatchCommand(session, preparedCommand, batchParameters);
+            executeBatch(size, command);
             break;
         }
         case SessionRemote.COMMAND_CLOSE: {

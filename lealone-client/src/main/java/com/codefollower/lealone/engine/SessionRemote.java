@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.util.ArrayList;
 
 import com.codefollower.lealone.api.DatabaseEventListener;
+import com.codefollower.lealone.command.FrontendBatchCommand;
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.constant.Constants;
@@ -36,6 +37,7 @@ import com.codefollower.lealone.util.StringUtils;
 import com.codefollower.lealone.util.TempFileDeleter;
 import com.codefollower.lealone.util.Utils;
 import com.codefollower.lealone.value.Transfer;
+import com.codefollower.lealone.value.Value;
 
 /**
  * The client side part of a session when using the server mode. This object
@@ -66,6 +68,9 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     public static final int COMMAND_EXECUTE_DISTRIBUTED_UPDATE = 101;
     public static final int COMMAND_EXECUTE_DISTRIBUTED_COMMIT = 102;
     public static final int COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK = 103;
+
+    public static final int COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT = 120;
+    public static final int COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT = 121;
 
     public static final int STATUS_ERROR = 0;
     public static final int STATUS_OK = 1;
@@ -766,5 +771,16 @@ public class SessionRemote extends SessionWithState implements DataHandler {
 
     public Transaction getTransaction() {
         return transaction;
+    }
+
+    public synchronized FrontendBatchCommand getFrontendBatchCommand(ArrayList<String> batchCommands) {
+        checkClosed();
+        return new FrontendBatchCommand(this, transferList, batchCommands);
+    }
+
+    public synchronized FrontendBatchCommand getFrontendBatchCommand(CommandInterface preparedCommand,
+            ArrayList<Value[]> batchParameters) {
+        checkClosed();
+        return new FrontendBatchCommand(this, transferList, preparedCommand, batchParameters);
     }
 }

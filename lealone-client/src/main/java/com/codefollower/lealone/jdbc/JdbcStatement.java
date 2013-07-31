@@ -13,10 +13,12 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 
+import com.codefollower.lealone.command.FrontendBatchCommand;
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.engine.SessionInterface;
+import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.TraceObject;
 import com.codefollower.lealone.result.ResultInterface;
@@ -614,31 +616,42 @@ public class JdbcStatement extends TraceObject implements Statement {
                     // TODO batch: check what other database do if no commands are set
                     batchCommands = New.arrayList();
                 }
-                int size = batchCommands.size();
-                int[] result = new int[size];
-                boolean error = false;
-                SQLException next = null;
-                for (int i = 0; i < size; i++) {
-                    String sql = batchCommands.get(i);
-                    try {
-                        result[i] = executeUpdateInternal(sql);
-                    } catch (Exception re) {
-                        SQLException e = logAndConvert(re);
-                        if (next == null) {
-                            next = e;
-                        } else {
-                            e.setNextException(next);
-                            next = e;
+                if (batchCommands.isEmpty())
+                    return new int[0];
+
+                if (session instanceof SessionRemote) {
+                    FrontendBatchCommand c = ((SessionRemote) session).getFrontendBatchCommand(batchCommands);
+                    c.executeUpdate();
+                    int[] result = c.getResult();
+                    c.close();
+                    return result;
+                } else {
+                    int size = batchCommands.size();
+                    int[] result = new int[size];
+                    boolean error = false;
+                    SQLException next = null;
+                    for (int i = 0; i < size; i++) {
+                        String sql = batchCommands.get(i);
+                        try {
+                            result[i] = executeUpdateInternal(sql);
+                        } catch (Exception re) {
+                            SQLException e = logAndConvert(re);
+                            if (next == null) {
+                                next = e;
+                            } else {
+                                e.setNextException(next);
+                                next = e;
+                            }
+                            result[i] = Statement.EXECUTE_FAILED;
+                            error = true;
                         }
-                        result[i] = Statement.EXECUTE_FAILED;
-                        error = true;
                     }
+                    batchCommands = null;
+                    if (error) {
+                        throw new JdbcBatchUpdateException(next, result);
+                    }
+                    return result;
                 }
-                batchCommands = null;
-                if (error) {
-                    throw new JdbcBatchUpdateException(next, result);
-                }
-                return result;
             } finally {
                 afterWriting();
             }

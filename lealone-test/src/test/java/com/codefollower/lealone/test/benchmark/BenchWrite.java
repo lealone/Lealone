@@ -95,6 +95,16 @@ public abstract class BenchWrite extends BenchBase {
         avg();
 
         for (int i = 0; i < loop; i++) {
+            total += testStatementBatch();
+        }
+        avg();
+
+        for (int i = 0; i < loop; i++) {
+            total += testPreparedStatementBatch();
+        }
+        avg();
+
+        for (int i = 0; i < loop; i++) {
             total += testHBaseBatch();
         }
         avg();
@@ -170,6 +180,44 @@ public abstract class BenchWrite extends BenchBase {
         t.put(puts);
         long end = System.nanoTime();
         p("testHBaseBatch()", end - start);
+        return end - start;
+    }
+
+    long testStatementBatch() throws Exception {
+        stmt.clearBatch();
+        long start = System.nanoTime();
+        StringBuilder s = null;
+        for (int i = startKey; i < endKey; i++) {
+            s = new StringBuilder("INSERT INTO " + tableName + "(_rowkey_, id, name, age, salary) VALUES(");
+            s.append("'RK").append(i).append("',");
+            s.append(i).append(",");
+            s.append("'zhh-2009',");
+            s.append(30L).append(",");
+            s.append(3000.50D).append(")");
+            stmt.addBatch(s.toString());
+        }
+        stmt.executeBatch();
+        long end = System.nanoTime();
+        p("testStatementBatch()", end - start);
+
+        return end - start;
+    }
+
+    long testPreparedStatementBatch() throws Exception {
+        ps.clearBatch();
+        long start = System.nanoTime();
+        for (int i = startKey; i < endKey; i++) {
+            ps.setString(1, "RK" + i);
+            ps.setInt(2, i);
+            ps.setString(3, "zhh-2009");
+            ps.setLong(4, 30L);
+            ps.setDouble(5, 3000.50D);
+            ps.addBatch();
+        }
+        ps.executeBatch();
+        long end = System.nanoTime();
+        p("testPreparedStatementBatch()", end - start);
+
         return end - start;
     }
 

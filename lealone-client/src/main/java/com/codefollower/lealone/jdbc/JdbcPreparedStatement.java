@@ -24,8 +24,10 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 
+import com.codefollower.lealone.command.FrontendBatchCommand;
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.constant.ErrorCode;
+import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.message.TraceObject;
@@ -1084,44 +1086,56 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public int[] executeBatch() throws SQLException {
         try {
             debugCodeCall("executeBatch");
-            if (batchParameters == null) {
-                // TODO batch: check what other database do if no parameters are set
-                batchParameters = New.arrayList();
-            }
-            int size = batchParameters.size();
-            int[] result = new int[size];
-            boolean error = false;
-            SQLException next = null;
             checkClosedForWrite();
             try {
-                for (int i = 0; i < size; i++) {
-                    Value[] set = batchParameters.get(i);
-                    ArrayList<? extends ParameterInterface> parameters = command.getParameters();
-                    for (int j = 0; j < set.length; j++) {
-                        Value value = set[j];
-                        ParameterInterface param = parameters.get(j);
-                        param.setValue(value, false);
-                    }
-                    try {
-                        result[i] = executeUpdateInternal();
-                    } catch (Exception re) {
-                        SQLException e = logAndConvert(re);
-                        if (next == null) {
-                            next = e;
-                        } else {
-                            e.setNextException(next);
-                            next = e;
+                if (batchParameters == null) {
+                    // TODO batch: check what other database do if no parameters are set
+                    batchParameters = New.arrayList();
+                }
+                if (batchParameters.isEmpty())
+                    return new int[0];
+
+                if (session instanceof SessionRemote) {
+                    FrontendBatchCommand c = ((SessionRemote) session).getFrontendBatchCommand(command, batchParameters);
+                    c.executeUpdate();
+                    int[] result = c.getResult();
+                    c.close();
+                    return result;
+                } else {
+                    int size = batchParameters.size();
+                    int[] result = new int[size];
+                    boolean error = false;
+                    SQLException next = null;
+
+                    for (int i = 0; i < size; i++) {
+                        Value[] set = batchParameters.get(i);
+                        ArrayList<? extends ParameterInterface> parameters = command.getParameters();
+                        for (int j = 0; j < set.length; j++) {
+                            Value value = set[j];
+                            ParameterInterface param = parameters.get(j);
+                            param.setValue(value, false);
                         }
-                        result[i] = Statement.EXECUTE_FAILED;
-                        error = true;
+                        try {
+                            result[i] = executeUpdateInternal();
+                        } catch (Exception re) {
+                            SQLException e = logAndConvert(re);
+                            if (next == null) {
+                                next = e;
+                            } else {
+                                e.setNextException(next);
+                                next = e;
+                            }
+                            result[i] = Statement.EXECUTE_FAILED;
+                            error = true;
+                        }
                     }
+                    batchParameters = null;
+                    if (error) {
+                        JdbcBatchUpdateException e = new JdbcBatchUpdateException(next, result);
+                        throw e;
+                    }
+                    return result;
                 }
-                batchParameters = null;
-                if (error) {
-                    JdbcBatchUpdateException e = new JdbcBatchUpdateException(next, result);
-                    throw e;
-                }
-                return result;
             } finally {
                 afterWriting();
             }
