@@ -1116,14 +1116,10 @@ public abstract class Table extends SchemaObjectBase {
         return true;
     }
 
-    public boolean supportsIndex() {
-        return true;
-    }
-
     public boolean isDistributed() {
         return false;
     }
-    
+
     public String getRowKeyName() {
         return null;
     }
@@ -1131,13 +1127,17 @@ public abstract class Table extends SchemaObjectBase {
     public boolean isStatic() {
         return true;
     }
-    
+
     public Column getRowKeyColumn() {
         return null;
     }
-    
+
     public String getFullColumnName(String columnFamilyName, String columnName) {
         return null;
+    }
+
+    public Column getColumn(String columnFamilyName, String columnName, boolean isInsert) {
+        return getColumn(columnName);
     }
 
     public String getTableEngine() {
@@ -1152,5 +1152,9 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     public void dropColumn(Column column) {
+    }
+
+    public boolean doesColumnFamilyExist(String columnFamilyName) {
+        return false;
     }
 }

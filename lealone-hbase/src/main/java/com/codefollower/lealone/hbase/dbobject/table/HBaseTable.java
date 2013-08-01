@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -33,7 +34,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.CreateTableData;
 import com.codefollower.lealone.constant.ErrorCode;
-import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.index.Index;
 import com.codefollower.lealone.dbobject.index.IndexType;
 import com.codefollower.lealone.dbobject.table.Column;
@@ -58,67 +58,108 @@ import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.value.Value;
 
 public class HBaseTable extends TableBase {
-    private static final String STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME = Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY);
+    private static final String DEFAULT_COLUMN_FAMILY_NAME = Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY);
 
+    /**
+     * 使用create table建立的表被称为静态表，静态表只有一个列族，并且列族名是CF，
+     * 静态表必须事先定义表结构: 表所包含的字段及字段类型。<p>
+     * 
+     * 使用create hbase table建立的表被称为动态表，动态表可以有多个列族，并不需要事先定义表结构，
+     * 可以在insert时根据字面出现的字段名和字面值来确定新的字段名和字段类型。
+     */
     private final boolean isStatic;
-    private final ArrayList<Index> indexes = New.arrayList();
-    private final Index scanIndex;
-    private final HTableDescriptor hTableDescriptor;
+
+    private final Database database;
     private final String tableName;
     private final byte[] tableNameAsBytes;
 
+    private final HTableDescriptor hTableDescriptor;
+
+    private final Index scanIndex;
+    private final ArrayList<Index> indexes = New.arrayList();
+
     private String rowKeyName;
     private Column rowKeyColumn;
-    private Map<String, ArrayList<Column>> columnsMap;
+    private Map<String, ArrayList<Column>> columnFamilyMap;
+
+    private Set<String> shortColumnNameSet;
+    private Map<String, Column> shortColumnNameMap;
 
     private boolean isColumnsModified;
 
-    private Database database;
-
     public HBaseTable(CreateTableData data) {
+        this(true, data, null, null, null);
+    }
+
+    public HBaseTable(CreateTableData data, Map<String, ArrayList<Column>> columnFamilyMap, HTableDescriptor htd,
+            byte[][] splitKeys) {
+        this(false, data, columnFamilyMap, htd, splitKeys);
+    }
+
+    private HBaseTable(boolean isStatic, CreateTableData data, Map<String, ArrayList<Column>> columnFamilyMap,
+            HTableDescriptor htd, byte[][] splitKeys) {
         super(data);
+
+        this.isStatic = isStatic;
         database = data.session.getDatabase();
-        isStatic = true;
         tableName = data.tableName;
         tableNameAsBytes = HBaseUtils.toBytes(tableName);
 
-        Column[] cols = getColumns();
-        for (Column c : cols) {
-            c.setColumnFamilyName(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME);
-        }
-        setColumns(cols);
+        if (isStatic) {
+            htd = new HTableDescriptor(tableName);
+            htd.addFamily(new HColumnDescriptor(DEFAULT_COLUMN_FAMILY_NAME));
 
-        HTableDescriptor htd = new HTableDescriptor(data.tableName);
-        htd.addFamily(new HColumnDescriptor(STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME));
-        createIfNotExists(data.session, data.tableName, htd, null);
+            columnFamilyMap = New.hashMap(1);
+            columnFamilyMap.put(DEFAULT_COLUMN_FAMILY_NAME, data.columns);
+        }
+
+        this.columnFamilyMap = columnFamilyMap;
+
+        hTableDescriptor = htd;
+
+        createIfNotExists(data.session, tableName, htd, splitKeys);
 
         scanIndex = new HBasePrimaryIndex(this, data.id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
         indexes.add(scanIndex);
-        hTableDescriptor = null; //静态表不需要这个字段
     }
 
-    public HBaseTable(Session session, Schema schema, int id, String name, Map<String, ArrayList<Column>> columnsMap,
-            ArrayList<Column> columns, HTableDescriptor htd, byte[][] splitKeys) {
-        super(schema, id, name, true, true, HBaseTableEngine.class.getName(), false);
-        database = session.getDatabase();
-        isStatic = false;
-        tableName = name;
-        tableNameAsBytes = HBaseUtils.toBytes(tableName);
+    @Override
+    protected void initColumns(ArrayList<Column> columns) {
+        shortColumnNameSet = New.hashSet();
+        shortColumnNameMap = New.hashMap();
+        Column[] cols = new Column[columns.size()];
+        columns.toArray(cols);
 
-        this.columnsMap = columnsMap;
-        setColumns(columns.toArray(new Column[columns.size()]));
+        for (Column c : cols) {
+            if (c.getColumnFamilyName() == null)
+                c.setColumnFamilyName(DEFAULT_COLUMN_FAMILY_NAME);
 
-        createIfNotExists(session, name, htd, splitKeys);
+            addShortColumnName(c);
+        }
+        setColumns(cols);
+    }
 
-        scanIndex = new HBasePrimaryIndex(this, id, IndexColumn.wrap(getColumns()), IndexType.createScan(false));
-        indexes.add(scanIndex);
-        hTableDescriptor = htd;
+    private synchronized void addShortColumnName(Column c) {
+        String name = c.getName();
+        if (!shortColumnNameSet.contains(name)) {
+            shortColumnNameSet.add(name);
+            shortColumnNameMap.put(name, c);
+        } else {
+            shortColumnNameMap.remove(name);
+        }
+    }
+
+    private synchronized void removeShortColumnName(Column c) {
+        String name = c.getName();
+        shortColumnNameSet.remove(name);
+        shortColumnNameMap.remove(name);
     }
 
     public byte[] getTableNameAsBytes() {
         return tableNameAsBytes;
     }
 
+    @Override
     public boolean isStatic() {
         return isStatic;
     }
@@ -131,6 +172,7 @@ public class HBaseTable extends TableBase {
         this.isColumnsModified = modified;
     }
 
+    @Override
     public Column getRowKeyColumn() {
         if (rowKeyColumn == null) {
             rowKeyColumn = new Column(getRowKeyName(), true);
@@ -141,7 +183,7 @@ public class HBaseTable extends TableBase {
 
     public String getDefaultColumnFamilyName() {
         if (isStatic)
-            return STATIC_TABLE_DEFAULT_COLUMN_FAMILY_NAME;
+            return DEFAULT_COLUMN_FAMILY_NAME;
         else
             return hTableDescriptor.getValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME);
     }
@@ -150,6 +192,7 @@ public class HBaseTable extends TableBase {
         this.rowKeyName = rowKeyName;
     }
 
+    @Override
     public String getRowKeyName() {
         if (rowKeyName == null) {
             if (isStatic) {
@@ -170,6 +213,88 @@ public class HBaseTable extends TableBase {
         }
 
         return rowKeyName;
+    }
+
+    @Override
+    public Column getColumn(String columnName) {
+        if (getRowKeyName().equalsIgnoreCase(columnName))
+            return getRowKeyColumn();
+
+        if (columnName.indexOf('.') == -1) {
+            Column c = shortColumnNameMap.get(columnName);
+            if (c != null)
+                return c;
+
+            columnName = getFullColumnName(null, columnName);
+        }
+
+        return super.getColumn(columnName);
+    }
+
+    @Override
+    public boolean doesColumnFamilyExist(String columnFamilyName) {
+        return columnFamilyMap.containsKey(columnFamilyName);
+    }
+
+    @Override
+    public boolean doesColumnExist(String columnName) {
+        if (columnName.indexOf('.') == -1) {
+            if (shortColumnNameMap.containsKey(columnName))
+                return true;
+
+            columnName = getFullColumnName(null, columnName);
+        }
+
+        return super.doesColumnExist(columnName);
+    }
+
+    @Override
+    public String getFullColumnName(String columnFamilyName, String columnName) {
+        if (columnFamilyName == null)
+            columnFamilyName = getDefaultColumnFamilyName();
+        return columnFamilyName + "." + columnName;
+    }
+
+    @Override
+    public Column getColumn(String columnFamilyName, String columnName, boolean isInsert) {
+        if (getRowKeyName().equalsIgnoreCase(columnName))
+            return getRowKeyColumn();
+
+        if (columnFamilyName == null) {
+            Column c = shortColumnNameMap.get(columnName);
+            if (c != null)
+                return c;
+        }
+
+        columnName = getFullColumnName(columnFamilyName, columnName);
+        if (!isStatic && isInsert) {
+            if (doesColumnExist(columnName))
+                return getColumn(columnName);
+            else { //处理动态列
+                Column[] oldColumns = getColumns();
+                Column[] newColumns;
+                if (oldColumns == null)
+                    newColumns = new Column[1];
+                else
+                    newColumns = new Column[oldColumns.length + 1];
+                System.arraycopy(oldColumns, 0, newColumns, 0, oldColumns.length);
+                Column c = new Column(columnName);
+                addShortColumnName(c);
+                newColumns[oldColumns.length] = c;
+                setColumnsNoCheck(newColumns);
+                isColumnsModified = true;
+
+                ArrayList<Column> list = columnFamilyMap.get(c.getColumnFamilyName());
+                if (list == null) {
+                    list = New.arrayList();
+                    columnFamilyMap.put(c.getColumnFamilyName(), list);
+                }
+                list.add(c);
+                return c;
+            }
+        } else {
+            return getColumn(columnName);
+        }
     }
 
     @Override
@@ -445,8 +570,8 @@ public class HBaseTable extends TableBase {
                     buff.append(toS(e.getKey())).append("='").append(toS(e.getValue())).append("'");
                 }
                 buff.append(")"); //OPTIONS
-                if (columnsMap.get(cfName) != null) {
-                    for (Column column : columnsMap.get(cfName)) {
+                if (columnFamilyMap.get(cfName) != null) {
+                    for (Column column : columnFamilyMap.get(cfName)) {
                         buff.append(",\n        ");
                         buff.append(column.getCreateSQL());
                     }
@@ -461,57 +586,6 @@ public class HBaseTable extends TableBase {
     @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("HBase Table"); //HBase的表不支持重命名
-    }
-
-    @Override
-    public Column getColumn(String columnName) {
-        if (getRowKeyName().equalsIgnoreCase(columnName))
-            return getRowKeyColumn();
-
-        if (columnName.indexOf('.') == -1)
-            return super.getColumn(getFullColumnName(null, columnName));
-        else
-            return super.getColumn(columnName);
-    }
-
-    public String getFullColumnName(String columnFamilyName, String columnName) {
-        if (columnFamilyName == null)
-            columnFamilyName = getDefaultColumnFamilyName();
-        return columnFamilyName + "." + columnName;
-    }
-
-    public Column getColumn(String columnFamilyName, String columnName, boolean isInsert) {
-        if (getRowKeyName().equalsIgnoreCase(columnName))
-            return getRowKeyColumn();
-
-        columnName = getFullColumnName(columnFamilyName, columnName);
-        if (!isStatic && isInsert) {
-            if (doesColumnExist(columnName))
-                return super.getColumn(columnName);
-            else { //处理动态列
-                Column[] oldColumns = getColumns();
-                Column[] newColumns;
-                if (oldColumns == null)
-                    newColumns = new Column[1];
-                else
-                    newColumns = new Column[oldColumns.length + 1];
-                System.arraycopy(oldColumns, 0, newColumns, 0, oldColumns.length);
-                Column c = new Column(columnName);
-                newColumns[oldColumns.length] = c;
-                setColumnsNoCheck(newColumns);
-                isColumnsModified = true;
-
-                ArrayList<Column> list = columnsMap.get(c.getColumnFamilyName());
-                if (list == null) {
-                    list = New.arrayList();
-                    columnsMap.put(c.getColumnFamilyName(), list);
-                }
-                list.add(c);
-                return c;
-            }
-        } else {
-            return super.getColumn(columnName);
-        }
     }
 
     @Override
@@ -607,11 +681,6 @@ public class HBaseTable extends TableBase {
     }
 
     @Override
-    public boolean supportsIndex() {
-        return false;
-    }
-
-    @Override
     public long getDiskSpaceUsed() {
         return 0;
     }
@@ -620,10 +689,10 @@ public class HBaseTable extends TableBase {
         ArrayList<Column> list;
         if (c.getColumnFamilyName() == null)
             c.setColumnFamilyName(getDefaultColumnFamilyName());
-        list = columnsMap.get(c.getColumnFamilyName());
+        list = columnFamilyMap.get(c.getColumnFamilyName());
         if (list == null) {
             list = New.arrayList();
-            columnsMap.put(c.getColumnFamilyName(), list);
+            columnFamilyMap.put(c.getColumnFamilyName(), list);
         }
         list.add(c);
 
@@ -631,6 +700,8 @@ public class HBaseTable extends TableBase {
         Column[] newCols = new Column[cols.length + 1];
         System.arraycopy(cols, 0, newCols, 0, cols.length);
         newCols[cols.length] = c;
+
+        addShortColumnName(c);
 
         setColumns(newCols);
     }
@@ -646,19 +717,21 @@ public class HBaseTable extends TableBase {
         Column[] newCols = new Column[list.size()];
         newCols = list.toArray(newCols);
 
+        removeShortColumnName(column);
+
         rebuildColumnsMap(newCols, getDefaultColumnFamilyName());
     }
 
     private void rebuildColumnsMap(Column[] cols, String defaultColumnFamilyName) {
-        columnsMap = New.hashMap();
+        columnFamilyMap = New.hashMap();
         ArrayList<Column> list;
         for (Column c : cols) {
             if (c.getColumnFamilyName() == null)
                 c.setColumnFamilyName(defaultColumnFamilyName);
-            list = columnsMap.get(c.getColumnFamilyName());
+            list = columnFamilyMap.get(c.getColumnFamilyName());
             if (list == null) {
                 list = New.arrayList();
-                columnsMap.put(c.getColumnFamilyName(), list);
+                columnFamilyMap.put(c.getColumnFamilyName(), list);
             }
             list.add(c);
         }

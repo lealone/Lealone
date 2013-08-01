@@ -8,7 +8,6 @@ package com.codefollower.lealone.expression;
 
 import java.util.HashMap;
 
-
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.command.dml.SelectListColumnResolver;
@@ -53,8 +52,7 @@ public class ExpressionColumn extends Expression {
         this.columnName = columnName;
     }
 
-    public ExpressionColumn(Database database, String schemaName, String tableAlias,
-            String columnFamilyName, String columnName) {
+    public ExpressionColumn(Database database, String schemaName, String tableAlias, String columnFamilyName, String columnName) {
         this.database = database;
         this.schemaName = schemaName;
         this.tableAlias = tableAlias;
@@ -110,6 +108,19 @@ public class ExpressionColumn extends Expression {
                 return;
             }
 
+            String tableAlias = this.tableAlias;
+            boolean useAlias = false;
+            //当columnFamilyName不存在时，有可能是想使用简化的tableAlias.columnName语法
+            if (columnFamilyName != null && !t.doesColumnFamilyExist(columnFamilyName)) {
+                //不替换原有的tableAlias，因为有可能在另一个table中存在这样的columnFamilyName
+                tableAlias = columnFamilyName;
+
+                if (!t.doesColumnExist(columnName))
+                    return;
+
+                useAlias = true;
+            }
+
             if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
                 return;
             }
@@ -117,16 +128,18 @@ public class ExpressionColumn extends Expression {
                 return;
             }
 
-            String fullColumnName = t.getFullColumnName(columnFamilyName, columnName);
-            for (Column col : t.getColumns()) {
-                String n = col.getFullName();
-                if (database.equalsIdentifiers(fullColumnName, n)) {
-                    resolver.getSelect().addColumn(resolver.getTableFilter(), col);
-                    mapColumn(resolver, col, level);
-                    return;
-                }
+            String fullColumnName;
+            if (useAlias || columnFamilyName == null)
+                fullColumnName = columnName;
+            else
+                fullColumnName = t.getFullColumnName(columnFamilyName, columnName);
+
+            if (t.doesColumnExist(fullColumnName)) {
+                Column c = t.getColumn(fullColumnName);
+                resolver.getSelect().addColumn(resolver.getTableFilter(), c);
+                mapColumn(resolver, c, level);
+                return;
             }
-            return;
         } else {
             if (!(resolver instanceof SelectListColumnResolver) && columnFamilyName != null) {
                 schemaName = tableAlias;
@@ -181,8 +194,7 @@ public class ExpressionColumn extends Expression {
 
     public Expression optimize(Session session) {
         if (columnResolver == null) {
-            Schema schema = session.getDatabase().findSchema(
-                    tableAlias == null ? session.getCurrentSchemaName() : tableAlias);
+            Schema schema = session.getDatabase().findSchema(tableAlias == null ? session.getCurrentSchemaName() : tableAlias);
             if (schema != null) {
                 Constant constant = schema.findConstant(columnName);
                 if (constant != null) {
@@ -350,8 +362,7 @@ public class ExpressionColumn extends Expression {
     public void createIndexConditions(Session session, TableFilter filter) {
         TableFilter tf = getTableFilter();
         if (filter == tf && column.getType() == Value.BOOLEAN) {
-            IndexCondition cond = IndexCondition.get(Comparison.EQUAL, this, ValueExpression
-                    .get(ValueBoolean.get(true)));
+            IndexCondition cond = IndexCondition.get(Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(true)));
             filter.addIndexCondition(cond);
         }
     }

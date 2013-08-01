@@ -48,7 +48,6 @@ import com.codefollower.lealone.hbase.command.dml.HBaseInsert;
 import com.codefollower.lealone.hbase.command.dml.HBaseMerge;
 import com.codefollower.lealone.hbase.command.dml.HBaseSelect;
 import com.codefollower.lealone.hbase.command.dml.HBaseUpdate;
-import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
@@ -199,93 +198,64 @@ public class HBaseParser extends Parser {
 
     @Override
     protected Column parseColumn(Table table) {
-        String columnName = readColumnIdentifier();
-
-        if (table instanceof HBaseTable) {
-            HBaseTable t = (HBaseTable) table;
-            if (t.getRowKeyName().equalsIgnoreCase(columnName))
-                return t.getRowKeyColumn();
+        if (table.supportsColumnFamily()) {
+            String columnName = readColumnIdentifier();
+            if (columnName.equalsIgnoreCase(table.getRowKeyName()))
+                return table.getRowKeyColumn();
+            else if (database.getSettings().rowId && Column.ROWID.equals(columnName))
+                return table.getRowIdColumn();
 
             String columnFamilyName = null;
             if (readIf(".")) {
                 columnFamilyName = columnName;
-                if (currentTokenType != IDENTIFIER) {
-                    throw DbException.getSyntaxError(sqlCommand, parseIndex, "identifier");
-                }
-                columnName = currentToken;
-                read();
+                columnName = readColumnIdentifier();
             }
-            return t.getColumn(columnFamilyName, columnName, currentPrepared instanceof Insert);
+            return table.getColumn(columnFamilyName, columnName, currentPrepared instanceof Insert);
+        } else {
+            return super.parseColumn(table);
         }
-
-        if (database.getSettings().rowId && Column.ROWID.equals(columnName)) {
-            return table.getRowIdColumn();
-        }
-        return table.getColumn(columnName);
     }
 
+    //只用于update语句
     @Override
     protected Column readTableColumn(TableFilter filter) {
-        String tableAlias = null;
+        Table t = filter.getTable();
+        if (!t.supportsColumnFamily())
+            return super.readTableColumn(filter);
+
+        //完整的语法是: catalogName(也就是数据库名).tableAlias.columnFamilyName.columnName
+        //如果没有使用表别名，tableAlias实际上就是原始表名
+        String columnFamilyName = null;
         String columnName = readColumnIdentifier();
         if (readIf(".")) {
-            if (filter.getTable() instanceof HBaseTable) {
-                String columnFamilyName = columnName;
+            columnFamilyName = columnName;
+            columnName = readColumnIdentifier();
+            if (readIf(".")) {
+                String tableAlias = columnFamilyName;
+                columnFamilyName = columnName;
                 columnName = readColumnIdentifier();
                 if (readIf(".")) {
+                    String schema = tableAlias;
                     tableAlias = columnFamilyName;
                     columnFamilyName = columnName;
                     columnName = readColumnIdentifier();
                     if (readIf(".")) {
-                        String schema = tableAlias;
+                        String catalogName = schema;
+                        schema = tableAlias;
                         tableAlias = columnFamilyName;
                         columnFamilyName = columnName;
                         columnName = readColumnIdentifier();
-                        if (readIf(".")) {
-                            String catalogName = schema;
-                            schema = tableAlias;
-                            tableAlias = columnFamilyName;
-                            columnFamilyName = columnName;
-                            columnName = readColumnIdentifier();
-                            if (!equalsToken(catalogName, database.getShortName())) {
-                                throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, catalogName);
-                            }
-                        }
-                        if (!equalsToken(schema, filter.getTable().getSchema().getName())) {
-                            throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schema);
+                        if (!equalsToken(catalogName, database.getShortName())) {
+                            throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, catalogName);
                         }
                     }
-                    if (!equalsToken(tableAlias, filter.getTableAlias())) {
-                        throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableAlias);
+                    if (!equalsToken(schema, filter.getTable().getSchema().getName())) {
+                        throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schema);
                     }
                 }
-                Column c = ((HBaseTable) filter.getTable()).getColumn(columnFamilyName, columnName,
-                        currentPrepared instanceof Insert);
-                if (columnFamilyName != null)
-                    c.setColumnFamilyName(columnFamilyName);
-                return c;
-            }
-            tableAlias = columnName;
-            columnName = readColumnIdentifier();
-            if (readIf(".")) {
-                String schema = tableAlias;
-                tableAlias = columnName;
-                columnName = readColumnIdentifier();
-                if (readIf(".")) {
-                    String catalogName = schema;
-                    schema = tableAlias;
-                    tableAlias = columnName;
-                    columnName = readColumnIdentifier();
-                    if (!equalsToken(catalogName, database.getShortName())) {
-                        throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, catalogName);
-                    }
+                if (!equalsToken(tableAlias, filter.getTableAlias())) {
+                    throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableAlias);
                 }
-                if (!equalsToken(schema, filter.getTable().getSchema().getName())) {
-                    throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schema);
-                }
-            }
-            if (!equalsToken(tableAlias, filter.getTableAlias())) {
-                throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableAlias);
             }
         }
         if (database.getSettings().rowId) {
@@ -293,7 +263,19 @@ public class HBaseParser extends Parser {
                 return filter.getRowIdColumn();
             }
         }
-        return filter.getTable().getColumn(columnName);
+
+        if (columnFamilyName == null) {
+            return t.getColumn(columnName);
+        } else if (!t.doesColumnFamilyExist(columnFamilyName)) {
+            //当columnFamilyName不存在时，有可能是想使用简化的tableAlias.columnName语法
+            if (!equalsToken(columnFamilyName, filter.getTableAlias())) {
+                throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, columnFamilyName);
+            }
+
+            return t.getColumn(columnName);
+        } else {
+            return t.getColumn(columnFamilyName, columnName, false);
+        }
     }
 
     @Override

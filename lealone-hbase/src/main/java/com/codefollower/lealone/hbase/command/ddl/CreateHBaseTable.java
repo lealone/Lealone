@@ -48,7 +48,7 @@ public class CreateHBaseTable extends CreateTable {
 
     private Options options;
 
-    private Map<String, ArrayList<Column>> columnsMap = New.hashMap();
+    private Map<String, ArrayList<Column>> columnFamilyMap = New.hashMap();
     private final CreateTableData data = new CreateTableData();
 
     public CreateHBaseTable(Session session, Schema schema, String tableName) {
@@ -63,10 +63,10 @@ public class CreateHBaseTable extends CreateTable {
         if (cf == null)
             cf = "";
 
-        ArrayList<Column> list = columnsMap.get(cf);
+        ArrayList<Column> list = columnFamilyMap.get(cf);
         if (list == null) {
             list = New.arrayList();
-            columnsMap.put(cf, list);
+            columnFamilyMap.put(cf, list);
         }
         list.add(column);
     }
@@ -154,13 +154,25 @@ public class CreateHBaseTable extends CreateTable {
             }
         }
 
-        ArrayList<Column> list = columnsMap.get("");
+        ArrayList<Column> list = columnFamilyMap.get("");
         if (list != null) {
-            columnsMap.remove("");
-            columnsMap.put(defaultColumnFamilyName, list);
+            columnFamilyMap.remove("");
+            columnFamilyMap.put(defaultColumnFamilyName, list);
         }
         int id = getObjectId();
-        HBaseTable table = new HBaseTable(session, getSchema(), id, tableName, columnsMap, data.columns, htd, splitKeys);
+
+        data.schema = getSchema();
+        data.tableName = tableName;
+        data.id = id;
+        data.temporary = false;
+        data.globalTemporary = false;
+        data.persistIndexes = true;
+        data.persistData = true;
+        data.create = true;
+        data.session = session;
+        data.tableEngine = HBaseTableEngine.class.getName();
+        data.isHidden = false;
+        HBaseTable table = new HBaseTable(data, columnFamilyMap, htd, splitKeys);
         table.setRowKeyName(rowKeyName);
         table.setTableEngine(HBaseTableEngine.class.getName());
 

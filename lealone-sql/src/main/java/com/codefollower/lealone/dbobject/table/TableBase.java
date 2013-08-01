@@ -19,7 +19,6 @@ import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.dbobject.DbObject;
-import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.SchemaObject;
 import com.codefollower.lealone.dbobject.constraint.Constraint;
 import com.codefollower.lealone.dbobject.constraint.ConstraintReferential;
@@ -68,23 +67,13 @@ public abstract class TableBase extends Table {
      */
     private boolean waitForLock;
 
-    public TableBase(Schema schema, int id, String name, boolean persistIndexes, boolean persistData, String tableEngine,
-            boolean globalTemporary) {
-        super(schema, id, name, persistIndexes, persistData);
-        this.tableEngine = tableEngine;
-        this.globalTemporary = globalTemporary;
-    }
-
     public TableBase(CreateTableData data) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
         this.tableEngine = data.tableEngine;
         this.globalTemporary = data.globalTemporary;
 
         setTemporary(data.temporary);
-        Column[] cols = new Column[data.columns.size()];
-        data.columns.toArray(cols);
-        setColumns(cols);
-
+        initColumns(data.columns);
         nextAnalyze = database.getSettings().analyzeAuto;
         this.isHidden = data.isHidden;
         for (Column col : getColumns()) {
@@ -95,6 +84,12 @@ public abstract class TableBase extends Table {
 
         traceLock = database.getTrace(Trace.LOCK);
         lockShared = New.hashSet();
+    }
+
+    protected void initColumns(ArrayList<Column> columns) {
+        Column[] cols = new Column[columns.size()];
+        columns.toArray(cols);
+        setColumns(cols);
     }
 
     public boolean getContainsLargeObject() {

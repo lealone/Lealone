@@ -129,7 +129,6 @@ public class InsertOrMergeSupport {
                     CommandInterface ci = si.prepareCommand(alterTable + c.getCreateSQL(true), 1);
                     ci.executeUpdate();
                 }
-                si.close();
             }
             if (isBatch)
                 session.commit(false);

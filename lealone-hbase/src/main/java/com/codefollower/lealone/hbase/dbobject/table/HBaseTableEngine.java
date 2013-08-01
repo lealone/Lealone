@@ -28,7 +28,7 @@ import com.codefollower.lealone.engine.Database;
 
 /**
  * 
- * 用于支持标准的CREATE TABLE，这种类型的表被看成是静态类型的，不需要定义列族，字段类型必须事先定义，并且必须有主键。
+ * 用于支持标准的CREATE TABLE，这种类型的表被看成是静态类型的，不需要定义列族，字段类型必须事先定义。
  *
  */
 public class HBaseTableEngine implements TableEngine {
