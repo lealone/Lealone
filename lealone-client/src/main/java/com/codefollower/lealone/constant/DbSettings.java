@@ -322,10 +322,10 @@ public class DbSettings extends SettingsBase {
     
     /**
      * Database setting <code>DEFAULT_DATABASE_ENGINE</code>
-     * (default: MVSTORE).<br />
+     * (default: null).<br />
      * The default database engine to use for new databases.
      */
-    public final String defaultDatabaseEngine = get("DEFAULT_DATABASE_ENGINE", "MVSTORE");
+    public final String defaultDatabaseEngine = get("DEFAULT_DATABASE_ENGINE", "null");
 
     private DbSettings(HashMap<String, String> s) {
         super(s);

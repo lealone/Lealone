@@ -16,7 +16,6 @@
 	<modules>
 		<module>lealone-client</module>
 		<module>lealone-sql</module>
-		<module>lealone-mvstore</module>
 		<module>lealone-hbase</module>
 		<module>lealone-test</module>
 	</modules>

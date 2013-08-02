@@ -40,37 +40,5 @@
 			</binaries>
 		</moduleSet>
 
-		<moduleSet>
-			<includes>
-				<include>com.codefollower.lealone:lealone-mvstore</include>
-			</includes>
-			<binaries>
-				<unpack>false</unpack>
-				<outputDirectory>lealone-mvstore</outputDirectory>
-				<dependencySets>
-					<dependencySet>
-						<useTransitiveFiltering>true</useTransitiveFiltering>
-						<useTransitiveDependencies>true</useTransitiveDependencies>
-					</dependencySet>
-				</dependencySets>
-			</binaries>
-		</moduleSet>
-
-		<moduleSet>
-			<includes>
-				<include>com.codefollower.lealone:lealone-pagestore</include>
-			</includes>
-			<binaries>
-				<unpack>false</unpack>
-				<outputDirectory>lealone-pagestore</outputDirectory>
-				<dependencySets>
-					<dependencySet>
-						<useTransitiveFiltering>true</useTransitiveFiltering>
-						<useTransitiveDependencies>true</useTransitiveDependencies>
-					</dependencySet>
-				</dependencySets>
-			</binaries>
-		</moduleSet>
-
 	</moduleSets>
 </assembly>
