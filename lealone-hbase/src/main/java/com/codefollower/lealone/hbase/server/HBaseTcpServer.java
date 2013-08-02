@@ -88,6 +88,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
         try {
             super.start();
             TcpPortTracker.createTcpPortEphemeralNode(serverName, tcpPort, master != null);
+            ZooKeeperAdmin.getTcpPortTracker(); //初始化TcpPortTracker
 
             String name = getName() + " (" + getURL() + ")";
             Thread t = new Thread(this, name);

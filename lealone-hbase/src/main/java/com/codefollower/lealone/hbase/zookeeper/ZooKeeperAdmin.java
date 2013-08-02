@@ -44,12 +44,14 @@ public class ZooKeeperAdmin {
     private static MasterAddressTracker masterAddressTracker;
     private static RegionServerTracker regionServerTracker;
     private static TcpPortTracker tcpPortTracker;
+    private static PgPortTracker pgPortTracker;
 
     private static void reset() {
         watcher = null;
         masterAddressTracker = null;
         regionServerTracker = null;
         tcpPortTracker = null;
+        pgPortTracker = null;
         abortable = newAbortable();
     }
 
@@ -155,6 +157,22 @@ public class ZooKeeperAdmin {
             }
         }
         return tcpPortTracker;
+    }
+
+    public static PgPortTracker getPgPortTracker() {
+        if (pgPortTracker == null) {
+            synchronized (ZooKeeperAdmin.class) {
+                if (pgPortTracker == null) {
+                    pgPortTracker = new PgPortTracker(getZooKeeperWatcher(), abortable);
+                    try {
+                        pgPortTracker.start();
+                    } catch (Exception e) {
+                        throw new ZooKeeperAdminException("getPgPortTracker()", e);
+                    }
+                }
+            }
+        }
+        return pgPortTracker;
     }
 
     public static ZooKeeperWatcher getZooKeeperWatcher() {

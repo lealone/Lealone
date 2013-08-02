@@ -89,6 +89,7 @@ public class HBasePgServer extends PgServer implements Runnable {
     public void start() {
         super.start();
         PgPortTracker.createPgPortEphemeralNode(serverName, pgPort, master != null);
+        ZooKeeperAdmin.getPgPortTracker(); //初始化PgPortTracker
 
         String name = getName() + " (" + getURL() + ")";
         Thread t = new Thread(this, name);
