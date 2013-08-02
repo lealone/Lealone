@@ -23,7 +23,8 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 * 支持JDBC 4.0规范
 
-* 支持分布式事务、索引、各种DDL，支持触发器、自定义函数、视图、Join、子查询、Order By、Group By、聚合
+* 支持分布式事务、索引、视图、Join、子查询、各种DDL <br>
+  支持触发器、自定义函数、Order By、Group By、聚合
 
 
 ## 运行需要
