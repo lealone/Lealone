@@ -279,7 +279,6 @@ public class TcpServerThread implements Runnable {
 
     private void process() throws IOException {
         int operation = transfer.readInt();
-        boolean isDistributedTransaction = false;
         switch (operation) {
         case SessionRemote.SESSION_PREPARE_READ_PARAMS:
         case SessionRemote.SESSION_PREPARE: {
@@ -331,16 +330,14 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY: {
-            isDistributedTransaction = true;
-        }
+        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY:
         case SessionRemote.COMMAND_EXECUTE_QUERY: {
             int id = transfer.readInt();
             int objectId = transfer.readInt();
             int maxRows = transfer.readInt();
             int fetchSize = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
-            if (isDistributedTransaction) {
+            if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
@@ -370,13 +367,11 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE: {
-            isDistributedTransaction = true;
-        }
+        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE:
         case SessionRemote.COMMAND_EXECUTE_UPDATE: {
             int id = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
-            if (isDistributedTransaction) {
+            if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
