@@ -644,7 +644,7 @@ public class ConnectionInfo implements Cloneable {
         this.name = serverKey;
     }
 
-    DbSettings getDbSettings() {
+    public DbSettings getDbSettings() {
         DbSettings defaultSettings = DbSettings.getInstance(null);
         HashMap<String, String> s = null;
         for (Object k : prop.keySet()) {

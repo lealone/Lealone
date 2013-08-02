@@ -83,7 +83,6 @@ mvn clean package assembly:assembly -Dmaven.test.skip=true
 下面4个子工程中的代码使用[H2数据库的License](http://www.h2database.com/html/license.html)
 * lealone-client
 * lealone-mvstore
-* lealone-pagestore
 * lealone-sql
 
 除此之外的代码使用[Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
