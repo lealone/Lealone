@@ -86,6 +86,13 @@ public class Transfer {
         }
     }
 
+    public int available() throws IOException {
+        if (in != null)
+            return in.available();
+        else
+            return 0;
+    }
+
     /**
      * Write pending changes.
      */

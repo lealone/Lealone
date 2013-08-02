@@ -576,6 +576,9 @@ public class SessionRemote extends SessionWithState implements DataHandler {
      *             and server
      */
     public void done(Transfer transfer) throws IOException {
+        //TODO 这里应该抛异常，找出为什么transfer的输入流没正常读完的原因？
+        if (transfer.available() > 0)
+            transfer.readBytes(new byte[transfer.available()], 0, transfer.available());
         transfer.flush();
         int status = transfer.readInt();
         if (status == STATUS_ERROR) {
