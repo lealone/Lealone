@@ -66,28 +66,28 @@ public class Committed {
     public long getSize() {
         return BKT_NUMBER * 8 + (lastOpenedBucket - firstCommitedBucket) * CommitBucket.BUCKET_SIZE * 8;
     }
-}
 
-class CommitBucket {
+    private static class CommitBucket {
 
-    static final long BUCKET_SIZE = 1 << 14;
+        static final long BUCKET_SIZE = 1 << 14;
 
-    private long transactions[] = new long[(int) BUCKET_SIZE];
+        private long transactions[] = new long[(int) BUCKET_SIZE];
 
-    public CommitBucket() {
-        Arrays.fill(transactions, -1);
+        public CommitBucket() {
+            Arrays.fill(transactions, -1);
+        }
+
+        public long getCommit(long id) {
+            return transactions[(int) (id % BUCKET_SIZE)];
+        }
+
+        public void commit(long id, long timestamp) {
+            transactions[(int) (id % BUCKET_SIZE)] = timestamp;
+        }
+
+        public static long getBucketSize() {
+            return BUCKET_SIZE;
+        }
+
     }
-
-    public long getCommit(long id) {
-        return transactions[(int) (id % BUCKET_SIZE)];
-    }
-
-    public void commit(long id, long timestamp) {
-        transactions[(int) (id % BUCKET_SIZE)] = timestamp;
-    }
-
-    public static long getBucketSize() {
-        return BUCKET_SIZE;
-    }
-
 }

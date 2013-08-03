@@ -19,52 +19,27 @@
  */
 package com.codefollower.lealone.hbase.transaction;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.MurmurHash;
-import org.jboss.netty.buffer.ChannelBuffer;
 
 public class RowKey {
-    private byte[] rowId;
-    private byte[] tableId;
+    private final byte[] rowId;
+    private final byte[] tableId;
     private int hash = 0;
-
-    public RowKey() {
-        rowId = new byte[0];
-        tableId = new byte[0];
-    }
 
     public RowKey(byte[] r, byte[] t) {
         rowId = r;
         tableId = t;
     }
 
-    public byte[] getTable() {
-        return tableId;
-    }
-
-    public byte[] getRow() {
-        return rowId;
-    }
-
+    @Override
     public String toString() {
         return Bytes.toString(tableId) + ":" + Bytes.toString(rowId);
     }
 
-    public static RowKey readObject(ChannelBuffer aInputStream) {
-        RowKey rk = new RowKey(null, null);
-        rk.hash = aInputStream.readInt();
-        return rk;
-    }
-
-    public void writeObject(DataOutputStream aOutputStream) throws IOException {
-        hashCode();
-        aOutputStream.writeInt(hash);
-    }
-
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof RowKey) {
             RowKey other = (RowKey) obj;
@@ -74,6 +49,7 @@ public class RowKey {
         return false;
     }
 
+    @Override
     public int hashCode() {
         if (hash != 0) {
             return hash;

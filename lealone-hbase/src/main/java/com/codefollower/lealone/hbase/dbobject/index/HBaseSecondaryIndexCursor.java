@@ -41,7 +41,7 @@ import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.transaction.Filter;
+import com.codefollower.lealone.hbase.transaction.ValidityChecker;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
@@ -55,6 +55,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
     private final ByteBuffer readBuffer = ByteBuffer.allocate(256);
     private final HBaseSecondaryIndex secondaryIndex;
     private final HBaseSession session;
+    private final String hostAndPort;
     private int fetchSize;
     private byte[] regionName = null;
 
@@ -70,6 +71,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         defaultColumnFamilyName = Bytes.toBytes(((HBaseTable) filter.getTable()).getDefaultColumnFamilyName());
         secondaryIndex = index;
         session = (HBaseSession) filter.getSession();
+        hostAndPort = session.getRegionServer().getServerName().getHostAndPort();
         Prepared p = filter.getPrepared();
         if (p instanceof WithWhereClause) {
             regionName = Bytes.toBytes(((WithWhereClause) p).getWhereClauseSupport().getRegionName());
@@ -195,15 +197,14 @@ public class HBaseSecondaryIndexCursor implements Cursor {
                 if (kvs != null) {
                     kv = kvs.get(0);
                     queryTimestamp = kv.getTimestamp();
-                    if (queryTimestamp < transaction.getStartTimestamp() & queryTimestamp % 2 == 0) {
+                    if (queryTimestamp < transaction.getStartTimestamp() && queryTimestamp % 2 == 0) {
                         if (kv.getValueLength() != 0) //kv已删除，不需要再处理
                             list.add(r);
                         continue;
                     }
                 }
 
-                //TODO Filter.filter很慢
-                r = new Result(Filter.filter(session.getRegionServer(), regionName, transaction, kvs, 1));
+                r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, transaction, kvs, 1));
                 if (!r.isEmpty())
                     list.add(r);
             }

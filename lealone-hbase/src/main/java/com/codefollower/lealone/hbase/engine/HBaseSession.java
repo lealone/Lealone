@@ -44,7 +44,7 @@ import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
 import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.transaction.CommitHashMap;
-import com.codefollower.lealone.hbase.transaction.Filter;
+import com.codefollower.lealone.hbase.transaction.ValidityChecker;
 import com.codefollower.lealone.hbase.transaction.RowKey;
 import com.codefollower.lealone.hbase.transaction.TimestampService;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -54,7 +54,9 @@ import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.New;
 
 public class HBaseSession extends Session {
-    private static final CommitHashMap commitHashMap = new CommitHashMap();
+    private static final CommitHashMap commitHashMap = new CommitHashMap(HBaseUtils.getConfiguration().getInt(
+            HBaseConstants.TRANSACTION_COMMIT_CACHE_SIZE, HBaseConstants.DEFAULT_TRANSACTION_COMMIT_CACHE_SIZE));
+
     private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
     private static final ThreadPoolExecutor pool = CommandParallel.getThreadPoolExecutor();
 
@@ -194,22 +196,22 @@ public class HBaseSession extends Session {
                         if (sessionRemoteCache.size() > 0)
                             parallelCommit();
                         if (isMaster()) {
-                            transactionStatusTable.addRecord(transaction, isMaster());
+                            transactionStatusTable.addRecord(transaction, true);
                         } else {
                             long tid = transaction.getTransactionId();
                             long commitTimestamp = timestampService.nextOdd();
                             transaction.setCommitTimestamp(commitTimestamp);
                             transaction.setHostAndPort(getHostAndPort());
                             checkConflict();
-                            transactionStatusTable.addRecord(transaction, isMaster());
-                            Filter.committed.commit(tid, commitTimestamp);
+                            transactionStatusTable.addRecord(transaction, false);
+                            ValidityChecker.committed.commit(tid, commitTimestamp);
                         }
                     } else {
                         long tid = transaction.getTransactionId();
                         long commitTimestamp = timestampService.nextOdd();
                         transaction.setCommitTimestamp(commitTimestamp);
                         checkConflict();
-                        Filter.committed.commit(tid, commitTimestamp);
+                        ValidityChecker.committed.commit(tid, commitTimestamp);
                     }
                 }
             }
@@ -325,8 +327,9 @@ public class HBaseSession extends Session {
             long transactionId = transaction.getTransactionId();
             synchronized (HBaseSession.class) {
                 if (transactionId < timestampService.first()) {
-                    //1. 事务开始时间不能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
-                    throw new RuntimeException("Aborting transaction after restarting region server");
+                    //1. transactionId不可能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
+                    throw DbException.throwInternalError("transactionId(" + transactionId + ") < firstTimestampService("
+                            + timestampService.first() + ")");
                 } else if (!rowKeys.isEmpty() && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
                     //2. Too old and not read only
                     throw new RuntimeException("Too old startTimestamp: ST " + transactionId + " MAX "

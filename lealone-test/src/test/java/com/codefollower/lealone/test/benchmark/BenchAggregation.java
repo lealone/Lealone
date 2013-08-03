@@ -27,23 +27,29 @@ import org.apache.hadoop.hbase.client.coprocessor.LongColumnInterpreter;
 
 public class BenchAggregation extends BenchWrite {
     public static void main(String[] args) throws Exception {
-        new BenchAggregation(1000000, 2000000).run();
+        //new BenchAggregation(1000000, 2000000, 100000, "RK1900000").run();
+
+        new BenchAggregation(100000, 200000, 10000, "RK100000").run();
     }
 
     private AggregationClient ac;
     private byte[] tableNameAsBytes;
     private LongColumnInterpreter ci;
     private Scan scan;
+    private int step;
+    private String rowKey;
 
-    public BenchAggregation(int startKey, int endKey) {
+    public BenchAggregation(int startKey, int endKey, int step, String rowKey) {
         super("BenchAggregation", startKey, endKey);
         loop = 2;
+        this.step = step;
+        this.rowKey = rowKey;
     }
 
     @Override
     public void createTable() throws Exception {
         StringBuilder s = new StringBuilder();
-        for (int i = startKey; i < endKey; i += 100000) {
+        for (int i = startKey; i < endKey; i += step) {
             if (i != startKey)
                 s.append(',');
             s.append("'RK").append(i).append("'");
@@ -94,7 +100,7 @@ public class BenchAggregation extends BenchWrite {
 
     long testCount() throws Exception {
         String sql = "select count(*) from " + tableName;
-        sql = "select count(*) from " + tableName + " where _rowkey_>='RK1900000'";
+        sql = "select count(*) from " + tableName + " where _rowkey_>='" + rowKey + "'";
 
         long start = System.nanoTime();
         ResultSet r = stmt.executeQuery(sql);
@@ -109,7 +115,7 @@ public class BenchAggregation extends BenchWrite {
     long testHBaseCount() throws Exception {
         long start = System.nanoTime();
         long rowCount = 0;
-        scan.setStartRow(b("RK1900000"));
+        scan.setStartRow(b(rowKey));
         try {
             rowCount = ac.rowCount(tableNameAsBytes, ci, scan);
         } catch (Throwable e) {

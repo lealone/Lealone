@@ -19,12 +19,6 @@
  */
 package com.codefollower.lealone.hbase.transaction;
 
-import java.util.Collections;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.jboss.netty.util.internal.ConcurrentHashMap;
-
 /**
  * This class stores the mapping between start a commit timestamps and between
  * modified row and commit timestamp.
@@ -46,24 +40,8 @@ import org.jboss.netty.util.internal.ConcurrentHashMap;
  */
 
 public class CommitHashMap {
-
+    private final LongCache rowsCommitMapping;
     private long largestDeletedTimestamp;
-    private final Cache startCommitMapping;
-    private final Cache rowsCommitMapping;
-
-    private final AtomicLong abortedSnapshot = new AtomicLong();
-
-    // set of half aborted transactions
-    // TODO: set the initial capacity in a smarter way
-    final Set<AbortedTransaction> halfAborted = Collections.newSetFromMap(new ConcurrentHashMap<AbortedTransaction, Boolean>(
-            10000));
-
-    /**
-     * Constructs a new, empty hashtable with a default size of 1000
-     */
-    public CommitHashMap() {
-        this(1000);
-    }
 
     /**
      * Constructs a new, empty hashtable with the specified size
@@ -77,8 +55,6 @@ public class CommitHashMap {
         if (size < 0) {
             throw new IllegalArgumentException("Illegal size: " + size);
         }
-
-        this.startCommitMapping = new LongCache(size, 4);
         this.rowsCommitMapping = new LongCache(size, 32);
     }
 
@@ -91,36 +67,55 @@ public class CommitHashMap {
         largestDeletedTimestamp = Math.max(oldCommitTS, largestDeletedTimestamp);
     }
 
-    public long getCommittedTimestamp(long startTimestamp) {
-        return startCommitMapping.get(startTimestamp);
-    }
-
-    public void setCommittedTimestamp(long startTimestamp, long commitTimestamp) {
-        long oldCommitTS = startCommitMapping.set(startTimestamp, commitTimestamp);
-        largestDeletedTimestamp = Math.max(oldCommitTS, largestDeletedTimestamp);
-    }
-
     public long getLargestDeletedTimestamp() {
         return largestDeletedTimestamp;
     }
 
-    long getAndIncrementAbortedSnapshot() {
-        return abortedSnapshot.getAndIncrement();
-    }
+    public static class LongCache {
+        private final long[] cache;
+        private final int associativity;
+        private final int mask;
 
-    // add a new half aborted transaction
-    void setHalfAborted(long startTimestamp) {
-        halfAborted.add(new AbortedTransaction(startTimestamp, abortedSnapshot.get()));
-    }
+        public LongCache(int size, int associativity) {
+            this.cache = new long[2 * (size + associativity)];
+            this.associativity = associativity;
+            this.mask = size - 1;
+        }
 
-    // call when a half aborted transaction is fully aborted
-    void setFullAborted(long startTimestamp) {
-        halfAborted.remove(new AbortedTransaction(startTimestamp, 0));
-    }
+        public long set(long key, long value) {
+            final int index = index(key);
+            int oldestIndex = 0;
+            long oldestValue = Long.MAX_VALUE;
+            for (int i = 0; i < associativity; ++i) {
+                int currIndex = 2 * (index + i);
+                if (cache[currIndex] == key) {
+                    oldestValue = 0;
+                    oldestIndex = currIndex;
+                    break;
+                }
+                if (cache[currIndex + 1] <= oldestValue) {
+                    oldestValue = cache[currIndex + 1];
+                    oldestIndex = currIndex;
+                }
+            }
+            cache[oldestIndex] = key;
+            cache[oldestIndex + 1] = value;
+            return oldestValue;
+        }
 
-    // query to see if a transaction is half aborted
-    boolean isHalfAborted(long startTimestamp) {
-        return halfAborted.contains(new AbortedTransaction(startTimestamp, 0));
-    }
+        public long get(long key) {
+            final int index = index(key);
+            for (int i = 0; i < associativity; ++i) {
+                int currIndex = 2 * (index + i);
+                if (cache[currIndex] == key) {
+                    return cache[currIndex + 1];
+                }
+            }
+            return 0;
+        }
 
+        private int index(long hash) {
+            return (int) (Math.abs(hash) & mask);
+        }
+    }
 }

@@ -41,7 +41,7 @@ import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.transaction.Filter;
+import com.codefollower.lealone.hbase.transaction.ValidityChecker;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
@@ -54,6 +54,7 @@ import com.codefollower.lealone.value.ValueString;
 
 public class HBasePrimaryIndexCursor implements Cursor {
     private final HBaseSession session;
+    private final String hostAndPort;
     private int fetchSize;
     private byte[] regionName = null;
 
@@ -69,6 +70,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
 
     public HBasePrimaryIndexCursor(TableFilter filter, SearchRow first, SearchRow last) {
         session = (HBaseSession) filter.getSession();
+        hostAndPort = session.getRegionServer().getServerName().getHostAndPort();
         Prepared p = filter.getPrepared();
         if (p instanceof WithWhereClause) {
             regionName = Bytes.toBytes(((WithWhereClause) p).getWhereClauseSupport().getRegionName());
@@ -211,53 +213,45 @@ public class HBasePrimaryIndexCursor implements Cursor {
         else if (isGet)
             return false;
 
+        Transaction transaction = session.getTransaction();
+        List<KeyValue> kvs;
+        KeyValue kv;
+        Result r;
+        long queryTimestamp;
         try {
-            Transaction transaction = session.getTransaction();
-            List<KeyValue> kvs;
-            KeyValue kv;
-            Result r;
-            long queryTimestamp;
             result = session.getRegionServer().next(scannerId, fetchSize);
             ArrayList<Result> list = new ArrayList<Result>(result.length);
-            try {
-                for (int i = 0; i < result.length; i++) {
-                    r = result[i];
-                    kvs = r.list();
-                    //当Result.isEmpty=true时，r.list()也返回null，所以这里不用再判断kvs.isEmpty
-                    if (kvs != null) {
-                        kv = kvs.get(0);
-                        queryTimestamp = kv.getTimestamp();
-                        if (queryTimestamp < transaction.getStartTimestamp() & queryTimestamp % 2 == 0) {
-                            if (kv.getValueLength() != 0) //kv已删除，不需要再处理
-                                list.add(r);
-                            continue;
-                        }
+            for (int i = 0; i < result.length; i++) {
+                r = result[i];
+                kvs = r.list();
+                //当Result.isEmpty=true时，r.list()也返回null，所以这里不用再判断kvs.isEmpty
+                if (kvs != null) {
+                    kv = kvs.get(0);
+                    queryTimestamp = kv.getTimestamp();
+                    if (queryTimestamp < transaction.getStartTimestamp() && queryTimestamp % 2 == 0) {
+                        if (kv.getValueLength() != 0) //kv已删除，不需要再处理
+                            list.add(r);
+                        continue;
                     }
-
-                    //TODO Filter.filter很慢
-                    r = new Result(Filter.filter(session.getRegionServer(), regionName, transaction, kvs, 1));
-                    if (!r.isEmpty())
-                        list.add(r);
                 }
-            } catch (Exception e) {
-                throw DbException.convert(e);
+
+                r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, transaction, kvs, 1));
+                if (!r.isEmpty())
+                    list.add(r);
             }
 
             result = list.toArray(new Result[0]);
-
-            index = 0;
-        } catch (IOException e) {
+        } catch (Exception e) {
+            close();
             throw DbException.convert(e);
         }
+
+        index = 0;
 
         if (result != null && result.length > 0)
             return true;
 
-        try {
-            session.getRegionServer().close(scannerId);
-        } catch (IOException e) {
-            //ignore
-        }
+        close();
         return false;
     }
 
@@ -266,4 +260,11 @@ public class HBasePrimaryIndexCursor implements Cursor {
         return false;
     }
 
+    private void close() {
+        try {
+            session.getRegionServer().close(scannerId);
+        } catch (IOException e) {
+            //ignore
+        }
+    }
 }

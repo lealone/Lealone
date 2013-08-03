@@ -27,4 +27,7 @@ public class HBaseConstants {
 
     public static final String SESSION_CORE_POOL_SIZE = Constants.PROJECT_NAME_PREFIX + "session.core.pool.size";
     public static final int DEFAULT_SESSION_CORE_POOL_SIZE = 3;
+
+    public static final String TRANSACTION_COMMIT_CACHE_SIZE = Constants.PROJECT_NAME_PREFIX + "transaction.commit.cache.size";
+    public static final int DEFAULT_TRANSACTION_COMMIT_CACHE_SIZE = 1000;
 }
