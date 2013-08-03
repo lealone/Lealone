@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.codefollower.lealone.command.CommandRemote;
+import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.engine.ConnectionInfo;
 import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.expression.Parameter;
@@ -99,7 +100,7 @@ public class SessionRemotePool {
             queue.offer(sr);
     }
 
-    public static CommandRemote getCommandRemote(HBaseSession originalSession, List<Parameter> parameters, //
+    public static CommandRemote getCommandRemote(HBaseSession originalSession, Prepared prepared, //
             String url, String sql) throws Exception {
         SessionRemote sessionRemote = originalSession.getSessionRemote(url);
         if (sessionRemote != null && sessionRemote.isClosed())
@@ -119,11 +120,7 @@ public class SessionRemotePool {
         if (isNew)
             originalSession.addSessionRemote(url, sessionRemote);
 
-        return getCommandRemote(sessionRemote, sql, parameters);
-    }
-
-    public static CommandRemote getCommandRemote(SessionRemote sr, String sql, List<Parameter> parameters) {
-        return getCommandRemote(sr, sql, parameters, -1);
+        return getCommandRemote(sessionRemote, sql, prepared.getParameters(), prepared.getFetchSize());
     }
 
     public static CommandRemote getCommandRemote(SessionRemote sr, String sql, List<Parameter> parameters, int fetchSize) {

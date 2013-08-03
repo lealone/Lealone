@@ -74,9 +74,6 @@ public class CommandParallel {
         List<CommandInterface> commands = new ArrayList<CommandInterface>();
         if (sqlRoutingInfo.remoteCommands != null) {
             commands.addAll(sqlRoutingInfo.remoteCommands);
-            for (CommandRemote c : sqlRoutingInfo.remoteCommands) {
-                c.setFetchSize(select.getFetchSize());
-            }
         }
         if (sqlRoutingInfo.localRegions != null) {
             for (String regionName : sqlRoutingInfo.localRegions) {

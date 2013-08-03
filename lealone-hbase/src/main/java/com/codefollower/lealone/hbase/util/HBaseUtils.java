@@ -419,8 +419,8 @@ public class HBaseUtils {
             if (isLocal(session, hri)) {
                 sqlRoutingInfo.localRegion = hri.getRegionName();
             } else {
-                sqlRoutingInfo.remoteCommand = SessionRemotePool.getCommandRemote(session, prepared.getParameters(),
-                        hri.getRegionServerURL(), createSQL(hri.getRegionName(), sql));
+                sqlRoutingInfo.remoteCommand = SessionRemotePool.getCommandRemote(session, prepared, hri.getRegionServerURL(),
+                        createSQL(hri.getRegionName(), sql));
             }
         } else {
             try {
@@ -450,8 +450,8 @@ public class HBaseUtils {
                 for (Map.Entry<String, List<HBaseRegionInfo>> e : servers.entrySet()) {
                     if (sqlRoutingInfo.remoteCommands == null)
                         sqlRoutingInfo.remoteCommands = New.arrayList();
-                    sqlRoutingInfo.remoteCommands.add(SessionRemotePool.getCommandRemote(session, prepared.getParameters(),
-                            e.getKey(), HBaseUtils.createSQL(e.getValue(), planSQL)));
+                    sqlRoutingInfo.remoteCommands.add(SessionRemotePool.getCommandRemote(session, prepared, e.getKey(),
+                            HBaseUtils.createSQL(e.getValue(), planSQL)));
                 }
 
             } catch (Exception e) {

@@ -76,7 +76,6 @@ public class HBaseSelect extends Select implements WithWhereClause {
                 result = super.query(limit, target);
                 addRowToResultTarget = false;
             } else if (sqlRoutingInfo.remoteCommand != null) {
-                sqlRoutingInfo.remoteCommand.setFetchSize(getFetchSize());
                 result = sqlRoutingInfo.remoteCommand.executeQuery(limit, false);
             } else {
                 result = CommandParallel.executeQuery(session, sqlRoutingInfo, this, limit, false);

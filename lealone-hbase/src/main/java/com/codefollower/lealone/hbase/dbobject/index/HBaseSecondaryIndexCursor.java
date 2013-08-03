@@ -34,7 +34,6 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.command.Prepared;
-import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.TableFilter;
@@ -80,10 +79,6 @@ public class HBaseSecondaryIndexCursor implements Cursor {
             throw DbException.convert(new NullPointerException("regionName is null"));
 
         fetchSize = filter.getPrepared().getFetchSize();
-        //非查询的操作一般不设置fetchSize，此时fetchSize为0，所以要设置一个默认值
-        //if (fetchSize < 1 && !filter.getPrepared().isQuery())
-        if (fetchSize < 1)
-            fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
         if (filter.getSelect() != null)
             columns = filter.getSelect().getColumns(filter);

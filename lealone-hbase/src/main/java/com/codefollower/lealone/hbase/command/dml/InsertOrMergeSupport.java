@@ -28,13 +28,13 @@ import org.apache.hadoop.hbase.client.Put;
 
 import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
+import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.dml.Query;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionInterface;
 import com.codefollower.lealone.expression.Expression;
-import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
@@ -96,7 +96,7 @@ public class InsertOrMergeSupport {
         }
     }
 
-    public int update(boolean insertFromSelect, boolean sortedInsertMode, ArrayList<Parameter> parameters) {
+    public int update(boolean insertFromSelect, boolean sortedInsertMode, Prepared prepared) {
         //当在Parser中解析insert语句时，如果insert中的一些字段是新的，那么会标注字段列表已修改了，
         //并且新字段的类型是未知的，只有在执行insert时再由字段值的实际类型确定字段的类型。
         if (table.isColumnsModified()) {
@@ -113,7 +113,7 @@ public class InsertOrMergeSupport {
             if (!servers.isEmpty()) {
                 List<CommandInterface> commands = New.arrayList(servers.size());
                 for (Map.Entry<String, Map<String, List<String>>> e : servers.entrySet()) {
-                    CommandRemote c = SessionRemotePool.getCommandRemote(session, parameters, e.getKey(), //
+                    CommandRemote c = SessionRemotePool.getCommandRemote(session, prepared, e.getKey(), //
                             getPlanSQL(insertFromSelect, sortedInsertMode, e.getValue().entrySet()));
 
                     commands.add(c);

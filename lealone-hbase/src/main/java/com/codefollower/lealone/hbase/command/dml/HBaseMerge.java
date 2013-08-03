@@ -47,7 +47,7 @@ public class HBaseMerge extends Merge implements InsertOrMerge {
         if (isExecuteDirec())
             return super.update();
         else
-            return insertOrMergeSupport.update(false, false, getParameters());
+            return insertOrMergeSupport.update(false, false, this);
     }
 
     @Override

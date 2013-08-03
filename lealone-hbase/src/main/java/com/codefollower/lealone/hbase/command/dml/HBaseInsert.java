@@ -52,7 +52,7 @@ public class HBaseInsert extends Insert implements InsertOrMerge {
         if (isExecuteDirec())
             return super.update();
         else
-            return insertOrMergeSupport.update(insertFromSelect, sortedInsertMode, getParameters());
+            return insertOrMergeSupport.update(insertFromSelect, sortedInsertMode, this);
     }
 
     @Override

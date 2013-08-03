@@ -446,15 +446,19 @@ public abstract class Prepared {
         this.executeDirec = executeDirec;
     }
 
-    private int fetchSize = -1;
+    private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
     public int getFetchSize() {
-        if (fetchSize < 1)
-            return SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
         return fetchSize;
     }
 
     public void setFetchSize(int fetchSize) {
+        if (fetchSize < 0) {
+            throw DbException.getInvalidValueException("fetchSize", fetchSize);
+        }
+        if (fetchSize == 0) {
+            fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
+        }
         this.fetchSize = fetchSize;
     }
 }
