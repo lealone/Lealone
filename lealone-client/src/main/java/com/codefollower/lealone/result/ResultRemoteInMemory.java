@@ -50,7 +50,7 @@ public class ResultRemoteInMemory extends ResultRemote {
                 result.clear();
                 int fetch = Math.min(fetchSize, rowCount - rowOffset);
                 if (sendFetch) {
-                    sendFetch();
+                    sendFetch(fetch);
                 }
                 for (int r = 0; r < fetch; r++) {
                     boolean row = transfer.readBoolean();

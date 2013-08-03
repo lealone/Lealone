@@ -59,7 +59,7 @@ public class ResultRemoteCursor extends ResultRemote {
                 rowOffset += result.size();
                 result.clear();
                 if (sendFetch) {
-                    sendFetch();
+                    sendFetch(fetchSize);
                 }
                 for (int r = 0; r < fetchSize; r++) {
                     boolean row = transfer.readBoolean();

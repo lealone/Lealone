@@ -142,7 +142,7 @@ public abstract class ResultRemote implements ResultInterface {
         }
     }
 
-    protected void sendFetch() throws IOException {
+    protected void sendFetch(int fetchSize) throws IOException {
         session.traceOperation("RESULT_FETCH_ROWS", id);
         transfer.writeInt(SessionRemote.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize);
         session.done(transfer);
