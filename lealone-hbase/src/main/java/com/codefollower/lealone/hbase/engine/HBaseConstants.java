@@ -23,4 +23,8 @@ import com.codefollower.lealone.constant.Constants;
 
 public class HBaseConstants {
     public static final String COMMAND_RETRYABLE = Constants.PROJECT_NAME_PREFIX + "command.retryable";
+    public static final boolean DEFAULT_COMMAND_RETRYABLE = true;
+
+    public static final String SESSION_CORE_POOL_SIZE = Constants.PROJECT_NAME_PREFIX + "session.core.pool.size";
+    public static final int DEFAULT_SESSION_CORE_POOL_SIZE = 3;
 }

@@ -80,17 +80,15 @@ public class HBaseSession extends Session {
     private final List<HBaseRow> undoRows = New.arrayList();
     private final Set<RowKey> rowKeys = new HashSet<RowKey>();
 
+    //参与本次事务的其他SessionRemote
     private Map<String, SessionRemote> sessionRemoteCache = New.hashMap();
-    private Map<String, SessionRemote> sessionRemoteCacheMaybeWithMaster = New.hashMap();
 
-    public void addSessionRemote(String url, SessionRemote sessionRemote, boolean isMaster) {
-        sessionRemoteCacheMaybeWithMaster.put(url, sessionRemote);
-        if (!isMaster)
-            sessionRemoteCache.put(url, sessionRemote);
+    public void addSessionRemote(String url, SessionRemote sessionRemote) {
+        sessionRemoteCache.put(url, sessionRemote);
     }
 
     public SessionRemote getSessionRemote(String url) {
-        return sessionRemoteCacheMaybeWithMaster.get(url);
+        return sessionRemoteCache.get(url);
     }
 
     public HBaseSession(Database database, User user, int id) {
@@ -353,8 +351,8 @@ public class HBaseSession extends Session {
 
     @Override
     public void close() {
-        for (SessionRemote sessionRemote : sessionRemoteCache.values()) {
-            sessionRemote.close();
+        for (SessionRemote sr : sessionRemoteCache.values()) {
+            SessionRemotePool.release(sr);
         }
         sessionRemoteCache = null;
         super.close();

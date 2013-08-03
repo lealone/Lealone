@@ -21,8 +21,9 @@ package com.codefollower.lealone.hbase.engine;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.engine.ConnectionInfo;
@@ -31,59 +32,71 @@ import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.expression.ParameterInterface;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.transaction.Transaction;
-import com.codefollower.lealone.util.New;
 
 public class SessionRemotePool {
-    private static final Map<String, SessionRemote> sessionRemoteCache = New.hashMap();
-    private static final Map<String, SessionRemote> sessionRemoteCacheMaybeWithMaster = New.hashMap();
+    private static final int corePoolSize = HBaseUtils.getConfiguration().getInt(HBaseConstants.SESSION_CORE_POOL_SIZE,
+            HBaseConstants.DEFAULT_SESSION_CORE_POOL_SIZE);
 
-    private static SessionRemote masterSessionRemote;
+    //key是Master或RegionServer的URL
+    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<SessionRemote>> //
+    pool = new ConcurrentHashMap<String, ConcurrentLinkedQueue<SessionRemote>>();
 
-    public static void addSessionRemote(String url, SessionRemote sessionRemote, boolean isMaster) {
-        sessionRemoteCacheMaybeWithMaster.put(url, sessionRemote);
-        if (!isMaster)
-            sessionRemoteCache.put(url, sessionRemote);
-    }
-
-    public static SessionRemote getSessionRemote(String url) {
-        return sessionRemoteCacheMaybeWithMaster.get(url);
-    }
-
-    public static SessionRemote getSessionRemote(Properties info, String url) {
-        byte[] userPasswordHash = null;
-        byte[] filePasswordHash = null;
-        Properties prop = new Properties();
-        String key;
-        for (Object o : info.keySet()) {
-            key = o.toString();
-
-            if (key.equalsIgnoreCase("_userPasswordHash_"))
-                userPasswordHash = (byte[]) info.get(key);
-            else if (key.equalsIgnoreCase("_filePasswordHash_"))
-                filePasswordHash = (byte[]) info.get(key);
-            else
-                prop.setProperty(key, info.getProperty(key));
-
-        }
-        ConnectionInfo ci = new ConnectionInfo(url, prop);
-        ci.setUserPasswordHash(userPasswordHash);
-        ci.setFilePasswordHash(filePasswordHash);
-        return (SessionRemote) new SessionRemote(ci).connectEmbeddedOrServer(false);
-    }
-
-    public static SessionRemote getMasterSessionRemote(Properties info) {
-        if (masterSessionRemote == null || masterSessionRemote.isClosed()) {
+    private static ConcurrentLinkedQueue<SessionRemote> getQueue(String url) {
+        ConcurrentLinkedQueue<SessionRemote> queue = pool.get(url);
+        if (queue == null) {
+            //避免多个线程生成不同的ConcurrentLinkedQueue实例
             synchronized (SessionRemotePool.class) {
-                if (masterSessionRemote == null || masterSessionRemote.isClosed()) {
-                    masterSessionRemote = getSessionRemote(info, HBaseUtils.getMasterURL());
+                queue = pool.get(url);
+                if (queue == null) {
+                    queue = new ConcurrentLinkedQueue<SessionRemote>();
+                    pool.put(url, queue);
                 }
             }
         }
-        return masterSessionRemote;
+        return queue;
     }
 
-    public static CommandRemote getMasterCommandRemote(Properties info, String sql, List<Parameter> parameters) {
-        return getCommandRemote(getMasterSessionRemote(info), sql, parameters);
+    public static SessionRemote getMasterSessionRemote(Properties info) {
+        return getSessionRemote(info, HBaseUtils.getMasterURL());
+    }
+
+    public static SessionRemote getSessionRemote(Properties info, String url) {
+        SessionRemote sr = getQueue(url).poll();
+
+        if (sr == null || sr.isClosed()) {
+            byte[] userPasswordHash = null;
+            byte[] filePasswordHash = null;
+            Properties prop = new Properties();
+            String key;
+            for (Object o : info.keySet()) {
+                key = o.toString();
+
+                if (key.equalsIgnoreCase("_userPasswordHash_"))
+                    userPasswordHash = (byte[]) info.get(key);
+                else if (key.equalsIgnoreCase("_filePasswordHash_"))
+                    filePasswordHash = (byte[]) info.get(key);
+                else
+                    prop.setProperty(key, info.getProperty(key));
+
+            }
+            ConnectionInfo ci = new ConnectionInfo(url, prop);
+            ci.setUserPasswordHash(userPasswordHash);
+            ci.setFilePasswordHash(filePasswordHash);
+            sr = (SessionRemote) new SessionRemote(ci).connectEmbeddedOrServer(false);
+        }
+
+        return sr;
+    }
+
+    public static void release(SessionRemote sr) {
+        if (sr == null || sr.isClosed())
+            return;
+
+        ConcurrentLinkedQueue<SessionRemote> queue = getQueue(sr.getURL());
+        if (queue.size() > corePoolSize)
+            sr.close();
+        else
+            queue.offer(sr);
     }
 
     public static CommandRemote getCommandRemote(HBaseSession originalSession, List<Parameter> parameters, //
@@ -104,22 +117,26 @@ public class SessionRemotePool {
         }
 
         if (isNew)
-            originalSession.addSessionRemote(url, sessionRemote, false);
+            originalSession.addSessionRemote(url, sessionRemote);
 
         return getCommandRemote(sessionRemote, sql, parameters);
     }
 
-    private static CommandRemote getCommandRemote(SessionRemote sessionRemote, String sql, List<Parameter> parameters) {
-        CommandRemote commandRemote = (CommandRemote) sessionRemote.prepareCommand(sql, -1); //此时fetchSize还未知
+    public static CommandRemote getCommandRemote(SessionRemote sr, String sql, List<Parameter> parameters) {
+        return getCommandRemote(sr, sql, parameters, -1);
+    }
+
+    public static CommandRemote getCommandRemote(SessionRemote sr, String sql, List<Parameter> parameters, int fetchSize) {
+        CommandRemote cr = (CommandRemote) sr.prepareCommand(sql, fetchSize);
 
         //传递最初的参数值到新的CommandRemote
         if (parameters != null) {
-            ArrayList<? extends ParameterInterface> newParams = commandRemote.getParameters();
+            ArrayList<? extends ParameterInterface> newParams = cr.getParameters();
             for (int i = 0, size = parameters.size(); i < size; i++) {
                 newParams.get(i).setValue(parameters.get(i).getParamValue(), true);
             }
         }
 
-        return commandRemote;
+        return cr;
     }
 }

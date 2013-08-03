@@ -23,9 +23,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import com.codefollower.lealone.command.Command;
-import com.codefollower.lealone.command.CommandInterface;
+import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.ddl.DefineCommand;
 import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
@@ -58,12 +59,20 @@ public class DefineCommandWrapper extends DefineCommand {
             } finally {
             }
         } else {
-            CommandInterface c = SessionRemotePool.getMasterCommandRemote(session.getOriginalProperties(), sql, getParameters());
+            SessionRemote sr = null;
+            CommandRemote cr = null;
             try {
-                return c.executeUpdate();
-            } finally {
-                c.close();
+                sr = SessionRemotePool.getMasterSessionRemote(session.getOriginalProperties());
+                cr = SessionRemotePool.getCommandRemote(sr, sql, getParameters(), dc.getFetchSize());
+                int updateCount = cr.executeUpdate();
                 refreshMetaTable();
+                return updateCount;
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            } finally {
+                SessionRemotePool.release(sr);
+                if (cr != null)
+                    cr.close();
             }
         }
     }
@@ -76,12 +85,20 @@ public class DefineCommandWrapper extends DefineCommand {
             } finally {
             }
         } else {
-            CommandInterface c = SessionRemotePool.getMasterCommandRemote(session.getOriginalProperties(), sql, getParameters());
+            SessionRemote sr = null;
+            CommandRemote cr = null;
             try {
-                return c.executeQuery(maxRows, false);
-            } finally {
-                c.close();
+                sr = SessionRemotePool.getMasterSessionRemote(session.getOriginalProperties());
+                cr = SessionRemotePool.getCommandRemote(sr, sql, getParameters(), dc.getFetchSize());
+                ResultInterface ri = cr.executeQuery(maxRows, false);
                 refreshMetaTable();
+                return ri;
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            } finally {
+                SessionRemotePool.release(sr);
+                if (cr != null)
+                    cr.close();
             }
         }
     }

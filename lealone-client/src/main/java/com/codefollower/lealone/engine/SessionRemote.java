@@ -785,4 +785,8 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         checkClosed();
         return new FrontendBatchCommand(this, transferList, preparedCommand, batchParameters);
     }
+
+    public String getURL() {
+        return connectionInfo.getURL();
+    }
 }

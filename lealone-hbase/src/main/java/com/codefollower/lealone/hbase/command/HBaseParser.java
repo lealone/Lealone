@@ -332,7 +332,8 @@ public class HBaseParser extends Parser {
 
     @Override
     public Command createCommand(Prepared p, String sql) {
-        if (HBaseUtils.getConfiguration().getBoolean(HBaseConstants.COMMAND_RETRYABLE, true))
+        if (HBaseUtils.getConfiguration().getBoolean( //
+                HBaseConstants.COMMAND_RETRYABLE, HBaseConstants.DEFAULT_COMMAND_RETRYABLE))
             return new RetryableCommand(this, sql, p);
         else
             return super.createCommand(p, sql);

@@ -19,14 +19,13 @@
  */
 package com.codefollower.lealone.hbase.dbobject;
 
-import com.codefollower.lealone.command.CommandInterface;
+import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.Sequence;
 import com.codefollower.lealone.engine.Session;
-import com.codefollower.lealone.engine.SessionInterface;
+import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
-import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 
@@ -40,20 +39,22 @@ public class HBaseSequence extends Sequence {
     public synchronized void flush(Session session) {
         HBaseSession s = (HBaseSession) session;
         if (s.getRegionServer() != null) {
-            SessionInterface si = null;
+            SessionRemote sr = null;
+            CommandRemote cr = null;
             try {
-                si = SessionRemotePool.getSessionRemote(s.getOriginalProperties(), HBaseUtils.getMasterURL());
-                CommandInterface ci = si.prepareCommand("ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", 1);
-                //ci.executeUpdate();
-                ResultInterface ri = ci.executeQuery(-1, false);
+                sr = SessionRemotePool.getMasterSessionRemote(s.getOriginalProperties());
+                cr = SessionRemotePool.getCommandRemote(sr, "ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", null, 1);
+                //cr.executeUpdate();
+                ResultInterface ri = cr.executeQuery(-1, false);
                 ri.next();
                 valueWithMargin = ri.currentRow()[0].getLong();
                 value = valueWithMargin - increment * cacheSize;
             } catch (Exception e) {
                 throw DbException.convert(e);
             } finally {
-                if (si != null)
-                    si.close();
+                SessionRemotePool.release(sr);
+                if (cr != null)
+                    cr.close();
             }
         } else if (s.getMaster() != null) {
             super.flush(session);
