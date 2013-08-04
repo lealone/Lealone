@@ -369,9 +369,10 @@ public class HBaseTable extends TableBase {
     }
 
     private void log(Session session, Row row) {
-        if (((HBaseSession) session).getTransaction() != null) {
-            ((HBaseRow) row).setTable(this);
-            ((HBaseSession) session).log(getTableNameAsBytes(), row);
+        if (session.getTransaction() != null) {
+            HBaseRow row2 = (HBaseRow) row;
+            row2.setTable(this);
+            ((HBaseSession) session).log(row2);
         }
     }
 

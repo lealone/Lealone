@@ -32,8 +32,13 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.transaction.Transaction;
 
+/**
+ * 
+ * 事务有效性检查
+ *
+ */
 public class ValidityChecker {
-    public final static Committed committed = new Committed();
+    public final static TransactionStatusCache cache = new TransactionStatusCache();
 
     /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
     private static final int CACHE_VERSIONS_OVERHEAD = 3;
@@ -132,7 +137,7 @@ public class ValidityChecker {
         if (queryTimestamp % 2 == 0)
             return queryTimestamp < startTimestamp;
 
-        long commitTimestamp = committed.getCommit(queryTimestamp); //committed实例中的所有值初始情况下是-1
+        long commitTimestamp = cache.get(queryTimestamp); //TransactionStatusCache中的所有值初始情况下是-1
 
         //3. 上一次已经查过了，已确认过是条无效的记录
         if (commitTimestamp == -2)
@@ -142,13 +147,13 @@ public class ValidityChecker {
         if (commitTimestamp != -1)
             return commitTimestamp <= startTimestamp;
 
-        //5. 记录还没在committed缓存中，需要到TransactionStatusTable中查询(这一步会消耗一些时间)
+        //5. 记录还没在TransactionStatusCache中，需要到TransactionStatusTable中查询(这一步会消耗一些时间)
         commitTimestamp = TransactionStatusTable.getInstance().query(hostAndPort, queryTimestamp);
         if (commitTimestamp != -1) {
-            committed.commit(queryTimestamp, commitTimestamp);
+            cache.set(queryTimestamp, commitTimestamp);
             return true;
         } else {
-            committed.commit(queryTimestamp, -2);
+            cache.set(queryTimestamp, -2);
             return false;
         }
     }

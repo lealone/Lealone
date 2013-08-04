@@ -20,11 +20,9 @@
 package com.codefollower.lealone.hbase.engine;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -45,7 +43,6 @@ import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.transaction.CommitHashMap;
 import com.codefollower.lealone.hbase.transaction.ValidityChecker;
-import com.codefollower.lealone.hbase.transaction.RowKey;
 import com.codefollower.lealone.hbase.transaction.TimestampService;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
@@ -80,7 +77,6 @@ public class HBaseSession extends Session {
     private Transaction transaction;
 
     private final List<HBaseRow> undoRows = New.arrayList();
-    private final Set<RowKey> rowKeys = new HashSet<RowKey>();
 
     //参与本次事务的其他SessionRemote
     private Map<String, SessionRemote> sessionRemoteCache = New.hashMap();
@@ -177,6 +173,7 @@ public class HBaseSession extends Session {
         setAutoCommit(false);
     }
 
+    @Override
     public Transaction getTransaction() {
         if (transaction == null)
             beginTransaction();
@@ -204,14 +201,14 @@ public class HBaseSession extends Session {
                             transaction.setHostAndPort(getHostAndPort());
                             checkConflict();
                             transactionStatusTable.addRecord(transaction, false);
-                            ValidityChecker.committed.commit(tid, commitTimestamp);
+                            ValidityChecker.cache.set(tid, commitTimestamp);
                         }
                     } else {
                         long tid = transaction.getTransactionId();
                         long commitTimestamp = timestampService.nextOdd();
                         transaction.setCommitTimestamp(commitTimestamp);
                         checkConflict();
-                        ValidityChecker.committed.commit(tid, commitTimestamp);
+                        ValidityChecker.cache.set(tid, commitTimestamp);
                     }
                 }
             }
@@ -305,7 +302,6 @@ public class HBaseSession extends Session {
     public void endTransaction() {
         transaction = null;
         undoRows.clear();
-        rowKeys.clear();
 
         for (SessionRemote sessionRemote : sessionRemoteCache.values()) {
             sessionRemote.setTransaction(null);
@@ -315,10 +311,9 @@ public class HBaseSession extends Session {
             super.setAutoCommit(true);
     }
 
-    public void log(byte[] tableName, Row row) {
+    public void log(HBaseRow row) {
         if (!getAutoCommit() && transaction != null) {
-            undoRows.add((HBaseRow) row);
-            rowKeys.add(new RowKey(HBaseUtils.toBytes(row.getRowKey()), tableName));
+            undoRows.add(row);
         }
     }
 
@@ -330,22 +325,23 @@ public class HBaseSession extends Session {
                     //1. transactionId不可能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
                     throw DbException.throwInternalError("transactionId(" + transactionId + ") < firstTimestampService("
                             + timestampService.first() + ")");
-                } else if (!rowKeys.isEmpty() && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
+                } else if (!undoRows.isEmpty() && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
                     //2. Too old and not read only
                     throw new RuntimeException("Too old startTimestamp: ST " + transactionId + " MAX "
                             + commitHashMap.getLargestDeletedTimestamp());
                 } else {
                     //3. write-write冲突检测
-                    for (RowKey r : rowKeys) {
-                        long oldCommitTimestamp = commitHashMap.getLatestWriteForRow(r.hashCode());
+                    for (HBaseRow row : undoRows) {
+                        long oldCommitTimestamp = commitHashMap.getLatestWriteForRow(row.getHashCode());
                         if (oldCommitTimestamp != 0 && oldCommitTimestamp > transactionId) {
                             throw new RuntimeException("Write-write conflict: oldCommitTimestamp " + oldCommitTimestamp
                                     + ", startTimestamp " + transactionId);
                         }
                     }
 
-                    for (RowKey r : rowKeys) {
-                        commitHashMap.putLatestWriteForRow(r.hashCode(), transaction.getCommitTimestamp());
+                    //不能把下面的代码放入第3步的for循环中，只有冲突检测完后才能put提交记录
+                    for (HBaseRow row : undoRows) {
+                        commitHashMap.putLatestWriteForRow(row.getHashCode(), transaction.getCommitTimestamp());
                     }
                 }
             }

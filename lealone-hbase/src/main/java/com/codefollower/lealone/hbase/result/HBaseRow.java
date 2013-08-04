@@ -19,10 +19,14 @@
  */
 package com.codefollower.lealone.hbase.result;
 
+import java.util.Arrays;
+
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.MurmurHash;
 
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.value.Value;
 
@@ -32,6 +36,7 @@ public class HBaseRow extends Row {
     private boolean forUpdate = false;
     private Result result;
     private HBaseTable table;
+    private int hashCode = 0;
 
     public HBaseRow(Value[] data, int memory) {
         super(data, memory);
@@ -84,4 +89,15 @@ public class HBaseRow extends Row {
         this.table = table;
     }
 
+    public int getHashCode() {
+        if (hashCode != 0)
+            return hashCode;
+        byte[] rowKey = HBaseUtils.toBytes(getRowKey());
+        byte[] tableName = table.getTableNameAsBytes();
+        byte[] key = Arrays.copyOf(tableName, tableName.length + rowKey.length);
+        System.arraycopy(rowKey, 0, key, tableName.length, rowKey.length);
+        hashCode = MurmurHash.getInstance().hash(key, 0, key.length, 0xdeadbeef);
+
+        return hashCode;
+    }
 }
