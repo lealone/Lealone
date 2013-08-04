@@ -40,15 +40,17 @@ import com.codefollower.lealone.message.TraceSystem;
 import com.codefollower.lealone.server.TcpServer;
 import com.codefollower.lealone.server.TcpServerThread;
 
+import static com.codefollower.lealone.hbase.engine.HBaseConstants.*;
+
 public class HBaseTcpServer extends TcpServer implements Runnable {
     private static final Log log = LogFactory.getLog(HBaseTcpServer.class);
 
     public static int getMasterTcpPort(Configuration conf) {
-        return conf.getInt(Constants.PROJECT_NAME_PREFIX + "master.tcp.port", Constants.DEFAULT_TCP_PORT - 1);
+        return conf.getInt(MASTER_TCP_PORT, DEFAULT_MASTER_TCP_PORT);
     }
 
     public static int getRegionServerTcpPort(Configuration conf) {
-        return conf.getInt(Constants.PROJECT_NAME_PREFIX + "regionserver.tcp.port", Constants.DEFAULT_TCP_PORT);
+        return conf.getInt(REGIONSERVER_TCP_PORT, DEFAULT_REGIONSERVER_TCP_PORT);
     }
 
     private final int tcpPort;
@@ -113,7 +115,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
 
     @Override
     public String getName() {
-        return "Lealone TCP Server";
+        return "Lealone tcp server";
     }
 
     @Override
@@ -140,7 +142,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
 
     private void init(Configuration conf) {
         ArrayList<String> args = new ArrayList<String>();
-        for (String arg : conf.getStrings(Constants.PROJECT_NAME_PREFIX + "args", "-tcpAllowOthers", "-tcpDaemon")) {
+        for (String arg : conf.getStrings(TCP_SERVER_START_ARGS, DEFAULT_TCP_SERVER_START_ARGS)) {
             int pos = arg.indexOf('=');
             if (pos == -1) {
                 args.add(arg.trim());
@@ -151,7 +153,6 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
         }
         args.add("-tcpPort");
         args.add("" + tcpPort);
-        args.add("-tcpDaemon");
         super.init(args.toArray(new String[0]));
     }
 
@@ -163,10 +164,10 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
                 System.setProperty(key, e.getValue());
             }
         }
-        key = Constants.PROJECT_NAME_PREFIX + "default.table.engine";
+        key = DEFAULT_TABLE_ENGINE;
         System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
 
-        key = Constants.PROJECT_NAME_PREFIX + "default.database.engine";
+        key = DEFAULT_DATABASE_ENGINE;
         System.setProperty(key, conf.get(key, HBaseDatabaseEngine.NAME));
     }
 

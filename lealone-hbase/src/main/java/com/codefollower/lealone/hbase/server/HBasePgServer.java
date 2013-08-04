@@ -38,19 +38,21 @@ import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.message.TraceSystem;
 import com.codefollower.lealone.server.pg.PgServer;
 
+import static com.codefollower.lealone.hbase.engine.HBaseConstants.*;
+
 public class HBasePgServer extends PgServer implements Runnable {
     private static final Log log = LogFactory.getLog(HBasePgServer.class);
 
     public static int getMasterPgPort(Configuration conf) {
-        return conf.getInt(Constants.PROJECT_NAME_PREFIX + "master.pg.port", PgServer.DEFAULT_PORT - 1);
+        return conf.getInt(MASTER_PG_PORT, DEFAULT_MASTER_PG_PORT);
     }
 
     public static int getRegionServerPgPort(Configuration conf) {
-        return conf.getInt(Constants.PROJECT_NAME_PREFIX + "regionserver.pg.port", PgServer.DEFAULT_PORT);
+        return conf.getInt(REGIONSERVER_PG_PORT, DEFAULT_REGIONSERVER_PG_PORT);
     }
 
-    public static boolean isPgServerEnable(Configuration conf) {
-        return conf.getBoolean(Constants.PROJECT_NAME_PREFIX + "pg.server.enable", false);
+    public static boolean isPgServerEnabled(Configuration conf) {
+        return conf.getBoolean(PG_SERVER_ENABLED, DEFAULT_PG_SERVER_ENABLED);
     }
 
     private final int pgPort;
@@ -111,7 +113,7 @@ public class HBasePgServer extends PgServer implements Runnable {
 
     @Override
     public String getName() {
-        return "Lealone PG Server";
+        return "Lealone pg server";
     }
 
     @Override
@@ -121,7 +123,7 @@ public class HBasePgServer extends PgServer implements Runnable {
 
     private void init(Configuration conf) {
         ArrayList<String> args = new ArrayList<String>();
-        for (String arg : conf.getStrings(Constants.PROJECT_NAME_PREFIX + "pg.args", "-pgAllowOthers")) {
+        for (String arg : conf.getStrings(PG_SERVER_START_ARGS, DEFAULT_PG_SERVER_START_ARGS)) {
             int pos = arg.indexOf('=');
             if (pos == -1) {
                 args.add(arg.trim());
@@ -132,8 +134,7 @@ public class HBasePgServer extends PgServer implements Runnable {
         }
         args.add("-pgPort");
         args.add("" + pgPort);
-        args.add("-pgDaemon");
-        super.init(args.toArray(new String[0]));
+        super.init(args.toArray(new String[args.size()]));
     }
 
     private void initConf(Configuration conf) {
@@ -144,10 +145,10 @@ public class HBasePgServer extends PgServer implements Runnable {
                 System.setProperty(key, e.getValue());
             }
         }
-        key = Constants.PROJECT_NAME_PREFIX + "default.table.engine";
+        key = DEFAULT_TABLE_ENGINE;
         System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
 
-        key = Constants.PROJECT_NAME_PREFIX + "default.database.engine";
+        key = DEFAULT_DATABASE_ENGINE;
         System.setProperty(key, conf.get(key, HBaseDatabaseEngine.NAME));
     }
 

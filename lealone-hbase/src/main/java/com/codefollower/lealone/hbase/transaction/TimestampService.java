@@ -21,14 +21,14 @@ package com.codefollower.lealone.hbase.transaction;
 
 import java.io.IOException;
 
-import com.codefollower.lealone.constant.Constants;
+import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.metadata.TimestampServiceTable;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 
 public class TimestampService {
-    private static final long TIMESTAMP_BATCH = HBaseUtils.getConfiguration().getLong(
-            Constants.PROJECT_NAME_PREFIX + "timestamp.batch", 100000);
+    private static final long TIMESTAMP_BATCH = HBaseUtils.getConfiguration().getLong(HBaseConstants.TRANSACTION_TIMESTAMP_BATCH,
+            HBaseConstants.DEFAULT_TRANSACTION_TIMESTAMP_BATCH);
 
     private final TimestampServiceTable timestampServiceTable;
     private long first;

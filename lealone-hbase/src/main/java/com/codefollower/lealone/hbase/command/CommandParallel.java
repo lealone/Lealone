@@ -34,7 +34,6 @@ import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.dml.Select;
-import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.dml.SQLRoutingInfo;
 import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
@@ -46,18 +45,20 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.util.New;
 
+import static com.codefollower.lealone.hbase.engine.HBaseConstants.*;
+
 public class CommandParallel {
     private final static ThreadPoolExecutor pool = initPool();
 
     private static ThreadPoolExecutor initPool() {
-        int corePoolSize = HBaseUtils.getConfiguration().getInt(Constants.PROJECT_NAME_PREFIX + "command.parallel.corePoolSize",
-                1);
-        int maximumPoolSize = HBaseUtils.getConfiguration().getInt(
-                Constants.PROJECT_NAME_PREFIX + "command.parallel.maximumPoolSize", Integer.MAX_VALUE);
-        int keepAliveTime = HBaseUtils.getConfiguration().getInt(
-                Constants.PROJECT_NAME_PREFIX + "command.parallel.keepAliveTime", 5);
+        int corePoolSize = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_CORE_POOL_SIZE,
+                DEFAULT_COMMAND_PARALLEL_CORE_POOL_SIZE);
+        int maxPoolSize = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_MAX_POOL_SIZE,
+                DEFAULT_COMMAND_PARALLEL_MAX_POOL_SIZE);
+        int keepAliveTime = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_KEEP_ALIVE_TIME,
+                DEFAULT_COMMAND_PARALLEL_KEEP_ALIVE_TIME);
 
-        ThreadPoolExecutor pool = new ThreadPoolExecutor(corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS,
+        ThreadPoolExecutor pool = new ThreadPoolExecutor(corePoolSize, maxPoolSize, keepAliveTime, TimeUnit.SECONDS,
                 new SynchronousQueue<Runnable>(), Threads.newDaemonThreadFactory(CommandParallel.class.getSimpleName()));
         pool.allowCoreThreadTimeOut(true);
 

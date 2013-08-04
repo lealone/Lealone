@@ -21,6 +21,10 @@ package com.codefollower.lealone.hbase.transaction;
 
 import java.util.Arrays;
 
+import com.codefollower.lealone.hbase.util.HBaseUtils;
+
+import static com.codefollower.lealone.hbase.engine.HBaseConstants.*;
+
 /**
  * 
  * 事务状态缓存，用于提高查询性能，有三种事务状态: 
@@ -30,8 +34,14 @@ import java.util.Arrays;
  *
  */
 public class TransactionStatusCache {
-    private static final int BUCKET_NUMBER = 1 << 15; //桶个数
-    private static final int BUCKET_SIZE = 1 << 14; //每个桶的容量大小
+
+    //桶个数
+    private static final int BUCKET_NUMBER = HBaseUtils.getConfiguration().getInt(TRANSACTION_STATUS_CACHE_BUCKET_NUMBER,
+            DEFAULT_TRANSACTION_STATUS_CACHE_BUCKET_NUMBER);
+
+    //每个桶的容量大小
+    private static final int BUCKET_SIZE = HBaseUtils.getConfiguration().getInt(TRANSACTION_STATUS_CACHE_BUCKET_SIZE,
+            DEFAULT_TRANSACTION_STATUS_CACHE_BUCKET_SIZE);
 
     private final Bucket buckets[] = new Bucket[BUCKET_NUMBER];
 

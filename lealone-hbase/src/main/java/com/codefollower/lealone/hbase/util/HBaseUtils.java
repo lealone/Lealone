@@ -46,6 +46,7 @@ import com.codefollower.lealone.command.dml.Select;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.hbase.command.dml.SQLRoutingInfo;
 import com.codefollower.lealone.hbase.command.dml.WhereClauseSupport;
+import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.engine.SessionRemotePool;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
@@ -73,7 +74,6 @@ import com.codefollower.lealone.value.ValueTimestamp;
 import com.codefollower.lealone.value.ValueUuid;
 
 public class HBaseUtils {
-    public static final String HBASE_DB_NAME = "hbasedb";
     private static final Configuration conf = HBaseConfiguration.create();
     private static final Random random = new Random(System.currentTimeMillis());
     private static HConnection hConnection;
@@ -210,7 +210,8 @@ public class HBaseUtils {
 
     public static String createURL(String hostname, int port) {
         StringBuilder url = new StringBuilder(100);
-        url.append("jdbc:lealone:tcp://").append(hostname).append(":").append(port).append("/").append(HBASE_DB_NAME);
+        url.append("jdbc:lealone:tcp://").append(hostname).append(":").append(port).append("/")
+                .append(HBaseConstants.HBASE_DB_NAME);
         return url.toString();
     }
 

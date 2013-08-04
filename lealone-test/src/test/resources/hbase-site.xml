@@ -52,17 +52,17 @@
 			The tcp port the lealone region server should bind to.
 		</description>
 	</property>
-
+<!-- 
 	<property>
-		<name>lealone.args</name>
+		<name>lealone.tcp.server.start.args</name>
 		<value>-tcpAllowOthers, -tcpDaemon</value>
 		<description>
-			The lealone server start args.
+			The lealone tcp server start args.
 		</description>
 	</property>
-
+ -->
 	<property>
-		<name>lealone.pg.server.enable</name>
+		<name>lealone.pg.server.enabled</name>
 		<value>true</value>
 	</property>
 

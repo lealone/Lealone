@@ -50,9 +50,13 @@ import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.transaction.Transaction;
 import com.codefollower.lealone.util.New;
 
+import static com.codefollower.lealone.hbase.engine.HBaseConstants.*;
+
 public class HBaseSession extends Session {
-    private static final CommitHashMap commitHashMap = new CommitHashMap(HBaseUtils.getConfiguration().getInt(
-            HBaseConstants.TRANSACTION_COMMIT_CACHE_SIZE, HBaseConstants.DEFAULT_TRANSACTION_COMMIT_CACHE_SIZE));
+    private static final CommitHashMap commitHashMap = new CommitHashMap( //
+            HBaseUtils.getConfiguration().getInt(TRANSACTION_COMMIT_CACHE_SIZE, DEFAULT_TRANSACTION_COMMIT_CACHE_SIZE), //
+            HBaseUtils.getConfiguration().getInt(TRANSACTION_COMMIT_CACHE_ASSOCIATIVITY,
+                    DEFAULT_TRANSACTION_COMMIT_CACHE_ASSOCIATIVITY));
 
     private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
     private static final ThreadPoolExecutor pool = CommandParallel.getThreadPoolExecutor();

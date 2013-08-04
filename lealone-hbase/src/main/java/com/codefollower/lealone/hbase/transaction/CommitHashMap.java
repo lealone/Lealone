@@ -44,18 +44,23 @@ public class CommitHashMap {
     private long largestDeletedTimestamp;
 
     /**
-     * Constructs a new, empty hashtable with the specified size
+     * Constructs a new, empty hashtable with the specified size and associativity
      * 
      * @param size
      *            the initial size of the hashtable.
+     * @param associativity
+     *            the associativity of the cache.
      * @throws IllegalArgumentException
-     *             if the size is less than zero.
+     *             if the size or associativity is less than zero.
      */
-    public CommitHashMap(int size) {
+    public CommitHashMap(int size, int associativity) {
         if (size < 0) {
             throw new IllegalArgumentException("Illegal size: " + size);
         }
-        this.rowsCommitMapping = new LongCache(size, 32);
+        if (associativity < 0) {
+            throw new IllegalArgumentException("Illegal associativity: " + associativity);
+        }
+        this.rowsCommitMapping = new LongCache(size, associativity);
     }
 
     public long getLatestWriteForRow(long hash) {

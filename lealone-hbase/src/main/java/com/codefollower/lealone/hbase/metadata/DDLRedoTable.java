@@ -27,7 +27,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 
-import com.codefollower.lealone.constant.Constants;
+import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.engine.HBaseDatabase;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -44,14 +44,13 @@ public class DDLRedoTable {
     private final static byte[] TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "ddl_redo_table");
     private final static byte[] SQL = Bytes.toBytes("sql");
 
-    private final static int DEFAULT_MAX_DDL_REDO_RECORDS = HBaseUtils.getConfiguration().getInt(
-            Constants.PROJECT_NAME_PREFIX + "max.ddl.redo.records", 5000);
+    private final static int MAX_DDL_REDO_RECORDS = HBaseUtils.getConfiguration().getInt(
+            HBaseConstants.METADATA_MAX_DDL_REDO_RECORDS, HBaseConstants.DEFAULT_METADATA_MAX_DDL_REDO_RECORDS);
 
     private final HBaseDatabase database;
     private final HTable table;
     private final ZooKeeperWatcher watcher;
     private final DDLRedoTableTracker tracker;
-    private final int maxRedoRecords;
 
     public DDLRedoTable(HBaseDatabase database) throws Exception {
         MetaDataAdmin.createTableIfNotExists(TABLE_NAME);
@@ -60,8 +59,6 @@ public class DDLRedoTable {
 
         watcher = new ZooKeeperWatcher(HBaseUtils.getConfiguration(), "DDLRedoTable", ZooKeeperAdmin.newAbortable());
         tracker = new DDLRedoTableTracker(watcher, this);
-
-        maxRedoRecords = HBaseUtils.getConfiguration().getInt("lealone.max.redo.records", DEFAULT_MAX_DDL_REDO_RECORDS);
 
         //master不需要监听redo_table的变化，因为redo_table的更新只能从master发起
         if (!database.isMaster())
@@ -77,7 +74,7 @@ public class DDLRedoTable {
         try {
             int nextRedoPos = (int) session.getTimestampService().nextEven();
 
-            if (nextRedoPos > maxRedoRecords) {
+            if (nextRedoPos > MAX_DDL_REDO_RECORDS) {
                 session.getTimestampService().reset();
                 nextRedoPos = (int) session.getTimestampService().nextEven();
             }
