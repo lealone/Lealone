@@ -21,8 +21,10 @@ package com.codefollower.lealone.hbase.dbobject.table;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
 import java.util.Set;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -41,6 +43,7 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.TableBase;
 import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.command.ddl.Options;
 import com.codefollower.lealone.hbase.dbobject.index.HBaseDelegateIndex;
 import com.codefollower.lealone.hbase.dbobject.index.HBasePrimaryIndex;
@@ -75,7 +78,7 @@ public class HBaseTable extends TableBase {
 
     private final HTableDescriptor hTableDescriptor;
 
-    private final Index scanIndex;
+    private final HBasePrimaryIndex scanIndex;
     private final ArrayList<Index> indexes = New.arrayList();
 
     private String rowKeyName;
@@ -326,8 +329,13 @@ public class HBaseTable extends TableBase {
                 column.setRowKeyColumn(true);
             }
 
-            if (cols.length == 1)
+            if (cols.length == 1) {
                 isDelegateIndex = true;
+                if (isStatic) {
+                    rowKeyName = null;
+                    getRowKeyColumn();
+                }
+            }
         }
         boolean isSessionTemporary = isTemporary() && !isGlobalTemporary();
         if (!isSessionTemporary) {
@@ -377,35 +385,67 @@ public class HBaseTable extends TableBase {
     }
 
     @Override
-    public void addRow(Session session, Row row) {
+    public void addRow(final Session session, final Row row) {
         lastModificationId = database.getNextModificationDataId();
         setTransactionId(session, row);
+        log(session, row);
 
-        int i = 0;
-        try {
-            for (int size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                index.add(session, row);
-            }
-            rowCount++;
-
-            log(session, row);
-        } catch (Throwable e) {
-            try {
-                while (--i >= 0) {
-                    Index index = indexes.get(i);
-                    index.remove(session, row);
+        if (doesSecondaryIndexExist()) {
+            int size = indexes.size();
+            List<Callable<Void>> calls = New.arrayList(size);
+            for (int i = 0; i < size; i++) {
+                final Index index = indexes.get(i);
+                if (!(index instanceof HBaseDelegateIndex)) {
+                    calls.add(new Callable<Void>() {
+                        public Void call() throws Exception {
+                            index.add(session, row);
+                            return null;
+                        }
+                    });
                 }
-            } catch (DbException e2) {
-                // this could happen, for example on failure in the storage
-                // but if that is not the case it means there is something wrong
-                // with the database
-                trace.error(e2, "could not undo operation");
-                throw e2;
             }
-            DbException de = DbException.convert(e);
-            throw de;
+
+            CommandParallel.execute(calls);
+        } else {
+            scanIndex.add(session, row);
         }
+
+        rowCount++;
+    }
+
+    @Override
+    public void removeRow(Session session, Row row) {
+        removeRow(session, row, false);
+    }
+
+    public void removeRow(final Session session, final Row row, boolean isUndo) {
+        if (!isUndo) {
+            lastModificationId = database.getNextModificationDataId();
+            setTransactionId(session, row);
+            log(session, row);
+        }
+
+        if (!isUndo && doesSecondaryIndexExist()) {
+            int size = indexes.size();
+            List<Callable<Void>> calls = New.arrayList(size);
+            for (int i = 0; i < size; i++) {
+                final Index index = indexes.get(i);
+                if (!(index instanceof HBaseDelegateIndex)) {
+                    calls.add(new Callable<Void>() {
+                        public Void call() throws Exception {
+                            index.remove(session, row);
+                            return null;
+                        }
+                    });
+                }
+            }
+
+            CommandParallel.execute(calls);
+        } else {
+            scanIndex.remove(session, row, isUndo);
+        }
+
+        rowCount--;
     }
 
     @Override
@@ -432,42 +472,6 @@ public class HBaseTable extends TableBase {
             }
         }
         super.updateRows(prepared, session, rows);
-    }
-
-    @Override
-    public void removeRow(Session session, Row row) {
-        removeRow(session, row, false);
-    }
-
-    public void removeRow(Session session, Row row, boolean isUndo) {
-        lastModificationId = database.getNextModificationDataId();
-        setTransactionId(session, row);
-
-        int i = indexes.size() - 1;
-        try {
-            for (; i >= 0; i--) {
-                Index index = indexes.get(i);
-                index.remove(session, row);
-            }
-            rowCount--;
-
-            if (!isUndo)
-                log(session, row);
-        } catch (Throwable e) {
-            try {
-                while (++i < indexes.size()) {
-                    Index index = indexes.get(i);
-                    index.add(session, row);
-                }
-            } catch (DbException e2) {
-                // this could happen, for example on failure in the storage
-                // but if that is not the case it means there is something wrong
-                // with the database
-                trace.error(e2, "could not undo operation");
-                throw e2;
-            }
-            throw DbException.convert(e);
-        }
     }
 
     @Override
@@ -743,5 +747,34 @@ public class HBaseTable extends TableBase {
     @Override
     public Row getRow(Session session, long key) {
         return null;
+    }
+
+    public boolean doesSecondaryIndexExist() {
+        for (int i = indexes.size() - 1; i > 0; i--)
+            if (indexes.get(i) instanceof HBaseSecondaryIndex)
+                return true;
+
+        return false;
+    }
+
+    private String primaryKeyName;
+
+    public String getPrimaryKeyName() {
+        if (primaryKeyName == null) {
+            if (isStatic) {
+                for (Index idx : getIndexes()) {
+                    if (idx.getIndexType().isPrimaryKey()) {
+                        if (idx.getIndexColumns().length == 1) {
+                            primaryKeyName = idx.getIndexColumns()[0].column.getFullName();
+                            break;
+                        }
+                    }
+                }
+            }
+            if (primaryKeyName == null)
+                primaryKeyName = getRowKeyName();
+        }
+
+        return primaryKeyName;
     }
 }

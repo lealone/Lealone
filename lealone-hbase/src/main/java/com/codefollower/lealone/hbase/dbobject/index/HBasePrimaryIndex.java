@@ -50,24 +50,7 @@ public class HBasePrimaryIndex extends BaseIndex {
     @Override
     public void add(Session session, Row row) {
         try {
-            //分两种场景:
-            //1. 以insert into这类SQL语句插入记录
-            //   这种场景用正常的Put操作
-            //
-            //2. 以delete from这类SQL语句删除记录时出错了
-            //   这种方式实际上并不真的删除原有记录，而是插入一条值为null的新版本记录，出错时撤消，
-            //   所以要用Delete
-            Result result = ((HBaseRow) row).getResult();
-            if (result == null) {
-                ((HBaseSession) session).getRegionServer().put(((HBaseRow) row).getRegionName(), ((HBaseRow) row).getPut());
-            } else {
-                Delete delete = new Delete(result.getRow());
-                long timestamp = row.getTransactionId();
-                for (KeyValue kv : result.list()) {
-                    delete.deleteColumn(kv.getFamily(), kv.getQualifier(), timestamp);
-                }
-                ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
-            }
+            ((HBaseSession) session).getRegionServer().put(((HBaseRow) row).getRegionName(), ((HBaseRow) row).getPut());
         } catch (IOException e) {
             throw DbException.convert(e);
         }
@@ -75,35 +58,52 @@ public class HBasePrimaryIndex extends BaseIndex {
 
     @Override
     public void remove(Session session, Row row) {
+        remove(session, row, false);
+    }
+
+    public void remove(Session session, Row row, boolean isUndo) {
         if (((HBaseRow) row).isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
             return;
         try {
-            //分两种场景:
-            //1. 以delete from这类SQL语句删除记录
-            //   这种场景会把要删除的记录找出来，此时用put的方式，不能直接用Delete，因为用Delete后如果当前事务未提交
-            //   那么其它并发事务就找不到之前的记录版本
-            //
-            //2. 在进行insert时出错了
-            //   比如此索引后面有一个唯一索引，往唯一索引insert了重复值，那么就出错，此时立即撤消，
-            //   因为是新记录，所以要用Delete
-            Result result = ((HBaseRow) row).getResult();
-            if (result != null) {
-                Put put = new Put(result.getRow());
-                long timestamp = row.getTransactionId();
-                for (KeyValue kv : result.list()) {
-                    put.add(kv.getFamily(), kv.getQualifier(), timestamp, null);
-                }
-                ((HBaseSession) session).getRegionServer().put(((HBaseRow) row).getRegionName(), put);
-            } else {
-                Put oldPput = ((HBaseRow) row).getPut();
-                Delete delete = new Delete(oldPput.getRow());
-                long timestamp = row.getTransactionId();
-                for (Map.Entry<byte[], List<KeyValue>> e : oldPput.getFamilyMap().entrySet()) {
-                    for (KeyValue kv : e.getValue()) {
-                        delete.deleteColumn(e.getKey(), kv.getQualifier(), timestamp);
+            if (isUndo) {
+                Put oldPut = ((HBaseRow) row).getPut();
+                //撤消前面的add操作
+                if (oldPut != null) {
+                    Delete delete = new Delete(oldPut.getRow());
+                    long timestamp = row.getTransactionId();
+                    for (Map.Entry<byte[], List<KeyValue>> e : oldPut.getFamilyMap().entrySet()) {
+                        for (KeyValue kv : e.getValue()) {
+                            delete.deleteColumn(e.getKey(), kv.getQualifier(), timestamp);
+                        }
                     }
+                    ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
+                } else {
+                    Result result = ((HBaseRow) row).getResult();
+                    //撤消前面的remove操作
+                    if (result != null) {
+                        Delete delete = new Delete(result.getRow());
+                        long timestamp = row.getTransactionId();
+                        for (KeyValue kv : result.list()) {
+                            delete.deleteColumn(kv.getFamily(), kv.getQualifier(), timestamp);
+                        }
+                        ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
+                    } else
+                        throw DbException.throwInternalError("oldPut and result were null???");
                 }
-                ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
+            } else {
+                //正常的delete语句，
+                //这种场景会把要删除的记录找出来，此时用Put的方式，不能直接用Delete，因为用Delete后如果当前事务未提交
+                //那么其它并发事务就找不到之前的记录版本
+                Result result = ((HBaseRow) row).getResult();
+                if (result != null) {
+                    Put put = new Put(result.getRow());
+                    long timestamp = row.getTransactionId();
+                    for (KeyValue kv : result.list()) {
+                        put.add(kv.getFamily(), kv.getQualifier(), timestamp, null);
+                    }
+                    ((HBaseSession) session).getRegionServer().put(((HBaseRow) row).getRegionName(), put);
+                } else
+                    throw DbException.throwInternalError("result is null???");
             }
         } catch (IOException e) {
             throw DbException.convert(e);
@@ -112,7 +112,11 @@ public class HBasePrimaryIndex extends BaseIndex {
 
     @Override
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        return new HBasePrimaryIndexCursor(filter, first, last);
+        //是一个join子查询
+        if ((filter.getSelect() != null && filter.getSelect().getTopTableFilter() != filter))
+            return new SubqueryCursor(filter, first, last);
+        else
+            return new HBasePrimaryIndexCursor(filter, first, last);
     }
 
     @Override

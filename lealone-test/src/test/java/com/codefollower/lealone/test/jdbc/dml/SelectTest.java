@@ -55,10 +55,22 @@ public class SelectTest extends TestBase {
     }
 
     void testSelect() throws Exception {
-        sql = "select _rowkey_, f1, f2, cf2.f3 from SelectTest";
+        sql = "SELECT count(*) FROM SelectTest";
+        assertEquals(12, getIntValue(1, true));
+
+        sql = "SELECT _rowkey_, f1, f2, cf2.f3 from SelectTest";
         printResultSet();
 
-        sql = "select _rowkey_, f1, f2, cf2.f3 from SelectTest";
+        sql = "SELECT _rowkey_ FROM SelectTest";
+        printResultSet();
+
+        sql = "SELECT _rowkey_ FROM SelectTest WHERE cf2.f3 = 12";
+        printResultSet();
+
+        sql = "SELECT count(*) FROM SelectTest WHERE cf2.f3 = 12";
+        assertEquals(6, getIntValue(1, true));
+
+        sql = "SELECT _rowkey_, f1, f2, cf2.f3 FROM SelectTest";
         stmt.setFetchSize(2);
         printResultSet();
 

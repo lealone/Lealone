@@ -152,7 +152,7 @@ public class HBaseUtils {
         int type = v.getType();
         switch (type) {
         case Value.NULL:
-            return toBytes("NULL");
+            return HConstants.EMPTY_BYTE_ARRAY; //Bytes.toBytes("NULL");
         case Value.BYTES:
             return v.getBytes();
         case Value.UUID:

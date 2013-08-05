@@ -25,18 +25,13 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Map;
 
-//import junit.framework.Assert;
-
-//import org.apache.hadoop.conf.Configuration;
-//import org.apache.hadoop.hbase.HBaseConfiguration;
-//import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
-//import org.apache.hadoop.hbase.zookeeper.ZKTableReadOnly;
-//import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -236,7 +231,7 @@ public class TestBase {
         }
         rs.close();
         rs = null;
-        //System.out.println();
+        System.out.println();
     }
 
     public void printRegions(String tableName) throws Exception {
@@ -250,5 +245,20 @@ public class TestBase {
             System.out.println("ServerName = " + server);
             System.out.println();
         }
+    }
+
+    public void printHTable(String tableName) throws Exception {
+        printHTable(tableName, -1);
+    }
+
+    public void printHTable(String tableName, int maxVersions) throws Exception {
+        HTable t = new HTable(HBaseConfiguration.create(), tableName);
+        Scan scan = new Scan();
+
+        if (maxVersions != -1)
+            scan.setMaxVersions(maxVersions);
+        for (Result r : t.getScanner(scan))
+            System.out.println(r);
+        t.close();
     }
 }

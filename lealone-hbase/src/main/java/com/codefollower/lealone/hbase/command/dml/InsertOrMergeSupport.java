@@ -57,6 +57,7 @@ public class InsertOrMergeSupport {
     private final HBaseSession session;
     private final InsertOrMerge iom;
     private final boolean isInsert;
+    private Query query;
 
     private StatementBuilder alterTable;
     private ArrayList<Column> alterColumns;
@@ -79,10 +80,7 @@ public class InsertOrMergeSupport {
         this.list = list;
         this.columns = columns;
         this.keys = keys;
-        if (session.getAutoCommit() && (query != null || list.size() > 1)) {
-            session.setAutoCommit(false);
-            isBatch = true;
-        }
+        this.query = query;
 
         if (query != null) {
             int index = -1;
@@ -97,6 +95,11 @@ public class InsertOrMergeSupport {
     }
 
     public int update(boolean insertFromSelect, boolean sortedInsertMode, Prepared prepared) {
+
+        if (session.getAutoCommit() && (query != null || list.size() > 1 || this.table.doesSecondaryIndexExist())) {
+            session.setAutoCommit(false);
+            isBatch = true;
+        }
         //当在Parser中解析insert语句时，如果insert中的一些字段是新的，那么会标注字段列表已修改了，
         //并且新字段的类型是未知的，只有在执行insert时再由字段值的实际类型确定字段的类型。
         if (table.isColumnsModified()) {

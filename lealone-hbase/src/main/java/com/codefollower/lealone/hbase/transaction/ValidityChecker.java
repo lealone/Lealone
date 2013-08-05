@@ -27,8 +27,10 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.transaction.Transaction;
 
@@ -103,7 +105,17 @@ public class ValidityChecker {
             } else {
                 // Uncomitted, keep track of oldest uncommitted timestamp
                 oldestUncommittedTS = Math.min(oldestUncommittedTS, kv.getTimestamp());
+                isValidRead = false;
             }
+        }
+
+        if (!isValidRead && kvs.size() == 1) {
+            KeyValue kv = kvs.get(0);
+            Get get = new Get(kv.getRow());
+            get.addColumn(kv.getFamily(), kv.getQualifier());
+            get.setMaxVersions(requestVersions); // TODO set maxVersions wisely
+            get.setTimeRange(0, oldestUncommittedTS - 1);
+            pendingGets.add(get);
         }
 
         // If we have pending columns, request (and check recursively) them
@@ -156,5 +168,69 @@ public class ValidityChecker {
             cache.set(queryTimestamp, -2);
             return false;
         }
+    }
+
+    public static Result[] fetchResults(HBaseSession session, String hostAndPort, //
+            byte[] regionName, long scannerId, int fetchSize) throws IOException {
+        Transaction transaction = session.getTransaction();
+        List<KeyValue> kvs;
+        KeyValue kv;
+        Result r;
+        long queryTimestamp;
+        Result[] result = session.getRegionServer().next(scannerId, fetchSize);
+        ArrayList<Result> list = new ArrayList<Result>(result.length);
+        for (int i = 0; i < result.length; i++) {
+            r = result[i];
+            kvs = r.list();
+            //当Result.isEmpty=true时，r.list()也返回null，所以这里不用再判断kvs.isEmpty
+            if (kvs != null) {
+                kv = kvs.get(0);
+                queryTimestamp = kv.getTimestamp();
+                if (queryTimestamp < transaction.getStartTimestamp() && queryTimestamp % 2 == 0) {
+                    if (kv.getValueLength() != 0) //kv已删除，不需要再处理
+                        list.add(r);
+                    continue;
+                }
+            }
+
+            r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, transaction, kvs, 1));
+            if (!r.isEmpty())
+                list.add(r);
+        }
+
+        return list.toArray(new Result[list.size()]);
+    }
+
+    public static boolean fetchResults(HBaseSession session, String hostAndPort, //
+            byte[] regionName, InternalScanner scanner, int fetchSize, ArrayList<Result> list) throws IOException {
+        Transaction transaction = session.getTransaction();
+        KeyValue kv;
+        Result r;
+        long queryTimestamp;
+        long startTimestamp = transaction.getStartTimestamp();
+        List<KeyValue> kvs = new ArrayList<KeyValue>();
+
+        //long start = System.nanoTime();
+        boolean hasMoreRows = true;
+        for (int i = 0; hasMoreRows && i < fetchSize; i++) {
+            kvs.clear();
+            hasMoreRows = scanner.next(kvs);
+            if (!kvs.isEmpty()) {
+                kv = kvs.get(0);
+                queryTimestamp = kv.getTimestamp();
+                if (queryTimestamp < startTimestamp && queryTimestamp % 2 == 0) {
+                    if (kv.getValueLength() != 0) //kv已删除，不需要再处理
+                        list.add(new Result(kvs));
+                    continue;
+                }
+
+                r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, transaction, kvs, 1));
+                if (!r.isEmpty())
+                    list.add(r);
+            }
+        }
+        //long end = System.nanoTime();
+        //System.out.println((end - start) / 1000000 + " ms count="+list.size());
+        return hasMoreRows;
     }
 }

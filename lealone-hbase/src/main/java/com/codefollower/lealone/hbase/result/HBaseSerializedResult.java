@@ -79,9 +79,16 @@ public class HBaseSerializedResult extends DelegatedResult {
             return false;
         boolean next = result.next();
         if (!next) {
-            next = nextResult();
-            if (next)
-                next = result.next();
+            boolean nextResult;
+            while (true) {
+                nextResult = nextResult();
+                if (nextResult) {
+                    next = result.next();
+                    if (next)
+                        return true;
+                } else
+                    return false;
+            }
         }
 
         return next;

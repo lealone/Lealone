@@ -172,6 +172,21 @@ public class CommandParallel {
         return updateCount;
     }
 
+    public static <T> void execute(List<Callable<T>> calls) {
+        int size = calls.size();
+        List<Future<T>> futures = New.arrayList(size);
+        for (int i = 0; i < size; i++) {
+            futures.add(pool.submit(calls.get(i)));
+        }
+        try {
+            for (int i = 0; i < size; i++) {
+                futures.get(i).get();
+            }
+        } catch (Exception e) {
+            throwException(e);
+        }
+    }
+
     private static void throwException(Throwable e) {
         if (e instanceof ExecutionException)
             e = ((ExecutionException) e).getCause();

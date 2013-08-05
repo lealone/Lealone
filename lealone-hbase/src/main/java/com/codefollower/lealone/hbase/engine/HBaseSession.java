@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.hadoop.hbase.master.HMaster;
@@ -80,7 +81,7 @@ public class HBaseSession extends Session {
 
     private Transaction transaction;
 
-    private final List<HBaseRow> undoRows = New.arrayList();
+    private final CopyOnWriteArrayList<HBaseRow> undoRows = new CopyOnWriteArrayList<HBaseRow>();
 
     //参与本次事务的其他SessionRemote
     private Map<String, SessionRemote> sessionRemoteCache = New.hashMap();
@@ -192,7 +193,8 @@ public class HBaseSession extends Session {
     public void commit(boolean ddl) {
         try {
             if (transaction != null) {
-                if (!getAutoCommit() && (!undoRows.isEmpty() || isMaster())) { //从master发起的dml有可能没有undoRows
+                //if (!getAutoCommit() && (!undoRows.isEmpty() || isMaster())) { //从master发起的dml有可能没有undoRows
+                if (!getAutoCommit()) {
                     if (isRoot()) {
                         if (sessionRemoteCache.size() > 0)
                             parallelCommit();
