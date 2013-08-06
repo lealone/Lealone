@@ -32,7 +32,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
-import com.codefollower.lealone.transaction.Transaction;
 
 /**
  * 
@@ -96,7 +95,7 @@ public class ValidityChecker {
                 continue;
             }
             versionsProcessed++;
-            if (isValidRead(hostAndPort, kv.getTimestamp(), startTimestamp)) {
+            if (isValidRead(hostAndPort, kv.getTimestamp(), startTimestamp, transaction)) {
                 // Valid read, add it to result unless it's a delete
                 if (kv.getValueLength() > 0) {
                     checked.add(kv);
@@ -140,9 +139,10 @@ public class ValidityChecker {
      * @return
      * @throws IOException
      */
-    private static boolean isValidRead(String hostAndPort, long queryTimestamp, long startTimestamp) throws IOException {
+    private static boolean isValidRead(String hostAndPort, long queryTimestamp, long startTimestamp, Transaction transaction)
+            throws IOException {
         //1. 入库时间戳等于当前事务的开始时间戳，说明当前事务在读取它刚写入的记录
-        if (queryTimestamp == startTimestamp)
+        if (queryTimestamp == startTimestamp || transaction.isUncommitted(queryTimestamp))
             return true;
 
         //2. 时间戳是偶数时，说明是非事务，如果入库时间戳小于当前事务的开始时间戳，那么就认为此条记录是有效的
@@ -172,7 +172,7 @@ public class ValidityChecker {
 
     public static Result[] fetchResults(HBaseSession session, String hostAndPort, //
             byte[] regionName, long scannerId, int fetchSize) throws IOException {
-        Transaction transaction = session.getTransaction();
+        Transaction t = session.getTransaction();
         List<KeyValue> kvs;
         KeyValue kv;
         Result r;
@@ -186,14 +186,14 @@ public class ValidityChecker {
             if (kvs != null) {
                 kv = kvs.get(0);
                 queryTimestamp = kv.getTimestamp();
-                if (queryTimestamp < transaction.getStartTimestamp() && queryTimestamp % 2 == 0) {
+                if (queryTimestamp < t.getStartTimestamp() && queryTimestamp % 2 == 0 || t.isUncommitted(queryTimestamp)) {
                     if (kv.getValueLength() != 0) //kv已删除，不需要再处理
                         list.add(r);
                     continue;
                 }
             }
 
-            r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, transaction, kvs, 1));
+            r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, t, kvs, 1));
             if (!r.isEmpty())
                 list.add(r);
         }
@@ -203,11 +203,11 @@ public class ValidityChecker {
 
     public static boolean fetchResults(HBaseSession session, String hostAndPort, //
             byte[] regionName, InternalScanner scanner, int fetchSize, ArrayList<Result> list) throws IOException {
-        Transaction transaction = session.getTransaction();
+        Transaction t = session.getTransaction();
         KeyValue kv;
         Result r;
         long queryTimestamp;
-        long startTimestamp = transaction.getStartTimestamp();
+        long startTimestamp = t.getStartTimestamp();
         List<KeyValue> kvs = new ArrayList<KeyValue>();
 
         //long start = System.nanoTime();
@@ -218,13 +218,13 @@ public class ValidityChecker {
             if (!kvs.isEmpty()) {
                 kv = kvs.get(0);
                 queryTimestamp = kv.getTimestamp();
-                if (queryTimestamp < startTimestamp && queryTimestamp % 2 == 0) {
+                if (queryTimestamp < startTimestamp && queryTimestamp % 2 == 0 || t.isUncommitted(queryTimestamp)) {
                     if (kv.getValueLength() != 0) //kv已删除，不需要再处理
                         list.add(new Result(kvs));
                     continue;
                 }
 
-                r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, transaction, kvs, 1));
+                r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, t, kvs, 1));
                 if (!r.isEmpty())
                     list.add(r);
             }

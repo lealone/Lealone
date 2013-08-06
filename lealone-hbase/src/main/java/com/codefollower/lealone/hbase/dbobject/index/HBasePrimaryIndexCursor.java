@@ -69,7 +69,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
 
     private InternalScanner scanner;
     private boolean isEnd = false;
-    private ArrayList<Result> tmpList;;
+    private ArrayList<Result> tmpList;
 
     /**
      * 

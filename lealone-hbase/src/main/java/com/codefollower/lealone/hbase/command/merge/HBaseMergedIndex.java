@@ -26,7 +26,9 @@ import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.dbobject.index.HBasePrimaryIndex;
+import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultInterface;
+import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.result.SearchRow;
 
 public class HBaseMergedIndex extends HBasePrimaryIndex {
@@ -45,5 +47,15 @@ public class HBaseMergedIndex extends HBasePrimaryIndex {
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         return new HBaseMergedCursor(result);
+    }
+
+    @Override
+    public void add(Session session, Row row) {
+        throw DbException.throwInternalError();
+    }
+
+    @Override
+    public void remove(Session session, Row row) {
+        throw DbException.throwInternalError();
     }
 }

@@ -65,6 +65,8 @@ public class BenchAggregation extends BenchWrite {
         ci = new LongColumnInterpreter();
         scan = new Scan();
         scan.addFamily(b("CF"));
+        //scan.addColumn(b("CF"), b("NAME"));
+        //scan.addColumn(b("CF"), b("AGE"));
 
         init();
         createTable();
@@ -89,6 +91,17 @@ public class BenchAggregation extends BenchWrite {
         stmt.setFetchSize(500);
         for (int i = 0; i < loop; i++) {
             total += testCount();
+        }
+        avg();
+
+        stmt.setFetchSize(1000);
+        for (int i = 0; i < loop; i++) {
+            total += testCount();
+        }
+        avg();
+
+        for (int i = 0; i < loop; i++) {
+            total += testHBaseCount();
         }
         avg();
 

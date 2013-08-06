@@ -35,7 +35,6 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
     private final UpdateOrDelete uod;
     private final Prepared prepared;
 
-    private boolean isBatch = false;
     private SQLRoutingInfo sqlRoutingInfo;
 
     public UpdateOrDeleteSupport(Session session, UpdateOrDelete uod) {
@@ -45,16 +44,23 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
     }
 
     public void postPrepare(TableFilter tableFilter) {
-        if (session.getAutoCommit()) {
-            session.setAutoCommit(false);
-            isBatch = true;
-        }
         tableFilter.setPrepared(prepared);
         whereClauseSupport.setTableFilter(tableFilter);
     }
 
     public int update() {
+        boolean isTopTransaction = false;
+        boolean isNestedTransaction = false;
+
         try {
+            if (session.getAutoCommit()) {
+                session.setAutoCommit(false);
+                isTopTransaction = true;
+            } else {
+                isNestedTransaction = true;
+                session.beginNestedTransaction();
+            }
+
             int updateCount = 0;
             if (prepared.getLocalRegionNames() != null) {
                 updateCount = call().intValue();
@@ -74,15 +80,25 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
                 }
             }
 
-            if (isBatch)
+            if (isTopTransaction)
                 session.commit(false);
+            //嵌套事务在父事务提交时再一起提交
+            //if (isNestedTransaction)
+            //    session.commitNestedTransaction();
             return updateCount;
         } catch (Exception e) {
-            if (isBatch)
+            if (isTopTransaction)
                 session.rollback();
+
+            //嵌套事务出错时提前rollback
+            if (isNestedTransaction)
+                session.rollbackNestedTransaction();
+
             throw DbException.convert(e);
         } finally {
-            if (isBatch)
+            if (isNestedTransaction)
+                session.endNestedTransaction();
+            if (isTopTransaction)
                 session.setAutoCommit(true);
         }
     }

@@ -185,7 +185,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
     private void setSearchRow() {
         readBuffer.put(result[index].getRow());
         readBuffer.flip();
-        searchRow = secondaryIndex.getRow(secondaryIndex.decode(readBuffer));
+        searchRow = secondaryIndex.getRow(readBuffer);
     }
 
     @Override

@@ -105,17 +105,20 @@ public class HBaseSecondaryIndex extends BaseIndex {
             Prepared p = session.prepare(select, true);
             p.getParameters().get(0).setValue(ValueString.get(Bytes.toString(key)));
             ResultInterface r = p.query(1);
-            if (r.next()) {
-                buffer.clear();
-                buffer.put(Bytes.toBytes(r.currentRow()[0].getString()));
-                buffer.flip();
-                r.close();
-                SearchRow r2 = getRow(decode(buffer));
-                if (compareRows(row, r2) == 0) {
-                    if (!containsNullAndAllowMultipleNull(r2)) {
-                        throw getDuplicateKeyException();
+            try {
+                if (r.next()) {
+                    buffer.clear();
+                    buffer.put(Bytes.toBytes(r.currentRow()[0].getString()));
+                    buffer.flip();
+                    SearchRow r2 = getRow(buffer);
+                    if (compareRows(row, r2) == 0) {
+                        if (!containsNullAndAllowMultipleNull(r2)) {
+                            throw getDuplicateKeyException();
+                        }
                     }
                 }
+            } finally {
+                r.close();
             }
         }
 
@@ -206,6 +209,10 @@ public class HBaseSecondaryIndex extends BaseIndex {
         return Bytes.toBytes(buffer);
     }
 
+    SearchRow getRow(ByteBuffer readBuffer) {
+        return getRow(decode(readBuffer));
+    }
+
     SearchRow getRow(Value[] array) {
         SearchRow searchRow = getTable().getTemplateRow();
         searchRow.setRowKey((array[array.length - 1]));
@@ -219,7 +226,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
         return searchRow;
     }
 
-    public ByteBuffer encode(ByteBuffer buff, Value[] array) {
+    private ByteBuffer encode(ByteBuffer buff, Value[] array) {
         byte[] bytes;
         for (int i = 0; i < array.length; i++) {
             Value v = array[i];
@@ -235,7 +242,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
         return buff;
     }
 
-    public Value[] decode(ByteBuffer buff) {
+    private Value[] decode(ByteBuffer buff) {
         int length;
         Value[] array = new Value[keyColumns];
 

@@ -19,16 +19,11 @@
  */
 package com.codefollower.lealone.hbase.engine;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
+
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.User;
@@ -36,32 +31,16 @@ import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionRemote;
-import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.command.dml.HBaseInsert;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
-import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
-import com.codefollower.lealone.hbase.transaction.CommitHashMap;
-import com.codefollower.lealone.hbase.transaction.ValidityChecker;
 import com.codefollower.lealone.hbase.transaction.TimestampService;
-import com.codefollower.lealone.hbase.util.HBaseUtils;
+import com.codefollower.lealone.hbase.transaction.Transaction;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
-import com.codefollower.lealone.transaction.Transaction;
-import com.codefollower.lealone.util.New;
-
-import static com.codefollower.lealone.hbase.engine.HBaseConstants.*;
 
 public class HBaseSession extends Session {
-    private static final CommitHashMap commitHashMap = new CommitHashMap( //
-            HBaseUtils.getConfiguration().getInt(TRANSACTION_COMMIT_CACHE_SIZE, DEFAULT_TRANSACTION_COMMIT_CACHE_SIZE), //
-            HBaseUtils.getConfiguration().getInt(TRANSACTION_COMMIT_CACHE_ASSOCIATIVITY,
-                    DEFAULT_TRANSACTION_COMMIT_CACHE_ASSOCIATIVITY));
-
-    private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
-    private static final ThreadPoolExecutor pool = CommandParallel.getThreadPoolExecutor();
-
     /**
      * HBase的HMaster对象，master和regionServer不可能同时非null
      */
@@ -78,21 +57,7 @@ public class HBaseSession extends Session {
     private Properties originalProperties;
 
     private TimestampService timestampService;
-
-    private Transaction transaction;
-
-    private final CopyOnWriteArrayList<HBaseRow> undoRows = new CopyOnWriteArrayList<HBaseRow>();
-
-    //参与本次事务的其他SessionRemote
-    private Map<String, SessionRemote> sessionRemoteCache = New.hashMap();
-
-    public void addSessionRemote(String url, SessionRemote sessionRemote) {
-        sessionRemoteCache.put(url, sessionRemote);
-    }
-
-    public SessionRemote getSessionRemote(String url) {
-        return sessionRemoteCache.get(url);
-    }
+    private volatile Transaction transaction;
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
@@ -185,182 +150,66 @@ public class HBaseSession extends Session {
         return transaction;
     }
 
-    public void setTransaction(Transaction transaction) {
-        this.transaction = transaction;
+    private void beginTransaction() {
+        transaction = new Transaction(this);
+    }
+
+    private void endTransaction() {
+        if (transaction != null) {
+            transaction = null;
+
+            if (!isRoot())
+                super.setAutoCommit(true);
+        }
+    }
+
+    public synchronized void endNestedTransaction() {
+        //上一级事务重新变成当前事务
+        transaction = transaction.getParent();
+    }
+
+    public synchronized void beginNestedTransaction() {
+        //新的嵌套事务变成当前事务
+        transaction = new Transaction(this, transaction);
+    }
+
+    public void commitNestedTransaction() {
+        if (transaction != null)
+            transaction.commit();
+    }
+
+    public void rollbackNestedTransaction() {
+        if (transaction != null)
+            transaction.rollback();
     }
 
     @Override
     public void commit(boolean ddl) {
-        try {
-            if (transaction != null) {
-                //if (!getAutoCommit() && (!undoRows.isEmpty() || isMaster())) { //从master发起的dml有可能没有undoRows
-                if (!getAutoCommit()) {
-                    if (isRoot()) {
-                        if (sessionRemoteCache.size() > 0)
-                            parallelCommit();
-                        if (isMaster()) {
-                            transactionStatusTable.addRecord(transaction, true);
-                        } else {
-                            long tid = transaction.getTransactionId();
-                            long commitTimestamp = timestampService.nextOdd();
-                            transaction.setCommitTimestamp(commitTimestamp);
-                            transaction.setHostAndPort(getHostAndPort());
-                            checkConflict();
-                            transactionStatusTable.addRecord(transaction, false);
-                            ValidityChecker.cache.set(tid, commitTimestamp);
-                        }
-                    } else {
-                        long tid = transaction.getTransactionId();
-                        long commitTimestamp = timestampService.nextOdd();
-                        transaction.setCommitTimestamp(commitTimestamp);
-                        checkConflict();
-                        ValidityChecker.cache.set(tid, commitTimestamp);
-                    }
-                }
+        if (transaction != null) {
+            try {
+                transaction.commit();
+                super.commit(ddl);
+            } finally {
+                endTransaction();
             }
-        } catch (Exception e) {
-            rollback();
-            throw DbException.convert(e);
-        } finally {
-            endTransaction();
         }
-
-        super.commit(ddl);
     }
 
     @Override
     public void rollback() {
-        try {
-            if (transaction != null && !getAutoCommit()) {
-                if (isRoot() && sessionRemoteCache.size() > 0) {
-                    parallelRollback();
-                }
-
-                undo();
-            }
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            endTransaction();
-        }
-        super.rollback();
-    }
-
-    private void parallelCommit() {
-        parallel(true);
-    }
-
-    private void parallelRollback() {
-        parallel(false);
-    }
-
-    private void parallel(final boolean commit) {
-        int size = sessionRemoteCache.size();
-        List<Future<Void>> futures = New.arrayList(size);
-        for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
-            futures.add(pool.submit(new Callable<Void>() {
-                public Void call() throws Exception {
-                    if (sessionRemote.getTransaction() == null)
-                        return null;
-                    if (commit) {
-                        sessionRemote.commitTransaction();
-                        transaction.addChild(sessionRemote.getTransaction());
-                    } else {
-                        sessionRemote.rollbackTransaction();
-                    }
-                    return null;
-                }
-            }));
-        }
-        try {
-            for (int i = 0; i < size; i++) {
-                futures.get(i).get();
-            }
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        }
-    }
-
-    private void undo() {
-        for (int i = undoRows.size() - 1; i >= 0; i--) {
-            HBaseRow row = undoRows.get(i);
-            row.getTable().removeRow(this, row, true);
-        }
-        undoRows.clear();
-    }
-
-    private void beginTransaction() {
-        if (transaction == null) {
-            transaction = new Transaction();
-            transaction.setAutoCommit(getAutoCommit());
+        if (transaction != null) {
             try {
-                if (timestampService != null)
-                    if (getAutoCommit())
-                        transaction.setTransactionId(timestampService.nextEven());
-                    else
-                        transaction.setTransactionId(timestampService.nextOdd());
-            } catch (IOException e) {
-                throw DbException.convert(e);
+                transaction.rollback();
+                super.rollback();
+            } finally {
+                endTransaction();
             }
         }
-    }
-
-    public void endTransaction() {
-        transaction = null;
-        undoRows.clear();
-
-        for (SessionRemote sessionRemote : sessionRemoteCache.values()) {
-            sessionRemote.setTransaction(null);
-        }
-
-        if (!isRoot())
-            super.setAutoCommit(true);
     }
 
     public void log(HBaseRow row) {
-        if (!getAutoCommit() && transaction != null) {
-            undoRows.add(row);
-        }
-    }
-
-    private void checkConflict() {
-        if (transaction != null) {
-            long transactionId = transaction.getTransactionId();
-            synchronized (HBaseSession.class) {
-                if (transactionId < timestampService.first()) {
-                    //1. transactionId不可能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
-                    throw DbException.throwInternalError("transactionId(" + transactionId + ") < firstTimestampService("
-                            + timestampService.first() + ")");
-                } else if (!undoRows.isEmpty() && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
-                    //2. Too old and not read only
-                    throw new RuntimeException("Too old startTimestamp: ST " + transactionId + " MAX "
-                            + commitHashMap.getLargestDeletedTimestamp());
-                } else {
-                    //3. write-write冲突检测
-                    for (HBaseRow row : undoRows) {
-                        long oldCommitTimestamp = commitHashMap.getLatestWriteForRow(row.getHashCode());
-                        if (oldCommitTimestamp != 0 && oldCommitTimestamp > transactionId) {
-                            throw new RuntimeException("Write-write conflict: oldCommitTimestamp " + oldCommitTimestamp
-                                    + ", startTimestamp " + transactionId);
-                        }
-                    }
-
-                    //不能把下面的代码放入第3步的for循环中，只有冲突检测完后才能put提交记录
-                    for (HBaseRow row : undoRows) {
-                        commitHashMap.putLatestWriteForRow(row.getHashCode(), transaction.getCommitTimestamp());
-                    }
-                }
-            }
-        }
-    }
-
-    @Override
-    public void close() {
-        for (SessionRemote sr : sessionRemoteCache.values()) {
-            SessionRemotePool.release(sr);
-        }
-        sessionRemoteCache = null;
-        super.close();
+        checkTransaction();
+        transaction.log(row);
     }
 
     @Override
@@ -370,4 +219,20 @@ public class HBaseSession extends Session {
         else
             return master.getServerName().getHostAndPort();
     }
+
+    private void checkTransaction() {
+        if (transaction == null)
+            throw DbException.throwInternalError();
+    }
+
+    void addSessionRemote(String url, SessionRemote sessionRemote) {
+        getTransaction();
+        transaction.addSessionRemote(url, sessionRemote);
+    }
+
+    SessionRemote getSessionRemote(String url) {
+        getTransaction();
+        return transaction.getSessionRemote(url);
+    }
+
 }

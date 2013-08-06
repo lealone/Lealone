@@ -31,8 +31,8 @@ import com.codefollower.lealone.engine.ConnectionInfo;
 import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.expression.ParameterInterface;
+import com.codefollower.lealone.hbase.transaction.Transaction;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
-import com.codefollower.lealone.transaction.Transaction;
 
 public class SessionRemotePool {
     private static final int corePoolSize = HBaseUtils.getConfiguration().getInt(HBaseConstants.SESSION_CORE_POOL_SIZE,

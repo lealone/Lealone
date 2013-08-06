@@ -29,11 +29,10 @@ public class HBaseDelegateIndex extends BaseIndex {
 
     public HBaseDelegateIndex(HBaseTable table, int id, String name, IndexColumn[] cols, HBasePrimaryIndex mainIndex,
             IndexType indexType) {
+        if (id < 0)
+            throw DbException.throwInternalError(name);
         this.initBaseIndex(table, id, name, cols, indexType);
         this.mainIndex = mainIndex;
-        if (id < 0) {
-            throw DbException.throwInternalError("" + name);
-        }
     }
 
     @Override
@@ -120,7 +119,7 @@ public class HBaseDelegateIndex extends BaseIndex {
 
     @Override
     public long getDiskSpaceUsed() {
-        return 0;
+        return mainIndex.getDiskSpaceUsed();
     }
 
 }

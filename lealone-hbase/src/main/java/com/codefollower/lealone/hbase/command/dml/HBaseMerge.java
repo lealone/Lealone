@@ -51,7 +51,7 @@ public class HBaseMerge extends Merge implements InsertOrMerge {
     }
 
     @Override
-    public Row createRow(Expression[] expr, int rowId) {
+    protected Row createRow(Expression[] expr, int rowId) {
         return insertOrMergeSupport.createRow(expr, rowId);
     }
 

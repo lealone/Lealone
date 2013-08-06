@@ -61,7 +61,6 @@ public class InsertOrMergeSupport {
 
     private StatementBuilder alterTable;
     private ArrayList<Column> alterColumns;
-    private boolean isBatch = false;
     private int rowKeyColumnIndex = -1;
 
     private HBaseTable table;
@@ -96,10 +95,24 @@ public class InsertOrMergeSupport {
 
     public int update(boolean insertFromSelect, boolean sortedInsertMode, Prepared prepared) {
 
-        if (session.getAutoCommit() && (query != null || list.size() > 1 || this.table.doesSecondaryIndexExist())) {
-            session.setAutoCommit(false);
-            isBatch = true;
+        boolean isTopTransaction = false;
+        boolean isNestedTransaction = false;
+
+        //        if (session.getAutoCommit() && (query != null || list.size() > 1 || this.table.doesSecondaryIndexExist())) {
+        //            session.setAutoCommit(false);
+        //            isNestedTransaction = true;
+        //        }
+
+        if (query != null || list.size() > 1 || table.doesSecondaryIndexExist()) {
+            if (session.getAutoCommit()) {
+                session.setAutoCommit(false);
+                isTopTransaction = true;
+            } else {
+                isNestedTransaction = true;
+                session.beginNestedTransaction();
+            }
         }
+
         //当在Parser中解析insert语句时，如果insert中的一些字段是新的，那么会标注字段列表已修改了，
         //并且新字段的类型是未知的，只有在执行insert时再由字段值的实际类型确定字段的类型。
         if (table.isColumnsModified()) {
@@ -109,9 +122,9 @@ public class InsertOrMergeSupport {
 
             alterColumns = New.arrayList();
         }
-        int updateCount;
+
         try {
-            updateCount = iom.internalUpdate();
+            int updateCount = iom.internalUpdate();
 
             if (!servers.isEmpty()) {
                 List<CommandInterface> commands = New.arrayList(servers.size());
@@ -133,15 +146,25 @@ public class InsertOrMergeSupport {
                     ci.executeUpdate();
                 }
             }
-            if (isBatch)
+            if (isTopTransaction)
                 session.commit(false);
+            //嵌套事务在父事务提交时再一起提交
+            //if (isNestedTransaction)
+            //    session.commitNestedTransaction();
             return updateCount;
         } catch (Exception e) {
-            if (isBatch)
+            if (isTopTransaction)
                 session.rollback();
+
+            //嵌套事务出错时提前rollback
+            if (isNestedTransaction)
+                session.rollbackNestedTransaction();
+
             throw DbException.convert(e);
         } finally {
-            if (isBatch)
+            if (isNestedTransaction)
+                session.endNestedTransaction();
+            if (isTopTransaction)
                 session.setAutoCommit(true);
             servers.clear();
         }
