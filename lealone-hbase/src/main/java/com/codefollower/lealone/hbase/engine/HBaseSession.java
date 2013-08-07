@@ -19,7 +19,12 @@
  */
 package com.codefollower.lealone.hbase.engine;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
@@ -31,16 +36,23 @@ import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.engine.SessionRemote;
+import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.command.dml.HBaseInsert;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
+import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.transaction.TimestampService;
 import com.codefollower.lealone.hbase.transaction.Transaction;
 import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.Row;
+import com.codefollower.lealone.util.New;
 
 public class HBaseSession extends Session {
+
+    private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
+    private static final ThreadPoolExecutor pool = CommandParallel.getThreadPoolExecutor();
+
     /**
      * HBase的HMaster对象，master和regionServer不可能同时非null
      */
@@ -59,8 +71,19 @@ public class HBaseSession extends Session {
     private TimestampService timestampService;
     private volatile Transaction transaction;
 
+    //参与本次事务的其他SessionRemote
+    private final Map<String, SessionRemote> sessionRemoteCache = New.hashMap();
+
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
+    }
+
+    void addSessionRemote(String url, SessionRemote sessionRemote) {
+        sessionRemoteCache.put(url, sessionRemote);
+    }
+
+    SessionRemote getSessionRemote(String url) {
+        return sessionRemoteCache.get(url);
     }
 
     public HMaster getMaster() {
@@ -150,6 +173,10 @@ public class HBaseSession extends Session {
         return transaction;
     }
 
+    public Transaction getRootTransaction() {
+        return getTransaction().getRootTransaction();
+    }
+
     private void beginTransaction() {
         transaction = new Transaction(this);
     }
@@ -157,6 +184,13 @@ public class HBaseSession extends Session {
     private void endTransaction() {
         if (transaction != null) {
             transaction = null;
+
+            for (SessionRemote sr : sessionRemoteCache.values()) {
+                sr.setTransaction(null);
+                SessionRemotePool.release(sr);
+            }
+
+            sessionRemoteCache.clear();
 
             if (!isRoot())
                 super.setAutoCommit(true);
@@ -173,10 +207,10 @@ public class HBaseSession extends Session {
         transaction = new Transaction(this, transaction);
     }
 
-    public void commitNestedTransaction() {
-        if (transaction != null)
-            transaction.commit();
-    }
+    //    public void commitNestedTransaction() {
+    //        if (transaction != null)
+    //            transaction.commit();
+    //    }
 
     public void rollbackNestedTransaction() {
         if (transaction != null)
@@ -187,7 +221,16 @@ public class HBaseSession extends Session {
     public void commit(boolean ddl) {
         if (transaction != null) {
             try {
+                if (sessionRemoteCache.size() > 0)
+                    parallelCommit();
+
                 transaction.commit();
+
+                if (!getAutoCommit() && isRoot()) {
+                    transactionStatusTable.addRecord(this);
+                    transaction.releaseResources();
+                }
+
                 super.commit(ddl);
             } finally {
                 endTransaction();
@@ -199,6 +242,9 @@ public class HBaseSession extends Session {
     public void rollback() {
         if (transaction != null) {
             try {
+                if (sessionRemoteCache.size() > 0)
+                    parallelRollback();
+
                 transaction.rollback();
                 super.rollback();
             } finally {
@@ -207,8 +253,40 @@ public class HBaseSession extends Session {
         }
     }
 
+    private void parallelCommit() {
+        parallel(true);
+    }
+
+    private void parallelRollback() {
+        parallel(false);
+    }
+
+    private void parallel(final boolean commit) {
+        int size = sessionRemoteCache.size();
+        List<Future<Void>> futures = New.arrayList(size);
+        for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
+            futures.add(pool.submit(new Callable<Void>() {
+                public Void call() throws Exception {
+                    if (commit)
+                        sessionRemote.commitTransaction();
+                    else
+                        sessionRemote.rollbackTransaction();
+                    return null;
+                }
+            }));
+        }
+        try {
+            for (int i = 0; i < size; i++) {
+                futures.get(i).get();
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
+
     public void log(HBaseRow row) {
-        checkTransaction();
+        if (transaction == null)
+            throw DbException.throwInternalError();
         transaction.log(row);
     }
 
@@ -219,20 +297,4 @@ public class HBaseSession extends Session {
         else
             return master.getServerName().getHostAndPort();
     }
-
-    private void checkTransaction() {
-        if (transaction == null)
-            throw DbException.throwInternalError();
-    }
-
-    void addSessionRemote(String url, SessionRemote sessionRemote) {
-        getTransaction();
-        transaction.addSessionRemote(url, sessionRemote);
-    }
-
-    SessionRemote getSessionRemote(String url) {
-        getTransaction();
-        return transaction.getSessionRemote(url);
-    }
-
 }

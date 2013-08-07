@@ -98,11 +98,6 @@ public class InsertOrMergeSupport {
         boolean isTopTransaction = false;
         boolean isNestedTransaction = false;
 
-        //        if (session.getAutoCommit() && (query != null || list.size() > 1 || this.table.doesSecondaryIndexExist())) {
-        //            session.setAutoCommit(false);
-        //            isNestedTransaction = true;
-        //        }
-
         if (query != null || list.size() > 1 || table.doesSecondaryIndexExist()) {
             if (session.getAutoCommit()) {
                 session.setAutoCommit(false);

@@ -25,19 +25,9 @@ import static com.codefollower.lealone.hbase.engine.HBaseConstants.TRANSACTION_C
 import static com.codefollower.lealone.hbase.engine.HBaseConstants.TRANSACTION_COMMIT_CACHE_SIZE;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
+import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
-
-import com.codefollower.lealone.engine.SessionRemote;
-import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
-import com.codefollower.lealone.hbase.engine.SessionRemotePool;
-import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
@@ -50,32 +40,17 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
             HBaseUtils.getConfiguration().getInt(TRANSACTION_COMMIT_CACHE_ASSOCIATIVITY,
                     DEFAULT_TRANSACTION_COMMIT_CACHE_ASSOCIATIVITY));
 
-    private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
-    private static final ThreadPoolExecutor pool = CommandParallel.getThreadPoolExecutor();
-
     private final HBaseSession session;
     private final TimestampService timestampService;
     private final Transaction parent;
-    private final Set<Transaction> children;
-    private final Set<Transaction> nodeTransactions;
 
-    //参与本次事务的其他SessionRemote
-    private Map<String, SessionRemote> sessionRemoteCache;
+    private CopyOnWriteArrayList<Transaction> children;
     private CopyOnWriteArrayList<HBaseRow> undoRows;
+    private CopyOnWriteArrayList<CommitInfo> commitInfoList;
 
     private long transactionId;
     private long commitTimestamp;
-    private String hostAndPort;
     private boolean autoCommit;
-
-    //只用于SessionRemotePool初始化SessionRemote
-    public Transaction() {
-        session = null;
-        timestampService = null;
-        parent = null;
-        children = null;
-        nodeTransactions = null;
-    }
 
     public Transaction(HBaseSession session) {
         this(session, null);
@@ -85,11 +60,9 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         this.session = session;
         this.parent = parent;
         timestampService = session.getTimestampService();
-        children = New.hashSet();
-        nodeTransactions = New.hashSet();
-
-        sessionRemoteCache = New.hashMap();
+        children = new CopyOnWriteArrayList<Transaction>();
         undoRows = new CopyOnWriteArrayList<HBaseRow>();
+        commitInfoList = new CopyOnWriteArrayList<CommitInfo>();
 
         //嵌套事务
         if (parent != null)
@@ -105,9 +78,8 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         } catch (IOException e) {
             throw DbException.convert(e);
         }
-        hostAndPort = session.getHostAndPort();
 
-        //初始化完transactionId和hostAndPort之后再加入parent，要用这两个变量来计算hashCode()
+        //初始化完transactionId再加入parent，要用这个变量来计算hashCode()
         if (parent != null)
             parent.addChild(this);
     }
@@ -133,16 +105,6 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     }
 
     @Override
-    public void setHostAndPort(String hostAndPort) {
-        this.hostAndPort = hostAndPort;
-    }
-
-    @Override
-    public String getHostAndPort() {
-        return hostAndPort;
-    }
-
-    @Override
     public void setAutoCommit(boolean autoCommit) {
         this.autoCommit = autoCommit;
     }
@@ -150,14 +112,6 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     @Override
     public boolean isAutoCommit() {
         return autoCommit;
-    }
-
-    public void addSessionRemote(String url, SessionRemote sessionRemote) {
-        sessionRemoteCache.put(url, sessionRemote);
-    }
-
-    public SessionRemote getSessionRemote(String url) {
-        return sessionRemoteCache.get(url);
     }
 
     public boolean isNested() {
@@ -176,48 +130,8 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         children.remove(t);
     }
 
-    public Set<Transaction> getChildren() {
-        return children;
-    }
-
-    public void addNodeTransaction(Transaction t) {
-        nodeTransactions.add(t);
-    }
-
-    public Set<Transaction> getNodeTransactions() {
-        return nodeTransactions;
-    }
-
     public long getStartTimestamp() {
         return transactionId;
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((hostAndPort == null) ? 0 : hostAndPort.hashCode());
-        result = prime * result + (int) (transactionId ^ (transactionId >>> 32));
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Transaction other = (Transaction) obj;
-        if (hostAndPort == null) {
-            if (other.hostAndPort != null)
-                return false;
-        } else if (!hostAndPort.equals(other.hostAndPort))
-            return false;
-        if (transactionId != other.transactionId)
-            return false;
-        return true;
     }
 
     @Override
@@ -226,33 +140,14 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     }
 
     public void commit() {
-        //if (!getAutoCommit() && (!undoRows.isEmpty() || isMaster())) { //从master发起的dml有可能没有undoRows
         if (!autoCommit) {
             try {
-                if (session.isRoot()) {
-                    if (sessionRemoteCache.size() > 0)
-                        parallelCommit();
-                    if (session.isMaster()) {
-                        transactionStatusTable.addRecord(this, true);
-                    } else {
-                        long commitTimestamp = timestampService.nextOdd();
-                        setCommitTimestamp(commitTimestamp);
-                        checkConflict();
-                        transactionStatusTable.addRecord(this, false);
-                        ValidityChecker.cache.set(transactionId, commitTimestamp);
-                    }
-                } else {
-                    long commitTimestamp = timestampService.nextOdd();
-                    setCommitTimestamp(commitTimestamp);
-                    checkConflict();
-                    if (isNested())
-                        transactionStatusTable.addRecord(this, false);
-                    ValidityChecker.cache.set(transactionId, commitTimestamp);
-                }
-
-                for (Transaction t : children) {
+                for (Transaction t : children)
                     t.commit();
-                }
+
+                setCommitTimestamp(timestampService.nextOdd());
+                checkConflict();
+                //TODO 考虑如何缓存事务id和提交时间戳? 难点是: 当前节点提交了，但是还不能完全确定全局事务正常提交
             } catch (Exception e) {
                 rollback();
                 throw DbException.convert(e);
@@ -293,17 +188,10 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     public void rollback() {
         if (!autoCommit) {
             try {
-                if (session.isRoot() && sessionRemoteCache.size() > 0)
-                    parallelRollback();
+                for (Transaction t : children)
+                    t.rollback();
 
                 undo();
-
-                //避免java.util.ConcurrentModificationException
-                if (!children.isEmpty()) {
-                    Transaction[] childrenCopy = children.toArray(new Transaction[children.size()]);
-                    for (Transaction t : childrenCopy)
-                        t.rollback();
-                }
             } catch (Exception e) {
                 throw DbException.convert(e);
             } finally {
@@ -311,42 +199,8 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
                 if (parent != null)
                     parent.removeChild(this);
                 endTransaction();
+                releaseResources();
             }
-        }
-    }
-
-    private void parallelCommit() {
-        parallel(true);
-    }
-
-    private void parallelRollback() {
-        parallel(false);
-    }
-
-    private void parallel(final boolean commit) {
-        int size = sessionRemoteCache.size();
-        List<Future<Void>> futures = New.arrayList(size);
-        for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
-            futures.add(pool.submit(new Callable<Void>() {
-                public Void call() throws Exception {
-                    if (sessionRemote.getTransaction() == null)
-                        return null;
-                    if (commit) {
-                        sessionRemote.commitTransaction();
-                        addNodeTransaction((Transaction) sessionRemote.getTransaction());
-                    } else {
-                        sessionRemote.rollbackTransaction();
-                    }
-                    return null;
-                }
-            }));
-        }
-        try {
-            for (int i = 0; i < size; i++) {
-                futures.get(i).get();
-            }
-        } catch (Exception e) {
-            throw DbException.convert(e);
         }
     }
 
@@ -365,13 +219,7 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
             undoRows = null;
         }
 
-        if (sessionRemoteCache != null) {
-            for (SessionRemote sr : sessionRemoteCache.values()) {
-                sr.setTransaction(null);
-                SessionRemotePool.release(sr);
-            }
-            sessionRemoteCache = null;
-        }
+        //children和commitInfoList两个字段在提交后还有用，如有必要可调用releaseResources()
     }
 
     public void log(HBaseRow row) {
@@ -380,7 +228,7 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         }
     }
 
-    public boolean isUncommitted(long queryTimestamp) {
+    public Transaction getRootTransaction() {
         Transaction parent = this.parent;
         if (parent == null)
             parent = this;
@@ -389,7 +237,12 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
                 parent = parent.parent;
             }
         }
-        return parent.isUncommittedRecursively(queryTimestamp);
+
+        return parent;
+    }
+
+    public boolean isUncommitted(long queryTimestamp) {
+        return getRootTransaction().isUncommittedRecursively(queryTimestamp);
     }
 
     public boolean isUncommittedRecursively(long queryTimestamp) {
@@ -402,5 +255,59 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         }
 
         return false;
+    }
+
+    @Override
+    public void addCommitInfo(CommitInfo commitInfo) {
+        commitInfoList.add(commitInfo);
+    }
+
+    @Override
+    public CommitInfo[] getAllCommitInfo() {
+        return getAllCommitInfo(true);
+    }
+
+    public CommitInfo[] getAllCommitInfo(boolean includeSelf) {
+        ArrayList<CommitInfo> commitInfoList = New.arrayList(this.commitInfoList);
+
+        if (includeSelf) {
+            ArrayList<Transaction> list = New.arrayList();
+            getTransactionRecursively(list);
+
+            String hostAndPort = session.getHostAndPort();
+            int len = list.size();
+            long[] transactionIds = new long[len];
+            long[] commitTimestamps = new long[len];
+            for (int i = 0; i < len; i++) {
+                transactionIds[i] = list.get(i).getTransactionId();
+                commitTimestamps[i] = list.get(i).getCommitTimestamp();
+            }
+
+            commitInfoList.add(new CommitInfo(hostAndPort, transactionIds, commitTimestamps));
+        }
+
+        return commitInfoList.toArray(new CommitInfo[commitInfoList.size()]);
+    }
+
+    private void getTransactionRecursively(ArrayList<Transaction> list) {
+        list.add(this);
+        for (Transaction t : children)
+            t.getTransactionRecursively(list);
+    }
+
+    @Override
+    public void releaseResources() {
+        for (Transaction t : children)
+            t.releaseResources();
+
+        if (children != null) {
+            children.clear();
+            children = null;
+        }
+
+        if (commitInfoList != null) {
+            commitInfoList.clear();
+            commitInfoList = null;
+        }
     }
 }

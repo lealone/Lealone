@@ -33,6 +33,7 @@ import com.codefollower.lealone.result.ResultColumn;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.store.LobStorage;
 import com.codefollower.lealone.transaction.Transaction;
+import com.codefollower.lealone.transaction.Transaction.CommitInfo;
 import com.codefollower.lealone.util.IOUtils;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.SmallLRUCache;
@@ -54,10 +55,8 @@ public class TcpServerThread implements Runnable {
     private Thread thread;
     private Command commit;
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
-    private final SmallLRUCache<Long, CachedInputStream> lobs =
-        SmallLRUCache.newInstance(Math.max(
-                SysProperties.SERVER_CACHED_OBJECTS,
-                SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+    private final SmallLRUCache<Long, CachedInputStream> lobs = SmallLRUCache.newInstance(Math.max(
+            SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
     private final int threadId;
     private int clientVersion;
     private String sessionId;
@@ -85,9 +84,11 @@ public class TcpServerThread implements Runnable {
                 }
                 int minClientVersion = transfer.readInt();
                 if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_6) {
-                    throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + clientVersion, "" + Constants.TCP_PROTOCOL_VERSION_6);
+                    throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + clientVersion, ""
+                            + Constants.TCP_PROTOCOL_VERSION_6);
                 } else if (minClientVersion > Constants.TCP_PROTOCOL_VERSION_12) {
-                    throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + clientVersion, "" + Constants.TCP_PROTOCOL_VERSION_12);
+                    throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + clientVersion, ""
+                            + Constants.TCP_PROTOCOL_VERSION_12);
                 }
                 int maxClientVersion = transfer.readInt();
                 if (maxClientVersion >= Constants.TCP_PROTOCOL_VERSION_12) {
@@ -237,8 +238,8 @@ public class TcpServerThread implements Runnable {
                 message = e.getMessage();
                 sql = null;
             }
-            transfer.writeInt(SessionRemote.STATUS_ERROR).writeString(e.getSQLState()).writeString(message)
-                    .writeString(sql).writeInt(e.getErrorCode()).writeString(trace).flush();
+            transfer.writeInt(SessionRemote.STATUS_ERROR).writeString(e.getSQLState()).writeString(message).writeString(sql)
+                    .writeInt(e.getErrorCode()).writeString(trace).flush();
         } catch (Exception e2) {
             if (!transfer.isClosed()) {
                 server.traceError(e2);
@@ -290,8 +291,7 @@ public class TcpServerThread implements Runnable {
             cache.addObject(id, command);
             boolean isQuery = command.isQuery();
             ArrayList<? extends ParameterInterface> params = command.getParameters();
-            transfer.writeInt(getState(old)).writeBoolean(isQuery).writeBoolean(readonly)
-                    .writeInt(params.size());
+            transfer.writeInt(getState(old)).writeBoolean(isQuery).writeBoolean(readonly).writeInt(params.size());
             if (operation == SessionRemote.SESSION_PREPARE_READ_PARAMS) {
                 for (ParameterInterface p : params) {
                     ParameterRemote.writeMetaData(transfer, p);
@@ -404,9 +404,13 @@ public class TcpServerThread implements Runnable {
                 status = getState(old);
             }
             transfer.writeInt(status);
-            transfer.writeLong(transaction.getTransactionId());
-            transfer.writeLong(transaction.getCommitTimestamp());
-            transfer.writeString(session.getHostAndPort());
+            CommitInfo[] allCommitInfo = transaction.getAllCommitInfo();
+            transaction.releaseResources();
+            int len = allCommitInfo.length;
+            transfer.writeInt(len);
+            for (int i = 0; i < len; i++) {
+                allCommitInfo[i].write(transfer);
+            }
             transfer.flush();
             break;
         }
@@ -509,8 +513,7 @@ public class TcpServerThread implements Runnable {
             break;
         }
         case SessionRemote.SESSION_UNDO_LOG_POS: {
-            transfer.writeInt(SessionRemote.STATUS_OK).
-                writeInt(session.getUndoLogPos()).flush();
+            transfer.writeInt(SessionRemote.STATUS_OK).writeInt(session.getUndoLogPos()).flush();
             break;
         }
         case SessionRemote.LOB_READ: {

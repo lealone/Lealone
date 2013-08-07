@@ -31,7 +31,6 @@ import com.codefollower.lealone.engine.ConnectionInfo;
 import com.codefollower.lealone.engine.SessionRemote;
 import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.expression.ParameterInterface;
-import com.codefollower.lealone.hbase.transaction.Transaction;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 
 public class SessionRemotePool {
@@ -111,11 +110,8 @@ public class SessionRemotePool {
             sessionRemote = getSessionRemote(originalSession.getOriginalProperties(), url);
         }
 
-        if (sessionRemote.getTransaction() == null) {
-            Transaction t = new Transaction();
-            t.setAutoCommit(originalSession.getAutoCommit());
-            sessionRemote.setTransaction(t);
-        }
+        if (sessionRemote.getTransaction() == null)
+            sessionRemote.setTransaction(originalSession.getRootTransaction());
 
         if (isNew)
             originalSession.addSessionRemote(url, sessionRemote);

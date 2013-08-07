@@ -29,6 +29,7 @@ import com.codefollower.lealone.store.FileStore;
 import com.codefollower.lealone.store.LobStorage;
 import com.codefollower.lealone.store.fs.FileUtils;
 import com.codefollower.lealone.transaction.Transaction;
+import com.codefollower.lealone.transaction.Transaction.CommitInfo;
 import com.codefollower.lealone.util.MathUtils;
 import com.codefollower.lealone.util.NetUtils;
 import com.codefollower.lealone.util.New;
@@ -747,9 +748,10 @@ public class SessionRemote extends SessionWithState implements DataHandler {
             try {
                 transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT);
                 done(transfer);
-                transaction.setTransactionId(transfer.readLong());
-                transaction.setCommitTimestamp(transfer.readLong());
-                transaction.setHostAndPort(transfer.readString());
+                int len = transfer.readInt();
+                for (int j = 0; j < len; j++) {
+                    transaction.addCommitInfo(CommitInfo.read(transfer));
+                }
             } catch (IOException e) {
                 removeServer(e, i--, ++count);
             }

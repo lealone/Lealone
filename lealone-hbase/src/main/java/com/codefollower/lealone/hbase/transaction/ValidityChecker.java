@@ -39,10 +39,10 @@ import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
  *
  */
 public class ValidityChecker {
-    public final static TransactionStatusCache cache = new TransactionStatusCache();
+    private final static TransactionStatusCache cache = new TransactionStatusCache();
 
     /** We always ask for CACHE_VERSIONS_OVERHEAD extra versions */
-    private static final int CACHE_VERSIONS_OVERHEAD = 3;
+    private final static int CACHE_VERSIONS_OVERHEAD = 3;
 
     public static List<KeyValue> check(HRegionServer regionServer, String hostAndPort, byte[] regionName,
             Transaction transaction, List<KeyValue> kvs, int localVersions) throws IOException {
@@ -177,6 +177,7 @@ public class ValidityChecker {
         KeyValue kv;
         Result r;
         long queryTimestamp;
+        long startTimestamp = t.getStartTimestamp();
         Result[] result = session.getRegionServer().next(scannerId, fetchSize);
         ArrayList<Result> list = new ArrayList<Result>(result.length);
         for (int i = 0; i < result.length; i++) {
@@ -186,7 +187,9 @@ public class ValidityChecker {
             if (kvs != null) {
                 kv = kvs.get(0);
                 queryTimestamp = kv.getTimestamp();
-                if (queryTimestamp < t.getStartTimestamp() && queryTimestamp % 2 == 0 || t.isUncommitted(queryTimestamp)) {
+                if (queryTimestamp == startTimestamp //
+                        || queryTimestamp < startTimestamp && queryTimestamp % 2 == 0 //
+                        || t.isUncommitted(queryTimestamp)) {
                     if (kv.getValueLength() != 0) //kv已删除，不需要再处理
                         list.add(r);
                     continue;

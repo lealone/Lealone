@@ -21,23 +21,22 @@ package com.codefollower.lealone.hbase.metadata;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Set;
-
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.codefollower.lealone.hbase.transaction.Transaction;
+import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.transaction.Transaction.CommitInfo;
 
 public class TransactionStatusTable {
     private final static byte[] TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "transaction_status_table");
     private final static byte[] SERVERS = Bytes.toBytes("s");
     private final static byte[] COMMIT_TIMESTAMP = Bytes.toBytes("c");
-    private final static byte[] IS_NESTED = Bytes.toBytes("n");
+    //private final static byte[] IS_NESTED = Bytes.toBytes("n");
 
     private final static TransactionStatusTable st = new TransactionStatusTable();
 
@@ -56,39 +55,43 @@ public class TransactionStatusTable {
         }
     }
 
-    public void addRecord(Transaction rootTransaction, boolean isMaster) {
-        Set<Transaction> transactions = rootTransaction.getNodeTransactions();
-        if (!isMaster)
-            transactions.add(rootTransaction);
-
-        for (Transaction t : rootTransaction.getChildren())
-            transactions.add(t);
-
-        if (transactions != null && !transactions.isEmpty()) {
+    public void addRecord(HBaseSession session) {
+        CommitInfo[] allCommitInfo = session.getRootTransaction().getAllCommitInfo(session.isRegionServer());
+        int len = allCommitInfo.length;
+        if (len > 0) {
             StringBuilder buff = new StringBuilder();
-            for (Transaction t : transactions) {
-                if (buff.length() > 0)
+            for (int i = 0; i < len; i++) {
+                for (String key : allCommitInfo[i].getKeys()) {
+                    buff.append(key);
                     buff.append(',');
-
-                buff.append(getRowKey(t));
+                }
             }
-
+            buff.setLength(buff.length() - 1);
             String serverStr = buff.toString();
 
-            ArrayList<Put> puts = new ArrayList<Put>(transactions.size());
+            ArrayList<Put> puts = new ArrayList<Put>();
             byte[] rowKey;
             Put put;
             long tid;
 
-            for (Transaction t : transactions) {
-                tid = t.getTransactionId();
-                rowKey = Bytes.toBytes(getRowKey(t));
+            CommitInfo commitInfo;
+            long[] transactionIds;
+            long[] commitTimestamps;
 
-                put = new Put(rowKey);
-                put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, IS_NESTED, tid, Bytes.toBytes(t.isNested()));
-                put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP, tid, Bytes.toBytes(t.getCommitTimestamp()));
-                put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SERVERS, tid, Bytes.toBytes(serverStr));
-                puts.add(put);
+            for (int i = 0; i < len; i++) {
+                commitInfo = allCommitInfo[i];
+                transactionIds = commitInfo.getTransactionIds();
+                commitTimestamps = commitInfo.getCommitTimestamps();
+                for (int j = 0, size = transactionIds.length; j < size; j++) {
+                    tid = transactionIds[j];
+                    rowKey = Bytes.toBytes(commitInfo.getKey(tid));
+
+                    put = new Put(rowKey);
+                    //put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, IS_NESTED, tid, Bytes.toBytes(t.isNested()));
+                    put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP, tid, Bytes.toBytes(commitTimestamps[j]));
+                    put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, SERVERS, tid, Bytes.toBytes(serverStr));
+                    puts.add(put);
+                }
             }
 
             try {
@@ -99,19 +102,8 @@ public class TransactionStatusTable {
         }
     }
 
-    private static String getRowKey(Transaction t) {
-        return getRowKey(t.getHostAndPort(), t.getTransactionId());
-    }
-
-    private static String getRowKey(String hostAndPort, long transactionId) {
-        StringBuilder buff = new StringBuilder(hostAndPort);
-        buff.append(':');
-        buff.append(transactionId);
-        return buff.toString();
-    }
-
     public long query(String hostAndPort, long queryTimestamp) {
-        String rowKey = getRowKey(hostAndPort, queryTimestamp);
+        String rowKey = CommitInfo.getKey(hostAndPort, queryTimestamp);
         Get get = new Get(Bytes.toBytes(rowKey));
         get.setTimeStamp(queryTimestamp);
         try {
