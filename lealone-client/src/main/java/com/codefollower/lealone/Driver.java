@@ -139,11 +139,11 @@ public class Driver implements java.sql.Driver {
     /**
      * [Not supported]
      */
-/*## Java 1.7 ##
-    public Logger getParentLogger() {
-        return null;
-    }
-//*/
+    /*## Java 1.7 ##
+        public Logger getParentLogger() {
+            return null;
+        }
+    //*/
 
     /**
      * INTERNAL

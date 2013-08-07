@@ -170,7 +170,8 @@ public class CacheLRU implements Cache {
                 } else {
                     // can't remove any record, because the records can not be removed
                     // hopefully this does not happen frequently, but it can happen
-                    writer.getTrace().info("cannot remove records, cache size too small? records:" + recordCount + " memory:" + memory);
+                    writer.getTrace().info(
+                            "cannot remove records, cache size too small? records:" + recordCount + " memory:" + memory);
                     break;
                 }
             }
@@ -296,39 +297,39 @@ public class CacheLRU implements Cache {
         return rec;
     }
 
-//    private void testConsistency() {
-//        int s = size;
-//        HashSet set = new HashSet();
-//        for(int i=0; i<values.length; i++) {
-//            Record rec = values[i];
-//            if(rec == null) {
-//                continue;
-//            }
-//            set.add(rec);
-//            while(rec.chained != null) {
-//                rec = rec.chained;
-//                set.add(rec);
-//            }
-//        }
-//        Record rec = head.next;
-//        while(rec != head) {
-//            set.add(rec);
-//            rec = rec.next;
-//        }
-//        rec = head.previous;
-//        while(rec != head) {
-//            set.add(rec);
-//            rec = rec.previous;
-//        }
-//        if(set.size() != size) {
-//            System.out.println("size="+size+" but el.size="+set.size());
-//        }
-//    }
+    //    private void testConsistency() {
+    //        int s = size;
+    //        HashSet set = new HashSet();
+    //        for(int i=0; i<values.length; i++) {
+    //            Record rec = values[i];
+    //            if(rec == null) {
+    //                continue;
+    //            }
+    //            set.add(rec);
+    //            while(rec.chained != null) {
+    //                rec = rec.chained;
+    //                set.add(rec);
+    //            }
+    //        }
+    //        Record rec = head.next;
+    //        while(rec != head) {
+    //            set.add(rec);
+    //            rec = rec.next;
+    //        }
+    //        rec = head.previous;
+    //        while(rec != head) {
+    //            set.add(rec);
+    //            rec = rec.previous;
+    //        }
+    //        if(set.size() != size) {
+    //            System.out.println("size="+size+" but el.size="+set.size());
+    //        }
+    //    }
 
     public ArrayList<CacheObject> getAllChanged() {
-//        if(Database.CHECK) {
-//            testConsistency();
-//        }
+        //        if(Database.CHECK) {
+        //            testConsistency();
+        //        }
         ArrayList<CacheObject> list = New.arrayList();
         CacheObject rec = head.cacheNext;
         while (rec != head) {
@@ -355,9 +356,9 @@ public class CacheLRU implements Cache {
     public int getMemory() {
         // CacheObject rec = head.cacheNext;
         // while (rec != head) {
-            // System.out.println(rec.getMemory() + " " +
-            //        MemoryFootprint.getObjectSize(rec) + " " + rec);
-            // rec = rec.cacheNext;
+        // System.out.println(rec.getMemory() + " " +
+        //        MemoryFootprint.getObjectSize(rec) + " " + rec);
+        // rec = rec.cacheNext;
         // }
         return (int) (memory * 4L / 1024);
     }

@@ -86,8 +86,8 @@ public class TableView extends Table {
         }
     }
 
-    private synchronized void init(String querySQL, ArrayList<Parameter> params,
-            String[] columnNames, Session session, boolean recursive) {
+    private synchronized void init(String querySQL, ArrayList<Parameter> params, String[] columnNames, Session session,
+            boolean recursive) {
         this.querySQL = querySQL;
         this.columnNames = columnNames;
         this.recursive = recursive;
@@ -222,7 +222,6 @@ public class TableView extends Table {
     public String getCreateSQLForCopy(Table table, String quotedName) {
         return getCreateSQL(false, true, quotedName);
     }
-
 
     public String getCreateSQL() {
         return getCreateSQL(false, true);
@@ -419,8 +418,7 @@ public class TableView extends Table {
     public static TableView createTempView(Session session, User owner, String name, Query query, Query topQuery) {
         Schema mainSchema = session.getDatabase().getSchema(Constants.SCHEMA_MAIN);
         String querySQL = query.getPlanSQL();
-        TableView v = new TableView(mainSchema, 0, name, querySQL, query.getParameters(), null, session,
-                false);
+        TableView v = new TableView(mainSchema, 0, name, querySQL, query.getParameters(), null, session, false);
         if (v.createException != null) {
             throw v.createException;
         }
@@ -471,7 +469,7 @@ public class TableView extends Table {
     public boolean isTableExpression() {
         return tableExpression;
     }
-    
+
     public String getTableName() {
         for (Table t : tables) {
             if (t instanceof TableView) {

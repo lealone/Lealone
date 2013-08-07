@@ -148,7 +148,7 @@ public class SysProperties {
      * Lealone Console: stream query results.
      */
     public static final boolean CONSOLE_STREAM = getProperty("console.stream", true);
-    
+
     /**
      * System property <code>consoleTimeout</code> (default: 1800000).<br />
      * Lealone Console: session timeout in milliseconds. The default is 30 minutes.

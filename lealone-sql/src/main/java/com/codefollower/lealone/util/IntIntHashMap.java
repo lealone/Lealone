@@ -72,7 +72,7 @@ public class IntIntHashMap extends HashBase {
                 return;
             }
             index = (index + plus++) & mask;
-        } while(plus <= len);
+        } while (plus <= len);
         // no space
         DbException.throwInternalError("hashmap is full");
     }
@@ -104,7 +104,7 @@ public class IntIntHashMap extends HashBase {
                 return;
             }
             index = (index + plus++) & mask;
-        } while(plus <= len);
+        } while (plus <= len);
         // not found
     }
 
@@ -143,7 +143,7 @@ public class IntIntHashMap extends HashBase {
                 return values[index];
             }
             index = (index + plus++) & mask;
-        } while(plus <= len);
+        } while (plus <= len);
         return NOT_FOUND;
     }
 

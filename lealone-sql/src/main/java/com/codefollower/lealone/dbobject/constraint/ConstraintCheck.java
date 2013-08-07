@@ -66,7 +66,7 @@ public class ConstraintCheck extends Constraint {
         return getName() + ": " + expr.getSQL();
     }
 
-    public String  getCreateSQLWithoutIndexes() {
+    public String getCreateSQLWithoutIndexes() {
         return getCreateSQL();
     }
 

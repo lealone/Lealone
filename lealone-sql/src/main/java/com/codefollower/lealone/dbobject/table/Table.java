@@ -113,7 +113,7 @@ public abstract class Table extends SchemaObjectBase {
     private boolean onCommitDrop, onCommitTruncate;
     private Row nullRow;
 
-	public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
+    public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         columnMap = schema.getDatabase().newStringMap();
         initSchemaObjectBase(schema, id, name, Trace.TABLE);
         this.persistIndexes = persistIndexes;
@@ -301,6 +301,7 @@ public abstract class Table extends SchemaObjectBase {
     public abstract long getRowCountApproximation();
 
     public abstract long getDiskSpaceUsed();
+
     /**
      * Get the row id column if this table has one.
      *
@@ -940,8 +941,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param enabled true if checking should be enabled
      * @param checkExisting true if existing rows must be checked during this call
      */
-    public void setCheckForeignKeyConstraints(Session session, boolean enabled, boolean checkExisting)
-            {
+    public void setCheckForeignKeyConstraints(Session session, boolean enabled, boolean checkExisting) {
         if (enabled && checkExisting) {
             if (constraints != null) {
                 for (Constraint c : constraints) {

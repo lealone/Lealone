@@ -44,8 +44,7 @@ public class FilePathRec extends FilePathWrapper {
         return super.createFile();
     }
 
-    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir)
-            throws IOException {
+    public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir) throws IOException {
         log(Recorder.CREATE_TEMP_FILE, unwrap(name) + ":" + suffix + ":" + deleteOnExit + ":" + inTempDir);
         return super.createTempFile(suffix, deleteOnExit, inTempDir);
     }

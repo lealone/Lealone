@@ -113,5 +113,4 @@ public class JdbcSavepoint extends TraceObject implements Savepoint {
         return getTraceObjectName() + ": id=" + savepointId + " name=" + name;
     }
 
-
 }

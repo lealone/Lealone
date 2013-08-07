@@ -49,8 +49,7 @@ public abstract class BaseIndex extends SchemaObjectBase implements Index {
      *            not yet known
      * @param newIndexType the index type
      */
-    protected void initBaseIndex(Table newTable, int id, String name,
-            IndexColumn[] newIndexColumns, IndexType newIndexType) {
+    protected void initBaseIndex(Table newTable, int id, String name, IndexColumn[] newIndexColumns, IndexType newIndexType) {
         initSchemaObjectBase(newTable.getSchema(), id, name, Trace.INDEX);
         this.indexType = newIndexType;
         this.table = newTable;
@@ -97,7 +96,6 @@ public abstract class BaseIndex extends SchemaObjectBase implements Index {
     public boolean canFindNext() {
         return false;
     }
-
 
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
         return find(filter.getSession(), first, last);
@@ -167,8 +165,8 @@ public abstract class BaseIndex extends SchemaObjectBase implements Index {
         // if the ORDER BY clause matches the ordering of this index,
         // it will be cheaper than another index, so adjust the cost accordingly
         if (sortOrder != null) {
-            int[] columnIndexes = new int[ indexColumns.length ];
-            int[] columnSortTypes = new int[ indexColumns.length ];
+            int[] columnIndexes = new int[indexColumns.length];
+            int[] columnSortTypes = new int[indexColumns.length];
             for (int i = 0, len = indexColumns.length; i < len; i++) {
                 columnIndexes[i] = indexColumns[i].column.getColumnId();
                 columnSortTypes[i] = indexColumns[i].sortType;

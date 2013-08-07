@@ -174,7 +174,7 @@ public class IndexCondition {
         }
         StatementBuilder buff = new StatementBuilder();
         buff.append(column.getSQL());
-        switch(compareType) {
+        switch (compareType) {
         case Comparison.EQUAL:
             buff.append(" = ");
             break;
@@ -207,7 +207,7 @@ public class IndexCondition {
             buff.append(')');
             break;
         default:
-            DbException.throwInternalError("type="+compareType);
+            DbException.throwInternalError("type=" + compareType);
         }
         if (expression != null) {
             buff.append(expression.getSQL());

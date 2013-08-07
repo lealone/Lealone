@@ -27,6 +27,7 @@ import com.codefollower.lealone.util.New;
 
 //## Java 1.6 ##
 import javax.sql.StatementEventListener;
+
 //*/
 
 /**
@@ -223,7 +224,7 @@ public class JdbcXAConnection extends TraceObject implements XAConnection, XARes
      */
     public int prepare(Xid xid) throws XAException {
         if (isDebugEnabled()) {
-            debugCode("prepare("+JdbcXid.toString(xid)+");");
+            debugCode("prepare(" + JdbcXid.toString(xid) + ");");
         }
         checkOpen();
         if (!currentTransaction.equals(xid)) {
@@ -250,7 +251,7 @@ public class JdbcXAConnection extends TraceObject implements XAConnection, XARes
      */
     public void forget(Xid xid) {
         if (isDebugEnabled()) {
-            debugCode("forget("+JdbcXid.toString(xid)+");");
+            debugCode("forget(" + JdbcXid.toString(xid) + ");");
         }
         prepared = false;
     }
@@ -263,7 +264,7 @@ public class JdbcXAConnection extends TraceObject implements XAConnection, XARes
      */
     public void rollback(Xid xid) throws XAException {
         if (isDebugEnabled()) {
-            debugCode("rollback("+JdbcXid.toString(xid)+");");
+            debugCode("rollback(" + JdbcXid.toString(xid) + ");");
         }
         try {
             physicalConn.rollback();
@@ -293,7 +294,7 @@ public class JdbcXAConnection extends TraceObject implements XAConnection, XARes
      */
     public void end(Xid xid, int flags) throws XAException {
         if (isDebugEnabled()) {
-            debugCode("end("+JdbcXid.toString(xid)+", "+quoteFlags(flags)+");");
+            debugCode("end(" + JdbcXid.toString(xid) + ", " + quoteFlags(flags) + ");");
         }
         // TODO transaction end: implement this method
         if (flags == TMSUSPEND) {
@@ -314,7 +315,7 @@ public class JdbcXAConnection extends TraceObject implements XAConnection, XARes
      */
     public void start(Xid xid, int flags) throws XAException {
         if (isDebugEnabled()) {
-            debugCode("start("+JdbcXid.toString(xid)+", "+quoteFlags(flags)+");");
+            debugCode("start(" + JdbcXid.toString(xid) + ", " + quoteFlags(flags) + ");");
         }
         if (flags == TMRESUME) {
             return;
@@ -344,7 +345,7 @@ public class JdbcXAConnection extends TraceObject implements XAConnection, XARes
      */
     public void commit(Xid xid, boolean onePhase) throws XAException {
         if (isDebugEnabled()) {
-            debugCode("commit("+JdbcXid.toString(xid)+", "+onePhase+");");
+            debugCode("commit(" + JdbcXid.toString(xid) + ", " + onePhase + ");");
         }
         Statement stat = null;
         try {
@@ -369,22 +370,24 @@ public class JdbcXAConnection extends TraceObject implements XAConnection, XARes
      *
      * @param listener the new statement event listener
      */
-//## Java 1.6 ##
+    //## Java 1.6 ##
     public void addStatementEventListener(StatementEventListener listener) {
         throw new UnsupportedOperationException();
     }
-//*/
+
+    //*/
 
     /**
      * [Not supported] Remove a statement event listener.
      *
      * @param listener the statement event listener
      */
-//## Java 1.6 ##
+    //## Java 1.6 ##
     public void removeStatementEventListener(StatementEventListener listener) {
         throw new UnsupportedOperationException();
     }
-//*/
+
+    //*/
 
     /**
      * INTERNAL

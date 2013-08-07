@@ -94,8 +94,7 @@ public class Schema extends DbObjectBase {
         if (system) {
             return null;
         }
-        return "CREATE SCHEMA IF NOT EXISTS " +
-            getSQL() + " AUTHORIZATION " + owner.getSQL();
+        return "CREATE SCHEMA IF NOT EXISTS " + getSQL() + " AUTHORIZATION " + owner.getSQL();
     }
 
     public int getType() {
@@ -574,13 +573,11 @@ public class Schema extends DbObjectBase {
      * @param force create the object even if the database can not be accessed
      * @return the {@link TableLink} object
      */
-    public TableLink createTableLink(int id, String tableName,
-            String driver, String url, String user, String password,
+    public TableLink createTableLink(int id, String tableName, String driver, String url, String user, String password,
             String originalSchema, String originalTable, boolean emitUpdates, boolean force) {
         synchronized (database) {
-            return new TableLink(this, id, tableName,
-                    driver, url, user, password,
-                    originalSchema, originalTable, emitUpdates, force);
+            return new TableLink(this, id, tableName, driver, url, user, password, originalSchema, originalTable, emitUpdates,
+                    force);
         }
     }
 

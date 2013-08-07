@@ -68,8 +68,8 @@ import java.util.logging.Logger;
  * In this example the user name and password are serialized as
  * well; this may be a security problem in some cases.
  */
-public class JdbcDataSource extends TraceObject
-        implements XADataSource, DataSource, ConnectionPoolDataSource, Serializable, Referenceable {
+public class JdbcDataSource extends TraceObject implements XADataSource, DataSource, ConnectionPoolDataSource, Serializable,
+        Referenceable {
 
     private static final long serialVersionUID = 1288136338451857771L;
 
@@ -77,7 +77,7 @@ public class JdbcDataSource extends TraceObject
     private transient PrintWriter logWriter;
     private int loginTimeout;
     private String userName = "";
-    private char[] passwordChars = { };
+    private char[] passwordChars = {};
     private String url = "";
     private String description;
 
@@ -171,14 +171,14 @@ public class JdbcDataSource extends TraceObject
      */
     public Connection getConnection(String user, String password) throws SQLException {
         if (isDebugEnabled()) {
-            debugCode("getConnection("+quote(user)+", \"\");");
+            debugCode("getConnection(" + quote(user) + ", \"\");");
         }
         return getJdbcConnection(user, convertToCharArray(password));
     }
 
     private JdbcConnection getJdbcConnection(String user, char[] password) throws SQLException {
         if (isDebugEnabled()) {
-            debugCode("getJdbcConnection("+quote(user)+", new char[0]);");
+            debugCode("getJdbcConnection(" + quote(user) + ", new char[0]);");
         }
         Properties info = new Properties();
         info.setProperty("user", user);
@@ -330,7 +330,7 @@ public class JdbcDataSource extends TraceObject
      */
     public XAConnection getXAConnection(String user, String password) throws SQLException {
         if (isDebugEnabled()) {
-            debugCode("getXAConnection("+quote(user)+", \"\");");
+            debugCode("getXAConnection(" + quote(user) + ", \"\");");
         }
         int id = getNextId(XA_DATA_SOURCE);
         return new JdbcXAConnection(factory, id, getJdbcConnection(user, convertToCharArray(password)));
@@ -356,7 +356,7 @@ public class JdbcDataSource extends TraceObject
      */
     public PooledConnection getPooledConnection(String user, String password) throws SQLException {
         if (isDebugEnabled()) {
-            debugCode("getPooledConnection("+quote(user)+", \"\");");
+            debugCode("getPooledConnection(" + quote(user) + ", \"\");");
         }
         return getXAConnection(user, password);
     }
@@ -366,31 +366,33 @@ public class JdbcDataSource extends TraceObject
      *
      * @param iface the class
      */
-//## Java 1.6 ##
+    //## Java 1.6 ##
     public <T> T unwrap(Class<T> iface) throws SQLException {
         throw unsupported("unwrap");
     }
-//*/
+
+    //*/
 
     /**
      * [Not supported] Checks if unwrap can return an object of this class.
      *
      * @param iface the class
      */
-//## Java 1.6 ##
+    //## Java 1.6 ##
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         throw unsupported("isWrapperFor");
     }
-//*/
+
+    //*/
 
     /**
      * [Not supported]
      */
-/*## Java 1.7 ##
-    public Logger getParentLogger() {
-        return null;
-    }
-//*/
+    /*## Java 1.7 ##
+        public Logger getParentLogger() {
+            return null;
+        }
+    //*/
 
     /**
      * INTERNAL

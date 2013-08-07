@@ -380,6 +380,7 @@ public class TcpServer implements Service {
             System.out.println(s);
         }
     }
+
     /**
      * Print a stack trace if the trace flag is enabled.
      *

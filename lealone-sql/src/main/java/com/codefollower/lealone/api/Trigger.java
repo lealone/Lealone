@@ -52,7 +52,7 @@ public interface Trigger {
      *            combination (this parameter is a bit field)
      */
     void init(Connection conn, String schemaName, String triggerName, String tableName, boolean before, int type)
-        throws SQLException;
+            throws SQLException;
 
     /**
      * This method is called for each triggered action. The method is called

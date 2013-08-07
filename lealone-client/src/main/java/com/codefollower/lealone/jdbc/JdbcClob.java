@@ -34,7 +34,7 @@ import com.codefollower.lealone.value.Value;
  */
 public class JdbcClob extends TraceObject implements Clob
 //## Java 1.6 ##
-    , NClob
+        , NClob
 //*/
 {
 

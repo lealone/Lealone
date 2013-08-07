@@ -38,26 +38,13 @@ public class Profiler implements Runnable {
     private int pid;
 
     private final String[] ignoreLines = {};
-    private final String[] ignorePackages = (
-            "java," +
-            "sun," +
-            "com.sun."
-            ).split(",");
-    private final String[] ignoreThreads = (
-            "java.lang.Object.wait," +
-            "java.lang.Thread.dumpThreads," +
-            "java.lang.Thread.getThreads," +
-            "java.lang.Thread.sleep," +
-            "java.lang.UNIXProcess.waitForProcessExit," +
-            "java.net.PlainSocketImpl.accept," +
-            "java.net.PlainSocketImpl.socketAccept," +
-            "java.net.SocketInputStream.socketRead," +
-            "java.net.SocketOutputStream.socketWrite," +
-            "sun.awt.windows.WToolkit.eventLoop," +
-            "sun.misc.Unsafe.park," +
-            "dalvik.system.VMStack.getThreadStackTrace," +
-            "dalvik.system.NativeStart.run"
-            ).split(",");
+    private final String[] ignorePackages = ("java," + "sun," + "com.sun.").split(",");
+    private final String[] ignoreThreads = ("java.lang.Object.wait," + "java.lang.Thread.dumpThreads,"
+            + "java.lang.Thread.getThreads," + "java.lang.Thread.sleep," + "java.lang.UNIXProcess.waitForProcessExit,"
+            + "java.net.PlainSocketImpl.accept," + "java.net.PlainSocketImpl.socketAccept,"
+            + "java.net.SocketInputStream.socketRead," + "java.net.SocketOutputStream.socketWrite,"
+            + "sun.awt.windows.WToolkit.eventLoop," + "sun.misc.Unsafe.park," + "dalvik.system.VMStack.getThreadStackTrace,"
+            + "dalvik.system.NativeStart.run").split(",");
 
     private volatile boolean stop;
     private final HashMap<String, Integer> counts = new HashMap<String, Integer>();
@@ -375,8 +362,8 @@ public class Profiler implements Runnable {
 
     private String getTopTraces(int count) {
         StringBuilder buff = new StringBuilder();
-        buff.append("Profiler: top ").append(count).append(" stack trace(s) of ").append(time).
-            append(" ms:").append(LINE_SEPARATOR);
+        buff.append("Profiler: top ").append(count).append(" stack trace(s) of ").append(time).append(" ms:")
+                .append(LINE_SEPARATOR);
         if (counts.size() == 0) {
             buff.append("(none)").append(LINE_SEPARATOR);
         }
@@ -413,16 +400,11 @@ public class Profiler implements Runnable {
             int percent = 100 * c / Math.max(total, 1);
             if (table) {
                 if (percent > 1) {
-                    buff.append(percent).
-                        append("%: ").append(best.getKey()).
-                        append(LINE_SEPARATOR);
+                    buff.append(percent).append("%: ").append(best.getKey()).append(LINE_SEPARATOR);
                 }
             } else {
-                buff.append(c).append('/').append(total).append(" (").
-                    append(percent).
-                    append("%):").append(LINE_SEPARATOR).
-                    append(best.getKey()).
-                    append(LINE_SEPARATOR);
+                buff.append(c).append('/').append(total).append(" (").append(percent).append("%):").append(LINE_SEPARATOR)
+                        .append(best.getKey()).append(LINE_SEPARATOR);
             }
         }
     }

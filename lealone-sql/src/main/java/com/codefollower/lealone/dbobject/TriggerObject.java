@@ -72,8 +72,7 @@ public class TriggerObject extends SchemaObjectBase {
         } catch (Throwable e) {
             // try again later
             triggerCallback = null;
-            throw DbException.get(ErrorCode.ERROR_CREATING_TRIGGER_OBJECT_3, e, getName(),
-                            triggerClassName, e.toString());
+            throw DbException.get(ErrorCode.ERROR_CREATING_TRIGGER_OBJECT_3, e, getName(), triggerClassName, e.toString());
         }
     }
 
@@ -119,8 +118,7 @@ public class TriggerObject extends SchemaObjectBase {
         try {
             triggerCallback.fire(c2, null, null);
         } catch (Throwable e) {
-            throw DbException.get(ErrorCode.ERROR_EXECUTING_TRIGGER_3, e, getName(),
-                            triggerClassName, e.toString());
+            throw DbException.get(ErrorCode.ERROR_EXECUTING_TRIGGER_3, e, getName(), triggerClassName, e.toString());
         } finally {
             session.setLastScopeIdentity(identity);
             if (type != Trigger.SELECT) {

@@ -45,7 +45,7 @@ public class Update extends Prepared {
     private Expression limitExpr;
 
     protected final ArrayList<Column> columns = New.arrayList();
-    protected final HashMap<Column, Expression> expressionMap  = New.hashMap();
+    protected final HashMap<Column, Expression> expressionMap = New.hashMap();
 
     public Update(Session session) {
         super(session);
@@ -67,8 +67,7 @@ public class Update extends Prepared {
      */
     public void setAssignment(Column column, Expression expression) {
         if (expressionMap.containsKey(column)) {
-            throw DbException.get(ErrorCode.DUPLICATE_COLUMN_NAME_1, column
-                    .getName());
+            throw DbException.get(ErrorCode.DUPLICATE_COLUMN_NAME_1, column.getName());
         }
         columns.add(column);
         expressionMap.put(column, expression);
@@ -100,7 +99,7 @@ public class Update extends Prepared {
                 }
             }
             while (tableFilter.next()) {
-                setCurrentRowNumber(count+1);
+                setCurrentRowNumber(count + 1);
                 if (limitRows >= 0 && count >= limitRows) {
                     break;
                 }

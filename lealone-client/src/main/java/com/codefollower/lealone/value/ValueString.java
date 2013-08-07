@@ -82,28 +82,28 @@ public class ValueString extends Value {
         return value.hashCode();
 
         // proposed code:
-//        private int hash = 0;
-//
-//        public int hashCode() {
-//            int h = hash;
-//            if (h == 0) {
-//                String s = value;
-//                int l = s.length();
-//                if (l > 0) {
-//                    if (l < 16)
-//                        h = s.hashCode();
-//                    else {
-//                        h = l;
-//                        for (int i = 1; i <= l; i <<= 1)
-//                            h = 31 *
-//                                (31 * h + s.charAt(i - 1)) +
-//                                s.charAt(l - i);
-//                    }
-//                    hash = h;
-//                }
-//            }
-//            return h;
-//        }
+        //        private int hash = 0;
+        //
+        //        public int hashCode() {
+        //            int h = hash;
+        //            if (h == 0) {
+        //                String s = value;
+        //                int l = s.length();
+        //                if (l > 0) {
+        //                    if (l < 16)
+        //                        h = s.hashCode();
+        //                    else {
+        //                        h = l;
+        //                        for (int i = 1; i <= l; i <<= 1)
+        //                            h = 31 *
+        //                                (31 * h + s.charAt(i - 1)) +
+        //                                s.charAt(l - i);
+        //                    }
+        //                    hash = h;
+        //                }
+        //            }
+        //            return h;
+        //        }
 
     }
 

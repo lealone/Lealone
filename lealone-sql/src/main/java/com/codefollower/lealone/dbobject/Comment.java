@@ -23,7 +23,7 @@ public class Comment extends DbObjectBase {
     private String commentText;
 
     public Comment(Database database, int id, DbObject obj) {
-        initDbObjectBase(database, id,  getKey(obj), Trace.DATABASE);
+        initDbObjectBase(database, id, getKey(obj), Trace.DATABASE);
         this.objectType = obj.getType();
         this.objectName = obj.getSQL();
     }
@@ -33,7 +33,7 @@ public class Comment extends DbObjectBase {
     }
 
     private static String getTypeName(int type) {
-        switch(type) {
+        switch (type) {
         case DbObject.CONSTANT:
             return "CONSTANT";
         case DbObject.CONSTRAINT:

@@ -85,8 +85,7 @@ public class ValueTimestamp extends Value {
         try {
             return parseTry(s);
         } catch (Exception e) {
-            throw DbException.get(ErrorCode.INVALID_DATETIME_CONSTANT_2,
-                    e, "TIMESTAMP", s);
+            throw DbException.get(ErrorCode.INVALID_DATETIME_CONSTANT_2, e, "TIMESTAMP", s);
         }
     }
 

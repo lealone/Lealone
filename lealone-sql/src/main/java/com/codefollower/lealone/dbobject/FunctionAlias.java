@@ -123,9 +123,7 @@ public class FunctionAlias extends SchemaObjectBase {
             try {
                 Method m = compiler.getMethod(fullClassName);
                 JavaMethod method = new JavaMethod(m, 0);
-                javaMethods = new JavaMethod[] {
-                        method
-                };
+                javaMethods = new JavaMethod[] { method };
             } catch (DbException e) {
                 throw e;
             } catch (Exception e) {
@@ -147,10 +145,8 @@ public class FunctionAlias extends SchemaObjectBase {
                 JavaMethod javaMethod = new JavaMethod(m, i);
                 for (JavaMethod old : list) {
                     if (old.getParameterCount() == javaMethod.getParameterCount()) {
-                        throw DbException.get(
-                                ErrorCode.METHODS_MUST_HAVE_DIFFERENT_PARAMETER_COUNTS_2,
-                                old.toString(), javaMethod.toString()
-                        );
+                        throw DbException.get(ErrorCode.METHODS_MUST_HAVE_DIFFERENT_PARAMETER_COUNTS_2, old.toString(),
+                                javaMethod.toString());
                     }
                 }
                 list.add(javaMethod);
@@ -246,8 +242,8 @@ public class FunctionAlias extends SchemaObjectBase {
                 return m;
             }
         }
-        throw DbException.get(ErrorCode.METHOD_NOT_FOUND_1,
-                methodName + " (" + className + ", parameter count: " + parameterCount + ")");
+        throw DbException.get(ErrorCode.METHOD_NOT_FOUND_1, methodName + " (" + className + ", parameter count: "
+                + parameterCount + ")");
     }
 
     public String getJavaClassName() {

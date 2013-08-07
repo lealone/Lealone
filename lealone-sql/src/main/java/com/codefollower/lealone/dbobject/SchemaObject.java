@@ -6,7 +6,6 @@
  */
 package com.codefollower.lealone.dbobject;
 
-
 /**
  * Any database object that is stored in a schema.
  */

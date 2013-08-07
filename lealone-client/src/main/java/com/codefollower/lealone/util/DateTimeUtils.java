@@ -93,10 +93,8 @@ public class DateTimeUtils {
         cal.clear();
         cal.setLenient(true);
         long dateValue = d.getDateValue();
-        setCalendarFields(cal, yearFromDateValue(dateValue),
-                monthFromDateValue(dateValue),
-                dayFromDateValue(dateValue),
-                0, 0, 0, 0);
+        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue), dayFromDateValue(dateValue), 0, 0, 0,
+                0);
         long ms = cal.getTimeInMillis();
         return new Date(ms);
     }
@@ -125,8 +123,7 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        setCalendarFields(cal, 1970, 1, 1,
-                (int) h, (int) m, (int) s, (int) millis);
+        setCalendarFields(cal, 1970, 1, 1, (int) h, (int) m, (int) s, (int) millis);
         long ms = cal.getTimeInMillis();
         return new Time(ms);
     }
@@ -156,10 +153,8 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        setCalendarFields(cal, yearFromDateValue(dateValue),
-                monthFromDateValue(dateValue),
-                dayFromDateValue(dateValue),
-                (int) h, (int) m, (int) s, (int) millis);
+        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue), dayFromDateValue(dateValue), (int) h,
+                (int) m, (int) s, (int) millis);
         long ms = cal.getTimeInMillis();
         Timestamp x = new Timestamp(ms);
         x.setNanos((int) (nanos + millis * 1000000));
@@ -375,8 +370,7 @@ public class DateTimeUtils {
         }
     }
 
-    private static long getTimeTry(boolean lenient, TimeZone tz,
-            int year, int month, int day, int hour, int minute, int second,
+    private static long getTimeTry(boolean lenient, TimeZone tz, int year, int month, int day, int hour, int minute, int second,
             int millis) {
         Calendar c;
         if (tz == null) {
@@ -392,8 +386,7 @@ public class DateTimeUtils {
         }
     }
 
-    private static void setCalendarFields(Calendar cal, int year, int month, int day,
-            int hour, int minute, int second, int millis) {
+    private static void setCalendarFields(Calendar cal, int year, int month, int day, int hour, int minute, int second, int millis) {
         if (year <= 0) {
             cal.set(Calendar.ERA, GregorianCalendar.BC);
             cal.set(Calendar.YEAR, 1 - year);
@@ -627,9 +620,7 @@ public class DateTimeUtils {
      * @return the date
      */
     public static Date convertDateValueToDate(long dateValue) {
-        long millis = getMillis(TimeZone.getDefault(),
-                yearFromDateValue(dateValue),
-                monthFromDateValue(dateValue),
+        long millis = getMillis(TimeZone.getDefault(), yearFromDateValue(dateValue), monthFromDateValue(dateValue),
                 dayFromDateValue(dateValue), 0, 0, 0, 0);
         return new Date(millis);
     }
@@ -651,11 +642,8 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        long ms = getMillis(TimeZone.getDefault(),
-                yearFromDateValue(dateValue),
-                monthFromDateValue(dateValue),
-                dayFromDateValue(dateValue),
-                (int) h, (int) m, (int) s, 0);
+        long ms = getMillis(TimeZone.getDefault(), yearFromDateValue(dateValue), monthFromDateValue(dateValue),
+                dayFromDateValue(dateValue), (int) h, (int) m, (int) s, 0);
         Timestamp ts = new Timestamp(ms);
         ts.setNanos((int) (nanos + millis * 1000000));
         return ts;
@@ -676,8 +664,7 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        long ms = getMillis(TimeZone.getDefault(),
-                1970, 1, 1, (int) (h % 24), (int) m, (int) s, (int) millis);
+        long ms = getMillis(TimeZone.getDefault(), 1970, 1, 1, (int) (h % 24), (int) m, (int) s, (int) millis);
         return new Time(ms);
     }
 

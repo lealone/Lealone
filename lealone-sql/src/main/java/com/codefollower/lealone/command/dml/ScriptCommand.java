@@ -132,8 +132,7 @@ public class ScriptCommand extends ScriptBase {
     }
 
     private LocalResult createResult() {
-        Expression[] expressions = { new ExpressionColumn(session.getDatabase(), new Column("SCRIPT",
-                Value.STRING)) };
+        Expression[] expressions = { new ExpressionColumn(session.getDatabase(), new Column("SCRIPT", Value.STRING)) };
         return new LocalResult(session, expressions, 1);
     }
 
@@ -431,14 +430,11 @@ public class ScriptCommand extends ScriptBase {
 
     private int writeLobStream(Value v) throws IOException {
         if (!tempLobTableCreated) {
-            add("CREATE TABLE IF NOT EXISTS SYSTEM_LOB_STREAM" +
-                    "(ID INT NOT NULL, PART INT NOT NULL, CDATA VARCHAR, BDATA BINARY)", true);
-            add("CREATE PRIMARY KEY SYSTEM_LOB_STREAM_PRIMARY_KEY " +
-                    "ON SYSTEM_LOB_STREAM(ID, PART)", true);
-            add("CREATE ALIAS IF NOT EXISTS " +
-                    "SYSTEM_COMBINE_CLOB FOR \"" + this.getClass().getName() + ".combineClob\"", true);
-            add("CREATE ALIAS IF NOT EXISTS " +
-                    "SYSTEM_COMBINE_BLOB FOR \"" + this.getClass().getName() + ".combineBlob\"", true);
+            add("CREATE TABLE IF NOT EXISTS SYSTEM_LOB_STREAM"
+                    + "(ID INT NOT NULL, PART INT NOT NULL, CDATA VARCHAR, BDATA BINARY)", true);
+            add("CREATE PRIMARY KEY SYSTEM_LOB_STREAM_PRIMARY_KEY " + "ON SYSTEM_LOB_STREAM(ID, PART)", true);
+            add("CREATE ALIAS IF NOT EXISTS " + "SYSTEM_COMBINE_CLOB FOR \"" + this.getClass().getName() + ".combineClob\"", true);
+            add("CREATE ALIAS IF NOT EXISTS " + "SYSTEM_COMBINE_BLOB FOR \"" + this.getClass().getName() + ".combineBlob\"", true);
             tempLobTableCreated = true;
         }
         int id = nextLobId++;
@@ -474,8 +470,7 @@ public class ScriptCommand extends ScriptBase {
                     if (len < 0) {
                         break;
                     }
-                    buff.append(StringUtils.quoteStringSQL(new String(chars, 0, len))).
-                        append(", NULL)");
+                    buff.append(StringUtils.quoteStringSQL(new String(chars, 0, len))).append(", NULL)");
                     String sql = buff.toString();
                     add(sql, true);
                 }
@@ -507,6 +502,7 @@ public class ScriptCommand extends ScriptBase {
         return new InputStream() {
             private InputStream current;
             private boolean closed;
+
             public int read() throws IOException {
                 while (true) {
                     try {
@@ -531,6 +527,7 @@ public class ScriptCommand extends ScriptBase {
                     }
                 }
             }
+
             public void close() throws IOException {
                 if (closed) {
                     return;
@@ -561,6 +558,7 @@ public class ScriptCommand extends ScriptBase {
         return new Reader() {
             private Reader current;
             private boolean closed;
+
             public int read() throws IOException {
                 while (true) {
                     try {
@@ -585,6 +583,7 @@ public class ScriptCommand extends ScriptBase {
                     }
                 }
             }
+
             public void close() throws IOException {
                 if (closed) {
                     return;
@@ -596,6 +595,7 @@ public class ScriptCommand extends ScriptBase {
                     throw DbException.convertToIOException(e);
                 }
             }
+
             public int read(char[] buffer, int off, int len) throws IOException {
                 if (len == 0) {
                     return 0;
@@ -619,8 +619,7 @@ public class ScriptCommand extends ScriptBase {
     }
 
     private static ResultSet getLobStream(Connection conn, String column, int id) throws SQLException {
-        PreparedStatement prep = conn.prepareStatement(
-                "SELECT " + column + " FROM SYSTEM_LOB_STREAM WHERE ID=? ORDER BY PART");
+        PreparedStatement prep = conn.prepareStatement("SELECT " + column + " FROM SYSTEM_LOB_STREAM WHERE ID=? ORDER BY PART");
         prep.setInt(1, id);
         return prep.executeQuery();
     }

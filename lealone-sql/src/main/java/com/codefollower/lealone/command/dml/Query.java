@@ -335,13 +335,8 @@ public abstract class Query extends Prepared {
      * @param mustBeInResult all order by expressions must be in the select list
      * @param filters the table filters
      */
-    static void initOrder(Session session,
-            ArrayList<Expression> expressions,
-            ArrayList<String> expressionSQL,
-            ArrayList<SelectOrderBy> orderList,
-            int visible,
-            boolean mustBeInResult,
-            ArrayList<TableFilter> filters) {
+    static void initOrder(Session session, ArrayList<Expression> expressions, ArrayList<String> expressionSQL,
+            ArrayList<SelectOrderBy> orderList, int visible, boolean mustBeInResult, ArrayList<TableFilter> filters) {
         Database db = session.getDatabase();
         for (SelectOrderBy o : orderList) {
             Expression e = o.expression;

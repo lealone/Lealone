@@ -269,10 +269,7 @@ public class Trace {
         if (!space) {
             buff.append(' ');
         }
-        buff.append("*/").
-            append(StringUtils.javaEncode(sql)).
-            append(StringUtils.javaEncode(params)).
-            append(';');
+        buff.append("*/").append(StringUtils.javaEncode(sql)).append(StringUtils.javaEncode(params)).append(';');
         sql = buff.toString();
         traceWriter.write(TraceSystem.INFO, module, sql, null);
     }
@@ -311,7 +308,6 @@ public class Trace {
             traceWriter.write(TraceSystem.DEBUG, module, s, t);
         }
     }
-
 
     /**
      * Write Java source code with trace level INFO to the trace system.

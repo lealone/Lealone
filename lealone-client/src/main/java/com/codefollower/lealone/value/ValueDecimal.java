@@ -59,8 +59,7 @@ public class ValueDecimal extends Value {
         if (value == null) {
             throw new IllegalArgumentException();
         } else if (!value.getClass().equals(BigDecimal.class)) {
-            throw DbException.get(ErrorCode.INVALID_CLASS_2,
-                    BigDecimal.class.getName(), value.getClass().getName());
+            throw DbException.get(ErrorCode.INVALID_CLASS_2, BigDecimal.class.getName(), value.getClass().getName());
         }
         this.value = value;
     }

@@ -56,7 +56,7 @@ public class Variable extends Expression {
     }
 
     public boolean isEverything(ExpressionVisitor visitor) {
-        switch(visitor.getType()) {
+        switch (visitor.getType()) {
         case ExpressionVisitor.EVALUATABLE:
             // the value will be evaluated at execute time
         case ExpressionVisitor.SET_MAX_DATA_MODIFICATION_ID:
@@ -72,7 +72,7 @@ public class Variable extends Expression {
         case ExpressionVisitor.DETERMINISTIC:
             return false;
         default:
-            throw DbException.throwInternalError("type="+visitor.getType());
+            throw DbException.throwInternalError("type=" + visitor.getType());
         }
     }
 

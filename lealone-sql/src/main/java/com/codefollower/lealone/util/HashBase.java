@@ -6,7 +6,6 @@
  */
 package com.codefollower.lealone.util;
 
-
 /**
  * The base for other hash classes.
  */

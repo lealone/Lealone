@@ -527,7 +527,7 @@ public class Transfer {
      */
     public Value readValue() throws IOException {
         int type = readInt();
-        switch(type) {
+        switch (type) {
         case Value.NULL:
             return ValueNull.INSTANCE;
         case Value.BYTES:
@@ -743,7 +743,7 @@ public class Transfer {
      */
     public void verifyLobMac(byte[] hmac, long lobId) {
         byte[] result = calculateLobMac(lobId);
-        if (!Utils.compareSecure(hmac,  result)) {
+        if (!Utils.compareSecure(hmac, result)) {
             throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
         }
     }

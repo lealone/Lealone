@@ -6,7 +6,6 @@
  */
 package com.codefollower.lealone.expression;
 
-
 import com.codefollower.lealone.constant.SysProperties;
 import com.codefollower.lealone.dbobject.table.ColumnResolver;
 import com.codefollower.lealone.dbobject.table.TableFilter;

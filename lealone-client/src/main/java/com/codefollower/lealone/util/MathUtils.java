@@ -28,12 +28,11 @@ public class MathUtils {
      */
     static volatile boolean seeded;
 
-    private static final Random RANDOM  = new Random();
+    private static final Random RANDOM = new Random();
 
     private MathUtils() {
         // utility class
     }
-
 
     /**
      * Round the value up to the next block size. The block size must be a power

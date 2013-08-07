@@ -71,8 +71,7 @@ public abstract class FileBase extends FileChannel {
         throw new UnsupportedOperationException();
     }
 
-    public long transferTo(long position, long count, WritableByteChannel target)
-            throws IOException {
+    public long transferTo(long position, long count, WritableByteChannel target) throws IOException {
         throw new UnsupportedOperationException();
     }
 

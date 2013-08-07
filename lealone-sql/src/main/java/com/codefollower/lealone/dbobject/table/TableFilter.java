@@ -867,7 +867,7 @@ public class TableFilter implements ColumnResolver {
         }
         return null;
     }
-    
+
     public int getCurrentSearchRowLength() {
         return currentSearchRow.getColumnCount();
     }

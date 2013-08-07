@@ -157,9 +157,7 @@ public class SourceCompiler {
                 out.println(source);
             } else {
                 int endImport = source.indexOf("@CODE");
-                String importCode = "import java.util.*;\n" +
-                    "import java.math.*;\n" +
-                    "import java.sql.*;\n";
+                String importCode = "import java.util.*;\n" + "import java.math.*;\n" + "import java.sql.*;\n";
                 if (endImport >= 0) {
                     importCode = source.substring(0, endImport);
                     source = source.substring("@CODE".length() + endImport);
@@ -168,10 +166,7 @@ public class SourceCompiler {
                     out.println("package " + packageName + ";");
                 }
                 out.println(importCode);
-                out.println("public class "+ className +" {\n" +
-                        "    public static " +
-                        source + "\n" +
-                        "}\n");
+                out.println("public class " + className + " {\n" + "    public static " + source + "\n" + "}\n");
             }
             out.close();
             if (JAVAC_SUN != null) {
@@ -193,11 +188,7 @@ public class SourceCompiler {
     }
 
     private void javacProcess(File javaFile) {
-        exec("javac",
-                "-sourcepath", compileDir,
-                "-d", compileDir,
-                "-encoding", "UTF-8",
-                javaFile.getAbsolutePath());
+        exec("javac", "-sourcepath", compileDir, "-d", compileDir, "-encoding", "UTF-8", javaFile.getAbsolutePath());
     }
 
     private int exec(String... args) {
@@ -232,10 +223,7 @@ public class SourceCompiler {
             Method compile;
             compile = JAVAC_SUN.getMethod("compile", String[].class);
             Object javac = JAVAC_SUN.newInstance();
-            compile.invoke(javac, (Object) new String[] {
-                    "-sourcepath", compileDir,
-                    "-d", compileDir,
-                    "-encoding", "UTF-8",
+            compile.invoke(javac, (Object) new String[] { "-sourcepath", compileDir, "-d", compileDir, "-encoding", "UTF-8",
                     javaFile.getAbsolutePath() });
             String err = new String(buff.toByteArray(), "UTF-8");
             throwSyntaxError(err);

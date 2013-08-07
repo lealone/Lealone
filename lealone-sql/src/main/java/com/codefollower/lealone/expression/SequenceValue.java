@@ -61,7 +61,7 @@ public class SequenceValue extends Expression {
     }
 
     public String getSQL(boolean isDistributed) {
-        return "(NEXT VALUE FOR " + sequence.getSQL() +")";
+        return "(NEXT VALUE FOR " + sequence.getSQL() + ")";
     }
 
     public void updateAggregate(Session session) {
@@ -69,7 +69,7 @@ public class SequenceValue extends Expression {
     }
 
     public boolean isEverything(ExpressionVisitor visitor) {
-        switch(visitor.getType()) {
+        switch (visitor.getType()) {
         case ExpressionVisitor.EVALUATABLE:
         case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
         case ExpressionVisitor.NOT_FROM_RESOLVER:
@@ -87,7 +87,7 @@ public class SequenceValue extends Expression {
             visitor.addDependency(sequence);
             return true;
         default:
-            throw DbException.throwInternalError("type="+visitor.getType());
+            throw DbException.throwInternalError("type=" + visitor.getType());
         }
     }
 

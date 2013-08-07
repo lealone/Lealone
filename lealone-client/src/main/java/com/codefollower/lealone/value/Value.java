@@ -250,7 +250,7 @@ public abstract class Value {
      * @return the order number
      */
     static int getOrder(int type) {
-        switch(type) {
+        switch (type) {
         case UNKNOWN:
             return 1;
         case NULL:
@@ -298,7 +298,7 @@ public abstract class Value {
         case RESULT_SET:
             return 51;
         default:
-            throw DbException.throwInternalError("type:"+type);
+            throw DbException.throwInternalError("type:" + type);
         }
     }
 
@@ -719,48 +719,32 @@ public abstract class Value {
                 break;
             }
             case BYTES: {
-                switch(getType()) {
+                switch (getType()) {
                 case JAVA_OBJECT:
                 case BLOB:
                     return ValueBytes.getNoCopy(getBytesNoCopy());
                 case UUID:
                     return ValueBytes.getNoCopy(getBytes());
                 case BYTE:
-                    return ValueBytes.getNoCopy(new byte[]{getByte()});
+                    return ValueBytes.getNoCopy(new byte[] { getByte() });
                 case SHORT: {
                     int x = getShort();
-                    return ValueBytes.getNoCopy(new byte[]{
-                            (byte) (x >> 8),
-                            (byte) x
-                    });
+                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 8), (byte) x });
                 }
                 case INT: {
                     int x = getInt();
-                    return ValueBytes.getNoCopy(new byte[]{
-                            (byte) (x >> 24),
-                            (byte) (x >> 16),
-                            (byte) (x >> 8),
-                            (byte) x
-                    });
+                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
                 }
                 case LONG: {
                     long x = getLong();
-                    return ValueBytes.getNoCopy(new byte[]{
-                            (byte) (x >> 56),
-                            (byte) (x >> 48),
-                            (byte) (x >> 40),
-                            (byte) (x >> 32),
-                            (byte) (x >> 24),
-                            (byte) (x >> 16),
-                            (byte) (x >> 8),
-                            (byte) x
-                    });
+                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 56), (byte) (x >> 48), (byte) (x >> 40),
+                            (byte) (x >> 32), (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
                 }
                 }
                 break;
             }
             case JAVA_OBJECT: {
-                switch(getType()) {
+                switch (getType()) {
                 case BYTES:
                 case BLOB:
                     return ValueJavaObject.getNoCopy(null, getBytesNoCopy());
@@ -768,7 +752,7 @@ public abstract class Value {
                 break;
             }
             case BLOB: {
-                switch(getType()) {
+                switch (getType()) {
                 case BYTES:
 
                     return LobStorage.createSmallLob(Value.BLOB, getBytesNoCopy());
@@ -776,7 +760,7 @@ public abstract class Value {
                 break;
             }
             case UUID: {
-                switch(getType()) {
+                switch (getType()) {
                 case BYTES:
                     return ValueUuid.get(getBytesNoCopy());
                 }
@@ -788,15 +772,10 @@ public abstract class Value {
             case NULL:
                 return ValueNull.INSTANCE;
             case BOOLEAN: {
-                if (s.equalsIgnoreCase("true") ||
-                        s.equalsIgnoreCase("t") ||
-                        s.equalsIgnoreCase("yes") ||
-                        s.equalsIgnoreCase("y")) {
+                if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("t") || s.equalsIgnoreCase("yes") || s.equalsIgnoreCase("y")) {
                     return ValueBoolean.get(true);
-                } else if (s.equalsIgnoreCase("false") ||
-                        s.equalsIgnoreCase("f") ||
-                        s.equalsIgnoreCase("no") ||
-                        s.equalsIgnoreCase("n")) {
+                } else if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("f") || s.equalsIgnoreCase("no")
+                        || s.equalsIgnoreCase("n")) {
                     return ValueBoolean.get(false);
                 } else {
                     // convert to a number, and if it is not 0 then it is true
@@ -838,7 +817,7 @@ public abstract class Value {
             case BLOB:
                 return LobStorage.createSmallLob(BLOB, StringUtils.convertHexToBytes(s.trim()));
             case ARRAY:
-                return ValueArray.get(new Value[]{ValueString.get(s)});
+                return ValueArray.get(new Value[] { ValueString.get(s) });
             case RESULT_SET: {
                 SimpleResultSet rs = new SimpleResultSet();
                 rs.addColumn("X", Types.VARCHAR, s.length(), 0);

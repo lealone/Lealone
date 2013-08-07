@@ -331,9 +331,7 @@ public class DataUtils {
             } while (dst.remaining() > 0);
             dst.rewind();
         } catch (IOException e) {
-            throw newIllegalStateException(
-                    "Reading from {0} failed; length {1} at {2}",
-                    file, dst.remaining(), pos, e);
+            throw newIllegalStateException("Reading from {0} failed; length {1} at {2}", file, dst.remaining(), pos, e);
         }
     }
 
@@ -352,12 +350,10 @@ public class DataUtils {
                 off += len;
             } while (src.remaining() > 0);
         } catch (IOException e) {
-            throw newIllegalStateException(
-                    "Writing to {0} failed; length {1} at {2}",
-                    file, src.remaining(), pos, e);
+            throw newIllegalStateException("Writing to {0} failed; length {1} at {2}", file, src.remaining(), pos, e);
         }
     }
-    
+
     /**
      * Convert the length to a length code 0..31. 31 means more than 1 MB.
      *
@@ -593,11 +589,8 @@ public class DataUtils {
      * @param arguments the arguments
      * @return the exception
      */
-    public static IllegalArgumentException newIllegalArgumentException(
-            String message, Object... arguments) {
-        return initCause(new IllegalArgumentException(
-                MessageFormat.format(message, arguments) + " " + getVersion()),
-                arguments);
+    public static IllegalArgumentException newIllegalArgumentException(String message, Object... arguments) {
+        return initCause(new IllegalArgumentException(MessageFormat.format(message, arguments) + " " + getVersion()), arguments);
     }
 
     /**
@@ -606,8 +599,7 @@ public class DataUtils {
      * @param message the message
      * @return the exception
      */
-    public static UnsupportedOperationException newUnsupportedOperationException(
-            String message) {
+    public static UnsupportedOperationException newUnsupportedOperationException(String message) {
         return new UnsupportedOperationException(message + " " + getVersion());
     }
 
@@ -627,11 +619,8 @@ public class DataUtils {
      * @param arguments the arguments
      * @return the exception
      */
-    public static IllegalStateException newIllegalStateException(
-            String message, Object... arguments) {
-        return initCause(new IllegalStateException(
-                MessageFormat.format(message, arguments) + " " + getVersion()),
-                arguments);
+    public static IllegalStateException newIllegalStateException(String message, Object... arguments) {
+        return initCause(new IllegalStateException(MessageFormat.format(message, arguments) + " " + getVersion()), arguments);
     }
 
     private static <T extends Exception> T initCause(T e, Object... arguments) {
@@ -646,8 +635,7 @@ public class DataUtils {
     }
 
     private static String getVersion() {
-        return "[" + Constants.VERSION_MAJOR + "." +
-                Constants.VERSION_MINOR + "." + Constants.BUILD_ID + "]";
+        return "[" + Constants.VERSION_MAJOR + "." + Constants.VERSION_MINOR + "." + Constants.BUILD_ID + "]";
     }
 
     /**

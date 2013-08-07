@@ -131,7 +131,7 @@ class Optimizer {
                             break;
                         }
                         list[i] = filters[j];
-                        Plan part = new Plan(list, i+1, condition);
+                        Plan part = new Plan(list, i + 1, condition);
                         double costNow = part.calculateCost(session);
                         if (costPart < 0 || costNow < costPart) {
                             costPart = costNow;

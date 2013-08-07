@@ -300,161 +300,161 @@ public class Parser {
             c = parsePrepared(first);
 
             if (c == null)
-            switch (first) {
-            case '?':
-                // read the ? as a parameter
-                readTerm();
-                // this is an 'out' parameter - set a dummy value
-                parameters.get(0).setValue(ValueNull.INSTANCE);
-                read("=");
-                read("CALL");
-                c = parseCall();
-                break;
-            case '(':
-                c = parseSelect();
-                break;
-            case 'a':
-            case 'A':
-                if (readIf("ALTER")) {
-                    c = parseAlter();
-                } else if (readIf("ANALYZE")) {
-                    c = parseAnalyze();
-                }
-                break;
-            case 'b':
-            case 'B':
-                if (readIf("BACKUP")) {
-                    c = parseBackup();
-                } else if (readIf("BEGIN")) {
-                    c = parseBegin();
-                }
-                break;
-            case 'c':
-            case 'C':
-                if (readIf("COMMIT")) {
-                    c = parseCommit();
-                } else if (readIf("CREATE")) {
-                    c = parseCreate();
-                } else if (readIf("CALL")) {
+                switch (first) {
+                case '?':
+                    // read the ? as a parameter
+                    readTerm();
+                    // this is an 'out' parameter - set a dummy value
+                    parameters.get(0).setValue(ValueNull.INSTANCE);
+                    read("=");
+                    read("CALL");
                     c = parseCall();
-                } else if (readIf("CHECKPOINT")) {
-                    c = parseCheckpoint();
-                } else if (readIf("COMMENT")) {
-                    c = parseComment();
-                }
-                break;
-            case 'd':
-            case 'D':
-                if (readIf("DELETE")) {
-                    c = parseDelete();
-                } else if (readIf("DROP")) {
-                    c = parseDrop();
-                } else if (readIf("DECLARE")) {
-                    // support for DECLARE GLOBAL TEMPORARY TABLE...
-                    c = parseCreate();
-                } else if (readIf("DEALLOCATE")) {
-                    c = parseDeallocate();
-                }
-                break;
-            case 'e':
-            case 'E':
-                if (readIf("EXPLAIN")) {
-                    c = parseExplain();
-                } else if (readIf("EXECUTE")) {
-                    c = parseExecute();
-                }
-                break;
-            case 'f':
-            case 'F':
-                if (isToken("FROM")) {
+                    break;
+                case '(':
                     c = parseSelect();
+                    break;
+                case 'a':
+                case 'A':
+                    if (readIf("ALTER")) {
+                        c = parseAlter();
+                    } else if (readIf("ANALYZE")) {
+                        c = parseAnalyze();
+                    }
+                    break;
+                case 'b':
+                case 'B':
+                    if (readIf("BACKUP")) {
+                        c = parseBackup();
+                    } else if (readIf("BEGIN")) {
+                        c = parseBegin();
+                    }
+                    break;
+                case 'c':
+                case 'C':
+                    if (readIf("COMMIT")) {
+                        c = parseCommit();
+                    } else if (readIf("CREATE")) {
+                        c = parseCreate();
+                    } else if (readIf("CALL")) {
+                        c = parseCall();
+                    } else if (readIf("CHECKPOINT")) {
+                        c = parseCheckpoint();
+                    } else if (readIf("COMMENT")) {
+                        c = parseComment();
+                    }
+                    break;
+                case 'd':
+                case 'D':
+                    if (readIf("DELETE")) {
+                        c = parseDelete();
+                    } else if (readIf("DROP")) {
+                        c = parseDrop();
+                    } else if (readIf("DECLARE")) {
+                        // support for DECLARE GLOBAL TEMPORARY TABLE...
+                        c = parseCreate();
+                    } else if (readIf("DEALLOCATE")) {
+                        c = parseDeallocate();
+                    }
+                    break;
+                case 'e':
+                case 'E':
+                    if (readIf("EXPLAIN")) {
+                        c = parseExplain();
+                    } else if (readIf("EXECUTE")) {
+                        c = parseExecute();
+                    }
+                    break;
+                case 'f':
+                case 'F':
+                    if (isToken("FROM")) {
+                        c = parseSelect();
+                    }
+                    break;
+                case 'g':
+                case 'G':
+                    if (readIf("GRANT")) {
+                        c = parseGrantRevoke(CommandInterface.GRANT);
+                    }
+                    break;
+                case 'h':
+                case 'H':
+                    if (readIf("HELP")) {
+                        c = parseHelp();
+                    }
+                    break;
+                case 'i':
+                case 'I':
+                    if (readIf("INSERT")) {
+                        c = parseInsert();
+                    }
+                    break;
+                case 'm':
+                case 'M':
+                    if (readIf("MERGE")) {
+                        c = parseMerge();
+                    }
+                    break;
+                case 'p':
+                case 'P':
+                    if (readIf("PREPARE")) {
+                        c = parsePrepare();
+                    }
+                    break;
+                case 'r':
+                case 'R':
+                    if (readIf("ROLLBACK")) {
+                        c = parseRollback();
+                    } else if (readIf("REVOKE")) {
+                        c = parseGrantRevoke(CommandInterface.REVOKE);
+                    } else if (readIf("RUNSCRIPT")) {
+                        c = parseRunScript();
+                    } else if (readIf("RELEASE")) {
+                        c = parseReleaseSavepoint();
+                    }
+                    break;
+                case 's':
+                case 'S':
+                    if (isToken("SELECT")) {
+                        c = parseSelect();
+                    } else if (readIf("SET")) {
+                        c = parseSet();
+                    } else if (readIf("SAVEPOINT")) {
+                        c = parseSavepoint();
+                    } else if (readIf("SCRIPT")) {
+                        c = parseScript();
+                    } else if (readIf("SHUTDOWN")) {
+                        c = parseShutdown();
+                    } else if (readIf("SHOW")) {
+                        c = parseShow();
+                    }
+                    break;
+                case 't':
+                case 'T':
+                    if (readIf("TRUNCATE")) {
+                        c = parseTruncate();
+                    }
+                    break;
+                case 'u':
+                case 'U':
+                    if (readIf("UPDATE")) {
+                        c = parseUpdate();
+                    }
+                    break;
+                case 'v':
+                case 'V':
+                    if (readIf("VALUES")) {
+                        c = parseValues();
+                    }
+                    break;
+                case 'w':
+                case 'W':
+                    if (readIf("WITH")) {
+                        c = parseWith();
+                    }
+                    break;
+                default:
+                    throw getSyntaxError();
                 }
-                break;
-            case 'g':
-            case 'G':
-                if (readIf("GRANT")) {
-                    c = parseGrantRevoke(CommandInterface.GRANT);
-                }
-                break;
-            case 'h':
-            case 'H':
-                if (readIf("HELP")) {
-                    c = parseHelp();
-                }
-                break;
-            case 'i':
-            case 'I':
-                if (readIf("INSERT")) {
-                    c = parseInsert();
-                }
-                break;
-            case 'm':
-            case 'M':
-                if (readIf("MERGE")) {
-                    c = parseMerge();
-                }
-                break;
-            case 'p':
-            case 'P':
-                if (readIf("PREPARE")) {
-                    c = parsePrepare();
-                }
-                break;
-            case 'r':
-            case 'R':
-                if (readIf("ROLLBACK")) {
-                    c = parseRollback();
-                } else if (readIf("REVOKE")) {
-                    c = parseGrantRevoke(CommandInterface.REVOKE);
-                } else if (readIf("RUNSCRIPT")) {
-                    c = parseRunScript();
-                } else if (readIf("RELEASE")) {
-                    c = parseReleaseSavepoint();
-                }
-                break;
-            case 's':
-            case 'S':
-                if (isToken("SELECT")) {
-                    c = parseSelect();
-                } else if (readIf("SET")) {
-                    c = parseSet();
-                } else if (readIf("SAVEPOINT")) {
-                    c = parseSavepoint();
-                } else if (readIf("SCRIPT")) {
-                    c = parseScript();
-                } else if (readIf("SHUTDOWN")) {
-                    c = parseShutdown();
-                } else if (readIf("SHOW")) {
-                    c = parseShow();
-                }
-                break;
-            case 't':
-            case 'T':
-                if (readIf("TRUNCATE")) {
-                    c = parseTruncate();
-                }
-                break;
-            case 'u':
-            case 'U':
-                if (readIf("UPDATE")) {
-                    c = parseUpdate();
-                }
-                break;
-            case 'v':
-            case 'V':
-                if (readIf("VALUES")) {
-                    c = parseValues();
-                }
-                break;
-            case 'w':
-            case 'W':
-                if (readIf("WITH")) {
-                    c = parseWith();
-                }
-                break;
-            default:
-                throw getSyntaxError();
-            }
             if (indexedParameterList != null) {
                 for (int i = 0, size = indexedParameterList.size(); i < size; i++) {
                     if (indexedParameterList.get(i) == null) {
@@ -883,20 +883,13 @@ public class Parser {
             if (readIf("FROM")) {
                 schemaName = readUniqueIdentifier();
             }
-            buff.append("C.COLUMN_NAME FIELD, " +
-                    "C.TYPE_NAME || '(' || C.NUMERIC_PRECISION || ')' TYPE, " +
-                    "C.IS_NULLABLE \"NULL\", " +
-                    "CASE (SELECT MAX(I.INDEX_TYPE_NAME) FROM " +
-                    "INFORMATION_SCHEMA.INDEXES I " +
-                    "WHERE I.TABLE_SCHEMA=C.TABLE_SCHEMA " +
-                    "AND I.TABLE_NAME=C.TABLE_NAME " +
-                    "AND I.COLUMN_NAME=C.COLUMN_NAME)" +
-                    "WHEN 'PRIMARY KEY' THEN 'PRI' " +
-                    "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, " +
-                    "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT " +
-                    "FROM INFORMATION_SCHEMA.COLUMNS C " +
-                    "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=? " +
-                    "ORDER BY C.ORDINAL_POSITION");
+            buff.append("C.COLUMN_NAME FIELD, " + "C.TYPE_NAME || '(' || C.NUMERIC_PRECISION || ')' TYPE, "
+                    + "C.IS_NULLABLE \"NULL\", " + "CASE (SELECT MAX(I.INDEX_TYPE_NAME) FROM " + "INFORMATION_SCHEMA.INDEXES I "
+                    + "WHERE I.TABLE_SCHEMA=C.TABLE_SCHEMA " + "AND I.TABLE_NAME=C.TABLE_NAME "
+                    + "AND I.COLUMN_NAME=C.COLUMN_NAME)" + "WHEN 'PRIMARY KEY' THEN 'PRI' "
+                    + "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, " + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT "
+                    + "FROM INFORMATION_SCHEMA.COLUMNS C " + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=? "
+                    + "ORDER BY C.ORDINAL_POSITION");
             paramValues.add(ValueString.get(schemaName));
         } else if (readIf("DATABASES") || readIf("SCHEMAS")) {
             // for MySQL compatibility
@@ -1002,7 +995,7 @@ public class Parser {
         }
         if (readIf("DEFAULT")) {
             read("VALUES");
-            Expression[] expr = { };
+            Expression[] expr = {};
             command.addRow(expr);
         } else if (readIf("VALUES")) {
             read("(");
@@ -1244,7 +1237,7 @@ public class Parser {
                 command.setDropAction(ConstraintReferential.SET_DEFAULT);
             }
             return command;
-		} else if (readIf("INDEX")) {
+        } else if (readIf("INDEX")) {
             boolean ifExists = readIfExists(false);
             String indexName = readIdentifierWithSchema();
             DropIndex command = new DropIndex(session, getSchema());
@@ -1453,10 +1446,10 @@ public class Parser {
                         String joinColumnName = c.getFullName();
                         if (equalsToken(tableColumnName, joinColumnName)) {
                             join.addNaturalJoinColumn(c);
-                            Expression tableExpr = new ExpressionColumn(database, tableSchema, last
-                                    .getTableAlias(), tc.getColumnFamilyName(), tableColumnName);
-                            Expression joinExpr = new ExpressionColumn(database, joinSchema, join
-                                    .getTableAlias(), c.getColumnFamilyName(), joinColumnName);
+                            Expression tableExpr = new ExpressionColumn(database, tableSchema, last.getTableAlias(),
+                                    tc.getColumnFamilyName(), tableColumnName);
+                            Expression joinExpr = new ExpressionColumn(database, joinSchema, join.getTableAlias(),
+                                    c.getColumnFamilyName(), joinColumnName);
                             Expression equal = new Comparison(session, Comparison.EQUAL, tableExpr, joinExpr);
                             if (on == null) {
                                 on = equal;
@@ -2764,8 +2757,7 @@ public class Parser {
             minus = true;
             read();
         }
-        if (currentTokenType != VALUE
-                || (currentValue.getType() != Value.INT && currentValue.getType() != Value.LONG)) {
+        if (currentTokenType != VALUE || (currentValue.getType() != Value.INT && currentValue.getType() != Value.LONG)) {
             throw DbException.getSyntaxError(sqlCommand, parseIndex, "long");
         }
         long i = currentValue.getLong();
@@ -3854,7 +3846,7 @@ public class Parser {
             return parseCreateAggregate(force);
         } else if (readIf("LINKED")) {
             return parseCreateLinkedTable(false, false, force);
-		}
+        }
         // tables or linked tables
         boolean memory = false, cached = false;
         if (readIf("MEMORY")) {
@@ -4276,9 +4268,7 @@ public class Parser {
     private CreateFunctionAlias parseCreateFunctionAlias(boolean force) {
         boolean ifNotExists = readIfNoExists();
         String aliasName = readIdentifierWithSchema();
-        if (isKeyword(aliasName) ||
-                Function.getFunction(database, aliasName) != null ||
-                getAggregateType(aliasName) >= 0) {
+        if (isKeyword(aliasName) || Function.getFunction(database, aliasName) != null || getAggregateType(aliasName) >= 0) {
             throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, aliasName);
         }
         CreateFunctionAlias command = new CreateFunctionAlias(session, getSchema());
@@ -4874,7 +4864,7 @@ public class Parser {
         //有可能执行create table的线程很快结束了，但是zookeeper还未通知，这时insert时就找不到表。
         //对于这种情况，client重视即可解决，不过还有没有更好的办法呢?
         //client在使用h2作为内存数据库对SQL预解析时也会碰到这样的情况。
-		throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
+        throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
     }
 
     private FunctionAlias findFunctionAlias(String schema, String aliasName) {
@@ -5294,7 +5284,7 @@ public class Parser {
         }
         return command;
     }
-    
+
     protected Column parseColumn(Schema schema, CreateTable command, String tableName, String cfName) {
         String columnName = readColumnIdentifier();
         Column column = parseColumnForTable(columnName, true);

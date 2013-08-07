@@ -6,7 +6,6 @@
  */
 package com.codefollower.lealone.dbobject;
 
-
 /**
  * The base class for classes implementing SchemaObject.
  */

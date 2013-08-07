@@ -371,40 +371,40 @@ public class Select extends Query {
         while (topTableFilter.next()) {
             setCurrentRowNumber(rowNumber + 1);
             //if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
-                Value key;
-                rowNumber++;
-                if (groupIndex == null) {
-                    key = defaultGroup;
-                } else {
-                    Value[] keyValues = new Value[groupIndex.length];
-                    // update group
-                    for (int i = 0; i < groupIndex.length; i++) {
-                        int idx = groupIndex[i];
-                        //Expression expr = expressions.get(idx);
-                        keyValues[i] = topTableFilter.getValue(idx);//expr.getValue(session);
-                    }
-                    key = ValueArray.get(keyValues);
+            Value key;
+            rowNumber++;
+            if (groupIndex == null) {
+                key = defaultGroup;
+            } else {
+                Value[] keyValues = new Value[groupIndex.length];
+                // update group
+                for (int i = 0; i < groupIndex.length; i++) {
+                    int idx = groupIndex[i];
+                    //Expression expr = expressions.get(idx);
+                    keyValues[i] = topTableFilter.getValue(idx);//expr.getValue(session);
                 }
-                HashMap<Expression, Object> values = groups.get(key);
-                if (values == null) {
-                    values = new HashMap<Expression, Object>();
-                    groups.put(key, values);
-                }
-                currentGroup = values;
-                currentGroupRowId++;
-                int len = columnCount;
-                if (topTableFilter.getCurrentSearchRowLength() < len)
-                    len = topTableFilter.getCurrentSearchRowLength();
-                for (int i = 0; i < len; i++) {
-                    if (groupByExpression == null || !groupByExpression[i]) {
-                        Expression expr = expressions.get(i);
-                        expr.mergeAggregate(session, topTableFilter.getValue(i));
-                    }
-                }
-                if (sampleSize > 0 && rowNumber >= sampleSize) {
-                    break;
+                key = ValueArray.get(keyValues);
+            }
+            HashMap<Expression, Object> values = groups.get(key);
+            if (values == null) {
+                values = new HashMap<Expression, Object>();
+                groups.put(key, values);
+            }
+            currentGroup = values;
+            currentGroupRowId++;
+            int len = columnCount;
+            if (topTableFilter.getCurrentSearchRowLength() < len)
+                len = topTableFilter.getCurrentSearchRowLength();
+            for (int i = 0; i < len; i++) {
+                if (groupByExpression == null || !groupByExpression[i]) {
+                    Expression expr = expressions.get(i);
+                    expr.mergeAggregate(session, topTableFilter.getValue(i));
                 }
             }
+            if (sampleSize > 0 && rowNumber >= sampleSize) {
+                break;
+            }
+        }
         //}
         if (groupIndex == null && groups.size() == 0) {
             groups.put(defaultGroup, new HashMap<Expression, Object>());
@@ -815,8 +815,8 @@ public class Select extends Query {
                     if (filter.isNaturalJoinColumn(c)) {
                         continue;
                     }
-                    ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), null, alias, 
-                            c.getColumnFamilyName(), c.getName());
+                    ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), null, alias, c.getColumnFamilyName(),
+                            c.getName());
                     expressions.add(i++, ec);
                 }
                 i--;

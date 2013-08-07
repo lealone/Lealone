@@ -41,9 +41,8 @@ public class TableLinkConnection {
      */
     private int useCounter;
 
-    private TableLinkConnection(
-            HashMap<TableLinkConnection, TableLinkConnection> map,
-            String driver, String url, String user, String password) {
+    private TableLinkConnection(HashMap<TableLinkConnection, TableLinkConnection> map, String driver, String url, String user,
+            String password) {
         this.map = map;
         this.driver = driver;
         this.url = url;
@@ -63,9 +62,8 @@ public class TableLinkConnection {
      * @param shareLinkedConnections if connections should be shared
      * @return a connection
      */
-    public static TableLinkConnection open(
-            HashMap<TableLinkConnection, TableLinkConnection> map,
-            String driver, String url, String user, String password, boolean shareLinkedConnections) {
+    public static TableLinkConnection open(HashMap<TableLinkConnection, TableLinkConnection> map, String driver, String url,
+            String user, String password, boolean shareLinkedConnections) {
         TableLinkConnection t = new TableLinkConnection(map, driver, url, user, password);
         if (!shareLinkedConnections) {
             t.open();
@@ -94,19 +92,14 @@ public class TableLinkConnection {
     }
 
     public int hashCode() {
-        return Utils.hashCode(driver)
-                ^ Utils.hashCode(url)
-                ^ Utils.hashCode(user)
-                ^ Utils.hashCode(password);
+        return Utils.hashCode(driver) ^ Utils.hashCode(url) ^ Utils.hashCode(user) ^ Utils.hashCode(password);
     }
 
     public boolean equals(Object o) {
         if (o instanceof TableLinkConnection) {
             TableLinkConnection other = (TableLinkConnection) o;
-            return StringUtils.equals(driver, other.driver)
-                    && StringUtils.equals(url, other.url)
-                    && StringUtils.equals(user, other.user)
-                    && StringUtils.equals(password, other.password);
+            return StringUtils.equals(driver, other.driver) && StringUtils.equals(url, other.url)
+                    && StringUtils.equals(user, other.user) && StringUtils.equals(password, other.password);
         }
         return false;
     }

@@ -104,10 +104,8 @@ public class TraceObject {
 
     private static final int LAST = ARRAY + 1;
     private static final int[] ID = new int[LAST];
-    private static final String[] PREFIX = {
-        "call", "conn", "dbMeta", "prep", "rs", "rsMeta", "sp", "ex", "stat", "blob", "clob", "pMeta",
-        "ds", "xads", "xares", "xid", "ar"
-    };
+    private static final String[] PREFIX = { "call", "conn", "dbMeta", "prep", "rs", "rsMeta", "sp", "ex", "stat", "blob",
+            "clob", "pMeta", "ds", "xads", "xares", "xid", "ar" };
 
     /**
      * The trace module used by this object.

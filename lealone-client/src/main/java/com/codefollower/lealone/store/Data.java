@@ -146,7 +146,7 @@ public class Data {
      */
     public int readInt() {
         byte[] buff = data;
-        int x = (buff[pos] << 24) + ((buff[pos+1] & 0xff) << 16) + ((buff[pos+2] & 0xff) << 8) + (buff[pos+3] & 0xff);
+        int x = (buff[pos] << 24) + ((buff[pos + 1] & 0xff) << 16) + ((buff[pos + 2] & 0xff) << 8) + (buff[pos + 3] & 0xff);
         pos += 4;
         return x;
     }
@@ -676,8 +676,8 @@ public class Data {
         }
         if (SysProperties.CHECK2) {
             if (pos - start != getValueLen(v, handler)) {
-                throw DbException
-                        .throwInternalError("value size error: got " + (pos - start) + " expected " + getValueLen(v, handler));
+                throw DbException.throwInternalError("value size error: got " + (pos - start) + " expected "
+                        + getValueLen(v, handler));
             }
         }
     }

@@ -227,8 +227,7 @@ public class FilePathCrypt extends FilePathWrapper {
             } else if (position < 0) {
                 throw new IllegalArgumentException("pos: " + position);
             }
-            if ((position & BLOCK_SIZE_MASK) != 0 ||
-                    (len & BLOCK_SIZE_MASK) != 0) {
+            if ((position & BLOCK_SIZE_MASK) != 0 || (len & BLOCK_SIZE_MASK) != 0) {
                 // either the position or the len is unaligned:
                 // read aligned, and then truncate
                 long p = position / BLOCK_SIZE * BLOCK_SIZE;
@@ -269,8 +268,7 @@ public class FilePathCrypt extends FilePathWrapper {
 
         public int write(ByteBuffer src, long position) throws IOException {
             int len = src.remaining();
-            if ((position & BLOCK_SIZE_MASK) != 0 ||
-                    (len & BLOCK_SIZE_MASK) != 0) {
+            if ((position & BLOCK_SIZE_MASK) != 0 || (len & BLOCK_SIZE_MASK) != 0) {
                 // either the position or the len is unaligned:
                 // read aligned, and then truncate
                 long p = position / BLOCK_SIZE * BLOCK_SIZE;
@@ -447,7 +445,7 @@ public class FilePathCrypt extends FilePathWrapper {
             }
             if (i < len) {
                 swap(data, i, i - CIPHER_BLOCK_SIZE + offset, len - i + offset);
-                xorTweak(data, i - CIPHER_BLOCK_SIZE  + offset, tweakEnd);
+                xorTweak(data, i - CIPHER_BLOCK_SIZE + offset, tweakEnd);
                 cipher.decrypt(data, i - CIPHER_BLOCK_SIZE + offset, CIPHER_BLOCK_SIZE);
                 xorTweak(data, i - CIPHER_BLOCK_SIZE + offset, tweakEnd);
             }

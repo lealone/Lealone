@@ -102,7 +102,7 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
      *
      * @return the SQL statement
      */
-    public abstract String  getCreateSQLWithoutIndexes();
+    public abstract String getCreateSQLWithoutIndexes();
 
     /**
      * Check if this constraint needs to be checked before updating the data.

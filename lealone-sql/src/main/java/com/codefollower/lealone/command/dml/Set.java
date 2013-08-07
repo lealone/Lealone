@@ -407,7 +407,7 @@ public class Set extends Prepared {
             break;
         }
         default:
-            DbException.throwInternalError("type="+type);
+            DbException.throwInternalError("type=" + type);
         }
         // the meta data information has changed
         database.getNextModificationDataId();

@@ -34,9 +34,8 @@ public class DropTable extends SchemaCommand {
 
     public DropTable(Session session, Schema schema) {
         super(session, schema);
-        dropAction = session.getDatabase().getSettings().dropRestrict ?
-                ConstraintReferential.RESTRICT :
-                ConstraintReferential.CASCADE;
+        dropAction = session.getDatabase().getSettings().dropRestrict ? ConstraintReferential.RESTRICT
+                : ConstraintReferential.CASCADE;
     }
 
     /**

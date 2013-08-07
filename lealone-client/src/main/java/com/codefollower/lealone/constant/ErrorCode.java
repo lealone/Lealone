@@ -1611,7 +1611,7 @@ public class ErrorCode {
      * DROP TABLE INFORMATION_SCHEMA.SETTINGS;
      * </pre>
      */
-    public static final int CANNOT_DROP_TABLE_1  = 90118;
+    public static final int CANNOT_DROP_TABLE_1 = 90118;
 
     /**
      * The error with code <code>90119</code> is thrown when
@@ -1895,35 +1895,49 @@ public class ErrorCode {
         switch (errorCode) {
 
         // 02: no data
-        case NO_DATA_AVAILABLE: return "02000";
+        case NO_DATA_AVAILABLE:
+            return "02000";
 
-        // 07: dynamic SQL error
-        case INVALID_PARAMETER_COUNT_2: return "07001";
+            // 07: dynamic SQL error
+        case INVALID_PARAMETER_COUNT_2:
+            return "07001";
 
-        // 08: connection exception
-        case ERROR_OPENING_DATABASE_1: return "08000";
+            // 08: connection exception
+        case ERROR_OPENING_DATABASE_1:
+            return "08000";
 
-        // 21: cardinality violation
-        case COLUMN_COUNT_DOES_NOT_MATCH: return "21S02";
+            // 21: cardinality violation
+        case COLUMN_COUNT_DOES_NOT_MATCH:
+            return "21S02";
 
-        // 42: syntax error or access rule violation
-        case TABLE_OR_VIEW_ALREADY_EXISTS_1: return "42S01";
-        case TABLE_OR_VIEW_NOT_FOUND_1: return "42S02";
-        case INDEX_ALREADY_EXISTS_1: return "42S11";
-        case INDEX_NOT_FOUND_1: return "42S12";
-        case DUPLICATE_COLUMN_NAME_1: return "42S21";
-        case COLUMN_NOT_FOUND_1: return "42S22";
+            // 42: syntax error or access rule violation
+        case TABLE_OR_VIEW_ALREADY_EXISTS_1:
+            return "42S01";
+        case TABLE_OR_VIEW_NOT_FOUND_1:
+            return "42S02";
+        case INDEX_ALREADY_EXISTS_1:
+            return "42S11";
+        case INDEX_NOT_FOUND_1:
+            return "42S12";
+        case DUPLICATE_COLUMN_NAME_1:
+            return "42S21";
+        case COLUMN_NOT_FOUND_1:
+            return "42S22";
 
-        // 0A: feature not supported
+            // 0A: feature not supported
 
-        // HZ: remote database access
+            // HZ: remote database access
 
-        // HY
-        case GENERAL_ERROR_1: return "HY000";
-        case UNKNOWN_DATA_TYPE_1: return "HY004";
+            // HY
+        case GENERAL_ERROR_1:
+            return "HY000";
+        case UNKNOWN_DATA_TYPE_1:
+            return "HY004";
 
-        case FEATURE_NOT_SUPPORTED_1: return "HYC00";
-        case LOCK_TIMEOUT_1: return "HYT00";
+        case FEATURE_NOT_SUPPORTED_1:
+            return "HYC00";
+        case LOCK_TIMEOUT_1:
+            return "HYT00";
         default:
             return "" + errorCode;
         }

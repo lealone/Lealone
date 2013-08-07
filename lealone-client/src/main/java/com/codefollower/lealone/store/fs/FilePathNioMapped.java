@@ -99,8 +99,7 @@ class FileNioMapped extends FileBase {
             long start = System.currentTimeMillis();
             while (bufferWeakRef.get() != null) {
                 if (System.currentTimeMillis() - start > GC_TIMEOUT_MS) {
-                    throw new IOException("Timeout (" + GC_TIMEOUT_MS
-                            + " ms) reached while trying to GC mapped buffer");
+                    throw new IOException("Timeout (" + GC_TIMEOUT_MS + " ms) reached while trying to GC mapped buffer");
                 }
                 System.gc();
                 Thread.yield();

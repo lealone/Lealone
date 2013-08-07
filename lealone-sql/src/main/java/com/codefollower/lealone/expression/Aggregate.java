@@ -730,7 +730,7 @@ public class Aggregate extends Expression {
         }
         return text + StringUtils.enclose(on.getSQL(isDistributed));
     }
-    
+
     private String getSQL_STDDEV_VAR() {
         String onSQL = on.getSQL(true);
         if (distinct) {

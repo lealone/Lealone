@@ -620,8 +620,7 @@ public class Session extends SessionWithState {
                 int lockMode = database.getLockMode();
                 if (lockMode != Constants.LOCK_MODE_OFF && !database.isMultiVersion()) {
                     String tableType = log.getTable().getTableType();
-                    if (locks.indexOf(log.getTable()) < 0
-                            && !Table.TABLE_LINK.equals(tableType)
+                    if (locks.indexOf(log.getTable()) < 0 && !Table.TABLE_LINK.equals(tableType)
                             && !Table.EXTERNAL_TABLE_ENGINE.equals(tableType)) {
                         DbException.throwInternalError();
                     }
@@ -843,7 +842,7 @@ public class Session extends SessionWithState {
             int state = commit ? InDoubtTransaction.COMMIT : InDoubtTransaction.ROLLBACK;
             boolean found = false;
             if (list != null) {
-                for (InDoubtTransaction p: list) {
+                for (InDoubtTransaction p : list) {
                     if (p.getTransaction().equals(transactionName)) {
                         p.setState(state);
                         found = true;

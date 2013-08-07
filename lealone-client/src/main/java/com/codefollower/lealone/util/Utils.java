@@ -135,8 +135,7 @@ public class Utils {
         }
         int last = bytes.length - pattern.length + 1;
         int patternLen = pattern.length;
-        next:
-        for (; start < last; start++) {
+        next: for (; start < last; start++) {
             for (int i = 0; i < patternLen; i++) {
                 if (bytes[start + i] != pattern[i]) {
                     continue next;
@@ -445,8 +444,7 @@ public class Utils {
      * @param limit the limit.
      * @param comp the comparator.
      */
-    public static <X> void sortTopN(X[] array, int offset, int limit,
-            Comparator<? super X> comp) {
+    public static <X> void sortTopN(X[] array, int offset, int limit, Comparator<? super X> comp) {
         partitionTopN(array, offset, limit, comp);
         Arrays.sort(array, offset, (int) Math.min((long) offset + limit, array.length), comp);
     }
@@ -460,13 +458,11 @@ public class Utils {
      * @param limit the limit
      * @param comp the comparator
      */
-    private static <X> void partitionTopN(X[] array, int offset, int limit,
-            Comparator<? super X> comp) {
+    private static <X> void partitionTopN(X[] array, int offset, int limit, Comparator<? super X> comp) {
         partialQuickSort(array, 0, array.length - 1, comp, offset, offset + limit - 1);
     }
 
-    private static <X> void partialQuickSort(X[] array, int low, int high,
-            Comparator<? super X> comp, int start, int end) {
+    private static <X> void partialQuickSort(X[] array, int low, int high, Comparator<? super X> comp, int start, int end) {
         if (low > end || high < start || (low > start && high < end)) {
             return;
         }
@@ -676,17 +672,11 @@ public class Utils {
      * @param params the method parameters
      * @return the return value from this call
      */
-    public static Object callMethod(
-            Object instance,
-            String methodName,
-            Object... params) throws Exception {
+    public static Object callMethod(Object instance, String methodName, Object... params) throws Exception {
         return callMethod(instance, instance.getClass(), methodName, params);
     }
 
-    private static Object callMethod(
-            Object instance, Class<?> clazz,
-            String methodName,
-            Object... params) throws Exception {
+    private static Object callMethod(Object instance, Class<?> clazz, String methodName, Object... params) throws Exception {
         Method best = null;
         int bestMatch = 0;
         boolean isStatic = instance == null;

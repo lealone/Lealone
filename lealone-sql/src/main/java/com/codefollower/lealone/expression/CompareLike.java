@@ -49,13 +49,12 @@ public class CompareLike extends Condition {
     private boolean fastCompare;
     private boolean invalidPattern;
 
-    public CompareLike(Database db, Expression left, Expression right,
-            Expression escape, boolean regexp) {
+    public CompareLike(Database db, Expression left, Expression right, Expression escape, boolean regexp) {
         this(db.getCompareMode(), db.getSettings().defaultEscape, left, right, escape, regexp);
     }
 
-    public CompareLike(CompareMode compareMode, String defaultEscape,
-            Expression left, Expression right, Expression escape, boolean regexp) {
+    public CompareLike(CompareMode compareMode, String defaultEscape, Expression left, Expression right, Expression escape,
+            boolean regexp) {
         this.compareMode = compareMode;
         this.defaultEscape = defaultEscape;
         this.regexp = regexp;
@@ -196,23 +195,22 @@ public class CompareLike extends Condition {
         }
         String begin = buff.toString();
         if (maxMatch == patternLength) {
-            filter.addIndexCondition(IndexCondition.get(Comparison.EQUAL, l, ValueExpression
-                    .get(ValueString.get(begin))));
+            filter.addIndexCondition(IndexCondition.get(Comparison.EQUAL, l, ValueExpression.get(ValueString.get(begin))));
         } else {
             // TODO check if this is correct according to Unicode rules
             // (code points)
             String end;
             if (begin.length() > 0) {
-                filter.addIndexCondition(IndexCondition.get(Comparison.BIGGER_EQUAL, l, ValueExpression.get(ValueString
-                        .get(begin))));
+                filter.addIndexCondition(IndexCondition.get(Comparison.BIGGER_EQUAL, l,
+                        ValueExpression.get(ValueString.get(begin))));
                 char next = begin.charAt(begin.length() - 1);
                 // search the 'next' unicode character (or at least a character
                 // that is higher)
                 for (int i = 1; i < 2000; i++) {
                     end = begin.substring(0, begin.length() - 1) + (char) (next + i);
                     if (compareMode.compareString(begin, end, ignoreCase) == -1) {
-                        filter.addIndexCondition(IndexCondition.get(Comparison.SMALLER, l, ValueExpression
-                                .get(ValueString.get(end))));
+                        filter.addIndexCondition(IndexCondition.get(Comparison.SMALLER, l,
+                                ValueExpression.get(ValueString.get(end))));
                         break;
                     }
                 }
@@ -401,8 +399,7 @@ public class CompareLike extends Condition {
     }
 
     public boolean isEverything(ExpressionVisitor visitor) {
-        return left.isEverything(visitor) && right.isEverything(visitor)
-                && (escape == null || escape.isEverything(visitor));
+        return left.isEverything(visitor) && right.isEverything(visitor) && (escape == null || escape.isEverything(visitor));
     }
 
     public int getCost() {

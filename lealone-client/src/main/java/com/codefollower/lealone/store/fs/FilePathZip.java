@@ -94,7 +94,7 @@ public class FilePathZip extends FilePath {
                 String n = entry.getName();
                 if (n.equals(entryName)) {
                     return entry.isDirectory();
-                } else  if (n.startsWith(entryName)) {
+                } else if (n.startsWith(entryName)) {
                     if (n.length() == entryName.length() + 1) {
                         if (n.equals(entryName + "/")) {
                             return true;
@@ -333,7 +333,8 @@ class FileZip extends FileBase {
                 @Override
                 public void release() throws IOException {
                     // ignore
-                }};
+                }
+            };
         }
         return null;
     }

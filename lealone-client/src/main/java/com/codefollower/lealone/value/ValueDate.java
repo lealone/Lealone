@@ -68,8 +68,7 @@ public class ValueDate extends Value {
         try {
             return fromDateValue(DateTimeUtils.parseDateValue(s, 0, s.length()));
         } catch (Exception e) {
-            throw DbException.get(ErrorCode.INVALID_DATETIME_CONSTANT_2,
-                    e, "DATE", s);
+            throw DbException.get(ErrorCode.INVALID_DATETIME_CONSTANT_2, e, "DATE", s);
         }
     }
 

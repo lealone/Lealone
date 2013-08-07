@@ -69,8 +69,7 @@ public class ValueTime extends Value {
         try {
             return fromNanos(DateTimeUtils.parseTimeNanos(s, 0, s.length(), false));
         } catch (Exception e) {
-            throw DbException.get(ErrorCode.INVALID_DATETIME_CONSTANT_2,
-                    e, "TIME", s);
+            throw DbException.get(ErrorCode.INVALID_DATETIME_CONSTANT_2, e, "TIME", s);
         }
     }
 

@@ -22,33 +22,18 @@ import com.codefollower.lealone.message.DbException;
  */
 public class JdbcUtils {
 
-    private static final String[] DRIVERS = {
-        "lealone:", "com.codefollower.lealone.Driver",
-        "Cache:", "com.intersys.jdbc.CacheDriver",
-        "daffodilDB://", "in.co.daffodil.db.rmi.RmiDaffodilDBDriver",
-        "daffodil", "in.co.daffodil.db.jdbc.DaffodilDBDriver",
-        "db2:", "COM.ibm.db2.jdbc.net.DB2Driver",
-        "derby:net:", "org.apache.derby.jdbc.ClientDriver",
-        "derby://", "org.apache.derby.jdbc.ClientDriver",
-        "derby:", "org.apache.derby.jdbc.EmbeddedDriver",
-        "FrontBase:", "com.frontbase.jdbc.FBJDriver",
-        "firebirdsql:", "org.firebirdsql.jdbc.FBDriver",
-        "hsqldb:", "org.hsqldb.jdbcDriver",
-        "informix-sqli:", "com.informix.jdbc.IfxDriver",
-        "jtds:", "net.sourceforge.jtds.jdbc.Driver",
-        "microsoft:", "com.microsoft.jdbc.sqlserver.SQLServerDriver",
-        "mimer:", "com.mimer.jdbc.Driver",
-        "mysql:", "com.mysql.jdbc.Driver",
-        "odbc:", "sun.jdbc.odbc.JdbcOdbcDriver",
-        "oracle:", "oracle.jdbc.driver.OracleDriver",
-        "pervasive:", "com.pervasive.jdbc.v2.Driver",
-        "pointbase:micro:", "com.pointbase.me.jdbc.jdbcDriver",
-        "pointbase:", "com.pointbase.jdbc.jdbcUniversalDriver",
-        "postgresql:", "org.postgresql.Driver",
-        "sybase:", "com.sybase.jdbc3.jdbc.SybDriver",
-        "sqlserver:", "com.microsoft.sqlserver.jdbc.SQLServerDriver",
-        "teradata:", "com.ncr.teradata.TeraDriver",
-    };
+    private static final String[] DRIVERS = { "lealone:", "com.codefollower.lealone.Driver", "Cache:",
+            "com.intersys.jdbc.CacheDriver", "daffodilDB://", "in.co.daffodil.db.rmi.RmiDaffodilDBDriver", "daffodil",
+            "in.co.daffodil.db.jdbc.DaffodilDBDriver", "db2:", "COM.ibm.db2.jdbc.net.DB2Driver", "derby:net:",
+            "org.apache.derby.jdbc.ClientDriver", "derby://", "org.apache.derby.jdbc.ClientDriver", "derby:",
+            "org.apache.derby.jdbc.EmbeddedDriver", "FrontBase:", "com.frontbase.jdbc.FBJDriver", "firebirdsql:",
+            "org.firebirdsql.jdbc.FBDriver", "hsqldb:", "org.hsqldb.jdbcDriver", "informix-sqli:", "com.informix.jdbc.IfxDriver",
+            "jtds:", "net.sourceforge.jtds.jdbc.Driver", "microsoft:", "com.microsoft.jdbc.sqlserver.SQLServerDriver", "mimer:",
+            "com.mimer.jdbc.Driver", "mysql:", "com.mysql.jdbc.Driver", "odbc:", "sun.jdbc.odbc.JdbcOdbcDriver", "oracle:",
+            "oracle.jdbc.driver.OracleDriver", "pervasive:", "com.pervasive.jdbc.v2.Driver", "pointbase:micro:",
+            "com.pointbase.me.jdbc.jdbcDriver", "pointbase:", "com.pointbase.jdbc.jdbcUniversalDriver", "postgresql:",
+            "org.postgresql.Driver", "sybase:", "com.sybase.jdbc3.jdbc.SybDriver", "sqlserver:",
+            "com.microsoft.sqlserver.jdbc.SQLServerDriver", "teradata:", "com.ncr.teradata.TeraDriver", };
 
     private JdbcUtils() {
         // utility class

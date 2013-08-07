@@ -78,7 +78,7 @@ public class JavaAggregate extends Expression {
     }
 
     public boolean isEverything(ExpressionVisitor visitor) {
-        switch(visitor.getType()) {
+        switch (visitor.getType()) {
         case ExpressionVisitor.DETERMINISTIC:
             // TODO optimization: some functions are deterministic, but we don't
             // know (no setting for that)

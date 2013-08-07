@@ -190,7 +190,7 @@ public class ResultTempTable implements ResultExternal {
 
     private static Row convertToRow(Value[] values) {
         ValueArray data = ValueArray.get(values);
-        return new Row(new Value[]{data}, Row.MEMORY_CALCULATE);
+        return new Row(new Value[] { data }, Row.MEMORY_CALCULATE);
     }
 
     private Cursor find(Row row) {
@@ -208,4 +208,3 @@ public class ResultTempTable implements ResultExternal {
     }
 
 }
-

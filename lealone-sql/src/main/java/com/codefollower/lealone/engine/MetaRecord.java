@@ -107,7 +107,7 @@ public class MetaRecord implements Comparable<MetaRecord> {
      * @return the sort index
      */
     private int getCreateOrder() {
-        switch(objectType) {
+        switch (objectType) {
         case DbObject.SETTING:
             return 0;
         case DbObject.USER:
@@ -139,7 +139,7 @@ public class MetaRecord implements Comparable<MetaRecord> {
         case DbObject.COMMENT:
             return 14;
         default:
-            throw DbException.throwInternalError("type="+objectType);
+            throw DbException.throwInternalError("type=" + objectType);
         }
     }
 
@@ -147,5 +147,5 @@ public class MetaRecord implements Comparable<MetaRecord> {
     public String toString() {
         return "MetaRecord [id=" + id + ", objectType=" + objectType + ", sql=" + sql + "]";
     }
-    
+
 }

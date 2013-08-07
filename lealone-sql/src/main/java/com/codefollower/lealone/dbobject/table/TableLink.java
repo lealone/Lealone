@@ -80,7 +80,7 @@ public class TableLink extends Table {
             if (!force) {
                 throw e;
             }
-            Column[] cols = { };
+            Column[] cols = {};
             setColumns(cols);
             linkedIndex = new LinkedIndex(this, id, IndexColumn.wrap(cols), IndexType.createNonUnique(false));
             indexes.add(linkedIndex);
@@ -190,8 +190,7 @@ public class TableLink extends Table {
             }
             rs.close();
         } catch (Exception e) {
-            throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, e,
-                    originalTable + "(" + e.toString() + ")");
+            throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, e, originalTable + "(" + e.toString() + ")");
         } finally {
             JdbcUtils.closeSilently(stat);
         }
@@ -353,17 +352,9 @@ public class TableLink extends Table {
         if (comment != null) {
             buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
         }
-        buff.append('(').
-            append(StringUtils.quoteStringSQL(driver)).
-            append(", ").
-            append(StringUtils.quoteStringSQL(url)).
-            append(", ").
-            append(StringUtils.quoteStringSQL(user)).
-            append(", ").
-            append(StringUtils.quoteStringSQL(password)).
-            append(", ").
-            append(StringUtils.quoteStringSQL(originalTable)).
-            append(')');
+        buff.append('(').append(StringUtils.quoteStringSQL(driver)).append(", ").append(StringUtils.quoteStringSQL(url))
+                .append(", ").append(StringUtils.quoteStringSQL(user)).append(", ").append(StringUtils.quoteStringSQL(password))
+                .append(", ").append(StringUtils.quoteStringSQL(originalTable)).append(')');
         if (emitUpdates) {
             buff.append(" EMIT UPDATES");
         }

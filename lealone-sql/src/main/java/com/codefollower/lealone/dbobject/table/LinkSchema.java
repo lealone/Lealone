@@ -53,27 +53,15 @@ public class LinkSchema {
             while (rs.next()) {
                 String table = rs.getString("TABLE_NAME");
                 StringBuilder buff = new StringBuilder();
-                buff.append("DROP TABLE IF EXISTS ").
-                    append(StringUtils.quoteIdentifier(targetSchema)).
-                    append('.').
-                    append(StringUtils.quoteIdentifier(table));
+                buff.append("DROP TABLE IF EXISTS ").append(StringUtils.quoteIdentifier(targetSchema)).append('.')
+                        .append(StringUtils.quoteIdentifier(table));
                 stat.execute(buff.toString());
                 buff = new StringBuilder();
-                buff.append("CREATE LINKED TABLE ").
-                    append(StringUtils.quoteIdentifier(targetSchema)).
-                    append('.').
-                    append(StringUtils.quoteIdentifier(table)).
-                    append('(').
-                    append(StringUtils.quoteStringSQL(driver)).
-                    append(", ").
-                    append(StringUtils.quoteStringSQL(url)).
-                    append(", ").
-                    append(StringUtils.quoteStringSQL(user)).
-                    append(", ").
-                    append(StringUtils.quoteStringSQL(password)).
-                    append(", ").
-                    append(StringUtils.quoteStringSQL(table)).
-                    append(')');
+                buff.append("CREATE LINKED TABLE ").append(StringUtils.quoteIdentifier(targetSchema)).append('.')
+                        .append(StringUtils.quoteIdentifier(table)).append('(').append(StringUtils.quoteStringSQL(driver))
+                        .append(", ").append(StringUtils.quoteStringSQL(url)).append(", ")
+                        .append(StringUtils.quoteStringSQL(user)).append(", ").append(StringUtils.quoteStringSQL(password))
+                        .append(", ").append(StringUtils.quoteStringSQL(table)).append(')');
                 stat.execute(buff.toString());
                 result.addRow(table);
             }

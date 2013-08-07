@@ -6,7 +6,6 @@
  */
 package com.codefollower.lealone.compress;
 
-
 /**
  * Each data compression algorithm must implement this interface.
  */

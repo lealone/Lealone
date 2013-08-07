@@ -404,8 +404,7 @@ public class Column {
                 if (s.length() > 127) {
                     s = s.substring(0, 128) + "...";
                 }
-                throw DbException.get(ErrorCode.VALUE_TOO_LONG_2,
-                        getCreateSQL(), s + " (" + value.getPrecision() + ")");
+                throw DbException.get(ErrorCode.VALUE_TOO_LONG_2, getCreateSQL(), s + " (" + value.getPrecision() + ")");
             }
         }
         updateSequenceIfRequired(session, value);
@@ -484,7 +483,7 @@ public class Column {
             defaultExpression = defaultExpression.optimize(session);
         }
     }
-    
+
     public String getCreateSQL() {
         return getCreateSQL(false);
     }

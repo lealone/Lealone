@@ -65,10 +65,8 @@ public class UpdatableRow {
             }
         }
         final DatabaseMetaData meta = conn.getMetaData();
-        ResultSet rs = meta.getTables(null,
-                StringUtils.escapeMetaDataPattern(schemaName),
-                StringUtils.escapeMetaDataPattern(tableName),
-                new String[] { "TABLE" });
+        ResultSet rs = meta.getTables(null, StringUtils.escapeMetaDataPattern(schemaName),
+                StringUtils.escapeMetaDataPattern(tableName), new String[] { "TABLE" });
         if (!rs.next()) {
             return;
         }
@@ -82,9 +80,7 @@ public class UpdatableRow {
         // in the database meta data is also lower case
         boolean toUpper = !table.equals(tableName) && table.equalsIgnoreCase(tableName);
         key = New.arrayList();
-        rs = meta.getPrimaryKeys(null,
-                StringUtils.escapeMetaDataPattern(schemaName),
-                tableName);
+        rs = meta.getPrimaryKeys(null, StringUtils.escapeMetaDataPattern(schemaName), tableName);
         while (rs.next()) {
             String c = rs.getString("COLUMN_NAME");
             key.add(toUpper ? StringUtils.toUpperEnglish(c) : c);
@@ -94,9 +90,7 @@ public class UpdatableRow {
             return;
         }
         key.clear();
-        rs = meta.getIndexInfo(null,
-                StringUtils.escapeMetaDataPattern(schemaName),
-                tableName, true, true);
+        rs = meta.getIndexInfo(null, StringUtils.escapeMetaDataPattern(schemaName), tableName, true, true);
         while (rs.next()) {
             int pos = rs.getShort("ORDINAL_POSITION");
             if (pos == 1) {
@@ -191,17 +185,17 @@ public class UpdatableRow {
         }
     }
 
-//    public boolean isRowDeleted(Value[] row) throws SQLException {
-//        StringBuilder buff = new StringBuilder();
-//        buff.append("SELECT COUNT(*) FROM ").
-//               append(StringUtils.quoteIdentifier(tableName));
-//        appendKeyCondition(buff);
-//        PreparedStatement prep = conn.prepareStatement(buff.toString());
-//        setKey(prep, 1, row);
-//        ResultSet rs = prep.executeQuery();
-//        rs.next();
-//        return rs.getInt(1) == 0;
-//    }
+    //    public boolean isRowDeleted(Value[] row) throws SQLException {
+    //        StringBuilder buff = new StringBuilder();
+    //        buff.append("SELECT COUNT(*) FROM ").
+    //               append(StringUtils.quoteIdentifier(tableName));
+    //        appendKeyCondition(buff);
+    //        PreparedStatement prep = conn.prepareStatement(buff.toString());
+    //        setKey(prep, 1, row);
+    //        ResultSet rs = prep.executeQuery();
+    //        rs.next();
+    //        return rs.getInt(1) == 0;
+    //    }
 
     private void appendTableName(StatementBuilder buff) {
         if (schemaName != null && schemaName.length() > 0) {

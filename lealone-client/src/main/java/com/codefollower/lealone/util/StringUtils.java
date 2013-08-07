@@ -160,11 +160,11 @@ public class StringUtils {
         for (int i = 0; i < length; i++) {
             char c = s.charAt(i);
             switch (c) {
-//            case '\b':
-//                // BS backspace
-//                // not supported in properties files
-//                buff.append("\\b");
-//                break;
+            //            case '\b':
+            //                // BS backspace
+            //                // not supported in properties files
+            //                buff.append("\\b");
+            //                break;
             case '\t':
                 // HT horizontal tab
                 buff.append("\\t");
@@ -193,11 +193,11 @@ public class StringUtils {
                 int ch = c & 0xffff;
                 if (ch >= ' ' && (ch < 0x80)) {
                     buff.append(c);
-                // not supported in properties files
-                // } else if(ch < 0xff) {
-                // buff.append("\\");
-                // // make sure it's three characters (0x200 is octal 1000)
-                // buff.append(Integer.toOctalString(0x200 | ch).substring(1));
+                    // not supported in properties files
+                    // } else if(ch < 0xff) {
+                    // buff.append("\\");
+                    // // make sure it's three characters (0x200 is octal 1000)
+                    // buff.append(Integer.toOctalString(0x200 | ch).substring(1));
                 } else {
                     buff.append("\\u");
                     String hex = Integer.toHexString(ch);
@@ -673,9 +673,7 @@ public class StringUtils {
             case '\r':
             case '\n':
                 if (escapeNewline) {
-                    buff.append("&#x").
-                        append(Integer.toHexString(ch)).
-                        append(';');
+                    buff.append("&#x").append(Integer.toHexString(ch)).append(';');
                 } else {
                     buff.append(ch);
                 }
@@ -685,9 +683,7 @@ public class StringUtils {
                 break;
             default:
                 if (ch < ' ' || ch > 127) {
-                    buff.append("&#x").
-                        append(Integer.toHexString(ch)).
-                        append(';');
+                    buff.append("&#x").append(Integer.toHexString(ch)).append(';');
                 } else {
                     buff.append(ch);
                 }

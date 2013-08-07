@@ -6,7 +6,6 @@
  */
 package com.codefollower.lealone.expression;
 
-
 import com.codefollower.lealone.command.dml.Query;
 import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.index.IndexCondition;
@@ -125,13 +124,11 @@ public class ConditionInSelect extends Condition {
         StringBuilder buff = new StringBuilder();
         buff.append('(').append(left.getSQL(isDistributed)).append(' ');
         if (all) {
-            buff.append(Comparison.getCompareOperator(compareType)).
-                append(" ALL");
+            buff.append(Comparison.getCompareOperator(compareType)).append(" ALL");
         } else {
             buff.append("IN");
         }
-        buff.append("(\n").append(StringUtils.indent(query.getPlanSQL(), 4, false)).
-            append("))");
+        buff.append("(\n").append(StringUtils.indent(query.getPlanSQL(), 4, false)).append("))");
         return buff.toString();
     }
 

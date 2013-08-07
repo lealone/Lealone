@@ -126,8 +126,7 @@ public class FileStore {
      * @param keyIterations the number of iterations the key should be hashed
      * @return the created object
      */
-    public static FileStore open(DataHandler handler, String name, String mode, String cipher,
-            byte[] key, int keyIterations) {
+    public static FileStore open(DataHandler handler, String name, String mode, String cipher, byte[] key, int keyIterations) {
         FileStore store;
         if (cipher == null) {
             store = new FileStore(handler, name, mode);

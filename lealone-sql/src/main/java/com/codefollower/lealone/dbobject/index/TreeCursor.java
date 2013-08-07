@@ -88,7 +88,6 @@ public class TreeCursor implements Cursor {
         return x;
     }
 
-
     /**
      * Get the previous node if there is one.
      *

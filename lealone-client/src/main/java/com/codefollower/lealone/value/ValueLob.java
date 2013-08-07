@@ -65,8 +65,8 @@ public class ValueLob extends Value {
     private boolean compression;
     private FileStore tempFile;
 
-    private ValueLob(int type, DataHandler handler, String fileName, int tableId, int objectId, boolean linked,
-            long precision, boolean compression) {
+    private ValueLob(int type, DataHandler handler, String fileName, int tableId, int objectId, boolean linked, long precision,
+            boolean compression) {
         this.type = type;
         this.handler = handler;
         this.fileName = fileName;
@@ -90,8 +90,8 @@ public class ValueLob extends Value {
     }
 
     private static ValueLob copy(ValueLob lob) {
-        ValueLob copy = new ValueLob(lob.type, lob.handler, lob.fileName,
-                lob.tableId, lob.objectId, lob.linked, lob.precision, lob.compression);
+        ValueLob copy = new ValueLob(lob.type, lob.handler, lob.fileName, lob.tableId, lob.objectId, lob.linked, lob.precision,
+                lob.compression);
         copy.small = lob.small;
         copy.hash = lob.hash;
         return copy;
@@ -127,8 +127,7 @@ public class ValueLob extends Value {
      * @param compression if compression is used
      * @return the value object
      */
-    public static ValueLob open(int type, DataHandler handler,
-            int tableId, int objectId, long precision, boolean compression) {
+    public static ValueLob open(int type, DataHandler handler, int tableId, int objectId, long precision, boolean compression) {
         String fileName = getFileName(handler, tableId, objectId);
         return new ValueLob(type, handler, fileName, tableId, objectId, true, precision, compression);
     }
@@ -749,8 +748,7 @@ public class ValueLob extends Value {
         }
     }
 
-    private static synchronized void renameFile(DataHandler handler, String oldName, String newName)
-            {
+    private static synchronized void renameFile(DataHandler handler, String oldName, String newName) {
         synchronized (handler.getLobSyncObject()) {
             FileUtils.moveTo(oldName, newName);
         }

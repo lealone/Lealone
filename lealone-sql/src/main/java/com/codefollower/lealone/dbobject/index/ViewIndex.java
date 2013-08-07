@@ -41,8 +41,7 @@ public class ViewIndex extends BaseIndex {
     private final TableView view;
     private final String querySQL;
     private final ArrayList<Parameter> originalParameters;
-    private final SmallLRUCache<IntArray, CostElement> costCache =
-        SmallLRUCache.newInstance(Constants.VIEW_INDEX_CACHE_SIZE);
+    private final SmallLRUCache<IntArray, CostElement> costCache = SmallLRUCache.newInstance(Constants.VIEW_INDEX_CACHE_SIZE);
     private boolean recursive;
     private final int[] indexMasks;
     private String planSQL;
@@ -71,7 +70,7 @@ public class ViewIndex extends BaseIndex {
         columns = new Column[0];
         if (!recursive) {
             query = getQuery(session, masks);
-            planSQL =  query.getPlanSQL();
+            planSQL = query.getPlanSQL();
         }
     }
 
@@ -183,7 +182,7 @@ public class ViewIndex extends BaseIndex {
             }
             if (query == null) {
                 query = (Query) createSession.prepare(querySQL, true);
-                planSQL =  query.getPlanSQL();
+                planSQL = query.getPlanSQL();
             }
             if (!(query instanceof SelectUnion)) {
                 throw DbException.get(ErrorCode.SYNTAX_ERROR_2, "recursive queries without UNION ALL");
@@ -195,7 +194,7 @@ public class ViewIndex extends BaseIndex {
             Query left = union.getLeft();
             // to ensure the last result is not closed
             left.disableCache();
-            LocalResult r = (LocalResult)left.query(0);
+            LocalResult r = (LocalResult) left.query(0);
             LocalResult result = union.getEmptyResult();
             while (r.next()) {
                 result.addRow(r.currentRow());
@@ -206,7 +205,7 @@ public class ViewIndex extends BaseIndex {
             // to ensure the last result is not closed
             right.disableCache();
             while (true) {
-                r = (LocalResult)right.query(0);
+                r = (LocalResult) right.query(0);
                 if (r.getRowCount() == 0) {
                     break;
                 }

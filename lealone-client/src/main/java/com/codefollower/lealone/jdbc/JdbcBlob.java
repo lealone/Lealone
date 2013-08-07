@@ -86,7 +86,7 @@ public class JdbcBlob extends TraceObject implements Blob {
     public byte[] getBytes(long pos, int length) throws SQLException {
         try {
             if (isDebugEnabled()) {
-                debugCode("getBytes("+pos+", "+length+");");
+                debugCode("getBytes(" + pos + ", " + length + ");");
             }
             checkClosed();
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -115,7 +115,7 @@ public class JdbcBlob extends TraceObject implements Blob {
     public int setBytes(long pos, byte[] bytes) throws SQLException {
         try {
             if (isDebugEnabled()) {
-                debugCode("setBytes("+pos+", "+quoteBytes(bytes)+");");
+                debugCode("setBytes(" + pos + ", " + quoteBytes(bytes) + ");");
             }
             checkClosed();
             if (pos != 1) {
@@ -171,7 +171,7 @@ public class JdbcBlob extends TraceObject implements Blob {
     public OutputStream setBinaryStream(long pos) throws SQLException {
         try {
             if (isDebugEnabled()) {
-                debugCode("setBinaryStream("+pos+");");
+                debugCode("setBinaryStream(" + pos + ");");
             }
             checkClosed();
             if (pos != 1) {
@@ -214,7 +214,7 @@ public class JdbcBlob extends TraceObject implements Blob {
      */
     public long position(byte[] pattern, long start) throws SQLException {
         if (isDebugEnabled()) {
-            debugCode("position("+quoteBytes(pattern)+", "+start+");");
+            debugCode("position(" + quoteBytes(pattern) + ", " + start + ");");
         }
         if (Constants.BLOB_SEARCH) {
             try {
@@ -269,7 +269,7 @@ public class JdbcBlob extends TraceObject implements Blob {
      */
     public long position(Blob blobPattern, long start) throws SQLException {
         if (isDebugEnabled()) {
-            debugCode("position(blobPattern, "+start+");");
+            debugCode("position(blobPattern, " + start + ");");
         }
         if (Constants.BLOB_SEARCH) {
             try {

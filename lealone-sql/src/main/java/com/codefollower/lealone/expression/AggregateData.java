@@ -357,7 +357,7 @@ class AggregateData {
             int i = 0;
             for (Value dv : distinctValues.keys()) {
                 AggregateData d = distinctValues.get(dv);
-                values[i] = ValueArray.get(new Value[] {dv, ValueLong.get(d.count)});
+                values[i] = ValueArray.get(new Value[] { dv, ValueLong.get(d.count) });
                 i++;
             }
             final CompareMode compareMode = database.getCompareMode();

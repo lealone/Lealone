@@ -77,8 +77,7 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
      * @param precision the precision (number of bytes / characters)
      * @return the value
      */
-    public static ValueLobDb create(int type, LobStorage lobStorage,
-            int tableId, long id, byte[] hmac, long precision) {
+    public static ValueLobDb create(int type, LobStorage lobStorage, int tableId, long id, byte[] hmac, long precision) {
         return new ValueLobDb(type, lobStorage, tableId, id, hmac, precision);
     }
 
@@ -287,8 +286,7 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
         } else if (fileName != null) {
             FileStore store = handler.openFile(fileName, "r", true);
             boolean alwaysClose = SysProperties.lobCloseBetweenReads;
-            return new BufferedInputStream(new FileStoreInputStream(store, handler, false, alwaysClose),
-                    Constants.IO_BUFFER_SIZE);
+            return new BufferedInputStream(new FileStoreInputStream(store, handler, false, alwaysClose), Constants.IO_BUFFER_SIZE);
         }
         long byteCount = (type == Value.BLOB) ? precision : -1;
         try {
