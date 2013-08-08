@@ -745,7 +745,8 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         return 1;
     }
 
-    public void commitTransaction() {
+    public synchronized void commitTransaction() {
+        checkClosed();
         for (int i = 0, count = 0; i < transferList.size(); i++) {
             Transfer transfer = transferList.get(i);
             try {
@@ -761,7 +762,8 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         }
     }
 
-    public void rollbackTransaction() {
+    public synchronized void rollbackTransaction() {
+        checkClosed();
         for (int i = 0, count = 0; i < transferList.size(); i++) {
             Transfer transfer = transferList.get(i);
             try {
@@ -796,15 +798,14 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         return connectionInfo.getURL();
     }
 
-    public void checkTransfer() {
+    public synchronized void checkTransfers() {
         if (transferList != null) {
             for (int i = 0; i < transferList.size(); i++) {
                 Transfer transfer = transferList.get(i);
 
                 try {
                     if (transfer.available() > 0)
-                        throw DbException.throwInternalError("After transaction commit, the transfer available bytes was "
-                                + transfer.available());
+                        throw DbException.throwInternalError("the transfer available bytes was " + transfer.available());
                 } catch (IOException e) {
                     throw DbException.convert(e);
                 }

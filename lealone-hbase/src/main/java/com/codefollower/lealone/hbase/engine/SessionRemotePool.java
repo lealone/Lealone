@@ -132,4 +132,10 @@ public class SessionRemotePool {
 
         return cr;
     }
+
+    public static void check() {
+        for (ConcurrentLinkedQueue<SessionRemote> queue : pool.values())
+            for (SessionRemote sr : queue)
+                sr.checkTransfers();
+    }
 }
