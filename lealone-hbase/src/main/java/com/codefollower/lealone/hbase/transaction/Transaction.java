@@ -26,6 +26,7 @@ import static com.codefollower.lealone.hbase.engine.HBaseConstants.TRANSACTION_C
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
@@ -139,25 +140,33 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         return "T-" + transactionId;
     }
 
+    //只从最顶层的事务提交
     public void commit() {
         if (!autoCommit) {
-            try {
-                for (Transaction t : children)
-                    t.commit();
+            ArrayList<Transaction> allTransactions = New.arrayList();
+            getAllTransactionsRecursively(allTransactions);
 
-                setCommitTimestamp(timestampService.nextOdd());
-                checkConflict();
+            try {
+                long commitTimestamp = timestampService.nextOdd();
+                Set<HBaseRow> undoRows = New.hashSet();
+                for (Transaction t : allTransactions) {
+                    t.setCommitTimestamp(commitTimestamp);
+                    undoRows.addAll(t.undoRows);
+                }
+
+                checkConflict(undoRows);
                 //TODO 考虑如何缓存事务id和提交时间戳? 难点是: 当前节点提交了，但是还不能完全确定全局事务正常提交
             } catch (Exception e) {
                 rollback();
                 throw DbException.convert(e);
             } finally {
-                endTransaction();
+                for (Transaction t : allTransactions)
+                    t.endTransaction();
             }
         }
     }
 
-    private void checkConflict() {
+    private void checkConflict(Set<HBaseRow> undoRows) {
         synchronized (commitHashMap) {
             if (transactionId < timestampService.first()) {
                 //1. transactionId不可能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
@@ -170,16 +179,16 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
             } else {
                 //3. write-write冲突检测
                 for (HBaseRow row : undoRows) {
-                    long oldCommitTimestamp = commitHashMap.getLatestWriteForRow(row.getHashCode());
+                    long oldCommitTimestamp = commitHashMap.getLatestWriteForRow(row.hashCode());
                     if (oldCommitTimestamp != 0 && oldCommitTimestamp > transactionId) {
                         throw new RuntimeException("Write-write conflict: oldCommitTimestamp " + oldCommitTimestamp
-                                + ", startTimestamp " + transactionId);
+                                + ", startTimestamp " + transactionId + ", rowKey " + row.getRowKey());
                     }
                 }
 
                 //不能把下面的代码放入第3步的for循环中，只有冲突检测完后才能put提交记录
                 for (HBaseRow row : undoRows) {
-                    commitHashMap.putLatestWriteForRow(row.getHashCode(), getCommitTimestamp());
+                    commitHashMap.putLatestWriteForRow(row.hashCode(), getCommitTimestamp());
                 }
             }
         }
@@ -272,7 +281,7 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
 
         if (includeSelf) {
             ArrayList<Transaction> list = New.arrayList();
-            getTransactionRecursively(list);
+            getAllTransactionsRecursively(list);
 
             String hostAndPort = session.getHostAndPort();
             int len = list.size();
@@ -289,10 +298,10 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         return commitInfoList.toArray(new CommitInfo[commitInfoList.size()]);
     }
 
-    private void getTransactionRecursively(ArrayList<Transaction> list) {
+    private void getAllTransactionsRecursively(ArrayList<Transaction> list) {
         list.add(this);
         for (Transaction t : children)
-            t.getTransactionRecursively(list);
+            t.getAllTransactionsRecursively(list);
     }
 
     @Override

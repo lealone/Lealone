@@ -32,15 +32,20 @@ import com.codefollower.lealone.test.jdbc.TestBase;
 public class MergeTest extends TestBase {
     @Test
     public void run() throws Exception {
-        stmt.executeUpdate("DROP TABLE IF EXISTS MergeTest");
+        //stmt.executeUpdate("DROP TABLE IF EXISTS MergeTest");
         //如果id是primary key，那么在MERGE语句中KEY子句可省，默认用primary key
         //stmt.executeUpdate("CREATE TABLE IF NOT EXISTS MergeTest(id int not null primary key, name varchar(500) not null)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS MergeTest(id int, name varchar(500) as '123')");
 
-        stmt.executeUpdate("DROP TABLE IF EXISTS tmpSelectTest");
+        //stmt.executeUpdate("DROP TABLE IF EXISTS tmpSelectTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS tmpSelectTest(id int, name varchar(500))");
 
-        sql = "INSERT INTO tmpSelectTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')";
+        stmt.executeUpdate("DELETE FROM MergeTest");
+        stmt.executeUpdate("DELETE FROM tmpSelectTest");
+
+        //TODO 目前不支持同一行中所有列都是NULL值的情况
+        //sql = "INSERT INTO tmpSelectTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')";
+        sql = "INSERT INTO tmpSelectTest VALUES(DEFAULT, 'c'),(10, 'a'),(20, 'b')";
         assertEquals(3, stmt.executeUpdate(sql));
 
         //从另一表查数据，然后插入此表

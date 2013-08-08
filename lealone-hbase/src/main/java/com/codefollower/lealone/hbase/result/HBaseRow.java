@@ -42,11 +42,6 @@ public class HBaseRow extends Row {
         super(data, memory);
     }
 
-    public HBaseRow(byte[] regionName, Value rowKey, Value[] data, int memory) {
-        super(rowKey, data, memory);
-        this.regionName = regionName;
-    }
-
     public HBaseRow(byte[] regionName, Value rowKey, Value[] data, int memory, Result result) {
         super(rowKey, data, memory);
         this.regionName = regionName;
@@ -89,7 +84,8 @@ public class HBaseRow extends Row {
         this.table = table;
     }
 
-    public int getHashCode() {
+    @Override
+    public int hashCode() {
         if (hashCode != 0)
             return hashCode;
         byte[] rowKey = HBaseUtils.toBytes(getRowKey());

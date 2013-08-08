@@ -33,7 +33,8 @@ public class RegionSplitTest extends TestBase {
         stmt.executeUpdate("DROP TABLE IF EXISTS RegionSplitTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS RegionSplitTest (id int primary key, name varchar(500))");
 
-        for (int i = 1; i < 50; i++)
+        int size = 50;
+        for (int i = 1; i < size; i++)
             stmt.executeUpdate("INSERT INTO RegionSplitTest(id, name) VALUES(" + i + ", 'a1')");
 
         String tableName = "RegionSplitTest".toUpperCase();
@@ -42,7 +43,7 @@ public class RegionSplitTest extends TestBase {
         //admin.getConnection().clearRegionCache();
         admin.split(Bytes.toBytes(tableName), Bytes.toBytes(10));
 
-        for (int i = 1; i < 50; i++)
+        for (int i = 1; i < size; i++)
             stmt.executeUpdate("INSERT INTO RegionSplitTest(id, name) VALUES(" + i + ", 'a1')");
 
         //admin.getConnection().clearRegionCache();
@@ -52,7 +53,7 @@ public class RegionSplitTest extends TestBase {
         sql = "select id, name from RegionSplitTest";
         printResultSet();
 
-        for (int i = 1; i < 50; i++)
+        for (int i = 1; i < size; i++)
             stmt.executeUpdate("INSERT INTO RegionSplitTest(id, name) VALUES(" + i + ", 'a1')");
 
         //admin.getConnection().clearRegionCache();
