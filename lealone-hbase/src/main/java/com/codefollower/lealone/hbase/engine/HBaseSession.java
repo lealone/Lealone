@@ -221,7 +221,7 @@ public class HBaseSession extends Session {
     public void commit(boolean ddl) {
         if (transaction != null) {
             try {
-                if (sessionRemoteCache.size() > 0)
+                if (!getAutoCommit() && sessionRemoteCache.size() > 0)
                     parallelCommit();
 
                 transaction.commit();
@@ -242,7 +242,7 @@ public class HBaseSession extends Session {
     public void rollback() {
         if (transaction != null) {
             try {
-                if (sessionRemoteCache.size() > 0)
+                if (!getAutoCommit() && sessionRemoteCache.size() > 0)
                     parallelRollback();
 
                 transaction.rollback();

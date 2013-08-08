@@ -216,10 +216,6 @@ public class Parser {
      * @return the command object
      */
     public Command prepareCommand(String sql) {
-        return prepareCommand(sql, false);
-    }
-
-    public Command prepareCommand(String sql, boolean isLocal) { //子类可根据需要确定如何使用isLocal参数
         try {
             Prepared p = parse(sql);
             p.prepare();

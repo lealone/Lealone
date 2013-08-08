@@ -141,13 +141,14 @@ public class ValidityChecker {
      */
     private static boolean isValidRead(String hostAndPort, long queryTimestamp, long startTimestamp, Transaction transaction)
             throws IOException {
-        //1. 入库时间戳等于当前事务的开始时间戳，说明当前事务在读取它刚写入的记录
-        if (queryTimestamp == startTimestamp || transaction.isUncommitted(queryTimestamp))
-            return true;
 
-        //2. 时间戳是偶数时，说明是非事务，如果入库时间戳小于当前事务的开始时间戳，那么就认为此条记录是有效的
+        //1. 时间戳是偶数时，说明是非事务，如果入库时间戳小于当前事务的开始时间戳，那么就认为此条记录是有效的
         if (queryTimestamp % 2 == 0)
             return queryTimestamp < startTimestamp;
+
+        //2. 入库时间戳等于当前事务的开始时间戳，说明当前事务在读取它刚写入的记录
+        if (queryTimestamp == startTimestamp || transaction.isUncommitted(queryTimestamp))
+            return true;
 
         long commitTimestamp = cache.get(queryTimestamp); //TransactionStatusCache中的所有值初始情况下是-1
 

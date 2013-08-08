@@ -36,7 +36,7 @@ import com.codefollower.lealone.hbase.engine.HBaseDatabaseEngine;
 import com.codefollower.lealone.hbase.zookeeper.PgPortTracker;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.message.TraceSystem;
-import com.codefollower.lealone.server.pg.PgServer;
+import com.codefollower.lealone.server.PgServer;
 
 import static com.codefollower.lealone.hbase.engine.HBaseConstants.*;
 

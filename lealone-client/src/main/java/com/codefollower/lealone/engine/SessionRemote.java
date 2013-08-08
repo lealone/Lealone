@@ -107,8 +107,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
 
     private Transfer initTransfer(ConnectionInfo ci, String db, String server) throws IOException {
         Socket socket = NetUtils.createSocket(server, Constants.DEFAULT_TCP_PORT, ci.isSSL());
-        Transfer trans = new Transfer(this);
-        trans.setSocket(socket);
+        Transfer trans = new Transfer(this, socket);
         trans.setSSL(ci.isSSL());
         trans.init();
         trans.writeInt(Constants.TCP_PROTOCOL_VERSION_6);
@@ -578,9 +577,13 @@ public class SessionRemote extends SessionWithState implements DataHandler {
      */
     public void done(Transfer transfer) throws IOException {
         //正常来讲不会出现这种情况，如果出现了，说明存在bug，找出为什么transfer的输入流没正常读完的原因
-        if (transfer.available() > 0)
+        if (transfer.available() > 0) {
+            //transfer.readBytes(new byte[transfer.available()], 0, transfer.available());
+            //byte[] bytes = new byte[transfer.available()];
+            //transfer.readBytes(bytes, 0, bytes.length);
             throw DbException.throwInternalError("before transfer flush, the available bytes was " + transfer.available());
-        //    transfer.readBytes(new byte[transfer.available()], 0, transfer.available());
+        }
+
         transfer.flush();
         int status = transfer.readInt();
         if (status == STATUS_ERROR) {
@@ -791,5 +794,21 @@ public class SessionRemote extends SessionWithState implements DataHandler {
 
     public String getURL() {
         return connectionInfo.getURL();
+    }
+
+    public void checkTransfer() {
+        if (transferList != null) {
+            for (int i = 0; i < transferList.size(); i++) {
+                Transfer transfer = transferList.get(i);
+
+                try {
+                    if (transfer.available() > 0)
+                        throw DbException.throwInternalError("After transaction commit, the transfer available bytes was "
+                                + transfer.available());
+                } catch (IOException e) {
+                    throw DbException.convert(e);
+                }
+            }
+        }
     }
 }

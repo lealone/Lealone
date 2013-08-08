@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package com.codefollower.lealone.server.pg;
+package com.codefollower.lealone.server;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -685,8 +685,7 @@ public class PgServerThread implements Runnable {
     private static void installPgCatalog(Statement stat) throws SQLException {
         Reader r = null;
         try {
-            r = new InputStreamReader(new ByteArrayInputStream(
-                    Utils.getResource("/com/codefollower/lealone/server/pg/pg_catalog.sql")));
+            r = new InputStreamReader(new ByteArrayInputStream(Utils.getResource("/com/codefollower/lealone/res/pg_catalog.sql")));
             ScriptReader reader = new ScriptReader(r);
             while (true) {
                 String sql = reader.readStatement();

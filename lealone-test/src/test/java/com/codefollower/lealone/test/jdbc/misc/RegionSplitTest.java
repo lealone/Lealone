@@ -19,7 +19,13 @@
  */
 package com.codefollower.lealone.test.jdbc.misc;
 
+import java.util.Map;
+
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
@@ -62,5 +68,27 @@ public class RegionSplitTest extends TestBase {
 
         sql = "select id, name from RegionSplitTest";
         printResultSet();
+    }
+
+    void closeRegionWithEncodedRegionName(String tableName) throws Exception {
+        printRegions(tableName);
+
+        HBaseAdmin admin = HBaseUtils.getHBaseAdmin();
+        //admin.getConnection().clearRegionCache();
+        //admin.split(Bytes.toBytes(tableName), Bytes.toBytes(10));
+        HTable t = new HTable(HBaseConfiguration.create(), tableName.toUpperCase());
+        for (Map.Entry<HRegionInfo, ServerName> e : t.getRegionLocations().entrySet()) {
+            HRegionInfo info = e.getKey();
+            System.out.println("info.getEncodedName()=" + info.getEncodedName());
+            ServerName server = e.getValue();
+
+            System.out.println("HRegionInfo = " + info.getRegionNameAsString());
+            System.out.println("ServerName = " + server);
+            System.out.println();
+
+            //admin.closeRegion(server, info);
+            admin.closeRegionWithEncodedRegionName(info.getEncodedName(), server.getServerName());
+            break;
+        }
     }
 }

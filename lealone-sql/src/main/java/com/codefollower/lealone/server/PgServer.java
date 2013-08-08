@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package com.codefollower.lealone.server.pg;
+package com.codefollower.lealone.server;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -22,10 +22,8 @@ import java.util.Set;
 
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.message.DbException;
-import com.codefollower.lealone.server.Service;
 import com.codefollower.lealone.util.NetUtils;
 import com.codefollower.lealone.util.New;
-import com.codefollower.lealone.util.Tool;
 
 /**
  * This class implements a subset of the PostgreSQL protocol as described here:
@@ -88,18 +86,18 @@ public class PgServer implements Service {
         port = DEFAULT_PORT;
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
-            if (Tool.isOption(a, "-trace")) {
+            if (TcpServer.isOption(a, "-trace")) {
                 trace = true;
-            } else if (Tool.isOption(a, "-pgPort")) {
+            } else if (TcpServer.isOption(a, "-pgPort")) {
                 port = Integer.decode(args[++i]);
                 portIsSet = true;
-            } else if (Tool.isOption(a, "-baseDir")) {
+            } else if (TcpServer.isOption(a, "-baseDir")) {
                 baseDir = args[++i];
-            } else if (Tool.isOption(a, "-pgAllowOthers")) {
+            } else if (TcpServer.isOption(a, "-pgAllowOthers")) {
                 allowOthers = true;
-            } else if (Tool.isOption(a, "-pgDaemon")) {
+            } else if (TcpServer.isOption(a, "-pgDaemon")) {
                 isDaemon = true;
-            } else if (Tool.isOption(a, "-ifExists")) {
+            } else if (TcpServer.isOption(a, "-ifExists")) {
                 ifExists = true;
             }
         }

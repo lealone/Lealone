@@ -34,8 +34,8 @@ import com.codefollower.lealone.value.Transfer;
 public class HBaseTcpServerThread extends TcpServerThread {
     private HBaseTcpServer server;
 
-    protected HBaseTcpServerThread(Socket socket, HBaseTcpServer server, int id) {
-        super(socket, server, id);
+    protected HBaseTcpServerThread(Socket socket, HBaseTcpServer server, int threadId) {
+        super(socket, server, threadId);
         this.server = server;
     }
 

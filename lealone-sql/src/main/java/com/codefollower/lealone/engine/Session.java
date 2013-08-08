@@ -405,19 +405,15 @@ public class Session extends SessionWithState {
      * @return the prepared statement
      */
     public Command prepareLocal(String sql) {
-        return prepareCommand(sql, true);
+        return prepareCommand(sql);
     }
 
     @Override
     public Command prepareCommand(String sql, int fetchSize) {
-        return prepareCommand(sql, false);
+        return prepareCommand(sql);
     }
 
-    public Command prepareCommand(String sql) {
-        return prepareCommand(sql, false);
-    }
-
-    public synchronized Command prepareCommand(String sql, boolean isLocal) {
+    public synchronized Command prepareCommand(String sql) {
         if (closed) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
@@ -434,7 +430,7 @@ public class Session extends SessionWithState {
             }
         }
         Parser parser = createParser();
-        command = parser.prepareCommand(sql, isLocal);
+        command = parser.prepareCommand(sql);
         if (queryCache != null) {
             if (command.isCacheable()) {
                 queryCache.put(sql, command);

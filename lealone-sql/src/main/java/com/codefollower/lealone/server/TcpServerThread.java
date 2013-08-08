@@ -48,30 +48,32 @@ import com.codefollower.lealone.value.ValueLobDb;
  */
 public class TcpServerThread implements Runnable {
 
-    protected final Transfer transfer;
-    protected final TcpServer server;
+    private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
+    private final SmallLRUCache<Long, CachedInputStream> lobs = SmallLRUCache.newInstance(Math.max(
+            SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+
+    private final TcpServer server;
+    private final int threadId;
+    private final Transfer transfer;
+
     private Session session;
     private boolean stop;
     private Thread thread;
     private Command commit;
-    private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
-    private final SmallLRUCache<Long, CachedInputStream> lobs = SmallLRUCache.newInstance(Math.max(
-            SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
-    private final int threadId;
     private int clientVersion;
     private String sessionId;
 
-    protected TcpServerThread(Socket socket, TcpServer server, int id) {
+    protected TcpServerThread(Socket socket, TcpServer server, int threadId) {
         this.server = server;
-        this.threadId = id;
-        transfer = new Transfer(null);
-        transfer.setSocket(socket);
+        this.threadId = threadId;
+        transfer = new Transfer(null, socket);
     }
 
     private void trace(String s) {
         server.trace(this + " " + s);
     }
 
+    @Override
     public void run() {
         try {
             transfer.init();

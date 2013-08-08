@@ -31,7 +31,6 @@ import com.codefollower.lealone.util.JdbcUtils;
 import com.codefollower.lealone.util.NetUtils;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.StringUtils;
-import com.codefollower.lealone.util.Tool;
 
 /**
  * The TCP server implements the native H2 database server protocol.
@@ -59,7 +58,6 @@ public class TcpServer implements Service {
     private boolean trace;
     private boolean ssl;
     private boolean stop;
-    private ShutdownHandler shutdownHandler;
     private ServerSocket serverSocket;
     private final Set<TcpServerThread> running = Collections.synchronizedSet(new HashSet<TcpServerThread>());
     private String baseDir;
@@ -85,6 +83,24 @@ public class TcpServer implements Service {
         return "mem:" + MANAGEMENT_DB_PREFIX + port;
     }
 
+    /**
+     * Check if the argument matches the option.
+     * If the argument starts with this option, but doesn't match,
+     * then an exception is thrown.
+     *
+     * @param arg the argument
+     * @param option the command line option
+     * @return true if it matches
+     */
+    public static boolean isOption(String arg, String option) {
+        if (arg.equals(option)) {
+            return true;
+        } else if (arg.startsWith(option)) {
+            throw DbException.getUnsupportedException("expected: " + option + " got: " + arg);
+        }
+        return false;
+    }
+
     protected void initManagementDb() throws SQLException {
         Properties prop = new Properties();
         prop.setProperty("user", "");
@@ -103,19 +119,6 @@ public class TcpServer implements Service {
             JdbcUtils.closeSilently(stat);
         }
         SERVERS.put(port, this);
-    }
-
-    /**
-     * Shut down this server.
-     */
-    void shutdown() {
-        if (shutdownHandler != null) {
-            shutdownHandler.shutdown();
-        }
-    }
-
-    public void setShutdownHandler(ShutdownHandler shutdownHandler) {
-        this.shutdownHandler = shutdownHandler;
     }
 
     /**
@@ -165,25 +168,25 @@ public class TcpServer implements Service {
         port = Constants.DEFAULT_TCP_PORT;
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
-            if (Tool.isOption(a, "-trace")) {
+            if (isOption(a, "-trace")) {
                 trace = true;
-            } else if (Tool.isOption(a, "-tcpSSL")) {
+            } else if (isOption(a, "-tcpSSL")) {
                 ssl = true;
-            } else if (Tool.isOption(a, "-tcpPort")) {
+            } else if (isOption(a, "-tcpPort")) {
                 port = Integer.decode(args[++i]);
                 portIsSet = true;
-            } else if (Tool.isOption(a, "-tcpPassword")) {
+            } else if (isOption(a, "-tcpPassword")) {
                 managementPassword = args[++i];
-            } else if (Tool.isOption(a, "-baseDir")) {
+            } else if (isOption(a, "-baseDir")) {
                 baseDir = args[++i];
-            } else if (Tool.isOption(a, "-key")) {
+            } else if (isOption(a, "-key")) {
                 key = args[++i];
                 keyDatabase = args[++i];
-            } else if (Tool.isOption(a, "-tcpAllowOthers")) {
+            } else if (isOption(a, "-tcpAllowOthers")) {
                 allowOthers = true;
-            } else if (Tool.isOption(a, "-tcpDaemon")) {
+            } else if (isOption(a, "-tcpDaemon")) {
                 isDaemon = true;
-            } else if (Tool.isOption(a, "-ifExists")) {
+            } else if (isOption(a, "-ifExists")) {
                 ifExists = true;
             }
         }
@@ -349,7 +352,6 @@ public class TcpServer implements Service {
         } else if (shutdownMode == SHUTDOWN_FORCE) {
             server.stop();
         }
-        server.shutdown();
     }
 
     /**

@@ -20,7 +20,7 @@
 package com.codefollower.lealone.hbase.engine;
 
 import com.codefollower.lealone.constant.Constants;
-import com.codefollower.lealone.server.pg.PgServer;
+import com.codefollower.lealone.server.PgServer;
 
 public class HBaseConstants {
     public static final String HBASE_DB_NAME = "hbasedb";

@@ -30,7 +30,7 @@ import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import com.codefollower.lealone.jdbc.JdbcConnection;
 import com.codefollower.lealone.security.SHA256;
-import com.codefollower.lealone.server.pg.PgServerThread;
+import com.codefollower.lealone.server.PgServerThread;
 import com.codefollower.lealone.util.StringUtils;
 
 public class HBasePgServerThread extends PgServerThread {
