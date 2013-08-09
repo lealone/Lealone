@@ -11,7 +11,7 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 * 是一个可用于HBase的分布式SQL引擎
 
 * 支持高性能的分布式事务，<br>
-  使用一个非常新颖的 **基于局部时间戳的多版本冲突与有效性检测的事务模型**
+  使用一个非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/wiki/%E5%9F%BA%E4%BA%8E%E5%B1%80%E9%83%A8%E6%97%B6%E9%97%B4%E6%88%B3%E7%9A%84%E5%A4%9A%E7%89%88%E6%9C%AC%E5%86%B2%E7%AA%81%E4%B8%8E%E6%9C%89%E6%95%88%E6%80%A7%E6%A3%80%E6%B5%8B%E7%9A%84%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E6%A8%A1%E5%9E%8B)
 
 * 是对[H2关系数据库](http://www.h2database.com/html/main.html)SQL引擎的改进和扩展
 
