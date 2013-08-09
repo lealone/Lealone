@@ -22,6 +22,7 @@ package com.codefollower.lealone.test.jdbc.index;
 import static junit.framework.Assert.assertEquals;
 
 import java.sql.SQLException;
+import java.sql.Savepoint;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,6 +37,7 @@ public class IndexTest extends TestBase {
         select();
         testCommit();
         testRollback();
+        testSavepoint();
 
         //printHTable("IndexTest".toUpperCase(), 1000);
     }
@@ -47,7 +49,7 @@ public class IndexTest extends TestBase {
         stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS IndexTest_idx1 ON IndexTest(f2)");
         stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest_idx2 ON IndexTest(f3, f2)");
 
-        //indexFieldWithColumnFamilyPrefix();
+        indexFieldWithColumnFamilyPrefix();
     }
 
     void indexFieldWithColumnFamilyPrefix() throws Exception {
@@ -205,5 +207,34 @@ public class IndexTest extends TestBase {
 
         sql = "DELETE FROM IndexTest WHERE f2 >= 20";
         assertEquals(2, stmt.executeUpdate(sql));
+    }
+
+    void testSavepoint() throws Exception {
+        stmt.executeUpdate("DELETE FROM IndexTest");
+        try {
+            conn.setAutoCommit(false);
+            stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 10, 'a')");
+            stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'b')");
+            Savepoint savepoint = conn.setSavepoint();
+            stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(300, 30, 'c')");
+            sql = "SELECT f1, f2, f3 FROM IndexTest";
+            printResultSet();
+            sql = "SELECT count(*) FROM IndexTest";
+            assertEquals(3, getIntValue(1, true));
+
+            conn.rollback(savepoint);
+            //调用rollback(savepoint)后还是需要调用commit
+            conn.commit();
+            //或调用rollback也能撤消之前的操作
+            //conn.rollback();
+        } finally {
+            //这个内部也会触发commit
+            conn.setAutoCommit(true);
+        }
+
+        sql = "SELECT f1, f2, f3 FROM IndexTest";
+        printResultSet();
+        sql = "SELECT count(*) FROM IndexTest";
+        assertEquals(2, getIntValue(1, true));
     }
 }

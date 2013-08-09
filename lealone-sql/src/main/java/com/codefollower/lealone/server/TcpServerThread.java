@@ -431,6 +431,26 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
+        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD:
+        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK: {
+            int old = session.getModificationId();
+            String name = transfer.readString();
+            synchronized (session) {
+                if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD)
+                    session.addSavepoint(name);
+                else
+                    session.rollbackToSavepoint(name);
+            }
+            int status;
+            if (session.isClosed()) {
+                status = SessionRemote.STATUS_CLOSED;
+            } else {
+                status = getState(old);
+            }
+            transfer.writeInt(status);
+            transfer.flush();
+            break;
+        }
         case SessionRemote.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT: {
             int size = transfer.readInt();
             ArrayList<String> batchCommands = New.arrayList(size);

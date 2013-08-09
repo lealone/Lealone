@@ -297,4 +297,47 @@ public class HBaseSession extends Session {
         else
             return master.getServerName().getHostAndPort();
     }
+
+    @Override
+    public void addSavepoint(String name) {
+        if (transaction != null) {
+            if (!getAutoCommit() && sessionRemoteCache.size() > 0)
+                parallelSavepoint(true, name);
+
+            transaction.addSavepoint(name);
+        }
+    }
+
+    @Override
+    public void rollbackToSavepoint(String name) {
+        if (transaction != null) {
+            if (!getAutoCommit() && sessionRemoteCache.size() > 0)
+                parallelSavepoint(false, name);
+
+            transaction.rollbackToSavepoint(name);
+        }
+    }
+
+    private void parallelSavepoint(final boolean add, final String name) {
+        int size = sessionRemoteCache.size();
+        List<Future<Void>> futures = New.arrayList(size);
+        for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
+            futures.add(pool.submit(new Callable<Void>() {
+                public Void call() throws Exception {
+                    if (add)
+                        sessionRemote.addSavepoint(name);
+                    else
+                        sessionRemote.rollbackToSavepoint(name);
+                    return null;
+                }
+            }));
+        }
+        try {
+            for (int i = 0; i < size; i++) {
+                futures.get(i).get();
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
 }

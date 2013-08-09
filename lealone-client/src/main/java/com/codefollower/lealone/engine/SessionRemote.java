@@ -70,6 +70,9 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     public static final int COMMAND_EXECUTE_DISTRIBUTED_COMMIT = 102;
     public static final int COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK = 103;
 
+    public static final int COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD = 104;
+    public static final int COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK = 105;
+
     public static final int COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT = 120;
     public static final int COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT = 121;
 
@@ -768,6 +771,32 @@ public class SessionRemote extends SessionWithState implements DataHandler {
             Transfer transfer = transferList.get(i);
             try {
                 transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
+                done(transfer);
+            } catch (IOException e) {
+                removeServer(e, i--, ++count);
+            }
+        }
+    }
+
+    public synchronized void addSavepoint(String name) {
+        checkClosed();
+        for (int i = 0, count = 0; i < transferList.size(); i++) {
+            Transfer transfer = transferList.get(i);
+            try {
+                transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD).writeString(name);
+                done(transfer);
+            } catch (IOException e) {
+                removeServer(e, i--, ++count);
+            }
+        }
+    }
+
+    public synchronized void rollbackToSavepoint(String name) {
+        checkClosed();
+        for (int i = 0, count = 0; i < transferList.size(); i++) {
+            Transfer transfer = transferList.get(i);
+            try {
+                transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK).writeString(name);
                 done(transfer);
             } catch (IOException e) {
                 removeServer(e, i--, ++count);

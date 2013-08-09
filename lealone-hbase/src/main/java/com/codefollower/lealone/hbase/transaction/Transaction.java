@@ -26,8 +26,11 @@ import static com.codefollower.lealone.hbase.engine.HBaseConstants.TRANSACTION_C
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -48,6 +51,10 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     private CopyOnWriteArrayList<Transaction> children;
     private CopyOnWriteArrayList<HBaseRow> undoRows;
     private CopyOnWriteArrayList<CommitInfo> commitInfoList;
+    private HashMap<String, Integer> savepoints;
+
+    //用于跟踪最顶层事务进行了哪些操作(Object对像是HBaseRow或者Transaction)
+    private CopyOnWriteArrayList<Object> transactionTrace;
 
     private long transactionId;
     private long commitTimestamp;
@@ -83,6 +90,8 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         //初始化完transactionId再加入parent，要用这个变量来计算hashCode()
         if (parent != null)
             parent.addChild(this);
+        else
+            transactionTrace = new CopyOnWriteArrayList<Object>();
     }
 
     @Override
@@ -125,6 +134,9 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
 
     public void addChild(Transaction t) {
         children.add(t);
+
+        if (!isNested())
+            transactionTrace.add(t);
     }
 
     public void removeChild(Transaction t) {
@@ -234,6 +246,9 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     public void log(HBaseRow row) {
         if (!autoCommit) {
             undoRows.add(row);
+
+            if (!isNested())
+                transactionTrace.add(row);
         }
     }
 
@@ -317,6 +332,45 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         if (commitInfoList != null) {
             commitInfoList.clear();
             commitInfoList = null;
+        }
+    }
+
+    public void addSavepoint(String name) {
+        if (savepoints == null)
+            savepoints = session.getDatabase().newStringMap();
+
+        savepoints.put(name, transactionTrace.size());
+    }
+
+    public void rollbackToSavepoint(String name) {
+        if (savepoints == null) {
+            throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);
+        }
+
+        Integer savepointIndex = savepoints.get(name);
+        if (savepointIndex == null) {
+            throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);
+        }
+        int i = savepointIndex.intValue();
+        int size;
+        while ((size = transactionTrace.size()) > i) {
+            Object object = transactionTrace.remove(size - 1);
+            if (object instanceof Transaction)
+                ((Transaction) object).rollback();
+            else {
+                HBaseRow row = (HBaseRow) object;
+                row.getTable().removeRow(session, row, true);
+            }
+        }
+        if (savepoints != null) {
+            String[] names = new String[savepoints.size()];
+            savepoints.keySet().toArray(names);
+            for (String n : names) {
+                savepointIndex = savepoints.get(n);
+                if (savepointIndex.intValue() >= i) {
+                    savepoints.remove(name);
+                }
+            }
         }
     }
 }
