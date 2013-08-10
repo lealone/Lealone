@@ -116,8 +116,7 @@ public class TransactionStatusTable {
                 for (String server : servers) {
                     if (!rowKey.equals(server)) {
                         get = new Get(Bytes.toBytes(server));
-                        r = table.get(get);
-                        if (r == null || r.isEmpty()) {
+                        if (!table.exists(get)) {
                             commitTimestamp = -1;
                             break;
                         }
