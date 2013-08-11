@@ -451,6 +451,10 @@ public class Session extends SessionWithState {
         database.setPowerOffCount(count);
     }
 
+    public void commit(boolean ddl, String allLocalTransactionNames) {
+        commit(ddl);
+    }
+
     /**
      * Commit the current transaction. If the statement was not a data
      * definition statement, and if there are temporary tables that should be

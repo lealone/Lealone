@@ -32,8 +32,6 @@ import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.result.ResultColumn;
 import com.codefollower.lealone.result.ResultInterface;
 import com.codefollower.lealone.store.LobStorage;
-import com.codefollower.lealone.transaction.Transaction;
-import com.codefollower.lealone.transaction.Transaction.CommitInfo;
 import com.codefollower.lealone.util.IOUtils;
 import com.codefollower.lealone.util.New;
 import com.codefollower.lealone.util.SmallLRUCache;
@@ -332,17 +330,16 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY:
+        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY: {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
         case SessionRemote.COMMAND_EXECUTE_QUERY: {
             int id = transfer.readInt();
             int objectId = transfer.readInt();
             int maxRows = transfer.readInt();
             int fetchSize = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
-            if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
             command.getPrepared().setFetchSize(fetchSize);
             setParameters(command);
             int old = session.getModificationId();
@@ -353,7 +350,12 @@ public class TcpServerThread implements Runnable {
             cache.addObject(objectId, result);
             int columnCount = result.getVisibleColumnCount();
             int state = getState(old);
-            transfer.writeInt(state).writeInt(columnCount);
+            transfer.writeInt(state);
+
+            if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY)
+                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+
+            transfer.writeInt(columnCount);
             int rowCount = result.getRowCount();
             transfer.writeInt(rowCount);
             for (int i = 0; i < columnCount; i++) {
@@ -369,14 +371,13 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE:
+        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE: {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
         case SessionRemote.COMMAND_EXECUTE_UPDATE: {
             int id = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
-            if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
             setParameters(command);
             int old = session.getModificationId();
             int updateCount;
@@ -389,15 +390,18 @@ public class TcpServerThread implements Runnable {
             } else {
                 status = getState(old);
             }
-            transfer.writeInt(status).writeInt(updateCount).writeBoolean(session.getAutoCommit());
+            transfer.writeInt(status);
+            if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE)
+                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+
+            transfer.writeInt(updateCount).writeBoolean(session.getAutoCommit());
             transfer.flush();
             break;
         }
         case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT: {
             int old = session.getModificationId();
-            Transaction transaction = session.getTransaction();
             synchronized (session) {
-                session.commit(false);
+                session.commit(false, transfer.readString());
             }
             int status;
             if (session.isClosed()) {
@@ -406,13 +410,6 @@ public class TcpServerThread implements Runnable {
                 status = getState(old);
             }
             transfer.writeInt(status);
-            CommitInfo[] allCommitInfo = transaction.getAllCommitInfo();
-            transaction.releaseResources();
-            int len = allCommitInfo.length;
-            transfer.writeInt(len);
-            for (int i = 0; i < len; i++) {
-                allCommitInfo[i].write(transfer);
-            }
             transfer.flush();
             break;
         }

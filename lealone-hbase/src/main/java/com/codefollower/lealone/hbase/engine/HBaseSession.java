@@ -40,7 +40,6 @@ import com.codefollower.lealone.hbase.command.CommandParallel;
 import com.codefollower.lealone.hbase.command.HBaseParser;
 import com.codefollower.lealone.hbase.command.dml.HBaseInsert;
 import com.codefollower.lealone.hbase.dbobject.HBaseSequence;
-import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.transaction.TimestampService;
 import com.codefollower.lealone.hbase.transaction.Transaction;
@@ -49,8 +48,6 @@ import com.codefollower.lealone.result.Row;
 import com.codefollower.lealone.util.New;
 
 public class HBaseSession extends Session {
-
-    private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
     private static final ThreadPoolExecutor pool = CommandParallel.getThreadPoolExecutor();
 
     /**
@@ -182,19 +179,17 @@ public class HBaseSession extends Session {
     }
 
     private void endTransaction() {
-        if (transaction != null) {
-            transaction = null;
-
+        if (!sessionRemoteCache.isEmpty()) {
             for (SessionRemote sr : sessionRemoteCache.values()) {
                 sr.setTransaction(null);
                 SessionRemotePool.release(sr);
             }
 
             sessionRemoteCache.clear();
-
-            if (!isRoot())
-                super.setAutoCommit(true);
         }
+
+        if (!isRoot())
+            super.setAutoCommit(true);
     }
 
     public synchronized void endNestedTransaction() {
@@ -219,19 +214,27 @@ public class HBaseSession extends Session {
 
     @Override
     public void commit(boolean ddl) {
-        if (transaction != null) {
+        commit(ddl, null);
+    }
+
+    @Override
+    public void commit(boolean ddl, String allLocalTransactionNames) {
+        if (this.transaction != null) {
             try {
+                //避免重复commit
+                Transaction transaction = this.transaction;
+                this.transaction = null;
+                if (allLocalTransactionNames == null)
+                    allLocalTransactionNames = transaction.getAllLocalTransactionNames();
+                List<Future<Void>> futures = null;
                 if (!getAutoCommit() && sessionRemoteCache.size() > 0)
-                    parallelCommit();
+                    futures = parallelCommitOrRollback(allLocalTransactionNames);
 
-                transaction.commit();
-
-                if (!getAutoCommit() && isRoot()) {
-                    transactionStatusTable.addRecord(this);
-                    transaction.releaseResources();
-                }
-
+                transaction.commit(allLocalTransactionNames);
                 super.commit(ddl);
+
+                if (futures != null)
+                    waitFutures(futures);
             } finally {
                 endTransaction();
             }
@@ -240,43 +243,45 @@ public class HBaseSession extends Session {
 
     @Override
     public void rollback() {
-        if (transaction != null) {
+        if (this.transaction != null) {
             try {
+                Transaction transaction = this.transaction;
+                this.transaction = null;
+                List<Future<Void>> futures = null;
                 if (!getAutoCommit() && sessionRemoteCache.size() > 0)
-                    parallelRollback();
+                    futures = parallelCommitOrRollback(null);
 
                 transaction.rollback();
                 super.rollback();
+
+                if (futures != null)
+                    waitFutures(futures);
             } finally {
                 endTransaction();
             }
         }
     }
 
-    private void parallelCommit() {
-        parallel(true);
-    }
-
-    private void parallelRollback() {
-        parallel(false);
-    }
-
-    private void parallel(final boolean commit) {
+    private List<Future<Void>> parallelCommitOrRollback(final String allLocalTransactionNames) {
         int size = sessionRemoteCache.size();
         List<Future<Void>> futures = New.arrayList(size);
         for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
             futures.add(pool.submit(new Callable<Void>() {
                 public Void call() throws Exception {
-                    if (commit)
-                        sessionRemote.commitTransaction();
+                    if (allLocalTransactionNames != null)
+                        sessionRemote.commitTransaction(allLocalTransactionNames);
                     else
                         sessionRemote.rollbackTransaction();
                     return null;
                 }
             }));
         }
+        return futures;
+    }
+
+    private void waitFutures(List<Future<Void>> futures) {
         try {
-            for (int i = 0; i < size; i++) {
+            for (int i = 0, size = futures.size(); i < size; i++) {
                 futures.get(i).get();
             }
         } catch (Exception e) {

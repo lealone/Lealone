@@ -142,7 +142,8 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    if (session.getTransaction() != null && !session.getTransaction().isAutoCommit()) {
+                    boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+                    if (isDistributedQuery) {
                         session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
                                 .writeInt(maxRows);
@@ -160,6 +161,10 @@ public class CommandRemote implements CommandInterface {
                     transfer.writeInt(fetch);
                     sendParameters(transfer);
                     session.done(transfer);
+
+                    if (isDistributedQuery)
+                        session.getTransaction().addLocalTransactionNames(transfer.readString());
+
                     int columnCount = transfer.readInt();
                     int rowCount = transfer.readInt();
                     if (result != null) {
@@ -193,7 +198,8 @@ public class CommandRemote implements CommandInterface {
                 prepareIfRequired();
                 Transfer transfer = transferList.get(i);
                 try {
-                    if (session.getTransaction() != null && !session.getTransaction().isAutoCommit()) {
+                    boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+                    if (isDistributedUpdate) {
                         session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
                         transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
                     } else {
@@ -202,6 +208,10 @@ public class CommandRemote implements CommandInterface {
                     }
                     sendParameters(transfer);
                     session.done(transfer);
+
+                    if (isDistributedUpdate)
+                        session.getTransaction().addLocalTransactionNames(transfer.readString());
+
                     updateCount = transfer.readInt();
                     autoCommit = transfer.readBoolean();
                 } catch (IOException e) {

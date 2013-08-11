@@ -46,8 +46,13 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
     }
 
     public TimestampService getTimestampService() {
-        if (timestampService == null)
-            timestampService = new TimestampService(getServerName().getHostAndPort());
+        if (timestampService == null) {
+            synchronized (this) {
+                if (timestampService == null)
+                    timestampService = new TimestampService(getServerName().getHostAndPort());
+            }
+        }
+
         return timestampService;
     }
 

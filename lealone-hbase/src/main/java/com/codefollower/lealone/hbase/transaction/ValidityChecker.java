@@ -81,7 +81,7 @@ public class ValidityChecker {
                     Get get = new Get(kv.getRow());
                     get.addColumn(kv.getFamily(), kv.getQualifier());
                     get.setMaxVersions(requestVersions); // TODO set maxVersions wisely
-                    get.setTimeRange(0, oldestUncommittedTS - 1);
+                    get.setTimeRange(0, oldestUncommittedTS - 1); //之前也经确认无效的版本不需要再get出来
                     pendingGets.add(get);
                 }
                 isValidRead = false;
@@ -108,6 +108,7 @@ public class ValidityChecker {
             }
         }
 
+        //当只有一个kv并且是无效时上面的for循环会遗漏掉，所以这里补上
         if (!isValidRead && kvs.size() == 1) {
             KeyValue kv = kvs.get(0);
             Get get = new Get(kv.getRow());
@@ -197,7 +198,7 @@ public class ValidityChecker {
                 }
             }
 
-            r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, t, kvs, 1));
+            r = new Result(check(session.getRegionServer(), hostAndPort, regionName, t, kvs, 1));
             if (!r.isEmpty())
                 list.add(r);
         }
@@ -228,7 +229,7 @@ public class ValidityChecker {
                     continue;
                 }
 
-                r = new Result(ValidityChecker.check(session.getRegionServer(), hostAndPort, regionName, t, kvs, 1));
+                r = new Result(check(session.getRegionServer(), hostAndPort, regionName, t, kvs, 1));
                 if (!r.isEmpty())
                     list.add(r);
             }

@@ -35,6 +35,8 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
+import com.codefollower.lealone.hbase.metadata.MetaDataAdmin;
+
 public class TestBase {
     protected static Connection conn;
     protected static Statement stmt;
@@ -260,5 +262,31 @@ public class TestBase {
         for (Result r : t.getScanner(scan))
             System.out.println(r);
         t.close();
+    }
+
+    public void printTransactionStatusTable() throws Exception {
+        byte[] TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "transaction_status_table");
+        byte[] ALL_LOCAL_TRANSACTION_NAMES = Bytes.toBytes("all_local_transaction_names");
+        byte[] COMMIT_TIMESTAMP = Bytes.toBytes("commit_timestamp");
+
+        HTable t = new HTable(HBaseConfiguration.create(), TABLE_NAME);
+        Scan scan = new Scan();
+
+        scan.setMaxVersions(1);
+        System.out.println(pad("transactionName") + pad("commit_timestamp") + "all_local_transaction_names");
+        System.out.println("---------------------------------------------------------------------------------------");
+
+        for (Result r : t.getScanner(scan))
+            System.out.println(pad(Bytes.toString(r.getRow()))
+                    + pad("" + Bytes.toLong(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP)))
+                    + pad(Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, ALL_LOCAL_TRANSACTION_NAMES))));
+        t.close();
+    }
+
+    private String pad(String str) {
+        StringBuilder buff = new StringBuilder(str);
+        for (int i = str.length(); i < 20; i++)
+            buff.append(' ');
+        return buff.toString();
     }
 }
