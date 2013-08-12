@@ -580,28 +580,13 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     public void done(Transfer transfer) throws IOException {
         //正常来讲不会出现这种情况，如果出现了，说明存在bug，找出为什么transfer的输入流没正常读完的原因
         if (transfer.available() > 0) {
-            //transfer.readBytes(new byte[transfer.available()], 0, transfer.available());
-            //byte[] bytes = new byte[transfer.available()];
-            //transfer.readBytes(bytes, 0, bytes.length);
             throw DbException.throwInternalError("before transfer flush, the available bytes was " + transfer.available());
         }
 
         transfer.flush();
         int status = transfer.readInt();
         if (status == STATUS_ERROR) {
-            String sqlstate = transfer.readString();
-            String message = transfer.readString();
-            String sql = transfer.readString();
-            int errorCode = transfer.readInt();
-            String stackTrace = transfer.readString();
-            JdbcSQLException s = new JdbcSQLException(message, sql, sqlstate, errorCode, null, stackTrace);
-            if (errorCode == ErrorCode.CONNECTION_BROKEN_1) {
-                // allow re-connect
-                IOException e = new IOException(s.toString());
-                e.initCause(s);
-                throw e;
-            }
-            throw DbException.convert(s);
+            parseError(transfer);
         } else if (status == STATUS_CLOSED) {
             transferList = null;
         } else if (status == STATUS_OK_STATE_CHANGED) {
@@ -611,6 +596,22 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         } else {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
+    }
+
+    public void parseError(Transfer transfer) throws IOException {
+        String sqlstate = transfer.readString();
+        String message = transfer.readString();
+        String sql = transfer.readString();
+        int errorCode = transfer.readInt();
+        String stackTrace = transfer.readString();
+        JdbcSQLException s = new JdbcSQLException(message, sql, sqlstate, errorCode, null, stackTrace);
+        if (errorCode == ErrorCode.CONNECTION_BROKEN_1) {
+            // allow re-connect
+            IOException e = new IOException(s.toString());
+            e.initCause(s);
+            throw e;
+        }
+        throw DbException.convert(s);
     }
 
     /**

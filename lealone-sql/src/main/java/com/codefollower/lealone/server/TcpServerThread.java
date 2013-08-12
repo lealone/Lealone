@@ -364,10 +364,7 @@ public class TcpServerThread implements Runnable {
             int fetch = fetchSize;
             if (rowCount != -1)
                 fetch = Math.min(rowCount, fetchSize);
-            boolean isEnd = false;
-            for (int i = 0; !isEnd && i < fetch; i++) {
-                isEnd = sendRow(result);
-            }
+            sendRow(result, fetch);
             transfer.flush();
             break;
         }
@@ -490,10 +487,7 @@ public class TcpServerThread implements Runnable {
             int count = transfer.readInt();
             ResultInterface result = (ResultInterface) cache.getObject(id, false);
             transfer.writeInt(SessionRemote.STATUS_OK);
-            boolean isEnd = false;
-            for (int i = 0; !isEnd && i < count; i++) {
-                isEnd = sendRow(result);
-            }
+            sendRow(result, count);
             transfer.flush();
             break;
         }
@@ -591,21 +585,31 @@ public class TcpServerThread implements Runnable {
         return SessionRemote.STATUS_OK_STATE_CHANGED;
     }
 
-    private boolean sendRow(ResultInterface result) throws IOException {
-        if (result.next()) {
-            transfer.writeBoolean(true);
-            Value[] v = result.currentRow();
-            for (int i = 0; i < result.getVisibleColumnCount(); i++) {
-                if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_12) {
-                    transfer.writeValue(v[i]);
+    private void sendRow(ResultInterface result, int count) throws IOException {
+        try {
+            int visibleColumnCount = result.getVisibleColumnCount();
+            for (int i = 0; i < count; i++) {
+                if (result.next()) {
+                    transfer.writeBoolean(true);
+                    Value[] v = result.currentRow();
+                    for (int j = 0; j < visibleColumnCount; j++) {
+                        if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_12) {
+                            transfer.writeValue(v[j]);
+                        } else {
+                            writeValue(v[j]);
+                        }
+                    }
                 } else {
-                    writeValue(v[i]);
+                    transfer.writeBoolean(false);
+                    break;
                 }
             }
-            return false;
-        } else {
+        } catch (Throwable e) {
+            //如果取结果集的下一行记录时发生了异常，
+            //比如在HBase环境一个结果集可能涉及多个region，当切换到下一个region时此region有可能在进行split，
+            //此时就会抛异常，所以结果集包必须加一个结束标记，结果集包后面跟一个异常包。
             transfer.writeBoolean(false);
-            return true;
+            throw DbException.convert(e);
         }
     }
 

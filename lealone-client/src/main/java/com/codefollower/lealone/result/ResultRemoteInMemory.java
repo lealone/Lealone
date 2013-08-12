@@ -55,6 +55,9 @@ public class ResultRemoteInMemory extends ResultRemote {
                 for (int r = 0; r < fetch; r++) {
                     boolean row = transfer.readBoolean();
                     if (!row) {
+                        if (transfer.available() > 0) {
+                            fetchRowsThrowException();
+                        }
                         break;
                     }
                     int len = columns.length;

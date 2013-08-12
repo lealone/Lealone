@@ -65,6 +65,9 @@ public class ResultRemoteCursor extends ResultRemote {
                     boolean row = transfer.readBoolean();
                     if (!row) {
                         isEnd = true;
+                        if (transfer.available() > 0) {
+                            fetchRowsThrowException();
+                        }
                         break;
                     }
                     int len = columns.length;

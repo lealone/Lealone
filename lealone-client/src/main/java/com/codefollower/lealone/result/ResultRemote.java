@@ -189,4 +189,11 @@ public abstract class ResultRemote implements ResultInterface {
         return true;
     }
 
+    protected void fetchRowsThrowException() throws IOException {
+        int available = transfer.available();
+        if (transfer.readInt() == SessionRemote.STATUS_ERROR)
+            session.parseError(transfer);
+
+        throw DbException.throwInternalError("fetchRows: the available bytes was " + available);
+    }
 }
