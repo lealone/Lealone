@@ -38,8 +38,6 @@ public class IndexTest extends TestBase {
         testCommit();
         testRollback();
         testSavepoint();
-
-        //printHTable("IndexTest".toUpperCase(), 1000);
     }
 
     void init() throws Exception {
@@ -70,6 +68,8 @@ public class IndexTest extends TestBase {
 
     void insert() throws Exception {
         stmt.executeUpdate("DELETE FROM IndexTest");
+        sql = "SELECT f1, f2, f3 FROM IndexTest";
+        printResultSet();
 
         stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 10, 'a')");
         stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'b')");
@@ -95,9 +95,6 @@ public class IndexTest extends TestBase {
             //e.printStackTrace();
         }
 
-        //printHTable("IndexTest".toUpperCase(), 1);
-        //printHTable("IndexTest_idx2".toUpperCase(), 1);
-
         sql = "SELECT f1, f2, f3 FROM IndexTest";
         printResultSet();
     }
@@ -114,7 +111,6 @@ public class IndexTest extends TestBase {
         sql = "SELECT f3 FROM IndexTest where f1 = 300";
         assertEquals("c3", getStringValue(1, true));
 
-        //printHTable("IndexTest".toUpperCase(), 10);
         try {
             conn.setAutoCommit(false);
             insert();
@@ -221,7 +217,6 @@ public class IndexTest extends TestBase {
             printResultSet();
             sql = "SELECT count(*) FROM IndexTest";
             assertEquals(3, getIntValue(1, true));
-
             conn.rollback(savepoint);
             //调用rollback(savepoint)后还是需要调用commit
             conn.commit();

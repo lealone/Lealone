@@ -32,6 +32,7 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.metadata.MetaDataAdmin;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -48,9 +49,11 @@ import com.codefollower.lealone.value.ValueString;
 public class HBaseSecondaryIndex extends BaseIndex {
 
     public synchronized static void createIndexTableIfNotExists(Session session, String indexName) {
-        Prepared p = session.prepare( //
-                "CREATE HBASE TABLE IF NOT EXISTS " + indexName //
-                        + " (COLUMN FAMILY " + Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY) + "(C char))", true);
+        StringBuilder buff = new StringBuilder("CREATE HBASE TABLE IF NOT EXISTS ");
+        buff.append(indexName).append(" (COLUMN FAMILY ").append(Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY));
+        buff.append("(C char, ").append(Bytes.toString(HBaseConstants.TAG)).append(" smallint))");
+
+        Prepared p = session.prepare(buff.toString(), true);
         p.setExecuteDirec(true);
         p.update();
     }
@@ -77,7 +80,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
     private final String select;
     private final String insert;
-    private final String insertNull;
+    private final String delete;
 
     private final ByteBuffer buffer = ByteBuffer.allocate(256);
 
@@ -91,7 +94,8 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
         select = "select _rowkey_ from " + indexName + " where _rowkey_>=?";
         insert = "insert into " + indexName + "(_rowkey_, c) values(?,'0')";
-        insertNull = "insert into " + indexName + "(_rowkey_, c) values(?,null)";
+        delete = "insert into " + indexName + "(_rowkey_, " + Bytes.toString(HBaseConstants.TAG) + ") values(?, "
+                + HBaseConstants.Tag.DELETE + ")";
     }
 
     public byte[] getTableNameAsBytes() {
@@ -135,7 +139,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
             return;
 
         //删除操作转成insert null操作
-        Prepared p = session.prepare(insertNull, true);
+        Prepared p = session.prepare(delete, true);
         p.getParameters().get(0).setValue(ValueString.get(Bytes.toString(getKey(row))));
         p.update();
     }

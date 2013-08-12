@@ -40,6 +40,7 @@ import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
+import com.codefollower.lealone.hbase.metadata.MetaDataAdmin;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.transaction.ValidityChecker;
 import com.codefollower.lealone.hbase.util.HBaseRegionInfo;
@@ -59,6 +60,8 @@ public class HBaseSecondaryIndexCursor implements Cursor {
     private final String hostAndPort;
     private final int fetchSize;
     private final byte[] regionName;
+
+    private final byte[] defaultColumnFamilyName = MetaDataAdmin.DEFAULT_COLUMN_FAMILY;
 
     private final long scannerId;
     private final List<Column> columns;
@@ -200,7 +203,8 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         }
 
         try {
-            result = ValidityChecker.fetchResults(session, hostAndPort, regionName, scannerId, fetchSize);
+            result = ValidityChecker
+                    .fetchResults(defaultColumnFamilyName, session, hostAndPort, regionName, scannerId, fetchSize);
         } catch (Exception e) {
             close();
             throw DbException.convert(e);

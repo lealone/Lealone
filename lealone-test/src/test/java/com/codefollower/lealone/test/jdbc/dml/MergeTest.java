@@ -43,9 +43,8 @@ public class MergeTest extends TestBase {
         stmt.executeUpdate("DELETE FROM MergeTest");
         stmt.executeUpdate("DELETE FROM tmpSelectTest");
 
-        //TODO 目前不支持同一行中所有列都是NULL值的情况
-        //sql = "INSERT INTO tmpSelectTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')";
-        sql = "INSERT INTO tmpSelectTest VALUES(DEFAULT, 'c'),(10, 'a'),(20, 'b')";
+        sql = "INSERT INTO tmpSelectTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')";
+        //sql = "INSERT INTO tmpSelectTest VALUES(DEFAULT, 'c'),(10, 'a'),(20, 'b')";
         assertEquals(3, stmt.executeUpdate(sql));
 
         //从另一表查数据，然后插入此表

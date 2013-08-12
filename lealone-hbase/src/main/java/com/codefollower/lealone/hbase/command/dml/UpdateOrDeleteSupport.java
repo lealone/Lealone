@@ -22,6 +22,7 @@ package com.codefollower.lealone.hbase.command.dml;
 import java.util.concurrent.Callable;
 
 import com.codefollower.lealone.command.Prepared;
+import com.codefollower.lealone.command.dml.TransactionCommand;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.command.CommandParallel;
@@ -58,7 +59,7 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
                 isTopTransaction = true;
             } else {
                 isNestedTransaction = true;
-                session.beginNestedTransaction();
+                session.addSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
             }
 
             int updateCount = 0;
@@ -82,9 +83,6 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
 
             if (isTopTransaction)
                 session.commit(false);
-            //嵌套事务在父事务提交时再一起提交
-            //if (isNestedTransaction)
-            //    session.commitNestedTransaction();
             return updateCount;
         } catch (Exception e) {
             if (isTopTransaction)
@@ -92,12 +90,10 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
 
             //嵌套事务出错时提前rollback
             if (isNestedTransaction)
-                session.rollbackNestedTransaction();
+                session.rollbackToSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
 
             throw DbException.convert(e);
         } finally {
-            if (isNestedTransaction)
-                session.endNestedTransaction();
             if (isTopTransaction)
                 session.setAutoCommit(true);
         }

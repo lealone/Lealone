@@ -54,39 +54,51 @@ public class TimestampService {
         timestampServiceTable.updateLastMaxTimestamp(maxTimestamp);
     }
 
-    public synchronized void reset() throws IOException {
-        first = last = maxTimestamp = 0;
-        timestampServiceTable.updateLastMaxTimestamp(0);
-        addBatch();
+    public synchronized void reset() {
+        try {
+            first = last = maxTimestamp = 0;
+            timestampServiceTable.updateLastMaxTimestamp(0);
+            addBatch();
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 
     //事务用奇数版本号
-    public synchronized long nextOdd() throws IOException {
-        if (last >= maxTimestamp)
-            addBatch();
+    public synchronized long nextOdd() {
+        try {
+            if (last >= maxTimestamp)
+                addBatch();
 
-        long delta;
-        if (last % 2 == 0)
-            delta = 1;
-        else
-            delta = 2;
+            long delta;
+            if (last % 2 == 0)
+                delta = 1;
+            else
+                delta = 2;
 
-        last += delta;
-        return last;
+            last += delta;
+            return last;
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 
     //非事务用偶数版本号
-    public synchronized long nextEven() throws IOException {
-        if (last >= maxTimestamp)
-            addBatch();
+    public synchronized long nextEven() {
+        try {
+            if (last >= maxTimestamp)
+                addBatch();
 
-        long delta;
-        if (last % 2 == 0)
-            delta = 2;
-        else
-            delta = 1;
-        last += delta;
-        return last;
+            long delta;
+            if (last % 2 == 0)
+                delta = 2;
+            else
+                delta = 1;
+            last += delta;
+            return last;
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 
     @Override

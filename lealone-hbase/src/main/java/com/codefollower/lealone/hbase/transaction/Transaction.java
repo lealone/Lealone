@@ -24,22 +24,21 @@ import static com.codefollower.lealone.hbase.engine.HBaseConstants.DEFAULT_TRANS
 import static com.codefollower.lealone.hbase.engine.HBaseConstants.TRANSACTION_COMMIT_CACHE_ASSOCIATIVITY;
 import static com.codefollower.lealone.hbase.engine.HBaseConstants.TRANSACTION_COMMIT_CACHE_SIZE;
 
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.constant.ErrorCode;
+import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
-import com.codefollower.lealone.util.New;
+import com.codefollower.lealone.value.Value;
 
 public class Transaction implements com.codefollower.lealone.transaction.Transaction {
 
@@ -52,7 +51,6 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
 
     private final HBaseSession session;
     private final TimestampService timestampService;
-    private final Transaction parent;
 
     private final String transactionName;
     private final long transactionId;
@@ -64,56 +62,30 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     //如果本事务是协调者中的事务，那么在此字段中存放其他参与者的本地事务名
     private final ConcurrentSkipListSet<String> participantLocalTransactionNames = new ConcurrentSkipListSet<String>();
 
-    private CopyOnWriteArrayList<Transaction> children;
     private CopyOnWriteArrayList<HBaseRow> undoRows;
     private HashMap<String, Integer> savepoints;
 
-    //用于跟踪最顶层事务进行了哪些操作(Object对像是HBaseRow或者Transaction)
-    private CopyOnWriteArrayList<Object> transactionTrace;
-
     public Transaction(HBaseSession session) {
-        this(session, null);
-    }
-
-    public Transaction(HBaseSession session, Transaction parent) {
         this.session = session;
-        this.parent = parent;
         timestampService = session.getTimestampService();
-        children = new CopyOnWriteArrayList<Transaction>();
         undoRows = new CopyOnWriteArrayList<HBaseRow>();
 
-        //嵌套事务
-        if (parent != null)
-            autoCommit = false;
+        autoCommit = session.getAutoCommit();
+
+        transactionId = getNewTimestamp();
+        transactionName = getTransactionName(session.getHostAndPort(), transactionId);
+    }
+
+    public long getNewTimestamp() {
+        if (autoCommit)
+            return timestampService.nextEven();
         else
-            autoCommit = session.getAutoCommit();
-
-        try {
-            if (autoCommit)
-                transactionId = timestampService.nextEven();
-            else
-                transactionId = timestampService.nextOdd();
-
-            transactionName = getTransactionName(session.getHostAndPort(), transactionId);
-        } catch (IOException e) {
-            throw DbException.convert(e);
-        }
-
-        //初始化完transactionId再加入parent，要用这个变量来计算hashCode()
-        if (parent != null)
-            parent.addChild(this);
-        else
-            transactionTrace = new CopyOnWriteArrayList<Object>();
+            return timestampService.nextOdd();
     }
 
     @Override
     public long getTransactionId() {
         return transactionId;
-    }
-
-    @Override
-    public void setCommitTimestamp(long commitTimestamp) {
-        this.commitTimestamp = commitTimestamp;
     }
 
     @Override
@@ -144,13 +116,11 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
 
     @Override
     public String getLocalTransactionNames() {
-        StringBuilder buff = new StringBuilder();
-        getLocalTransactionNamesRecursively(buff);
+        StringBuilder buff = new StringBuilder(transactionName);
 
         if (!participantLocalTransactionNames.isEmpty()) {
             for (String name : participantLocalTransactionNames) {
-                if (buff.length() > 0)
-                    buff.append(',');
+                buff.append(',');
                 buff.append(name);
             }
         }
@@ -161,44 +131,13 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         return buff.toString();
     }
 
-    private void getLocalTransactionNamesRecursively(StringBuilder buff) {
-        if (buff.length() > 0)
-            buff.append(',');
-        buff.append(transactionName);
-        for (Transaction t : children)
-            t.getLocalTransactionNamesRecursively(buff);
-    }
-
     public String getAllLocalTransactionNames() {
         getLocalTransactionNames();
         return localTransactionNamesBuilder.toString();
     }
 
-    public boolean isNested() {
-        return parent != null;
-    }
-
     public String getTransactionName() {
         return transactionName;
-    }
-
-    public Transaction getParent() {
-        return parent;
-    }
-
-    public void addChild(Transaction t) {
-        children.add(t);
-
-        if (!isNested())
-            transactionTrace.add(t);
-    }
-
-    public void removeChild(Transaction t) {
-        children.remove(t);
-    }
-
-    public long getStartTimestamp() {
-        return transactionId;
     }
 
     @Override
@@ -209,40 +148,30 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     //只从最顶层的事务提交
     public void commit(String allLocalTransactionNames) {
         if (!autoCommit && session.isRegionServer()) {
-            ArrayList<Transaction> allTransactions = New.arrayList();
-            getAllTransactionsRecursively(allTransactions);
-
             try {
                 //1. 获得提交时间戳
-                long commitTimestamp = timestampService.nextOdd();
-                Set<HBaseRow> undoRows = New.hashSet();
-                for (Transaction t : allTransactions) {
-                    t.setCommitTimestamp(commitTimestamp);
-                    undoRows.addAll(t.undoRows);
-                }
+                commitTimestamp = timestampService.nextOdd();
 
                 //2. 检测写写冲突
-                checkConflict(undoRows);
+                checkConflict();
 
                 //3. 更新事务状态表
-                transactionStatusTable.addRecord(allTransactions, Bytes.toBytes(allLocalTransactionNames),
-                        Bytes.toBytes(commitTimestamp));
+                transactionStatusTable.addRecord(this, Bytes.toBytes(allLocalTransactionNames));
 
                 //4.缓存本次事务已提交的行，用于下一个事务的写写冲突检测
-                cacheCommittedRows(undoRows);
+                cacheCommittedRows();
 
                 //TODO 考虑如何缓存事务id和提交时间戳? 难点是: 当前节点提交了，但是还不能完全确定全局事务正常提交
             } catch (Exception e) {
                 rollback();
                 throw DbException.convert(e);
             } finally {
-                for (Transaction t : allTransactions)
-                    t.endTransaction();
+                endTransaction();
             }
         }
     }
 
-    private void checkConflict(Set<HBaseRow> undoRows) {
+    private void checkConflict() {
         synchronized (commitHashMap) {
             if (transactionId < timestampService.first()) {
                 //1. transactionId不可能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
@@ -265,7 +194,7 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         }
     }
 
-    private void cacheCommittedRows(Set<HBaseRow> undoRows) {
+    private void cacheCommittedRows() {
         synchronized (commitHashMap) {
             //不能把下面的代码放入第3步的for循环中，只有冲突检测完后才能put提交记录
             for (HBaseRow row : undoRows) {
@@ -277,16 +206,10 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     public void rollback() {
         if (!autoCommit) {
             try {
-                for (Transaction t : children)
-                    t.rollback();
-
                 undo();
             } catch (Exception e) {
                 throw DbException.convert(e);
             } finally {
-                //子事务(嵌套事务)rollback时从父事务中清除，但是commit时不需要从父事务中清除
-                if (parent != null)
-                    parent.removeChild(this);
                 endTransaction();
             }
         }
@@ -302,69 +225,22 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     }
 
     private void endTransaction() {
-        //for (Transaction t : children)
-        //    t.endTransaction();
-
         if (undoRows != null) {
             undoRows.clear();
             undoRows = null;
         }
-
-        if (children != null) {
-            children.clear();
-            children = null;
-        }
     }
 
     public void log(HBaseRow row) {
-        if (!autoCommit) {
+        if (!autoCommit)
             undoRows.add(row);
-
-            if (!isNested())
-                transactionTrace.add(row);
-        }
-    }
-
-    public Transaction getRootTransaction() {
-        Transaction parent = this.parent;
-        if (parent == null)
-            parent = this;
-        else {
-            while (parent.parent != null) {
-                parent = parent.parent;
-            }
-        }
-
-        return parent;
-    }
-
-    public boolean isUncommitted(long queryTimestamp) {
-        return getRootTransaction().isUncommittedRecursively(queryTimestamp);
-    }
-
-    public boolean isUncommittedRecursively(long queryTimestamp) {
-        if (transactionId == queryTimestamp)
-            return true;
-
-        for (Transaction t : children) {
-            if (t.isUncommittedRecursively(queryTimestamp))
-                return true;
-        }
-
-        return false;
-    }
-
-    private void getAllTransactionsRecursively(ArrayList<Transaction> list) {
-        list.add(this);
-        for (Transaction t : children)
-            t.getAllTransactionsRecursively(list);
     }
 
     public void addSavepoint(String name) {
         if (savepoints == null)
             savepoints = session.getDatabase().newStringMap();
 
-        savepoints.put(name, transactionTrace.size());
+        savepoints.put(name, undoRows.size());
     }
 
     public void rollbackToSavepoint(String name) {
@@ -378,14 +254,10 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         }
         int i = savepointIndex.intValue();
         int size;
-        while ((size = transactionTrace.size()) > i) {
-            Object object = transactionTrace.remove(size - 1);
-            if (object instanceof Transaction)
-                ((Transaction) object).rollback();
-            else {
-                HBaseRow row = (HBaseRow) object;
-                row.getTable().removeRow(session, row, true);
-            }
+        HBaseRow row;
+        while ((size = undoRows.size()) > i) {
+            row = undoRows.remove(size - 1);
+            row.getTable().removeRow(session, row, true);
         }
         if (savepoints != null) {
             String[] names = new String[savepoints.size()];
@@ -393,7 +265,7 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
             for (String n : names) {
                 savepointIndex = savepoints.get(n);
                 if (savepointIndex.intValue() >= i) {
-                    savepoints.remove(name);
+                    savepoints.remove(n);
                 }
             }
         }
@@ -404,5 +276,19 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         buff.append(':');
         buff.append(tid);
         return buff.toString();
+    }
+
+    public Put createHBasePut(byte[] defaultColumnFamilyName, Value rowKey) {
+        Put put = new Put(HBaseUtils.toBytes(rowKey), getNewTimestamp());
+        put.add(defaultColumnFamilyName, HBaseConstants.TID, Bytes.toBytes(transactionId));
+        put.add(defaultColumnFamilyName, HBaseConstants.TAG, Bytes.toBytes(HBaseConstants.Tag.ADD));
+        return put;
+    }
+
+    public Put createHBasePutWithDeleteTag(byte[] defaultColumnFamilyName, byte[] rowKey) {
+        Put put = new Put(rowKey, getNewTimestamp());
+        put.add(defaultColumnFamilyName, HBaseConstants.TID, Bytes.toBytes(transactionId));
+        put.add(defaultColumnFamilyName, HBaseConstants.TAG, Bytes.toBytes(HBaseConstants.Tag.DELETE));
+        return put;
     }
 }

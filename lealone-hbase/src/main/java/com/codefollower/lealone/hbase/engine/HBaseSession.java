@@ -170,10 +170,6 @@ public class HBaseSession extends Session {
         return transaction;
     }
 
-    public Transaction getRootTransaction() {
-        return getTransaction().getRootTransaction();
-    }
-
     private void beginTransaction() {
         transaction = new Transaction(this);
     }
@@ -190,26 +186,6 @@ public class HBaseSession extends Session {
 
         if (!isRoot())
             super.setAutoCommit(true);
-    }
-
-    public synchronized void endNestedTransaction() {
-        //上一级事务重新变成当前事务
-        transaction = transaction.getParent();
-    }
-
-    public synchronized void beginNestedTransaction() {
-        //新的嵌套事务变成当前事务
-        transaction = new Transaction(this, transaction);
-    }
-
-    //    public void commitNestedTransaction() {
-    //        if (transaction != null)
-    //            transaction.commit();
-    //    }
-
-    public void rollbackNestedTransaction() {
-        if (transaction != null)
-            transaction.rollback();
     }
 
     @Override

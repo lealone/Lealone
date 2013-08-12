@@ -27,6 +27,8 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
+
 import com.codefollower.lealone.constant.Constants;
 import com.codefollower.lealone.dbobject.index.BaseIndex;
 import com.codefollower.lealone.dbobject.index.Cursor;
@@ -35,6 +37,8 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
+import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
+import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.message.DbException;
@@ -43,8 +47,11 @@ import com.codefollower.lealone.result.SearchRow;
 import com.codefollower.lealone.result.SortOrder;
 
 public class HBasePrimaryIndex extends BaseIndex {
+    private final byte[] defaultColumnFamilyName;
+
     public HBasePrimaryIndex(Table table, int id, IndexColumn[] columns, IndexType indexType) {
         initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
+        defaultColumnFamilyName = ((HBaseTable) table).getDefaultColumnFamilyNameAsBytes();
     }
 
     @Override
@@ -62,46 +69,41 @@ public class HBasePrimaryIndex extends BaseIndex {
     }
 
     public void remove(Session session, Row row, boolean isUndo) {
-        if (((HBaseRow) row).isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
+        HBaseRow hr = (HBaseRow) row;
+        if (hr.isForUpdate()) //Update这种类型的SQL不需要先删除再insert，只需直接insert即可
             return;
         try {
+            HBaseSession hs = (HBaseSession) session;
             if (isUndo) {
-                Put oldPut = ((HBaseRow) row).getPut();
-                //撤消前面的add操作
+                Put oldPut = hr.getPut();
+                //撤消前面的add或remove操作
                 if (oldPut != null) {
                     Delete delete = new Delete(oldPut.getRow());
-                    long timestamp = row.getTransactionId();
                     for (Map.Entry<byte[], List<KeyValue>> e : oldPut.getFamilyMap().entrySet()) {
                         for (KeyValue kv : e.getValue()) {
-                            delete.deleteColumn(e.getKey(), kv.getQualifier(), timestamp);
+                            delete.deleteColumn(e.getKey(), kv.getQualifier(), kv.getTimestamp());
                         }
                     }
-                    ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
-                } else {
-                    Result result = ((HBaseRow) row).getResult();
-                    //撤消前面的remove操作
-                    if (result != null) {
-                        Delete delete = new Delete(result.getRow());
-                        long timestamp = row.getTransactionId();
-                        for (KeyValue kv : result.list()) {
-                            delete.deleteColumn(kv.getFamily(), kv.getQualifier(), timestamp);
-                        }
-                        ((HBaseSession) session).getRegionServer().delete(((HBaseRow) row).getRegionName(), delete);
-                    } else
-                        throw DbException.throwInternalError("oldPut and result were null???");
-                }
+                    hs.getRegionServer().delete(hr.getRegionName(), delete);
+                } else
+                    throw DbException.throwInternalError("oldPut is null???");
             } else {
                 //正常的delete语句，
                 //这种场景会把要删除的记录找出来，此时用Put的方式，不能直接用Delete，因为用Delete后如果当前事务未提交
                 //那么其它并发事务就找不到之前的记录版本
-                Result result = ((HBaseRow) row).getResult();
+                Result result = hr.getResult();
                 if (result != null) {
-                    Put put = new Put(result.getRow());
-                    long timestamp = row.getTransactionId();
+                    Put put = hs.getTransaction().createHBasePutWithDeleteTag(defaultColumnFamilyName, result.getRow());
+
                     for (KeyValue kv : result.list()) {
-                        put.add(kv.getFamily(), kv.getQualifier(), timestamp, null);
+                        if ((Bytes.equals(kv.getQualifier(), HBaseConstants.TAG) || //
+                                Bytes.equals(kv.getQualifier(), HBaseConstants.TID)) //
+                                && Bytes.equals(kv.getFamily(), defaultColumnFamilyName))
+                            continue;
+                        put.add(kv.getFamily(), kv.getQualifier(), null);
                     }
-                    ((HBaseSession) session).getRegionServer().put(((HBaseRow) row).getRegionName(), put);
+                    hs.getRegionServer().put(hr.getRegionName(), put);
+                    hr.setPut(put);
                 } else
                     throw DbException.throwInternalError("result is null???");
             }

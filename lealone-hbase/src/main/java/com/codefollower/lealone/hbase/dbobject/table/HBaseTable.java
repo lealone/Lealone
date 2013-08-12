@@ -75,6 +75,8 @@ public class HBaseTable extends TableBase {
     private final Database database;
     private final String tableName;
     private final byte[] tableNameAsBytes;
+    private final String defaultColumnFamilyName;
+    private final byte[] defaultColumnFamilyNameAsBytes;
 
     private final HTableDescriptor hTableDescriptor;
 
@@ -115,6 +117,12 @@ public class HBaseTable extends TableBase {
             columnFamilyMap = New.hashMap(1);
             columnFamilyMap.put(DEFAULT_COLUMN_FAMILY_NAME, data.columns);
         }
+
+        if (isStatic)
+            defaultColumnFamilyName = DEFAULT_COLUMN_FAMILY_NAME;
+        else
+            defaultColumnFamilyName = htd.getValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME);
+        defaultColumnFamilyNameAsBytes = HBaseUtils.toBytes(defaultColumnFamilyName);
 
         this.columnFamilyMap = columnFamilyMap;
 
@@ -162,6 +170,14 @@ public class HBaseTable extends TableBase {
         return tableNameAsBytes;
     }
 
+    public String getDefaultColumnFamilyName() {
+        return defaultColumnFamilyName;
+    }
+
+    public byte[] getDefaultColumnFamilyNameAsBytes() {
+        return defaultColumnFamilyNameAsBytes;
+    }
+
     @Override
     public boolean isStatic() {
         return isStatic;
@@ -182,13 +198,6 @@ public class HBaseTable extends TableBase {
             rowKeyColumn.setTable(this, -2);
         }
         return rowKeyColumn;
-    }
-
-    public String getDefaultColumnFamilyName() {
-        if (isStatic)
-            return DEFAULT_COLUMN_FAMILY_NAME;
-        else
-            return hTableDescriptor.getValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME);
     }
 
     public void setRowKeyName(String rowKeyName) {
@@ -370,18 +379,13 @@ public class HBaseTable extends TableBase {
     }
 
     private void setTransactionId(Session session, Row row) {
-        HBaseSession hs = (HBaseSession) session;
-        if (hs.getTransaction() != null) {
-            row.setTransactionId(hs.getTransaction().getTransactionId());
-        }
+        row.setTransactionId(session.getTransaction().getTransactionId());
     }
 
     private void log(Session session, Row row) {
-        if (session.getTransaction() != null) {
-            HBaseRow row2 = (HBaseRow) row;
-            row2.setTable(this);
-            ((HBaseSession) session).log(row2);
-        }
+        HBaseRow row2 = (HBaseRow) row;
+        row2.setTable(this);
+        ((HBaseSession) session).log(row2);
     }
 
     @Override
@@ -461,10 +465,8 @@ public class HBaseTable extends TableBase {
             o.setForUpdate(true);
             n.setRegionName(o.getRegionName());
             n.setRowKey(o.getRowKey());
-            if (session.getTransaction() != null)
-                put = new Put(HBaseUtils.toBytes(n.getRowKey()), session.getTransaction().getTransactionId());
-            else
-                put = new Put(HBaseUtils.toBytes(n.getRowKey()));
+
+            put = ((HBaseSession) session).getTransaction().createHBasePut(defaultColumnFamilyNameAsBytes, n.getRowKey());
             for (int i = 0; i < columnCount; i++) {
                 c = columns[i];
                 put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(n.getValue(i)));

@@ -22,8 +22,6 @@ package com.codefollower.lealone.transaction;
 public interface Transaction {
     public long getTransactionId();
 
-    public void setCommitTimestamp(long commitTimestamp);
-
     public long getCommitTimestamp();
 
     public boolean isAutoCommit();

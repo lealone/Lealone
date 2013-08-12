@@ -56,6 +56,8 @@ public class HBasePrimaryIndexCursor implements Cursor {
     private final byte[] regionName;
     private final int fetchSize;
 
+    private final byte[] defaultColumnFamilyName;
+
     //表所有列的个数
     private final int columnCount;
     //所要查询的列，不一定是表中的所有列，所以columnCount >= columns.size()
@@ -92,7 +94,8 @@ public class HBasePrimaryIndexCursor implements Cursor {
             throw DbException.throwInternalError("regionName is null");
 
         fetchSize = p.getFetchSize();
-        columnCount = ((HBaseTable) filter.getTable()).getColumns().length;
+        defaultColumnFamilyName = ((HBaseTable) filter.getTable()).getDefaultColumnFamilyNameAsBytes();
+        columnCount = filter.getTable().getColumns().length;
 
         //select语句
         //对于下面两种类型的sql，columns会是null
@@ -114,8 +117,9 @@ public class HBasePrimaryIndexCursor implements Cursor {
         if (startValue != null && endValue != null && startValue == endValue) {
             try {
                 Result r = rs.get(regionName, new Get(Bytes.toBytes(startValue.getString())));
-                r = new Result(ValidityChecker.check(rs, hostAndPort, regionName, session.getTransaction(), r.list(), 1));
-                if (r != null && !r.isEmpty())
+                r = ValidityChecker.checkResult(defaultColumnFamilyName, session, rs, hostAndPort, regionName,
+                        session.getTransaction(), r);
+                if (r != null)
                     result = new Result[] { r };
 
                 isGet = true;
@@ -164,6 +168,8 @@ public class HBasePrimaryIndexCursor implements Cursor {
                     }
                 }
             }
+
+            scan.addFamily(defaultColumnFamilyName);
 
             //对于聚合运算，直接使用InternalScanner性能会更好，也无需启用ScannerListener，
             //因为聚合运算完成后InternalScanner就会被主动关闭，
@@ -228,12 +234,14 @@ public class HBasePrimaryIndexCursor implements Cursor {
         try {
             if (scanner != null) {
                 tmpList.clear();
-                isEnd = !ValidityChecker.fetchResults(session, hostAndPort, regionName, scanner, fetchSize, tmpList);
+                isEnd = !ValidityChecker.fetchResults(defaultColumnFamilyName, session, hostAndPort, regionName, scanner,
+                        fetchSize, tmpList);
                 result = tmpList.toArray(new Result[tmpList.size()]);
                 if (isEnd)
                     close();
             } else
-                result = ValidityChecker.fetchResults(session, hostAndPort, regionName, scannerId, fetchSize);
+                result = ValidityChecker.fetchResults(defaultColumnFamilyName, session, hostAndPort, regionName, scannerId,
+                        fetchSize);
         } catch (Exception e) {
             close();
             throw DbException.convert(e);

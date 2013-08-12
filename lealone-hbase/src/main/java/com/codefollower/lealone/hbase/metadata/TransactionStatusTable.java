@@ -20,7 +20,6 @@
 package com.codefollower.lealone.hbase.metadata;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -55,28 +54,17 @@ public class TransactionStatusTable {
 
     /**
      * 
-     * @param participantLocalTransactions 参与者自己的本地事务
+     * @param localTransaction 参与者自己的本地事务
      * @param allLocalTransactionNames 所有参与者的本地事务名列表
-     * @param commitTimestamp 参与者本地事务的提交时间，参与者如果有多个本地事务，这些本地事务用同样的提交时间
      */
-    public synchronized void addRecord(ArrayList<Transaction> participantLocalTransactions, byte[] allLocalTransactionNames,
-            byte[] commitTimestamp) {
-        int size = participantLocalTransactions.size();
-        ArrayList<Put> puts = new ArrayList<Put>(size);
-        Transaction t;
-        Put put;
-
-        for (int i = 0; i < size; i++) {
-            t = participantLocalTransactions.get(i);
-            put = new Put(Bytes.toBytes(t.getTransactionName()));
-            put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP, t.getTransactionId(), commitTimestamp);
-            put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, ALL_LOCAL_TRANSACTION_NAMES, t.getTransactionId(),
-                    allLocalTransactionNames);
-            puts.add(put);
-        }
-
+    public synchronized void addRecord(Transaction localTransaction, byte[] allLocalTransactionNames) {
+        Put put = new Put(Bytes.toBytes(localTransaction.getTransactionName()));
+        put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP, localTransaction.getTransactionId(),
+                Bytes.toBytes(localTransaction.getCommitTimestamp()));
+        put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, ALL_LOCAL_TRANSACTION_NAMES, localTransaction.getTransactionId(),
+                allLocalTransactionNames);
         try {
-            table.put(puts);
+            table.put(put);
         } catch (IOException e) {
             throw DbException.convert(e);
         }

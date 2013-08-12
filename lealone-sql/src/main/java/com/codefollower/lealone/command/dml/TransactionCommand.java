@@ -17,6 +17,7 @@ import com.codefollower.lealone.result.ResultInterface;
  * Represents a transactional statement.
  */
 public class TransactionCommand extends Prepared {
+    public static final String INTERNAL_SAVEPOINT = "_INTERNAL_SAVEPOINT_";
 
     private final int type;
     private String savepointName;
@@ -28,6 +29,8 @@ public class TransactionCommand extends Prepared {
     }
 
     public void setSavepointName(String name) {
+        if (INTERNAL_SAVEPOINT.equals(name))
+            throw DbException.getUnsupportedException("Savepoint name cannot use " + INTERNAL_SAVEPOINT);
         this.savepointName = name;
     }
 

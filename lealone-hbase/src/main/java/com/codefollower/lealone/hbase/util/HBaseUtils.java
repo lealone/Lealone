@@ -96,7 +96,7 @@ public class HBaseUtils {
     }
 
     public static Value toValue(byte[] b, int type) {
-        if (b == null)
+        if (b == null || b.length == 0)
             return ValueNull.INSTANCE;
         switch (type) {
         case Value.NULL:

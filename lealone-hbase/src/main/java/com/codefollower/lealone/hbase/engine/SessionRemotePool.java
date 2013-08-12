@@ -111,7 +111,7 @@ public class SessionRemotePool {
         }
 
         if (sessionRemote.getTransaction() == null)
-            sessionRemote.setTransaction(originalSession.getRootTransaction());
+            sessionRemote.setTransaction(originalSession.getTransaction());
 
         if (isNew)
             originalSession.addSessionRemote(url, sessionRemote);

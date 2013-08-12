@@ -31,7 +31,6 @@ import com.codefollower.lealone.hbase.util.HBaseUtils;
 
 public class TimestampServiceTable {
     private final static byte[] TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "timestamp_service_table");
-    //private final static byte[] HOST_AND_PORT = Bytes.toBytes("host_and_port");
     private final static byte[] LAST_MAX_TIMESTAMP = Bytes.toBytes("last_max_timestamp");
 
     private final byte[] hostAndPort;

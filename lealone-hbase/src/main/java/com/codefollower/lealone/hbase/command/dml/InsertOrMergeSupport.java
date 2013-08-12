@@ -30,6 +30,7 @@ import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.CommandRemote;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.dml.Query;
+import com.codefollower.lealone.command.dml.TransactionCommand;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.engine.Session;
@@ -104,7 +105,7 @@ public class InsertOrMergeSupport {
                 isTopTransaction = true;
             } else {
                 isNestedTransaction = true;
-                session.beginNestedTransaction();
+                session.addSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
             }
         }
 
@@ -143,9 +144,6 @@ public class InsertOrMergeSupport {
             }
             if (isTopTransaction)
                 session.commit(false);
-            //嵌套事务在父事务提交时再一起提交
-            //if (isNestedTransaction)
-            //    session.commitNestedTransaction();
             return updateCount;
         } catch (Exception e) {
             if (isTopTransaction)
@@ -153,12 +151,10 @@ public class InsertOrMergeSupport {
 
             //嵌套事务出错时提前rollback
             if (isNestedTransaction)
-                session.rollbackNestedTransaction();
+                session.rollbackToSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
 
             throw DbException.convert(e);
         } finally {
-            if (isNestedTransaction)
-                session.endNestedTransaction();
             if (isTopTransaction)
                 session.setAutoCommit(true);
             servers.clear();
@@ -278,13 +274,7 @@ public class InsertOrMergeSupport {
         HBaseRow row = (HBaseRow) table.getTemplateRow();
         row.setRowKey(rowKey);
         row.setRegionName(hri.getRegionNameAsBytes());
-
-        Put put;
-        if (session.getTransaction() != null)
-            put = new Put(HBaseUtils.toBytes(rowKey), session.getTransaction().getTransactionId());
-        else
-            put = new Put(HBaseUtils.toBytes(rowKey));
-        row.setPut(put);
+        row.setPut(session.getTransaction().createHBasePut(table.getDefaultColumnFamilyNameAsBytes(), rowKey));
 
         return row;
     }
