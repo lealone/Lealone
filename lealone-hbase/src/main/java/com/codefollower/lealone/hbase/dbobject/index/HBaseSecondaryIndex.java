@@ -32,7 +32,6 @@ import com.codefollower.lealone.dbobject.table.IndexColumn;
 import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.engine.Session;
-import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.metadata.MetaDataAdmin;
 import com.codefollower.lealone.hbase.result.HBaseRow;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
@@ -51,7 +50,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
     public synchronized static void createIndexTableIfNotExists(Session session, String indexName) {
         StringBuilder buff = new StringBuilder("CREATE HBASE TABLE IF NOT EXISTS ");
         buff.append(indexName).append(" (COLUMN FAMILY ").append(Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY));
-        buff.append("(C char, ").append(Bytes.toString(HBaseConstants.TAG)).append(" smallint))");
+        buff.append("(C char))");
 
         Prepared p = session.prepare(buff.toString(), true);
         p.setExecuteDirec(true);
@@ -94,8 +93,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
 
         select = "select _rowkey_ from " + indexName + " where _rowkey_>=?";
         insert = "insert into " + indexName + "(_rowkey_, c) values(?,'0')";
-        delete = "insert into " + indexName + "(_rowkey_, " + Bytes.toString(HBaseConstants.TAG) + ") values(?, "
-                + HBaseConstants.Tag.DELETE + ")";
+        delete = "delete from " + indexName + " where _rowkey_=?";
     }
 
     public byte[] getTableNameAsBytes() {

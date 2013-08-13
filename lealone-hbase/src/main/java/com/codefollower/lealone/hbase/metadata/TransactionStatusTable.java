@@ -20,6 +20,8 @@
 package com.codefollower.lealone.hbase.metadata;
 
 import java.io.IOException;
+import java.util.Map;
+
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
@@ -30,13 +32,18 @@ import com.codefollower.lealone.hbase.transaction.Transaction;
 import com.codefollower.lealone.hbase.transaction.TransactionStatusCache;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
+import com.codefollower.lealone.util.New;
 
 public class TransactionStatusTable {
     private final static byte[] TABLE_NAME = Bytes.toBytes(MetaDataAdmin.META_DATA_PREFIX + "transaction_status_table");
     private final static byte[] ALL_LOCAL_TRANSACTION_NAMES = Bytes.toBytes("all_local_transaction_names");
     private final static byte[] COMMIT_TIMESTAMP = Bytes.toBytes("commit_timestamp");
 
-    private final static TransactionStatusCache cache = new TransactionStatusCache();
+    //默认情况下只有当前region server的hostAndPort，
+    //但是当发生split时原有记录的hostAndPort没变，只不过记录被移到了当前region server，
+    //为了使得事务状态表中的记录仍然有效，所以还是用原有记录的hostAndPort
+    private final static Map<String, TransactionStatusCache> hostAndPortMap = New.hashMap();
+
     private final static TransactionStatusTable st = new TransactionStatusTable();
 
     public static TransactionStatusTable getInstance() {
@@ -72,6 +79,18 @@ public class TransactionStatusTable {
         }
     }
 
+    private static TransactionStatusCache newCache(String hostAndPort) {
+        synchronized (TransactionStatusTable.class) {
+            TransactionStatusCache cache = hostAndPortMap.get(hostAndPort);
+            if (cache == null) {
+                cache = new TransactionStatusCache();
+                hostAndPortMap.put(hostAndPort, cache);
+            }
+
+            return cache;
+        }
+    }
+
     /**
      * 检查事务是否有效
      * 
@@ -81,6 +100,10 @@ public class TransactionStatusTable {
      * @return true 有效 
      */
     public boolean isValid(String hostAndPort, long oldTid, Transaction currentTransaction) {
+        TransactionStatusCache cache = hostAndPortMap.get(hostAndPort);
+        if (cache == null) {
+            cache = newCache(hostAndPort);
+        }
         long commitTimestamp = cache.get(oldTid);
         //1.上一次已经查过了，已确认过是条无效的记录
         if (commitTimestamp == -2)
@@ -129,6 +152,10 @@ public class TransactionStatusTable {
     }
 
     public boolean isFullSuccessful(String hostAndPort, long tid) {
+        TransactionStatusCache cache = hostAndPortMap.get(hostAndPort);
+        if (cache == null) {
+            cache = newCache(hostAndPort);
+        }
         if (cache.get(tid) > 0)
             return true;
 

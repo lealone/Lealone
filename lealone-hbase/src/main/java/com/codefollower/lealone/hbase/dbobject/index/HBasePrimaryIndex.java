@@ -96,8 +96,7 @@ public class HBasePrimaryIndex extends BaseIndex {
                     Put put = hs.getTransaction().createHBasePutWithDeleteTag(defaultColumnFamilyName, result.getRow());
 
                     for (KeyValue kv : result.list()) {
-                        if ((Bytes.equals(kv.getQualifier(), HBaseConstants.TAG) || //
-                                Bytes.equals(kv.getQualifier(), HBaseConstants.TID)) //
+                        if (Bytes.equals(kv.getQualifier(), HBaseConstants.TRANSACTION_META) //
                                 && Bytes.equals(kv.getFamily(), defaultColumnFamilyName))
                             continue;
                         put.add(kv.getFamily(), kv.getQualifier(), null);

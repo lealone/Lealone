@@ -53,7 +53,7 @@ public class RegionSplitTest extends TestBase {
             stmt.executeUpdate("INSERT INTO RegionSplitTest(id, name) VALUES(" + i + ", 'a1')");
 
         //admin.getConnection().clearRegionCache();
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         admin.split(Bytes.toBytes(tableName), Bytes.toBytes(30));
 
         sql = "select id, name from RegionSplitTest";
@@ -63,7 +63,7 @@ public class RegionSplitTest extends TestBase {
             stmt.executeUpdate("INSERT INTO RegionSplitTest(id, name) VALUES(" + i + ", 'a1')");
 
         //admin.getConnection().clearRegionCache();
-        Thread.sleep(1000);
+        Thread.sleep(2000);
         admin.split(Bytes.toBytes(tableName), Bytes.toBytes(40));
 
         sql = "select id, name from RegionSplitTest";

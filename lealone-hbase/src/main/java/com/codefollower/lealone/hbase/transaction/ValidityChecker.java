@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import com.codefollower.lealone.hbase.engine.HBaseConstants;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
+import com.codefollower.lealone.util.StringUtils;
 
 /**
  * 
@@ -49,17 +50,16 @@ public class ValidityChecker {
         long oldTid;
         long newTid = t.getTransactionId();
 
-        bytes = r.getValue(defaultColumnFamilyName, HBaseConstants.TID);
-        //遗留系统的HBase表不会有TID列，这类表的记录都认为是有效的
+        bytes = r.getValue(defaultColumnFamilyName, HBaseConstants.TRANSACTION_META);
+        //遗留系统的HBase表不会有TRANSACTION_META列，这类表的记录都认为是有效的
         if (bytes == null) {
             return r;
         }
 
-        oldTid = Bytes.toLong(bytes);
-
-        //记录已删除，不需要再处理
-        bytes = r.getValue(defaultColumnFamilyName, HBaseConstants.TAG);
-        if (bytes != null && Bytes.toShort(bytes) == HBaseConstants.Tag.DELETE) {
+        String[] transactionMeta = StringUtils.arraySplit(Bytes.toString(bytes), ',', false);
+        hostAndPort = transactionMeta[0];
+        oldTid = Long.parseLong(transactionMeta[1]);
+        if (Short.parseShort(transactionMeta[2]) == HBaseConstants.Tag.DELETE) {
             return null;
         }
 

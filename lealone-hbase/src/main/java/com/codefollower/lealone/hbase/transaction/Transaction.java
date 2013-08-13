@@ -66,6 +66,9 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
     private HashMap<String, Integer> savepoints;
     private final ConcurrentSkipListSet<Long> halfSuccessfulTransactions = new ConcurrentSkipListSet<Long>();
 
+    private final byte[] transactionMetaAdd;
+    private final byte[] transactionMetaDelete;
+
     public Transaction(HBaseSession session) {
         this.session = session;
         timestampService = session.getTimestampService();
@@ -74,7 +77,11 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         autoCommit = session.getAutoCommit();
 
         transactionId = getNewTimestamp();
-        transactionName = getTransactionName(session.getHostAndPort(), transactionId);
+        String hostAndPort = session.getHostAndPort();
+        transactionName = getTransactionName(hostAndPort, transactionId);
+
+        transactionMetaAdd = Bytes.toBytes(hostAndPort + "," + transactionId + "," + HBaseConstants.Tag.ADD);
+        transactionMetaDelete = Bytes.toBytes(hostAndPort + "," + transactionId + "," + HBaseConstants.Tag.DELETE);
     }
 
     public long getNewTimestamp() {
@@ -294,15 +301,13 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
 
     public Put createHBasePut(byte[] defaultColumnFamilyName, Value rowKey) {
         Put put = new Put(HBaseUtils.toBytes(rowKey), getNewTimestamp());
-        put.add(defaultColumnFamilyName, HBaseConstants.TID, Bytes.toBytes(transactionId));
-        put.add(defaultColumnFamilyName, HBaseConstants.TAG, Bytes.toBytes(HBaseConstants.Tag.ADD));
+        put.add(defaultColumnFamilyName, HBaseConstants.TRANSACTION_META, transactionMetaAdd);
         return put;
     }
 
     public Put createHBasePutWithDeleteTag(byte[] defaultColumnFamilyName, byte[] rowKey) {
         Put put = new Put(rowKey, getNewTimestamp());
-        put.add(defaultColumnFamilyName, HBaseConstants.TID, Bytes.toBytes(transactionId));
-        put.add(defaultColumnFamilyName, HBaseConstants.TAG, Bytes.toBytes(HBaseConstants.Tag.DELETE));
+        put.add(defaultColumnFamilyName, HBaseConstants.TRANSACTION_META, transactionMetaDelete);
         return put;
     }
 

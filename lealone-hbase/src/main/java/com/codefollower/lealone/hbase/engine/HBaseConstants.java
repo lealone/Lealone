@@ -31,19 +31,13 @@ public class HBaseConstants {
     public static final String DEFAULT_DATABASE_ENGINE = Constants.PROJECT_NAME_PREFIX + "default.database.engine";
 
     /**
-     * 作为每张表的默认列族中的一个字段，用于记录事务id，
-     * 遗留系统的HBase表无法通过KeyValue的时间戳来实别事务id，
+     * 作为每张表的默认列族中的一个字段，用于记录事务的元数据，格式是: host:port,transactionId,Tag
+     * 遗留系统的HBase表无法通过KeyValue的时间戳来实别事务id，也无法把delete之类的sql转成HBase的delete，
      * 所以为了兼容遗留系统也为了更通用，增加一个新的字段能简化系统设计。
      */
-    public static final byte[] TID = Bytes.toBytes(HBaseUtils.getConfiguration().get(
-            Constants.PROJECT_NAME_PREFIX + "tid.column.name", "_" + Constants.PROJECT_NAME.toUpperCase() + "_TID_"));
-
-    /**
-     * 作为每张表的默认列族中的一个字段，当成每行记录的一个标签，
-     * 比如，如果此字段的值是0, 那么表示此记录已删除
-     */
-    public static final byte[] TAG = Bytes.toBytes(HBaseUtils.getConfiguration().get(
-            Constants.PROJECT_NAME_PREFIX + "tag.column.name", "_" + Constants.PROJECT_NAME.toUpperCase() + "_TAG_"));
+    public static final byte[] TRANSACTION_META = Bytes.toBytes(HBaseUtils.getConfiguration().get(
+            Constants.PROJECT_NAME_PREFIX + "transaction.meta.column.name",
+            "_" + Constants.PROJECT_NAME.toUpperCase() + "_TRANSACTION_META_"));
 
     public static class Tag {
         public static final short DELETE = 0;
