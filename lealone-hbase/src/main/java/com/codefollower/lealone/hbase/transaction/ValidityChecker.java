@@ -39,7 +39,7 @@ import com.codefollower.lealone.hbase.metadata.TransactionStatusTable;
  *
  */
 public class ValidityChecker {
-    private final static TransactionStatusCache cache = new TransactionStatusCache();
+    private final static TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
 
     public static Result checkResult(byte[] defaultColumnFamilyName, HBaseSession session, HRegionServer regionServer,
             String hostAndPort, byte[] regionName, Transaction t, Result r) throws IOException {
@@ -70,44 +70,14 @@ public class ValidityChecker {
             return r;
         }
 
-        if (isValid(hostAndPort, oldTid, newTid, t)) {
-            return r;
-        } else {
+        if ((oldTid % 2 == 0) || !transactionStatusTable.isValid(hostAndPort, oldTid, t)) {
             Get get = new Get(r.getRow());
             get.setMaxVersions(1);
             get.setTimeRange(0, oldTid - 1);
             r = regionServer.get(regionName, get);
             return checkResult(defaultColumnFamilyName, session, regionServer, hostAndPort, regionName, t, r);
-        }
-    }
-
-    /**
-     * 
-     * @param hostAndPort 所要检查的行所在的主机名和端口号
-     * @param oldTid 所要检查的行存入数据库的时间戳(旧事务id)
-     * @param newTid 当前事务的开始时间戳(当前事务id)
-     * @return
-     * @throws IOException
-     */
-    private static boolean isValid(String hostAndPort, long oldTid, long newTid, Transaction transaction) throws IOException {
-        long commitTimestamp = cache.get(oldTid); //TransactionStatusCache中的所有值初始情况下是-1
-
-        //3. 上一次已经查过了，已确认过是条无效的记录
-        if (commitTimestamp == -2)
-            return false;
-
-        //4. 是有效的事务记录，再进一步判断是否小于等于当前事务的开始时间戳
-        if (commitTimestamp != -1)
-            return commitTimestamp <= newTid;
-
-        //5. 记录还没在TransactionStatusCache中，需要到TransactionStatusTable中查询(这一步会消耗一些时间)
-        commitTimestamp = TransactionStatusTable.getInstance().query(hostAndPort, oldTid);
-        if (commitTimestamp != -1) {
-            cache.set(oldTid, commitTimestamp);
-            return true;
         } else {
-            cache.set(oldTid, -2);
-            return false;
+            return r;
         }
     }
 

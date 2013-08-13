@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.hbase.transaction.Transaction;
+import com.codefollower.lealone.hbase.transaction.TransactionStatusCache;
 import com.codefollower.lealone.hbase.util.HBaseUtils;
 import com.codefollower.lealone.message.DbException;
 
@@ -35,6 +36,7 @@ public class TransactionStatusTable {
     private final static byte[] ALL_LOCAL_TRANSACTION_NAMES = Bytes.toBytes("all_local_transaction_names");
     private final static byte[] COMMIT_TIMESTAMP = Bytes.toBytes("commit_timestamp");
 
+    private final static TransactionStatusCache cache = new TransactionStatusCache();
     private final static TransactionStatusTable st = new TransactionStatusTable();
 
     public static TransactionStatusTable getInstance() {
@@ -70,30 +72,88 @@ public class TransactionStatusTable {
         }
     }
 
-    public long query(String hostAndPort, long queryTimestamp) {
-        String rowKey = Transaction.getTransactionName(hostAndPort, queryTimestamp);
-        Get get = new Get(Bytes.toBytes(rowKey));
-        get.setTimeStamp(queryTimestamp);
+    /**
+     * 检查事务是否有效
+     * 
+     * @param hostAndPort 所要检查的行所在的主机名和端口号
+     * @param oldTid 所要检查的行存入数据库的旧事务id
+     * @param currentTransaction 当前事务
+     * @return true 有效 
+     */
+    public boolean isValid(String hostAndPort, long oldTid, Transaction currentTransaction) {
+        long commitTimestamp = cache.get(oldTid);
+        //1.上一次已经查过了，已确认过是条无效的记录
+        if (commitTimestamp == -2)
+            return false;
+        //2. 是有效的事务记录，再进一步判断是否小于等于当前事务的开始时间戳
+        if (commitTimestamp != -1)
+            return commitTimestamp <= currentTransaction.getTransactionId();
+
+        String oldTransactionName = Transaction.getTransactionName(hostAndPort, oldTid);
+        Get get = new Get(Bytes.toBytes(oldTransactionName));
         try {
-            long commitTimestamp = -1;
             Result r = table.get(get);
             if (r != null && !r.isEmpty()) {
+                boolean isFullSuccessful = true;
                 commitTimestamp = Bytes.toLong(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP));
-                String serverStr = Bytes.toString(r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, ALL_LOCAL_TRANSACTION_NAMES));
-                String[] servers = serverStr.split(",");
-                for (String server : servers) {
-                    if (!rowKey.equals(server)) {
-                        get = new Get(Bytes.toBytes(server));
+                String[] allLocalTransactionNames = Bytes.toString(
+                        r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, ALL_LOCAL_TRANSACTION_NAMES)).split(",");
+                for (String localTransactionName : allLocalTransactionNames) {
+                    if (!oldTransactionName.equals(localTransactionName)) {
+                        get = new Get(Bytes.toBytes(localTransactionName));
                         if (!table.exists(get)) {
-                            commitTimestamp = -1;
+                            isFullSuccessful = false;
                             break;
                         }
                     }
                 }
+
+                if (isFullSuccessful)
+                    cache.set(oldTid, commitTimestamp);
+
+                if (commitTimestamp <= currentTransaction.getTransactionId()) {
+                    if (!isFullSuccessful)
+                        currentTransaction.addHalfSuccessfulTransaction(oldTid);
+
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                cache.set(oldTid, -2);
+                return false;
             }
-            return commitTimestamp;
         } catch (IOException e) {
             throw DbException.convert(e);
         }
+    }
+
+    public boolean isFullSuccessful(String hostAndPort, long tid) {
+        if (cache.get(tid) > 0)
+            return true;
+
+        String transactionName = Transaction.getTransactionName(hostAndPort, tid);
+        Get get = new Get(Bytes.toBytes(transactionName));
+        try {
+            Result r = table.get(get);
+            if (r != null && !r.isEmpty()) {
+                String[] allLocalTransactionNames = Bytes.toString(
+                        r.getValue(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, ALL_LOCAL_TRANSACTION_NAMES)).split(",");
+                for (String localTransactionName : allLocalTransactionNames) {
+                    if (!transactionName.equals(localTransactionName)) {
+                        get = new Get(Bytes.toBytes(localTransactionName));
+                        if (!table.exists(get)) {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            }
+        } catch (IOException e) {
+            return false;
+        }
+
+        return false;
     }
 }

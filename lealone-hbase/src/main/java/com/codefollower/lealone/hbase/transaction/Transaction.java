@@ -64,6 +64,7 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
 
     private CopyOnWriteArrayList<HBaseRow> undoRows;
     private HashMap<String, Integer> savepoints;
+    private final ConcurrentSkipListSet<Long> halfSuccessfulTransactions = new ConcurrentSkipListSet<Long>();
 
     public Transaction(HBaseSession session) {
         this.session = session;
@@ -190,6 +191,19 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
                                 + ", startTimestamp " + transactionId + ", rowKey " + row.getRowKey());
                     }
                 }
+
+                //4.检查此事务关联到的一些半成功事务是否全成功了
+                if (!halfSuccessfulTransactions.isEmpty()) {
+                    String hostAndPort = session.getHostAndPort();
+                    for (Long tid : halfSuccessfulTransactions) {
+                        if (!transactionStatusTable.isFullSuccessful(hostAndPort, tid)) {
+                            throw new RuntimeException("Write-write conflict: transaction "
+                                    + getTransactionName(hostAndPort, tid) + " is not full successful, current transaction: "
+                                    + transactionName);
+                        }
+                    }
+                }
+
             }
         }
     }
@@ -290,5 +304,9 @@ public class Transaction implements com.codefollower.lealone.transaction.Transac
         put.add(defaultColumnFamilyName, HBaseConstants.TID, Bytes.toBytes(transactionId));
         put.add(defaultColumnFamilyName, HBaseConstants.TAG, Bytes.toBytes(HBaseConstants.Tag.DELETE));
         return put;
+    }
+
+    public void addHalfSuccessfulTransaction(Long tid) {
+        halfSuccessfulTransactions.add(tid);
     }
 }
