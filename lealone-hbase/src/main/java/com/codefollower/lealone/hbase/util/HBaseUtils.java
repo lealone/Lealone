@@ -110,7 +110,7 @@ public class HBaseUtils {
         case Value.BOOLEAN:
             return ValueBoolean.get(Bytes.toBoolean(b));
         case Value.BYTE:
-            return ValueByte.get((byte) Bytes.toShort(b));
+            return ValueByte.get(b[0]);
         case Value.DATE:
             return ValueDate.get(new Date(Bytes.toLong(b)));
         case Value.TIME:
@@ -162,7 +162,7 @@ public class HBaseUtils {
         case Value.BOOLEAN:
             return Bytes.toBytes(v.getBoolean());
         case Value.BYTE:
-            return Bytes.toBytes(v.getShort());
+            return new byte[] { v.getByte() };
         case Value.DATE:
             return Bytes.toBytes(v.getDate().getTime());
         case Value.TIME:
