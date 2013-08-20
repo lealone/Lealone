@@ -113,6 +113,16 @@ public class PgPortTracker extends ZooKeeperListener {
         }
     }
 
+    @Override
+    public void nodeCreated(String path) {
+        nodeChildrenChanged(path);
+    }
+
+    @Override
+    public void nodeDataChanged(String path) {
+        nodeChildrenChanged(path);
+    }
+
     public int getPgPort(ServerName sn) {
         return pgPortMap.get(sn.getHostAndPort());
     }

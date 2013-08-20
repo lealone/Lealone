@@ -113,6 +113,16 @@ public class TcpPortTracker extends ZooKeeperListener {
         }
     }
 
+    @Override
+    public void nodeCreated(String path) {
+        nodeChildrenChanged(path);
+    }
+
+    @Override
+    public void nodeDataChanged(String path) {
+        nodeChildrenChanged(path);
+    }
+
     public int getTcpPort(ServerName sn) {
         return tcpPortMap.get(sn.getHostAndPort());
     }
