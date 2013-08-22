@@ -27,47 +27,28 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
   支持触发器、自定义函数、Order By、Group By、聚合
 
 
-## 运行需要
+## 构建与运行需要
 
 * HBase 0.94.2 或更高 (只支持0.94系列版本)
 * JDK 6 或 JDK 7
+* Maven 2或更高 (只有构建才需要)
 
 
-## 构建需要
+## Wiki文档(按阅读顺序排列)
 
-* HBase 0.94.2 或更高 (只支持0.94系列版本)
-* JDK 6 或 JDK 7
-* Maven 2或更高
+1. [Lealone安装配置](https://github.com/codefollower/Lealone/wiki/Lealone%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE)
 
+2. [Lealone快速入门](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)
 
-## 安装配置
+3. [Lealone使用文档](https://github.com/codefollower/Lealone/wiki/Lealone%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3)
 
-* [Lealone安装配置](https://github.com/codefollower/Lealone/wiki/Lealone%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE)
+4. [使用Python访问Lealone](https://github.com/codefollower/Lealone/wiki/%E4%BD%BF%E7%94%A8Python%E8%AE%BF%E9%97%AELealone)
 
+5. [Lealone有哪些限制](https://github.com/codefollower/Lealone/wiki/Lealone-limitations)
 
-## 快速入门
+6. [Lealone开发测试环境搭建](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA)
 
-* [Lealone快速入门](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)
-
-
-## 使用Python访问Lealone
-
-* [使用Python访问Lealone](https://github.com/codefollower/Lealone/wiki/%E4%BD%BF%E7%94%A8Python%E8%AE%BF%E9%97%AELealone)
-
-
-## 开发测试环境搭建
-
-* [Lealone开发测试环境搭建](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA)
-
-
-## 使用文档
-
-* [Lealone使用文档](https://github.com/codefollower/Lealone/wiki/Lealone%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3)
-
-
-## 开发文档
-
-* [Lealone开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%96%87%E6%A1%A3)
+7. [Lealone开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%96%87%E6%A1%A3)
 
 
 ## Roadmap
