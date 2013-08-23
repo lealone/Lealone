@@ -52,7 +52,6 @@ import com.codefollower.lealone.value.ValueString;
 //执行select、delete、update语句都会触发此类
 public class HBasePrimaryIndexCursor implements Cursor {
     private final HBaseSession session;
-    private final String hostAndPort;
     private final byte[] regionName;
     private final int fetchSize;
 
@@ -71,19 +70,17 @@ public class HBasePrimaryIndexCursor implements Cursor {
 
     private InternalScanner scanner;
     private boolean isEnd = false;
-    private ArrayList<Result> tmpList;
+    private ArrayList<Result> tmpResultList;
 
     /**
      * 
      * @param filter 表过滤器
-     * @param first 所有查找的主键列的开始值
-     * @param last 所有查找的主键列的结束值
+     * @param first 所要查找的主键列的开始值
+     * @param last 所要查找的主键列的结束值
      */
     public HBasePrimaryIndexCursor(TableFilter filter, SearchRow first, SearchRow last) {
         session = (HBaseSession) filter.getSession();
         HRegionServer rs = session.getRegionServer();
-        //getHostAndPort()是一个字符串拼接操作，这里是一个小优化，避免在next()方法中重复调用
-        hostAndPort = rs.getServerName().getHostAndPort();
 
         Prepared p = filter.getPrepared();
         if (!(p instanceof WithWhereClause))
@@ -117,8 +114,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
         if (startValue != null && endValue != null && startValue == endValue) {
             try {
                 Result r = rs.get(regionName, new Get(Bytes.toBytes(startValue.getString())));
-                r = ValidityChecker.checkResult(defaultColumnFamilyName, session, rs, hostAndPort, regionName,
-                        session.getTransaction(), r);
+                r = ValidityChecker.checkResult(defaultColumnFamilyName, session, rs, regionName, session.getTransaction(), r);
                 if (r != null)
                     result = new Result[] { r };
 
@@ -175,7 +171,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
             //因为聚合运算完成后InternalScanner就会被主动关闭，
             //通过scannerId的方式可能延迟到client端读取所有结果后才关闭或直到超时为止。
             if (filter.getSelect() != null && filter.getSelect().isGroupQuery()) {
-                tmpList = new ArrayList<Result>(fetchSize);
+                tmpResultList = new ArrayList<Result>(fetchSize);
                 try {
                     //TODO 这里绕过HRegionServer的检查流程了
                     //如何像HRegionServer.execCoprocessor那样走正常的流程
@@ -233,15 +229,14 @@ public class HBasePrimaryIndexCursor implements Cursor {
 
         try {
             if (scanner != null) {
-                tmpList.clear();
-                isEnd = !ValidityChecker.fetchResults(defaultColumnFamilyName, session, hostAndPort, regionName, scanner,
-                        fetchSize, tmpList);
-                result = tmpList.toArray(new Result[tmpList.size()]);
+                tmpResultList.clear();
+                isEnd = !ValidityChecker.fetchResults(defaultColumnFamilyName, session, regionName, scanner, fetchSize,
+                        tmpResultList);
+                result = tmpResultList.toArray(new Result[tmpResultList.size()]);
                 if (isEnd)
                     close();
             } else
-                result = ValidityChecker.fetchResults(defaultColumnFamilyName, session, hostAndPort, regionName, scannerId,
-                        fetchSize);
+                result = ValidityChecker.fetchResults(defaultColumnFamilyName, session, regionName, scannerId, fetchSize);
         } catch (Exception e) {
             close();
             throw DbException.convert(e);

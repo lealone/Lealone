@@ -57,7 +57,6 @@ public class HBaseSecondaryIndexCursor implements Cursor {
     private final ByteBuffer readBuffer = ByteBuffer.allocate(256);
     private final HBaseSecondaryIndex secondaryIndex;
     private final HBaseSession session;
-    private final String hostAndPort;
     private final int fetchSize;
     private final byte[] regionName;
 
@@ -76,8 +75,6 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         secondaryIndex = index;
         session = (HBaseSession) filter.getSession();
         HRegionServer rs = session.getRegionServer();
-        //getHostAndPort()是一个字符串拼接操作，这里是一个小优化，避免在next()方法中重复调用
-        hostAndPort = rs.getServerName().getHostAndPort();
 
         Prepared p = filter.getPrepared();
         if (!(p instanceof WithWhereClause))
@@ -203,8 +200,7 @@ public class HBaseSecondaryIndexCursor implements Cursor {
         }
 
         try {
-            result = ValidityChecker
-                    .fetchResults(defaultColumnFamilyName, session, hostAndPort, regionName, scannerId, fetchSize);
+            result = ValidityChecker.fetchResults(defaultColumnFamilyName, session, regionName, scannerId, fetchSize);
         } catch (Exception e) {
             close();
             throw DbException.convert(e);

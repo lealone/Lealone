@@ -43,7 +43,7 @@ public class ValidityChecker {
     private final static TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
 
     public static Result checkResult(byte[] defaultColumnFamilyName, HBaseSession session, HRegionServer regionServer,
-            String hostAndPort, byte[] regionName, Transaction t, Result r) throws IOException {
+            byte[] regionName, Transaction t, Result r) throws IOException {
         if (r == null || r.isEmpty())
             return null;
         byte[] bytes;
@@ -57,7 +57,7 @@ public class ValidityChecker {
         }
 
         String[] transactionMeta = StringUtils.arraySplit(Bytes.toString(bytes), ',', false);
-        hostAndPort = transactionMeta[0];
+        String hostAndPort = transactionMeta[0];
         oldTid = Long.parseLong(transactionMeta[1]);
         if (Short.parseShort(transactionMeta[2]) == HBaseConstants.Tag.DELETE) {
             return null;
@@ -75,20 +75,20 @@ public class ValidityChecker {
             get.setMaxVersions(1);
             get.setTimeRange(0, oldTid - 1);
             r = regionServer.get(regionName, get);
-            return checkResult(defaultColumnFamilyName, session, regionServer, hostAndPort, regionName, t, r);
+            return checkResult(defaultColumnFamilyName, session, regionServer, regionName, t, r);
         } else {
             return r;
         }
     }
 
-    public static Result[] fetchResults(byte[] defaultColumnFamilyName, HBaseSession session, String hostAndPort, //
+    public static Result[] fetchResults(byte[] defaultColumnFamilyName, HBaseSession session, //
             byte[] regionName, long scannerId, int fetchSize) throws IOException {
         Transaction t = session.getTransaction();
         Result r;
         Result[] result = session.getRegionServer().next(scannerId, fetchSize);
         ArrayList<Result> list = new ArrayList<Result>(result.length);
         for (int i = 0; i < result.length; i++) {
-            r = checkResult(defaultColumnFamilyName, session, session.getRegionServer(), hostAndPort, regionName, t, result[i]);
+            r = checkResult(defaultColumnFamilyName, session, session.getRegionServer(), regionName, t, result[i]);
             if (r != null)
                 list.add(r);
         }
@@ -96,7 +96,7 @@ public class ValidityChecker {
         return list.toArray(new Result[list.size()]);
     }
 
-    public static boolean fetchResults(byte[] defaultColumnFamilyName, HBaseSession session, String hostAndPort, //
+    public static boolean fetchResults(byte[] defaultColumnFamilyName, HBaseSession session, //
             byte[] regionName, InternalScanner scanner, int fetchSize, ArrayList<Result> list) throws IOException {
         Transaction t = session.getTransaction();
         Result r;
@@ -107,8 +107,7 @@ public class ValidityChecker {
         for (int i = 0; hasMoreRows && i < fetchSize; i++) {
             hasMoreRows = scanner.next(kvs);
             if (!kvs.isEmpty()) {
-                r = checkResult(defaultColumnFamilyName, session, session.getRegionServer(), hostAndPort, regionName, t,
-                        new Result(kvs));
+                r = checkResult(defaultColumnFamilyName, session, session.getRegionServer(), regionName, t, new Result(kvs));
                 if (r != null)
                     list.add(r);
             }
