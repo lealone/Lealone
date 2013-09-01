@@ -52,12 +52,22 @@ public class HBaseDelegateIndex extends BaseIndex {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
+        setRowKey(first, last);
         return mainIndex.find(session, first, last);
     }
 
     @Override
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
+        setRowKey(first, last);
         return mainIndex.find(filter, first, last);
+    }
+
+    private void setRowKey(SearchRow first, SearchRow last) {
+        int columnId = getColumns()[0].getColumnId();
+        if (first != null)
+            first.setRowKey(first.getValue(columnId));
+        if (last != null)
+            last.setRowKey(last.getValue(columnId));
     }
 
     @Override

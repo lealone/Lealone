@@ -111,7 +111,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
             endValue = last.getRowKey();
 
         //优化where pk = xxx，对于这样的等号查询，startValue和endValue相等，直接使用get方式获取数据
-        if (startValue != null && endValue != null && startValue == endValue) {
+        if (startValue != null && endValue != null && (startValue == endValue || startValue.equals(endValue))) {
             try {
                 Result r = rs.get(regionName, new Get(Bytes.toBytes(startValue.getString())));
                 r = ValidityChecker.checkResult(defaultColumnFamilyName, session, rs, regionName, session.getTransaction(), r);
