@@ -20,7 +20,6 @@
 package com.codefollower.lealone.hbase.dbobject.index;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,13 +30,13 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.dbobject.index.Cursor;
 import com.codefollower.lealone.dbobject.table.Column;
 import com.codefollower.lealone.dbobject.table.TableFilter;
 import com.codefollower.lealone.expression.Parameter;
 import com.codefollower.lealone.hbase.command.dml.WithWhereClause;
+import com.codefollower.lealone.hbase.dbobject.index.HBaseSecondaryIndex.Buffer;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.engine.HBaseSession;
 import com.codefollower.lealone.hbase.metadata.MetaDataAdmin;
@@ -54,7 +53,6 @@ import com.codefollower.lealone.value.Value;
 import com.codefollower.lealone.value.ValueString;
 
 public class HBaseSecondaryIndexCursor implements Cursor {
-    private final ByteBuffer readBuffer = ByteBuffer.allocate(256);
     private final HBaseSecondaryIndex secondaryIndex;
     private final HBaseSession session;
     private final int fetchSize;
@@ -183,14 +181,12 @@ public class HBaseSecondaryIndexCursor implements Cursor {
     }
 
     private void setSearchRow() {
-        readBuffer.put(result[index].getRow());
-        readBuffer.flip();
-        searchRow = secondaryIndex.getRow(readBuffer);
+        Buffer buffer = new Buffer(result[index].getRow());
+        searchRow = secondaryIndex.getRow(buffer);
     }
 
     @Override
     public boolean next() {
-        readBuffer.clear();
         searchRow = null;
         row = null;
         index++;

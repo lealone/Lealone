@@ -19,7 +19,14 @@
  */
 package com.codefollower.lealone.hbase.dbobject.index;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
 import org.apache.hadoop.hbase.util.Bytes;
 
 import com.codefollower.lealone.command.Prepared;
@@ -81,8 +88,6 @@ public class HBaseSecondaryIndex extends BaseIndex {
     private final String insert;
     private final String delete;
 
-    private final ByteBuffer buffer = ByteBuffer.allocate(256);
-
     public HBaseSecondaryIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
         initBaseIndex(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {
@@ -109,10 +114,7 @@ public class HBaseSecondaryIndex extends BaseIndex {
             ResultInterface r = p.query(1);
             try {
                 if (r.next()) {
-                    buffer.clear();
-                    buffer.put(Bytes.toBytes(r.currentRow()[0].getString()));
-                    buffer.flip();
-                    SearchRow r2 = getRow(buffer);
+                    SearchRow r2 = getRow(new Buffer(Bytes.toBytes(r.currentRow()[0].getString())));
                     if (compareRows(row, r2) == 0) {
                         if (!containsNullAndAllowMultipleNull(r2)) {
                             throw getDuplicateKeyException();
@@ -168,7 +170,6 @@ public class HBaseSecondaryIndex extends BaseIndex {
             return null;
         }
 
-        buffer.clear();
         Value[] array = new Value[keyColumns];
         for (int i = 0; i < columns.length; i++) {
             array[i] = r.getValue(columns[i].getColumnId());
@@ -177,8 +178,12 @@ public class HBaseSecondaryIndex extends BaseIndex {
             array[keyColumns - 1] = null;
         else
             array[keyColumns - 1] = r.getRowKey();
-        encode(buffer, array);
-        return Bytes.toBytes(buffer);
+
+        try {
+            return encode(array);
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 
     //用于检查唯一约束是否违反
@@ -194,25 +199,35 @@ public class HBaseSecondaryIndex extends BaseIndex {
             return null;
         }
         byte[] bytes;
-        buffer.clear();
-        Value[] array = new Value[columns.length];
-        for (int i = 0; i < columns.length; i++) {
-            array[i] = r.getValue(columns[i].getColumnId());
-            if (array[i] == null || array[i] == ValueNull.INSTANCE) {
-                buffer.putInt(Integer.MAX_VALUE); //lastKey查询不用0，而是用最大值
-            } else {
-                bytes = HBaseUtils.toBytes(array[i]);
-                buffer.putInt(bytes.length);
-                buffer.put(bytes);
+        Buffer buffer = BufferPool.getBuffer();
+        try {
+            Value[] array = new Value[columns.length];
+            for (int i = 0; i < columns.length; i++) {
+                array[i] = r.getValue(columns[i].getColumnId());
+                if (array[i] == null || array[i] == ValueNull.INSTANCE) {
+                    buffer.writeInt(Integer.MAX_VALUE); //lastKey查询不用0，而是用最大值
+                } else {
+                    bytes = HBaseUtils.toBytes(array[i]);
+                    buffer.writeInt(bytes.length);
+                    buffer.write(bytes);
+                }
             }
+            buffer.writeInt(Integer.MAX_VALUE);
+            bytes = buffer.toByteArray();
+            return bytes;
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        } finally {
+            BufferPool.pushBuffer(buffer);
         }
-        buffer.putInt(Integer.MAX_VALUE);
-        buffer.flip();
-        return Bytes.toBytes(buffer);
     }
 
-    SearchRow getRow(ByteBuffer readBuffer) {
-        return getRow(decode(readBuffer));
+    SearchRow getRow(Buffer buffer) {
+        try {
+            return getRow(decode(buffer));
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
     }
 
     SearchRow getRow(Value[] array) {
@@ -228,23 +243,31 @@ public class HBaseSecondaryIndex extends BaseIndex {
         return searchRow;
     }
 
-    private ByteBuffer encode(ByteBuffer buff, Value[] array) {
-        byte[] bytes;
-        for (int i = 0; i < array.length; i++) {
-            Value v = array[i];
-            if (v == null || v == ValueNull.INSTANCE) {
-                buff.putInt(0);
-            } else {
-                bytes = HBaseUtils.toBytes(v);
-                buff.putInt(bytes.length);
-                buff.put(bytes);
+    private byte[] encode(Value[] array) throws IOException {
+        Buffer buffer = BufferPool.getBuffer();
+        try {
+            byte[] bytes;
+            for (int i = 0; i < array.length; i++) {
+                Value v = array[i];
+                if (v == null || v == ValueNull.INSTANCE) {
+                    buffer.writeInt(0);
+                } else {
+                    bytes = HBaseUtils.toBytes(v);
+                    buffer.writeInt(bytes.length);
+                    buffer.write(bytes);
+                }
             }
+            buffer.writeInt(Integer.MAX_VALUE);
+            bytes = buffer.toByteArray();
+            return bytes;
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        } finally {
+            BufferPool.pushBuffer(buffer);
         }
-        buff.flip();
-        return buff;
     }
 
-    private Value[] decode(ByteBuffer buff) {
+    private Value[] decode(Buffer buff) throws IOException {
         int length;
         Value[] array = new Value[keyColumns];
 
@@ -328,4 +351,51 @@ public class HBaseSecondaryIndex extends BaseIndex {
         return 0;
     }
 
+    private static class BufferPool {
+        private static BlockingQueue<Buffer> pool = new LinkedBlockingQueue<Buffer>();
+
+        public static Buffer getBuffer() {
+            Buffer buffer = pool.poll();
+            if (buffer != null) {
+                buffer.reset();
+                return buffer;
+            }
+            return new Buffer();
+        }
+
+        public static void pushBuffer(Buffer buffer) {
+            pool.add(buffer);
+        }
+    }
+
+    public static class Buffer extends DataOutputStream {
+        private ByteArrayOutputStream baos;
+        private DataInputStream in;
+
+        public Buffer() {
+            super(new ByteArrayOutputStream(256));
+            baos = (ByteArrayOutputStream) this.out;
+        }
+
+        public Buffer(byte[] bytes) {
+            super(null);
+            in = new DataInputStream(new ByteArrayInputStream(bytes));
+        }
+
+        public byte[] toByteArray() {
+            return baos.toByteArray();
+        }
+
+        public void reset() {
+            baos.reset();
+        }
+
+        public void get(byte[] b) throws IOException {
+            in.read(b);
+        }
+
+        public int getInt() throws IOException {
+            return in.readInt();
+        }
+    }
 }
