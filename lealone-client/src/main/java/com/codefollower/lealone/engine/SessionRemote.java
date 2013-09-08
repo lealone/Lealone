@@ -409,7 +409,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         } else {
             servers = StringUtils.arraySplit(server, ',', true);
 
-            if (!ci.removeProperty("USE_H2_CLUSTER_MODE", false))
+            if (servers.length > 1 && !ci.removeProperty("USE_H2_CLUSTER_MODE", false))
                 servers = new String[] { servers[random.nextInt(servers.length)] };
         }
         int len = servers.length;
