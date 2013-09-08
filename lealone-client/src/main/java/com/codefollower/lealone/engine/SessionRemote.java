@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.sql.Connection;
 import java.util.ArrayList;
+import java.util.Random;
 
 import com.codefollower.lealone.api.DatabaseEventListener;
 import com.codefollower.lealone.command.FrontendBatchCommand;
@@ -79,6 +80,8 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     public static final int STATUS_OK = 1;
     public static final int STATUS_CLOSED = 2;
     public static final int STATUS_OK_STATE_CHANGED = 3;
+
+    private static final Random random = new Random(System.currentTimeMillis());
 
     private SessionFactory sessionFactory;
 
@@ -405,6 +408,9 @@ public class SessionRemote extends SessionWithState implements DataHandler {
             servers = new String[] { ci.getOnlineServer(server) };
         } else {
             servers = StringUtils.arraySplit(server, ',', true);
+
+            if (!ci.removeProperty("USE_H2_CLUSTER_MODE", false))
+                servers = new String[] { servers[random.nextInt(servers.length)] };
         }
         int len = servers.length;
         transferList.clear();

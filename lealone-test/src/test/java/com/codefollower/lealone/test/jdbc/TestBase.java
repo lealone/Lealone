@@ -44,6 +44,7 @@ public class TestBase {
     protected String sql;
     protected String db = "hbasedb";
     //protected static String url = "jdbc:lealone:tcp://localhost:9092/hbasedb;DATABASE_TO_UPPER=false";
+    //protected static String url = "jdbc:lealone:tcp://localhost:9092,localhost:9093/hbasedb;USE_H2_CLUSTER_MODE=true";
     protected static String url = "jdbc:lealone:tcp://localhost:9092/hbasedb";
 
     public static String getURL() {
