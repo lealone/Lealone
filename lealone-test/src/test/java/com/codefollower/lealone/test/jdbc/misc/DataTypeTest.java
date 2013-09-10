@@ -28,13 +28,23 @@ import com.codefollower.lealone.test.jdbc.TestBase;
 public class DataTypeTest extends TestBase {
     @Test
     public void run() throws Exception {
-        createTableSQL("CREATE TABLE IF NOT EXISTS DataTypeTest (f1 int primary key, f2 TINYINT)");
-        stmt.executeUpdate("INSERT INTO DataTypeTest(f1, f2) VALUES(1, 2)");
+        createTableSQL("CREATE TABLE IF NOT EXISTS DataTypeTest (f1 int primary key, f2 TINYINT, age tinyint)");
+        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS DataTypeTest_idx ON DataTypeTest(age)");
+
+        stmt.executeUpdate("INSERT INTO DataTypeTest(f1, f2, age) VALUES(1, 2, 4)");
+
         sql = "SELECT * FROM DataTypeTest";
         rs = stmt.executeQuery(sql);
         rs.next();
 
         assertEquals(2, rs.getByte(2));
+        rs.close();
+
+        sql = "SELECT f1, f2, age FROM DataTypeTest WHERE age=4";
+        rs = stmt.executeQuery(sql);
+        rs.next();
+
+        assertEquals(4, rs.getByte(3));
         rs.close();
     }
 }
