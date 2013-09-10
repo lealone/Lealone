@@ -23,42 +23,54 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.util.Bytes;
 
-import com.codefollower.lealone.command.CommandInterface;
 import com.codefollower.lealone.command.ddl.CreateTable;
 import com.codefollower.lealone.command.ddl.CreateTableData;
-import com.codefollower.lealone.constant.ErrorCode;
 import com.codefollower.lealone.dbobject.Schema;
 import com.codefollower.lealone.dbobject.table.Column;
-import com.codefollower.lealone.engine.Database;
+import com.codefollower.lealone.dbobject.table.Table;
 import com.codefollower.lealone.engine.Session;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTable;
 import com.codefollower.lealone.hbase.dbobject.table.HBaseTableEngine;
-import com.codefollower.lealone.message.DbException;
 import com.codefollower.lealone.util.New;
 
 public class CreateHBaseTable extends CreateTable {
-    private boolean ifNotExists;
-    private String tableName;
+
     private ArrayList<CreateColumnFamily> cfList = New.arrayList();
     private ArrayList<String> splitKeys;
 
-    private Options options;
+    private Options tableOptions;
+    private Options defaultColumnFamilyOptions;
 
     private Map<String, ArrayList<Column>> columnFamilyMap = New.hashMap();
-    private final CreateTableData data = new CreateTableData();
 
-    public CreateHBaseTable(Session session, Schema schema, String tableName) {
+    public CreateHBaseTable(Session session, Schema schema) {
         super(session, schema);
-        this.tableName = tableName;
+    }
+
+    public void setTableOptions(Options tableOptions) {
+        this.tableOptions = tableOptions;
+    }
+
+    public void setDefaultColumnFamilyOptions(Options defaultColumnFamilyOptions) {
+        this.defaultColumnFamilyOptions = defaultColumnFamilyOptions;
+    }
+
+    public void setSplitKeys(ArrayList<String> splitKeys) {
+        this.splitKeys = splitKeys;
+    }
+
+    public void addCreateColumnFamily(CreateColumnFamily cf) {
+        cfList.add(cf);
     }
 
     @Override
     public void addColumn(Column column) {
-        data.columns.add(column);
+        super.addColumn(column);
         String cf = column.getColumnFamilyName();
         if (cf == null)
             cf = "";
@@ -71,65 +83,7 @@ public class CreateHBaseTable extends CreateTable {
         list.add(column);
     }
 
-    public void setIfNotExists(boolean ifNotExists) {
-        this.ifNotExists = ifNotExists;
-    }
-
-    public void setOptions(Options options) {
-        this.options = options;
-    }
-
-    public void setSplitKeys(ArrayList<String> splitKeys) {
-        this.splitKeys = splitKeys;
-    }
-
-    public void addCreateColumnFamily(CreateColumnFamily cf) {
-        cfList.add(cf);
-    }
-
-    @Override
-    public int getType() {
-        return CommandInterface.CREATE_TABLE;
-    }
-
-    public int update() {
-        if (!transactional) {
-            session.commit(true);
-        }
-
-        if (getSchema().findTableOrView(session, tableName) != null) {
-            if (ifNotExists) {
-                return 0;
-            }
-            throw DbException.get(ErrorCode.TABLE_OR_VIEW_ALREADY_EXISTS_1, tableName);
-        }
-
-        String defaultColumnFamilyName = null;
-        String rowKeyName = null;
-        if (options != null) {
-            defaultColumnFamilyName = options.getDefaultColumnFamilyName();
-            rowKeyName = options.getRowKeyName();
-        }
-        if (rowKeyName == null)
-            rowKeyName = Options.DEFAULT_ROW_KEY_NAME;
-
-        HTableDescriptor htd = new HTableDescriptor(tableName);
-        for (CreateColumnFamily cf : cfList) {
-            if (defaultColumnFamilyName == null)
-                defaultColumnFamilyName = cf.getColumnFamilyName();
-            htd.addFamily(cf.createHColumnDescriptor());
-        }
-
-        if (options != null) {
-            options.initOptions(htd);
-        }
-
-        htd.setValue(Options.ON_ROW_KEY_NAME, rowKeyName);
-        if (session.getDatabase().getSettings().databaseToUpper)
-            htd.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, defaultColumnFamilyName.toUpperCase());
-        else
-            htd.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, defaultColumnFamilyName);
-
+    private byte[][] getSplitKeys() {
         byte[][] splitKeys = null;
         if (this.splitKeys != null && this.splitKeys.size() > 0) {
             int size = this.splitKeys.size();
@@ -153,34 +107,69 @@ public class CreateHBaseTable extends CreateTable {
                 }
             }
         }
+        return splitKeys;
+    }
+
+    @Override
+    protected Table createTable(CreateTableData data) {
+        String tableName = data.tableName;
+        String defaultColumnFamilyName = null;
+        String rowKeyName = null;
+        if (tableOptions != null) {
+            defaultColumnFamilyName = tableOptions.getDefaultColumnFamilyName();
+            rowKeyName = tableOptions.getRowKeyName();
+        }
+        if (rowKeyName == null)
+            rowKeyName = Options.DEFAULT_ROW_KEY_NAME;
+
+        HTableDescriptor htd = new HTableDescriptor(tableName);
+        if (!cfList.isEmpty()) {
+            for (CreateColumnFamily cf : cfList) {
+                if (defaultColumnFamilyName == null)
+                    defaultColumnFamilyName = cf.getColumnFamilyName();
+                htd.addFamily(cf.createHColumnDescriptor());
+            }
+        } else if (defaultColumnFamilyOptions != null) {
+            defaultColumnFamilyName = HBaseTable.DEFAULT_COLUMN_FAMILY_NAME;
+            HColumnDescriptor hcd = new HColumnDescriptor(defaultColumnFamilyName);
+            defaultColumnFamilyOptions.initOptions(hcd);
+            htd.addFamily(hcd);
+        }
+
+        if (defaultColumnFamilyName == null)
+            defaultColumnFamilyName = HBaseTable.DEFAULT_COLUMN_FAMILY_NAME;
+
+        if (tableOptions != null) {
+            tableOptions.initOptions(htd);
+        }
+
+        htd.setValue(Options.ON_ROW_KEY_NAME, rowKeyName);
+        if (session.getDatabase().getSettings().databaseToUpper)
+            htd.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, defaultColumnFamilyName.toUpperCase());
+        else
+            htd.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, defaultColumnFamilyName);
 
         ArrayList<Column> list = columnFamilyMap.get("");
         if (list != null) {
             columnFamilyMap.remove("");
-            columnFamilyMap.put(defaultColumnFamilyName, list);
+            ArrayList<Column> defaultColumns = columnFamilyMap.get(defaultColumnFamilyName);
+            if (defaultColumns == null)
+                defaultColumns = New.arrayList(list.size());
+            for (Column c : list) {
+                c.setColumnFamilyName(defaultColumnFamilyName);
+                defaultColumns.add(c);
+            }
+            columnFamilyMap.put(defaultColumnFamilyName, defaultColumns);
         }
-        int id = getObjectId();
 
         data.schema = getSchema();
-        data.tableName = tableName;
-        data.id = id;
-        data.temporary = false;
-        data.globalTemporary = false;
-        data.persistIndexes = true;
-        data.persistData = true;
-        data.create = true;
-        data.session = session;
         data.tableEngine = HBaseTableEngine.class.getName();
         data.isHidden = false;
-        HBaseTable table = new HBaseTable(data, columnFamilyMap, htd, splitKeys);
+        HBaseTable table = new HBaseTable(!isDynamicTable(), data, columnFamilyMap, htd, getSplitKeys());
         table.setRowKeyName(rowKeyName);
         table.setTableEngine(HBaseTableEngine.class.getName());
 
-        Database db = session.getDatabase();
-        db.lockMeta(session);
-        db.addSchemaObject(session, table);
-
-        return 0;
+        return table;
     }
 
 }

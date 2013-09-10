@@ -27,20 +27,17 @@ import com.codefollower.lealone.engine.Session;
 
 public class CreateColumnFamily extends DefineCommand {
 
-    private String cfName;
-    private Options options;
+    private final String cfName;
+    private final Options options;
 
-    public CreateColumnFamily(Session session, String cfName) {
+    public CreateColumnFamily(Session session, String cfName, Options options) {
         super(session);
         this.cfName = cfName;
+        this.options = options;
     }
 
     public String getColumnFamilyName() {
         return cfName;
-    }
-
-    public void setOptions(Options options) {
-        this.options = options;
     }
 
     public int update() {

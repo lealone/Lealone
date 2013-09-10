@@ -30,10 +30,12 @@ import com.codefollower.lealone.value.DataType;
  */
 public class CreateTable extends SchemaCommand {
 
-    private final CreateTableData data = new CreateTableData();
+    protected final CreateTableData data = new CreateTableData();
     private final ArrayList<DefineCommand> constraintCommands = New.arrayList();
     private IndexColumn[] pkColumns;
-    private boolean ifNotExists;
+    protected boolean ifNotExists;
+    protected boolean dynamicTable;
+
     private boolean onCommitDrop;
     private boolean onCommitTruncate;
     private Query asQuery;
@@ -94,6 +96,14 @@ public class CreateTable extends SchemaCommand {
         this.ifNotExists = ifNotExists;
     }
 
+    public boolean isDynamicTable() {
+        return dynamicTable;
+    }
+
+    public void setDynamicTable(boolean dynamicTable) {
+        this.dynamicTable = dynamicTable;
+    }
+
     public int update() {
         if (!transactional) {
             session.commit(true);
@@ -132,7 +142,7 @@ public class CreateTable extends SchemaCommand {
         if (!isSessionTemporary) {
             db.lockMeta(session);
         }
-        Table table = getSchema().createTable(data);
+        Table table = createTable(data);
         ArrayList<Sequence> sequences = New.arrayList();
         for (Column c : data.columns) {
             if (c.isAutoIncrement()) {
@@ -193,6 +203,10 @@ public class CreateTable extends SchemaCommand {
             throw e;
         }
         return 0;
+    }
+
+    protected Table createTable(CreateTableData data) {
+        return getSchema().createTable(data);
     }
 
     private void generateColumnsFromQuery() {

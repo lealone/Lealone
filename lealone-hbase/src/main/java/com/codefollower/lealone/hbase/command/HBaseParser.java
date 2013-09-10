@@ -25,6 +25,7 @@ import com.codefollower.lealone.command.Command;
 import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.command.Prepared;
 import com.codefollower.lealone.command.ddl.AlterSequence;
+import com.codefollower.lealone.command.ddl.CreateTable;
 import com.codefollower.lealone.command.ddl.DefineCommand;
 import com.codefollower.lealone.command.dml.Delete;
 import com.codefollower.lealone.command.dml.Insert;
@@ -91,35 +92,47 @@ public class HBaseParser extends Parser {
     @Override
     protected Prepared parseCreate() {
         if (readIf("HBASE")) {
-            return parseCreateHBaseTable();
+            read("TABLE");
+            return parseCreateTable(false, false, true, true);
         } else {
             return super.parseCreate();
         }
     }
 
-    private CreateHBaseTable parseCreateHBaseTable() {
-        read("TABLE");
-        boolean ifNotExists = readIfNoExists();
-        String tableName = readIdentifierWithSchema();
-        CreateHBaseTable command = new CreateHBaseTable(session, getSchema(), tableName);
+    @Override
+    protected void parseTableDefinition(Schema schema, CreateTable createTable, String tableName) {
+        CreateHBaseTable command = (CreateHBaseTable) createTable;
+        Options options;
+        ArrayList<String> splitKeys;
 
-        command.setIfNotExists(ifNotExists);
-        Schema schema = getSchema();
-        if (readIf("(")) {
-            if (!readIf(")")) {
-                Options options;
-                ArrayList<String> splitKeys;
-                do {
+        do {
+            DefineCommand c = parseAlterTableAddConstraintIf(tableName, schema);
+            if (c != null) {
+                command.addConstraintCommand(c);
+            } else {
+                //TABLE级别的选项参数，支持下面两种语法:
+                //OPTIONS(...)
+                //TABLE OPTIONS(...)
+                options = parseTableOptions();
+                if (options != null) {
+                    command.setTableOptions(options);
+                    continue;
+                }
+
+                splitKeys = parseSplitKeys();
+                if (splitKeys != null) {
+                    command.setSplitKeys(splitKeys);
+                    continue;
+                }
+
+                if (readIf("COLUMN")) {
+                    read("FAMILY");
+                    //COLUMN FAMILY OPTIONS(...)语法
                     options = parseOptions();
-                    if (options != null)
-                        command.setOptions(options);
-
-                    splitKeys = parseSplitKeys();
-                    if (splitKeys != null)
-                        command.setSplitKeys(splitKeys);
-
-                    if (readIf("COLUMN")) {
-                        read("FAMILY");
+                    if (options != null) {
+                        command.setDefaultColumnFamilyOptions(options);
+                    } else {
+                        //COLUMN FAMILY定义
                         String cfName = readUniqueIdentifier();
                         options = null;
                         if (readIf("(") && !readIf(")")) {
@@ -129,15 +142,14 @@ public class HBaseParser extends Parser {
                                     parseColumn(schema, command, tableName, cfName);
                             } while (readIfMore());
                         }
-                        CreateColumnFamily cf = new CreateColumnFamily(session, cfName);
-                        cf.setOptions(options);
+                        CreateColumnFamily cf = new CreateColumnFamily(session, cfName, options);
                         command.addCreateColumnFamily(cf);
                     }
-                } while (readIfMore());
+                } else {
+                    parseColumn(schema, command, tableName, null);
+                }
             }
-        }
-
-        return command;
+        } while (readIfMore());
     }
 
     private Options parseOptions() {
@@ -155,6 +167,18 @@ public class HBaseParser extends Parser {
         }
 
         return null;
+    }
+
+    private Options parseTableOptions() {
+        if (readIf("TABLE")) {
+            Options options = parseOptions();
+            if (options == null)
+                throw getSyntaxError();
+            else
+                return options;
+        } else {
+            return parseOptions();
+        }
     }
 
     private ArrayList<String> parseSplitKeys() {
@@ -337,5 +361,10 @@ public class HBaseParser extends Parser {
             return new RetryableCommand(this, sql, p);
         else
             return super.createCommand(p, sql);
+    }
+
+    @Override
+    public CreateHBaseTable createTable(Session session, Schema schema) {
+        return new CreateHBaseTable(session, schema);
     }
 }

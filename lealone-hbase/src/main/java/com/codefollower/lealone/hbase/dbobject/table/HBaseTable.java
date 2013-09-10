@@ -61,7 +61,7 @@ import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.value.Value;
 
 public class HBaseTable extends TableBase {
-    private static final String DEFAULT_COLUMN_FAMILY_NAME = Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY);
+    public static final String DEFAULT_COLUMN_FAMILY_NAME = Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY);
 
     /**
      * 使用create table建立的表被称为静态表，静态表只有一个列族，并且列族名是CF，
@@ -96,12 +96,7 @@ public class HBaseTable extends TableBase {
         this(true, data, null, null, null);
     }
 
-    public HBaseTable(CreateTableData data, Map<String, ArrayList<Column>> columnFamilyMap, HTableDescriptor htd,
-            byte[][] splitKeys) {
-        this(false, data, columnFamilyMap, htd, splitKeys);
-    }
-
-    private HBaseTable(boolean isStatic, CreateTableData data, Map<String, ArrayList<Column>> columnFamilyMap,
+    public HBaseTable(boolean isStatic, CreateTableData data, Map<String, ArrayList<Column>> columnFamilyMap,
             HTableDescriptor htd, byte[][] splitKeys) {
         super(data);
 
@@ -543,9 +538,9 @@ public class HBaseTable extends TableBase {
 
     @Override
     public String getCreateSQL() {
-        if (isStatic)
-            return super.getCreateSQL();
-        StatementBuilder buff = new StatementBuilder("CREATE HBASE TABLE IF NOT EXISTS ");
+        //if (isStatic)
+        //    return super.getCreateSQL();
+        StatementBuilder buff = new StatementBuilder("CREATE " + (isStatic ? "STATIC" : "") + " TABLE IF NOT EXISTS ");
         buff.append(getSQL());
         buff.append("(\n");
         buff.append("    OPTIONS(");

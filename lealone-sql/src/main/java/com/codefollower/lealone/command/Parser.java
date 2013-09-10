@@ -488,7 +488,7 @@ public class Parser {
         return c;
     }
 
-    private DbException getSyntaxError() {
+    protected DbException getSyntaxError() {
         if (expectedList == null || expectedList.size() == 0) {
             return DbException.getSyntaxError(sqlCommand, parseIndex);
         }
@@ -3844,11 +3844,17 @@ public class Parser {
             return parseCreateLinkedTable(false, false, force);
         }
         // tables or linked tables
-        boolean memory = false, cached = false;
+        boolean memory = false, cached = false, dynamicTable = true;
         if (readIf("MEMORY")) {
             memory = true;
         } else if (readIf("CACHED")) {
             cached = true;
+        }
+
+        if (readIf("STATIC")) {
+            dynamicTable = false;
+        } else if (readIf("DYNAMIC")) {
+            dynamicTable = true;
         }
         if (readIf("LOCAL")) {
             read("TEMPORARY");
@@ -3856,25 +3862,25 @@ public class Parser {
                 return parseCreateLinkedTable(true, false, force);
             }
             read("TABLE");
-            return parseCreateTable(true, false, cached);
+            return parseCreateTable(true, false, cached, dynamicTable);
         } else if (readIf("GLOBAL")) {
             read("TEMPORARY");
             if (readIf("LINKED")) {
                 return parseCreateLinkedTable(true, true, force);
             }
             read("TABLE");
-            return parseCreateTable(true, true, cached);
+            return parseCreateTable(true, true, cached, dynamicTable);
         } else if (readIf("TEMP") || readIf("TEMPORARY")) {
             if (readIf("LINKED")) {
                 return parseCreateLinkedTable(true, true, force);
             }
             read("TABLE");
-            return parseCreateTable(true, true, cached);
+            return parseCreateTable(true, true, cached, dynamicTable);
         } else if (readIf("TABLE")) {
             if (!cached && !memory) {
                 cached = database.getDefaultTableType() == Table.TYPE_CACHED;
             }
-            return parseCreateTable(false, false, cached);
+            return parseCreateTable(false, false, cached, dynamicTable);
         } else {
             boolean hash = false, primaryKey = false, unique = false;
             String indexName = null;
@@ -5117,7 +5123,7 @@ public class Parser {
         }
     }
 
-    private DefineCommand parseAlterTableAddConstraintIf(String tableName, Schema schema) {
+    protected DefineCommand parseAlterTableAddConstraintIf(String tableName, Schema schema) {
         String constraintName = null, comment = null;
         boolean ifNotExists = false;
         boolean allowIndexDefinition = database.getMode().indexDefinitionInCreateTable;
@@ -5354,7 +5360,18 @@ public class Parser {
         return column;
     }
 
-    private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes) {
+    protected void parseTableDefinition(Schema schema, CreateTable command, String tableName) {
+        do {
+            DefineCommand c = parseAlterTableAddConstraintIf(tableName, schema);
+            if (c != null) {
+                command.addConstraintCommand(c);
+            } else {
+                parseColumn(schema, command, tableName, null);
+            }
+        } while (readIfMore());
+    }
+
+    protected CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes, boolean dynamicTable) {
         boolean ifNotExists = readIfNoExists();
         String tableName = readIdentifierWithSchema();
         if (temp && globalTemp && equalsToken("SESSION", schemaName)) {
@@ -5364,23 +5381,17 @@ public class Parser {
             globalTemp = false;
         }
         Schema schema = getSchema();
-        CreateTable command = new CreateTable(session, schema);
+        CreateTable command = createTable(session, schema);
         command.setPersistIndexes(persistIndexes);
         command.setTemporary(temp);
         command.setGlobalTemporary(globalTemp);
         command.setIfNotExists(ifNotExists);
         command.setTableName(tableName);
         command.setComment(readCommentIf());
+        command.setDynamicTable(dynamicTable);
         if (readIf("(")) {
             if (!readIf(")")) {
-                do {
-                    DefineCommand c = parseAlterTableAddConstraintIf(tableName, schema);
-                    if (c != null) {
-                        command.addConstraintCommand(c);
-                    } else {
-                        parseColumn(schema, command, tableName, null);
-                    }
-                } while (readIfMore());
+                parseTableDefinition(schema, command, tableName);
             }
         }
         if (readIf("ENGINE")) {
@@ -5535,5 +5546,9 @@ public class Parser {
 
     public Command createCommand(Prepared p, String sql) {
         return new CommandContainer(this, sql, p);
+    }
+
+    public CreateTable createTable(Session session, Schema schema) {
+        return new CreateTable(session, schema);
     }
 }

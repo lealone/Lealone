@@ -33,7 +33,7 @@ public class HBaseStaticTableTest extends TestBase {
     public void run() throws Exception {
         String tableName = "HBaseStaticTableTest";
 
-        createTableSQL("CREATE TABLE IF NOT EXISTS " + tableName + " (f1 int primary key, f2 long)");
+        createTableSQL("CREATE STATIC TABLE IF NOT EXISTS " + tableName + " (f1 int primary key, f2 long)");
         stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(1, 2)");
         stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(2, 3)");
         stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(3, 4)");
@@ -52,7 +52,7 @@ public class HBaseStaticTableTest extends TestBase {
 
         tableName = "HBaseStaticTableTestNoPrimaryKey";
 
-        createTableSQL("CREATE TABLE IF NOT EXISTS " + tableName + " (f1 int, f2 long)");
+        createTableSQL("CREATE STATIC TABLE IF NOT EXISTS " + tableName + " (f1 int, f2 long)");
         stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(1, 2)");
         stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(2, 3)");
         stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(3, 4)");
