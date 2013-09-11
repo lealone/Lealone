@@ -48,10 +48,12 @@ public class CreateColumnFamily extends DefineCommand {
         return CommandInterface.UNKNOWN;
     }
 
-    public HColumnDescriptor createHColumnDescriptor() {
+    public HColumnDescriptor createHColumnDescriptor(Options defaultColumnFamilyOptions) {
         HColumnDescriptor hcd = new HColumnDescriptor(cfName);
         if (options != null) {
             options.initOptions(hcd);
+        } else if (defaultColumnFamilyOptions != null) {
+            defaultColumnFamilyOptions.initOptions(hcd);
         }
         return hcd;
     }

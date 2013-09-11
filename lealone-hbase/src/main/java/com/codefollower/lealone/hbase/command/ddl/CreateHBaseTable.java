@@ -112,38 +112,28 @@ public class CreateHBaseTable extends CreateTable {
 
     @Override
     protected Table createTable(CreateTableData data) {
-        String tableName = data.tableName;
-        String defaultColumnFamilyName = null;
-        String rowKeyName = null;
-        if (tableOptions != null) {
-            defaultColumnFamilyName = tableOptions.getDefaultColumnFamilyName();
-            rowKeyName = tableOptions.getRowKeyName();
-        }
-        if (rowKeyName == null)
-            rowKeyName = Options.DEFAULT_ROW_KEY_NAME;
+        HTableDescriptor htd = new HTableDescriptor(data.tableName);
 
-        HTableDescriptor htd = new HTableDescriptor(tableName);
+        String defaultColumnFamilyName = null;
+        if (tableOptions != null) {
+            tableOptions.initOptions(htd);
+            defaultColumnFamilyName = tableOptions.getDefaultColumnFamilyName();
+        }
+
         if (!cfList.isEmpty()) {
             for (CreateColumnFamily cf : cfList) {
                 if (defaultColumnFamilyName == null)
                     defaultColumnFamilyName = cf.getColumnFamilyName();
-                htd.addFamily(cf.createHColumnDescriptor());
+                htd.addFamily(cf.createHColumnDescriptor(defaultColumnFamilyOptions));
             }
-        } else if (defaultColumnFamilyOptions != null) {
+        } else {
             defaultColumnFamilyName = HBaseTable.DEFAULT_COLUMN_FAMILY_NAME;
             HColumnDescriptor hcd = new HColumnDescriptor(defaultColumnFamilyName);
-            defaultColumnFamilyOptions.initOptions(hcd);
+            if (defaultColumnFamilyOptions != null)
+                defaultColumnFamilyOptions.initOptions(hcd);
             htd.addFamily(hcd);
         }
 
-        if (defaultColumnFamilyName == null)
-            defaultColumnFamilyName = HBaseTable.DEFAULT_COLUMN_FAMILY_NAME;
-
-        if (tableOptions != null) {
-            tableOptions.initOptions(htd);
-        }
-
-        htd.setValue(Options.ON_ROW_KEY_NAME, rowKeyName);
         if (session.getDatabase().getSettings().databaseToUpper)
             htd.setValue(Options.ON_DEFAULT_COLUMN_FAMILY_NAME, defaultColumnFamilyName.toUpperCase());
         else
@@ -165,11 +155,10 @@ public class CreateHBaseTable extends CreateTable {
         data.schema = getSchema();
         data.tableEngine = HBaseTableEngine.class.getName();
         data.isHidden = false;
-        HBaseTable table = new HBaseTable(!isDynamicTable(), data, columnFamilyMap, htd, getSplitKeys());
-        table.setRowKeyName(rowKeyName);
-        table.setTableEngine(HBaseTableEngine.class.getName());
-
-        return table;
+        Column rowKeyColumn = null;
+        if (pkColumns != null && pkColumns.length > 0) {
+            rowKeyColumn = pkColumns[0].column;
+        }
+        return new HBaseTable(!isDynamicTable(), data, columnFamilyMap, htd, getSplitKeys(), rowKeyColumn);
     }
-
 }

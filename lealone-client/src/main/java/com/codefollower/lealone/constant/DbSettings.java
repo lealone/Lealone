@@ -297,6 +297,12 @@ public class DbSettings extends SettingsBase {
     public final boolean rowId = get("ROWID", true);
 
     /**
+     * Database setting <code>ROWKEY</code> (default: true).<br />
+     * If set, each table has a pseudo-column _ROWKEY_.
+     */
+    public final boolean rowKey = get("ROWKEY", true);
+
+    /**
      * Database setting <code>SELECT_FOR_UPDATE_MVCC</code>
      * (default: true).<br />
      * If set, SELECT .. FOR UPDATE queries lock only the selected rows when

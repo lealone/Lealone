@@ -255,7 +255,7 @@ public class TestBase {
     }
 
     public void printHTable(String tableName, int maxVersions) throws Exception {
-        HTable t = new HTable(HBaseConfiguration.create(), tableName);
+        HTable t = new HTable(HBaseConfiguration.create(), tableName.toUpperCase());
         Scan scan = new Scan();
 
         if (maxVersions != -1)

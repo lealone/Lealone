@@ -87,20 +87,28 @@ public class ExpressionColumn extends Expression {
         if (resolver instanceof TableFilter && resolver.getTableFilter().getTable().supportsColumnFamily()) {
             Table t = resolver.getTableFilter().getTable();
 
-            if (!t.isStatic() && t.getRowKeyName().equalsIgnoreCase(columnName)) {
-                if (columnFamilyName != null) {
-                    schemaName = tableAlias;
-                    tableAlias = columnFamilyName;
-                    columnFamilyName = null;
-                }
-                if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
+            //            if (!t.isStatic() && t.getRowKeyName().equalsIgnoreCase(columnName)) {
+            //                if (columnFamilyName != null) {
+            //                    schemaName = tableAlias;
+            //                    tableAlias = columnFamilyName;
+            //                    columnFamilyName = null;
+            //                }
+            //                if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
+            //                    return;
+            //                }
+            //                if (schemaName != null && !database.equalsIdentifiers(schemaName, resolver.getSchemaName())) {
+            //                    return;
+            //                }
+            //                mapColumn(resolver, t.getRowKeyColumn(), level);
+            //                return;
+            //            }
+
+            if (database.equalsIdentifiers(Column.ROWKEY, columnName)) {
+                Column col = t.getRowKeyColumn();
+                if (col != null) {
+                    mapColumn(resolver, col, level);
                     return;
                 }
-                if (schemaName != null && !database.equalsIdentifiers(schemaName, resolver.getSchemaName())) {
-                    return;
-                }
-                mapColumn(resolver, t.getRowKeyColumn(), level);
-                return;
             }
             if (resolver.getSelect() == null) {
                 Column c = t.getColumn(columnName);

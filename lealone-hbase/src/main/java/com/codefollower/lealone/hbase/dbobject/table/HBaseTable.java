@@ -61,13 +61,14 @@ import com.codefollower.lealone.util.StatementBuilder;
 import com.codefollower.lealone.value.Value;
 
 public class HBaseTable extends TableBase {
+
     public static final String DEFAULT_COLUMN_FAMILY_NAME = Bytes.toString(MetaDataAdmin.DEFAULT_COLUMN_FAMILY);
 
     /**
-     * 使用create table建立的表被称为静态表，静态表只有一个列族，并且列族名是CF，
+     * 使用create static table建立的表被称为静态表，静态表只有一个列族，并且列族名是CF，
      * 静态表必须事先定义表结构: 表所包含的字段及字段类型。<p>
      * 
-     * 使用create hbase table建立的表被称为动态表，动态表可以有多个列族，并不需要事先定义表结构，
+     * 使用create [hbase|dynamic] table建立的表被称为动态表，动态表可以有多个列族，并不需要事先定义表结构，
      * 可以在insert时根据字面出现的字段名和字面值来确定新的字段名和字段类型。
      */
     private final boolean isStatic;
@@ -93,12 +94,25 @@ public class HBaseTable extends TableBase {
     private boolean isColumnsModified;
 
     public HBaseTable(CreateTableData data) {
-        this(true, data, null, null, null);
+        this(true, data, null, null, null, null);
     }
 
     public HBaseTable(boolean isStatic, CreateTableData data, Map<String, ArrayList<Column>> columnFamilyMap,
-            HTableDescriptor htd, byte[][] splitKeys) {
+            HTableDescriptor htd, byte[][] splitKeys, Column rowKeyColumn) {
         super(data);
+
+        if (rowKeyColumn != null) {
+            rowKeyColumn = rowKeyColumn.getClone();
+            rowKeyColumn.setTable(this, -2);
+            rowKeyColumn.setRowKeyColumn(true);
+            rowKeyName = rowKeyColumn.getName();
+            this.rowKeyColumn = rowKeyColumn;
+        } else {
+            this.rowKeyColumn = new Column(Column.ROWKEY, Value.STRING);
+            this.rowKeyColumn.setTable(this, -2);
+            this.rowKeyColumn.setRowKeyColumn(true);
+            this.rowKeyName = Column.ROWKEY;
+        }
 
         this.isStatic = isStatic;
         database = data.session.getDatabase();
@@ -195,10 +209,6 @@ public class HBaseTable extends TableBase {
         return rowKeyColumn;
     }
 
-    public void setRowKeyName(String rowKeyName) {
-        this.rowKeyName = rowKeyName;
-    }
-
     @Override
     public String getRowKeyName() {
         if (rowKeyName == null) {
@@ -216,7 +226,7 @@ public class HBaseTable extends TableBase {
                 }
             }
             if (rowKeyName == null)
-                rowKeyName = Options.DEFAULT_ROW_KEY_NAME;
+                rowKeyName = Column.ROWKEY;
         }
 
         return rowKeyName;
@@ -224,7 +234,7 @@ public class HBaseTable extends TableBase {
 
     @Override
     public Column getColumn(String columnName) {
-        if (getRowKeyName().equalsIgnoreCase(columnName))
+        if (database.getSettings().rowKey && Column.ROWKEY.equals(columnName))
             return getRowKeyColumn();
 
         if (columnName.indexOf('.') == -1) {
@@ -264,7 +274,7 @@ public class HBaseTable extends TableBase {
 
     @Override
     public Column getColumn(String columnFamilyName, String columnName, boolean isInsert) {
-        if (getRowKeyName().equalsIgnoreCase(columnName))
+        if (database.getSettings().rowKey && Column.ROWKEY.equals(columnName))
             return getRowKeyColumn();
 
         if (columnFamilyName == null) {

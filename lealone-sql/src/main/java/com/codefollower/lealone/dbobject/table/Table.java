@@ -1144,10 +1144,6 @@ public abstract class Table extends SchemaObjectBase {
         return tableEngine;
     }
 
-    public void setTableEngine(String tableEngine) {
-        this.tableEngine = tableEngine;
-    }
-
     public void addColumn(Column column) {
     }
 

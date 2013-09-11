@@ -66,8 +66,10 @@ public class WhereClauseSupport {
                 return start.getRowKey();
             else if (tableFilter.getIndex() instanceof HBaseDelegateIndex)
                 return start.getValue(tableFilter.getIndex().getColumns()[0].getColumnId());
-            else
+            else if (tableFilter.getIndex() instanceof HBaseSecondaryIndex)
                 return ValueBytes.getNoCopy(((HBaseSecondaryIndex) tableFilter.getIndex()).getKey(start));
+            else
+                return start.getRowKey();
         }
         return null;
     }
@@ -79,8 +81,10 @@ public class WhereClauseSupport {
                 return end.getRowKey();
             else if (tableFilter.getIndex() instanceof HBaseDelegateIndex)
                 return end.getValue(tableFilter.getIndex().getColumns()[0].getColumnId());
-            else
+            else if (tableFilter.getIndex() instanceof HBaseSecondaryIndex)
                 return ValueBytes.getNoCopy(((HBaseSecondaryIndex) tableFilter.getIndex()).getKey(end));
+            else
+                return end.getRowKey();
         }
         return null;
     }

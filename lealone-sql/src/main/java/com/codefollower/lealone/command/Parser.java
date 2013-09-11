@@ -5297,6 +5297,7 @@ public class Parser {
             column.setRowKeyColumn(true);
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = column.getName();
+            cols[0].column = column;
             AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
             pk.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
             pk.setTableName(tableName);
@@ -5317,6 +5318,7 @@ public class Parser {
             boolean hash = readIf("HASH");
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = column.getName();
+            cols[0].column = column;
             AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
             pk.setPrimaryKeyHash(hash);
             pk.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
@@ -5332,6 +5334,7 @@ public class Parser {
             unique.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE);
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = columnName;
+            cols[0].column = column;
             unique.setIndexColumns(cols);
             unique.setTableName(tableName);
             command.addConstraintCommand(unique);
@@ -5352,6 +5355,7 @@ public class Parser {
             ref.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL);
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = columnName;
+            cols[0].column = column;
             ref.setIndexColumns(cols);
             ref.setTableName(tableName);
             parseReferences(ref, schema, tableName);

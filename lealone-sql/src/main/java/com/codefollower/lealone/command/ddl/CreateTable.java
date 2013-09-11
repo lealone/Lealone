@@ -31,11 +31,11 @@ import com.codefollower.lealone.value.DataType;
 public class CreateTable extends SchemaCommand {
 
     protected final CreateTableData data = new CreateTableData();
-    private final ArrayList<DefineCommand> constraintCommands = New.arrayList();
-    private IndexColumn[] pkColumns;
+    protected IndexColumn[] pkColumns;
     protected boolean ifNotExists;
     protected boolean dynamicTable;
 
+    private final ArrayList<DefineCommand> constraintCommands = New.arrayList();
     private boolean onCommitDrop;
     private boolean onCommitTruncate;
     private Query asQuery;

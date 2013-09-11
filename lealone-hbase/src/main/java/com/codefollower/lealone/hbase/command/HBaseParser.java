@@ -224,7 +224,7 @@ public class HBaseParser extends Parser {
     protected Column parseColumn(Table table) {
         if (table.supportsColumnFamily()) {
             String columnName = readColumnIdentifier();
-            if (columnName.equalsIgnoreCase(table.getRowKeyName()))
+            if (database.getSettings().rowKey && Column.ROWKEY.equals(columnName))
                 return table.getRowKeyColumn();
             else if (database.getSettings().rowId && Column.ROWID.equals(columnName))
                 return table.getRowIdColumn();

@@ -58,6 +58,8 @@ public class HBaseStaticTableTest extends TestBase {
         stmt.executeUpdate("INSERT INTO " + tableName + "(f1, f2) VALUES(3, 4)");
         sql = "SELECT * FROM " + tableName;
         printResultSet();
+
+        //printHTable(tableName);
     }
 
 }

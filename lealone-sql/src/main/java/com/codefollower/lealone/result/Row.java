@@ -95,7 +95,7 @@ public class Row implements SearchRow {
     }
 
     public Value getValue(int i) {
-        return i == -1 ? ValueLong.get(key) : data[i];
+        return i == -1 ? ValueLong.get(key) : (i == -2 ? rowKey : data[i]);
     }
 
     /**
@@ -115,6 +115,8 @@ public class Row implements SearchRow {
     public void setValue(int i, Value v) {
         if (i == -1) {
             this.key = v.getLong();
+        } else if (i == -2) {
+            this.rowKey = v;
         } else {
             data[i] = v;
         }

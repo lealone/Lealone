@@ -290,8 +290,6 @@ public class InsertOrMergeSupport {
         Expression e;
         for (int i = 0, len = columns.length; i < len; i++) {
             c = columns[i];
-            if (!((HBaseTable) this.table).isStatic() && c.isRowKeyColumn())
-                continue;
             e = expr[i];
             if (e != null) {
                 // e can be null (DEFAULT)
@@ -307,9 +305,11 @@ public class InsertOrMergeSupport {
                 v = c.convert(e.getValue(session));
                 row.setValue(c.getColumnId(), v);
 
-                put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
+                if (!c.isRowKeyColumn())
+                    put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
             } else {
-                put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(ValueNull.INSTANCE));
+                if (!c.isRowKeyColumn())
+                    put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(ValueNull.INSTANCE));
             }
         }
         return row;
@@ -326,8 +326,6 @@ public class InsertOrMergeSupport {
 
         for (int j = 0, len = columns.length; j < len; j++) {
             c = columns[j];
-            if (!((HBaseTable) this.table).isStatic() && c.isRowKeyColumn())
-                continue;
             int index = c.getColumnId();
             v = values[j];
             if (c.isTypeUnknown()) {
@@ -338,7 +336,8 @@ public class InsertOrMergeSupport {
             v = c.convert(values[j]);
             row.setValue(index, v);
 
-            put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
+            if (!c.isRowKeyColumn())
+                put.add(c.getColumnFamilyNameAsBytes(), c.getNameAsBytes(), HBaseUtils.toBytes(v));
         }
 
         return row;
@@ -350,7 +349,7 @@ public class InsertOrMergeSupport {
 
     private Value getRowKey(Value[] values) {
         if (rowKeyColumnIndex == -1)
-            return getRowKey();
+            return getUuidRowKey();
         else
             return values[rowKeyColumnIndex];
     }
@@ -365,13 +364,10 @@ public class InsertOrMergeSupport {
                 columnIndex++;
             }
         }
-        return getRowKey();
+        return getUuidRowKey();
     }
 
-    private Value getRowKey() {
-        if (table.isStatic())
-            return ValueUuid.getNewRandom();
-        else
-            throw new RuntimeException("do not find rowKey field");
+    private Value getUuidRowKey() {
+        return ValueUuid.getNewRandom();
     }
 }

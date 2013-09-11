@@ -49,6 +49,11 @@ public class Column {
     public static final String ROWID = "_ROWID_";
 
     /**
+     * The name of the rowkey pseudo column.
+     */
+    public static final String ROWKEY = "_ROWKEY_";
+
+    /**
      * This column is not nullable.
      */
     public static final int NOT_NULLABLE = ResultSetMetaData.columnNoNulls;

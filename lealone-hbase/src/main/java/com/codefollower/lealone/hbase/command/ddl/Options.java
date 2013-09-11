@@ -30,9 +30,6 @@ import com.codefollower.lealone.engine.Session;
 
 public class Options extends DefineCommand {
     public static final String ON_DEFAULT_COLUMN_FAMILY_NAME = "DEFAULT_COLUMN_FAMILY_NAME";
-    public static final String ON_ROW_KEY_NAME = "ROW_KEY_NAME";
-
-    public static final String DEFAULT_ROW_KEY_NAME = "_ROWKEY_";
 
     private ArrayList<String> optionNames;
     private ArrayList<String> optionValues;
@@ -88,15 +85,5 @@ public class Options extends DefineCommand {
             }
 
         return null;
-    }
-
-    public String getRowKeyName() {
-        if (optionNames != null)
-            for (int i = 0, len = optionNames.size(); i < len; i++) {
-                if (ON_ROW_KEY_NAME.equalsIgnoreCase(optionNames.get(i)))
-                    return optionValues.get(i);
-            }
-
-        return DEFAULT_ROW_KEY_NAME;
     }
 }

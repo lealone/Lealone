@@ -171,8 +171,11 @@ public class HBaseSecondaryIndex extends BaseIndex {
         }
 
         Value[] array = new Value[keyColumns];
+        Value v;
         for (int i = 0; i < columns.length; i++) {
-            array[i] = columns[i].convert(r.getValue(columns[i].getColumnId()));
+            v = r.getValue(columns[i].getColumnId());
+            if (v != null)
+                array[i] = columns[i].convert(v);
         }
         if (isStartKey)
             array[keyColumns - 1] = null;
@@ -202,8 +205,11 @@ public class HBaseSecondaryIndex extends BaseIndex {
         Buffer buffer = BufferPool.getBuffer();
         try {
             Value[] array = new Value[columns.length];
+            Value v;
             for (int i = 0; i < columns.length; i++) {
-                array[i] = columns[i].convert(r.getValue(columns[i].getColumnId()));
+                v = r.getValue(columns[i].getColumnId());
+                if (v != null)
+                    array[i] = columns[i].convert(v);
                 if (array[i] == null || array[i] == ValueNull.INSTANCE) {
                     buffer.writeInt(Integer.MAX_VALUE); //lastKey查询不用0，而是用最大值
                 } else {
