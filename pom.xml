@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<properties>
-		<lealone.version>0.12.0-SNAPSHOT</lealone.version>
+		<lealone.version>0.13.0-SNAPSHOT</lealone.version>
 	</properties>
 
 	<name>lealone project</name>
@@ -11,7 +11,7 @@
 	<groupId>com.codefollower.lealone</groupId>
 	<artifactId>lealone</artifactId>
 	<packaging>pom</packaging>
-	<version>0.12.0</version>
+	<version>0.13.0</version>
 
 	<modules>
 		<module>lealone-client</module>
