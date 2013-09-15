@@ -112,6 +112,7 @@ public class HBaseDatabase extends Database {
         starting = false;
     }
 
+    @Override
     protected HBaseSession createSystemSession(User user, int id) {
         return new HBaseSession(this, user, id);
     }

@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.hbase.dbobject.table;
+package com.codefollower.lealone.cassandra.dbobject.table;
 
 import com.codefollower.lealone.api.TableEngine;
 import com.codefollower.lealone.command.ddl.CreateTableData;
@@ -31,9 +31,9 @@ import com.codefollower.lealone.engine.Database;
  * 用于支持标准的CREATE TABLE语句。
  *
  */
-public class HBaseTableEngine implements TableEngine {
-    public static final String NAME = "HBASE";
-    private static final HBaseTableEngine INSTANCE = new HBaseTableEngine();
+public class CassandraTableEngine implements TableEngine {
+    public static final String NAME = "CASSANDRA";
+    private static final CassandraTableEngine INSTANCE = new CassandraTableEngine();
     static {
         TableEngineManager.registerTableEngine(INSTANCE);
     }
@@ -43,7 +43,7 @@ public class HBaseTableEngine implements TableEngine {
         Database db = data.session.getDatabase();
         if (!data.isHidden && !data.temporary && data.id > 0 //
                 && !db.isPersistent() && !db.getShortName().toLowerCase().startsWith("management_db_"))
-            return new HBaseTable(data);
+            return new CassandraTable(data);
         else
             return new MemoryTable(data);
     }

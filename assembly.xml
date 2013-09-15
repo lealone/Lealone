@@ -40,5 +40,20 @@
 			</binaries>
 		</moduleSet>
 
+		<moduleSet>
+			<includes>
+				<include>com.codefollower.lealone:lealone-cassandra</include>
+			</includes>
+			<binaries>
+				<unpack>false</unpack>
+				<outputDirectory>lealone-cassandra</outputDirectory>
+				<dependencySets>
+					<dependencySet>
+						<useTransitiveFiltering>true</useTransitiveFiltering>
+						<useTransitiveDependencies>true</useTransitiveDependencies>
+					</dependencySet>
+				</dependencySets>
+			</binaries>
+		</moduleSet>
 	</moduleSets>
 </assembly>

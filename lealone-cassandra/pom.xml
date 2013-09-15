@@ -7,37 +7,23 @@
 		<version>0.13.0</version>
 	</parent>
 
-	<artifactId>lealone-test</artifactId>
+	<artifactId>lealone-cassandra</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
-	<name>lealone test</name>
+	<name>lealone cassandra</name>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.codefollower.lealone</groupId>
-			<artifactId>lealone-hbase</artifactId>
+			<artifactId>lealone-sql</artifactId>
 			<version>${lealone.version}</version>
 		</dependency>
 
 		<dependency>
-			<groupId>com.codefollower.lealone</groupId>
-			<artifactId>lealone-cassandra</artifactId>
-			<version>${lealone.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>commons-logging</groupId>
-			<artifactId>commons-logging</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.hbase</groupId>
-			<artifactId>hbase</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-core</artifactId>
+			<groupId>org.apache.cassandra</groupId>
+			<artifactId>cassandra-all</artifactId>
+			<version>2.0.0</version>
+			<scope>provided</scope>
 		</dependency>
 
 	</dependencies>
