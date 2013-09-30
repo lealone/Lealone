@@ -16,7 +16,7 @@
 	<!-- change it if necessary -->
 	<property>
 		<name>lealone.test.dir</name>
-		<value>E:/lealone/test</value>
+		<value>lealone-test-data</value>
 	</property>
 
 
@@ -119,7 +119,7 @@
 
 	<property>
 		<name>hbase.rootdir</name>
-		<value>file:///${lealone.test.dir}/hbase</value>
+		<value>${lealone.test.dir}/hbase</value>
 	</property>
 
 	<property>
