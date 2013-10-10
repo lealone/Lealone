@@ -21,6 +21,8 @@ package com.codefollower.lealone.cassandra.start;
 
 import org.apache.cassandra.service.CassandraDaemon;
 
+import com.codefollower.lealone.cassandra.config.CassandraConfigurationLoader;
+
 public class CassandraStarter {
     public static void main(String[] args) {
         System.setProperty("cassandra.rpc_port", "9160");
@@ -35,6 +37,8 @@ public class CassandraStarter {
         System.setProperty("cassandra.start_rpc", "false"); //不启用thrift server
 
         System.setProperty("cassandra-foreground", "true"); //打印输出到控制台
+
+        System.setProperty("cassandra.config.loader", CassandraConfigurationLoader.class.getCanonicalName()); //打印输出到控制台
 
         CassandraDaemon.main(new String[] {});
     }

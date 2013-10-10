@@ -36,3 +36,5 @@ incremental_backups: true
 compaction_throughput_mb_per_sec: 0
 
 authenticator: org.apache.cassandra.auth.PasswordAuthenticator
+
+tcp_port: 9092
