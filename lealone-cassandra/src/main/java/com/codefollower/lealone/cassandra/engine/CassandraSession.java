@@ -19,6 +19,8 @@
  */
 package com.codefollower.lealone.cassandra.engine;
 
+import com.codefollower.lealone.cassandra.command.CassandraParser;
+import com.codefollower.lealone.command.Parser;
 import com.codefollower.lealone.dbobject.User;
 import com.codefollower.lealone.engine.Database;
 import com.codefollower.lealone.engine.Session;
@@ -27,5 +29,10 @@ public class CassandraSession extends Session {
 
     public CassandraSession(Database database, User user, int id) {
         super(database, user, id);
+    }
+
+    @Override
+    public Parser createParser() {
+        return new CassandraParser(this);
     }
 }
