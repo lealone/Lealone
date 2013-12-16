@@ -26,7 +26,7 @@ import com.codefollower.lealone.cassandra.config.CassandraConfigurationLoader;
 public class CassandraStarter {
     public static void main(String[] args) {
         System.setProperty("cassandra.rpc_port", "9160");
-        System.setProperty("cassandra.start_native_transport", "true"); //启用native server，用于支持CQL
+        System.setProperty("cassandra.start_native_transport", "false"); //不启用native server，用于支持CQL
         System.setProperty("cassandra.native_transport_port", "9042");
 
         System.setProperty("cassandra.config", "cassandra.yaml");
@@ -38,7 +38,8 @@ public class CassandraStarter {
 
         System.setProperty("cassandra-foreground", "true"); //打印输出到控制台
 
-        System.setProperty("cassandra.config.loader", CassandraConfigurationLoader.class.getCanonicalName()); //打印输出到控制台
+        //覆盖默认的ConfigurationLoader
+        System.setProperty("cassandra.config.loader", CassandraConfigurationLoader.class.getCanonicalName());
 
         CassandraDaemon.main(new String[] {});
     }

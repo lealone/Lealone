@@ -37,11 +37,15 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.error.YAMLException;
 
+import com.codefollower.lealone.cassandra.server.CassandraTcpServer;
+
 //改编自org.apache.cassandra.config.YamlConfigurationLoader
 public class CassandraConfigurationLoader implements ConfigurationLoader {
     private static final Logger logger = LoggerFactory.getLogger(YamlConfigurationLoader.class);
 
     private final static String DEFAULT_CONFIGURATION = "cassandra.yaml";
+
+    private CassandraTcpServer cassandraTcpServer;
 
     /**
      * Inspect the classpath to find storage configuration file
@@ -67,6 +71,7 @@ public class CassandraConfigurationLoader implements ConfigurationLoader {
 
     public Config loadConfig() throws ConfigurationException {
         InputStream input = null;
+        CassandraConfig config = null;
         try {
             URL url = getStorageConfigURL();
             logger.info("Loading settings from {}", url);
@@ -81,11 +86,16 @@ public class CassandraConfigurationLoader implements ConfigurationLoader {
             seedDesc.putMapPropertyType("parameters", String.class, String.class);
             constructor.addTypeDescription(seedDesc);
             Yaml yaml = new Yaml(constructor);
-            return (CassandraConfig) yaml.load(input);
+            config = (CassandraConfig) yaml.load(input);
         } catch (YAMLException e) {
             throw new ConfigurationException("Invalid yaml", e);
         } finally {
             FileUtils.closeQuietly(input);
         }
+
+        cassandraTcpServer = new CassandraTcpServer(config);
+        cassandraTcpServer.start();
+
+        return config;
     }
 }

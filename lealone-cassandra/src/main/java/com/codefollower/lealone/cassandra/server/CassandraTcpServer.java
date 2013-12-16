@@ -24,6 +24,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.codefollower.lealone.cassandra.config.CassandraConfig;
 import com.codefollower.lealone.message.TraceSystem;
 import com.codefollower.lealone.server.TcpServer;
 import com.codefollower.lealone.server.TcpServerThread;
@@ -31,9 +33,10 @@ import com.codefollower.lealone.server.TcpServerThread;
 public class CassandraTcpServer extends TcpServer implements Runnable {
     private static final Log log = LogFactory.getLog(CassandraTcpServer.class);
 
-    private final int tcpPort = 9042;
+    private final CassandraConfig config;
 
-    public CassandraTcpServer() {
+    public CassandraTcpServer(CassandraConfig config) {
+        this.config = config;
         init();
     }
 
@@ -46,7 +49,7 @@ public class CassandraTcpServer extends TcpServer implements Runnable {
             t.setDaemon(isDaemon());
             t.start();
 
-            log.info("Started lealone tcp server at port " + tcpPort);
+            log.info("Started lealone tcp server at port " + getPort());
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -89,7 +92,7 @@ public class CassandraTcpServer extends TcpServer implements Runnable {
     private void init() {
         ArrayList<String> args = new ArrayList<String>();
         args.add("-tcpPort");
-        args.add("" + tcpPort);
+        args.add("" + config.lealone_tcp_port);
         super.init(args.toArray(new String[0]));
     }
 

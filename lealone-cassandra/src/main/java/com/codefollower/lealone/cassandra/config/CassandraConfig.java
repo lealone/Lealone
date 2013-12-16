@@ -19,6 +19,8 @@
  */
 package com.codefollower.lealone.cassandra.config;
 
+import com.codefollower.lealone.constant.Constants;
+
 public class CassandraConfig extends org.apache.cassandra.config.Config {
-    public Integer tcp_port = 9092;
+    public Integer lealone_tcp_port = Constants.DEFAULT_TCP_PORT;
 }
