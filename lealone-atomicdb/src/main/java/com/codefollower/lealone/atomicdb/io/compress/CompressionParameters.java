@@ -142,7 +142,7 @@ public class CompressionParameters
         if (className == null || className.isEmpty())
             return null;
 
-        className = className.contains(".") ? className : "org.apache.cassandra.io.compress." + className;
+        className = className.contains(".") ? className : "com.codefollower.lealone.atomicdb.io.compress." + className;
         try
         {
             return (Class<? extends ICompressor>)Class.forName(className);

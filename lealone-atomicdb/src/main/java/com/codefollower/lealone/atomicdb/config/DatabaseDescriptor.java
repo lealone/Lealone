@@ -33,7 +33,6 @@ import com.codefollower.lealone.atomicdb.db.SystemKeyspace;
 import com.codefollower.lealone.atomicdb.dht.IPartitioner;
 import com.codefollower.lealone.atomicdb.exceptions.ConfigurationException;
 import com.codefollower.lealone.atomicdb.io.FSWriteError;
-import com.codefollower.lealone.atomicdb.io.sstable.IndexSummaryManager;
 import com.codefollower.lealone.atomicdb.io.util.FileUtils;
 import com.codefollower.lealone.atomicdb.io.util.IAllocator;
 import com.codefollower.lealone.atomicdb.locator.DynamicEndpointSnitch;
@@ -476,7 +475,7 @@ public class DatabaseDescriptor
 
         String allocatorClass = conf.memtable_allocator;
         if (!allocatorClass.contains("."))
-            allocatorClass = "org.apache.cassandra.utils." + allocatorClass;
+            allocatorClass = "com.codefollower.lealone.atomicdb.utils." + allocatorClass;
         memtableAllocator = FBUtilities.classForName(allocatorClass, "allocator");
 
         // Hardcoded system keyspaces
@@ -509,7 +508,7 @@ public class DatabaseDescriptor
     private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException
     {
         if (!snitchClassName.contains("."))
-            snitchClassName = "org.apache.cassandra.locator." + snitchClassName;
+            snitchClassName = "com.codefollower.lealone.atomicdb.locator." + snitchClassName;
         IEndpointSnitch snitch = FBUtilities.construct(snitchClassName, "snitch");
         return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
     }

@@ -66,7 +66,7 @@ public abstract class AbstractComposite implements Composite
     public ByteBuffer toByteBuffer()
     {
         // This is the legacy format of composites.
-        // See org.apache.cassandra.db.marshal.CompositeType for details.
+        // See com.codefollower.lealone.atomicdb.db.marshal.CompositeType for details.
         ByteBuffer result = ByteBuffer.allocate(dataSize() + 3 * size());
         for (int i = 0; i < size(); i++)
         {

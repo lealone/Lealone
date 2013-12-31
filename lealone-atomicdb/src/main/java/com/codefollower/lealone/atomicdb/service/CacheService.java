@@ -57,7 +57,7 @@ public class CacheService implements CacheServiceMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(CacheService.class);
 
-    public static final String MBEAN_NAME = "org.apache.cassandra.db:type=Caches";
+    public static final String MBEAN_NAME = "com.codefollower.lealone.atomicdb.db:type=Caches";
 
     public static enum CacheType
     {

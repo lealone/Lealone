@@ -384,28 +384,28 @@ public class FBUtilities
     public static IPartitioner newPartitioner(String partitionerClassName) throws ConfigurationException
     {
         if (!partitionerClassName.contains("."))
-            partitionerClassName = "org.apache.cassandra.dht." + partitionerClassName;
+            partitionerClassName = "com.codefollower.lealone.atomicdb.dht." + partitionerClassName;
         return FBUtilities.construct(partitionerClassName, "partitioner");
     }
 
     public static IAllocator newOffHeapAllocator(String offheap_allocator) throws ConfigurationException
     {
         if (!offheap_allocator.contains("."))
-            offheap_allocator = "org.apache.cassandra.io.util." + offheap_allocator;
+            offheap_allocator = "com.codefollower.lealone.atomicdb.io.util." + offheap_allocator;
         return FBUtilities.construct(offheap_allocator, "off-heap allocator");
     }
 
     public static IAuthorizer newAuthorizer(String className) throws ConfigurationException
     {
         if (!className.contains("."))
-            className = "org.apache.cassandra.auth." + className;
+            className = "com.codefollower.lealone.atomicdb.auth." + className;
         return FBUtilities.construct(className, "authorizer");
     }
 
     public static IAuthenticator newAuthenticator(String className) throws ConfigurationException
     {
         if (!className.contains("."))
-            className = "org.apache.cassandra.auth." + className;
+            className = "com.codefollower.lealone.atomicdb.auth." + className;
         return FBUtilities.construct(className, "authenticator");
     }
 

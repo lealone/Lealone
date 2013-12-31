@@ -66,7 +66,7 @@ import org.slf4j.LoggerFactory;
 
 public final class MessagingService implements MessagingServiceMBean
 {
-    public static final String MBEAN_NAME = "org.apache.cassandra.net:type=MessagingService";
+    public static final String MBEAN_NAME = "com.codefollower.lealone.atomicdb.net:type=MessagingService";
 
     // 8 bits version, so don't waste versions
     public static final int VERSION_12  = 6;

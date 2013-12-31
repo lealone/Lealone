@@ -60,7 +60,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     }
     public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance)
     {
-        mbeanName = "org.apache.cassandra.db:type=DynamicEndpointSnitch";
+        mbeanName = "com.codefollower.lealone.atomicdb.db:type=DynamicEndpointSnitch";
         if (instance != null)
             mbeanName += ",instance=" + instance;
         subsnitch = snitch;

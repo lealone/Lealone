@@ -93,7 +93,7 @@ import org.cliffc.high_scale_lib.NonBlockingHashSet;
 
 public class HintedHandOffManager implements HintedHandOffManagerMBean
 {
-    public static final String MBEAN_NAME = "org.apache.cassandra.db:type=HintedHandoffManager";
+    public static final String MBEAN_NAME = "com.codefollower.lealone.atomicdb.db:type=HintedHandoffManager";
     public static final HintedHandOffManager instance = new HintedHandOffManager();
 
     private static final Logger logger = LoggerFactory.getLogger(HintedHandOffManager.class);

@@ -106,7 +106,7 @@ public interface CType extends Comparator<Composite>
      * Returns a AbstractType corresponding to this CType for thrift/cql2 sake.
      *
      * If the CType is a "simple" one, this just return the wrapped type, otherwise
-     * it returns the corresponding org.apache.cassandra.db.marshal.CompositeType.
+     * it returns the corresponding com.codefollower.lealone.atomicdb.db.marshal.CompositeType.
      *
      * This is only meant to be use for backward compatibility (particularly for
      * thrift/cql2) but it's not meant to be used internally.

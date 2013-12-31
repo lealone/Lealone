@@ -43,7 +43,7 @@ import com.codefollower.lealone.atomicdb.utils.FBUtilities;
  */
 public class FailureDetector implements IFailureDetector, FailureDetectorMBean
 {
-    public static final String MBEAN_NAME = "org.apache.cassandra.net:type=FailureDetector";
+    public static final String MBEAN_NAME = "com.codefollower.lealone.atomicdb.net:type=FailureDetector";
     private static final int SAMPLE_SIZE = 1000;
 
     public static final IFailureDetector instance = new FailureDetector();

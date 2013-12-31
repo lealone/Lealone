@@ -1053,7 +1053,7 @@ public final class CFMetaData
 
     public static Class<? extends AbstractCompactionStrategy> createCompactionStrategy(String className) throws ConfigurationException
     {
-        className = className.contains(".") ? className : "org.apache.cassandra.db.compaction." + className;
+        className = className.contains(".") ? className : "com.codefollower.lealone.atomicdb.db.compaction." + className;
         Class<AbstractCompactionStrategy> strategyClass = FBUtilities.classForName(className, "compaction strategy");
         if (!AbstractCompactionStrategy.class.isAssignableFrom(strategyClass))
             throw new ConfigurationException(String.format("Specified compaction strategy class (%s) is not derived from AbstractReplicationStrategy", className));

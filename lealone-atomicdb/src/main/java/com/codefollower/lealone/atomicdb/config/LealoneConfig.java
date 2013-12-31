@@ -1,4 +1,6 @@
 /*
+ * Copyright 2011 The Apache Software Foundation
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,18 +17,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.codefollower.lealone.atomicdb.streaming;
+package com.codefollower.lealone.atomicdb.config;
 
-import java.util.Set;
-import javax.management.NotificationEmitter;
-import javax.management.openmbean.CompositeData;
+import com.codefollower.lealone.constant.Constants;
 
-public interface StreamManagerMBean extends NotificationEmitter
-{
-    public static final String OBJECT_NAME = "com.codefollower.lealone.atomicdb.net:type=StreamManager";
-
-    /**
-     * Returns the current state of all ongoing streams.
-     */
-    Set<CompositeData> getCurrentStreams();
+public class LealoneConfig extends Config {
+    public Integer lealone_tcp_port = Constants.DEFAULT_TCP_PORT;
 }

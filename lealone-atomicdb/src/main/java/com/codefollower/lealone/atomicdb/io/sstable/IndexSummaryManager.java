@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 public class IndexSummaryManager implements IndexSummaryManagerMBean
 {
     private static final Logger logger = LoggerFactory.getLogger(IndexSummaryManager.class);
-    public static final String MBEAN_NAME = "org.apache.cassandra.db:type=IndexSummaries";
+    public static final String MBEAN_NAME = "com.codefollower.lealone.atomicdb.db:type=IndexSummaries";
     public static final IndexSummaryManager instance;
 
     private int resizeIntervalInMinutes = 0;

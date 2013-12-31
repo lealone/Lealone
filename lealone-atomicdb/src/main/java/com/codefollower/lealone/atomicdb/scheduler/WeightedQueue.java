@@ -47,7 +47,7 @@ class WeightedQueue implements WeightedQueueMBean
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
-            mbs.registerMBean(this, new ObjectName("org.apache.cassandra.scheduler:type=WeightedQueue,queue=" + key));
+            mbs.registerMBean(this, new ObjectName("com.codefollower.lealone.atomicdb.scheduler:type=WeightedQueue,queue=" + key));
         }
         catch (Exception e)
         {

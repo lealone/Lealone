@@ -81,9 +81,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-//import org.apache.cassandra.thrift.EndpointDetails;
-//import org.apache.cassandra.thrift.TokenRange;
-//import org.apache.cassandra.thrift.cassandraConstants;
+//import com.codefollower.lealone.atomicdb.thrift.EndpointDetails;
+//import com.codefollower.lealone.atomicdb.thrift.TokenRange;
+//import com.codefollower.lealone.atomicdb.thrift.cassandraConstants;
 
 /**
  * This abstraction contains the token/identifier of this node
@@ -212,7 +212,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try
         {
-            jmxObjectName = new ObjectName("org.apache.cassandra.db:type=StorageService");
+            jmxObjectName = new ObjectName("com.codefollower.lealone.atomicdb.db:type=StorageService");
             mbs.registerMBean(this, jmxObjectName);
             mbs.registerMBean(StreamManager.instance, new ObjectName(StreamManager.OBJECT_NAME));
         }
@@ -467,9 +467,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         try
         {
             // Ensure StorageProxy is initialized on start-up; see CASSANDRA-3797.
-            Class.forName("org.apache.cassandra.service.StorageProxy");
+            Class.forName("com.codefollower.lealone.atomicdb.service.StorageProxy");
             // also IndexSummaryManager, which is otherwise unreferenced
-            Class.forName("org.apache.cassandra.io.sstable.IndexSummaryManager");
+            Class.forName("com.codefollower.lealone.atomicdb.io.sstable.IndexSummaryManager");
         }
         catch (ClassNotFoundException e)
         {

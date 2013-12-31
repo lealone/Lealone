@@ -77,7 +77,7 @@ public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor i
         metrics = new ThreadPoolMetrics(this, jmxPath, threadFactory.id);
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        mbeanName = "org.apache.cassandra." + jmxPath + ":type=" + threadFactory.id;
+        mbeanName = "com.codefollower.lealone.atomicdb." + jmxPath + ":type=" + threadFactory.id;
 
         try
         {

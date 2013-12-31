@@ -24,7 +24,7 @@ import com.yammer.metrics.core.MetricName;
  */
 public class DefaultNameFactory implements MetricNameFactory
 {
-    public static final String GROUP_NAME = "org.apache.cassandra.metrics";
+    public static final String GROUP_NAME = "com.codefollower.lealone.atomicdb.metrics";
 
     private final String type;
     private final String scope;

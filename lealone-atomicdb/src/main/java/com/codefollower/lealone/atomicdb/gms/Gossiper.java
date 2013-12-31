@@ -63,7 +63,7 @@ import com.google.common.collect.ImmutableList;
 
 public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
 {
-    private static final String MBEAN_NAME = "org.apache.cassandra.net:type=Gossiper";
+    private static final String MBEAN_NAME = "com.codefollower.lealone.atomicdb.net:type=Gossiper";
 
     private static final DebuggableScheduledThreadPoolExecutor executor = new DebuggableScheduledThreadPoolExecutor("GossipTasks");
 

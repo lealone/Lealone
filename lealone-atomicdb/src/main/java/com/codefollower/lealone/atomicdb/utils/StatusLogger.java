@@ -52,8 +52,8 @@ public class StatusLogger
         Set<ObjectName> request, internal;
         try
         {
-            request = server.queryNames(new ObjectName("org.apache.cassandra.request:type=*"), null);
-            internal = server.queryNames(new ObjectName("org.apache.cassandra.internal:type=*"), null);
+            request = server.queryNames(new ObjectName("com.codefollower.lealone.atomicdb.request:type=*"), null);
+            internal = server.queryNames(new ObjectName("com.codefollower.lealone.atomicdb.internal:type=*"), null);
         }
         catch (MalformedObjectNameException e)
         {

@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  */
 public class CompactionManager implements CompactionManagerMBean
 {
-    public static final String MBEAN_OBJECT_NAME = "org.apache.cassandra.db:type=CompactionManager";
+    public static final String MBEAN_OBJECT_NAME = "com.codefollower.lealone.atomicdb.db:type=CompactionManager";
     private static final Logger logger = LoggerFactory.getLogger(CompactionManager.class);
     public static final CompactionManager instance;
 

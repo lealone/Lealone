@@ -324,7 +324,7 @@ public class CQLSSTableWriter
                 if (Schema.instance.getKSMetaData(this.schema.ksName) == null)
                 {
                     KSMetaData ksm = KSMetaData.newKeyspace(this.schema.ksName,
-                                                            AbstractReplicationStrategy.getClass("org.apache.cassandra.locator.SimpleStrategy"),
+                                                            AbstractReplicationStrategy.getClass("com.codefollower.lealone.atomicdb.locator.SimpleStrategy"),
                                                             ImmutableMap.of("replication_factor", "1"),
                                                             true,
                                                             Collections.singleton(this.schema));

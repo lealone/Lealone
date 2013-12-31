@@ -34,7 +34,7 @@ import com.codefollower.lealone.atomicdb.service.QueryState;
  * a regular (i.e. non-prepared) statement, and is in fact the CQL
  * string for the statement. An {@code MD5Digest} object indicates a prepared
  * statement & may be used to retrieve the corresponding CQLStatement
- * using {@link com.codefollower.lealone.atomicdb.cql.QueryProcessor#getPrepared(org.apache.cassandra.utils.MD5Digest) QueryProcessor.getPrepared()}
+ * using {@link com.codefollower.lealone.atomicdb.cql.QueryProcessor#getPrepared(com.codefollower.lealone.atomicdb.utils.MD5Digest) QueryProcessor.getPrepared()}
  *
  */
 public class BatchExecutionContext

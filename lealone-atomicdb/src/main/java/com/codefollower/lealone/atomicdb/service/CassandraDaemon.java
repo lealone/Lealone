@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  */
 public class CassandraDaemon
 {
-    public static final String MBEAN_NAME = "org.apache.cassandra.db:type=NativeAccess";
+    public static final String MBEAN_NAME = "com.codefollower.lealone.atomicdb.db:type=NativeAccess";
 
     // Have a dedicated thread to call exit to avoid deadlock in the case where the thread that wants to invoke exit
     // belongs to an executor that our shutdown hook wants to wait to exit gracefully. See CASSANDRA-5273.

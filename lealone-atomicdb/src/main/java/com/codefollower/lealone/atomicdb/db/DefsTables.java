@@ -83,7 +83,7 @@ import org.slf4j.LoggerFactory;
  *  => (column=durable_writes, value=true, timestamp=1327061028312185000)
  *  => (column=name, value="ks", timestamp=1327061028312185000)
  *  => (column=replication_factor, value=0, timestamp=1327061028312185000)
- *  => (column=strategy_class, value="org.apache.cassandra.locator.NetworkTopologyStrategy", timestamp=1327061028312185000)
+ *  => (column=strategy_class, value="com.codefollower.lealone.atomicdb.locator.NetworkTopologyStrategy", timestamp=1327061028312185000)
  *  => (column=strategy_options, value={"datacenter1":"1"}, timestamp=1327061028312185000)
  *
  * schema_columnfamilies
@@ -93,7 +93,7 @@ import org.slf4j.LoggerFactory;
  *  => (column=cf:caching, value="NONE", timestamp=1327061105833119000)
  *  => (column=cf:column_type, value="Standard", timestamp=1327061105833119000)
  *  => (column=cf:comment, value="ColumnFamily", timestamp=1327061105833119000)
- *  => (column=cf:default_validation_class, value="org.apache.cassandra.db.marshal.BytesType", timestamp=1327061105833119000)
+ *  => (column=cf:default_validation_class, value="com.codefollower.lealone.atomicdb.db.marshal.BytesType", timestamp=1327061105833119000)
  *  => (column=cf:gc_grace_seconds, value=864000, timestamp=1327061105833119000)
  *  => (column=cf:id, value=1000, timestamp=1327061105833119000)
  *  => (column=cf:key_alias, value="S0VZ", timestamp=1327061105833119000)
@@ -106,7 +106,7 @@ import org.slf4j.LoggerFactory;
  *  => (column=cf:c:index_options, value=null, timestamp=1327061105833119000)
  *  => (column=cf:c:index_type, value=null, timestamp=1327061105833119000)
  *  => (column=cf:c:name, value="aGVsbG8=", timestamp=1327061105833119000)
- *  => (column=cf:c:validation_class, value="org.apache.cassandra.db.marshal.AsciiType", timestamp=1327061105833119000)
+ *  => (column=cf:c:validation_class, value="com.codefollower.lealone.atomicdb.db.marshal.AsciiType", timestamp=1327061105833119000)
  */
 public class DefsTables
 {

@@ -278,7 +278,7 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
 
         // register the mbean
         String type = this.partitioner instanceof LocalPartitioner ? "IndexColumnFamilies" : "ColumnFamilies";
-        mbeanName = "org.apache.cassandra.db:type=" + type + ",keyspace=" + this.keyspace.getName() + ",columnfamily=" + name;
+        mbeanName = "com.codefollower.lealone.atomicdb.db:type=" + type + ",keyspace=" + this.keyspace.getName() + ",columnfamily=" + name;
         try
         {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
