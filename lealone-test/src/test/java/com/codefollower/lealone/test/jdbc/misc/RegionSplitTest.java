@@ -90,5 +90,6 @@ public class RegionSplitTest extends TestBase {
             admin.closeRegionWithEncodedRegionName(info.getEncodedName(), server.getServerName());
             break;
         }
+        t.close();
     }
 }

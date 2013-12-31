@@ -109,9 +109,11 @@ public abstract class BenchWrite extends BenchBase {
         }
         avg();
 
-        new HBaseAdmin(conf).flush(tableName.toUpperCase());
+        HBaseAdmin admin = new HBaseAdmin(conf);
+        admin.flush(tableName.toUpperCase());
         regions();
         //scan();
+        admin.close();
     }
 
     public void regions() throws Exception {
@@ -125,6 +127,7 @@ public abstract class BenchWrite extends BenchBase {
             System.out.println("ServerName = " + server);
             System.out.println();
         }
+        t.close();
     }
 
     void scan() throws Exception {
@@ -132,6 +135,7 @@ public abstract class BenchWrite extends BenchBase {
         for (Result r : t.getScanner(new Scan())) {
             System.out.println("rowKey: " + Bytes.toString(r.getRow()) + ", value: " + r);
         }
+        t.close();
     }
 
     void initHTable() throws Exception {

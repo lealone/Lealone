@@ -85,6 +85,7 @@ public class TransactionTest extends TestBase {
         //put.add(Bytes.toBytes("CF1"), Bytes.toBytes("f1"), System.currentTimeMillis(), Bytes.toBytes("01"));
         //put.add(Bytes.toBytes("CF1"), Bytes.toBytes("f1"), 100, Bytes.toBytes("01"));
         //t.put(put);
+        t.close();
     }
 
     void insert() throws Exception {
@@ -156,6 +157,7 @@ public class TransactionTest extends TestBase {
         for (Result r : t.getScanner(new Scan())) {
             System.out.println(r);
         }
+        t.close();
     }
 
     public void regions() throws Exception {
@@ -169,5 +171,6 @@ public class TransactionTest extends TestBase {
             System.out.println("ServerName = " + server);
             System.out.println();
         }
+        t.close();
     }
 }

@@ -248,6 +248,7 @@ public class TestBase {
             System.out.println("ServerName = " + server);
             System.out.println();
         }
+        t.close();
     }
 
     public void printHTable(String tableName) throws Exception {

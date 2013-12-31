@@ -86,6 +86,7 @@ public class BenchBase {
         if (!admin.tableExists(htd.getName())) {
             admin.createTable(htd);
         }
+        admin.close();
     }
 
     public void createTable(HColumnDescriptor... columnDescriptors) throws IOException {
@@ -101,6 +102,7 @@ public class BenchBase {
         if (!admin.tableExists(htd.getName())) {
             admin.createTable(htd);
         }
+        admin.close();
     }
 
     public void createTable(byte[][] splitKeys, HColumnDescriptor... columnDescriptors) throws IOException {
@@ -116,15 +118,18 @@ public class BenchBase {
         if (!admin.tableExists(htd.getName())) {
             admin.createTable(htd, splitKeys);
         }
+        admin.close();
     }
 
     public void deleteTable() throws IOException {
         HBaseAdmin admin = new HBaseAdmin(conf);
         if (!admin.tableExists(tableName)) {
+            admin.close();
             return;
         }
         admin.disableTable(tableName);
         admin.deleteTable(tableName);
+        admin.close();
     }
 
     public byte[] b(String v) {

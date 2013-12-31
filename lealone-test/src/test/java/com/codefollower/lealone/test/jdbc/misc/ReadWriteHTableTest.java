@@ -95,6 +95,7 @@ public class ReadWriteHTableTest extends TestBase {
         if (!admin.tableExists(htd.getName())) {
             admin.createTable(htd);
         }
+        admin.close();
     }
 
     void putRows() throws IOException {
@@ -108,5 +109,6 @@ public class ReadWriteHTableTest extends TestBase {
         put.add(Bytes.toBytes("CF1"), Bytes.toBytes("F1"), 2, Bytes.toBytes("v1"));
         put.add(Bytes.toBytes("CF2"), Bytes.toBytes("F2"), 2, Bytes.toBytes("v2"));
         t.put(put);
+        t.close();
     }
 }
