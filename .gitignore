@@ -1,5 +1,4 @@
 *.class
-*.jar
 
 .settings
 .classpath
