@@ -16,7 +16,6 @@
 	<modules>
 		<module>lealone-client</module>
 		<module>lealone-sql</module>
-		<module>lealone-atomicdb</module>
 		<module>lealone-hbase</module>
 		<module>lealone-cassandra</module>
 		<module>lealone-test</module>
