@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.codefollower.lealone</groupId>
 		<artifactId>lealone</artifactId>
-		<version>0.13.0</version>
+		<version>1.0.0</version>
 	</parent>
 
 	<artifactId>lealone-client</artifactId>
