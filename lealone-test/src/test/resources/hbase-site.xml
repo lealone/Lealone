@@ -24,12 +24,12 @@
 	<!-- ************************************************* -->
 	<property>
 		<name>hbase.coprocessor.master.classes</name>
-		<value>com.codefollower.lealone.hbase.engine.HBaseMasterObserver</value>
+		<value>org.lealone.hbase.engine.HBaseMasterObserver</value>
 	</property>
 
 	<property>
 		<name>hbase.regionserver.impl</name>
-		<value>com.codefollower.lealone.hbase.engine.HBaseRegionServer</value>
+		<value>org.lealone.hbase.engine.HBaseRegionServer</value>
 	</property>
 
 	<property>

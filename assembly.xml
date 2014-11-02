@@ -10,7 +10,7 @@
 	<moduleSets>
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.lealone:lealone-client</include>
+				<include>org.lealone:lealone-client</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
@@ -26,7 +26,7 @@
 
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.lealone:lealone-hbase</include>
+				<include>org.lealone:lealone-hbase</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
@@ -42,7 +42,7 @@
 
 		<moduleSet>
 			<includes>
-				<include>com.codefollower.lealone:lealone-cassandra</include>
+				<include>org.lealone:lealone-cassandra</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>

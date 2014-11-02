@@ -9,10 +9,10 @@ drop schema if exists pg_catalog;
 create schema pg_catalog;
 
 drop alias if exists pg_convertType;
-create alias pg_convertType deterministic for "com.codefollower.lealone.server.pg.PgServer.convertType";
+create alias pg_convertType deterministic for "org.lealone.server.pg.PgServer.convertType";
 
 drop alias if exists pg_get_oid;
-create alias pg_get_oid deterministic for "com.codefollower.lealone.server.pg.PgServer.getOid";
+create alias pg_get_oid deterministic for "org.lealone.server.pg.PgServer.getOid";
 
 create table pg_catalog.pg_version as select 2 as version, 2 as version_read;
 --create table pg_catalog.pg_version(version int, version_read int);
@@ -201,31 +201,31 @@ and 1=0;
 grant select on pg_catalog.pg_index to public;
 
 drop alias if exists pg_get_indexdef;
-create alias pg_get_indexdef for "com.codefollower.lealone.server.pg.PgServer.getIndexColumn";
+create alias pg_get_indexdef for "org.lealone.server.pg.PgServer.getIndexColumn";
 
 drop alias if exists version;
-create alias version for "com.codefollower.lealone.server.pg.PgServer.getVersion";
+create alias version for "org.lealone.server.pg.PgServer.getVersion";
 
 drop alias if exists current_schema;
-create alias current_schema for "com.codefollower.lealone.server.pg.PgServer.getCurrentSchema";
+create alias current_schema for "org.lealone.server.pg.PgServer.getCurrentSchema";
 
 drop alias if exists pg_encoding_to_char;
-create alias pg_encoding_to_char for "com.codefollower.lealone.server.pg.PgServer.getEncodingName";
+create alias pg_encoding_to_char for "org.lealone.server.pg.PgServer.getEncodingName";
 
 drop alias if exists pg_postmaster_start_time;
-create alias pg_postmaster_start_time for "com.codefollower.lealone.server.pg.PgServer.getStartTime";
+create alias pg_postmaster_start_time for "org.lealone.server.pg.PgServer.getStartTime";
 
 drop alias if exists pg_get_userbyid;
-create alias pg_get_userbyid for "com.codefollower.lealone.server.pg.PgServer.getUserById";
+create alias pg_get_userbyid for "org.lealone.server.pg.PgServer.getUserById";
 
 drop alias if exists has_database_privilege;
-create alias has_database_privilege for "com.codefollower.lealone.server.pg.PgServer.hasDatabasePrivilege";
+create alias has_database_privilege for "org.lealone.server.pg.PgServer.hasDatabasePrivilege";
 
 drop alias if exists has_table_privilege;
-create alias has_table_privilege for "com.codefollower.lealone.server.pg.PgServer.hasTablePrivilege";
+create alias has_table_privilege for "org.lealone.server.pg.PgServer.hasTablePrivilege";
 
 drop alias if exists currtid2;
-create alias currtid2 for "com.codefollower.lealone.server.pg.PgServer.getCurrentTid";
+create alias currtid2 for "org.lealone.server.pg.PgServer.getCurrentTid";
 
 create table pg_catalog.pg_database(
     oid int,

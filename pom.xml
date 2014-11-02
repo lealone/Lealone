@@ -8,7 +8,7 @@
 
 	<name>lealone project</name>
 
-	<groupId>com.codefollower.lealone</groupId>
+	<groupId>org.lealone</groupId>
 	<artifactId>lealone</artifactId>
 	<packaging>pom</packaging>
 	<version>1.0.0</version>
