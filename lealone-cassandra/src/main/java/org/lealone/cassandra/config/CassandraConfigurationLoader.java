@@ -44,6 +44,8 @@ public class CassandraConfigurationLoader implements ConfigurationLoader {
 
     private final static String DEFAULT_CONFIGURATION = "cassandra.yaml";
 
+    private static CassandraConfig config = null;
+
     private CassandraTcpServer cassandraTcpServer;
 
     /**
@@ -69,8 +71,9 @@ public class CassandraConfigurationLoader implements ConfigurationLoader {
     }
 
     public Config loadConfig() throws ConfigurationException {
+        if (config != null)
+            return config;
         InputStream input = null;
-        CassandraConfig config = null;
         try {
             URL url = getStorageConfigURL();
             logger.info("Loading settings from {}", url);

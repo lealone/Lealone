@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import org.apache.cassandra.cql3.KSPropDefs;
+import org.apache.cassandra.cql3.statements.KSPropDefs;
 import org.apache.cassandra.exceptions.SyntaxException;
 import org.lealone.cassandra.command.ddl.CreateKeyspace;
 import org.lealone.cassandra.engine.CassandraSession;

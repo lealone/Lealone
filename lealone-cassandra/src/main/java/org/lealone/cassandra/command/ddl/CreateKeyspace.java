@@ -19,7 +19,7 @@
  */
 package org.lealone.cassandra.command.ddl;
 
-import org.apache.cassandra.cql3.KSPropDefs;
+import org.apache.cassandra.cql3.statements.KSPropDefs;
 import org.apache.cassandra.exceptions.AlreadyExistsException;
 import org.apache.cassandra.service.MigrationManager;
 import org.lealone.command.CommandInterface;

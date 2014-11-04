@@ -30,9 +30,6 @@ public class CassandraStarter {
 
         System.setProperty("cassandra.config", "cassandra.yaml");
 
-        System.setProperty("log4j.defaultInitOverride", "true");
-        System.setProperty("log4j.configuration", "cassandra-log4j-server.properties");
-
         System.setProperty("cassandra.start_rpc", "false"); //不启用thrift server
 
         System.setProperty("cassandra-foreground", "true"); //打印输出到控制台
