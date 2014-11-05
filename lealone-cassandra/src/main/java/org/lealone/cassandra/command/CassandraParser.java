@@ -25,7 +25,9 @@ import java.util.Map;
 
 import org.apache.cassandra.cql3.statements.KSPropDefs;
 import org.apache.cassandra.exceptions.SyntaxException;
+import org.lealone.cassandra.command.ddl.AlterKeyspace;
 import org.lealone.cassandra.command.ddl.CreateKeyspace;
+import org.lealone.cassandra.command.ddl.DropKeyspace;
 import org.lealone.cassandra.engine.CassandraSession;
 import org.lealone.command.Parser;
 import org.lealone.command.Prepared;
@@ -49,13 +51,31 @@ public class CassandraParser extends Parser {
         }
     }
 
+    @Override
+    protected Prepared parseAlter() {
+        if (readIf("SCHEMA") || readIf("KEYSPACE")) {
+            return parseAlterKeyspace();
+        } else {
+            return super.parseAlter();
+        }
+    }
+
+    @Override
+    protected Prepared parseDrop() {
+        if (readIf("SCHEMA") || readIf("KEYSPACE")) {
+            return parseDropKeyspace();
+        } else {
+            return super.parseDrop();
+        }
+    }
+
     private Map<String, String> parseMap() {
         Map<String, String> map = new HashMap<String, String>();
         do {
-            String name = readUniqueIdentifier();
+            String name = readString();//readUniqueIdentifier();
             String value = null;
             if (readIf(":")) {
-                value = readExpression().optimize(session).getValue(session).toString();
+                value = readString();
             }
             map.put(name, value);
         } while (readIfMore("}"));
@@ -71,6 +91,28 @@ public class CassandraParser extends Parser {
         return false;
     }
 
+    private KSPropDefs parseKSPropDefs() {
+        KSPropDefs defs = new KSPropDefs();
+        try {
+            read("WITH");
+            do {
+                String name = readUniqueIdentifier().toLowerCase(Locale.US);
+                read("=");
+                if (readIf("{")) {
+                    defs.addProperty(name, parseMap());
+                } else {
+                    Expression value = readExpression();
+                    defs.addProperty(name, value.optimize(session).getValue(session).toString());
+                }
+            } while (readIf("AND"));
+
+            defs.validate();
+        } catch (SyntaxException e) {
+            throw getSyntaxError();
+        }
+        return defs;
+    }
+
     protected Prepared parseCreateKeyspace() {
         CreateKeyspace command = new CreateKeyspace(session);
 
@@ -82,26 +124,28 @@ public class CassandraParser extends Parser {
         } else {
             command.setAuthorization(session.getUser().getName());
         }
-
-        KSPropDefs defs = new KSPropDefs();
-        if (readIf("WITH")) {
-            try {
-                do {
-                    String name = readUniqueIdentifier().toLowerCase(Locale.US);
-                    if (readIf("{")) {
-                        defs.addProperty(name, parseMap());
-                    } else {
-                        Expression value = readExpression();
-                        defs.addProperty(name, value.optimize(session).getValue(session).toString());
-                    }
-                } while (readIf("AND"));
-
-                defs.validate();
-            } catch (SyntaxException e) {
-                throw getSyntaxError();
-            }
-        }
+        KSPropDefs defs = parseKSPropDefs();
         command.setKSPropDefs(defs);
         return command;
     }
+
+    protected Prepared parseAlterKeyspace() {
+        AlterKeyspace command = new AlterKeyspace(session);
+        command.setKeyspaceName(readUniqueIdentifier());
+
+        KSPropDefs defs = parseKSPropDefs();
+        command.setKSPropDefs(defs);
+        command.validate();
+        return command;
+    }
+
+    protected Prepared parseDropKeyspace() {
+        DropKeyspace command = new DropKeyspace(session);
+
+        command.setIfExists(readIfExists(false));
+        command.setKeyspaceName(readUniqueIdentifier());
+
+        return command;
+    }
+
 }

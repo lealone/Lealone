@@ -19,60 +19,47 @@
  */
 package org.lealone.cassandra.command.ddl;
 
-import org.apache.cassandra.cql3.statements.KSPropDefs;
-import org.apache.cassandra.exceptions.AlreadyExistsException;
+import org.apache.cassandra.exceptions.ConfigurationException;
 import org.apache.cassandra.service.MigrationManager;
 import org.lealone.cassandra.command.CommandConstants;
 import org.lealone.command.ddl.DefineCommand;
 import org.lealone.dbobject.User;
-import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 
-public class CreateKeyspace extends DefineCommand {
+public class DropKeyspace extends DefineCommand {
 
     private String keyspaceName;
-    private String authorization;
-    private boolean ifNotExists;
+    private boolean ifExists;
 
-    private KSPropDefs defs;
-
-    public CreateKeyspace(Session session) {
+    public DropKeyspace(Session session) {
         super(session);
     }
 
-    public void setIfNotExists(boolean ifNotExists) {
-        this.ifNotExists = ifNotExists;
+    public void setIfExists(boolean ifExists) {
+        this.ifExists = ifExists;
     }
 
     public void setKeyspaceName(String keyspaceName) {
         this.keyspaceName = keyspaceName;
     }
 
-    public void setAuthorization(String userName) {
-        this.authorization = userName;
-    }
-
-    public void setKSPropDefs(KSPropDefs defs) {
-        this.defs = defs;
-    }
-
     @Override
     public int getType() {
-        return CommandConstants.CREATE_KEYSPACE;
+        return CommandConstants.DROP_KEYSPACE;
     }
 
     @Override
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = session.getDatabase();
-        User user = db.getUser(authorization);
+        User user = session.getUser();
         user.checkAdmin();
+
         try {
-            MigrationManager.announceNewKeyspace(defs.asKSMetadata(keyspaceName));
-        } catch (AlreadyExistsException e) {
-            if (!ifNotExists)
+            MigrationManager.announceKeyspaceDrop(keyspaceName, false);
+        } catch (ConfigurationException e) {
+            if (!ifExists)
                 throw DbException.convert(e);
         } catch (Exception e) {
             throw DbException.convert(e);
