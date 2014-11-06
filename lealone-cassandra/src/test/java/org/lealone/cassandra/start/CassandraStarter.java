@@ -20,6 +20,7 @@
 package org.lealone.cassandra.start;
 
 import org.apache.cassandra.service.CassandraDaemon;
+import org.lealone.cassandra.command.CassandraQueryHandler;
 import org.lealone.cassandra.config.CassandraConfigurationLoader;
 
 public class CassandraStarter {
@@ -36,6 +37,9 @@ public class CassandraStarter {
 
         //覆盖默认的ConfigurationLoader
         System.setProperty("cassandra.config.loader", CassandraConfigurationLoader.class.getCanonicalName());
+
+        //覆盖默认的QueryHandler
+        System.setProperty("cassandra.custom_query_handler_class", CassandraQueryHandler.class.getCanonicalName());
 
         CassandraDaemon.main(new String[] {});
     }

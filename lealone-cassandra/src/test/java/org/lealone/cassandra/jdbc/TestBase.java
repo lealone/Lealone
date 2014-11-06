@@ -32,6 +32,7 @@ public class TestBase {
     protected static Statement stmt;
     protected ResultSet rs;
     protected String sql;
+    protected String tableName;
     protected String db = "hbasedb";
     //protected static String url = "jdbc:lealone:tcp://localhost:9092/hbasedb;DATABASE_TO_UPPER=false";
     //protected static String url = "jdbc:lealone:tcp://localhost:9092,localhost:9093/hbasedb;USE_H2_CLUSTER_MODE=true";
@@ -48,6 +49,11 @@ public class TestBase {
 
         //TODO Cassandra的语法不符号JDBC转义语法的要求
         stmt.setEscapeProcessing(false);
+
+        String sql = "CREATE KEYSPACE IF NOT EXISTS TestKeyspace " + //
+                "WITH replication = {'class':'SimpleStrategy', 'replication_factor':1} AND DURABLE_WRITES = true";
+        stmt.executeUpdate(sql);
+        stmt.executeUpdate("USE TestKeyspace");
     }
 
     @AfterClass
