@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.command.Command;
 import org.lealone.command.Parser;
@@ -1287,6 +1288,39 @@ public class Session extends SessionWithState {
     }
 
     public Transaction getTransaction() {
-        return null;
+        if (transaction == null)
+            transaction = new LocalTransaction();
+        return transaction;
+    }
+
+    static final AtomicLong count = new AtomicLong();
+    private volatile Transaction transaction;
+
+    private class LocalTransaction implements org.lealone.transaction.Transaction {
+
+        @Override
+        public long getTransactionId() {
+            return count.getAndIncrement();
+        }
+
+        @Override
+        public long getCommitTimestamp() {
+            return count.getAndIncrement();
+        }
+
+        @Override
+        public boolean isAutoCommit() {
+            return Session.this.getAutoCommit();
+        }
+
+        @Override
+        public void addLocalTransactionNames(String localTransactionNames) {
+        }
+
+        @Override
+        public String getLocalTransactionNames() {
+            return null;
+        }
+
     }
 }
