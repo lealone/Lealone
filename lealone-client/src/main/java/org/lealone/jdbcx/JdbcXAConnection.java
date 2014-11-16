@@ -52,7 +52,7 @@ public class JdbcXAConnection extends TraceObject implements XAConnection, XARes
     private boolean prepared;
 
     static {
-        org.lealone.Driver.load();
+        org.lealone.jdbc.Driver.load();
     }
 
     JdbcXAConnection(JdbcDataSourceFactory factory, int id, JdbcConnection physicalConn) {

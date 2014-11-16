@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.lealone.constant.DbSettings;
 import org.lealone.message.DbException;
 
 public class DatabaseEngineManager {
@@ -40,6 +41,11 @@ public class DatabaseEngineManager {
             initialize();
         }
 
+        if (name == null) {
+            name = DbSettings.getInstance().defaultTableEngine;
+            if (name == null)
+                name = MemoryDatabaseEngine.NAME;
+        }
         return dbEngines.get(name.toUpperCase());
     }
 
@@ -52,6 +58,7 @@ public class DatabaseEngineManager {
     }
 
     private static class DatabaseEngineService implements PrivilegedAction<DatabaseEngine> {
+        @Override
         public DatabaseEngine run() {
             Iterator<DatabaseEngine> iterator = ServiceLoader.load(DatabaseEngine.class).iterator();
             try {

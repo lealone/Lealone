@@ -23,6 +23,7 @@ import java.net.Socket;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import org.lealone.constant.Constants;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.hbase.engine.HBaseDatabaseEngine;
@@ -34,7 +35,7 @@ import org.lealone.server.PgServerThread;
 import org.lealone.util.StringUtils;
 
 public class HBasePgServerThread extends PgServerThread {
-    private HBasePgServer server;
+    private final HBasePgServer server;
 
     protected HBasePgServerThread(Socket socket, HBasePgServer server) {
         super(socket, server);
@@ -54,7 +55,17 @@ public class HBasePgServerThread extends PgServerThread {
             baseDir = SysProperties.getBaseDir();
         }
 
-        ConnectionInfo ci = new ConnectionInfo("mem:" + databaseName);
+        String host;
+        int port;
+        if (server.getMaster() != null) {
+            host = server.getMaster().getServerName().getHostname();
+            port = ZooKeeperAdmin.getTcpPort(server.getMaster().getServerName());
+        } else {
+            host = server.getRegionServer().getServerName().getHostname();
+            port = ZooKeeperAdmin.getTcpPort(server.getRegionServer().getServerName());
+        }
+        String url = Constants.URL_PREFIX + Constants.URL_TCP + "//" + host + ":" + port + "/" + databaseName;
+        ConnectionInfo ci = new ConnectionInfo(url, databaseName);
 
         if (baseDir != null) {
             ci.setBaseDir(baseDir);
@@ -63,16 +74,6 @@ public class HBasePgServerThread extends PgServerThread {
             ci.setProperty("IFEXISTS", "TRUE");
         }
 
-        if (server.getMaster() != null)
-            ci.setOriginalURL("jdbc:lealone:tcp://" //
-                    + server.getMaster().getServerName().getHostname()
-                    + ":"
-                    + ZooKeeperAdmin.getTcpPort(server.getMaster().getServerName()) + "/" + databaseName);
-        else
-            ci.setOriginalURL("jdbc:lealone:tcp://" //
-                    + server.getRegionServer().getServerName().getHostname()
-                    + ":"
-                    + ZooKeeperAdmin.getTcpPort(server.getRegionServer().getServerName()) + "/" + databaseName);
         ci.setUserName(userName);
         ci.setProperty("MODE", "PostgreSQL");
 

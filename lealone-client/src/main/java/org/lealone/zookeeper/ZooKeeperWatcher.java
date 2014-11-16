@@ -109,6 +109,8 @@ public class ZooKeeperWatcher implements Watcher {
             break;
         case Expired:
             throw DbException.convert(new KeeperException.SessionExpiredException());
+        default:
+            break;
         }
     }
 }

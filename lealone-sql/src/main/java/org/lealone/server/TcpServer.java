@@ -22,9 +22,10 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import org.lealone.Driver;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
+import org.lealone.engine.MemoryDatabaseEngine;
+import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
 import org.lealone.util.JdbcUtils;
@@ -80,7 +81,7 @@ public class TcpServer implements Service {
      * @return the database name (usually starting with mem:)
      */
     public static String getManagementDbName(int port) {
-        return "mem:" + MANAGEMENT_DB_PREFIX + port;
+        return Constants.URL_EMBED + MANAGEMENT_DB_PREFIX + port + ";default_store_engine=" + MemoryDatabaseEngine.NAME;
     }
 
     /**
@@ -106,7 +107,7 @@ public class TcpServer implements Service {
         prop.setProperty("user", "");
         prop.setProperty("password", managementPassword);
         // avoid using the driver manager
-        Connection conn = Driver.load().connect("jdbc:lealone:" + getManagementDbName(port), prop);
+        Connection conn = Driver.load().connect(Constants.URL_PREFIX + getManagementDbName(port), prop);
         managementDb = conn;
         Statement stat = null;
         try {
@@ -164,6 +165,7 @@ public class TcpServer implements Service {
         }
     }
 
+    @Override
     public void init(String... args) {
         port = Constants.DEFAULT_TCP_PORT;
         for (int i = 0; args != null && i < args.length; i++) {
@@ -190,13 +192,15 @@ public class TcpServer implements Service {
                 ifExists = true;
             }
         }
-        org.lealone.Driver.load();
+        org.lealone.jdbc.Driver.load();
     }
 
+    @Override
     public String getURL() {
         return (ssl ? "ssl" : "tcp") + "://" + NetUtils.getLocalAddress() + ":" + port;
     }
 
+    @Override
     public int getPort() {
         return port;
     }
@@ -220,6 +224,7 @@ public class TcpServer implements Service {
         }
     }
 
+    @Override
     public synchronized void start() throws SQLException {
         stop = false;
         try {
@@ -235,6 +240,7 @@ public class TcpServer implements Service {
         initManagementDb();
     }
 
+    @Override
     public void listen() {
         listenerThread = Thread.currentThread();
         String threadName = listenerThread.getName();
@@ -261,6 +267,7 @@ public class TcpServer implements Service {
         return new TcpServerThread(socket, this, threadId);
     }
 
+    @Override
     public synchronized boolean isRunning(boolean traceError) {
         if (serverSocket == null) {
             return false;
@@ -277,6 +284,7 @@ public class TcpServer implements Service {
         }
     }
 
+    @Override
     public void stop() {
         // TODO server: share code between web and tcp servers
         // need to remove the server first, otherwise the connection is broken
@@ -394,14 +402,17 @@ public class TcpServer implements Service {
         }
     }
 
+    @Override
     public boolean getAllowOthers() {
         return allowOthers;
     }
 
+    @Override
     public String getType() {
         return "TCP";
     }
 
+    @Override
     public String getName() {
         return "H2 TCP Server";
     }
@@ -431,7 +442,7 @@ public class TcpServer implements Service {
             }
             String db = getManagementDbName(port);
             try {
-                org.lealone.Driver.load();
+                org.lealone.jdbc.Driver.load();
             } catch (Throwable e) {
                 throw DbException.convert(e);
             }
@@ -439,7 +450,7 @@ public class TcpServer implements Service {
                 Connection conn = null;
                 PreparedStatement prep = null;
                 try {
-                    conn = DriverManager.getConnection("jdbc:lealone:" + url + "/" + db, "", password);
+                    conn = DriverManager.getConnection(Constants.URL_PREFIX + url + "/" + db, "", password);
                     prep = conn.prepareStatement("CALL STOP_SERVER(?, ?, ?)");
                     prep.setInt(1, all ? 0 : port);
                     prep.setString(2, password);
@@ -503,6 +514,7 @@ public class TcpServer implements Service {
         throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
     }
 
+    @Override
     public boolean isDaemon() {
         return isDaemon;
     }

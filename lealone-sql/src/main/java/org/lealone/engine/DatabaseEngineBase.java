@@ -29,7 +29,6 @@ import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SetTypes;
 import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.User;
-import org.lealone.engine.ConnectionInfo;
 import org.lealone.message.DbException;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
@@ -63,6 +62,7 @@ public abstract class DatabaseEngineBase implements DatabaseEngine {
      *
      * @param dbName the database name
      */
+    @Override
     public synchronized void closeDatabase(String dbName) {
         unregisterMBean(dbName);
         DATABASES.remove(dbName);
@@ -103,7 +103,7 @@ public abstract class DatabaseEngineBase implements DatabaseEngine {
 
         ci.removeProperty("SERVER_TYPE", false);
         session.setAllowLiterals(true);
-        DbSettings defaultSettings = DbSettings.getInstance(null);
+        DbSettings defaultSettings = DbSettings.getInstance();
         for (String setting : ci.getKeys()) {
             if (defaultSettings.containsKey(setting)) {
                 // database setting are only used when opening the database
@@ -137,11 +137,11 @@ public abstract class DatabaseEngineBase implements DatabaseEngine {
     }
 
     protected Session openSession(ConnectionInfo ci, boolean ifExists, String cipher) {
-        String name = ci.getName();
+        String name = ci.getDatabaseName();
         Database database;
         ci.removeProperty("NO_UPGRADE", false);
         boolean openNew = ci.getProperty("OPEN_NEW", false);
-        if (openNew || ci.isUnnamedInMemory()) {
+        if (openNew) {
             database = null;
         } else {
             database = DATABASES.get(name);
@@ -163,9 +163,7 @@ public abstract class DatabaseEngineBase implements DatabaseEngine {
                 user.setUserPasswordHash(ci.getUserPasswordHash());
                 database.setMasterUser(user);
             }
-            if (!ci.isUnnamedInMemory()) {
-                DATABASES.put(name, database);
-            }
+            DATABASES.put(name, database);
         }
         synchronized (database) {
             if (opened) {

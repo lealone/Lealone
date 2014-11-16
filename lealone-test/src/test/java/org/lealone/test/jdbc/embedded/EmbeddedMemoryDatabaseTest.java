@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.lealone.test.jdbc.TestBase;
 
 public class EmbeddedMemoryDatabaseTest extends TestBase {
-    protected static String url = "jdbc:lealone:embedded:memory:hbasedb";
+    protected static String url = "jdbc:lealone:embed:hbasedb;default_table_engine=memory";
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {

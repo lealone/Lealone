@@ -32,7 +32,7 @@ import org.lealone.server.TcpServerThread;
 import org.lealone.value.Transfer;
 
 public class HBaseTcpServerThread extends TcpServerThread {
-    private HBaseTcpServer server;
+    private final HBaseTcpServer server;
 
     protected HBaseTcpServerThread(Socket socket, HBaseTcpServer server, int threadId) {
         super(socket, server, threadId);
@@ -40,7 +40,7 @@ public class HBaseTcpServerThread extends TcpServerThread {
     }
 
     @Override
-    protected Session createSession(String db, String originalURL, String userName, Transfer transfer) throws IOException {
+    protected Session createSession(String dbName, String originalURL, String userName, Transfer transfer) throws IOException {
         byte[] userPasswordHash = transfer.readBytes();
         byte[] filePasswordHash = transfer.readBytes();
 
@@ -55,9 +55,8 @@ public class HBaseTcpServerThread extends TcpServerThread {
             baseDir = SysProperties.getBaseDir();
         }
 
-        db = server.checkKeyAndGetDatabaseName(db);
-        db = "mem:" + db; //TODO
-        ConnectionInfo ci = new ConnectionInfo(db);
+        dbName = server.checkKeyAndGetDatabaseName(dbName);
+        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
 
         if (baseDir != null) {
             ci.setBaseDir(baseDir);
@@ -65,7 +64,6 @@ public class HBaseTcpServerThread extends TcpServerThread {
         if (server.getIfExists()) {
             ci.setProperty("IFEXISTS", "TRUE");
         }
-        ci.setOriginalURL(originalURL);
         ci.setUserName(userName);
 
         ci.setUserPasswordHash(userPasswordHash);

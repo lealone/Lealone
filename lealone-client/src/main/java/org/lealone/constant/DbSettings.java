@@ -8,8 +8,6 @@ package org.lealone.constant;
 
 import java.util.HashMap;
 
-import org.lealone.constant.DbSettings;
-
 /**
  * This class contains various database-level settings. To override the
  * documented default value for a database, append the setting in the database
@@ -354,4 +352,7 @@ public class DbSettings extends SettingsBase {
         return new DbSettings(s);
     }
 
+    public static DbSettings getInstance() {
+        return getInstance(null);
+    }
 }

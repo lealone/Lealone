@@ -28,7 +28,7 @@ public class JdbcDataSourceFactory implements ObjectFactory {
     private final Trace trace;
 
     static {
-        org.lealone.Driver.load();
+        org.lealone.jdbc.Driver.load();
     }
 
     /**

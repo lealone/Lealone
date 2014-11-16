@@ -14,7 +14,6 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.lealone.Driver;
 import org.lealone.command.Parser;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
@@ -22,6 +21,7 @@ import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
 import org.lealone.expression.Expression;
+import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.util.New;

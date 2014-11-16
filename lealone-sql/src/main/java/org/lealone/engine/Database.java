@@ -48,7 +48,6 @@ import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableBase;
 import org.lealone.dbobject.table.TableLinkConnection;
 import org.lealone.dbobject.table.TableView;
-import org.lealone.engine.ConnectionInfo;
 import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
@@ -166,7 +165,7 @@ public abstract class Database implements DataHandler {
     protected boolean autoServerMode;
     protected int autoServerPort;
     private HashMap<TableLinkConnection, TableLinkConnection> linkConnections;
-    private TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
+    private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
     protected Properties reconnectLastLock;
     protected volatile long reconnectCheckNext;
     protected volatile boolean reconnectChangePending;
@@ -195,12 +194,11 @@ public abstract class Database implements DataHandler {
     public abstract String getTableEngineName();
 
     public void init(ConnectionInfo ci, String cipher) {
-        String name = ci.getName();
         this.dbSettings = ci.getDbSettings();
         this.compareMode = CompareMode.getInstance(null, 0, false);
         //this.persistent = ci.isPersistent();
         this.filePasswordHash = ci.getFilePasswordHash();
-        this.databaseName = name;
+        this.databaseName = ci.getDatabaseName();
         this.databaseShortName = parseDatabaseShortName();
         this.maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
                 : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
@@ -339,6 +337,7 @@ public abstract class Database implements DataHandler {
         return powerOffCount;
     }
 
+    @Override
     public void checkPowerOff() {
         if (powerOffCount == 0) {
             return;
@@ -386,6 +385,7 @@ public abstract class Database implements DataHandler {
         return traceSystem.getTrace(module);
     }
 
+    @Override
     public FileStore openFile(String name, String openMode, boolean mustExist) {
         if (mustExist && !FileUtils.exists(name)) {
             throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
@@ -1144,6 +1144,7 @@ public abstract class Database implements DataHandler {
         return compareMode;
     }
 
+    @Override
     public String getDatabasePath() {
         if (persistent) {
             return FileUtils.toRealPath(databaseName);
@@ -1471,6 +1472,7 @@ public abstract class Database implements DataHandler {
         this.cluster = cluster;
     }
 
+    @Override
     public void checkWritingAllowed() {
         if (readOnly) {
             throw DbException.get(ErrorCode.DATABASE_IS_READ_ONLY);
@@ -1656,6 +1658,7 @@ public abstract class Database implements DataHandler {
         this.maxLengthInplaceLob = value;
     }
 
+    @Override
     public int getMaxLengthInplaceLob() {
         return persistent ? maxLengthInplaceLob : Integer.MAX_VALUE;
     }
@@ -1676,6 +1679,7 @@ public abstract class Database implements DataHandler {
         this.deleteFilesOnDisconnect = b;
     }
 
+    @Override
     public String getLobCompressionAlgorithm(int type) {
         return lobCompressionAlgorithm;
     }
@@ -1699,6 +1703,7 @@ public abstract class Database implements DataHandler {
         optimizeReuseResults = b;
     }
 
+    @Override
     public Object getLobSyncObject() {
         return lobSyncObject;
     }
@@ -1795,6 +1800,7 @@ public abstract class Database implements DataHandler {
         }
     }
 
+    @Override
     public SmallLRUCache<String, String[]> getLobFileListCache() {
         if (lobFileListCache == null) {
             lobFileListCache = SmallLRUCache.newInstance(128);
@@ -1834,6 +1840,7 @@ public abstract class Database implements DataHandler {
         return TableLinkConnection.open(linkConnections, driver, url, user, password, dbSettings.shareLinkedConnections);
     }
 
+    @Override
     public String toString() {
         return databaseShortName + ":" + super.toString();
     }
@@ -1851,6 +1858,7 @@ public abstract class Database implements DataHandler {
         closeFiles();
     }
 
+    @Override
     public TempFileDeleter getTempFileDeleter() {
         return tempFileDeleter;
     }
@@ -1941,6 +1949,7 @@ public abstract class Database implements DataHandler {
         return compiler;
     }
 
+    @Override
     public LobStorage getLobStorage() {
         if (lobStorage == null) {
             lobStorage = new LobStorage(this);
@@ -1948,6 +1957,7 @@ public abstract class Database implements DataHandler {
         return lobStorage;
     }
 
+    @Override
     public Connection getLobConnection() {
         String url = Constants.CONN_URL_INTERNAL;
         JdbcConnection conn = new JdbcConnection(systemSession, systemUser.getName(), url);
@@ -2012,6 +2022,7 @@ public abstract class Database implements DataHandler {
         return false;
     }
 
+    @Override
     public int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
         throw DbException.throwInternalError();
     }

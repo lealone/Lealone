@@ -25,7 +25,7 @@ import javax.sql.PooledConnection;
 import javax.sql.XAConnection;
 import javax.sql.XADataSource;
 
-import org.lealone.Driver;
+import org.lealone.jdbc.Driver;
 import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
@@ -82,7 +82,7 @@ public class JdbcDataSource extends TraceObject implements XADataSource, DataSou
     private String description;
 
     static {
-        org.lealone.Driver.load();
+        org.lealone.jdbc.Driver.load();
     }
 
     /**

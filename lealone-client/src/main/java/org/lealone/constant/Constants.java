@@ -407,7 +407,11 @@ public class Constants {
     /**
      * The database URL prefix of this database.
      */
-    public static final String START_URL = "jdbc:lealone:";
+    public static final String URL_PREFIX = "jdbc:lealone:";
+    public static final String URL_TCP = "tcp:";
+    public static final String URL_SSL = "ssl:";
+    public static final String URL_EMBED = "embed:";
+    public static final String URL_DYNAMIC = "dynamic:";
 
     /**
      * The file name suffix of all database files.
@@ -464,8 +468,8 @@ public class Constants {
     /**
      * The database URL format in simplified Backus-Naur form.
      */
-    public static final String URL_FORMAT = START_URL
-            + "{ {.|mem:}[name] | [file:]fileName | {tcp|ssl}:[//]server[:port][,server2[:port]]/name }[;key=value...]";
+    public static final String URL_FORMAT = URL_PREFIX
+            + "{ {embed:}[name] | {tcp|ssl|dynamic}:[//]server[:port][,server2[:port]]/name }[;key=value...]";
 
     /**
      * The package name of user defined classes.

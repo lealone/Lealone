@@ -101,7 +101,7 @@ public class PgServer implements Service {
                 ifExists = true;
             }
         }
-        org.lealone.Driver.load();
+        org.lealone.jdbc.Driver.load();
         // int testing;
         // trace = true;
     }

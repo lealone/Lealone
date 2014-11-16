@@ -146,14 +146,13 @@ public class TcpServerThread implements Runnable {
         }
     }
 
-    protected Session createSession(String db, String originalURL, String userName, Transfer transfer) throws IOException {
+    protected Session createSession(String dbName, String originalURL, String userName, Transfer transfer) throws IOException {
         String baseDir = server.getBaseDir();
         if (baseDir == null) {
             baseDir = SysProperties.getBaseDir();
         }
-        db = server.checkKeyAndGetDatabaseName(db);
-        ConnectionInfo ci = new ConnectionInfo(db);
-        ci.setOriginalURL(originalURL);
+        dbName = server.checkKeyAndGetDatabaseName(dbName);
+        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
         ci.setUserName(userName);
         ci.setUserPasswordHash(transfer.readBytes());
         ci.setFilePasswordHash(transfer.readBytes());
@@ -662,6 +661,7 @@ public class TcpServerThread implements Runnable {
             }
         }
 
+        @Override
         public int read(byte[] buff, int off, int len) throws IOException {
             len = super.read(buff, off, len);
             if (len > 0) {
@@ -670,6 +670,7 @@ public class TcpServerThread implements Runnable {
             return len;
         }
 
+        @Override
         public int read() throws IOException {
             int x = in.read();
             if (x >= 0) {
@@ -678,6 +679,7 @@ public class TcpServerThread implements Runnable {
             return x;
         }
 
+        @Override
         public long skip(long n) throws IOException {
             n = super.skip(n);
             if (n > 0) {

@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone;
+package org.lealone.jdbc;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -15,7 +15,6 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 import org.lealone.constant.Constants;
-import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
 
@@ -58,6 +57,7 @@ public class Driver implements java.sql.Driver {
      * @param info the connection properties
      * @return the new connection or null if the URL is not supported
      */
+    @Override
     public Connection connect(String url, Properties info) throws SQLException {
         try {
             if (info == null) {
@@ -83,9 +83,10 @@ public class Driver implements java.sql.Driver {
      * @param url the database URL
      * @return if the driver understands the URL
      */
+    @Override
     public boolean acceptsURL(String url) {
         if (url != null) {
-            if (url.startsWith(Constants.START_URL)) {
+            if (url.startsWith(Constants.URL_PREFIX)) {
                 return true;
             } else if (url.equals(DEFAULT_URL)) {
                 return DEFAULT_CONNECTION.get() != null;
@@ -100,6 +101,7 @@ public class Driver implements java.sql.Driver {
      *
      * @return the major version number
      */
+    @Override
     public int getMajorVersion() {
         return Constants.VERSION_MAJOR;
     }
@@ -110,6 +112,7 @@ public class Driver implements java.sql.Driver {
      *
      * @return the minor version number
      */
+    @Override
     public int getMinorVersion() {
         return Constants.VERSION_MINOR;
     }
@@ -122,6 +125,7 @@ public class Driver implements java.sql.Driver {
      * @param info the connection properties
      * @return a zero length array
      */
+    @Override
     public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
         return new DriverPropertyInfo[0];
     }
@@ -132,6 +136,7 @@ public class Driver implements java.sql.Driver {
      *
      * @return true
      */
+    @Override
     public boolean jdbcCompliant() {
         return true;
     }
@@ -199,6 +204,7 @@ public class Driver implements java.sql.Driver {
     }
 
     //jdk1.7
+    @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
         throw DbException.getUnsupportedException("getParentLogger()");
     }

@@ -18,11 +18,8 @@ import org.lealone.constant.DbSettings;
 import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SetTypes;
 import org.lealone.constant.SysProperties;
-import org.lealone.engine.ConnectionInfo;
 import org.lealone.message.DbException;
 import org.lealone.security.SHA256;
-import org.lealone.store.fs.FilePathRec;
-import org.lealone.store.fs.FileUtils;
 import org.lealone.util.New;
 import org.lealone.util.SortedProperties;
 import org.lealone.util.StringUtils;
@@ -35,86 +32,15 @@ import org.lealone.zookeeper.ZooKeeperAdmin;
 public class ConnectionInfo implements Cloneable {
     private static final HashSet<String> KNOWN_SETTINGS = New.hashSet();
 
-    /** Default value for ZooKeeper session timeout */
-    public static final int DEFAULT_ZK_SESSION_TIMEOUT = 180 * 1000;
-    private ZooKeeperAdmin zkAdmin;
-
-    private Properties prop = new Properties();
-    private String originalURL;
-    private String url;
-    private String user;
-    private byte[] filePasswordHash;
-    private byte[] userPasswordHash;
-
-    /**
-     * The database name
-     */
-    private String name;
-    private String nameNormalized;
-    private boolean remote;
-    private boolean ssl;
-    private boolean persistent;
-    private boolean unnamed;
-
-    private String dbEngineName;
-    private boolean embedded;
-    private SessionFactory sessionFactory;
-    private boolean dynamic;
-
-    private SessionInterface session;
-
-    /**
-     * Create a connection info object.
-     *
-     * @param name the database name (including tags), but without the
-     *            "jdbc:lealone:" prefix
-     */
-    public ConnectionInfo(String name) {
-        this.name = name;
-        this.url = Constants.START_URL + name;
-        parseName();
-    }
-
-    /**
-     * Create a connection info object.
-     *
-     * @param u the database URL (must start with jdbc:lealone:)
-     * @param info the connection properties
-     */
-    public ConnectionInfo(String u, Properties info) {
-        u = remapURL(u);
-        this.originalURL = u;
-        if (!u.startsWith(Constants.START_URL)) {
-            throw DbException.getInvalidValueException("url", u);
-        }
-        this.url = u;
-        readProperties(info);
-        readSettingsFromURL();
-        setUserName(removeProperty("USER", ""));
-        convertPasswords();
-        name = url.substring(Constants.START_URL.length());
-        parseName();
-        String recoverTest = removeProperty("RECOVER_TEST", null);
-        if (recoverTest != null) {
-            FilePathRec.register();
-            try {
-                Utils.callStaticMethod("org.lealone.store.RecoverTester.init", recoverTest);
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            }
-            name = "rec:" + name;
-        }
-    }
-
     static {
         ArrayList<String> list = SetTypes.getTypes();
         HashSet<String> set = KNOWN_SETTINGS;
         set.addAll(list);
-        String[] connectionTime = { "ACCESS_MODE_DATA", "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "FILE_LOCK",
+        String[] connectionSettings = { "ACCESS_MODE_DATA", "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "FILE_LOCK",
                 "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "AUTO_SERVER",
                 "AUTO_SERVER_PORT", "NO_UPGRADE", "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX",
                 "ZOOKEEPER_SESSION_TIMEOUT", "USE_H2_CLUSTER_MODE" };
-        for (String key : connectionTime) {
+        for (String key : connectionSettings) {
             if (SysProperties.CHECK && set.contains(key)) {
                 DbException.throwInternalError(key);
             }
@@ -126,6 +52,61 @@ public class ConnectionInfo implements Cloneable {
         return KNOWN_SETTINGS.contains(s);
     }
 
+    /** Default value for ZooKeeper session timeout */
+    private static final int DEFAULT_ZK_SESSION_TIMEOUT = 180 * 1000;
+    private ZooKeeperAdmin zkAdmin;
+
+    private Properties prop = new Properties();
+    private String url; //不包含后面的参数
+    private String user;
+    private byte[] filePasswordHash;
+    private byte[] userPasswordHash;
+
+    /**
+     * The database name
+     */
+    private String dbName;
+    private boolean remote;
+    private boolean ssl;
+    private boolean dynamic;
+
+    private SessionFactory sessionFactory;
+    private SessionInterface session;
+
+    /**
+     * Create a server connection info object.
+     *  
+     * @param url
+     * @param dbName
+     */
+    public ConnectionInfo(String url, String dbName) { //用于server端, 不需要再解析url了
+        this.url = url;
+        this.dbName = dbName;
+    }
+
+    /**
+     * Create a client connection info object.
+     *
+     * @param url the database URL
+     * @param info the connection properties
+     */
+    public ConnectionInfo(String url, Properties info) { //用于client端，需要解析url
+        this.url = url;
+        url = remapURL(url);
+        if (!url.startsWith(Constants.URL_PREFIX)) {
+            throw getFormatException();
+        }
+        readProperties(info);
+        readSettingsFromURL();
+        setUserName(removeProperty("USER", ""));
+        convertPasswords();
+        //如果url带参数，在readSettingsFromURL()中会改变this.url的值
+        //所以这里用this.url
+        this.dbName = this.url.substring(Constants.URL_PREFIX.length());
+        parseName();
+    }
+
+    @Override
     public Object clone() throws CloneNotSupportedException {
         ConnectionInfo clone = (ConnectionInfo) super.clone();
         clone.prop = (Properties) prop.clone();
@@ -135,103 +116,25 @@ public class ConnectionInfo implements Cloneable {
     }
 
     private void parseName() {
-        if (".".equals(name)) {
-            name = "mem:";
-        }
-        if (name.startsWith("tcp:")) {
-            remote = true;
-            name = name.substring("tcp:".length());
-        } else if (name.startsWith("ssl:")) {
-            remote = true;
+        remote = true;
+        if (dbName.startsWith(Constants.URL_TCP)) {
+            dbName = dbName.substring(Constants.URL_TCP.length());
+        } else if (dbName.startsWith(Constants.URL_SSL)) {
             ssl = true;
-            name = name.substring("ssl:".length());
-        } else if (name.startsWith("mem:")) { //不推荐再使用，用embedded:memory替换
-            persistent = false;
-            if ("mem:".equals(name)) {
-                unnamed = true;
-            }
-            embedded = true;
-            dbEngineName = "MEMORY";
-        } else if (name.startsWith("file:")) { //不推荐再使用，用embedded:regular替换
-            name = name.substring("file:".length());
-            persistent = true;
-            embedded = true;
-            dbEngineName = "REGULAR";
-        } else if (name.startsWith("embedded:")) {
-            embedded = true;
-            name = name.substring("embedded:".length());
-            int pos = name.indexOf(':');
-            if (pos == -1)
-                throw getFormatException();
-            else {
-                dbEngineName = name.substring(0, pos);
-                name = name.substring(pos + 1);
-                if ("".equals(name)) {
-                    unnamed = true;
-                }
-            }
-        } else if (name.startsWith("dynamic:")) {
+            dbName = dbName.substring(Constants.URL_SSL.length());
+        } else if (dbName.startsWith(Constants.URL_EMBED)) {
+            remote = false;
+            dbName = dbName.substring(Constants.URL_EMBED.length());
+        } else if (dbName.startsWith(Constants.URL_DYNAMIC)) {
             dynamic = true;
-            name = name.substring("dynamic:".length());
-        } else { //不推荐再使用，用embedded:regular替换
-            persistent = true;
-            embedded = true;
-            dbEngineName = "REGULAR";
-        }
-
-        if ("default".equalsIgnoreCase(dbEngineName))
-            dbEngineName = getDbSettings().defaultDatabaseEngine;
-        if ("MEMORY".equalsIgnoreCase(dbEngineName))
-            persistent = false;
-        else if ("REGULAR".equalsIgnoreCase(dbEngineName) || "MVSTORE".equalsIgnoreCase(dbEngineName))
-            persistent = true;
-        if (persistent && !remote) {
-            if ("/".equals(SysProperties.FILE_SEPARATOR)) {
-                name = name.replace('\\', '/');
-            } else {
-                name = name.replace('/', '\\');
-            }
+            dbName = dbName.substring(Constants.URL_DYNAMIC.length());
+        } else {
+            throw getFormatException();
         }
     }
 
-    /**
-     * Set the base directory of persistent databases, unless the database is in
-     * the user home folder (~).
-     *
-     * @param dir the new base directory
-     */
     public void setBaseDir(String dir) {
-        if (persistent) {
-            String absDir = FileUtils.unwrap(FileUtils.toRealPath(dir));
-            boolean absolute = FileUtils.isAbsolute(name);
-            String n;
-            String prefix = null;
-            if (dir.endsWith(SysProperties.FILE_SEPARATOR)) {
-                dir = dir.substring(0, dir.length() - 1);
-            }
-            if (absolute) {
-                n = name;
-            } else {
-                n = FileUtils.unwrap(name);
-                prefix = name.substring(0, name.length() - n.length());
-                n = dir + SysProperties.FILE_SEPARATOR + n;
-            }
-            String normalizedName = FileUtils.unwrap(FileUtils.toRealPath(n));
-            if (normalizedName.equals(absDir) || !normalizedName.startsWith(absDir)) {
-                // database name matches the baseDir or
-                // database name is clearly outside of the baseDir
-                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " + absDir);
-            }
-            if (normalizedName.charAt(absDir.length()) != '/') {
-                // database must be within the directory
-                // (with baseDir=/test, the database name must not be
-                // /test2/x and not /test2)
-                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " + absDir);
-            }
-            if (!absolute) {
-                name = prefix + dir + SysProperties.FILE_SEPARATOR + FileUtils.unwrap(name);
-            }
-        }
+        //TODO 看看是否可以删 除
     }
 
     /**
@@ -241,24 +144,6 @@ public class ConnectionInfo implements Cloneable {
      */
     public boolean isRemote() {
         return remote;
-    }
-
-    /**
-     * Check if the referenced database is persistent.
-     *
-     * @return true if it is
-     */
-    //    public boolean isPersistent() {
-    //        return persistent;
-    //    }
-
-    /**
-     * Check if the referenced database is an unnamed in-memory database.
-     *
-     * @return true if it is
-     */
-    boolean isUnnamedInMemory() {
-        return unnamed;
     }
 
     public void readProperties(Properties info) {
@@ -285,12 +170,24 @@ public class ConnectionInfo implements Cloneable {
     }
 
     private void readSettingsFromURL() {
-        DbSettings dbSettings = DbSettings.getInstance(null);
+        DbSettings dbSettings = DbSettings.getInstance();
+        //Lealone的JDBC URL语法:
+        //jdbc:lealone:tcp://[host:port],[host:port].../[database][;propertyName1][=propertyValue1][;propertyName2][=propertyValue2]
+        //数据库名与参数之间用';'号分隔，不同参数之间也用';'号分隔
         int idx = url.indexOf(';');
+        char splitChar = ';';
+        if (idx < 0) {
+            //看看是否是MySQL的JDBC URL语法:
+            //jdbc:mysql://[host:port],[host:port].../[database][?propertyName1][=propertyValue1][&propertyName2][=propertyValue2]
+            //数据库名与参数之间用'?'号分隔，不同参数之间用'&'分隔
+            idx = url.indexOf('?');
+            if (idx >= 0)
+                splitChar = '&';
+        }
         if (idx >= 0) {
             String settings = url.substring(idx + 1);
-            url = url.substring(0, idx);
-            String[] list = StringUtils.arraySplit(settings, ';', false);
+            url = url.substring(0, idx); //去掉后面的参数
+            String[] list = StringUtils.arraySplit(settings, splitChar, false);
             for (String setting : list) {
                 if (setting.length() == 0) {
                     continue;
@@ -411,25 +308,8 @@ public class ConnectionInfo implements Cloneable {
         return x == null ? defaultValue : x.toString();
     }
 
-    /**
-     * Get the unique and normalized database name (excluding settings).
-     *
-     * @return the database name
-     */
-    public String getName() {
-        if (persistent) {
-            if (nameNormalized == null) {
-                String suffix = Constants.SUFFIX_PAGE_FILE;
-                String n = FileUtils.toRealPath(name + suffix);
-                String fileName = FileUtils.getName(n);
-                if (fileName.length() < suffix.length() + 1) {
-                    throw DbException.get(ErrorCode.INVALID_DATABASE_NAME_1, name);
-                }
-                nameNormalized = n.substring(0, n.length() - suffix.length());
-            }
-            return nameNormalized;
-        }
-        return name;
+    public String getDatabaseName() {
+        return dbName;
     }
 
     /**
@@ -604,31 +484,12 @@ public class ConnectionInfo implements Cloneable {
     }
 
     /**
-     * Get the complete original database URL.
-     *
-     * @return the database URL
-     */
-    public String getOriginalURL() {
-        return originalURL;
-    }
-
-    /**
-     * Set the original database URL.
-     *
-     * @param url the database url
-     */
-    public void setOriginalURL(String url) {
-        originalURL = url;
-    }
-
-    /**
      * Generate an URL format exception.
      *
      * @return the exception
      */
     DbException getFormatException() {
-        String format = Constants.URL_FORMAT;
-        return DbException.get(ErrorCode.URL_FORMAT_ERROR_2, format, url);
+        return DbException.get(ErrorCode.URL_FORMAT_ERROR_2, Constants.URL_FORMAT, url);
     }
 
     /**
@@ -638,12 +499,11 @@ public class ConnectionInfo implements Cloneable {
      */
     public void setServerKey(String serverKey) {
         remote = true;
-        persistent = false;
-        this.name = serverKey;
+        dbName = serverKey;
     }
 
     public DbSettings getDbSettings() {
-        DbSettings defaultSettings = DbSettings.getInstance(null);
+        DbSettings defaultSettings = DbSettings.getInstance();
         HashMap<String, String> s = null;
         for (Object k : prop.keySet()) {
             String key = k.toString();
@@ -683,15 +543,8 @@ public class ConnectionInfo implements Cloneable {
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
             try {
-                String name;
-                if (embedded) {
-                    name = dbEngineName;
-                } else if (!persistent)
-                    name = "MEMORY";
-                else
-                    name = getDbSettings().defaultDatabaseEngine;
                 sessionFactory = (SessionFactory) Utils.callStaticMethod(
-                        "org.lealone.engine.DatabaseEngineManager.getDatabaseEngine", name);
+                        "org.lealone.engine.DatabaseEngineManager.getDatabaseEngine", getDbSettings().defaultTableEngine);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }

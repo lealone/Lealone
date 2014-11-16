@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.Properties;
 
 import org.lealone.command.CommandInterface;
+import org.lealone.constant.Constants;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.jdbc.JdbcConnection;
@@ -73,6 +74,7 @@ public class PgServerThread implements Runnable {
         this.socket = socket;
     }
 
+    @Override
     public void run() {
         try {
             server.trace("Connect");
@@ -126,7 +128,7 @@ public class PgServerThread implements Runnable {
         info.put("MODE", "PostgreSQL");
         info.put("USER", userName);
         info.put("PASSWORD", password);
-        String url = "jdbc:lealone:" + databaseName;
+        String url = Constants.URL_PREFIX + databaseName;
         ConnectionInfo ci = new ConnectionInfo(url, info);
         String baseDir = server.getBaseDir();
         if (baseDir == null) {
