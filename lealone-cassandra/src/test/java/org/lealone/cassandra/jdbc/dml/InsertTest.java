@@ -25,12 +25,19 @@ import org.lealone.cassandra.jdbc.TestBase;
 public class InsertTest extends TestBase {
     @Test
     public void run() throws Exception {
-        create();
-        insert();
+
+        tableName = "InsertTest";
+        
+//        create();
+//        insert();
+        
+
+        
+        sql = "SELECT * FROM " + tableName + " WHERE block_id = 3";
+        printResultSet();
     }
 
     void create() throws Exception {
-        tableName = "InsertTest";
         sql = "CREATE TABLE IF NOT EXISTS " + tableName //
                 + " ( block_id int, short_hair boolean, f1 text, " //
                 + "PRIMARY KEY (block_id, short_hair)) WITH compaction = { 'class' : 'LeveledCompactionStrategy'}";

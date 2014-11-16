@@ -43,12 +43,16 @@ public class CassandraCommand extends Command {
     private CQLStatement statement;
     private QueryState queryState;
 
+    private CassandraPrepared prepared;
+
     public CassandraCommand(Session session, String sql, ResultMessage.Prepared prepared, ClientState clientState) {
         super(session, sql);
         options = QueryOptions.forInternalCalls(ConsistencyLevel.QUORUM, Collections.<ByteBuffer> emptyList());
         ParsedStatement.Prepared p = ClientState.getCQLQueryHandler().getPrepared(prepared.statementId);
         statement = p.statement;
         queryState = new QueryState(clientState);
+
+        this.prepared = new CassandraPrepared(session);
     }
 
     @Override
@@ -85,7 +89,7 @@ public class CassandraCommand extends Command {
 
     @Override
     public Prepared getPrepared() {
-        return null;
+        return prepared;
     }
 
     @Override
@@ -101,10 +105,15 @@ public class CassandraCommand extends Command {
     @Override
     public ResultInterface query(int maxrows) {
         try {
-            ClientState.getCQLQueryHandler().processPrepared(statement, queryState, options);
+            ResultMessage result = ClientState.getCQLQueryHandler().processPrepared(statement, queryState, options);
+            if (result instanceof ResultMessage.Rows) {
+                ResultMessage.Rows rows = (ResultMessage.Rows) result;
+                return new CassandraResult(rows.result);
+            } else {
+                throw DbException.throwInternalError("query: " + sql);
+            }
         } catch (Exception e) {
             throw DbException.convert(e);
         }
-        return null;
     }
 }
