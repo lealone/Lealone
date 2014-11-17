@@ -24,7 +24,6 @@ import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.MemoryTable;
 import org.lealone.dbobject.table.TableBase;
 import org.lealone.dbobject.table.TableEngineManager;
-import org.lealone.engine.Database;
 
 /**
  * 
@@ -41,12 +40,10 @@ public class CassandraTableEngine implements TableEngine {
 
     @Override
     public TableBase createTable(CreateTableData data) {
-        Database db = data.session.getDatabase();
-        if (!data.isHidden && !data.temporary && data.id > 0 //
-                && !db.isPersistent() && !db.getShortName().toLowerCase().startsWith("management_db_"))
-            return new CassandraTable(data);
-        else
+        if (data.isMemoryTable())
             return new MemoryTable(data);
+        else
+            return new CassandraTable(data);
     }
 
     @Override

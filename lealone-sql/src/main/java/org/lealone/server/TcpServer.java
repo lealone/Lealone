@@ -50,7 +50,7 @@ public class TcpServer implements Service {
      * The name of the in-memory management database used by the TCP server
      * to keep the active sessions.
      */
-    private static final String MANAGEMENT_DB_PREFIX = "management_db_";
+    public static final String MANAGEMENT_DB_PREFIX = "management_db_";
 
     protected static final Map<Integer, TcpServer> SERVERS = Collections.synchronizedMap(new HashMap<Integer, TcpServer>());
 
