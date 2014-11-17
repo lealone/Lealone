@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.Properties;
 
+import org.lealone.cassandra.engine.CassandraConnectionInfo;
 import org.lealone.cassandra.engine.CassandraDatabaseEngine;
 import org.lealone.cassandra.engine.CassandraSession;
 import org.lealone.constant.SysProperties;
@@ -56,7 +57,7 @@ public class CassandraTcpServerThread extends TcpServerThread {
         }
 
         dbName = server.checkKeyAndGetDatabaseName(dbName);
-        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
+        ConnectionInfo ci = new CassandraConnectionInfo(originalURL, dbName);
 
         if (baseDir != null) {
             ci.setBaseDir(baseDir);

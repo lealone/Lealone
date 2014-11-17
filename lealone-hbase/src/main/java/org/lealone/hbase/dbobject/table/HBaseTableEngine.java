@@ -33,9 +33,10 @@ import org.lealone.engine.Database;
  */
 public class HBaseTableEngine implements TableEngine {
     public static final String NAME = "HBASE";
-    private static final HBaseTableEngine INSTANCE = new HBaseTableEngine();
-    static {
-        TableEngineManager.registerTableEngine(INSTANCE);
+
+    //见TableEngineManager.TableEngineService中的注释
+    public HBaseTableEngine() {
+        TableEngineManager.registerTableEngine(this);
     }
 
     @Override

@@ -26,6 +26,7 @@ import java.util.Properties;
 import org.lealone.constant.Constants;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
+import org.lealone.hbase.engine.HBaseConnectionInfo;
 import org.lealone.hbase.engine.HBaseDatabaseEngine;
 import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
@@ -65,7 +66,7 @@ public class HBasePgServerThread extends PgServerThread {
             port = ZooKeeperAdmin.getTcpPort(server.getRegionServer().getServerName());
         }
         String url = Constants.URL_PREFIX + Constants.URL_TCP + "//" + host + ":" + port + "/" + databaseName;
-        ConnectionInfo ci = new ConnectionInfo(url, databaseName);
+        ConnectionInfo ci = new HBaseConnectionInfo(url, databaseName);
 
         if (baseDir != null) {
             ci.setBaseDir(baseDir);

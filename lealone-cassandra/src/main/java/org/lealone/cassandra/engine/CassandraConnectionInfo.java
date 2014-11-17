@@ -17,20 +17,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.hbase.engine;
+package org.lealone.cassandra.engine;
 
-import org.lealone.engine.DatabaseEngineBase;
+import org.lealone.engine.ConnectionInfo;
+import org.lealone.engine.SessionFactory;
 
-public class HBaseDatabaseEngine extends DatabaseEngineBase {
-    private static final HBaseDatabaseEngine INSTANCE = new HBaseDatabaseEngine();
+public class CassandraConnectionInfo extends ConnectionInfo {
 
-    public static HBaseDatabaseEngine getInstance() {
-        return INSTANCE;
+    public CassandraConnectionInfo(String url, String dbName) {
+        super(url, dbName);
     }
 
     @Override
-    public HBaseDatabase createDatabase() {
-        return new HBaseDatabase(this);
+    public SessionFactory getSessionFactory() {
+        return CassandraDatabaseEngine.getInstance();
     }
 
 }

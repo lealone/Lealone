@@ -19,6 +19,14 @@
  */
 package org.lealone.hbase.server;
 
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_MASTER_TCP_PORT;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_REGIONSERVER_TCP_PORT;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_TABLE_ENGINE;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_TCP_SERVER_START_ARGS;
+import static org.lealone.hbase.engine.HBaseConstants.MASTER_TCP_PORT;
+import static org.lealone.hbase.engine.HBaseConstants.REGIONSERVER_TCP_PORT;
+import static org.lealone.hbase.engine.HBaseConstants.TCP_SERVER_START_ARGS;
+
 import java.net.Socket;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -32,14 +40,11 @@ import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.lealone.constant.Constants;
 import org.lealone.hbase.dbobject.table.HBaseTableEngine;
-import org.lealone.hbase.engine.HBaseDatabaseEngine;
 import org.lealone.hbase.zookeeper.TcpPortTracker;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import org.lealone.message.TraceSystem;
 import org.lealone.server.TcpServer;
 import org.lealone.server.TcpServerThread;
-
-import static org.lealone.hbase.engine.HBaseConstants.*;
 
 public class HBaseTcpServer extends TcpServer implements Runnable {
     private static final Log log = LogFactory.getLog(HBaseTcpServer.class);
@@ -165,9 +170,6 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
         }
         key = DEFAULT_TABLE_ENGINE;
         System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
-
-        key = DEFAULT_DATABASE_ENGINE;
-        System.setProperty(key, conf.get(key, HBaseDatabaseEngine.NAME));
     }
 
     @Override

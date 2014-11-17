@@ -19,6 +19,16 @@
  */
 package org.lealone.hbase.server;
 
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_MASTER_PG_PORT;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_PG_SERVER_ENABLED;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_PG_SERVER_START_ARGS;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_REGIONSERVER_PG_PORT;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_TABLE_ENGINE;
+import static org.lealone.hbase.engine.HBaseConstants.MASTER_PG_PORT;
+import static org.lealone.hbase.engine.HBaseConstants.PG_SERVER_ENABLED;
+import static org.lealone.hbase.engine.HBaseConstants.PG_SERVER_START_ARGS;
+import static org.lealone.hbase.engine.HBaseConstants.REGIONSERVER_PG_PORT;
+
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Map.Entry;
@@ -31,13 +41,10 @@ import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.lealone.constant.Constants;
 import org.lealone.hbase.dbobject.table.HBaseTableEngine;
-import org.lealone.hbase.engine.HBaseDatabaseEngine;
 import org.lealone.hbase.zookeeper.PgPortTracker;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import org.lealone.message.TraceSystem;
 import org.lealone.server.PgServer;
-
-import static org.lealone.hbase.engine.HBaseConstants.*;
 
 public class HBasePgServer extends PgServer implements Runnable {
     private static final Log log = LogFactory.getLog(HBasePgServer.class);
@@ -146,9 +153,6 @@ public class HBasePgServer extends PgServer implements Runnable {
         }
         key = DEFAULT_TABLE_ENGINE;
         System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
-
-        key = DEFAULT_DATABASE_ENGINE;
-        System.setProperty(key, conf.get(key, HBaseDatabaseEngine.NAME));
     }
 
     @Override

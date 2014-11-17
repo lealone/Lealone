@@ -20,14 +20,9 @@
 package org.lealone.cassandra.engine;
 
 import org.lealone.engine.DatabaseEngineBase;
-import org.lealone.engine.DatabaseEngineManager;
 
 public class CassandraDatabaseEngine extends DatabaseEngineBase {
-    public static final String NAME = "CASSANDRA";
     private static final CassandraDatabaseEngine INSTANCE = new CassandraDatabaseEngine();
-    static {
-        DatabaseEngineManager.registerDatabaseEngine(INSTANCE);
-    }
 
     public static CassandraDatabaseEngine getInstance() {
         return INSTANCE;
@@ -36,11 +31,6 @@ public class CassandraDatabaseEngine extends DatabaseEngineBase {
     @Override
     public CassandraDatabase createDatabase() {
         return new CassandraDatabase(this);
-    }
-
-    @Override
-    public String getName() {
-        return NAME;
     }
 
 }

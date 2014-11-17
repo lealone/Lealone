@@ -33,9 +33,10 @@ import org.lealone.engine.Database;
  */
 public class CassandraTableEngine implements TableEngine {
     public static final String NAME = "CASSANDRA";
-    private static final CassandraTableEngine INSTANCE = new CassandraTableEngine();
-    static {
-        TableEngineManager.registerTableEngine(INSTANCE);
+
+    //见TableEngineManager.TableEngineService中的注释
+    public CassandraTableEngine() {
+        TableEngineManager.registerTableEngine(this);
     }
 
     @Override

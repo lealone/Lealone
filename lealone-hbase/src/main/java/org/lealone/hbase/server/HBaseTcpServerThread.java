@@ -26,6 +26,7 @@ import java.util.Properties;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Session;
+import org.lealone.hbase.engine.HBaseConnectionInfo;
 import org.lealone.hbase.engine.HBaseDatabaseEngine;
 import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.server.TcpServerThread;
@@ -56,7 +57,7 @@ public class HBaseTcpServerThread extends TcpServerThread {
         }
 
         dbName = server.checkKeyAndGetDatabaseName(dbName);
-        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
+        ConnectionInfo ci = new HBaseConnectionInfo(originalURL, dbName);
 
         if (baseDir != null) {
             ci.setBaseDir(baseDir);

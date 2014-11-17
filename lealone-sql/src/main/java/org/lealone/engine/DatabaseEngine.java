@@ -19,21 +19,11 @@
  */
 package org.lealone.engine;
 
-import org.lealone.engine.ConnectionInfo;
-import org.lealone.engine.SessionFactory;
-import org.lealone.engine.SessionInterface;
-
 public interface DatabaseEngine extends SessionFactory {
-    /**
-     * 获取数据库引擎名称
-     * 
-     * @return 数据库引擎名称
-     */
-    String getName();
-
     Database createDatabase();
 
     void closeDatabase(String dbName);
 
+    @Override
     SessionInterface createSession(ConnectionInfo ci);
 }

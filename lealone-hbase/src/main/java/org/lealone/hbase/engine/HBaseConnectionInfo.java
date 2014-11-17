@@ -19,18 +19,17 @@
  */
 package org.lealone.hbase.engine;
 
-import org.lealone.engine.DatabaseEngineBase;
+import org.lealone.engine.ConnectionInfo;
+import org.lealone.engine.SessionFactory;
 
-public class HBaseDatabaseEngine extends DatabaseEngineBase {
-    private static final HBaseDatabaseEngine INSTANCE = new HBaseDatabaseEngine();
+public class HBaseConnectionInfo extends ConnectionInfo {
 
-    public static HBaseDatabaseEngine getInstance() {
-        return INSTANCE;
+    public HBaseConnectionInfo(String url, String dbName) {
+        super(url, dbName);
     }
 
     @Override
-    public HBaseDatabase createDatabase() {
-        return new HBaseDatabase(this);
+    public SessionFactory getSessionFactory() {
+        return HBaseDatabaseEngine.getInstance();
     }
-
 }

@@ -17,20 +17,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.hbase.engine;
+package org.lealone.test.start;
 
-import org.lealone.engine.DatabaseEngineBase;
+import java.sql.SQLException;
+import java.util.ArrayList;
 
-public class HBaseDatabaseEngine extends DatabaseEngineBase {
-    private static final HBaseDatabaseEngine INSTANCE = new HBaseDatabaseEngine();
+import org.lealone.server.LealoneDaemon;
 
-    public static HBaseDatabaseEngine getInstance() {
-        return INSTANCE;
+public class TcpServerStarter {
+    public static void main(String[] args) throws SQLException {
+
+        // System.setProperty("DATABASE_TO_UPPER", "false");
+        System.setProperty("lealone.lobInDatabase", "false");
+        System.setProperty("lealone.lobClientMaxSizeMemory", "1024");
+        System.setProperty("java.io.tmpdir", "./target/test/tmp");
+        System.setProperty("lealone.baseDir", "./target/test/baseDir");
+        //System.setProperty("lealone.check2", "true");
+        ArrayList<String> list = new ArrayList<String>();
+
+        list.add("-tcpPort");
+        list.add("9092");
+
+        //list.add("-pg");
+        list.add("-tcp");
+
+        LealoneDaemon.main(list.toArray(new String[list.size()]));
     }
-
-    @Override
-    public HBaseDatabase createDatabase() {
-        return new HBaseDatabase(this);
-    }
-
 }

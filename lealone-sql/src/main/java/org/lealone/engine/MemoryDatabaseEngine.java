@@ -20,11 +20,7 @@
 package org.lealone.engine;
 
 public class MemoryDatabaseEngine extends DatabaseEngineBase {
-    public static final String NAME = "MEMORY";
     private static final MemoryDatabaseEngine INSTANCE = new MemoryDatabaseEngine();
-    static {
-        DatabaseEngineManager.registerDatabaseEngine(INSTANCE);
-    }
 
     public static MemoryDatabaseEngine getInstance() {
         return INSTANCE;
@@ -33,10 +29,5 @@ public class MemoryDatabaseEngine extends DatabaseEngineBase {
     @Override
     public MemoryDatabase createDatabase() {
         return new MemoryDatabase(this);
-    }
-
-    @Override
-    public String getName() {
-        return NAME;
     }
 }

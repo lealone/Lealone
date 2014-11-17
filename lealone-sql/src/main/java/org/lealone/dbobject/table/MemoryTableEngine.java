@@ -21,14 +21,13 @@ package org.lealone.dbobject.table;
 
 import org.lealone.api.TableEngine;
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.TableBase;
-import org.lealone.dbobject.table.TableEngineManager;
 
 public class MemoryTableEngine implements TableEngine {
     public static final String NAME = "MEMORY";
-    private static final MemoryTableEngine INSTANCE = new MemoryTableEngine();
-    static {
-        TableEngineManager.registerTableEngine(INSTANCE);
+
+    //见TableEngineManager.TableEngineService中的注释
+    public MemoryTableEngine() {
+        TableEngineManager.registerTableEngine(this);
     }
 
     @Override

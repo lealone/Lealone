@@ -543,8 +543,8 @@ public class ConnectionInfo implements Cloneable {
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
             try {
-                sessionFactory = (SessionFactory) Utils.callStaticMethod(
-                        "org.lealone.engine.DatabaseEngineManager.getDatabaseEngine", getDbSettings().defaultTableEngine);
+                sessionFactory = (SessionFactory) Class.forName("org.lealone.engine.MemoryDatabaseEngine")
+                        .getMethod("getInstance").invoke(null);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }

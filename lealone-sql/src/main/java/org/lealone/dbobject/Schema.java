@@ -82,14 +82,17 @@ public class Schema extends DbObjectBase {
         return !system;
     }
 
+    @Override
     public String getCreateSQLForCopy(Table table, String quotedName) {
         throw DbException.throwInternalError();
     }
 
+    @Override
     public String getDropSQL() {
         return null;
     }
 
+    @Override
     public String getCreateSQL() {
         if (system) {
             return null;
@@ -97,10 +100,12 @@ public class Schema extends DbObjectBase {
         return "CREATE SCHEMA IF NOT EXISTS " + getSQL() + " AUTHORIZATION " + owner.getSQL();
     }
 
+    @Override
     public int getType() {
         return DbObject.SCHEMA;
     }
 
+    @Override
     public void removeChildrenAndResources(Session session) {
         while (triggers != null && triggers.size() > 0) {
             TriggerObject obj = (TriggerObject) triggers.values().toArray()[0];
@@ -135,6 +140,7 @@ public class Schema extends DbObjectBase {
         invalidate();
     }
 
+    @Override
     public void checkRename() {
         // ok
     }
@@ -539,6 +545,11 @@ public class Schema extends DbObjectBase {
             }
             data.schema = this;
 
+            //先看看是否在连接参数中指定了
+            if (data.tableEngine == null && data.session.getConnectionInfo() != null) {
+                data.tableEngine = data.session.getConnectionInfo().getDbSettings().defaultTableEngine;
+            }
+            //再用默认的数据库参数
             if (data.tableEngine == null) {
                 data.tableEngine = database.getTableEngineName();
             }

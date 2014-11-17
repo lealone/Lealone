@@ -27,8 +27,11 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.TableEngine;
+import org.lealone.constant.DbSettings;
+import org.lealone.message.DbException;
 
 public class TableEngineManager {
+
     private TableEngineManager() {
     }
 
@@ -39,8 +42,16 @@ public class TableEngineManager {
         if (!initialized) {
             initialize();
         }
-
-        return tableEngines.get(name.toUpperCase());
+        if (name == null) {
+            name = DbSettings.getInstance().defaultTableEngine;
+            //TODO 如果为null怎么办？抛错？还是设个默认值，默认值从哪取？
+            //if (name == null)
+            //    name = MemoryTableEngine.NAME;
+        }
+        TableEngine te = tableEngines.get(name.toUpperCase());
+        //        if (te == null)
+        //            throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, name + " store engine not found");
+        return te;
     }
 
     public static void registerTableEngine(TableEngine tableEngine) {
@@ -52,13 +63,17 @@ public class TableEngineManager {
     }
 
     private static class TableEngineService implements PrivilegedAction<TableEngine> {
+        @Override
         public TableEngine run() {
             Iterator<TableEngine> iterator = ServiceLoader.load(TableEngine.class).iterator();
             try {
                 while (iterator.hasNext()) {
+                    //执行next时ServiceLoader内部会自动为每一个实现TableEngine接口的类生成一个新实例
+                    //所以TableEngine接口的实现类必需有一个public的无参数构造函数
                     iterator.next();
                 }
             } catch (Throwable t) {
+                DbException.convert(t);
             }
             return null;
         }

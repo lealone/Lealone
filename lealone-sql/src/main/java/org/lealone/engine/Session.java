@@ -29,9 +29,6 @@ import org.lealone.dbobject.User;
 import org.lealone.dbobject.constraint.Constraint;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Table;
-import org.lealone.engine.ConnectionInfo;
-import org.lealone.engine.SessionInterface;
-import org.lealone.engine.SessionWithState;
 import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
@@ -354,6 +351,7 @@ public class Session extends SessionWithState {
         }
     }
 
+    @Override
     public boolean getAutoCommit() {
         return autoCommit;
     }
@@ -362,6 +360,7 @@ public class Session extends SessionWithState {
         return user;
     }
 
+    @Override
     public void setAutoCommit(boolean b) {
         autoCommit = b;
     }
@@ -444,10 +443,12 @@ public class Session extends SessionWithState {
         return database;
     }
 
+    @Override
     public int getPowerOffCount() {
         return database.getPowerOffCount();
     }
 
+    @Override
     public void setPowerOffCount(int count) {
         database.setPowerOffCount(count);
     }
@@ -565,6 +566,7 @@ public class Session extends SessionWithState {
         }
     }
 
+    @Override
     public int getUndoLogPos() {
         return undoLog.size();
     }
@@ -573,10 +575,12 @@ public class Session extends SessionWithState {
         return id;
     }
 
+    @Override
     public void cancel() {
         cancelAt = System.currentTimeMillis();
     }
 
+    @Override
     public void close() {
         if (!closed) {
             try {
@@ -721,6 +725,7 @@ public class Session extends SessionWithState {
         return random;
     }
 
+    @Override
     public Trace getTrace() {
         if (trace != null && !closed) {
             return trace;
@@ -857,6 +862,7 @@ public class Session extends SessionWithState {
         }
     }
 
+    @Override
     public boolean isClosed() {
         return closed;
     }
@@ -971,6 +977,7 @@ public class Session extends SessionWithState {
         return new JdbcConnection(this, getUser().getName(), url);
     }
 
+    @Override
     public DataHandler getDataHandler() {
         return database;
     }
@@ -1063,10 +1070,12 @@ public class Session extends SessionWithState {
         return schemaSearchPath;
     }
 
+    @Override
     public int hashCode() {
         return serialId;
     }
 
+    @Override
     public String toString() {
         return "#" + serialId + " (user: " + user.getName() + ")";
     }
@@ -1201,6 +1210,7 @@ public class Session extends SessionWithState {
         return modificationId;
     }
 
+    @Override
     public boolean isReconnectNeeded(boolean write) {
         while (true) {
             boolean reconnect = database.isReconnectNeeded();
@@ -1217,10 +1227,12 @@ public class Session extends SessionWithState {
         }
     }
 
+    @Override
     public void afterWriting() {
         database.afterWriting();
     }
 
+    @Override
     public SessionInterface reconnect(boolean write) {
         readSessionState();
         close();
@@ -1237,6 +1249,10 @@ public class Session extends SessionWithState {
 
     public void setConnectionInfo(ConnectionInfo ci) {
         connectionInfo = ci;
+    }
+
+    public ConnectionInfo getConnectionInfo() {
+        return connectionInfo;
     }
 
     public Value getTransactionId() {
