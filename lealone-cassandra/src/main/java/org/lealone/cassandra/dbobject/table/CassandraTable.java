@@ -61,7 +61,7 @@ public class CassandraTable extends TableBase {
 
     @Override
     public String getTableType() {
-        return "CASSANDRA TABLE";
+        return CassandraTableEngine.NAME + "_" + super.getTableType();
     }
 
     @Override

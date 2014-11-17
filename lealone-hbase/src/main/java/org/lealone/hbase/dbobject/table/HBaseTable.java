@@ -24,8 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.Callable;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -365,7 +365,7 @@ public class HBaseTable extends TableBase {
         }
         Index index;
         if (isDelegateIndex)
-            index = new HBaseDelegateIndex(this, indexId, indexName, cols, (HBasePrimaryIndex) scanIndex, indexType);
+            index = new HBaseDelegateIndex(this, indexId, indexName, cols, scanIndex, indexType);
         else
             index = new HBaseSecondaryIndex(this, indexId, indexName, cols, indexType);
 
@@ -406,6 +406,7 @@ public class HBaseTable extends TableBase {
                 final Index index = indexes.get(i);
                 if (!(index instanceof HBaseDelegateIndex)) {
                     calls.add(new Callable<Void>() {
+                        @Override
                         public Void call() throws Exception {
                             index.add(session, row);
                             return null;
@@ -441,6 +442,7 @@ public class HBaseTable extends TableBase {
                 final Index index = indexes.get(i);
                 if (!(index instanceof HBaseDelegateIndex)) {
                     calls.add(new Callable<Void>() {
+                        @Override
                         public Void call() throws Exception {
                             index.remove(session, row);
                             return null;
@@ -493,7 +495,7 @@ public class HBaseTable extends TableBase {
 
     @Override
     public String getTableType() {
-        return "HBASE TABLE";
+        return HBaseTableEngine.NAME + "_" + super.getTableType();
     }
 
     @Override
@@ -697,6 +699,7 @@ public class HBaseTable extends TableBase {
         return 0;
     }
 
+    @Override
     public void addColumn(Column c) {
         ArrayList<Column> list;
         if (c.getColumnFamilyName() == null)
@@ -718,6 +721,7 @@ public class HBaseTable extends TableBase {
         setColumns(newCols);
     }
 
+    @Override
     public void dropColumn(Column column) {
         Column[] cols = getColumns();
         ArrayList<Column> list = new ArrayList<Column>(cols.length);

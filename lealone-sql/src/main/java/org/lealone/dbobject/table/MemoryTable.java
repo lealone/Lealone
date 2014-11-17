@@ -28,8 +28,6 @@ import org.lealone.dbobject.index.MultiVersionIndex;
 import org.lealone.dbobject.index.NonUniqueHashIndex;
 import org.lealone.dbobject.index.ScanIndex;
 import org.lealone.dbobject.index.TreeIndex;
-import org.lealone.dbobject.table.IndexColumn;
-import org.lealone.dbobject.table.TableBase;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 
@@ -82,6 +80,11 @@ public class MemoryTable extends TableBase {
         indexes.add(index);
         setModified();
         return index;
+    }
+
+    @Override
+    public String getTableType() {
+        return MemoryTableEngine.NAME + "_" + super.getTableType();
     }
 
 }

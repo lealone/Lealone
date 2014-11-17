@@ -61,7 +61,7 @@ public class CBaseTable extends TableBase {
 
     @Override
     public String getTableType() {
-        return CBaseTableEngine.NAME;
+        return CBaseTableEngine.NAME + "_" + super.getTableType();
     }
 
     @Override
