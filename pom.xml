@@ -16,6 +16,7 @@
 	<modules>
 		<module>lealone-client</module>
 		<module>lealone-sql</module>
+		<module>lealone-cbase</module>
 		<module>lealone-hbase</module>
 		<module>lealone-cassandra</module>
 		<module>lealone-test</module>

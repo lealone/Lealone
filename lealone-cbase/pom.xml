@@ -7,21 +7,15 @@
 		<version>1.0.0</version>
 	</parent>
 
-	<artifactId>lealone-test</artifactId>
+	<artifactId>lealone-cbase</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
-	<name>lealone test</name>
+	<name>lealone cbase</name>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-hbase</artifactId>
-			<version>${lealone.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.lealone</groupId>
-			<artifactId>lealone-cbase</artifactId>
+			<artifactId>lealone-sql</artifactId>
 			<version>${lealone.version}</version>
 		</dependency>
 
@@ -29,16 +23,5 @@
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
 		</dependency>
-
-		<dependency>
-			<groupId>org.apache.hbase</groupId>
-			<artifactId>hbase</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.hadoop</groupId>
-			<artifactId>hadoop-core</artifactId>
-		</dependency>
-
 	</dependencies>
 </project>
