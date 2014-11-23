@@ -54,7 +54,7 @@ public abstract class TableBase extends Table {
 
     private volatile Session lockExclusive;
     private HashSet<Session> lockShared;
-    private Trace traceLock;
+    private final Trace traceLock;
     protected long lastModificationId;
     private int changesSinceAnalyze;
     private int nextAnalyze;
@@ -163,6 +163,7 @@ public abstract class TableBase extends Table {
         }
     }
 
+    @Override
     public boolean isGlobalTemporary() {
         return globalTemporary;
     }
@@ -337,7 +338,7 @@ public abstract class TableBase extends Table {
         changesSinceAnalyze = 0;
     }
 
-    private void analyzeIfRequired(Session session) {
+    protected void analyzeIfRequired(Session session) {
         if (nextAnalyze == 0 || nextAnalyze > changesSinceAnalyze++) {
             return;
         }
@@ -497,6 +498,7 @@ public abstract class TableBase extends Table {
         return buff.toString();
     }
 
+    @Override
     public ArrayList<Session> checkDeadlock(Session session, Session clash, Set<Session> visited) {
         // only one deadlock check at any given time
         synchronized (TableBase.class) {
@@ -616,6 +618,7 @@ public abstract class TableBase extends Table {
         invalidate();
     }
 
+    @Override
     public String toString() {
         return getSQL();
     }
@@ -732,6 +735,7 @@ public abstract class TableBase extends Table {
     private static void addRowsToIndex(Session session, ArrayList<Row> list, Index index) {
         final Index idx = index;
         Collections.sort(list, new Comparator<Row>() {
+            @Override
             public int compare(Row r1, Row r2) {
                 return idx.compareRows(r1, r2);
             }

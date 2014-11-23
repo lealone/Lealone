@@ -36,7 +36,7 @@ import org.lealone.util.Utils;
  * This is the base class for all value classes.
  * It provides conversion and comparison methods.
  */
-public abstract class Value {
+public abstract class Value implements Comparable<Value> {
 
     /**
      * The data type is unknown at this time.
@@ -230,6 +230,7 @@ public abstract class Value {
      */
     protected abstract int compareSecure(Value v, CompareMode mode);
 
+    @Override
     public abstract int hashCode();
 
     /**
@@ -241,6 +242,7 @@ public abstract class Value {
      * @param other the other value
      * @return true if they are equal
      */
+    @Override
     public abstract boolean equals(Object other);
 
     /**
@@ -1002,6 +1004,7 @@ public abstract class Value {
         return getSQL();
     }
 
+    @Override
     public String toString() {
         return getTraceSQL();
     }
@@ -1065,4 +1068,10 @@ public abstract class Value {
         // this is a marker interface
     }
 
+    public CompareMode compareMode;
+
+    @Override
+    public int compareTo(Value o) {
+        return compareTo(o, compareMode);
+    }
 }
