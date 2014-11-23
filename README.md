@@ -55,6 +55,7 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 * 继续优化join、subquery、view、index的性能
 * 支持Cassandra
+* 新的CBase存储引擎
 
 ## Package
 
