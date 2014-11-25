@@ -15,6 +15,7 @@
 
 	<modules>
 		<module>lealone-client</module>
+		<module>lealone-server</module>
 		<module>lealone-sql</module>
 		<module>lealone-cbase</module>
 		<module>lealone-hbase</module>

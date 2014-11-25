@@ -10,9 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.table.Column;
-import org.lealone.engine.Database;
 import org.lealone.engine.Session;
-import org.lealone.server.TcpServer;
 import org.lealone.util.New;
 
 /**
@@ -81,11 +79,6 @@ public class CreateTableData {
     public boolean isHidden;
 
     public boolean isMemoryTable() {
-        Database db = session.getDatabase();
-        return isHidden || globalTemporary || temporary || //
-                id <= 0 || //
-                //!db.isPersistent() || //
-                db.getShortName().toLowerCase().startsWith(TcpServer.MANAGEMENT_DB_PREFIX);
+        return isHidden || globalTemporary || temporary || id <= 0;
     }
-
 }

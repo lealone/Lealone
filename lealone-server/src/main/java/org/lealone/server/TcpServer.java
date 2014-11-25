@@ -113,7 +113,8 @@ public class TcpServer implements Service {
         try {
             stat = conn.createStatement();
             stat.execute("CREATE ALIAS IF NOT EXISTS STOP_SERVER FOR \"" + TcpServer.class.getName() + ".stopServer\"");
-            stat.execute("CREATE TABLE IF NOT EXISTS SESSIONS(ID INT PRIMARY KEY, URL VARCHAR, USER VARCHAR, CONNECTED TIMESTAMP)");
+            stat.execute("CREATE TABLE IF NOT EXISTS SESSIONS"
+                    + "(ID INT PRIMARY KEY, URL VARCHAR, USER VARCHAR, CONNECTED TIMESTAMP)");
             managementDbAdd = conn.prepareStatement("INSERT INTO SESSIONS VALUES(?, ?, ?, NOW())");
             managementDbRemove = conn.prepareStatement("DELETE FROM SESSIONS WHERE ID=?");
         } finally {
