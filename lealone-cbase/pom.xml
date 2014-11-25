@@ -18,10 +18,5 @@
 			<artifactId>lealone-sql</artifactId>
 			<version>${lealone.version}</version>
 		</dependency>
-
-		<dependency>
-			<groupId>commons-logging</groupId>
-			<artifactId>commons-logging</artifactId>
-		</dependency>
 	</dependencies>
 </project>
