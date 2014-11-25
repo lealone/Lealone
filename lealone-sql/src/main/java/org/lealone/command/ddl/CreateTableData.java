@@ -84,7 +84,7 @@ public class CreateTableData {
         Database db = session.getDatabase();
         return isHidden || globalTemporary || temporary || //
                 id <= 0 || //
-                !db.isPersistent() || //
+                //!db.isPersistent() || //
                 db.getShortName().toLowerCase().startsWith(TcpServer.MANAGEMENT_DB_PREFIX);
     }
 

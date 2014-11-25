@@ -26,15 +26,15 @@ import java.util.concurrent.CountDownLatch;
 
 public class JDBCExample {
     static Connection getConnection() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:9092/mydb";
-        url = "jdbc:lealone:embed:mydb?default_table_engine=cbase";
+        String url = "jdbc:lealone:tcp://localhost:9092/mydb?default_table_engine=cbase";
+        //url = "jdbc:lealone:embed:mydb?default_table_engine=cbase";
         Connection conn = DriverManager.getConnection(url, "sa", "");
         return conn;
     }
 
     public static void main(String[] args) throws Exception {
         crud();
-        benchmark();
+        //benchmark();
     }
 
     static void crud() throws Exception {
@@ -62,7 +62,7 @@ public class JDBCExample {
             System.out.println("count=" + rs.getInt(1));
         }
 
-        stmt.executeUpdate("DROP TABLE IF EXISTS test");
+        //stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt.close();
         conn.close();
     }

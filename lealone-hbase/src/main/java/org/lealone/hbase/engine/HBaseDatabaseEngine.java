@@ -19,13 +19,16 @@
  */
 package org.lealone.hbase.engine;
 
-import org.lealone.engine.DatabaseEngineBase;
+import org.lealone.engine.DatabaseEngine;
 
-public class HBaseDatabaseEngine extends DatabaseEngineBase {
+public class HBaseDatabaseEngine extends DatabaseEngine {
     private static final HBaseDatabaseEngine INSTANCE = new HBaseDatabaseEngine();
 
     public static HBaseDatabaseEngine getInstance() {
         return INSTANCE;
+    }
+
+    protected HBaseDatabaseEngine() {
     }
 
     @Override

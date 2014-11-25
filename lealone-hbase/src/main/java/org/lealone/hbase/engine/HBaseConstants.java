@@ -30,7 +30,7 @@ public class HBaseConstants {
 
     /**
      * 作为每张表的默认列族中的一个字段，用于记录事务的元数据，格式是: host:port,transactionId,Tag
-     * 遗留系统的HBase表无法通过KeyValue的时间戳来实别事务id，也无法把delete之类的sql转成HBase的delete，
+     * 遗留系统的HBase表无法通过KeyValue的时间戳来识别事务id，也无法把delete之类的sql转成HBase的delete，
      * 所以为了兼容遗留系统也为了更通用，增加一个新的字段能简化系统设计。
      */
     public static final byte[] TRANSACTION_META = Bytes.toBytes(HBaseUtils.getConfiguration().get(

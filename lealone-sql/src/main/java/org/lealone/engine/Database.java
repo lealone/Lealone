@@ -79,7 +79,7 @@ import org.lealone.value.ValueInt;
  *
  * @since 2004-04-15 22:49
  */
-public abstract class Database implements DataHandler {
+public class Database implements DataHandler {
     /**
      * This log mode means the transaction log is not used.
      */
@@ -191,7 +191,9 @@ public abstract class Database implements DataHandler {
         return dbEngine;
     }
 
-    public abstract String getTableEngineName();
+    public String getTableEngineName() {
+        return dbSettings.defaultTableEngine;
+    }
 
     public void init(ConnectionInfo ci, String cipher) {
         this.dbSettings = ci.getDbSettings();

@@ -324,13 +324,6 @@ public class DbSettings extends SettingsBase {
      */
     public final String defaultTableEngine = get("DEFAULT_TABLE_ENGINE", null);
 
-    /**
-     * Database setting <code>DEFAULT_DATABASE_ENGINE</code>
-     * (default: null).<br />
-     * The default database engine to use for new databases.
-     */
-    public final String defaultDatabaseEngine = get("DEFAULT_DATABASE_ENGINE", "null");
-
     private DbSettings(HashMap<String, String> s) {
         super(s);
     }

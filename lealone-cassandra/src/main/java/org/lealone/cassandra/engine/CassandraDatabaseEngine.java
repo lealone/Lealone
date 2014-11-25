@@ -19,13 +19,16 @@
  */
 package org.lealone.cassandra.engine;
 
-import org.lealone.engine.DatabaseEngineBase;
+import org.lealone.engine.DatabaseEngine;
 
-public class CassandraDatabaseEngine extends DatabaseEngineBase {
+public class CassandraDatabaseEngine extends DatabaseEngine {
     private static final CassandraDatabaseEngine INSTANCE = new CassandraDatabaseEngine();
 
     public static CassandraDatabaseEngine getInstance() {
         return INSTANCE;
+    }
+
+    protected CassandraDatabaseEngine() {
     }
 
     @Override
