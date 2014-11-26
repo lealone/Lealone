@@ -18,7 +18,7 @@ import org.lealone.command.FrontendBatchCommand;
 import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.SessionInterface;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
 import org.lealone.result.ResultInterface;
@@ -619,8 +619,8 @@ public class JdbcStatement extends TraceObject implements Statement {
                 if (batchCommands.isEmpty())
                     return new int[0];
 
-                if (session instanceof SessionRemote) {
-                    FrontendBatchCommand c = ((SessionRemote) session).getFrontendBatchCommand(batchCommands);
+                if (session instanceof FrontendSession) {
+                    FrontendBatchCommand c = ((FrontendSession) session).getFrontendBatchCommand(batchCommands);
                     c.executeUpdate();
                     int[] result = c.getResult();
                     c.close();

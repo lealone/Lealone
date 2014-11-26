@@ -24,7 +24,7 @@ import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Session;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;
@@ -102,17 +102,17 @@ public class TcpServerThread implements Runnable {
                     String targetSessionId = transfer.readString();
                     int command = transfer.readInt();
                     stop = true;
-                    if (command == SessionRemote.SESSION_CANCEL_STATEMENT) {
+                    if (command == FrontendSession.SESSION_CANCEL_STATEMENT) {
                         // cancel a running statement
                         int statementId = transfer.readInt();
                         server.cancelStatement(targetSessionId, statementId);
-                    } else if (command == SessionRemote.SESSION_CHECK_KEY) {
+                    } else if (command == FrontendSession.SESSION_CHECK_KEY) {
                         // check if this is the correct server
                         db = server.checkKeyAndGetDatabaseName(targetSessionId);
                         if (!targetSessionId.equals(db)) {
-                            transfer.writeInt(SessionRemote.STATUS_OK);
+                            transfer.writeInt(FrontendSession.STATUS_OK);
                         } else {
-                            transfer.writeInt(SessionRemote.STATUS_ERROR);
+                            transfer.writeInt(FrontendSession.STATUS_ERROR);
                         }
                     }
                 }
@@ -121,7 +121,7 @@ public class TcpServerThread implements Runnable {
                 userName = StringUtils.toUpperEnglish(userName);
                 session = createSession(db, originalURL, userName, transfer);
                 transfer.setSession(session);
-                transfer.writeInt(SessionRemote.STATUS_OK);
+                transfer.writeInt(FrontendSession.STATUS_OK);
                 transfer.writeInt(clientVersion);
                 transfer.flush();
                 server.addConnection(threadId, originalURL, userName);
@@ -236,7 +236,7 @@ public class TcpServerThread implements Runnable {
                 message = e.getMessage();
                 sql = null;
             }
-            transfer.writeInt(SessionRemote.STATUS_ERROR).writeString(e.getSQLState()).writeString(message).writeString(sql)
+            transfer.writeInt(FrontendSession.STATUS_ERROR).writeString(e.getSQLState()).writeString(message).writeString(sql)
                     .writeInt(e.getErrorCode()).writeString(trace).flush();
         } catch (Exception e2) {
             if (!transfer.isClosed()) {
@@ -264,7 +264,7 @@ public class TcpServerThread implements Runnable {
 
         int status;
         if (session.isClosed()) {
-            status = SessionRemote.STATUS_CLOSED;
+            status = FrontendSession.STATUS_CLOSED;
         } else {
             status = getState(old);
         }
@@ -279,8 +279,8 @@ public class TcpServerThread implements Runnable {
     private void process() throws IOException {
         int operation = transfer.readInt();
         switch (operation) {
-        case SessionRemote.SESSION_PREPARE_READ_PARAMS:
-        case SessionRemote.SESSION_PREPARE: {
+        case FrontendSession.SESSION_PREPARE_READ_PARAMS:
+        case FrontendSession.SESSION_PREPARE: {
             int id = transfer.readInt();
             String sql = transfer.readString();
             int old = session.getModificationId();
@@ -290,7 +290,7 @@ public class TcpServerThread implements Runnable {
             boolean isQuery = command.isQuery();
             ArrayList<? extends ParameterInterface> params = command.getParameters();
             transfer.writeInt(getState(old)).writeBoolean(isQuery).writeBoolean(readonly).writeInt(params.size());
-            if (operation == SessionRemote.SESSION_PREPARE_READ_PARAMS) {
+            if (operation == FrontendSession.SESSION_PREPARE_READ_PARAMS) {
                 for (ParameterInterface p : params) {
                     writeMetaData(transfer, p);
                 }
@@ -298,14 +298,14 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.SESSION_CLOSE: {
+        case FrontendSession.SESSION_CLOSE: {
             stop = true;
             closeSession();
-            transfer.writeInt(SessionRemote.STATUS_OK).flush();
+            transfer.writeInt(FrontendSession.STATUS_OK).flush();
             close();
             break;
         }
-        case SessionRemote.COMMAND_COMMIT: {
+        case FrontendSession.COMMAND_COMMIT: {
             if (commit == null) {
                 commit = session.prepareLocal("COMMIT");
             }
@@ -314,25 +314,25 @@ public class TcpServerThread implements Runnable {
             transfer.writeInt(getState(old)).flush();
             break;
         }
-        case SessionRemote.COMMAND_GET_META_DATA: {
+        case FrontendSession.COMMAND_GET_META_DATA: {
             int id = transfer.readInt();
             int objectId = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
             ResultInterface result = command.getMetaData();
             cache.addObject(objectId, result);
             int columnCount = result.getVisibleColumnCount();
-            transfer.writeInt(SessionRemote.STATUS_OK).writeInt(columnCount).writeInt(0);
+            transfer.writeInt(FrontendSession.STATUS_OK).writeInt(columnCount).writeInt(0);
             for (int i = 0; i < columnCount; i++) {
                 ResultColumn.writeColumn(transfer, result, i);
             }
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY: {
+        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY: {
             session.setAutoCommit(false);
             session.setRoot(false);
         }
-        case SessionRemote.COMMAND_EXECUTE_QUERY: {
+        case FrontendSession.COMMAND_EXECUTE_QUERY: {
             int id = transfer.readInt();
             int objectId = transfer.readInt();
             int maxRows = transfer.readInt();
@@ -350,7 +350,7 @@ public class TcpServerThread implements Runnable {
             int state = getState(old);
             transfer.writeInt(state);
 
-            if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY)
+            if (operation == FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             transfer.writeInt(columnCount);
@@ -366,11 +366,11 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE: {
+        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE: {
             session.setAutoCommit(false);
             session.setRoot(false);
         }
-        case SessionRemote.COMMAND_EXECUTE_UPDATE: {
+        case FrontendSession.COMMAND_EXECUTE_UPDATE: {
             int id = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
             setParameters(command);
@@ -381,26 +381,26 @@ public class TcpServerThread implements Runnable {
             }
             int status;
             if (session.isClosed()) {
-                status = SessionRemote.STATUS_CLOSED;
+                status = FrontendSession.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
             transfer.writeInt(status);
-            if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE)
+            if (operation == FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             transfer.writeInt(updateCount).writeBoolean(session.getAutoCommit());
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT: {
+        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_COMMIT: {
             int old = session.getModificationId();
             synchronized (session) {
                 session.commit(false, transfer.readString());
             }
             int status;
             if (session.isClosed()) {
-                status = SessionRemote.STATUS_CLOSED;
+                status = FrontendSession.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
@@ -408,14 +408,14 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK: {
+        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK: {
             int old = session.getModificationId();
             synchronized (session) {
                 session.rollback();
             }
             int status;
             if (session.isClosed()) {
-                status = SessionRemote.STATUS_CLOSED;
+                status = FrontendSession.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
@@ -423,19 +423,19 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD:
-        case SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK: {
+        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD:
+        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK: {
             int old = session.getModificationId();
             String name = transfer.readString();
             synchronized (session) {
-                if (operation == SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD)
+                if (operation == FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD)
                     session.addSavepoint(name);
                 else
                     session.rollbackToSavepoint(name);
             }
             int status;
             if (session.isClosed()) {
-                status = SessionRemote.STATUS_CLOSED;
+                status = FrontendSession.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
@@ -443,7 +443,7 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT: {
+        case FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT: {
             int size = transfer.readInt();
             ArrayList<String> batchCommands = New.arrayList(size);
             for (int i = 0; i < size; i++)
@@ -453,7 +453,7 @@ public class TcpServerThread implements Runnable {
             executeBatch(size, command);
             break;
         }
-        case SessionRemote.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT: {
+        case FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT: {
             int id = transfer.readInt();
             int size = transfer.readInt();
             Command preparedCommand = (Command) cache.getObject(id, false);
@@ -471,7 +471,7 @@ public class TcpServerThread implements Runnable {
             executeBatch(size, command);
             break;
         }
-        case SessionRemote.COMMAND_CLOSE: {
+        case FrontendSession.COMMAND_CLOSE: {
             int id = transfer.readInt();
             Command command = (Command) cache.getObject(id, true);
             if (command != null) {
@@ -480,22 +480,22 @@ public class TcpServerThread implements Runnable {
             }
             break;
         }
-        case SessionRemote.RESULT_FETCH_ROWS: {
+        case FrontendSession.RESULT_FETCH_ROWS: {
             int id = transfer.readInt();
             int count = transfer.readInt();
             ResultInterface result = (ResultInterface) cache.getObject(id, false);
-            transfer.writeInt(SessionRemote.STATUS_OK);
+            transfer.writeInt(FrontendSession.STATUS_OK);
             sendRow(result, count);
             transfer.flush();
             break;
         }
-        case SessionRemote.RESULT_RESET: {
+        case FrontendSession.RESULT_RESET: {
             int id = transfer.readInt();
             ResultInterface result = (ResultInterface) cache.getObject(id, false);
             result.reset();
             break;
         }
-        case SessionRemote.RESULT_CLOSE: {
+        case FrontendSession.RESULT_CLOSE: {
             int id = transfer.readInt();
             ResultInterface result = (ResultInterface) cache.getObject(id, true);
             if (result != null) {
@@ -504,7 +504,7 @@ public class TcpServerThread implements Runnable {
             }
             break;
         }
-        case SessionRemote.CHANGE_ID: {
+        case FrontendSession.CHANGE_ID: {
             int oldId = transfer.readInt();
             int newId = transfer.readInt();
             Object obj = cache.getObject(oldId, false);
@@ -512,22 +512,22 @@ public class TcpServerThread implements Runnable {
             cache.addObject(newId, obj);
             break;
         }
-        case SessionRemote.SESSION_SET_ID: {
+        case FrontendSession.SESSION_SET_ID: {
             sessionId = transfer.readString();
-            transfer.writeInt(SessionRemote.STATUS_OK).flush();
+            transfer.writeInt(FrontendSession.STATUS_OK).flush();
             break;
         }
-        case SessionRemote.SESSION_SET_AUTOCOMMIT: {
+        case FrontendSession.SESSION_SET_AUTOCOMMIT: {
             boolean autoCommit = transfer.readBoolean();
             session.setAutoCommit(autoCommit);
-            transfer.writeInt(SessionRemote.STATUS_OK).flush();
+            transfer.writeInt(FrontendSession.STATUS_OK).flush();
             break;
         }
-        case SessionRemote.SESSION_UNDO_LOG_POS: {
-            transfer.writeInt(SessionRemote.STATUS_OK).writeInt(session.getUndoLogPos()).flush();
+        case FrontendSession.SESSION_UNDO_LOG_POS: {
+            transfer.writeInt(FrontendSession.STATUS_OK).writeInt(session.getUndoLogPos()).flush();
             break;
         }
-        case SessionRemote.LOB_READ: {
+        case FrontendSession.LOB_READ: {
             long lobId = transfer.readLong();
             byte[] hmac;
             CachedInputStream in;
@@ -561,7 +561,7 @@ public class TcpServerThread implements Runnable {
             int length = transfer.readInt();
             // limit the buffer size
             length = Math.min(16 * Constants.IO_BUFFER_SIZE, length);
-            transfer.writeInt(SessionRemote.STATUS_OK);
+            transfer.writeInt(FrontendSession.STATUS_OK);
             byte[] buff = new byte[length];
             length = IOUtils.readFully(in, buff, 0, length);
             transfer.writeInt(length);
@@ -578,9 +578,9 @@ public class TcpServerThread implements Runnable {
 
     private int getState(int oldModificationId) {
         if (session.getModificationId() == oldModificationId) {
-            return SessionRemote.STATUS_OK;
+            return FrontendSession.STATUS_OK;
         }
-        return SessionRemote.STATUS_OK_STATE_CHANGED;
+        return FrontendSession.STATUS_OK_STATE_CHANGED;
     }
 
     private void sendRow(ResultInterface result, int count) throws IOException {

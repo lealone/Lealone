@@ -14,7 +14,7 @@ import java.util.Random;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.command.CommandInterface;
-import org.lealone.command.CommandRemote;
+import org.lealone.command.FrontendCommand;
 import org.lealone.command.FrontendBatchCommand;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
@@ -44,7 +44,7 @@ import org.lealone.zookeeper.ZooKeeperAdmin;
  * The client side part of a session when using the server mode. This object
  * communicates with a Session on the server side.
  */
-public class SessionRemote extends SessionWithState implements DataHandler {
+public class FrontendSession extends SessionWithState implements DataHandler {
 
     public static final int SESSION_PREPARE = 0;
     public static final int SESSION_CLOSE = 1;
@@ -110,7 +110,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     private boolean cluster;
     private Transaction transaction;
 
-    public SessionRemote(ConnectionInfo ci) {
+    public FrontendSession(ConnectionInfo ci) {
         this.connectionInfo = ci;
     }
 
@@ -135,7 +135,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
             done(trans);
             clientVersion = trans.readInt();
             trans.setVersion(clientVersion);
-            trans.writeInt(SessionRemote.SESSION_SET_ID);
+            trans.writeInt(FrontendSession.SESSION_SET_ID);
             trans.writeString(sessionId);
             done(trans);
         } catch (DbException e) {
@@ -155,7 +155,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
             Transfer transfer = transferList.get(i);
             try {
                 traceOperation("SESSION_UNDO_LOG_POS", 0);
-                transfer.writeInt(SessionRemote.SESSION_UNDO_LOG_POS);
+                transfer.writeInt(FrontendSession.SESSION_UNDO_LOG_POS);
                 done(transfer);
                 return transfer.readInt();
             } catch (IOException e) {
@@ -187,7 +187,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
                 trans.writeString(null);
                 trans.writeString(null);
                 trans.writeString(sessionId);
-                trans.writeInt(SessionRemote.SESSION_CANCEL_STATEMENT);
+                trans.writeInt(FrontendSession.SESSION_CANCEL_STATEMENT);
                 trans.writeInt(id);
                 trans.close();
             } catch (IOException e) {
@@ -239,7 +239,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
                 Transfer transfer = transferList.get(i);
                 try {
                     traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-                    transfer.writeInt(SessionRemote.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
+                    transfer.writeInt(FrontendSession.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
                     done(transfer);
                 } catch (IOException e) {
                     removeServer(e, i--, ++count);
@@ -272,7 +272,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
                 Transfer transfer = transferList.get(i);
                 try {
                     traceOperation("COMMAND_COMMIT", 0);
-                    transfer.writeInt(SessionRemote.COMMAND_COMMIT);
+                    transfer.writeInt(FrontendSession.COMMAND_COMMIT);
                     done(transfer);
                 } catch (IOException e) {
                     removeServer(e, i--, ++count);
@@ -476,7 +476,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     @Override
     public synchronized CommandInterface prepareCommand(String sql, int fetchSize) {
         checkClosed();
-        return new CommandRemote(this, transferList, sql, fetchSize);
+        return new FrontendCommand(this, transferList, sql, fetchSize);
     }
 
     /**
@@ -550,7 +550,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
                 for (Transfer transfer : transferList) {
                     try {
                         traceOperation("SESSION_CLOSE", 0);
-                        transfer.writeInt(SessionRemote.SESSION_CLOSE);
+                        transfer.writeInt(FrontendSession.SESSION_CLOSE);
                         done(transfer);
                         transfer.close();
                     } catch (RuntimeException e) {
@@ -763,7 +763,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
             Transfer transfer = transferList.get(i);
             try {
                 traceOperation("LOB_READ", (int) lobId);
-                transfer.writeInt(SessionRemote.LOB_READ);
+                transfer.writeInt(FrontendSession.LOB_READ);
                 transfer.writeLong(lobId);
                 if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_12) {
                     transfer.writeBytes(hmac);
@@ -789,7 +789,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         for (int i = 0, count = 0; i < transferList.size(); i++) {
             Transfer transfer = transferList.get(i);
             try {
-                transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeString(allLocalTransactionNames);
+                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeString(allLocalTransactionNames);
                 done(transfer);
             } catch (IOException e) {
                 removeServer(e, i--, ++count);
@@ -802,7 +802,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         for (int i = 0, count = 0; i < transferList.size(); i++) {
             Transfer transfer = transferList.get(i);
             try {
-                transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
+                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
                 done(transfer);
             } catch (IOException e) {
                 removeServer(e, i--, ++count);
@@ -815,7 +815,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         for (int i = 0, count = 0; i < transferList.size(); i++) {
             Transfer transfer = transferList.get(i);
             try {
-                transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD).writeString(name);
+                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD).writeString(name);
                 done(transfer);
             } catch (IOException e) {
                 removeServer(e, i--, ++count);
@@ -828,7 +828,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
         for (int i = 0, count = 0; i < transferList.size(); i++) {
             Transfer transfer = transferList.get(i);
             try {
-                transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK).writeString(name);
+                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK).writeString(name);
                 done(transfer);
             } catch (IOException e) {
                 removeServer(e, i--, ++count);

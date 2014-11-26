@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.lealone.constant.SysProperties;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.util.New;
@@ -20,7 +20,7 @@ import org.lealone.value.Value;
 public abstract class ResultRemote implements ResultInterface {
 
     protected int fetchSize;
-    protected SessionRemote session;
+    protected FrontendSession session;
     protected Transfer transfer;
     protected int id;
     protected final ResultColumn[] columns;
@@ -30,7 +30,7 @@ public abstract class ResultRemote implements ResultInterface {
     protected ArrayList<Value[]> result;
     protected final Trace trace;
 
-    public ResultRemote(SessionRemote session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
+    public ResultRemote(FrontendSession session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
             throws IOException {
         this.session = session;
         trace = session.getTrace();
@@ -101,7 +101,7 @@ public abstract class ResultRemote implements ResultInterface {
             session.checkClosed();
             try {
                 session.traceOperation("RESULT_RESET", id);
-                transfer.writeInt(SessionRemote.RESULT_RESET).writeInt(id).flush();
+                transfer.writeInt(FrontendSession.RESULT_RESET).writeInt(id).flush();
             } catch (IOException e) {
                 throw DbException.convertIOException(e, null);
             }
@@ -132,7 +132,7 @@ public abstract class ResultRemote implements ResultInterface {
         try {
             synchronized (session) {
                 session.traceOperation("RESULT_CLOSE", id);
-                transfer.writeInt(SessionRemote.RESULT_CLOSE).writeInt(id);
+                transfer.writeInt(FrontendSession.RESULT_CLOSE).writeInt(id);
             }
         } catch (IOException e) {
             trace.error(e, "close");
@@ -144,7 +144,7 @@ public abstract class ResultRemote implements ResultInterface {
 
     protected void sendFetch(int fetchSize) throws IOException {
         session.traceOperation("RESULT_FETCH_ROWS", id);
-        transfer.writeInt(SessionRemote.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize);
+        transfer.writeInt(FrontendSession.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize);
         session.done(transfer);
     }
 
@@ -162,7 +162,7 @@ public abstract class ResultRemote implements ResultInterface {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
                 session.traceOperation("CHANGE_ID", id);
-                transfer.writeInt(SessionRemote.CHANGE_ID).writeInt(id).writeInt(newId);
+                transfer.writeInt(FrontendSession.CHANGE_ID).writeInt(id).writeInt(newId);
                 id = newId;
                 // TODO remote result set: very old result sets may be
                 // already removed on the server (theoretically) - how to
@@ -191,7 +191,7 @@ public abstract class ResultRemote implements ResultInterface {
 
     protected void fetchRowsThrowException() throws IOException {
         int available = transfer.available();
-        if (transfer.readInt() == SessionRemote.STATUS_ERROR)
+        if (transfer.readInt() == FrontendSession.STATUS_ERROR)
             session.parseError(transfer);
 
         throw DbException.throwInternalError("fetchRows: the available bytes was " + available);

@@ -23,13 +23,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.lealone.command.Command;
-import org.lealone.command.CommandRemote;
+import org.lealone.command.FrontendCommand;
 import org.lealone.command.ddl.DefineCommand;
 import org.lealone.engine.Session;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.expression.Parameter;
 import org.lealone.hbase.engine.HBaseSession;
-import org.lealone.hbase.engine.SessionRemotePool;
+import org.lealone.hbase.engine.FrontendSessionPool;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
@@ -59,18 +59,18 @@ public class DefineCommandWrapper extends DefineCommand {
             } finally {
             }
         } else {
-            SessionRemote sr = null;
-            CommandRemote cr = null;
+            FrontendSession sr = null;
+            FrontendCommand cr = null;
             try {
-                sr = SessionRemotePool.getMasterSessionRemote(session.getOriginalProperties());
-                cr = SessionRemotePool.getCommandRemote(sr, sql, getParameters(), dc.getFetchSize());
+                sr = FrontendSessionPool.getMasterSessionRemote(session.getOriginalProperties());
+                cr = FrontendSessionPool.getCommandRemote(sr, sql, getParameters(), dc.getFetchSize());
                 int updateCount = cr.executeUpdate();
                 refreshMetaTable();
                 return updateCount;
             } catch (Exception e) {
                 throw DbException.convert(e);
             } finally {
-                SessionRemotePool.release(sr);
+                FrontendSessionPool.release(sr);
                 if (cr != null)
                     cr.close();
             }
@@ -85,18 +85,18 @@ public class DefineCommandWrapper extends DefineCommand {
             } finally {
             }
         } else {
-            SessionRemote sr = null;
-            CommandRemote cr = null;
+            FrontendSession sr = null;
+            FrontendCommand cr = null;
             try {
-                sr = SessionRemotePool.getMasterSessionRemote(session.getOriginalProperties());
-                cr = SessionRemotePool.getCommandRemote(sr, sql, getParameters(), dc.getFetchSize());
+                sr = FrontendSessionPool.getMasterSessionRemote(session.getOriginalProperties());
+                cr = FrontendSessionPool.getCommandRemote(sr, sql, getParameters(), dc.getFetchSize());
                 ResultInterface ri = cr.executeQuery(maxRows, false);
                 refreshMetaTable();
                 return ri;
             } catch (Exception e) {
                 throw DbException.convert(e);
             } finally {
-                SessionRemotePool.release(sr);
+                FrontendSessionPool.release(sr);
                 if (cr != null)
                     cr.close();
             }

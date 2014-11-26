@@ -36,7 +36,7 @@ import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.SessionInterface;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
 import org.lealone.result.ResultInterface;
@@ -110,7 +110,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             if (ci.getSession() != null)
                 session = ci.getSession();
             else
-                session = new SessionRemote(ci).connectEmbeddedOrServer(false);
+                session = new FrontendSession(ci).connectEmbeddedOrServer(false);
             trace = session.getTrace();
             int id = getNextId(TraceObject.CONNECTION);
             setTrace(trace, TraceObject.CONNECTION, id);

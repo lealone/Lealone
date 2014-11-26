@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hbase.util.Threads;
 import org.lealone.command.CommandInterface;
-import org.lealone.command.CommandRemote;
+import org.lealone.command.FrontendCommand;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.Select;
 import org.lealone.engine.Session;
@@ -149,7 +149,7 @@ public class CommandParallel {
 
     public static int executeUpdate(SQLRoutingInfo sqlRoutingInfo, Callable<Integer> call) {
         int updateCount = 0;
-        List<CommandRemote> commands = sqlRoutingInfo.remoteCommands;
+        List<FrontendCommand> commands = sqlRoutingInfo.remoteCommands;
         int size = commands.size() + 1;
         List<Future<Integer>> futures = New.arrayList(size);
         futures.add(pool.submit(call));

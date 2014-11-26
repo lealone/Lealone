@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import org.lealone.api.ParameterInterface;
 import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.result.ResultInterface;
@@ -28,20 +28,20 @@ import org.lealone.value.Value;
  * Represents the client-side part of a SQL statement.
  * This class is not used in embedded mode.
  */
-public class CommandRemote implements CommandInterface {
+public class FrontendCommand implements CommandInterface {
 
     private final ArrayList<Transfer> transferList;
     private final ArrayList<ParameterInterface> parameters;
     private final Trace trace;
     private final String sql;
     private final int fetchSize;
-    private SessionRemote session;
+    private FrontendSession session;
     private int id;
     private boolean isQuery;
     private boolean readonly;
     private final int created;
 
-    public CommandRemote(SessionRemote session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
+    public FrontendCommand(FrontendSession session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
         this.transferList = transferList;
         trace = session.getTrace();
         this.sql = sql;
@@ -54,17 +54,17 @@ public class CommandRemote implements CommandInterface {
         created = session.getLastReconnect();
     }
 
-    private void prepare(SessionRemote s, boolean createParams) {
+    private void prepare(FrontendSession s, boolean createParams) {
         id = s.getNextId();
         for (int i = 0, count = 0; i < transferList.size(); i++) {
             try {
                 Transfer transfer = transferList.get(i);
                 if (createParams) {
                     s.traceOperation("SESSION_PREPARE_READ_PARAMS", id);
-                    transfer.writeInt(SessionRemote.SESSION_PREPARE_READ_PARAMS).writeInt(id).writeString(sql);
+                    transfer.writeInt(FrontendSession.SESSION_PREPARE_READ_PARAMS).writeInt(id).writeString(sql);
                 } else {
                     s.traceOperation("SESSION_PREPARE", id);
-                    transfer.writeInt(SessionRemote.SESSION_PREPARE).writeInt(id).writeString(sql);
+                    transfer.writeInt(FrontendSession.SESSION_PREPARE).writeInt(id).writeString(sql);
                 }
                 s.done(transfer);
                 isQuery = transfer.readBoolean();
@@ -119,7 +119,7 @@ public class CommandRemote implements CommandInterface {
                 Transfer transfer = transferList.get(i);
                 try {
                     session.traceOperation("COMMAND_GET_META_DATA", id);
-                    transfer.writeInt(SessionRemote.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
+                    transfer.writeInt(FrontendSession.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
                     session.done(transfer);
                     int columnCount = transfer.readInt();
                     int rowCount = transfer.readInt();
@@ -147,11 +147,11 @@ public class CommandRemote implements CommandInterface {
                     boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
                     if (isDistributedQuery) {
                         session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
+                        transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
                                 .writeInt(maxRows);
                     } else {
                         session.traceOperation("COMMAND_EXECUTE_QUERY", id);
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_QUERY) //
+                        transfer.writeInt(FrontendSession.COMMAND_EXECUTE_QUERY) //
                                 .writeInt(id).writeInt(objectId).writeInt(maxRows);
                     }
                     int fetch;
@@ -203,10 +203,10 @@ public class CommandRemote implements CommandInterface {
                     boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
                     if (isDistributedUpdate) {
                         session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
+                        transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
                     } else {
                         session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
-                        transfer.writeInt(SessionRemote.COMMAND_EXECUTE_UPDATE).writeInt(id);
+                        transfer.writeInt(FrontendSession.COMMAND_EXECUTE_UPDATE).writeInt(id);
                     }
                     sendParameters(transfer);
                     session.done(transfer);
@@ -250,7 +250,7 @@ public class CommandRemote implements CommandInterface {
             session.traceOperation("COMMAND_CLOSE", id);
             for (Transfer transfer : transferList) {
                 try {
-                    transfer.writeInt(SessionRemote.COMMAND_CLOSE).writeInt(id);
+                    transfer.writeInt(FrontendSession.COMMAND_CLOSE).writeInt(id);
                 } catch (IOException e) {
                     trace.error(e, "close");
                 }

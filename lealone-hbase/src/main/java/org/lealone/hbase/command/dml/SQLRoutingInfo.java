@@ -21,7 +21,7 @@ package org.lealone.hbase.command.dml;
 
 import java.util.List;
 
-import org.lealone.command.CommandRemote;
+import org.lealone.command.FrontendCommand;
 
 public class SQLRoutingInfo {
     //localRegion/remoteCommand与localRegions/remoteCommands只会二选一
@@ -36,7 +36,7 @@ public class SQLRoutingInfo {
     /**
      * 此SQL涉及的数据在远程的某个RegionServer里, 建立一条到远程RegionServer的CommandRemote
      */
-    public CommandRemote remoteCommand;
+    public FrontendCommand remoteCommand;
 
     /**
      * 此SQL涉及的数据在本地RegionServer的多个Region里
@@ -46,5 +46,5 @@ public class SQLRoutingInfo {
     /**
      * 此SQL涉及的数据在远程的多个RegionServer里, 建立多条到远程RegionServer的CommandRemote
      */
-    public List<CommandRemote> remoteCommands;
+    public List<FrontendCommand> remoteCommands;
 }

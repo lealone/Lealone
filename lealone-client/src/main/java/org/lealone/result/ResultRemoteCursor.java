@@ -8,7 +8,7 @@ package org.lealone.result;
 
 import java.io.IOException;
 
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.value.Transfer;
 import org.lealone.value.Value;
@@ -18,7 +18,7 @@ public class ResultRemoteCursor extends ResultRemote {
     //如果初始化为false，相当于在调用完super(...)后再执行isEnd = false，这时前面的值就被覆盖了。
     private boolean isEnd;
 
-    public ResultRemoteCursor(SessionRemote session, Transfer transfer, int id, int columnCount, int fetchSize)
+    public ResultRemoteCursor(FrontendSession session, Transfer transfer, int id, int columnCount, int fetchSize)
             throws IOException {
         super(session, transfer, id, columnCount, -1, fetchSize);
     }

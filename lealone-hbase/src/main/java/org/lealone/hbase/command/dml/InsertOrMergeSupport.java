@@ -26,7 +26,7 @@ import java.util.Set;
 
 import org.apache.hadoop.hbase.client.Put;
 import org.lealone.command.CommandInterface;
-import org.lealone.command.CommandRemote;
+import org.lealone.command.FrontendCommand;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.Query;
 import org.lealone.command.dml.TransactionCommand;
@@ -38,7 +38,7 @@ import org.lealone.expression.Expression;
 import org.lealone.hbase.command.CommandParallel;
 import org.lealone.hbase.dbobject.table.HBaseTable;
 import org.lealone.hbase.engine.HBaseSession;
-import org.lealone.hbase.engine.SessionRemotePool;
+import org.lealone.hbase.engine.FrontendSessionPool;
 import org.lealone.hbase.result.HBaseRow;
 import org.lealone.hbase.util.HBaseRegionInfo;
 import org.lealone.hbase.util.HBaseUtils;
@@ -124,7 +124,7 @@ public class InsertOrMergeSupport {
             if (!servers.isEmpty()) {
                 List<CommandInterface> commands = New.arrayList(servers.size());
                 for (Map.Entry<String, Map<String, List<String>>> e : servers.entrySet()) {
-                    CommandRemote c = SessionRemotePool.getCommandRemote(session, prepared, e.getKey(), //
+                    FrontendCommand c = FrontendSessionPool.getCommandRemote(session, prepared, e.getKey(), //
                             getPlanSQL(insertFromSelect, sortedInsertMode, e.getValue().entrySet()));
 
                     commands.add(c);
@@ -135,7 +135,7 @@ public class InsertOrMergeSupport {
 
             if (table.isColumnsModified()) {
                 table.setColumnsModified(false);
-                SessionInterface si = SessionRemotePool.getMasterSessionRemote(session.getOriginalProperties());
+                SessionInterface si = FrontendSessionPool.getMasterSessionRemote(session.getOriginalProperties());
                 for (Column c : alterColumns) {
                     CommandInterface ci = si.prepareCommand(alterTable + c.getCreateSQL(true), 1);
                     ci.executeUpdate();

@@ -8,7 +8,7 @@ package org.lealone.result;
 
 import java.io.IOException;
 
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.value.Transfer;
 import org.lealone.value.Value;
@@ -19,7 +19,7 @@ import org.lealone.value.Value;
  * but for large results only a subset is in-memory.
  */
 public class ResultRemoteInMemory extends ResultRemote {
-    public ResultRemoteInMemory(SessionRemote session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
+    public ResultRemoteInMemory(FrontendSession session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
             throws IOException {
         super(session, transfer, id, columnCount, rowCount, fetchSize);
     }

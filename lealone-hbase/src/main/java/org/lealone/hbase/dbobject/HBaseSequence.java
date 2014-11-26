@@ -19,13 +19,13 @@
  */
 package org.lealone.hbase.dbobject;
 
-import org.lealone.command.CommandRemote;
+import org.lealone.command.FrontendCommand;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.Sequence;
 import org.lealone.engine.Session;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.hbase.engine.HBaseSession;
-import org.lealone.hbase.engine.SessionRemotePool;
+import org.lealone.hbase.engine.FrontendSessionPool;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 
@@ -39,11 +39,11 @@ public class HBaseSequence extends Sequence {
     public synchronized void flush(Session session) {
         HBaseSession s = (HBaseSession) session;
         if (s.getRegionServer() != null) {
-            SessionRemote sr = null;
-            CommandRemote cr = null;
+            FrontendSession sr = null;
+            FrontendCommand cr = null;
             try {
-                sr = SessionRemotePool.getMasterSessionRemote(s.getOriginalProperties());
-                cr = SessionRemotePool.getCommandRemote(sr, "ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", null, 1);
+                sr = FrontendSessionPool.getMasterSessionRemote(s.getOriginalProperties());
+                cr = FrontendSessionPool.getCommandRemote(sr, "ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", null, 1);
                 //cr.executeUpdate();
                 ResultInterface ri = cr.executeQuery(-1, false);
                 ri.next();
@@ -52,7 +52,7 @@ public class HBaseSequence extends Sequence {
             } catch (Exception e) {
                 throw DbException.convert(e);
             } finally {
-                SessionRemotePool.release(sr);
+                FrontendSessionPool.release(sr);
                 if (cr != null)
                     cr.close();
             }

@@ -26,29 +26,29 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.api.ParameterInterface;
-import org.lealone.command.CommandRemote;
+import org.lealone.command.FrontendCommand;
 import org.lealone.command.Prepared;
 import org.lealone.engine.ConnectionInfo;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.expression.Parameter;
 import org.lealone.hbase.util.HBaseUtils;
 
-public class SessionRemotePool {
+public class FrontendSessionPool {
     private static final int corePoolSize = HBaseUtils.getConfiguration().getInt(HBaseConstants.SESSION_CORE_POOL_SIZE,
             HBaseConstants.DEFAULT_SESSION_CORE_POOL_SIZE);
 
     //key是Master或RegionServer的URL
-    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<SessionRemote>> //
-    pool = new ConcurrentHashMap<String, ConcurrentLinkedQueue<SessionRemote>>();
+    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<FrontendSession>> //
+    pool = new ConcurrentHashMap<String, ConcurrentLinkedQueue<FrontendSession>>();
 
-    private static ConcurrentLinkedQueue<SessionRemote> getQueue(String url) {
-        ConcurrentLinkedQueue<SessionRemote> queue = pool.get(url);
+    private static ConcurrentLinkedQueue<FrontendSession> getQueue(String url) {
+        ConcurrentLinkedQueue<FrontendSession> queue = pool.get(url);
         if (queue == null) {
             //避免多个线程生成不同的ConcurrentLinkedQueue实例
-            synchronized (SessionRemotePool.class) {
+            synchronized (FrontendSessionPool.class) {
                 queue = pool.get(url);
                 if (queue == null) {
-                    queue = new ConcurrentLinkedQueue<SessionRemote>();
+                    queue = new ConcurrentLinkedQueue<FrontendSession>();
                     pool.put(url, queue);
                 }
             }
@@ -56,12 +56,12 @@ public class SessionRemotePool {
         return queue;
     }
 
-    public static SessionRemote getMasterSessionRemote(Properties info) {
+    public static FrontendSession getMasterSessionRemote(Properties info) {
         return getSessionRemote(info, HBaseUtils.getMasterURL());
     }
 
-    public static SessionRemote getSessionRemote(Properties info, String url) {
-        SessionRemote sr = getQueue(url).poll();
+    public static FrontendSession getSessionRemote(Properties info, String url) {
+        FrontendSession sr = getQueue(url).poll();
 
         if (sr == null || sr.isClosed()) {
             byte[] userPasswordHash = null;
@@ -82,26 +82,26 @@ public class SessionRemotePool {
             ConnectionInfo ci = new ConnectionInfo(url, prop);
             ci.setUserPasswordHash(userPasswordHash);
             ci.setFilePasswordHash(filePasswordHash);
-            sr = (SessionRemote) new SessionRemote(ci).connectEmbeddedOrServer(false);
+            sr = (FrontendSession) new FrontendSession(ci).connectEmbeddedOrServer(false);
         }
 
         return sr;
     }
 
-    public static void release(SessionRemote sr) {
+    public static void release(FrontendSession sr) {
         if (sr == null || sr.isClosed())
             return;
 
-        ConcurrentLinkedQueue<SessionRemote> queue = getQueue(sr.getURL());
+        ConcurrentLinkedQueue<FrontendSession> queue = getQueue(sr.getURL());
         if (queue.size() > corePoolSize)
             sr.close();
         else
             queue.offer(sr);
     }
 
-    public static CommandRemote getCommandRemote(HBaseSession originalSession, Prepared prepared, //
+    public static FrontendCommand getCommandRemote(HBaseSession originalSession, Prepared prepared, //
             String url, String sql) throws Exception {
-        SessionRemote sessionRemote = originalSession.getSessionRemote(url);
+        FrontendSession sessionRemote = originalSession.getSessionRemote(url);
         if (sessionRemote != null && sessionRemote.isClosed())
             sessionRemote = null;
         boolean isNew = false;
@@ -119,8 +119,8 @@ public class SessionRemotePool {
         return getCommandRemote(sessionRemote, sql, prepared.getParameters(), prepared.getFetchSize());
     }
 
-    public static CommandRemote getCommandRemote(SessionRemote sr, String sql, List<Parameter> parameters, int fetchSize) {
-        CommandRemote cr = (CommandRemote) sr.prepareCommand(sql, fetchSize);
+    public static FrontendCommand getCommandRemote(FrontendSession sr, String sql, List<Parameter> parameters, int fetchSize) {
+        FrontendCommand cr = (FrontendCommand) sr.prepareCommand(sql, fetchSize);
 
         //传递最初的参数值到新的CommandRemote
         if (parameters != null) {
@@ -134,8 +134,8 @@ public class SessionRemotePool {
     }
 
     public static void check() {
-        for (ConcurrentLinkedQueue<SessionRemote> queue : pool.values())
-            for (SessionRemote sr : queue)
+        for (ConcurrentLinkedQueue<FrontendSession> queue : pool.values())
+            for (FrontendSession sr : queue)
                 sr.checkTransfers();
     }
 }

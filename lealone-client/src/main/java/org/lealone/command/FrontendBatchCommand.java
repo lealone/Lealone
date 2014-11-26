@@ -23,34 +23,34 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.lealone.api.ParameterInterface;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 import org.lealone.value.Transfer;
 import org.lealone.value.Value;
 
 public class FrontendBatchCommand implements CommandInterface {
-    private SessionRemote session;
+    private FrontendSession session;
     private ArrayList<Transfer> transferList;
     private ArrayList<String> batchCommands; //对应JdbcStatement.executeBatch()
     private ArrayList<Value[]> batchParameters; //对应JdbcPreparedStatement.executeBatch()
     private int id = -1;
     private int[] result;
 
-    public FrontendBatchCommand(SessionRemote session, ArrayList<Transfer> transferList, ArrayList<String> batchCommands) {
+    public FrontendBatchCommand(FrontendSession session, ArrayList<Transfer> transferList, ArrayList<String> batchCommands) {
         this.session = session;
         this.transferList = transferList;
         this.batchCommands = batchCommands;
     }
 
-    public FrontendBatchCommand(SessionRemote session, ArrayList<Transfer> transferList, CommandInterface preparedCommand,
+    public FrontendBatchCommand(FrontendSession session, ArrayList<Transfer> transferList, CommandInterface preparedCommand,
             ArrayList<Value[]> batchParameters) {
         this.session = session;
         this.transferList = transferList;
         this.batchParameters = batchParameters;
 
-        if (preparedCommand instanceof CommandRemote)
-            id = ((CommandRemote) preparedCommand).getId();
+        if (preparedCommand instanceof FrontendCommand)
+            id = ((FrontendCommand) preparedCommand).getId();
     }
 
     @Override
@@ -83,7 +83,7 @@ public class FrontendBatchCommand implements CommandInterface {
                 Transfer transfer = transferList.get(i);
                 if (batchCommands != null) {
                     session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT", id);
-                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT);
+                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT);
                     int size = batchCommands.size();
                     result = new int[size];
                     transfer.writeInt(size);
@@ -95,7 +95,7 @@ public class FrontendBatchCommand implements CommandInterface {
                         result[j] = transfer.readInt();
                 } else {
                     session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT", id);
-                    transfer.writeInt(SessionRemote.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT).writeInt(id);
+                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT).writeInt(id);
                     int size = batchParameters.size();
                     result = new int[size];
                     transfer.writeInt(size);

@@ -35,7 +35,7 @@ import org.lealone.api.ParameterInterface;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendBatchCommand;
 import org.lealone.constant.ErrorCode;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
 import org.lealone.result.ResultInterface;
@@ -1099,8 +1099,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 if (batchParameters.isEmpty())
                     return new int[0];
 
-                if (session instanceof SessionRemote) {
-                    FrontendBatchCommand c = ((SessionRemote) session).getFrontendBatchCommand(command, batchParameters);
+                if (session instanceof FrontendSession) {
+                    FrontendBatchCommand c = ((FrontendSession) session).getFrontendBatchCommand(command, batchParameters);
                     c.executeUpdate();
                     int[] result = c.getResult();
                     c.close();

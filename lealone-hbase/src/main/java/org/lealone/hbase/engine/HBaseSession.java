@@ -34,7 +34,7 @@ import org.lealone.dbobject.User;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
-import org.lealone.engine.SessionRemote;
+import org.lealone.engine.FrontendSession;
 import org.lealone.hbase.command.CommandParallel;
 import org.lealone.hbase.command.HBaseParser;
 import org.lealone.hbase.command.dml.HBaseInsert;
@@ -68,17 +68,17 @@ public class HBaseSession extends Session {
     private volatile Transaction transaction;
 
     //参与本次事务的其他SessionRemote
-    private final Map<String, SessionRemote> sessionRemoteCache = New.hashMap();
+    private final Map<String, FrontendSession> sessionRemoteCache = New.hashMap();
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
     }
 
-    void addSessionRemote(String url, SessionRemote sessionRemote) {
+    void addSessionRemote(String url, FrontendSession sessionRemote) {
         sessionRemoteCache.put(url, sessionRemote);
     }
 
-    SessionRemote getSessionRemote(String url) {
+    FrontendSession getSessionRemote(String url) {
         return sessionRemoteCache.get(url);
     }
 
@@ -175,9 +175,9 @@ public class HBaseSession extends Session {
 
     private void endTransaction() {
         if (!sessionRemoteCache.isEmpty()) {
-            for (SessionRemote sr : sessionRemoteCache.values()) {
+            for (FrontendSession sr : sessionRemoteCache.values()) {
                 sr.setTransaction(null);
-                SessionRemotePool.release(sr);
+                FrontendSessionPool.release(sr);
             }
 
             sessionRemoteCache.clear();
@@ -240,7 +240,7 @@ public class HBaseSession extends Session {
     private List<Future<Void>> parallelCommitOrRollback(final String allLocalTransactionNames) {
         int size = sessionRemoteCache.size();
         List<Future<Void>> futures = New.arrayList(size);
-        for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
+        for (final FrontendSession sessionRemote : sessionRemoteCache.values()) {
             futures.add(pool.submit(new Callable<Void>() {
                 public Void call() throws Exception {
                     if (allLocalTransactionNames != null)
@@ -301,7 +301,7 @@ public class HBaseSession extends Session {
     private void parallelSavepoint(final boolean add, final String name) {
         int size = sessionRemoteCache.size();
         List<Future<Void>> futures = New.arrayList(size);
-        for (final SessionRemote sessionRemote : sessionRemoteCache.values()) {
+        for (final FrontendSession sessionRemote : sessionRemoteCache.values()) {
             futures.add(pool.submit(new Callable<Void>() {
                 public Void call() throws Exception {
                     if (add)
