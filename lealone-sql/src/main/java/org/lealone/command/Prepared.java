@@ -9,10 +9,10 @@ package org.lealone.command;
 import java.util.ArrayList;
 
 import org.lealone.api.DatabaseEventListener;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.expression.Expression;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;

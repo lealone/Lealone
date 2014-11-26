@@ -9,7 +9,7 @@ package org.lealone.util;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.util.New;
 

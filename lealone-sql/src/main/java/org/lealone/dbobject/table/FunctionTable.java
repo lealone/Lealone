@@ -11,7 +11,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.index.FunctionIndex;
 import org.lealone.dbobject.index.Index;

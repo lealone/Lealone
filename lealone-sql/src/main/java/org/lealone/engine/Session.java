@@ -12,15 +12,12 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Command;
 import org.lealone.command.Parser;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.Insert;
 import org.lealone.command.dml.Query;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SetTypes;
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.Procedure;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.Sequence;

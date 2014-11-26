@@ -15,8 +15,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.Constants;
 import org.lealone.store.fs.FileUtils;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;

@@ -9,8 +9,6 @@ package org.lealone.engine;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.table.Table;
 import org.lealone.message.DbException;
 import org.lealone.store.Data;

@@ -10,10 +10,10 @@ import java.io.IOException;
 import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.ParameterInterface;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.result.ResultInterface;

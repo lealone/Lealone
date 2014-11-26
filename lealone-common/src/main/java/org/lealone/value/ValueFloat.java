@@ -9,7 +9,7 @@ package org.lealone.value;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 
 /**

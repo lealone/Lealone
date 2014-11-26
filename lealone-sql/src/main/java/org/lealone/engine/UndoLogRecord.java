@@ -6,9 +6,7 @@
  */
 package org.lealone.engine;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.table.Table;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;

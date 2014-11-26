@@ -8,19 +8,19 @@ package org.lealone.command.dml;
 
 import java.text.Collator;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
 import org.lealone.compress.CompressTool;
 import org.lealone.compress.Compressor;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SetTypes;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.Setting;
 import org.lealone.dbobject.table.Table;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Mode;
 import org.lealone.engine.Session;
+import org.lealone.engine.SetTypes;
 import org.lealone.expression.Expression;
 import org.lealone.expression.ValueExpression;
 import org.lealone.message.DbException;

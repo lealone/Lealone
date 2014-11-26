@@ -21,10 +21,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.UUID;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.Constants;
 import org.lealone.engine.SessionInterface;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.store.LobStorage;

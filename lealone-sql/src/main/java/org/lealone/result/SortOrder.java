@@ -10,8 +10,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.Database;
+import org.lealone.engine.SysProperties;
 import org.lealone.expression.Expression;
 import org.lealone.util.StatementBuilder;
 import org.lealone.util.StringUtils;

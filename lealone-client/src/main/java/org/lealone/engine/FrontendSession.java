@@ -13,13 +13,10 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import org.lealone.api.DatabaseEventListener;
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendCommand;
 import org.lealone.command.FrontendBatchCommand;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SetTypes;
-import org.lealone.constant.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;
 import org.lealone.message.Trace;

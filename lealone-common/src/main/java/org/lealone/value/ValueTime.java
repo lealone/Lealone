@@ -10,7 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Time;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.util.DateTimeUtils;
 import org.lealone.util.MathUtils;

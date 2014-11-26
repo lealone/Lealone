@@ -30,13 +30,13 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
+import org.lealone.engine.Constants;
 import org.lealone.engine.SessionInterface;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
 import org.lealone.result.ResultInterface;

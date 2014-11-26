@@ -6,10 +6,10 @@
  */
 package org.lealone.expression;
 
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.table.ColumnResolver;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.value.Value;
 import org.lealone.value.ValueBoolean;

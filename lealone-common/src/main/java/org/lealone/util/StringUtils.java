@@ -11,9 +11,9 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Locale;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.Constants;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 
 /**

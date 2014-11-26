@@ -20,7 +20,7 @@
 package org.lealone.hbase.engine;
 
 import org.apache.hadoop.hbase.util.Bytes;
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.server.PgServer;
 

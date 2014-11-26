@@ -10,7 +10,7 @@ import java.util.StringTokenizer;
 
 import javax.transaction.xa.Xid;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
 import org.lealone.util.StringUtils;

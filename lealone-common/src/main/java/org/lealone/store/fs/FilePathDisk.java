@@ -21,8 +21,8 @@ import java.nio.channels.FileLock;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;

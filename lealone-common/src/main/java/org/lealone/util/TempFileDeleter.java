@@ -11,7 +11,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.HashMap;
 
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.store.fs.FileUtils;
 

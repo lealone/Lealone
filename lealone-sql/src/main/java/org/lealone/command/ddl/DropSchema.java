@@ -6,8 +6,8 @@
  */
 package org.lealone.command.ddl;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;

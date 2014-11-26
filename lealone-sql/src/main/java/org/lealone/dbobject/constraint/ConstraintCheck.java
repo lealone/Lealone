@@ -9,7 +9,7 @@ package org.lealone.dbobject.constraint;
 import java.util.HashSet;
 import java.util.Iterator;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Column;

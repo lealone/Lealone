@@ -24,7 +24,7 @@ import javax.transaction.xa.Xid;
 //## Java 1.6 ##
 import javax.sql.StatementEventListener;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;

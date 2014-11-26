@@ -24,14 +24,14 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.cbase.dbobject.table.CBaseTable;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;

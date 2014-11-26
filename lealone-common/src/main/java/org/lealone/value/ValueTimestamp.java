@@ -14,7 +14,7 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.TimeZone;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.util.DateTimeUtils;
 import org.lealone.util.MathUtils;

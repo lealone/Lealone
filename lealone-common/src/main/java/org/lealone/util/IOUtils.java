@@ -21,8 +21,8 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.Constants;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.store.fs.FileUtils;
 

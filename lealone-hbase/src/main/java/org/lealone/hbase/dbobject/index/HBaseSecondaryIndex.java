@@ -28,8 +28,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.hadoop.hbase.util.Bytes;
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;

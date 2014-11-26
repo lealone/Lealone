@@ -17,8 +17,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.Constants;
 import org.lealone.message.DbException;
 import org.lealone.util.DataUtils;
 import org.lealone.util.StringUtils;

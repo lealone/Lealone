@@ -15,8 +15,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.security.CipherFactory;
 

@@ -8,12 +8,12 @@ package org.lealone.expression;
 
 import java.util.Arrays;
 
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.index.IndexCondition;
 import org.lealone.dbobject.table.ColumnResolver;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.util.New;
 import org.lealone.value.Value;

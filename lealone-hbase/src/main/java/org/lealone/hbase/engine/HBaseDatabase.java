@@ -23,8 +23,8 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.DbObject;
 import org.lealone.dbobject.User;
 import org.lealone.engine.ConnectionInfo;

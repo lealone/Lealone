@@ -22,9 +22,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.table.MemoryTableEngine;
+import org.lealone.engine.Constants;
 import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;

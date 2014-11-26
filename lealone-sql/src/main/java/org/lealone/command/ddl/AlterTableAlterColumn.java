@@ -9,10 +9,10 @@ package org.lealone.command.ddl;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Parser;
 import org.lealone.command.Prepared;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.DbObject;
 import org.lealone.dbobject.Right;
 import org.lealone.dbobject.Schema;

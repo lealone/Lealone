@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.message.DbException;
 import org.lealone.util.IntIntHashMap;

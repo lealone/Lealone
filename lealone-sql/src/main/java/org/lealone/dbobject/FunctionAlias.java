@@ -16,12 +16,12 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Parser;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.table.Table;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.expression.Expression;
 import org.lealone.jdbc.Driver;
 import org.lealone.jdbc.JdbcBlob;

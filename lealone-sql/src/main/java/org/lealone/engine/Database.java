@@ -18,12 +18,8 @@ import java.util.Set;
 import java.util.StringTokenizer;
 
 import org.lealone.api.DatabaseEventListener;
+import org.lealone.api.ErrorCode;
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.constant.Constants;
-import org.lealone.constant.DbSettings;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SetTypes;
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.Comment;
 import org.lealone.dbobject.DbObject;
 import org.lealone.dbobject.Right;

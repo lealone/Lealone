@@ -9,9 +9,9 @@ package org.lealone.dbobject;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
 import org.lealone.command.Parser;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;

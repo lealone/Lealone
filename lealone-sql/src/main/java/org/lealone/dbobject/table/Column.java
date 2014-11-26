@@ -10,11 +10,11 @@ import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Parser;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.Sequence;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Mode;
 import org.lealone.engine.Session;
 import org.lealone.expression.ConditionAndOr;

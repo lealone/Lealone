@@ -9,7 +9,7 @@ package org.lealone.compress;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 
 /**
  * An output stream to write an LZF stream.

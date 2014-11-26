@@ -13,8 +13,8 @@ import javax.naming.Name;
 import javax.naming.Reference;
 import javax.naming.spi.ObjectFactory;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.Constants;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.Trace;
 import org.lealone.message.TraceSystem;
 

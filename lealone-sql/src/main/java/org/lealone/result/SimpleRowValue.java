@@ -6,7 +6,7 @@
  */
 package org.lealone.result;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.value.Value;
 
 /**

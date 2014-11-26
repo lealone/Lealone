@@ -17,7 +17,7 @@ import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 
 /**
  * Utility methods

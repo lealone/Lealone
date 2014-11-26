@@ -7,10 +7,10 @@
 package org.lealone.expression;
 
 import org.lealone.command.Parser;
-import org.lealone.constant.Constants;
 import org.lealone.dbobject.FunctionAlias;
 import org.lealone.dbobject.table.ColumnResolver;
 import org.lealone.dbobject.table.TableFilter;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.util.StatementBuilder;
 import org.lealone.value.DataType;

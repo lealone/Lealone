@@ -10,8 +10,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.Constants;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;

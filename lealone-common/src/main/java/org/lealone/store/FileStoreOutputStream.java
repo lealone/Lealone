@@ -9,7 +9,7 @@ package org.lealone.store;
 import java.io.OutputStream;
 
 import org.lealone.compress.CompressTool;
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 
 /**
  * An output stream that is backed by a file store.

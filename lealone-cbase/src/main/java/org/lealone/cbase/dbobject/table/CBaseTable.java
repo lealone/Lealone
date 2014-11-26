@@ -19,11 +19,11 @@ package org.lealone.cbase.dbobject.table;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.cbase.dbobject.index.CBaseDelegateIndex;
 import org.lealone.cbase.dbobject.index.CBasePrimaryIndex;
 import org.lealone.cbase.dbobject.index.CBaseSecondaryIndex;
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;

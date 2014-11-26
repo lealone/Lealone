@@ -6,7 +6,7 @@
  */
 package org.lealone.util;
 
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.util.MathUtils;
 

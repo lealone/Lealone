@@ -13,11 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.DbSettings;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SetTypes;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.security.SHA256;
 import org.lealone.util.New;

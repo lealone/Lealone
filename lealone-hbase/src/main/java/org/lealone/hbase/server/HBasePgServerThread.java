@@ -23,9 +23,9 @@ import java.net.Socket;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
+import org.lealone.engine.Constants;
+import org.lealone.engine.SysProperties;
 import org.lealone.hbase.engine.HBaseConnectionInfo;
 import org.lealone.hbase.engine.HBaseDatabaseEngine;
 import org.lealone.hbase.engine.HBaseSession;

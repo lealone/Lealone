@@ -29,8 +29,8 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.ParameterInterface;
-import org.lealone.constant.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
 import org.lealone.util.BitField;

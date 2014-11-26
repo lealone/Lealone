@@ -21,8 +21,8 @@ import java.sql.NClob;
 //*/
 import java.sql.SQLException;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.Constants;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
 import org.lealone.util.IOUtils;

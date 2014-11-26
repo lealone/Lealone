@@ -6,14 +6,14 @@
  */
 package org.lealone.dbobject.index;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.DbObject;
 import org.lealone.dbobject.SchemaObjectBase;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableFilter;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Mode;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;

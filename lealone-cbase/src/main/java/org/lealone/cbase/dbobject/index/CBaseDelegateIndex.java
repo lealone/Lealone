@@ -18,13 +18,13 @@
 package org.lealone.cbase.dbobject.index;
 
 import org.lealone.cbase.dbobject.table.CBaseTable;
-import org.lealone.constant.Constants;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.TableFilter;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;

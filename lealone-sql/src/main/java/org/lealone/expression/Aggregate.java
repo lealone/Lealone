@@ -11,9 +11,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.SelectOrderBy;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Column;

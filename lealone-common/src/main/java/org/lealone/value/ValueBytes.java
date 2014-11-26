@@ -10,7 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Arrays;
 
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.SysProperties;
 import org.lealone.util.MathUtils;
 import org.lealone.util.StringUtils;
 import org.lealone.util.Utils;

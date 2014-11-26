@@ -14,7 +14,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 import java.util.logging.Logger;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
 

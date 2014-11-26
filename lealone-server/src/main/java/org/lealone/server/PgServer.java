@@ -20,7 +20,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.message.DbException;
 import org.lealone.util.NetUtils;
 import org.lealone.util.New;

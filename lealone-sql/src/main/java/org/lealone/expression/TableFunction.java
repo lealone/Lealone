@@ -8,7 +8,7 @@ package org.lealone.expression;
 
 import java.util.ArrayList;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.table.Column;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;

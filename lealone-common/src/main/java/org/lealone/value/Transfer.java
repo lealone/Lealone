@@ -22,8 +22,8 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.Constants;
 import org.lealone.engine.SessionInterface;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;

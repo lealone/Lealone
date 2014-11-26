@@ -13,7 +13,7 @@ import java.nio.charset.Charset;
 
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;

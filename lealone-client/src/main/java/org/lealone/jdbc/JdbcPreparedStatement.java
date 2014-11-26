@@ -31,10 +31,10 @@ import java.sql.RowId;
 import java.sql.NClob;
 import java.sql.SQLXML;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.ParameterInterface;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendBatchCommand;
-import org.lealone.constant.ErrorCode;
 import org.lealone.engine.FrontendSession;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;

@@ -17,7 +17,7 @@
  */
 package org.lealone.cbase.dbobject.index;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;

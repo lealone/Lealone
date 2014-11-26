@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.Locale;
 
 import org.lealone.command.Command;
-import org.lealone.constant.Constants;
 import org.lealone.dbobject.Constant;
 import org.lealone.dbobject.DbObject;
 import org.lealone.dbobject.FunctionAlias;
@@ -41,6 +40,7 @@ import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.index.MetaIndex;
 import org.lealone.dbobject.index.MultiVersionIndex;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Csv;
 import org.lealone.engine.Database;
 import org.lealone.engine.InDoubtTransaction;

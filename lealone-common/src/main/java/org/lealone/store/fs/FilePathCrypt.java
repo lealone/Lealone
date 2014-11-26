@@ -15,7 +15,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.util.Arrays;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.security.AES;
 import org.lealone.security.BlockCipher;
 import org.lealone.security.SHA256;

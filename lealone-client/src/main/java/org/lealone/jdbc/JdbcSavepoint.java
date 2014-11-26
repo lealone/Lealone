@@ -9,7 +9,7 @@ package org.lealone.jdbc;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.message.TraceObject;

@@ -15,7 +15,7 @@ import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.Properties;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.util.SortedProperties;
 import org.lealone.util.StringUtils;
 import org.lealone.util.Utils;

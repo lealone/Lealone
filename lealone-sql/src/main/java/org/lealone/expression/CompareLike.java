@@ -9,7 +9,7 @@ package org.lealone.expression;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.index.IndexCondition;
 import org.lealone.dbobject.table.ColumnResolver;
 import org.lealone.dbobject.table.TableFilter;

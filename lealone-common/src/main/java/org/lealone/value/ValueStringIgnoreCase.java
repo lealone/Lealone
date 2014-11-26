@@ -6,7 +6,7 @@
  */
 package org.lealone.value;
 
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.SysProperties;
 import org.lealone.util.StringUtils;
 
 /**

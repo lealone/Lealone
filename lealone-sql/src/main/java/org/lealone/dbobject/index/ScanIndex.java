@@ -13,11 +13,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.TableBase;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.engine.UndoLogRecord;
 import org.lealone.message.DbException;

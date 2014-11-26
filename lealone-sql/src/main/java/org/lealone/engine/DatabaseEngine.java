@@ -21,13 +21,9 @@ package org.lealone.engine;
 
 import java.util.HashMap;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Parser;
-import org.lealone.constant.Constants;
-import org.lealone.constant.DbSettings;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SetTypes;
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.User;
 import org.lealone.message.DbException;
 import org.lealone.util.MathUtils;

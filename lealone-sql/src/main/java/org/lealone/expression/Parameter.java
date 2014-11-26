@@ -6,8 +6,8 @@
  */
 package org.lealone.expression;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.ParameterInterface;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.ColumnResolver;
 import org.lealone.dbobject.table.TableFilter;

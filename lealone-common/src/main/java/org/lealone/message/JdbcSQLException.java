@@ -10,7 +10,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.sql.SQLException;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 
 /**
  * Represents a database exception.

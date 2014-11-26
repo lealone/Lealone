@@ -9,7 +9,6 @@ package org.lealone.result;
 import java.util.ArrayList;
 
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.constant.Constants;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.Index;
@@ -17,6 +16,7 @@ import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.TableBase;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.value.Value;

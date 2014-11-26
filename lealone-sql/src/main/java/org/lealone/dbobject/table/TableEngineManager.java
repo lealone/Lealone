@@ -27,7 +27,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.TableEngine;
-import org.lealone.constant.DbSettings;
+import org.lealone.engine.DbSettings;
 import org.lealone.message.DbException;
 
 public class TableEngineManager {

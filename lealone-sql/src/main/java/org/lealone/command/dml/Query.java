@@ -10,8 +10,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.table.ColumnResolver;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableFilter;

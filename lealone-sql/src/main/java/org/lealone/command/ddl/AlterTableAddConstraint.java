@@ -9,9 +9,8 @@ package org.lealone.command.ddl;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Right;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.constraint.Constraint;
@@ -24,6 +23,7 @@ import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableFilter;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.expression.Expression;

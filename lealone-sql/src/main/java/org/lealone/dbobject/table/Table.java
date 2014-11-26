@@ -11,9 +11,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.DbObject;
 import org.lealone.dbobject.Right;
 import org.lealone.dbobject.Schema;
@@ -23,6 +22,7 @@ import org.lealone.dbobject.TriggerObject;
 import org.lealone.dbobject.constraint.Constraint;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.engine.UndoLogRecord;
 import org.lealone.expression.Expression;

@@ -10,14 +10,14 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.ColumnResolver;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.expression.Expression;
 import org.lealone.expression.ExpressionColumn;
 import org.lealone.expression.ExpressionVisitor;

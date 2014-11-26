@@ -9,12 +9,12 @@ package org.lealone.dbobject;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.table.MetaTable;
 import org.lealone.dbobject.table.RangeTable;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableView;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;

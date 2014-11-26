@@ -10,7 +10,7 @@ import java.lang.reflect.Array;
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
 import org.lealone.util.StatementBuilder;

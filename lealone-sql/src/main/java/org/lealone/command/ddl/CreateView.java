@@ -8,13 +8,13 @@ package org.lealone.command.ddl;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.dml.Query;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableView;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;

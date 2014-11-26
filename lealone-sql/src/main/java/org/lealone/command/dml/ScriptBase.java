@@ -13,13 +13,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.sql.Connection;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
 import org.lealone.compress.CompressTool;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.expression.Expression;
 import org.lealone.message.DbException;
 import org.lealone.security.SHA256;

@@ -6,11 +6,11 @@
  */
 package org.lealone.dbobject.index;
 
-import org.lealone.constant.SysProperties;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.TableBase;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;

@@ -8,7 +8,7 @@ package org.lealone.result;
 
 import java.util.ArrayList;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.store.Data;

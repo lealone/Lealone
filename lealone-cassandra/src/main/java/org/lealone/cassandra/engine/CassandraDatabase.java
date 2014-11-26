@@ -21,8 +21,8 @@ package org.lealone.cassandra.engine;
 
 import java.sql.Connection;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.cassandra.dbobject.table.CassandraTableEngine;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.User;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Database;

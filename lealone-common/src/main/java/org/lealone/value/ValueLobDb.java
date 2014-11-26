@@ -14,8 +14,8 @@ import java.io.Reader;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.Constants;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.store.DataHandler;
 import org.lealone.store.FileStore;

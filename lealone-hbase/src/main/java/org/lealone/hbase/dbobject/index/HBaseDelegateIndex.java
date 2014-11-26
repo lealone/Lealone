@@ -6,13 +6,13 @@
  */
 package org.lealone.hbase.dbobject.index;
 
-import org.lealone.constant.Constants;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.TableFilter;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.hbase.dbobject.table.HBaseTable;
 import org.lealone.message.DbException;

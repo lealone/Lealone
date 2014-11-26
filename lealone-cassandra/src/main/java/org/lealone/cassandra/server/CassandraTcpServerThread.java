@@ -26,9 +26,9 @@ import java.util.Properties;
 import org.lealone.cassandra.engine.CassandraConnectionInfo;
 import org.lealone.cassandra.engine.CassandraDatabaseEngine;
 import org.lealone.cassandra.engine.CassandraSession;
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.server.TcpServerThread;
 import org.lealone.value.Transfer;
 

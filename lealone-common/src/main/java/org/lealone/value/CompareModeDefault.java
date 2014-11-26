@@ -9,7 +9,7 @@ package org.lealone.value;
 import java.text.CollationKey;
 import java.text.Collator;
 
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.util.SmallLRUCache;
 

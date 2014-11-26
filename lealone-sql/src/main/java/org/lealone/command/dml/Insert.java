@@ -8,11 +8,11 @@ package org.lealone.command.dml;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
 import org.lealone.command.Command;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Right;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Column;

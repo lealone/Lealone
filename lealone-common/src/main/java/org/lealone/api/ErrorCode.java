@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.constant;
+package org.lealone.api;
 
 /**
  * This class defines the error codes used for SQL exceptions.

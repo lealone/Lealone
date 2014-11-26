@@ -39,7 +39,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.hbase.dbobject.table.HBaseTableEngine;
 import org.lealone.hbase.zookeeper.PgPortTracker;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;

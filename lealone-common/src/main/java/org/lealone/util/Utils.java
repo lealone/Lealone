@@ -24,9 +24,9 @@ import java.util.HashSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.JavaObjectSerializer;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 
 /**

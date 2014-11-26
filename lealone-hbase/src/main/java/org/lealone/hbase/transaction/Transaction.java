@@ -30,7 +30,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.lealone.constant.ErrorCode;
+import org.lealone.api.ErrorCode;
 import org.lealone.hbase.engine.HBaseConstants;
 import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.metadata.TransactionStatusTable;

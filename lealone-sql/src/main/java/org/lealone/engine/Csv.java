@@ -25,9 +25,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.result.SimpleRowSource;

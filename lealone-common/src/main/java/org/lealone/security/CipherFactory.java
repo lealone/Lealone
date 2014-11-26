@@ -30,8 +30,8 @@ import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
+import org.lealone.api.ErrorCode;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.store.fs.FileUtils;
 import org.lealone.util.IOUtils;

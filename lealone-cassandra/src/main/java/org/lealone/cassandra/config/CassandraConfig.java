@@ -19,7 +19,7 @@
  */
 package org.lealone.cassandra.config;
 
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 
 public class CassandraConfig extends org.apache.cassandra.config.Config {
     public Integer lealone_tcp_port = Constants.DEFAULT_TCP_PORT;

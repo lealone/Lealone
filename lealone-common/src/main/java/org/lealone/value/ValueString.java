@@ -9,7 +9,7 @@ package org.lealone.value;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-import org.lealone.constant.SysProperties;
+import org.lealone.engine.SysProperties;
 import org.lealone.util.MathUtils;
 import org.lealone.util.StringUtils;
 

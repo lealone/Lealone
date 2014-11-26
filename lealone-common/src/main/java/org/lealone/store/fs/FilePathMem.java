@@ -18,8 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.compress.CompressLZF;
-import org.lealone.constant.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;

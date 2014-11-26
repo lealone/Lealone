@@ -6,9 +6,9 @@
  */
 package org.lealone.command.ddl;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
 import org.lealone.command.CommandInterface;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.TriggerObject;
 import org.lealone.dbobject.table.Table;

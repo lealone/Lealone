@@ -30,9 +30,9 @@ import java.util.HashSet;
 import java.util.Properties;
 
 import org.lealone.command.CommandInterface;
-import org.lealone.constant.Constants;
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
+import org.lealone.engine.Constants;
+import org.lealone.engine.SysProperties;
 import org.lealone.jdbc.JdbcConnection;
 import org.lealone.jdbc.JdbcPreparedStatement;
 import org.lealone.jdbc.JdbcStatement;

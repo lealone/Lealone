@@ -25,7 +25,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.hbase.util.HBaseUtils;
 
 public class MetaDataAdmin {

@@ -4,10 +4,11 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.constant;
+package org.lealone.engine;
 
 import java.util.HashMap;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.util.Utils;
 

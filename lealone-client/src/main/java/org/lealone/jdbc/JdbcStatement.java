@@ -13,12 +13,12 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendBatchCommand;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.SessionInterface;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceObject;
 import org.lealone.result.ResultInterface;

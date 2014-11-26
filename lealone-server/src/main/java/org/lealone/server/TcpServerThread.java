@@ -16,15 +16,15 @@ import java.net.Socket;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.api.ParameterInterface;
 import org.lealone.command.BackendBatchCommand;
 import org.lealone.command.Command;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.ConnectionInfo;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.SysProperties;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;

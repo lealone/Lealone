@@ -9,9 +9,9 @@ package org.lealone.dbobject.constraint;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Parser;
 import org.lealone.command.Prepared;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.Index;

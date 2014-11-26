@@ -8,14 +8,14 @@ package org.lealone.dbobject.index;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.dml.Query;
 import org.lealone.command.dml.SelectUnion;
-import org.lealone.constant.Constants;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.dbobject.table.TableView;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.expression.Comparison;
 import org.lealone.expression.Parameter;

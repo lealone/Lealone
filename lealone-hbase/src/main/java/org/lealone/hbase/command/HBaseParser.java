@@ -21,6 +21,7 @@ package org.lealone.hbase.command;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.Command;
 import org.lealone.command.Parser;
 import org.lealone.command.Prepared;
@@ -32,7 +33,6 @@ import org.lealone.command.dml.Insert;
 import org.lealone.command.dml.Merge;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.Update;
-import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.Sequence;
 import org.lealone.dbobject.table.Column;

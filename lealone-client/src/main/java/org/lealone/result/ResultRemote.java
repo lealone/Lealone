@@ -9,8 +9,8 @@ package org.lealone.result;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import org.lealone.constant.SysProperties;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.util.New;

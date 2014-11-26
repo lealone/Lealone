@@ -28,7 +28,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperNodeTracker;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
-import org.lealone.constant.Constants;
+import org.lealone.engine.Constants;
 import org.lealone.hbase.util.HBaseUtils;
 
 public class ZooKeeperAdmin {
