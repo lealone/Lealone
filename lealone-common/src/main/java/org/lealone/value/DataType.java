@@ -11,8 +11,6 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.sql.Array;
-import java.sql.Blob;
-import java.sql.Clob;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -27,12 +25,9 @@ import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.SessionInterface;
-import org.lealone.jdbc.JdbcBlob;
-import org.lealone.jdbc.JdbcClob;
-import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
+import org.lealone.result.SimpleResultSet;
 import org.lealone.store.LobStorage;
-import org.lealone.tools.SimpleResultSet;
 import org.lealone.util.New;
 import org.lealone.util.Utils;
 
@@ -952,28 +947,4 @@ public class DataType {
         }
         throw DbException.throwInternalError("primitive=" + clazz.toString());
     }
-
-    /**
-     * Convert a value to the specified class.
-     *
-     * @param conn the database connection
-     * @param v the value
-     * @param paramClass the target class
-     * @return the converted object
-     */
-    public static Object convertTo(JdbcConnection conn, Value v, Class<?> paramClass) {
-        if (paramClass == Blob.class) {
-            return new JdbcBlob(conn, v, 0);
-        } else if (paramClass == Clob.class) {
-            return new JdbcClob(conn, v, 0);
-        }
-        if (v.getType() == Value.JAVA_OBJECT) {
-            Object o = SysProperties.serializeJavaObject ? Utils.deserialize(v.getBytes()) : v.getObject();
-            if (paramClass.isAssignableFrom(o.getClass())) {
-                return o;
-            }
-        }
-        throw DbException.getUnsupportedException(paramClass.getName());
-    }
-
 }

@@ -9,8 +9,8 @@ package org.lealone.command;
 import java.util.ArrayList;
 
 import org.lealone.api.DatabaseEventListener;
+import org.lealone.api.ParameterInterface;
 import org.lealone.expression.Parameter;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.result.ResultInterface;
 import org.lealone.value.Value;
 import org.lealone.value.ValueNull;

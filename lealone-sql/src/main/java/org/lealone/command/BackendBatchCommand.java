@@ -21,10 +21,10 @@ package org.lealone.command;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.command.CommandInterface;
 import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 import org.lealone.value.Value;

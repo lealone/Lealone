@@ -24,8 +24,8 @@ import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.index.LinkedIndex;
 import org.lealone.engine.Session;
 import org.lealone.engine.UndoLogRecord;
-import org.lealone.jdbc.JdbcSQLException;
 import org.lealone.message.DbException;
+import org.lealone.message.JdbcSQLException;
 import org.lealone.result.Row;
 import org.lealone.result.RowList;
 import org.lealone.util.JdbcUtils;
@@ -334,10 +334,12 @@ public class TableLink extends Table {
         indexes.add(index);
     }
 
+    @Override
     public String getDropSQL() {
         return "DROP TABLE IF EXISTS " + getSQL();
     }
 
+    @Override
     public String getCreateSQL() {
         StringBuilder buff = new StringBuilder("CREATE FORCE ");
         if (isTemporary()) {
@@ -365,19 +367,23 @@ public class TableLink extends Table {
         return buff.toString();
     }
 
+    @Override
     public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
             boolean create, String indexComment) {
         throw DbException.getUnsupportedException("LINK");
     }
 
+    @Override
     public void lock(Session session, boolean exclusive, boolean force) {
         // nothing to do
     }
 
+    @Override
     public boolean isLockedExclusively() {
         return false;
     }
 
+    @Override
     public Index getScanIndex(Session session) {
         return linkedIndex;
     }
@@ -388,16 +394,19 @@ public class TableLink extends Table {
         }
     }
 
+    @Override
     public void removeRow(Session session, Row row) {
         checkReadOnly();
         getScanIndex(session).remove(session, row);
     }
 
+    @Override
     public void addRow(Session session, Row row) {
         checkReadOnly();
         getScanIndex(session).add(session, row);
     }
 
+    @Override
     public void close(Session session) {
         if (conn != null) {
             try {
@@ -408,6 +417,7 @@ public class TableLink extends Table {
         }
     }
 
+    @Override
     public synchronized long getRowCount(Session session) {
         String sql = "SELECT COUNT(*) FROM " + qualifiedTableName;
         try {
@@ -497,34 +507,42 @@ public class TableLink extends Table {
         }
     }
 
+    @Override
     public void unlock(Session s) {
         // nothing to do
     }
 
+    @Override
     public void checkRename() {
         // ok
     }
 
+    @Override
     public void checkSupportAlter() {
         throw DbException.getUnsupportedException("LINK");
     }
 
+    @Override
     public void truncate(Session session) {
         throw DbException.getUnsupportedException("LINK");
     }
 
+    @Override
     public boolean canGetRowCount() {
         return true;
     }
 
+    @Override
     public boolean canDrop() {
         return true;
     }
 
+    @Override
     public String getTableType() {
         return Table.TABLE_LINK;
     }
 
+    @Override
     public void removeChildrenAndResources(Session session) {
         super.removeChildrenAndResources(session);
         close(session);
@@ -539,15 +557,18 @@ public class TableLink extends Table {
         return url.startsWith("jdbc:oracle:");
     }
 
+    @Override
     public ArrayList<Index> getIndexes() {
         return indexes;
     }
 
+    @Override
     public long getMaxDataModificationId() {
         // data may have been modified externally
         return Long.MAX_VALUE;
     }
 
+    @Override
     public Index getUniqueIndex() {
         for (Index idx : indexes) {
             if (idx.getIndexType().isUnique()) {
@@ -557,6 +578,7 @@ public class TableLink extends Table {
         return null;
     }
 
+    @Override
     public void updateRows(Prepared prepared, Session session, RowList rows) {
         boolean deleteInsert;
         checkReadOnly();
@@ -586,10 +608,12 @@ public class TableLink extends Table {
         this.readOnly = readOnly;
     }
 
+    @Override
     public long getRowCountApproximation() {
         return ROW_COUNT_APPROXIMATION;
     }
 
+    @Override
     public long getDiskSpaceUsed() {
         return 0;
     }
@@ -606,6 +630,7 @@ public class TableLink extends Table {
         }
     }
 
+    @Override
     public boolean isDeterministic() {
         return false;
     }
@@ -614,6 +639,7 @@ public class TableLink extends Table {
      * Linked tables don't know if they are readonly. This overwrites
      * the default handling.
      */
+    @Override
     public void checkWritingAllowed() {
         // only the target database can verify this
     }
@@ -625,6 +651,7 @@ public class TableLink extends Table {
      * @param session the session
      * @param row the row
      */
+    @Override
     public void validateConvertUpdateSequence(Session session, Row row) {
         for (int i = 0; i < columns.length; i++) {
             Value value = row.getValue(i);
@@ -647,6 +674,7 @@ public class TableLink extends Table {
      * @param column the column
      * @return the value
      */
+    @Override
     public Value getDefaultValue(Session session, Column column) {
         return null;
     }

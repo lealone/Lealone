@@ -10,8 +10,8 @@ import java.sql.ParameterMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.command.CommandInterface;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.message.TraceObject;

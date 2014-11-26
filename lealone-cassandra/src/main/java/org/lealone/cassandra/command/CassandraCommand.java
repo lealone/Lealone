@@ -31,10 +31,10 @@ import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.transport.messages.ResultMessage;
+import org.lealone.api.ParameterInterface;
 import org.lealone.command.Command;
 import org.lealone.command.Prepared;
 import org.lealone.engine.Session;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 

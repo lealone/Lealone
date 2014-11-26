@@ -8,7 +8,7 @@ package org.lealone.command;
 
 import java.util.ArrayList;
 
-import org.lealone.expression.ParameterInterface;
+import org.lealone.api.ParameterInterface;
 import org.lealone.result.ResultInterface;
 
 /**

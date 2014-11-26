@@ -16,23 +16,18 @@
 		<dependency>
 			<groupId>org.lealone</groupId>
 			<artifactId>lealone-server</artifactId>
-			<version>${lealone.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.apache.hbase</groupId>
 			<artifactId>hbase</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.apache.hadoop</groupId>
 			<artifactId>hadoop-core</artifactId>
 		</dependency>
-
 	</dependencies>
 </project>

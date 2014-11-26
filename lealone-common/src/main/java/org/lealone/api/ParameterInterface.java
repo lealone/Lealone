@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.expression;
+package org.lealone.api;
 
 import org.lealone.message.DbException;
 import org.lealone.value.Value;

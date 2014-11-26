@@ -20,8 +20,8 @@ import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SetTypes;
 import org.lealone.constant.SysProperties;
-import org.lealone.jdbc.JdbcSQLException;
 import org.lealone.message.DbException;
+import org.lealone.message.JdbcSQLException;
 import org.lealone.message.Trace;
 import org.lealone.message.TraceSystem;
 import org.lealone.store.DataHandler;
@@ -38,6 +38,7 @@ import org.lealone.util.TempFileDeleter;
 import org.lealone.util.Utils;
 import org.lealone.value.Transfer;
 import org.lealone.value.Value;
+import org.lealone.zookeeper.ZooKeeperAdmin;
 
 /**
  * The client side part of a session when using the server mode. This object
@@ -81,6 +82,10 @@ public class SessionRemote extends SessionWithState implements DataHandler {
     public static final int STATUS_OK_STATE_CHANGED = 3;
 
     private static final Random random = new Random(System.currentTimeMillis());
+
+    /** Default value for ZooKeeper session timeout */
+    private static final int DEFAULT_ZK_SESSION_TIMEOUT = 180 * 1000;
+    private ZooKeeperAdmin zkAdmin;
 
     private SessionFactory sessionFactory;
 
@@ -410,7 +415,7 @@ public class SessionRemote extends SessionWithState implements DataHandler {
 
         String[] servers;
         if (ci.isDynamic()) {
-            servers = new String[] { ci.getOnlineServer(server) };
+            servers = new String[] { getOnlineServer(ci, server) };
         } else {
             servers = StringUtils.arraySplit(server, ',', true);
 
@@ -868,4 +873,14 @@ public class SessionRemote extends SessionWithState implements DataHandler {
             }
         }
     }
+
+    private String getOnlineServer(ConnectionInfo ci, String quorum) {
+        if (zkAdmin == null) {
+            int sessionTimeout = ci.getProperty("ZOOKEEPER_SESSION_TIMEOUT", DEFAULT_ZK_SESSION_TIMEOUT);
+            ci.removeProperty("ZOOKEEPER_SESSION_TIMEOUT", null);
+            zkAdmin = new ZooKeeperAdmin(quorum, sessionTimeout);
+        }
+        return zkAdmin.getOnlineServer();
+    }
+
 }

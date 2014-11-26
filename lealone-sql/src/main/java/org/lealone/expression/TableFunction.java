@@ -15,7 +15,7 @@ import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.LocalResult;
 import org.lealone.result.ResultInterface;
-import org.lealone.tools.SimpleResultSet;
+import org.lealone.result.SimpleResultSet;
 import org.lealone.util.MathUtils;
 import org.lealone.util.StatementBuilder;
 import org.lealone.value.DataType;

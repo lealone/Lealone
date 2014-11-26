@@ -10,8 +10,8 @@ import org.lealone.command.Parser;
 import org.lealone.command.Prepared;
 import org.lealone.constant.ErrorCode;
 import org.lealone.hbase.util.HBaseUtils;
-import org.lealone.jdbc.JdbcSQLException;
 import org.lealone.message.DbException;
+import org.lealone.message.JdbcSQLException;
 import org.lealone.result.ResultInterface;
 
 public class RetryableCommand extends CommandContainer {

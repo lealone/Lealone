@@ -6,12 +6,12 @@
  */
 package org.lealone.expression;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.ColumnResolver;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.message.DbException;
 import org.lealone.value.Value;
 import org.lealone.value.ValueBoolean;

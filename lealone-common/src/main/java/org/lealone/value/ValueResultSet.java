@@ -12,7 +12,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.lealone.message.DbException;
-import org.lealone.tools.SimpleResultSet;
+import org.lealone.result.SimpleResultSet;
 import org.lealone.util.StatementBuilder;
 
 /**

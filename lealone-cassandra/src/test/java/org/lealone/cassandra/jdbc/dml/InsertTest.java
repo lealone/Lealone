@@ -1,6 +1,4 @@
 /*
- * Copyright 2011 The Apache Software Foundation
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -27,12 +25,10 @@ public class InsertTest extends TestBase {
     public void run() throws Exception {
 
         tableName = "InsertTest";
-        
-//        create();
-//        insert();
-        
 
-        
+        //        create();
+        //        insert();
+
         sql = "SELECT * FROM " + tableName + " WHERE block_id = 3";
         printResultSet();
     }

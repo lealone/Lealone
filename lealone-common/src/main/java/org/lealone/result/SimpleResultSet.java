@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.tools;
+package org.lealone.result;
 
 import java.io.InputStream;
 import java.io.Reader;

@@ -25,7 +25,7 @@ import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
 import org.lealone.message.DbException;
-import org.lealone.tools.SimpleResultSet;
+import org.lealone.result.SimpleResultSet;
 import org.lealone.util.DataUtils;
 import org.lealone.util.DateTimeUtils;
 import org.lealone.util.MathUtils;

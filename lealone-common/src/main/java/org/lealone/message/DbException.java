@@ -12,11 +12,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.Locale;
-import java.util.Properties;
 import java.util.Map.Entry;
+import java.util.Properties;
 
 import org.lealone.constant.ErrorCode;
-import org.lealone.jdbc.JdbcSQLException;
 import org.lealone.util.SortedProperties;
 import org.lealone.util.StringUtils;
 import org.lealone.util.Utils;

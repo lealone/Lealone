@@ -26,6 +26,7 @@ import java.util.regex.PatternSyntaxException;
 
 import org.lealone.command.Command;
 import org.lealone.command.Parser;
+import org.lealone.compress.CompressTool;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
 import org.lealone.dbobject.Schema;
@@ -44,7 +45,6 @@ import org.lealone.security.BlockCipher;
 import org.lealone.security.CipherFactory;
 import org.lealone.security.SHA256;
 import org.lealone.store.fs.FileUtils;
-import org.lealone.tools.CompressTool;
 import org.lealone.util.AutoCloseInputStream;
 import org.lealone.util.DataUtils;
 import org.lealone.util.DateTimeUtils;

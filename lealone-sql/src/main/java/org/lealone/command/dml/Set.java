@@ -10,6 +10,7 @@ import java.text.Collator;
 
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
+import org.lealone.compress.CompressTool;
 import org.lealone.compress.Compressor;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
@@ -24,7 +25,6 @@ import org.lealone.expression.Expression;
 import org.lealone.expression.ValueExpression;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
-import org.lealone.tools.CompressTool;
 import org.lealone.util.StringUtils;
 import org.lealone.value.CompareMode;
 import org.lealone.value.ValueInt;

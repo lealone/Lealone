@@ -14,6 +14,7 @@ import java.io.OutputStream;
 import java.sql.Connection;
 
 import org.lealone.command.Prepared;
+import org.lealone.compress.CompressTool;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
@@ -28,7 +29,6 @@ import org.lealone.store.FileStoreInputStream;
 import org.lealone.store.FileStoreOutputStream;
 import org.lealone.store.LobStorage;
 import org.lealone.store.fs.FileUtils;
-import org.lealone.tools.CompressTool;
 import org.lealone.util.IOUtils;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.util.TempFileDeleter;

@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.jdbc;
+package org.lealone.message;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;

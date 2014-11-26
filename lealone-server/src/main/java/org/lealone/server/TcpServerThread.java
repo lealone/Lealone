@@ -16,6 +16,7 @@ import java.net.Socket;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.command.BackendBatchCommand;
 import org.lealone.command.Command;
 import org.lealone.constant.Constants;
@@ -25,10 +26,8 @@ import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Session;
 import org.lealone.engine.SessionRemote;
 import org.lealone.expression.Parameter;
-import org.lealone.expression.ParameterInterface;
-import org.lealone.expression.ParameterRemote;
-import org.lealone.jdbc.JdbcSQLException;
 import org.lealone.message.DbException;
+import org.lealone.message.JdbcSQLException;
 import org.lealone.result.ResultColumn;
 import org.lealone.result.ResultInterface;
 import org.lealone.store.LobStorage;
@@ -293,7 +292,7 @@ public class TcpServerThread implements Runnable {
             transfer.writeInt(getState(old)).writeBoolean(isQuery).writeBoolean(readonly).writeInt(params.size());
             if (operation == SessionRemote.SESSION_PREPARE_READ_PARAMS) {
                 for (ParameterInterface p : params) {
-                    ParameterRemote.writeMetaData(transfer, p);
+                    writeMetaData(transfer, p);
                 }
             }
             transfer.flush();
@@ -692,6 +691,19 @@ public class TcpServerThread implements Runnable {
             return pos;
         }
 
+    }
+
+    /**
+     * Write the parameter meta data to the transfer object.
+     *
+     * @param transfer the transfer object
+     * @param p the parameter
+     */
+    private static void writeMetaData(Transfer transfer, ParameterInterface p) throws IOException {
+        transfer.writeInt(p.getType());
+        transfer.writeLong(p.getPrecision());
+        transfer.writeInt(p.getScale());
+        transfer.writeInt(p.getNullable());
     }
 
 }

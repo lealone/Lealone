@@ -22,8 +22,8 @@ package org.lealone.command;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.engine.SessionRemote;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 import org.lealone.value.Transfer;

@@ -21,9 +21,9 @@ package org.lealone.hbase.command;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.result.ResultInterface;
 
 class CommandWrapper implements CommandInterface {

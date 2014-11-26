@@ -19,11 +19,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import org.lealone.compress.CompressTool;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
 import org.lealone.message.DbException;
-import org.lealone.tools.CompressTool;
 import org.lealone.util.IOUtils;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;

@@ -14,9 +14,10 @@
 	<version>1.0.0</version>
 
 	<modules>
+        <module>lealone-common</module>
 		<module>lealone-client</module>
-		<module>lealone-server</module>
 		<module>lealone-sql</module>
+		<module>lealone-server</module>
 		<module>lealone-cbase</module>
 		<module>lealone-hbase</module>
 		<module>lealone-cassandra</module>
@@ -62,7 +63,6 @@
 						</execution>
 					</executions>
 				</plugin>
-
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-resources-plugin</artifactId>
@@ -99,19 +99,59 @@
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-common</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-client</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-sql</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-server</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-cbase</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-hbase</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-cassandra</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+
+			<dependency>
 				<groupId>commons-logging</groupId>
 				<artifactId>commons-logging</artifactId>
 				<version>1.1.1</version>
 				<scope>provided</scope>
 			</dependency>
-
 			<dependency>
 				<groupId>org.apache.hbase</groupId>
 				<artifactId>hbase</artifactId>
 				<version>0.94.2</version>
 				<scope>provided</scope>
+				<exclusions>
+					<exclusion>
+						<groupId>org.slf4j</groupId>
+						<artifactId>slf4j-api</artifactId>
+					</exclusion>
+				</exclusions>
 			</dependency>
-
 			<dependency>
 				<groupId>org.apache.hadoop</groupId>
 				<artifactId>hadoop-core</artifactId>

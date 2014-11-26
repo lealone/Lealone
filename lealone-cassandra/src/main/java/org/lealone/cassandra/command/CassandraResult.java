@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.apache.cassandra.cql3.CQL3Type;
 import org.apache.cassandra.cql3.ResultSet;
-import org.apache.cassandra.cql3.ResultSet.Metadata;
 import org.apache.cassandra.db.marshal.AbstractType;
 import org.lealone.result.ResultInterface;
 import org.lealone.value.Value;
@@ -32,8 +31,8 @@ import org.lealone.value.ValueLong;
 import org.lealone.value.ValueString;
 
 public class CassandraResult implements ResultInterface {
-    private ResultSet rs;
-    private int size;
+    private final ResultSet rs;
+    private final int size;
     private int index = 0;
     private Value[] currentRow;
 
@@ -54,31 +53,30 @@ public class CassandraResult implements ResultInterface {
 
     @Override
     public boolean next() {
-//        List<ByteBuffer> list = rs.rows.get(index);
-//        currentRow = new Value[list.size()];
-//        final Metadata metadata = rs.metadata;
-//        ByteBuffer b;
-//        for(int i= 0; i<list.size(); i++) {
-//            b = list.get(i);
-//            AbstractType<?> type = rs.metadata.names.get(i).type;
-//            if(type.asCQL3Type() instanceof CQL3Type.Native) {
-//               // CQL3Type.Native nType = (CQL3Type.Native)type.asCQL3Type();
-//                switch ((CQL3Type.Native)type.asCQL3Type()) {
-//                case ASCII:
-//                    currentRow[i] = ValueString.get(type.getString(b));
-//                    break;
-//                case BIGINT:
-//                    currentRow[i] = ValueLong.get(type).get(type.getString(b));
-//                    break;
-//                case BLOB:
-//                    System.out.print(row.getLong(i));
-//                    break;
-//                default:
-//                    System.out.print(row.getString(i));
-//                    break;
-//                }
-//            }
-//        }
+        List<ByteBuffer> list = rs.rows.get(index);
+        currentRow = new Value[list.size()];
+        //final Metadata metadata = rs.metadata;
+        ByteBuffer b;
+        for (int i = 0; i < list.size(); i++) {
+            b = list.get(i);
+            AbstractType<?> type = rs.metadata.names.get(i).type;
+            if (type.asCQL3Type() instanceof CQL3Type.Native) {
+                // CQL3Type.Native nType = (CQL3Type.Native)type.asCQL3Type();
+                switch ((CQL3Type.Native) type.asCQL3Type()) {
+                case ASCII:
+                    currentRow[i] = ValueString.get(type.getString(b));
+                    break;
+                case BIGINT:
+                    currentRow[i] = ValueLong.get(Long.parseLong(type.getString(b)));
+                    break;
+                case BLOB: //TODO
+                    break;
+                default: //TODO
+                    System.out.print(type.getString(b));
+                    break;
+                }
+            }
+        }
         return index++ > size;
     }
 

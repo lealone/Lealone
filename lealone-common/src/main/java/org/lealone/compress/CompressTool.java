@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.tools;
+package org.lealone.compress;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,12 +17,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import org.lealone.compress.CompressDeflate;
-import org.lealone.compress.CompressLZF;
-import org.lealone.compress.CompressNo;
-import org.lealone.compress.Compressor;
-import org.lealone.compress.LZFInputStream;
-import org.lealone.compress.LZFOutputStream;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
 import org.lealone.message.DbException;

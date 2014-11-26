@@ -13,7 +13,7 @@ import java.sql.Statement;
 import java.sql.Types;
 
 import org.lealone.message.DbException;
-import org.lealone.tools.SimpleResultSet;
+import org.lealone.result.SimpleResultSet;
 import org.lealone.util.JdbcUtils;
 import org.lealone.util.StringUtils;
 

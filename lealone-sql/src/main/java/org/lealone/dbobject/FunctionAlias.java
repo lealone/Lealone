@@ -10,6 +10,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +24,9 @@ import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
 import org.lealone.expression.Expression;
 import org.lealone.jdbc.Driver;
+import org.lealone.jdbc.JdbcBlob;
+import org.lealone.jdbc.JdbcClob;
+import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.util.New;
@@ -180,14 +185,17 @@ public class FunctionAlias extends SchemaObjectBase {
         return buff.append(')').toString();
     }
 
+    @Override
     public String getCreateSQLForCopy(Table table, String quotedName) {
         throw DbException.throwInternalError();
     }
 
+    @Override
     public String getDropSQL() {
         return "DROP ALIAS IF EXISTS " + getSQL();
     }
 
+    @Override
     public String getSQL() {
         // TODO can remove this method once FUNCTIONS_IN_SCHEMA is enabled
         if (database.getSettings().functionsInSchema || !getSchema().getName().equals(Constants.SCHEMA_MAIN)) {
@@ -196,6 +204,7 @@ public class FunctionAlias extends SchemaObjectBase {
         return Parser.quoteIdentifier(getName());
     }
 
+    @Override
     public String getCreateSQL() {
         StringBuilder buff = new StringBuilder("CREATE FORCE ALIAS ");
         buff.append(getSQL());
@@ -210,10 +219,12 @@ public class FunctionAlias extends SchemaObjectBase {
         return buff.toString();
     }
 
+    @Override
     public int getType() {
         return DbObject.FUNCTION_ALIAS;
     }
 
+    @Override
     public synchronized void removeChildrenAndResources(Session session) {
         database.removeMeta(session, getId());
         className = null;
@@ -222,6 +233,7 @@ public class FunctionAlias extends SchemaObjectBase {
         invalidate();
     }
 
+    @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("RENAME");
     }
@@ -301,6 +313,7 @@ public class FunctionAlias extends SchemaObjectBase {
             dataType = DataType.getTypeFromClass(returnClass);
         }
 
+        @Override
         public String toString() {
             return method.toString();
         }
@@ -378,7 +391,7 @@ public class FunctionAlias extends SchemaObjectBase {
                     }
                 } else {
                     if (!paramClass.isAssignableFrom(o.getClass()) && !paramClass.isPrimitive()) {
-                        o = DataType.convertTo(session.createConnection(false), v, paramClass);
+                        o = convertTo(session.createConnection(false), v, paramClass);
                     }
                 }
                 if (currentIsVarArg) {
@@ -443,6 +456,7 @@ public class FunctionAlias extends SchemaObjectBase {
             return varArgs;
         }
 
+        @Override
         public int compareTo(JavaMethod m) {
             if (varArgs != m.varArgs) {
                 return varArgs ? 1 : -1;
@@ -491,6 +505,29 @@ public class FunctionAlias extends SchemaObjectBase {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * Convert a value to the specified class.
+     *
+     * @param conn the database connection
+     * @param v the value
+     * @param paramClass the target class
+     * @return the converted object
+     */
+    public static Object convertTo(JdbcConnection conn, Value v, Class<?> paramClass) {
+        if (paramClass == Blob.class) {
+            return new JdbcBlob(conn, v, 0);
+        } else if (paramClass == Clob.class) {
+            return new JdbcClob(conn, v, 0);
+        }
+        if (v.getType() == Value.JAVA_OBJECT) {
+            Object o = SysProperties.serializeJavaObject ? Utils.deserialize(v.getBytes()) : v.getObject();
+            if (paramClass.isAssignableFrom(o.getClass())) {
+                return o;
+            }
+        }
+        throw DbException.getUnsupportedException(paramClass.getName());
     }
 
 }

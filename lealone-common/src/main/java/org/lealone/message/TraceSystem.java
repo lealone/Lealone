@@ -17,7 +17,6 @@ import java.util.HashMap;
 
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
-import org.lealone.jdbc.JdbcSQLException;
 import org.lealone.store.fs.FileUtils;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;
@@ -154,6 +153,7 @@ public class TraceSystem implements TraceWriter {
         return t;
     }
 
+    @Override
     public boolean isEnabled(int level) {
         return level <= this.levelMax;
     }
@@ -228,6 +228,7 @@ public class TraceSystem implements TraceWriter {
         return dateFormat.format(new Date()) + module + ": " + s;
     }
 
+    @Override
     public void write(int level, String module, String s, Throwable t) {
         if (level <= levelSystemOut || level > this.levelMax) {
             // level <= levelSystemOut: the system out level is set higher
@@ -338,6 +339,7 @@ public class TraceSystem implements TraceWriter {
         closed = true;
     }
 
+    @Override
     public void setName(String name) {
         // nothing to do (the file name is already set)
     }

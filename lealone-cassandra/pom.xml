@@ -16,15 +16,12 @@
 		<dependency>
 			<groupId>org.lealone</groupId>
 			<artifactId>lealone-server</artifactId>
-			<version>${lealone.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.apache.cassandra</groupId>
 			<artifactId>cassandra-all</artifactId>
 			<version>2.1.1</version>
 			<scope>provided</scope>
 		</dependency>
-
 	</dependencies>
 </project>

@@ -25,12 +25,12 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.command.CommandRemote;
 import org.lealone.command.Prepared;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.SessionRemote;
 import org.lealone.expression.Parameter;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.hbase.util.HBaseUtils;
 
 public class SessionRemotePool {

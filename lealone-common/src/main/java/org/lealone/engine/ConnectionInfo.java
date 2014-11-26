@@ -24,7 +24,6 @@ import org.lealone.util.New;
 import org.lealone.util.SortedProperties;
 import org.lealone.util.StringUtils;
 import org.lealone.util.Utils;
-import org.lealone.zookeeper.ZooKeeperAdmin;
 
 /**
  * Encapsulates the connection settings, including user name and password.
@@ -51,10 +50,6 @@ public class ConnectionInfo implements Cloneable {
     private static boolean isKnownSetting(String s) {
         return KNOWN_SETTINGS.contains(s);
     }
-
-    /** Default value for ZooKeeper session timeout */
-    private static final int DEFAULT_ZK_SESSION_TIMEOUT = 180 * 1000;
-    private ZooKeeperAdmin zkAdmin;
 
     private Properties prop = new Properties();
     private String url; //不包含后面的参数
@@ -300,7 +295,7 @@ public class ConnectionInfo implements Cloneable {
      * @param defaultValue the default value
      * @return the value
      */
-    String removeProperty(String key, String defaultValue) {
+    public String removeProperty(String key, String defaultValue) {
         if (SysProperties.CHECK && !isKnownSetting(key)) {
             DbException.throwInternalError(key);
         }
@@ -371,7 +366,7 @@ public class ConnectionInfo implements Cloneable {
      * @param defaultValue the default value
      * @return the value as a String
      */
-    int getProperty(String key, int defaultValue) {
+    public int getProperty(String key, int defaultValue) {
         if (SysProperties.CHECK && !isKnownSetting(key)) {
             DbException.throwInternalError(key);
         }
@@ -554,15 +549,6 @@ public class ConnectionInfo implements Cloneable {
 
     public boolean isDynamic() {
         return dynamic;
-    }
-
-    public String getOnlineServer(String quorum) {
-        if (zkAdmin == null) {
-            int sessionTimeout = getProperty("ZOOKEEPER_SESSION_TIMEOUT", DEFAULT_ZK_SESSION_TIMEOUT);
-            removeProperty("ZOOKEEPER_SESSION_TIMEOUT", null);
-            zkAdmin = new ZooKeeperAdmin(quorum, sessionTimeout);
-        }
-        return zkAdmin.getOnlineServer();
     }
 
     public void setSession(SessionInterface session) {

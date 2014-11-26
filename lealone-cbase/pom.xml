@@ -16,7 +16,6 @@
 		<dependency>
 			<groupId>org.lealone</groupId>
 			<artifactId>lealone-sql</artifactId>
-			<version>${lealone.version}</version>
 		</dependency>
 	</dependencies>
 </project>

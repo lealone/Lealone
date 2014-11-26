@@ -9,12 +9,12 @@ package org.lealone.command;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.command.CommandInterface;
 import org.lealone.constant.Constants;
 import org.lealone.constant.ErrorCode;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.result.ResultInterface;

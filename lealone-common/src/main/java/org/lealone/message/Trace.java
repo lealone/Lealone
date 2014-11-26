@@ -9,8 +9,8 @@ package org.lealone.message;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 
+import org.lealone.api.ParameterInterface;
 import org.lealone.constant.SysProperties;
-import org.lealone.expression.ParameterInterface;
 import org.lealone.util.StatementBuilder;
 import org.lealone.util.StringUtils;
 import org.lealone.value.Value;

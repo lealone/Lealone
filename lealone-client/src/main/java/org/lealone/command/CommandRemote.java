@@ -7,12 +7,13 @@
 package org.lealone.command;
 
 import java.io.IOException;
+import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 
+import org.lealone.api.ParameterInterface;
+import org.lealone.constant.ErrorCode;
 import org.lealone.constant.SysProperties;
 import org.lealone.engine.SessionRemote;
-import org.lealone.expression.ParameterInterface;
-import org.lealone.expression.ParameterRemote;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.result.ResultInterface;
@@ -72,7 +73,7 @@ public class CommandRemote implements CommandInterface {
                 if (createParams) {
                     parameters.clear();
                     for (int j = 0; j < paramCount; j++) {
-                        ParameterRemote p = new ParameterRemote(j);
+                        Parameter p = new Parameter(j);
                         p.readMetaData(transfer);
                         parameters.add(p);
                     }
@@ -289,5 +290,80 @@ public class CommandRemote implements CommandInterface {
 
     int getId() {
         return id;
+    }
+
+    /**
+     * A client side (remote) parameter.
+     */
+    private static class Parameter implements ParameterInterface {
+
+        private Value value;
+        private final int index;
+        private int dataType = Value.UNKNOWN;
+        private long precision;
+        private int scale;
+        private int nullable = ResultSetMetaData.columnNullableUnknown;
+
+        public Parameter(int index) {
+            this.index = index;
+        }
+
+        @Override
+        public void setValue(Value newValue, boolean closeOld) {
+            if (closeOld && value != null) {
+                value.close();
+            }
+            value = newValue;
+        }
+
+        @Override
+        public Value getParamValue() {
+            return value;
+        }
+
+        @Override
+        public void checkSet() {
+            if (value == null) {
+                throw DbException.get(ErrorCode.PARAMETER_NOT_SET_1, "#" + (index + 1));
+            }
+        }
+
+        @Override
+        public boolean isValueSet() {
+            return value != null;
+        }
+
+        @Override
+        public int getType() {
+            return value == null ? dataType : value.getType();
+        }
+
+        @Override
+        public long getPrecision() {
+            return value == null ? precision : value.getPrecision();
+        }
+
+        @Override
+        public int getScale() {
+            return value == null ? scale : value.getScale();
+        }
+
+        @Override
+        public int getNullable() {
+            return nullable;
+        }
+
+        /**
+         * Write the parameter meta data from the transfer object.
+         *
+         * @param transfer the transfer object
+         */
+        public void readMetaData(Transfer transfer) throws IOException {
+            dataType = transfer.readInt();
+            precision = transfer.readLong();
+            scale = transfer.readInt();
+            nullable = transfer.readInt();
+        }
+
     }
 }
