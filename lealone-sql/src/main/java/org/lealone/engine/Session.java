@@ -1233,7 +1233,7 @@ public class Session extends SessionWithState {
     public SessionInterface reconnect(boolean write) {
         readSessionState();
         close();
-        Session newSession = (Session) database.getDatabaseEngine().createSession(connectionInfo);
+        Session newSession = database.getDatabaseEngine().createSession(connectionInfo);
         newSession.sessionState = sessionState;
         newSession.recreateSessionState();
         if (write) {
@@ -1311,9 +1311,15 @@ public class Session extends SessionWithState {
 
     private class LocalTransaction implements org.lealone.transaction.Transaction {
 
+        private final long transactionId;
+
+        public LocalTransaction() {
+            transactionId = count.getAndIncrement();
+        }
+
         @Override
         public long getTransactionId() {
-            return count.getAndIncrement();
+            return transactionId;
         }
 
         @Override

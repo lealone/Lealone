@@ -133,21 +133,25 @@ public class CBasePrimaryIndex extends BaseIndex {
 
         Value key = getKey(row);
         Row old = rows.get(key);
-        if (old != null) {
-            String sql = "PRIMARY KEY ON " + table.getSQL();
-            if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
-                sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+        if (row.isUpdate()) {
+            old.merge(row);
+        } else {
+            if (old != null) {
+                String sql = "PRIMARY KEY ON " + table.getSQL();
+                if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
+                    sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+                }
+                DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
+                e.setSource(this);
+                throw e;
             }
-            DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-            e.setSource(this);
-            throw e;
+            try {
+                rows.put(key, row);
+            } catch (IllegalStateException e) {
+                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+            }
+            lastKey = Math.max(lastKey, row.getKey());
         }
-        try {
-            rows.put(key, row);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
-        lastKey = Math.max(lastKey, row.getKey());
     }
 
     @Override
@@ -166,7 +170,11 @@ public class CBasePrimaryIndex extends BaseIndex {
             if (old == null) {
                 throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
             }
-            rows.remove(key);
+            if (row.isUpdate())
+                row.cleanUpdateFlag(); //由update语句触发，什么都不做
+            else
+                //不删除行，只设个删除标记
+                old.setDeleted(true); //rows.remove(key);
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
         }
@@ -249,16 +257,16 @@ public class CBasePrimaryIndex extends BaseIndex {
     public Cursor findFirstOrLast(Session session, boolean first) {
         Row row = (first ? rows.firstEntry().getValue() : rows.lastEntry().getValue());
         if (row == null) {
-            return new CBasePrimaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null);
+            return new CBasePrimaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
+                    .getTransaction().getTransactionId());
         }
         ValueLong key = ValueLong.get(row.getKey());
         HashMap<Value, Row> e = new HashMap<>(1);
         e.put(getKey(key), row);
-        CBasePrimaryIndexCursor c = new CBasePrimaryIndexCursor(e.entrySet().iterator(), key);
+        CBasePrimaryIndexCursor c = new CBasePrimaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
+                .getTransactionId());
         c.next();
         return c;
-
-        //return null;
     }
 
     @Override
@@ -329,8 +337,8 @@ public class CBasePrimaryIndex extends BaseIndex {
      * @return the cursor
      */
     Cursor find(Session session, Value first, Value last) {
-        return new CBasePrimaryIndexCursor(rows.tailMap(getKey(first)).entrySet().iterator(), last);
-        //return null;
+        return new CBasePrimaryIndexCursor(rows.tailMap(getKey(first)).entrySet().iterator(), last, session.getTransaction()
+                .getTransactionId());
     }
 
     @Override
@@ -348,9 +356,12 @@ public class CBasePrimaryIndex extends BaseIndex {
         private Entry<Value, Row> current;
         private Row row;
 
-        public CBasePrimaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last) {
+        private final long transactionId;
+
+        public CBasePrimaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
             this.it = it;
             this.last = last;
+            this.transactionId = transactionId;
         }
 
         @Override
@@ -360,6 +371,8 @@ public class CBasePrimaryIndex extends BaseIndex {
                     row = current.getValue();
                 }
             }
+            if (row != null)
+                row.setTransactionId(transactionId);
             return row;
         }
 
@@ -374,6 +387,9 @@ public class CBasePrimaryIndex extends BaseIndex {
             if (current != null && current.getKey().getLong() > last.getLong()) {
                 current = null;
             }
+            if (current != null && current.getValue().isDeleted()) //过滤掉已删除的行
+                return next();
+
             row = null;
             return current != null;
         }

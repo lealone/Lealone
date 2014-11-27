@@ -47,6 +47,7 @@ public class Insert extends Prepared implements ResultTarget {
         super(session);
     }
 
+    @Override
     public void setCommand(Command command) {
         super.setCommand(command);
         if (query != null) {
@@ -75,6 +76,7 @@ public class Insert extends Prepared implements ResultTarget {
         list.add(expr);
     }
 
+    @Override
     public int update() {
         Index index = null;
         if (sortedInsertMode) {
@@ -158,6 +160,7 @@ public class Insert extends Prepared implements ResultTarget {
 
     protected Row createRow(Expression[] expr, int rowId) {
         Row row = table.getTemplateRow();
+        row.setTransactionId(session.getTransaction().getTransactionId());
         for (int i = 0, len = columns.length; i < len; i++) {
             Column c = columns[i];
             int index = c.getColumnId();
@@ -185,10 +188,12 @@ public class Insert extends Prepared implements ResultTarget {
         return newRow;
     }
 
+    @Override
     public int getRowCount() {
         return rowNumber;
     }
 
+    @Override
     public String getPlanSQL() {
         StatementBuilder buff = new StatementBuilder("INSERT INTO ");
         buff.append(table.getSQL()).append('(');
@@ -231,6 +236,7 @@ public class Insert extends Prepared implements ResultTarget {
         return buff.toString();
     }
 
+    @Override
     public void prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
@@ -265,10 +271,12 @@ public class Insert extends Prepared implements ResultTarget {
         }
     }
 
+    @Override
     public boolean isTransactional() {
         return true;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         return null;
     }
@@ -277,6 +285,7 @@ public class Insert extends Prepared implements ResultTarget {
         this.sortedInsertMode = sortedInsertMode;
     }
 
+    @Override
     public int getType() {
         return CommandInterface.INSERT;
     }
@@ -285,6 +294,7 @@ public class Insert extends Prepared implements ResultTarget {
         this.insertFromSelect = value;
     }
 
+    @Override
     public boolean isCacheable() {
         return true;
     }

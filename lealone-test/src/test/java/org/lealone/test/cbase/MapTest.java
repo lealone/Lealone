@@ -17,32 +17,23 @@
  */
 package org.lealone.test.cbase;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.Random;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MapTest {
-    static Connection getConnection() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:9092/mydb";
-        url = "jdbc:lealone:embed:mydb?default_table_engine=cbase";
-        Connection conn = DriverManager.getConnection(url, "sa", "");
-        return conn;
-    }
-
     public static void main(String[] args) throws Exception {
-        crud();
         benchmark();
     }
 
-    private static final ConcurrentNavigableMap<Integer, String> rows = new ConcurrentSkipListMap<Integer, String>();
-    private static final ConcurrentNavigableMap<Integer, String> rows2 = new ConcurrentSkipListMap<Integer, String>();
-    private static final ConcurrentNavigableMap<Integer, String> rows3 = new ConcurrentSkipListMap<Integer, String>();
-    private static final ConcurrentNavigableMap<Integer, String> rows4 = new ConcurrentSkipListMap<Integer, String>();
+    static AtomicInteger index = new AtomicInteger();
+
+    private static ConcurrentNavigableMap<Integer, String> rows = new ConcurrentSkipListMap<Integer, String>();
+    private static ConcurrentNavigableMap<Integer, String> rows2 = new ConcurrentSkipListMap<Integer, String>();
+    private static ConcurrentNavigableMap<Integer, String> rows3 = new ConcurrentSkipListMap<Integer, String>();
+    private static ConcurrentNavigableMap<Integer, String> rows4 = new ConcurrentSkipListMap<Integer, String>();
 
     //    private static final ConcurrentHashMap<Integer, String> rows = new ConcurrentHashMap<Integer, String>();
     //    private static final ConcurrentHashMap<Integer, String> rows2 = new ConcurrentHashMap<Integer, String>();
@@ -54,42 +45,10 @@ public class MapTest {
     //    private static final Map<Integer, String> rows3 = Collections.synchronizedMap(new HashMap<Integer, String>());
     //    private static final Map<Integer, String> rows4 = Collections.synchronizedMap(new HashMap<Integer, String>());
 
-    static void crud() throws Exception {
-        Connection conn = getConnection();
-        Statement stmt = conn.createStatement();
-
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine cbase"); //");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long) engine memory");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test3 (f1 int primary key, f2 long)"); //cbase
-
-        for (int i = 1; i <= 10; i++) {
-            stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")");
-        }
-
-        stmt.executeUpdate("UPDATE test SET f2 = 1 where f1 = 1");
-        ResultSet rs = stmt.executeQuery("SELECT * FROM test where f1 <= 3");
-        while (rs.next()) {
-            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
-        }
-        rs.close();
-        stmt.executeUpdate("DELETE FROM test WHERE f1 = 1");
-
-        rs = stmt.executeQuery("SELECT count(*) FROM test");
-        while (rs.next()) {
-            System.out.println("count=" + rs.getInt(1));
-        }
-
-        stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.close();
-        conn.close();
-    }
-
     static Random random = new Random();
     static CountDownLatch latch;
 
     static class MyThread extends Thread {
-        Statement stmt;
-        Connection conn;
         long read_time;
         long randow_read_time;
         long write_time;
@@ -98,31 +57,28 @@ public class MapTest {
 
         MyThread(int start, int count) throws Exception {
             super("MyThread-" + start);
-            conn = getConnection();
-            stmt = conn.createStatement();
             this.start = start;
             this.end = start + count;
         }
 
         void write() throws Exception {
+
             long t1 = System.currentTimeMillis();
             String sql = "abc";
-            for (int i = start; i < end; i++) {
-                //String sql = "INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")";
-                //stmt.executeUpdate(sql);
-
-                //rows.put(i, sql);
+            for (int j = start; j < end; j++) {
+                int i = index.getAndIncrement();
                 //int hc = i % 4;
-                if (start == 0)
-                    rows.put(i, sql);
-                else if (start == 50000)
-                    rows2.put(i, sql);
-                else if (start == 100000)
-                    rows3.put(i, sql);
-                else
-                    rows4.put(i, sql);
-            }
+                rows.put(i, sql);
 
+                //                if (hc == 0)
+                //                    rows.put(i, sql);
+                //                else if (hc == 1)
+                //                    rows2.put(i, sql);
+                //                else if (hc == 2)
+                //                    rows3.put(i, sql);
+                //                else
+                //                    rows4.put(i, sql);
+            }
             long t2 = System.currentTimeMillis();
             write_time = t2 - t1;
             System.out.println(getName() + " write end, time=" + write_time + " ms");
@@ -131,14 +87,10 @@ public class MapTest {
         void read(boolean randow) throws Exception {
             long t1 = System.currentTimeMillis();
             for (int i = start; i < end; i++) {
-                ResultSet rs;
                 if (!randow)
-                    rs = stmt.executeQuery("SELECT * FROM test where f1 = " + i);
+                    rows.get(i);
                 else
-                    rs = stmt.executeQuery("SELECT * FROM test where f1 = " + random.nextInt(end));
-                while (rs.next()) {
-                    // System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
-                }
+                    rows.get(random.nextInt(end));
             }
 
             long t2 = System.currentTimeMillis();
@@ -157,10 +109,8 @@ public class MapTest {
         public void run() {
             try {
                 write();
-                //read(false);
-                //read(true);
-                stmt.close();
-                conn.close();
+                read(false);
+                read(true);
                 latch.countDown();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -169,17 +119,25 @@ public class MapTest {
     }
 
     static void benchmark() throws Exception {
-        Connection conn = getConnection();
-        Statement stmt = conn.createStatement();
-        stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
-        stmt.executeUpdate("set MULTI_THREADED 1");
-
-        //        stmt.close();
-        //        conn.close();
+        //预热阶段
+        String str = "abc";
+        for (int i = 0; i < 20000; i++) {
+            rows.put(i, str);
+            rows2.put(i, str);
+            rows3.put(i, str);
+            rows4.put(i, str);
+        }
+        rows.clear();
+        rows2.clear();
+        rows3.clear();
+        rows4.clear();
+        rows = new ConcurrentSkipListMap<Integer, String>();
+        rows2 = new ConcurrentSkipListMap<Integer, String>();
+        rows3 = new ConcurrentSkipListMap<Integer, String>();
+        rows4 = new ConcurrentSkipListMap<Integer, String>();
 
         int threadsCount = 4;//Runtime.getRuntime().availableProcessors();//10;
-        int loop = 500000;
+        int loop = 1500000;
         latch = new CountDownLatch(threadsCount);
 
         MyThread[] threads = new MyThread[threadsCount];

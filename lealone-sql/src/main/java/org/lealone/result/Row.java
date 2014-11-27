@@ -29,11 +29,14 @@ public class Row implements SearchRow {
     private Value rowKey;
 
     private long transactionId = -1;
+    private boolean isUpdate;
 
+    @Override
     public Value getRowKey() {
         return rowKey;
     }
 
+    @Override
     public void setRowKey(Value rowKey) {
         this.rowKey = rowKey;
     }
@@ -73,11 +76,13 @@ public class Row implements SearchRow {
         return r2;
     }
 
+    @Override
     public void setKeyAndVersion(SearchRow row) {
         setKey(row.getKey());
         setVersion(row.getVersion());
     }
 
+    @Override
     public int getVersion() {
         return version;
     }
@@ -86,16 +91,31 @@ public class Row implements SearchRow {
         this.version = version;
     }
 
+    @Override
     public long getKey() {
         return key;
     }
 
+    @Override
     public void setKey(long key) {
         this.key = key;
     }
 
+    @Override
     public Value getValue(int i) {
-        return i == -1 ? ValueLong.get(key) : (i == -2 ? rowKey : data[i]);
+        //return i == -1 ? ValueLong.get(key) : (i == -2 ? rowKey : data[i]);
+        Value v;
+        if (i == -1)
+            v = ValueLong.get(key);
+        else if (i == -2)
+            v = rowKey;
+        else {
+            v = data[i];
+            while (transactionId < v.version && v.next != null)
+                v = v.next;
+        }
+
+        return v;
     }
 
     /**
@@ -112,12 +132,14 @@ public class Row implements SearchRow {
         return size;
     }
 
+    @Override
     public void setValue(int i, Value v) {
         if (i == -1) {
             this.key = v.getLong();
         } else if (i == -2) {
             this.rowKey = v;
         } else {
+            v.version = transactionId;
             data[i] = v;
         }
     }
@@ -126,10 +148,12 @@ public class Row implements SearchRow {
         return data == null;
     }
 
+    @Override
     public int getColumnCount() {
         return data.length;
     }
 
+    @Override
     public int getMemory() {
         if (memory != MEMORY_CALCULATE) {
             return memory;
@@ -149,6 +173,7 @@ public class Row implements SearchRow {
         return m;
     }
 
+    @Override
     public String toString() {
         StatementBuilder buff = new StatementBuilder("( /* key:");
         buff.append(getKey());
@@ -193,5 +218,27 @@ public class Row implements SearchRow {
 
     public Value[] getValueList() {
         return data;
+    }
+
+    public boolean isUpdate() {
+        return isUpdate;
+    }
+
+    public void makeUpdateFlag() {
+        isUpdate = true;
+    }
+
+    public void cleanUpdateFlag() {
+        isUpdate = false;
+    }
+
+    //TODO处理并发更新冲突
+    public void merge(Row newRow) {
+        for (int i = 0, len = data.length; i < len; i++) {
+            if (newRow.data[i] != null) {
+                newRow.data[i].next = data[i];
+                data[i] = newRow.data[i];
+            }
+        }
     }
 }

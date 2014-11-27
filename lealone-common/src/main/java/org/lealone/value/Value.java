@@ -1069,6 +1069,8 @@ public abstract class Value implements Comparable<Value> {
     }
 
     public CompareMode compareMode;
+    public Value next;
+    public long version;
 
     @Override
     public int compareTo(Value o) {

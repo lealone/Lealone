@@ -40,7 +40,7 @@ public class JDBCExample {
     static void crud() throws Exception {
         Connection conn = getConnection();
         Statement stmt = conn.createStatement();
-
+        ResultSet rs;
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine cbase"); //");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long) engine memory");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test3 (f1 int primary key, f2 long)"); //cbase
@@ -50,7 +50,7 @@ public class JDBCExample {
         }
 
         stmt.executeUpdate("UPDATE test SET f2 = 1 where f1 = 1");
-        ResultSet rs = stmt.executeQuery("SELECT * FROM test where f1 <= 3");
+        rs = stmt.executeQuery("SELECT * FROM test where f1 <= 3");
         while (rs.next()) {
             System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
         }
@@ -62,7 +62,19 @@ public class JDBCExample {
             System.out.println("count=" + rs.getInt(1));
         }
 
+        rs.close();
+        Connection conn2 = getConnection();
+        Statement stmt2 = conn2.createStatement();
+
+        rs = stmt2.executeQuery("SELECT count(*) FROM test");
+        while (rs.next()) {
+            System.out.println("count=" + rs.getInt(1));
+        }
+
         //stmt.executeUpdate("DROP TABLE IF EXISTS test");
+        stmt2.close();
+        conn2.close();
+
         stmt.close();
         conn.close();
     }
