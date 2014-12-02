@@ -45,6 +45,8 @@ public class JDBCExample {
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long) engine memory");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test3 (f1 int primary key, f2 long)"); //cbase
 
+        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS test_f2 ON test(f2)");
+
         for (int i = 1; i <= 10; i++) {
             stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")");
         }
@@ -63,6 +65,14 @@ public class JDBCExample {
         }
 
         rs.close();
+
+        rs = stmt.executeQuery("SELECT count(*) FROM test where f2=20");
+        while (rs.next()) {
+            System.out.println("count=" + rs.getInt(1));
+        }
+
+        rs.close();
+
         Connection conn2 = getConnection();
         Statement stmt2 = conn2.createStatement();
 
