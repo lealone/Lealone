@@ -8,16 +8,17 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 ## Lealone是什么
 
-* 是一个可用于HBase的分布式SQL引擎
+* 既是一个可用于[HBase](http://hbase.apache.org/)和[Cassandra](http://cassandra.apache.org/)的分布式SQL与分布式事务引擎
+
+* 也是一个可以独立运行的分布式数据库
+
+
+## 有哪些特性
 
 * 支持高性能的分布式事务，<br>
   使用一个非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/wiki/Lealone-transaction-model)
 
-* 是对[H2关系数据库](http://www.h2database.com/html/main.html)SQL引擎的改进和扩展
-
-
-
-## 有哪些特性
+* 对[H2数据库](http://www.h2database.com/html/main.html)的SQL引擎进行了大量的改进和扩展
 
 * 支持MySQL、PostgreSQL的SQL语法
 
@@ -66,6 +67,8 @@ mvn clean package assembly:assembly -Dmaven.test.skip=true
 
 下面2个子工程中的代码使用[H2数据库的License](http://www.h2database.com/html/license.html)
 * lealone-client
+* lealone-common
+* lealone-server
 * lealone-sql
 
 除此之外的代码使用[Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
