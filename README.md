@@ -24,7 +24,7 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 * 支持JDBC 4.0规范
 
-* 支持分布式事务、索引、视图、Join、子查询、各种DDL <br>
+* 支持索引、视图、Join、子查询、各种DDL <br>
   支持触发器、自定义函数、Order By、Group By、聚合
 
 
@@ -35,21 +35,25 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 * Maven 2或更高 (只有构建才需要)
 
 
-## Wiki文档(按阅读顺序排列)
+## HBase用户指南(按阅读顺序排列)
 
-1. [Lealone安装配置](https://github.com/codefollower/Lealone/wiki/Lealone%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE)
+1. [安装配置](https://github.com/codefollower/Lealone/wiki/Lealone%E5%AE%89%E8%A3%85%E9%85%8D%E7%BD%AE)
 
-2. [Lealone快速入门](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)
+2. [快速入门](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)
 
-3. [Lealone使用文档](https://github.com/codefollower/Lealone/wiki/Lealone%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3)
+3. [使用文档](https://github.com/codefollower/Lealone/wiki/Lealone%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3)
 
-4. [使用Python访问Lealone](https://github.com/codefollower/Lealone/wiki/%E4%BD%BF%E7%94%A8Python%E8%AE%BF%E9%97%AELealone)
+4. [使用Python客户端](https://github.com/codefollower/Lealone/wiki/%E4%BD%BF%E7%94%A8Python%E8%AE%BF%E9%97%AELealone)
 
 5. [Lealone有哪些限制](https://github.com/codefollower/Lealone/wiki/Lealone-limitations)
 
-6. [Lealone开发测试环境搭建](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA)
+## Cassandra用户指南(TODO)
 
-7. [Lealone开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%96%87%E6%A1%A3)
+## Lealone开发文档
+
+1. [Lealone开发测试环境搭建](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83%E6%90%AD%E5%BB%BA)
+
+2. [Lealone开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%96%87%E6%A1%A3)
 
 
 ## Roadmap
@@ -57,11 +61,6 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 * 继续优化join、subquery、view、index的性能
 * 支持Cassandra
 * 新的CBase存储引擎
-
-## Package
-
-mvn clean package assembly:assembly -Dmaven.test.skip=true
-
 
 ## License
 
