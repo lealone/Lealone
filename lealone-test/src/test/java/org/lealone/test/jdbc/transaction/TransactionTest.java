@@ -140,6 +140,9 @@ public class TransactionTest extends TestBase {
         try {
             conn.setAutoCommit(false);
             insert();
+
+            sql = "SELECT count(*) FROM TransactionTest";
+            assertEquals(12, getIntValue(1, true));
             conn.rollback();
         } finally {
             conn.setAutoCommit(true);

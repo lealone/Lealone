@@ -111,7 +111,7 @@ public class Row implements SearchRow {
             v = rowKey;
         else {
             v = data[i];
-            while (transactionId < v.version && v.next != null)
+            while (v != null && transactionId < v.version && v.next != null)
                 v = v.next;
         }
 
