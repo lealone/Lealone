@@ -56,7 +56,7 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 2. [Lealone开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%96%87%E6%A1%A3)
 
 
-## Roadmap
+## Lealone 1.0 Roadmap
 
 * 继续优化join、subquery、view、index的性能
 * 支持Cassandra
@@ -64,7 +64,7 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 ## License
 
-下面2个子工程中的代码使用[H2数据库的License](http://www.h2database.com/html/license.html)
+以下子工程中的代码使用[H2数据库的License](http://www.h2database.com/html/license.html)
 * lealone-client
 * lealone-common
 * lealone-server
