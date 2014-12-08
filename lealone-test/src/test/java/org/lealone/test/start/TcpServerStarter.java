@@ -31,7 +31,7 @@ public class TcpServerStarter {
         System.setProperty("lealone.lobInDatabase", "false");
         System.setProperty("lealone.lobClientMaxSizeMemory", "1024");
         System.setProperty("java.io.tmpdir", "./target/test/tmp");
-        System.setProperty("lealone.baseDir", "./target/test/baseDir");
+        System.setProperty("lealone.base.dir", "./lealone-test-data/cbase");
         //System.setProperty("lealone.check2", "true");
         ArrayList<String> list = new ArrayList<String>();
 

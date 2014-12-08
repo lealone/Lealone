@@ -319,10 +319,10 @@ public class DbSettings extends SettingsBase {
 
     /**
      * Database setting <code>DEFAULT_TABLE_ENGINE</code>
-     * (default: null).<br />
+     * (default: CBASE).<br />
      * The default table engine to use for new tables.
      */
-    public final String defaultTableEngine = get("DEFAULT_TABLE_ENGINE", null);
+    public final String defaultTableEngine = get("DEFAULT_TABLE_ENGINE", "CBASE");
 
     private DbSettings(HashMap<String, String> s) {
         super(s);

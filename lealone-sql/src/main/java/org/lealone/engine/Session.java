@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.command.Command;
@@ -1313,46 +1312,52 @@ public class Session extends SessionWithState {
         return null;
     }
 
+    private volatile Transaction transaction;
+
     public Transaction getTransaction() {
-        if (transaction == null)
-            transaction = new LocalTransaction();
+        //        if (transaction == null)
+        //            transaction = new LocalTransaction();
         return transaction;
     }
 
-    static final AtomicLong count = new AtomicLong();
-    private volatile Transaction transaction;
-
-    private class LocalTransaction implements org.lealone.transaction.Transaction {
-
-        private final long transactionId;
-
-        public LocalTransaction() {
-            transactionId = count.getAndIncrement();
-        }
-
-        @Override
-        public long getTransactionId() {
-            return transactionId;
-        }
-
-        @Override
-        public long getCommitTimestamp() {
-            return count.getAndIncrement();
-        }
-
-        @Override
-        public boolean isAutoCommit() {
-            return Session.this.getAutoCommit();
-        }
-
-        @Override
-        public void addLocalTransactionNames(String localTransactionNames) {
-        }
-
-        @Override
-        public String getLocalTransactionNames() {
-            return null;
-        }
-
+    public void setTransaction(Transaction t) {
+        transaction = t;
     }
+    //
+    //    static final AtomicLong count = new AtomicLong();
+    //    private volatile Transaction transaction;
+    //
+    //    private class LocalTransaction implements org.lealone.transaction.Transaction {
+    //
+    //        private final long transactionId;
+    //
+    //        public LocalTransaction() {
+    //            transactionId = count.getAndIncrement();
+    //        }
+    //
+    //        @Override
+    //        public long getTransactionId() {
+    //            return transactionId;
+    //        }
+    //
+    //        @Override
+    //        public long getCommitTimestamp() {
+    //            return count.getAndIncrement();
+    //        }
+    //
+    //        @Override
+    //        public boolean isAutoCommit() {
+    //            return Session.this.getAutoCommit();
+    //        }
+    //
+    //        @Override
+    //        public void addLocalTransactionNames(String localTransactionNames) {
+    //        }
+    //
+    //        @Override
+    //        public String getLocalTransactionNames() {
+    //            return null;
+    //        }
+    //
+    //    }
 }

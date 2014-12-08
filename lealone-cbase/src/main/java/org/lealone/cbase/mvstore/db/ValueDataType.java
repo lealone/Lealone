@@ -150,7 +150,7 @@ public class ValueDataType implements DataType {
         if (obj instanceof SpatialKey) {
             return getSpatialDataType().getMemory(obj);
         }
-        return getMemory(obj);
+        return getMemory((Value) obj);
     }
 
     private static int getMemory(Value v) {

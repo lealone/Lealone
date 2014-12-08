@@ -369,6 +369,14 @@ public class SysProperties {
     public static final String URL_MAP = Utils.getProperty("url.map", null);
 
     /**
+     * System property <code>implicitRelativePath</code>
+     * (default: true for version 1.3, false for version 1.4).<br />
+     * If disabled, relative paths in database URLs need to be written as
+     * jdbc:h2:./test instead of jdbc:h2:test.
+     */
+    //    public static final boolean IMPLICIT_RELATIVE_PATH = Utils.getProperty("implicitRelativePath",
+    //            Constants.VERSION_MINOR >= 4 ? false : true);
+    /**
      * System property <code>use.thread.context.classloader</code>
      * (default: false).<br />
      * Instead of using the default class loader when deserializing objects, the

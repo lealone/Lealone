@@ -408,6 +408,7 @@ public class Constants {
      * The database URL prefix of this database.
      */
     public static final String URL_PREFIX = "jdbc:lealone:";
+    public static final String URL_MEM = "mem:";
     public static final String URL_TCP = "tcp:";
     public static final String URL_SSL = "ssl:";
     public static final String URL_EMBED = "embed:";
@@ -480,7 +481,7 @@ public class Constants {
      * The database URL format in simplified Backus-Naur form.
      */
     public static final String URL_FORMAT = URL_PREFIX
-            + "{ {embed:}[name] | {tcp|ssl|dynamic}:[//]server[:port][,server2[:port]]/name }[;key=value...]";
+            + "{mem:} { {embed:}[name] | {tcp|ssl|dynamic}:[//]server[:port][,server2[:port]]/name }[;key=value...]";
 
     /**
      * The package name of user defined classes.

@@ -194,7 +194,7 @@ public class Database implements DataHandler {
     public void init(ConnectionInfo ci, String cipher) {
         this.dbSettings = ci.getDbSettings();
         this.compareMode = CompareMode.getInstance(null, 0, false);
-        //this.persistent = ci.isPersistent();
+        this.persistent = ci.isPersistent();
         this.filePasswordHash = ci.getFilePasswordHash();
         this.databaseName = ci.getDatabaseName();
         this.databaseShortName = parseDatabaseShortName();
@@ -476,8 +476,70 @@ public class Database implements DataHandler {
         starting = false;
     }
 
-    protected void preOpen(int traceLevelFile, int traceLevelSystemOut) {
+    //private final int fileLockMethod;
 
+    protected void preOpen(int traceLevelFile, int traceLevelSystemOut) {
+        String mvFileName = databaseName + Constants.SUFFIX_MV_FILE;
+        boolean existsMv = FileUtils.exists(mvFileName);
+
+        if (existsMv && !FileUtils.canWrite(mvFileName)) {
+            readOnly = true;
+        }
+        //        if (existsPage && !existsMv) {
+        //            dbSettings.mvStore = false;
+        //        }
+        if (readOnly) {
+            if (traceLevelFile >= TraceSystem.DEBUG) {
+                String traceFile = Utils.getProperty("java.io.tmpdir", ".") + "/" + "h2_" + System.currentTimeMillis();
+                traceSystem = new TraceSystem(traceFile + Constants.SUFFIX_TRACE_FILE);
+            } else {
+                traceSystem = new TraceSystem(null);
+            }
+        } else {
+            //E:/H2/baseDir/mydb.trace.db
+            traceSystem = new TraceSystem(databaseName + Constants.SUFFIX_TRACE_FILE);
+        }
+        traceSystem.setLevelFile(traceLevelFile);
+        traceSystem.setLevelSystemOut(traceLevelSystemOut);
+        trace = traceSystem.getTrace(Trace.DATABASE);
+        trace.info("opening {0} (build {1})", databaseName, Constants.BUILD_ID);
+        //        if (autoServerMode) {
+        //            if (readOnly || fileLockMethod == FileLock.LOCK_NO || fileLockMethod == FileLock.LOCK_SERIALIZED
+        //                    || fileLockMethod == FileLock.LOCK_FS || !persistent) {
+        //                throw DbException.getUnsupportedException("autoServerMode && (readOnly || fileLockMethod == NO"
+        //                        + " || fileLockMethod == SERIALIZED || inMemory)");
+        //            }
+        //        }
+        //E:/H2/baseDir/mydb.lock.db
+        String lockFileName = databaseName + Constants.SUFFIX_LOCK_FILE;
+        if (readOnly) {
+            if (FileUtils.exists(lockFileName)) {
+                throw DbException.get(ErrorCode.DATABASE_ALREADY_OPEN_1, "Lock file exists: " + lockFileName);
+            }
+        }
+        //        if (!readOnly && fileLockMethod != FileLock.LOCK_NO) {
+        //            if (fileLockMethod != FileLock.LOCK_FS) {
+        //                lock = new FileLock(traceSystem, lockFileName, Constants.LOCK_SLEEP);
+        //                lock.lock(fileLockMethod);
+        //                if (autoServerMode) {
+        //                    startServer(lock.getUniqueId());
+        //                }
+        //            }
+        //        }
+        if (SysProperties.MODIFY_ON_WRITE) {
+            while (isReconnectNeeded()) {
+                // wait until others stopped writing
+            }
+        } else {
+            while (isReconnectNeeded() && !beforeWriting()) {
+                // wait until others stopped writing and
+                // until we can write (the file is not yet open -
+                // no need to re-connect)
+            }
+        }
+        deleteOldTempFiles();
+
+        setWriteDelay(writeDelay);
     }
 
     protected void postOpen() {

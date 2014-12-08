@@ -16,6 +16,7 @@ import java.util.Properties;
 import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.security.SHA256;
+import org.lealone.store.fs.FileUtils;
 import org.lealone.util.New;
 import org.lealone.util.SortedProperties;
 import org.lealone.util.StringUtils;
@@ -57,9 +58,12 @@ public class ConnectionInfo implements Cloneable {
      * The database name
      */
     private String dbName;
+    private String nameNormalized;
     private boolean remote;
     private boolean ssl;
     private boolean dynamic;
+
+    private boolean persistent;
 
     private SessionFactory sessionFactory;
     private SessionInterface session;
@@ -73,6 +77,13 @@ public class ConnectionInfo implements Cloneable {
     public ConnectionInfo(String url, String dbName) { //用于server端, 不需要再解析url了
         this.url = url;
         this.dbName = dbName;
+
+        url = url.substring(Constants.URL_PREFIX.length());
+        if (url.startsWith(Constants.URL_MEM)) {
+            persistent = false;
+        } else {
+            persistent = true;
+        }
     }
 
     /**
@@ -108,6 +119,13 @@ public class ConnectionInfo implements Cloneable {
 
     private void parseName() {
         remote = true;
+        if (dbName.startsWith(Constants.URL_MEM)) {
+            dbName = dbName.substring(Constants.URL_MEM.length());
+            persistent = false;
+        } else {
+            persistent = true;
+        }
+
         if (dbName.startsWith(Constants.URL_TCP)) {
             dbName = dbName.substring(Constants.URL_TCP.length());
         } else if (dbName.startsWith(Constants.URL_SSL)) {
@@ -124,8 +142,46 @@ public class ConnectionInfo implements Cloneable {
         }
     }
 
+    /**
+     * Set the base directory of persistent databases, unless the database is in
+     * the user home folder (~).
+     *
+     * @param dir the new base directory
+     */
     public void setBaseDir(String dir) {
-        //TODO 看看是否可以删 除
+        if (persistent) {
+            String absDir = FileUtils.unwrap(FileUtils.toRealPath(dir));
+            boolean absolute = FileUtils.isAbsolute(dbName);
+            String n;
+            String prefix = null;
+            if (dir.endsWith(SysProperties.FILE_SEPARATOR)) {
+                dir = dir.substring(0, dir.length() - 1);
+            }
+            if (absolute) {
+                n = dbName;
+            } else {
+                n = FileUtils.unwrap(dbName);
+                prefix = dbName.substring(0, dbName.length() - n.length());
+                n = dir + SysProperties.FILE_SEPARATOR + n;
+            }
+            String normalizedName = FileUtils.unwrap(FileUtils.toRealPath(n));
+            if (normalizedName.equals(absDir) || !normalizedName.startsWith(absDir)) {
+                // database name matches the baseDir or
+                // database name is clearly outside of the baseDir
+                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " + absDir);
+            }
+            if (absDir.endsWith("/") || absDir.endsWith("\\")) {
+                // no further checks are needed for C:/ and similar
+            } else if (normalizedName.charAt(absDir.length()) != '/') {
+                // database must be within the directory
+                // (with baseDir=/test, the database name must not be
+                // /test2/x and not /test2)
+                throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " + absDir);
+            }
+            if (!absolute) {
+                dbName = prefix + dir + SysProperties.FILE_SEPARATOR + FileUtils.unwrap(dbName);
+            }
+        }
     }
 
     /**
@@ -135,6 +191,15 @@ public class ConnectionInfo implements Cloneable {
      */
     public boolean isRemote() {
         return remote;
+    }
+
+    /**
+     * Check if the referenced database is persistent.
+     *
+     * @return true if it is
+     */
+    public boolean isPersistent() {
+        return persistent;
     }
 
     public void readProperties(Properties info) {
@@ -300,6 +365,38 @@ public class ConnectionInfo implements Cloneable {
     }
 
     public String getDatabaseName() {
+        if (persistent) {
+            String name = dbName;
+            if (nameNormalized == null) {
+                //                if (!SysProperties.IMPLICIT_RELATIVE_PATH) {
+                //                    if (!FileUtils.isAbsolute(name)) {
+                //                        if (name.indexOf("./") < 0 && name.indexOf(".\\") < 0 && name.indexOf(":/") < 0
+                //                                && name.indexOf(":\\") < 0) {
+                //                            // the name could start with "./", or
+                //                            // it could start with a prefix such as "nio:./"
+                //                            // for Windows, the path "\test" is not considered
+                //                            // absolute as the drive letter is missing,
+                //                            // but we consider it absolute
+                //                            throw DbException.get(ErrorCode.URL_RELATIVE_TO_CWD, url);
+                //                        }
+                //                    }
+                //                }
+                String suffix = Constants.SUFFIX_PAGE_FILE;
+                String n;
+                if (FileUtils.exists(name + suffix)) {
+                    n = FileUtils.toRealPath(name + suffix);
+                } else {
+                    suffix = Constants.SUFFIX_MV_FILE;
+                    n = FileUtils.toRealPath(name + suffix);
+                }
+                String fileName = FileUtils.getName(n);
+                if (fileName.length() < suffix.length() + 1) {
+                    throw DbException.get(ErrorCode.INVALID_DATABASE_NAME_1, name);
+                }
+                nameNormalized = n.substring(0, n.length() - suffix.length());
+            }
+            return nameNormalized;
+        }
         return dbName;
     }
 

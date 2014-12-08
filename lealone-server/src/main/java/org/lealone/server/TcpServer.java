@@ -23,7 +23,6 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.dbobject.table.MemoryTableEngine;
 import org.lealone.engine.Constants;
 import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
@@ -81,7 +80,8 @@ public class TcpServer implements Service {
      * @return the database name (usually starting with mem:)
      */
     public static String getManagementDbName(int port) {
-        return Constants.URL_EMBED + MANAGEMENT_DB_PREFIX + port + ";default_table_engine=" + MemoryTableEngine.NAME;
+        //return Constants.URL_EMBED + MANAGEMENT_DB_PREFIX + port + ";default_table_engine=" + MemoryTableEngine.NAME;
+        return Constants.URL_MEM + Constants.URL_EMBED + MANAGEMENT_DB_PREFIX + port;
     }
 
     /**

@@ -762,7 +762,12 @@ public class MVTable extends TableBase {
         if (session == null) {
             // TODO need to commit/rollback the transaction
             return store.begin();
+        } else if (session.getTransaction() == null) {
+            Transaction t = store.begin();
+            session.setTransaction(t);
+            return t;
         }
+
         return (Transaction) session.getTransaction();
     }
 
