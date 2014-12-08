@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.store.fs;
@@ -45,10 +44,9 @@ public class FileUtils {
     }
 
     /**
-     * Create a new file.
-     * This method is similar to Java 7
-     * <code>java.nio.file.Path.createFile</code>,
-     * but returns false instead of throwing a exception if the file already existed.
+     * Create a new file. This method is similar to Java 7
+     * <code>java.nio.file.Path.createFile</code>, but returns false instead of
+     * throwing a exception if the file already existed.
      *
      * @param fileName the file name
      * @return true if creating was successful
@@ -70,8 +68,8 @@ public class FileUtils {
     }
 
     /**
-     * Get the canonical file or directory name.
-     * This method is similar to Java 7 <code>java.nio.file.Path.toRealPath</code>.
+     * Get the canonical file or directory name. This method is similar to Java
+     * 7 <code>java.nio.file.Path.toRealPath</code>.
      *
      * @param fileName the file name
      * @return the normalized file name
@@ -81,9 +79,9 @@ public class FileUtils {
     }
 
     /**
-     * Get the parent directory of a file or directory.
-     * This method returns null if there is no parent.
-     * This method is similar to Java 7 <code>java.nio.file.Path.getParent</code>.
+     * Get the parent directory of a file or directory. This method returns null
+     * if there is no parent. This method is similar to Java 7
+     * <code>java.nio.file.Path.getParent</code>.
      *
      * @param fileName the file or directory name
      * @return the parent directory name
@@ -94,8 +92,8 @@ public class FileUtils {
     }
 
     /**
-     * Check if the file name includes a path.
-     * This method is similar to Java 7 <code>java.nio.file.Path.isAbsolute</code>.
+     * Check if the file name includes a path. This method is similar to Java 7
+     * <code>java.nio.file.Path.isAbsolute</code>.
      *
      * @param fileName the file name
      * @return if the file name is absolute
@@ -105,14 +103,26 @@ public class FileUtils {
     }
 
     /**
-     * Rename a file if this is allowed.
-     * This method is similar to Java 7 <code>java.nio.file.Path.moveTo</code>.
+     * Rename a file if this is allowed. This method is similar to Java 7
+     * <code>java.nio.file.Files.move</code>.
      *
-     * @param oldName the old fully qualified file name
-     * @param newName the new fully qualified file name
+     * @param source the old fully qualified file name
+     * @param target the new fully qualified file name
      */
-    public static void moveTo(String oldName, String newName) {
-        FilePath.get(oldName).moveTo(FilePath.get(newName));
+    public static void move(String source, String target) {
+        FilePath.get(source).moveTo(FilePath.get(target), false);
+    }
+
+    /**
+     * Rename a file if this is allowed, and try to atomically replace an
+     * existing file. This method is similar to Java 7
+     * <code>java.nio.file.Files.move</code>.
+     *
+     * @param source the old fully qualified file name
+     * @param target the new fully qualified file name
+     */
+    public static void moveAtomicReplace(String source, String target) {
+        FilePath.get(source).moveTo(FilePath.get(target), true);
     }
 
     /**
@@ -134,7 +144,7 @@ public class FileUtils {
      * @param path the directory
      * @return the list of fully qualified file names
      */
-    public static List<String> newDirectoryStream(String path) {
+    public static List<String> newDirectoryStream(String path) { //文件和目录名都会列出来
         List<FilePath> list = FilePath.get(path).newDirectoryStream();
         int len = list.size();
         List<String> result = New.arrayList(len);

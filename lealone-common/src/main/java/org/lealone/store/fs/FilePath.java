@@ -69,11 +69,11 @@ public abstract class FilePath {
     private static void registerDefaultProviders() {
         if (providers == null || defaultProvider == null) {
             Map<String, FilePath> map = Collections.synchronizedMap(New.<String, FilePath> hashMap());
-            for (String c : new String[] { "org.lealone.store.fs.FilePathDisk",
-                    "org.lealone.store.fs.FilePathMem", "org.lealone.store.fs.FilePathMemLZF",
-                    "org.lealone.store.fs.FilePathNioMem", "org.lealone.store.fs.FilePathNioMemLZF",
-                    "org.lealone.store.fs.FilePathSplit", "org.lealone.store.fs.FilePathNio",
-                    "org.lealone.store.fs.FilePathNioMapped", "org.lealone.store.fs.FilePathZip" }) {
+            for (String c : new String[] { "org.lealone.store.fs.FilePathDisk", "org.lealone.store.fs.FilePathMem",
+                    "org.lealone.store.fs.FilePathMemLZF", "org.lealone.store.fs.FilePathNioMem",
+                    "org.lealone.store.fs.FilePathNioMemLZF", "org.lealone.store.fs.FilePathSplit",
+                    "org.lealone.store.fs.FilePathNio", "org.lealone.store.fs.FilePathNioMapped",
+                    "org.lealone.store.fs.FilePathZip" }) {
                 try {
                     FilePath p = (FilePath) Class.forName(c).newInstance();
                     map.put(p.getScheme(), p);
@@ -119,8 +119,10 @@ public abstract class FilePath {
      * Rename a file if this is allowed.
      *
      * @param newName the new fully qualified file name
+     * @param atomicReplace whether the move should be atomic, and the target
+     *            file should be replaced if it exists and replacing is possible
      */
-    public abstract void moveTo(FilePath newName);
+    public abstract void moveTo(FilePath newName, boolean atomicReplace);
 
     /**
      * Create a new file.
@@ -278,6 +280,7 @@ public abstract class FilePath {
      *
      * @return the path as a string
      */
+    @Override
     public String toString() {
         return name;
     }

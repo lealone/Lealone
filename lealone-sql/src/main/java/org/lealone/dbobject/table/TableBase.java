@@ -356,36 +356,51 @@ public abstract class TableBase extends Table {
         return lockExclusive == session;
     }
 
+    /**
+     * Lock the table for the given session.
+     * This method waits until the lock is granted.
+     *
+     * @param session the session
+     * @param exclusive true for write locks, false for read locks
+     * @param forceLockEvenInMvcc lock even in the MVCC mode
+     * @return true if the table was already exclusively locked by this session.
+     * @throws DbException if a lock timeout occurred
+     */
     @Override
-    public void lock(Session session, boolean exclusive, boolean force) {
-        int lockMode = database.getLockMode();
-        if (lockMode == Constants.LOCK_MODE_OFF) {
-            return;
-        }
-        if (!force && database.isMultiVersion()) {
-            // MVCC: update, delete, and insert use a shared lock.
-            // Select doesn't lock except when using FOR UPDATE and
-            // the system property lealone.selectForUpdateMvcc
-            // is not enabled
-            if (exclusive) {
-                exclusive = false;
-            } else {
-                if (lockExclusive == null) {
-                    return;
-                }
-            }
-        }
-        if (lockExclusive == session) {
-            return;
-        }
-        synchronized (database) {
-            try {
-                doLock(session, lockMode, exclusive);
-            } finally {
-                session.setWaitForLock(null);
-            }
-        }
+    public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+        return false;
     }
+
+    //    @Override
+    //    public boolean lock(Session session, boolean exclusive, boolean force) {
+    //        int lockMode = database.getLockMode();
+    //        if (lockMode == Constants.LOCK_MODE_OFF) {
+    //            return;
+    //        }
+    //        if (!force && database.isMultiVersion()) {
+    //            // MVCC: update, delete, and insert use a shared lock.
+    //            // Select doesn't lock except when using FOR UPDATE and
+    //            // the system property lealone.selectForUpdateMvcc
+    //            // is not enabled
+    //            if (exclusive) {
+    //                exclusive = false;
+    //            } else {
+    //                if (lockExclusive == null) {
+    //                    return;
+    //                }
+    //            }
+    //        }
+    //        if (lockExclusive == session) {
+    //            return;
+    //        }
+    //        synchronized (database) {
+    //            try {
+    //                doLock(session, lockMode, exclusive);
+    //            } finally {
+    //                session.setWaitForLock(null);
+    //            }
+    //        }
+    //    }
 
     private void doLock(Session session, int lockMode, boolean exclusive) {
         traceLock(session, exclusive, "requesting for");
@@ -430,7 +445,7 @@ public abstract class TableBase extends Table {
                     return;
                 }
             }
-            session.setWaitForLock(this);
+            session.setWaitForLock(this, Thread.currentThread());
             if (checkDeadlock) {
                 ArrayList<Session> sessions = checkDeadlock(session, null, null);
                 if (sessions != null) {

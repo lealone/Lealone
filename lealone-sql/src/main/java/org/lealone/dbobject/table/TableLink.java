@@ -374,8 +374,8 @@ public class TableLink extends Table {
     }
 
     @Override
-    public void lock(Session session, boolean exclusive, boolean force) {
-        // nothing to do
+    public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+        return false;
     }
 
     @Override

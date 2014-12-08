@@ -17,10 +17,7 @@
  */
 package org.lealone.cbase.dbobject.table;
 
-import org.lealone.api.TableEngine;
-import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.MemoryTable;
-import org.lealone.dbobject.table.TableBase;
+import org.lealone.cbase.mvstore.db.MVTableEngine;
 import org.lealone.dbobject.table.TableEngineManager;
 
 /**
@@ -28,7 +25,7 @@ import org.lealone.dbobject.table.TableEngineManager;
  * 用于支持标准的CREATE TABLE语句。
  *
  */
-public class CBaseTableEngine implements TableEngine {
+public class CBaseTableEngine extends MVTableEngine {
     public static final String NAME = "CBASE";
 
     //见TableEngineManager.TableEngineService中的注释
@@ -36,13 +33,13 @@ public class CBaseTableEngine implements TableEngine {
         TableEngineManager.registerTableEngine(this);
     }
 
-    @Override
-    public TableBase createTable(CreateTableData data) {
-        if (data.isMemoryTable())
-            return new MemoryTable(data);
-        else
-            return new CBaseTable(data);
-    }
+    //    @Override
+    //    public TableBase createTable(CreateTableData data) {
+    //        if (data.isMemoryTable())
+    //            return new MemoryTable(data);
+    //        else
+    //            return new CBaseTable(data);
+    //    }
 
     @Override
     public String getName() {

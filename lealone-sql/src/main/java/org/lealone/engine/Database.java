@@ -2064,4 +2064,17 @@ public class Database implements DataHandler {
             IndexType indexType, boolean create, Session session) {
         throw DbException.throwInternalError();
     }
+
+    private DbException backgroundException;
+
+    public void setBackgroundException(DbException e) {
+        if (backgroundException == null) {
+            backgroundException = e;
+            TraceSystem t = getTraceSystem();
+            if (t != null) {
+                t.getTrace(Trace.DATABASE).error(e, "flush");
+            }
+        }
+    }
+
 }

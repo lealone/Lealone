@@ -35,11 +35,6 @@ public class CassandraTable extends TableBase {
     }
 
     @Override
-    public void lock(Session session, boolean exclusive, boolean force) {
-
-    }
-
-    @Override
     public void close(Session session) {
 
     }

@@ -433,6 +433,7 @@ public class ValueLob extends Value {
      * @param t the new type
      * @return the converted value
      */
+    @Override
     public Value convertTo(int t) {
         if (t == type) {
             return this;
@@ -446,6 +447,7 @@ public class ValueLob extends Value {
         return super.convertTo(t);
     }
 
+    @Override
     public boolean isLinked() {
         return linked;
     }
@@ -459,6 +461,7 @@ public class ValueLob extends Value {
         return fileName;
     }
 
+    @Override
     public void close() {
         if (fileName != null) {
             if (tempFile != null) {
@@ -468,6 +471,7 @@ public class ValueLob extends Value {
         }
     }
 
+    @Override
     public void unlink() {
         if (linked && fileName != null) {
             String temp;
@@ -486,6 +490,7 @@ public class ValueLob extends Value {
         }
     }
 
+    @Override
     public Value link(DataHandler h, int tabId) {
         if (fileName == null) {
             this.tableId = tabId;
@@ -520,6 +525,7 @@ public class ValueLob extends Value {
      *
      * @return the table id
      */
+    @Override
     public int getTableId() {
         return tableId;
     }
@@ -533,14 +539,17 @@ public class ValueLob extends Value {
         return objectId;
     }
 
+    @Override
     public int getType() {
         return type;
     }
 
+    @Override
     public long getPrecision() {
         return precision;
     }
 
+    @Override
     public String getString() {
         int len = precision > Integer.MAX_VALUE || precision == 0 ? Integer.MAX_VALUE : (int) precision;
         try {
@@ -562,6 +571,7 @@ public class ValueLob extends Value {
         }
     }
 
+    @Override
     public byte[] getBytes() {
         if (type == CLOB) {
             // convert hex to string
@@ -571,6 +581,7 @@ public class ValueLob extends Value {
         return Utils.cloneByteArray(data);
     }
 
+    @Override
     public byte[] getBytesNoCopy() {
         if (type == CLOB) {
             // convert hex to string
@@ -586,6 +597,7 @@ public class ValueLob extends Value {
         }
     }
 
+    @Override
     public int hashCode() {
         if (hash == 0) {
             if (precision > 4096) {
@@ -602,6 +614,7 @@ public class ValueLob extends Value {
         return hash;
     }
 
+    @Override
     protected int compareSecure(Value v, CompareMode mode) {
         if (type == Value.CLOB) {
             return Integer.signum(getString().compareTo(v.getString()));
@@ -610,6 +623,7 @@ public class ValueLob extends Value {
         return Utils.compareNotNullSigned(getBytes(), v2);
     }
 
+    @Override
     public Object getObject() {
         if (type == Value.CLOB) {
             return getReader();
@@ -617,10 +631,12 @@ public class ValueLob extends Value {
         return getInputStream();
     }
 
+    @Override
     public Reader getReader() {
         return IOUtils.getBufferedReader(getInputStream());
     }
 
+    @Override
     public InputStream getInputStream() {
         if (fileName == null) {
             return new ByteArrayInputStream(small);
@@ -631,6 +647,7 @@ public class ValueLob extends Value {
                 Constants.IO_BUFFER_SIZE);
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         long p = getPrecision();
         if (p > Integer.MAX_VALUE || p <= 0) {
@@ -643,6 +660,7 @@ public class ValueLob extends Value {
         }
     }
 
+    @Override
     public String getSQL() {
         String s;
         if (type == Value.CLOB) {
@@ -654,6 +672,7 @@ public class ValueLob extends Value {
         return "X'" + s + "'";
     }
 
+    @Override
     public String getTraceSQL() {
         if (small != null && getPrecision() <= SysProperties.MAX_TRACE_DATA_LENGTH) {
             return getSQL();
@@ -673,14 +692,17 @@ public class ValueLob extends Value {
      *
      * @return the data
      */
+    @Override
     public byte[] getSmall() {
         return small;
     }
 
+    @Override
     public int getDisplaySize() {
         return MathUtils.convertLongToInt(getPrecision());
     }
 
+    @Override
     public boolean equals(Object other) {
         return other instanceof ValueLob && compareSecure((Value) other, null) == 0;
     }
@@ -750,7 +772,7 @@ public class ValueLob extends Value {
 
     private static synchronized void renameFile(DataHandler handler, String oldName, String newName) {
         synchronized (handler.getLobSyncObject()) {
-            FileUtils.moveTo(oldName, newName);
+            FileUtils.move(oldName, newName);
         }
     }
 
@@ -775,6 +797,7 @@ public class ValueLob extends Value {
         this.linked = linked;
     }
 
+    @Override
     public int getMemory() {
         if (small != null) {
             return small.length + 104;
@@ -788,6 +811,7 @@ public class ValueLob extends Value {
      *
      * @return the value
      */
+    @Override
     public ValueLob copyToTemp() {
         ValueLob lob;
         if (type == CLOB) {
@@ -798,6 +822,7 @@ public class ValueLob extends Value {
         return lob;
     }
 
+    @Override
     public Value convertPrecision(long precision, boolean force) {
         if (this.precision <= precision) {
             return this;

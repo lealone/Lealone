@@ -28,7 +28,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.hadoop.hbase.util.Bytes;
-import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
@@ -67,16 +66,6 @@ public class HBaseSecondaryIndex extends BaseIndex {
         Prepared p = session.prepare("DROP TABLE IF EXISTS " + indexName, true);
         p.setExecuteDirec(true);
         p.update();
-    }
-
-    private static void checkIndexColumnTypes(IndexColumn[] columns) {
-        for (IndexColumn c : columns) {
-            int type = c.column.getType();
-            if (type == Value.CLOB || type == Value.BLOB) {
-                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1,
-                        "Index on BLOB or CLOB column: " + c.column.getCreateSQL());
-            }
-        }
     }
 
     //组成索引key的列个数

@@ -19,12 +19,6 @@ import org.lealone.engine.Constants;
 import org.lealone.security.AES;
 import org.lealone.security.BlockCipher;
 import org.lealone.security.SHA256;
-import org.lealone.store.fs.FileBase;
-import org.lealone.store.fs.FileChannelInputStream;
-import org.lealone.store.fs.FileChannelOutputStream;
-import org.lealone.store.fs.FilePath;
-import org.lealone.store.fs.FilePathWrapper;
-import org.lealone.store.fs.FileUtils;
 import org.lealone.util.DataUtils;
 import org.lealone.util.MathUtils;
 
@@ -42,6 +36,7 @@ public class FilePathCrypt extends FilePathWrapper {
         FilePath.register(new FilePathCrypt());
     }
 
+    @Override
     public FileChannel open(String mode) throws IOException {
         String[] parsed = parse(name);
         FileChannel file = FileUtils.open(parsed[1], mode);
@@ -49,19 +44,23 @@ public class FilePathCrypt extends FilePathWrapper {
         return new FileCrypt(name, passwordBytes, file);
     }
 
+    @Override
     public String getScheme() {
         return SCHEME;
     }
 
+    @Override
     protected String getPrefix() {
         String[] parsed = parse(name);
         return getScheme() + ":" + parsed[0] + ":";
     }
 
+    @Override
     public FilePath unwrap(String fileName) {
         return FilePath.get(parse(fileName)[1]);
     }
 
+    @Override
     public long size() {
         long size = getBase().size() - FileCrypt.HEADER_LENGTH;
         size = Math.max(0, size);
@@ -71,12 +70,14 @@ public class FilePathCrypt extends FilePathWrapper {
         return size;
     }
 
+    @Override
     public OutputStream newOutputStream(boolean append) throws IOException {
         return new FileChannelOutputStream(open("rw"), append);
     }
 
+    @Override
     public InputStream newInputStream() throws IOException {
-        return new FileChannelInputStream(open("r"));
+        return new FileChannelInputStream(open("r"), true);
     }
 
     /**
@@ -195,19 +196,23 @@ public class FilePathCrypt extends FilePathWrapper {
             xts = new XTS(cipher);
         }
 
+        @Override
         protected void implCloseChannel() throws IOException {
             base.close();
         }
 
+        @Override
         public FileChannel position(long newPosition) throws IOException {
             this.pos = newPosition;
             return this;
         }
 
+        @Override
         public long position() throws IOException {
             return pos;
         }
 
+        @Override
         public int read(ByteBuffer dst) throws IOException {
             int len = read(dst, pos);
             if (len > 0) {
@@ -216,6 +221,7 @@ public class FilePathCrypt extends FilePathWrapper {
             return len;
         }
 
+        @Override
         public int read(ByteBuffer dst, long position) throws IOException {
             int len = dst.remaining();
             if (len == 0) {
@@ -266,6 +272,7 @@ public class FilePathCrypt extends FilePathWrapper {
             } while (dst.remaining() > 0);
         }
 
+        @Override
         public int write(ByteBuffer src, long position) throws IOException {
             int len = src.remaining();
             if ((position & BLOCK_SIZE_MASK) != 0 || (len & BLOCK_SIZE_MASK) != 0) {
@@ -324,6 +331,7 @@ public class FilePathCrypt extends FilePathWrapper {
             } while (src.remaining() > 0);
         }
 
+        @Override
         public int write(ByteBuffer src) throws IOException {
             int len = write(src, pos);
             if (len > 0) {
@@ -332,10 +340,12 @@ public class FilePathCrypt extends FilePathWrapper {
             return len;
         }
 
+        @Override
         public long size() throws IOException {
             return size;
         }
 
+        @Override
         public FileChannel truncate(long newSize) throws IOException {
             if (newSize > size) {
                 return this;
@@ -354,14 +364,17 @@ public class FilePathCrypt extends FilePathWrapper {
             return this;
         }
 
+        @Override
         public void force(boolean metaData) throws IOException {
             base.force(metaData);
         }
 
+        @Override
         public FileLock tryLock(long position, long size, boolean shared) throws IOException {
             return base.tryLock(position, size, shared);
         }
 
+        @Override
         public String toString() {
             return name;
         }

@@ -39,33 +39,39 @@ public class FilePathRec extends FilePathWrapper {
         FilePathRec.recorder = recorder;
     }
 
+    @Override
     public boolean createFile() {
         log(Recorder.CREATE_NEW_FILE, name);
         return super.createFile();
     }
 
+    @Override
     public FilePath createTempFile(String suffix, boolean deleteOnExit, boolean inTempDir) throws IOException {
         log(Recorder.CREATE_TEMP_FILE, unwrap(name) + ":" + suffix + ":" + deleteOnExit + ":" + inTempDir);
         return super.createTempFile(suffix, deleteOnExit, inTempDir);
     }
 
+    @Override
     public void delete() {
         log(Recorder.DELETE, name);
         super.delete();
     }
 
+    @Override
     public FileChannel open(String mode) throws IOException {
         return new FileRec(this, super.open(mode), name);
     }
 
+    @Override
     public OutputStream newOutputStream(boolean append) throws IOException {
         log(Recorder.OPEN_OUTPUT_STREAM, name);
         return super.newOutputStream(append);
     }
 
-    public void moveTo(FilePath newPath) {
+    @Override
+    public void moveTo(FilePath newPath, boolean atomicReplace) {
         log(Recorder.RENAME, unwrap(name) + ":" + unwrap(newPath.name));
-        super.moveTo(newPath);
+        super.moveTo(newPath, atomicReplace);
     }
 
     public boolean isTrace() {
@@ -105,6 +111,7 @@ public class FilePathRec extends FilePathWrapper {
      *
      * @return the prefix
      */
+    @Override
     public String getScheme() {
         return "rec";
     }
@@ -126,37 +133,45 @@ class FileRec extends FileBase {
         this.name = fileName;
     }
 
+    @Override
     public void implCloseChannel() throws IOException {
         channel.close();
     }
 
+    @Override
     public long position() throws IOException {
         return channel.position();
     }
 
+    @Override
     public long size() throws IOException {
         return channel.size();
     }
 
+    @Override
     public int read(ByteBuffer dst) throws IOException {
         return channel.read(dst);
     }
 
+    @Override
     public FileChannel position(long pos) throws IOException {
         channel.position(pos);
         return this;
     }
 
+    @Override
     public FileChannel truncate(long newLength) throws IOException {
         rec.log(Recorder.TRUNCATE, name, null, newLength);
         channel.truncate(newLength);
         return this;
     }
 
+    @Override
     public void force(boolean metaData) throws IOException {
         channel.force(metaData);
     }
 
+    @Override
     public int write(ByteBuffer src) throws IOException {
         byte[] buff = src.array();
         int len = src.remaining();
@@ -170,6 +185,7 @@ class FileRec extends FileBase {
         return result;
     }
 
+    @Override
     public synchronized FileLock tryLock(long position, long size, boolean shared) throws IOException {
         return channel.tryLock(position, size, shared);
     }

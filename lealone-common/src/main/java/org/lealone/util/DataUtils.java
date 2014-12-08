@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.util;
@@ -11,11 +10,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.lealone.engine.Constants;
 
@@ -23,6 +24,68 @@ import org.lealone.engine.Constants;
  * Utility methods
  */
 public class DataUtils {
+
+    /**
+     * An error occurred while reading from the file.
+     */
+    public static final int ERROR_READING_FAILED = 1;
+
+    /**
+     * An error occurred when trying to write to the file.
+     */
+    public static final int ERROR_WRITING_FAILED = 2;
+
+    /**
+     * An internal error occurred. This could be a bug, or a memory corruption
+     * (for example caused by out of memory).
+     */
+    public static final int ERROR_INTERNAL = 3;
+
+    /**
+     * The object is already closed.
+     */
+    public static final int ERROR_CLOSED = 4;
+
+    /**
+     * The file format is not supported.
+     */
+    public static final int ERROR_UNSUPPORTED_FORMAT = 5;
+
+    /**
+     * The file is corrupt or (for encrypted files) the encryption key is wrong.
+     */
+    public static final int ERROR_FILE_CORRUPT = 6;
+
+    /**
+     * The file is locked.
+     */
+    public static final int ERROR_FILE_LOCKED = 7;
+
+    /**
+     * An error occurred when serializing or de-serializing.
+     */
+    public static final int ERROR_SERIALIZATION = 8;
+
+    /**
+     * The application was trying to read data from a chunk that is no longer
+     * available.
+     */
+    public static final int ERROR_CHUNK_NOT_FOUND = 9;
+
+    /**
+     * The transaction store is corrupt.
+     */
+    public static final int ERROR_TRANSACTION_CORRUPT = 100;
+
+    /**
+     * An entry is still locked by another transaction.
+     */
+    public static final int ERROR_TRANSACTION_LOCKED = 101;
+
+    /**
+     * A very old transaction is still open.
+     */
+    public static final int ERROR_TRANSACTION_STILL_OPEN = 102;
 
     /**
      * The type for leaf page.
@@ -35,9 +98,14 @@ public class DataUtils {
     public static final int PAGE_TYPE_NODE = 1;
 
     /**
-     * The bit mask for compressed pages.
+     * The bit mask for compressed pages (compression level fast).
      */
     public static final int PAGE_COMPRESSED = 2;
+
+    /**
+     * The bit mask for compressed pages (compression level high).
+     */
+    public static final int PAGE_COMPRESSED_HIGH = 2 + 4;
 
     /**
      * The maximum length of a variable size int.
@@ -70,6 +138,21 @@ public class DataUtils {
      * The estimated number of bytes used per child entry.
      */
     public static final int PAGE_MEMORY_CHILD = 16;
+
+    /**
+     * The marker size of a very large page.
+     */
+    public static final int PAGE_LARGE = 2 * 1024 * 1024;
+
+    /**
+     * The UTF-8 character encoding format.
+     */
+    public static final Charset UTF8 = Charset.forName("UTF-8");
+
+    /**
+     * The ISO Latin character encoding format.
+     */
+    public static final Charset LATIN = Charset.forName("ISO-8859-1");
 
     /**
      * An 0-size byte array.
@@ -313,12 +396,13 @@ public class DataUtils {
     }
 
     /**
-     * Read from a file channel until the buffer is full, or end-of-file
-     * has been reached. The buffer is rewind after reading.
+     * Read from a file channel until the buffer is full.
+     * The buffer is rewind after reading.
      *
      * @param file the file channel
      * @param pos the absolute position within the file
      * @param dst the byte buffer
+     * @throws IllegalStateException if some data could not be read
      */
     public static void readFully(FileChannel file, long pos, ByteBuffer dst) {
         try {
@@ -331,7 +415,14 @@ public class DataUtils {
             } while (dst.remaining() > 0);
             dst.rewind();
         } catch (IOException e) {
-            throw newIllegalStateException("Reading from {0} failed; length {1} at {2}", file, dst.remaining(), pos, e);
+            long size;
+            try {
+                size = file.size();
+            } catch (IOException e2) {
+                size = -1;
+            }
+            throw newIllegalStateException(ERROR_READING_FAILED, "Reading from {0} failed; file length {1} "
+                    + "read length {2} at {3}", file, size, dst.remaining(), pos, e);
         }
     }
 
@@ -350,7 +441,8 @@ public class DataUtils {
                 off += len;
             } while (src.remaining() > 0);
         } catch (IOException e) {
-            throw newIllegalStateException("Writing to {0} failed; length {1} at {2}", file, src.remaining(), pos, e);
+            throw newIllegalStateException(ERROR_WRITING_FAILED, "Writing to {0} failed; length {1} at {2}", file,
+                    src.remaining(), pos, e);
         }
     }
 
@@ -399,7 +491,7 @@ public class DataUtils {
 
     /**
      * Get the maximum length for the given code.
-     * For the code 31, Integer.MAX_VALUE is returned.
+     * For the code 31, PAGE_LARGE is returned.
      *
      * @param pos the position
      * @return the maximum length
@@ -407,7 +499,7 @@ public class DataUtils {
     public static int getPageMaxLength(long pos) {
         int code = (int) ((pos >> 1) & 31);
         if (code == 31) {
-            return Integer.MAX_VALUE;
+            return PAGE_LARGE;
         }
         return (2 + (code & 1)) << ((code >> 1) + 4);
     }
@@ -493,9 +585,16 @@ public class DataUtils {
             buff.append(',');
         }
         buff.append(key).append(':');
-        String v = value.toString();
+        String v;
+        if (value instanceof Long) {
+            v = Long.toHexString((Long) value);
+        } else if (value instanceof Integer) {
+            v = Integer.toHexString((Integer) value);
+        } else {
+            v = value.toString();
+        }
         if (v.indexOf(',') < 0 && v.indexOf('\"') < 0) {
-            buff.append(value);
+            buff.append(v);
         } else {
             buff.append('\"');
             for (int i = 0, size = v.length(); i < size; i++) {
@@ -514,13 +613,16 @@ public class DataUtils {
      *
      * @param s the list
      * @return the map
+     * @throws IllegalStateException if parsing failed
      */
     public static HashMap<String, String> parseMap(String s) {
         HashMap<String, String> map = New.hashMap();
         for (int i = 0, size = s.length(); i < size;) {
             int startKey = i;
             i = s.indexOf(':', i);
-            checkArgument(i >= 0, "Not a map");
+            if (i < 0) {
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Not a map: {0}", s);
+            }
             String key = s.substring(startKey, i++);
             StringBuilder buff = new StringBuilder();
             while (i < size) {
@@ -531,6 +633,9 @@ public class DataUtils {
                     while (i < size) {
                         c = s.charAt(i++);
                         if (c == '\\') {
+                            if (i == size) {
+                                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Not a map: {0}", s);
+                            }
                             c = s.charAt(i++);
                         } else if (c == '\"') {
                             break;
@@ -550,18 +655,25 @@ public class DataUtils {
      * Calculate the Fletcher32 checksum.
      *
      * @param bytes the bytes
-     * @param length the message length (must be a multiple of 2)
+     * @param length the message length (if odd, 0 is appended)
      * @return the checksum
      */
     public static int getFletcher32(byte[] bytes, int length) {
         int s1 = 0xffff, s2 = 0xffff;
-        for (int i = 0; i < length;) {
-            for (int end = Math.min(i + 718, length); i < end;) {
+        int i = 0, evenLength = length / 2 * 2;
+        while (i < evenLength) {
+            // reduce after 360 words (each word is two bytes)
+            for (int end = Math.min(i + 720, evenLength); i < end;) {
                 int x = ((bytes[i++] & 0xff) << 8) | (bytes[i++] & 0xff);
                 s2 += s1 += x;
             }
             s1 = (s1 & 0xffff) + (s1 >>> 16);
             s2 = (s2 & 0xffff) + (s2 >>> 16);
+        }
+        if (i < length) {
+            // odd length: append 0
+            int x = (bytes[i] & 0xff) << 8;
+            s2 += s1 += x;
         }
         s1 = (s1 & 0xffff) + (s1 >>> 16);
         s2 = (s2 & 0xffff) + (s2 >>> 16);
@@ -590,7 +702,7 @@ public class DataUtils {
      * @return the exception
      */
     public static IllegalArgumentException newIllegalArgumentException(String message, Object... arguments) {
-        return initCause(new IllegalArgumentException(MessageFormat.format(message, arguments) + " " + getVersion()), arguments);
+        return initCause(new IllegalArgumentException(formatMessage(0, message, arguments)), arguments);
     }
 
     /**
@@ -600,27 +712,29 @@ public class DataUtils {
      * @return the exception
      */
     public static UnsupportedOperationException newUnsupportedOperationException(String message) {
-        return new UnsupportedOperationException(message + " " + getVersion());
+        return new UnsupportedOperationException(formatMessage(0, message));
     }
 
     /**
      * Create a new ConcurrentModificationException.
      *
+     * @param message the message
      * @return the exception
      */
-    public static ConcurrentModificationException newConcurrentModificationException() {
-        return new ConcurrentModificationException(getVersion());
+    public static ConcurrentModificationException newConcurrentModificationException(String message) {
+        return new ConcurrentModificationException(formatMessage(0, message));
     }
 
     /**
      * Create a new IllegalStateException.
      *
+     * @param errorCode the error code
      * @param message the message
      * @param arguments the arguments
      * @return the exception
      */
-    public static IllegalStateException newIllegalStateException(String message, Object... arguments) {
-        return initCause(new IllegalStateException(MessageFormat.format(message, arguments) + " " + getVersion()), arguments);
+    public static IllegalStateException newIllegalStateException(int errorCode, String message, Object... arguments) {
+        return initCause(new IllegalStateException(formatMessage(errorCode, message, arguments)), arguments);
     }
 
     private static <T extends Exception> T initCause(T e, Object... arguments) {
@@ -634,8 +748,41 @@ public class DataUtils {
         return e;
     }
 
-    private static String getVersion() {
-        return "[" + Constants.VERSION_MAJOR + "." + Constants.VERSION_MINOR + "." + Constants.BUILD_ID + "]";
+    private static String formatMessage(int errorCode, String message, Object... arguments) {
+        // convert arguments to strings, to avoid locale specific formatting
+        for (int i = 0; i < arguments.length; i++) {
+            Object a = arguments[i];
+            if (!(a instanceof Exception)) {
+                String s = a == null ? "null" : a.toString();
+                if (s.length() > 1000) {
+                    s = s.substring(0, 1000) + "...";
+                }
+                arguments[i] = s;
+            }
+        }
+        return MessageFormat.format(message, arguments) + " [" + Constants.VERSION_MAJOR + "." + Constants.VERSION_MINOR + "."
+                + Constants.BUILD_ID + "/" + errorCode + "]";
+    }
+
+    /**
+     * Get the error code from an exception message.
+     *
+     * @param m the message
+     * @return the error code, or 0 if none
+     */
+    public static int getErrorCode(String m) {
+        if (m != null && m.endsWith("]")) {
+            int dash = m.lastIndexOf('/');
+            if (dash >= 0) {
+                String s = m.substring(dash + 1, m.length() - 1);
+                try {
+                    return Integer.parseInt(s);
+                } catch (NumberFormatException e) {
+                    // no error code
+                }
+            }
+        }
+        return 0;
     }
 
     /**
@@ -649,7 +796,7 @@ public class DataUtils {
      *
      * @param len the number of bytes requested
      * @return the byte array
-     * @throws OutOfMemoryError
+     * @throws OutOfMemoryError if the allocation was too large
      */
     public static byte[] newBytes(int len) {
         if (len == 0) {
@@ -688,6 +835,123 @@ public class DataUtils {
         buff.flip();
         temp.put(buff);
         return temp;
+    }
+
+    /**
+     * Read a hex long value from a map.
+     *
+     * @param map the map
+     * @param key the key
+     * @param defaultValue if the value is null
+     * @return the parsed value
+     * @throws IllegalStateException if parsing fails
+     */
+    public static long readHexLong(Map<String, ? extends Object> map, String key, long defaultValue) {
+        Object v = map.get(key);
+        if (v == null) {
+            return defaultValue;
+        } else if (v instanceof Long) {
+            return (Long) v;
+        }
+        try {
+            return parseHexLong((String) v);
+        } catch (NumberFormatException e) {
+            throw newIllegalStateException(ERROR_FILE_CORRUPT, "Error parsing the value {0}", v, e);
+        }
+    }
+
+    /**
+     * Parse an unsigned, hex long.
+     *
+     * @param x the string
+     * @return the parsed value
+     * @throws IllegalStateException if parsing fails
+     */
+    public static long parseHexLong(String x) {
+        try {
+            if (x.length() == 16) {
+                // avoid problems with overflow
+                // in Java 8, this special case is not needed
+                return (Long.parseLong(x.substring(0, 8), 16) << 32) | Long.parseLong(x.substring(8, 16), 16);
+            }
+            return Long.parseLong(x, 16);
+        } catch (NumberFormatException e) {
+            throw newIllegalStateException(ERROR_FILE_CORRUPT, "Error parsing the value {0}", x, e);
+        }
+    }
+
+    /**
+     * Parse an unsigned, hex long.
+     *
+     * @param x the string
+     * @return the parsed value
+     * @throws IllegalStateException if parsing fails
+     */
+    public static int parseHexInt(String x) {
+        try {
+            // avoid problems with overflow
+            // in Java 8, we can use Integer.parseLong(x, 16);
+            return (int) Long.parseLong(x, 16);
+        } catch (NumberFormatException e) {
+            throw newIllegalStateException(ERROR_FILE_CORRUPT, "Error parsing the value {0}", x, e);
+        }
+    }
+
+    /**
+     * Read a hex int value from a map.
+     *
+     * @param map the map
+     * @param key the key
+     * @param defaultValue if the value is null
+     * @return the parsed value
+     * @throws IllegalStateException if parsing fails
+     */
+    public static int readHexInt(HashMap<String, ? extends Object> map, String key, int defaultValue) {
+        Object v = map.get(key);
+        if (v == null) {
+            return defaultValue;
+        } else if (v instanceof Integer) {
+            return (Integer) v;
+        }
+        try {
+            // support unsigned hex value
+            return (int) Long.parseLong((String) v, 16);
+        } catch (NumberFormatException e) {
+            throw newIllegalStateException(ERROR_FILE_CORRUPT, "Error parsing the value {0}", v, e);
+        }
+    }
+
+    /**
+     * An entry of a map.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     */
+    public static class MapEntry<K, V> implements Map.Entry<K, V> {
+
+        private final K key;
+        private final V value;
+
+        public MapEntry(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        @Override
+        public K getKey() {
+            return key;
+        }
+
+        @Override
+        public V getValue() {
+            return value;
+        }
+
+        @Override
+        public V setValue(V value) {
+            throw DataUtils.newUnsupportedOperationException("Updating the value is not supported");
+        }
+
     }
 
 }

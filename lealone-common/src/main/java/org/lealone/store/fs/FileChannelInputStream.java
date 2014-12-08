@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.store.fs;
@@ -17,39 +16,56 @@ import java.nio.channels.FileChannel;
 public class FileChannelInputStream extends InputStream {
 
     private final FileChannel channel;
-    private final byte[] buffer = { 0 };
+    private final boolean closeChannel;
+
+    private ByteBuffer buffer;
+    private long pos;
 
     /**
      * Create a new file object input stream from the file channel.
      *
      * @param channel the file channel
+     * @param closeChannel whether closing the stream should close the channel
      */
-    public FileChannelInputStream(FileChannel channel) {
+    public FileChannelInputStream(FileChannel channel, boolean closeChannel) {
         this.channel = channel;
+        this.closeChannel = closeChannel;
     }
 
+    @Override
     public int read() throws IOException {
-        if (channel.position() >= channel.size()) {
+        if (buffer == null) {
+            buffer = ByteBuffer.allocate(1);
+        }
+        buffer.rewind();
+        int len = channel.read(buffer, pos++);
+        if (len < 0) {
             return -1;
         }
-        FileUtils.readFully(channel, ByteBuffer.wrap(buffer));
-        return buffer[0] & 0xff;
+        return buffer.get(0) & 0xff;
     }
 
+    @Override
     public int read(byte[] b) throws IOException {
         return read(b, 0, b.length);
     }
 
+    @Override
     public int read(byte[] b, int off, int len) throws IOException {
-        if (channel.position() + len < channel.size()) {
-            FileUtils.readFully(channel, ByteBuffer.wrap(b, off, len));
-            return len;
+        ByteBuffer buff = ByteBuffer.wrap(b, off, len);
+        int read = channel.read(buff, pos);
+        if (read == -1) {
+            return -1;
         }
-        return super.read(b, off, len);
+        pos += read;
+        return read;
     }
 
+    @Override
     public void close() throws IOException {
-        channel.close();
+        if (closeChannel) {
+            channel.close();
+        }
     }
 
 }

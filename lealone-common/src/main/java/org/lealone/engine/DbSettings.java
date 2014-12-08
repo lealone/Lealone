@@ -329,6 +329,13 @@ public class DbSettings extends SettingsBase {
     }
 
     /**
+     * Database setting <code>COMPRESS</code>
+     * (default: false).<br />
+     * Compress data when storing.
+     */
+    public final boolean compressData = get("COMPRESS", false);
+
+    /**
      * INTERNAL.
      * Get the settings for the given properties (may be null).
      *
