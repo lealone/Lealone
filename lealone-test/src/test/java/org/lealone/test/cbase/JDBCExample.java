@@ -47,6 +47,8 @@ public class JDBCExample {
 
         stmt.executeUpdate("CREATE INDEX IF NOT EXISTS test_f2 ON test(f2)");
 
+        stmt.executeUpdate("DELETE FROM test");
+
         for (int i = 1; i <= 10; i++) {
             stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")");
         }

@@ -465,6 +465,21 @@ public class Session extends SessionWithState {
         checkCommitRollback();
         currentTransactionName = null;
         transactionStart = 0;
+        if (transaction != null) {
+            // increment the data mod count, so that other sessions
+            // see the changes
+            // TODO should not rely on locking
+            //            if (locks.size() > 0) {
+            //                for (int i = 0, size = locks.size(); i < size; i++) {
+            //                    Table t = locks.get(i);
+            //                    if (t instanceof MVTable) {
+            //                        ((MVTable) t).commit();
+            //                    }
+            //                }
+            //            }
+            transaction.commit();
+            transaction = null;
+        }
         if (containsUncommitted()) {
             // need to commit even if rollback is not possible
             // (create/drop table and so on)

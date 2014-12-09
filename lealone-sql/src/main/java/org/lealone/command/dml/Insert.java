@@ -160,7 +160,7 @@ public class Insert extends Prepared implements ResultTarget {
 
     protected Row createRow(Expression[] expr, int rowId) {
         Row row = table.getTemplateRow();
-        row.setTransactionId(session.getTransaction().getTransactionId());
+        //row.setTransactionId(session.getTransaction().getTransactionId());
         for (int i = 0, len = columns.length; i < len; i++) {
             Column c = columns[i];
             int index = c.getColumnId();

@@ -313,4 +313,9 @@ public class Transaction implements org.lealone.transaction.Transaction {
     public void addHalfSuccessfulTransaction(Long tid) {
         halfSuccessfulTransactions.add(tid);
     }
+
+    @Override
+    public void commit() {
+        //do nothing
+    }
 }

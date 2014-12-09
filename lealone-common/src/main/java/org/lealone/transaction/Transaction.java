@@ -29,4 +29,6 @@ public interface Transaction {
     public void addLocalTransactionNames(String localTransactionNames);
 
     public String getLocalTransactionNames();
+
+    public void commit();
 }
