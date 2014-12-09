@@ -15,8 +15,8 @@ import java.util.Random;
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
-import org.lealone.command.FrontendCommand;
 import org.lealone.command.FrontendBatchCommand;
+import org.lealone.command.FrontendCommand;
 import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;
 import org.lealone.message.Trace;
@@ -91,7 +91,6 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     private ArrayList<Transfer> transferList = New.arrayList();
     private int nextId;
     private boolean autoCommit = true;
-    private CommandInterface autoCommitFalse, autoCommitTrue;
     private ConnectionInfo connectionInfo;
     private String databaseName;
     private String cipher;
@@ -116,8 +115,8 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         Transfer trans = new Transfer(this, socket);
         trans.setSSL(ci.isSSL());
         trans.init();
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_6);
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_12);
+        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1);
+        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1);
         trans.writeString(db);
         trans.writeString(ci.getURL());
         trans.writeString(ci.getUserName());
@@ -145,9 +144,6 @@ public class FrontendSession extends SessionWithState implements DataHandler {
 
     @Override
     public int getUndoLogPos() {
-        if (clientVersion < Constants.TCP_PROTOCOL_VERSION_10) {
-            return 1;
-        }
         for (int i = 0, count = 0; i < transferList.size(); i++) {
             Transfer transfer = transferList.get(i);
             try {
@@ -231,28 +227,14 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     }
 
     private void setAutoCommitSend(boolean autoCommit) {
-        if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_8) {
-            for (int i = 0, count = 0; i < transferList.size(); i++) {
-                Transfer transfer = transferList.get(i);
-                try {
-                    traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-                    transfer.writeInt(FrontendSession.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
-                    done(transfer);
-                } catch (IOException e) {
-                    removeServer(e, i--, ++count);
-                }
-            }
-        } else {
-            if (autoCommit) {
-                if (autoCommitTrue == null) {
-                    autoCommitTrue = prepareCommand("SET AUTOCOMMIT TRUE", Integer.MAX_VALUE);
-                }
-                autoCommitTrue.executeUpdate();
-            } else {
-                if (autoCommitFalse == null) {
-                    autoCommitFalse = prepareCommand("SET AUTOCOMMIT FALSE", Integer.MAX_VALUE);
-                }
-                autoCommitFalse.executeUpdate();
+        for (int i = 0, count = 0; i < transferList.size(); i++) {
+            Transfer transfer = transferList.get(i);
+            try {
+                traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
+                transfer.writeInt(FrontendSession.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
+                done(transfer);
+            } catch (IOException e) {
+                removeServer(e, i--, ++count);
             }
         }
     }
@@ -762,9 +744,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
                 traceOperation("LOB_READ", (int) lobId);
                 transfer.writeInt(FrontendSession.LOB_READ);
                 transfer.writeLong(lobId);
-                if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_12) {
-                    transfer.writeBytes(hmac);
-                }
+                transfer.writeBytes(hmac);
                 transfer.writeLong(offset);
                 transfer.writeInt(length);
                 done(transfer);

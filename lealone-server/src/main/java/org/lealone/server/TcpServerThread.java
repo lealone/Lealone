@@ -22,8 +22,8 @@ import org.lealone.command.BackendBatchCommand;
 import org.lealone.command.Command;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Constants;
-import org.lealone.engine.Session;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
@@ -38,7 +38,6 @@ import org.lealone.util.SmallMap;
 import org.lealone.util.StringUtils;
 import org.lealone.value.Transfer;
 import org.lealone.value.Value;
-import org.lealone.value.ValueLobDb;
 
 /**
  * One server thread is opened per client connection.
@@ -82,16 +81,16 @@ public class TcpServerThread implements Runnable {
                     throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
                 }
                 int minClientVersion = transfer.readInt();
-                if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_6) {
+                if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_1) {
                     throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + clientVersion, ""
-                            + Constants.TCP_PROTOCOL_VERSION_6);
-                } else if (minClientVersion > Constants.TCP_PROTOCOL_VERSION_12) {
+                            + Constants.TCP_PROTOCOL_VERSION_1);
+                } else if (minClientVersion > Constants.TCP_PROTOCOL_VERSION_1) {
                     throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + clientVersion, ""
-                            + Constants.TCP_PROTOCOL_VERSION_12);
+                            + Constants.TCP_PROTOCOL_VERSION_1);
                 }
                 int maxClientVersion = transfer.readInt();
-                if (maxClientVersion >= Constants.TCP_PROTOCOL_VERSION_12) {
-                    clientVersion = Constants.TCP_PROTOCOL_VERSION_12;
+                if (maxClientVersion >= Constants.TCP_PROTOCOL_VERSION_1) {
+                    clientVersion = Constants.TCP_PROTOCOL_VERSION_1;
                 } else {
                     clientVersion = minClientVersion;
                 }
@@ -529,26 +528,13 @@ public class TcpServerThread implements Runnable {
         }
         case FrontendSession.LOB_READ: {
             long lobId = transfer.readLong();
-            byte[] hmac;
             CachedInputStream in;
-            if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_11) {
-                if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_12) {
-                    hmac = transfer.readBytes();
-                    transfer.verifyLobMac(hmac, lobId);
-                } else {
-                    hmac = null;
-                }
-                in = lobs.get(lobId);
-                if (in == null) {
-                    in = new CachedInputStream(null);
-                    lobs.put(lobId, in);
-                }
-            } else {
-                hmac = null;
-                in = lobs.get(lobId);
-                if (in == null) {
-                    throw DbException.get(ErrorCode.OBJECT_CLOSED);
-                }
+            byte[] hmac = transfer.readBytes();
+            transfer.verifyLobMac(hmac, lobId);
+            in = lobs.get(lobId);
+            if (in == null) {
+                in = new CachedInputStream(null);
+                lobs.put(lobId, in);
             }
             long offset = transfer.readLong();
             if (in.getPos() != offset) {
@@ -591,11 +577,7 @@ public class TcpServerThread implements Runnable {
                     transfer.writeBoolean(true);
                     Value[] v = result.currentRow();
                     for (int j = 0; j < visibleColumnCount; j++) {
-                        if (clientVersion >= Constants.TCP_PROTOCOL_VERSION_12) {
-                            transfer.writeValue(v[j]);
-                        } else {
-                            writeValue(v[j]);
-                        }
+                        transfer.writeValue(v[j]);
                     }
                 } else {
                     transfer.writeBoolean(false);
@@ -609,19 +591,6 @@ public class TcpServerThread implements Runnable {
             transfer.writeBoolean(false);
             throw DbException.convert(e);
         }
-    }
-
-    private void writeValue(Value v) throws IOException {
-        if (v.getType() == Value.CLOB || v.getType() == Value.BLOB) {
-            if (v instanceof ValueLobDb) {
-                ValueLobDb lob = (ValueLobDb) v;
-                if (lob.isStored()) {
-                    long id = lob.getLobId();
-                    lobs.put(id, new CachedInputStream(null));
-                }
-            }
-        }
-        transfer.writeValue(v);
     }
 
     void setThread(Thread thread) {

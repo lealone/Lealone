@@ -15,15 +15,11 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Time;
-import java.sql.Timestamp;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.engine.Constants;
 import org.lealone.engine.SessionInterface;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
@@ -32,7 +28,6 @@ import org.lealone.security.SHA256;
 import org.lealone.store.Data;
 import org.lealone.store.DataReader;
 import org.lealone.util.DataUtils;
-import org.lealone.util.DateTimeUtils;
 import org.lealone.util.IOUtils;
 import org.lealone.util.MathUtils;
 import org.lealone.util.NetUtils;
@@ -55,7 +50,6 @@ public class Transfer {
     private DataOutputStream out;
 
     private boolean ssl;
-    private int version;
     private byte[] lobMacSalt;
 
     /**
@@ -354,37 +348,15 @@ public class Transfer {
             writeByte(v.getByte());
             break;
         case Value.TIME:
-            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
-                writeLong(((ValueTime) v).getNanos());
-            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
-                writeLong(DateTimeUtils.getTimeLocalWithoutDst(v.getTime()));
-            } else {
-                writeLong(v.getTime().getTime());
-            }
+            writeLong(((ValueTime) v).getNanos());
             break;
         case Value.DATE:
-            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
-                writeLong(((ValueDate) v).getDateValue());
-            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
-                writeLong(DateTimeUtils.getTimeLocalWithoutDst(v.getDate()));
-            } else {
-                writeLong(v.getDate().getTime());
-            }
+            writeLong(((ValueDate) v).getDateValue());
             break;
         case Value.TIMESTAMP: {
-            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
-                ValueTimestamp ts = (ValueTimestamp) v;
-                writeLong(ts.getDateValue());
-                writeLong(ts.getNanos());
-            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
-                Timestamp ts = v.getTimestamp();
-                writeLong(DateTimeUtils.getTimeLocalWithoutDst(ts));
-                writeInt(ts.getNanos());
-            } else {
-                Timestamp ts = v.getTimestamp();
-                writeLong(ts.getTime());
-                writeInt(ts.getNanos());
-            }
+            ValueTimestamp ts = (ValueTimestamp) v;
+            writeLong(ts.getDateValue());
+            writeLong(ts.getNanos());
             break;
         }
         case Value.DECIMAL:
@@ -411,19 +383,15 @@ public class Transfer {
             writeString(v.getString());
             break;
         case Value.BLOB: {
-            if (version >= Constants.TCP_PROTOCOL_VERSION_11) {
-                if (v instanceof ValueLobDb) {
-                    ValueLobDb lob = (ValueLobDb) v;
-                    if (lob.isStored()) {
-                        writeLong(-1);
-                        writeInt(lob.getTableId());
-                        writeLong(lob.getLobId());
-                        if (version >= Constants.TCP_PROTOCOL_VERSION_12) {
-                            writeBytes(calculateLobMac(lob.getLobId()));
-                        }
-                        writeLong(lob.getPrecision());
-                        break;
-                    }
+            if (v instanceof ValueLobDb) {
+                ValueLobDb lob = (ValueLobDb) v;
+                if (lob.isStored()) {
+                    writeLong(-1);
+                    writeInt(lob.getTableId());
+                    writeLong(lob.getLobId());
+                    writeBytes(calculateLobMac(lob.getLobId()));
+                    writeLong(lob.getPrecision());
+                    break;
                 }
             }
             long length = v.getPrecision();
@@ -439,19 +407,15 @@ public class Transfer {
             break;
         }
         case Value.CLOB: {
-            if (version >= Constants.TCP_PROTOCOL_VERSION_11) {
-                if (v instanceof ValueLobDb) {
-                    ValueLobDb lob = (ValueLobDb) v;
-                    if (lob.isStored()) {
-                        writeLong(-1);
-                        writeInt(lob.getTableId());
-                        writeLong(lob.getLobId());
-                        if (version >= Constants.TCP_PROTOCOL_VERSION_12) {
-                            writeBytes(calculateLobMac(lob.getLobId()));
-                        }
-                        writeLong(lob.getPrecision());
-                        break;
-                    }
+            if (v instanceof ValueLobDb) {
+                ValueLobDb lob = (ValueLobDb) v;
+                if (lob.isStored()) {
+                    writeLong(-1);
+                    writeInt(lob.getTableId());
+                    writeLong(lob.getLobId());
+                    writeBytes(calculateLobMac(lob.getLobId()));
+                    writeLong(lob.getPrecision());
+                    break;
                 }
             }
             long length = v.getPrecision();
@@ -534,30 +498,11 @@ public class Transfer {
         case Value.BYTE:
             return ValueByte.get(readByte());
         case Value.DATE:
-            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
-                return ValueDate.fromDateValue(readLong());
-            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
-                return ValueDate.get(new Date(DateTimeUtils.getTimeUTCWithoutDst(readLong())));
-            }
-            return ValueDate.get(new Date(readLong()));
+            return ValueDate.fromDateValue(readLong());
         case Value.TIME:
-            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
-                return ValueTime.fromNanos(readLong());
-            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
-                return ValueTime.get(new Time(DateTimeUtils.getTimeUTCWithoutDst(readLong())));
-            }
-            return ValueTime.get(new Time(readLong()));
+            return ValueTime.fromNanos(readLong());
         case Value.TIMESTAMP: {
-            if (version >= Constants.TCP_PROTOCOL_VERSION_9) {
-                return ValueTimestamp.fromDateValueAndNanos(readLong(), readLong());
-            } else if (version >= Constants.TCP_PROTOCOL_VERSION_7) {
-                Timestamp ts = new Timestamp(DateTimeUtils.getTimeUTCWithoutDst(readLong()));
-                ts.setNanos(readInt());
-                return ValueTimestamp.get(ts);
-            }
-            Timestamp ts = new Timestamp(readLong());
-            ts.setNanos(readInt());
-            return ValueTimestamp.get(ts);
+            return ValueTimestamp.fromDateValueAndNanos(readLong(), readLong());
         }
         case Value.DECIMAL:
             return ValueDecimal.get(new BigDecimal(readString()));
@@ -579,67 +524,41 @@ public class Transfer {
             return ValueStringFixed.get(readString());
         case Value.BLOB: {
             long length = readLong();
-            if (version >= Constants.TCP_PROTOCOL_VERSION_11) {
-                if (length == -1) {
-                    int tableId = readInt();
-                    long id = readLong();
-                    byte[] hmac;
-                    if (version >= Constants.TCP_PROTOCOL_VERSION_12) {
-                        hmac = readBytes();
-                    } else {
-                        hmac = null;
-                    }
-                    long precision = readLong();
-                    return ValueLobDb.create(Value.BLOB, session.getDataHandler().getLobStorage(), tableId, id, hmac, precision);
-                }
-                int len = (int) length;
-                byte[] small = new byte[len];
-                IOUtils.readFully(in, small, 0, len);
-                int magic = readInt();
-                if (magic != LOB_MAGIC) {
-                    throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
-                }
-                return ValueLobDb.createSmallLob(Value.BLOB, small, length);
+            if (length == -1) {
+                int tableId = readInt();
+                long id = readLong();
+                byte[] hmac = readBytes();
+                long precision = readLong();
+                return ValueLobDb.create(Value.BLOB, session.getDataHandler().getLobStorage(), tableId, id, hmac, precision);
             }
-            Value v = session.getDataHandler().getLobStorage().createBlob(in, length);
+            int len = (int) length;
+            byte[] small = new byte[len];
+            IOUtils.readFully(in, small, 0, len);
             int magic = readInt();
             if (magic != LOB_MAGIC) {
                 throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
             }
-            return v;
+            return ValueLobDb.createSmallLob(Value.BLOB, small, length);
         }
         case Value.CLOB: {
             long length = readLong();
-            if (version >= Constants.TCP_PROTOCOL_VERSION_11) {
-                if (length == -1) {
-                    int tableId = readInt();
-                    long id = readLong();
-                    byte[] hmac;
-                    if (version >= Constants.TCP_PROTOCOL_VERSION_12) {
-                        hmac = readBytes();
-                    } else {
-                        hmac = null;
-                    }
-                    long precision = readLong();
-                    return ValueLobDb.create(Value.CLOB, session.getDataHandler().getLobStorage(), tableId, id, hmac, precision);
-                }
-                DataReader reader = new DataReader(in);
-                int len = (int) length;
-                char[] buff = new char[len];
-                IOUtils.readFully(reader, buff, len);
-                int magic = readInt();
-                if (magic != LOB_MAGIC) {
-                    throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
-                }
-                byte[] small = new String(buff).getBytes("UTF-8");
-                return ValueLobDb.createSmallLob(Value.CLOB, small, length);
+            if (length == -1) {
+                int tableId = readInt();
+                long id = readLong();
+                byte[] hmac = readBytes();
+                long precision = readLong();
+                return ValueLobDb.create(Value.CLOB, session.getDataHandler().getLobStorage(), tableId, id, hmac, precision);
             }
-            Value v = session.getDataHandler().getLobStorage().createClob(new DataReader(in), length);
+            DataReader reader = new DataReader(in);
+            int len = (int) length;
+            char[] buff = new char[len];
+            IOUtils.readFully(reader, buff, len);
             int magic = readInt();
             if (magic != LOB_MAGIC) {
                 throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
             }
-            return v;
+            byte[] small = new String(buff).getBytes("UTF-8");
+            return ValueLobDb.createSmallLob(Value.CLOB, small, length);
         }
         case Value.ARRAY: {
             int len = readInt();
@@ -719,7 +638,6 @@ public class Transfer {
     }
 
     public void setVersion(int version) {
-        this.version = version;
     }
 
     public synchronized boolean isClosed() {

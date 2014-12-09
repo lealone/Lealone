@@ -54,39 +54,9 @@ public class Constants {
     public static final String BUILD_VENDOR_AND_VERSION = null;
 
     /**
-     * The TCP protocol version number 6.
-     */
-    public static final int TCP_PROTOCOL_VERSION_6 = 6;
-
-    /**
-     * The TCP protocol version number 7.
-     */
-    public static final int TCP_PROTOCOL_VERSION_7 = 7;
-
-    /**
-     * The TCP protocol version number 8.
-     */
-    public static final int TCP_PROTOCOL_VERSION_8 = 8;
-
-    /**
-     * The TCP protocol version number 9.
-     */
-    public static final int TCP_PROTOCOL_VERSION_9 = 9;
-
-    /**
-     * The TCP protocol version number 10.
-     */
-    public static final int TCP_PROTOCOL_VERSION_10 = 10;
-
-    /**
      * The TCP protocol version number 11.
      */
-    public static final int TCP_PROTOCOL_VERSION_11 = 11;
-
-    /**
-     * The TCP protocol version number 11.
-     */
-    public static final int TCP_PROTOCOL_VERSION_12 = 12;
+    public static final int TCP_PROTOCOL_VERSION_1 = 1;
 
     /**
      * The major version of this database.
