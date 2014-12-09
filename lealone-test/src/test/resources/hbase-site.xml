@@ -39,7 +39,7 @@
 
 	<property>
 		<name>lealone.master.tcp.port</name>
-		<value>9091</value>
+		<value>5211</value>
 		<description>
 			The tcp port the lealone master server should bind to.
 		</description>
@@ -47,7 +47,7 @@
 
 	<property>
 		<name>lealone.regionserver.tcp.port</name>
-		<value>9092</value>
+		<value>5210</value>
 		<description>
 			The tcp port the lealone region server should bind to.
 		</description>

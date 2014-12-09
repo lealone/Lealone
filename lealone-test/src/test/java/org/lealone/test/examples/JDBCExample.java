@@ -26,7 +26,7 @@ import java.sql.Statement;
 
 public class JDBCExample {
     public static void main(String[] args) throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:9092/hbasedb";
+        String url = "jdbc:lealone:tcp://localhost:5210/hbasedb";
         Connection conn = DriverManager.getConnection(url, "sa", "");
         Statement stmt = conn.createStatement();
 

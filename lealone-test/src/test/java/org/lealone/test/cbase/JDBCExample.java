@@ -26,7 +26,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class JDBCExample {
     static Connection getConnection() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:9092/mydb?default_table_engine=cbase";
+        String url = "jdbc:lealone:tcp://localhost:5210/mydb?default_table_engine=cbase";
         //url = "jdbc:lealone:embed:mydb?default_table_engine=cbase";
         Connection conn = DriverManager.getConnection(url, "sa", "");
         return conn;

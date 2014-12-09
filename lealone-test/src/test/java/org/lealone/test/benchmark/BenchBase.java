@@ -56,7 +56,7 @@ public class BenchBase {
     }
 
     public void init() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:9092/hbasedb";
+        String url = "jdbc:lealone:tcp://localhost:5210/hbasedb";
         conn = DriverManager.getConnection(url, "sa", "");
         stmt = conn.createStatement();
         stmt.executeUpdate("SET DB_CLOSE_DELAY -1"); //不马上关闭数据库

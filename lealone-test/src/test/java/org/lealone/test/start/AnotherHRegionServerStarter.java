@@ -40,7 +40,7 @@ public class AnotherHRegionServerStarter {
                 HConstants.REGION_SERVER_IMPL, HRegionServer.class);
         int hbaseRegionServerPort = 60020;
         int hbaseRegionServerInfoPort = 60030;
-        int lealoneRegionServerTcpPort = 9092;
+        int lealoneRegionServerTcpPort = 5210;
         int lealoneRegionServerPgPort = 5435;
 
         //        new Thread(new MyHRegionServerCommandLine(regionServerClass, conf, args, hbaseRegionServerPort,
@@ -48,7 +48,7 @@ public class AnotherHRegionServerStarter {
 
         hbaseRegionServerPort = 60021;
         hbaseRegionServerInfoPort = 60031;
-        lealoneRegionServerTcpPort = 9093;
+        lealoneRegionServerTcpPort = 5211;
         lealoneRegionServerPgPort = 5436;
 
         new Thread(new MyHRegionServerCommandLine(regionServerClass, conf, args, hbaseRegionServerPort,

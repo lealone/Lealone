@@ -36,7 +36,7 @@ public class TcpServerStarter {
         ArrayList<String> list = new ArrayList<String>();
 
         list.add("-tcpPort");
-        list.add("9092");
+        list.add("5210");
 
         //list.add("-pg");
         list.add("-tcp");

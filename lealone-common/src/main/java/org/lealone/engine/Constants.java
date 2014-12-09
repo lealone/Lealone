@@ -223,7 +223,7 @@ public class Constants {
      * The default port of the TCP server.
      * This port is also used in the documentation and in the Server javadoc.
      */
-    public static final int DEFAULT_TCP_PORT = 9092;
+    public static final int DEFAULT_TCP_PORT = 5210;
 
     /**
      * The default delay in milliseconds before the transaction log is written.
