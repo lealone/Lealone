@@ -55,7 +55,7 @@ public class TcpServerThread implements Runnable {
     private Session session;
     private boolean stop;
     private Thread thread;
-    private Command commit;
+    //private Command commit;
     private int clientVersion;
     private String sessionId;
 
@@ -304,15 +304,15 @@ public class TcpServerThread implements Runnable {
             close();
             break;
         }
-        case FrontendSession.COMMAND_COMMIT: {
-            if (commit == null) {
-                commit = session.prepareLocal("COMMIT");
-            }
-            int old = session.getModificationId();
-            commit.executeUpdate();
-            transfer.writeInt(getState(old)).flush();
-            break;
-        }
+        //        case FrontendSession.COMMAND_COMMIT: {
+        //            if (commit == null) {
+        //                commit = session.prepareLocal("COMMIT");
+        //            }
+        //            int old = session.getModificationId();
+        //            commit.executeUpdate();
+        //            transfer.writeInt(getState(old)).flush();
+        //            break;
+        //        }
         case FrontendSession.COMMAND_GET_META_DATA: {
             int id = transfer.readInt();
             int objectId = transfer.readInt();

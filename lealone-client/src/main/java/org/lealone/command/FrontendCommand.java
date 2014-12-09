@@ -30,7 +30,7 @@ import org.lealone.value.Value;
  */
 public class FrontendCommand implements CommandInterface {
 
-    private final ArrayList<Transfer> transferList;
+    private final Transfer transfer;
     private final ArrayList<ParameterInterface> parameters;
     private final Trace trace;
     private final String sql;
@@ -41,8 +41,8 @@ public class FrontendCommand implements CommandInterface {
     private boolean readonly;
     private final int created;
 
-    public FrontendCommand(FrontendSession session, ArrayList<Transfer> transferList, String sql, int fetchSize) {
-        this.transferList = transferList;
+    public FrontendCommand(FrontendSession session, Transfer transfer, String sql, int fetchSize) {
+        this.transfer = transfer;
         trace = session.getTrace();
         this.sql = sql;
         parameters = New.arrayList();
@@ -56,31 +56,28 @@ public class FrontendCommand implements CommandInterface {
 
     private void prepare(FrontendSession s, boolean createParams) {
         id = s.getNextId();
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            try {
-                Transfer transfer = transferList.get(i);
-                if (createParams) {
-                    s.traceOperation("SESSION_PREPARE_READ_PARAMS", id);
-                    transfer.writeInt(FrontendSession.SESSION_PREPARE_READ_PARAMS).writeInt(id).writeString(sql);
-                } else {
-                    s.traceOperation("SESSION_PREPARE", id);
-                    transfer.writeInt(FrontendSession.SESSION_PREPARE).writeInt(id).writeString(sql);
-                }
-                s.done(transfer);
-                isQuery = transfer.readBoolean();
-                readonly = transfer.readBoolean();
-                int paramCount = transfer.readInt();
-                if (createParams) {
-                    parameters.clear();
-                    for (int j = 0; j < paramCount; j++) {
-                        Parameter p = new Parameter(j);
-                        p.readMetaData(transfer);
-                        parameters.add(p);
-                    }
-                }
-            } catch (IOException e) {
-                s.removeServer(e, i--, ++count);
+        try {
+            if (createParams) {
+                s.traceOperation("SESSION_PREPARE_READ_PARAMS", id);
+                transfer.writeInt(FrontendSession.SESSION_PREPARE_READ_PARAMS).writeInt(id).writeString(sql);
+            } else {
+                s.traceOperation("SESSION_PREPARE", id);
+                transfer.writeInt(FrontendSession.SESSION_PREPARE).writeInt(id).writeString(sql);
             }
+            s.done(transfer);
+            isQuery = transfer.readBoolean();
+            readonly = transfer.readBoolean();
+            int paramCount = transfer.readInt();
+            if (createParams) {
+                parameters.clear();
+                for (int j = 0; j < paramCount; j++) {
+                    Parameter p = new Parameter(j);
+                    p.readMetaData(transfer);
+                    parameters.add(p);
+                }
+            }
+        } catch (IOException e) {
+            s.handleException(e);
         }
     }
 
@@ -114,22 +111,17 @@ public class FrontendCommand implements CommandInterface {
             }
             int objectId = session.getNextId();
             ResultRemote result = null;
-            for (int i = 0, count = 0; i < transferList.size(); i++) {
-                prepareIfRequired();
-                Transfer transfer = transferList.get(i);
-                try {
-                    session.traceOperation("COMMAND_GET_META_DATA", id);
-                    transfer.writeInt(FrontendSession.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
-                    session.done(transfer);
-                    int columnCount = transfer.readInt();
-                    int rowCount = transfer.readInt();
-                    result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, Integer.MAX_VALUE);
-                    break;
-                } catch (IOException e) {
-                    session.removeServer(e, i--, ++count);
-                }
+            prepareIfRequired();
+            try {
+                session.traceOperation("COMMAND_GET_META_DATA", id);
+                transfer.writeInt(FrontendSession.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
+                session.done(transfer);
+                int columnCount = transfer.readInt();
+                int rowCount = transfer.readInt();
+                result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, Integer.MAX_VALUE);
+            } catch (IOException e) {
+                session.handleException(e);
             }
-            session.autoCommitIfCluster();
             return result;
         }
     }
@@ -140,51 +132,42 @@ public class FrontendCommand implements CommandInterface {
         synchronized (session) {
             int objectId = session.getNextId();
             ResultRemote result = null;
-            for (int i = 0, count = 0; i < transferList.size(); i++) {
-                prepareIfRequired();
-                Transfer transfer = transferList.get(i);
-                try {
-                    boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
-                    if (isDistributedQuery) {
-                        session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
-                        transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
-                                .writeInt(maxRows);
-                    } else {
-                        session.traceOperation("COMMAND_EXECUTE_QUERY", id);
-                        transfer.writeInt(FrontendSession.COMMAND_EXECUTE_QUERY) //
-                                .writeInt(id).writeInt(objectId).writeInt(maxRows);
-                    }
-                    int fetch;
-                    if (session.isClustered() || scrollable) {
-                        fetch = Integer.MAX_VALUE;
-                    } else {
-                        fetch = fetchSize;
-                    }
-                    transfer.writeInt(fetch);
-                    sendParameters(transfer);
-                    session.done(transfer);
-
-                    if (isDistributedQuery)
-                        session.getTransaction().addLocalTransactionNames(transfer.readString());
-
-                    int columnCount = transfer.readInt();
-                    int rowCount = transfer.readInt();
-                    if (result != null) {
-                        result.close();
-                        result = null;
-                    }
-                    if (rowCount < 0)
-                        result = new ResultRemoteCursor(session, transfer, objectId, columnCount, fetch);
-                    else
-                        result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, fetch);
-                    if (readonly) {
-                        break;
-                    }
-                } catch (IOException e) {
-                    session.removeServer(e, i--, ++count);
+            prepareIfRequired();
+            try {
+                boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+                if (isDistributedQuery) {
+                    session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
+                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
+                            .writeInt(maxRows);
+                } else {
+                    session.traceOperation("COMMAND_EXECUTE_QUERY", id);
+                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_QUERY) //
+                            .writeInt(id).writeInt(objectId).writeInt(maxRows);
                 }
+                int fetch;
+                if (scrollable) {
+                    fetch = Integer.MAX_VALUE;
+                } else {
+                    fetch = fetchSize;
+                }
+                transfer.writeInt(fetch);
+                sendParameters(transfer);
+                session.done(transfer);
+
+                if (isDistributedQuery)
+                    session.getTransaction().addLocalTransactionNames(transfer.readString());
+
+                int columnCount = transfer.readInt();
+                int rowCount = transfer.readInt();
+
+                if (rowCount < 0)
+                    result = new ResultRemoteCursor(session, transfer, objectId, columnCount, fetch);
+                else
+                    result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, fetch);
+
+            } catch (IOException e) {
+                session.handleException(e);
             }
-            session.autoCommitIfCluster();
             session.readSessionState();
             return result;
         }
@@ -196,32 +179,27 @@ public class FrontendCommand implements CommandInterface {
         synchronized (session) {
             int updateCount = 0;
             boolean autoCommit = false;
-            for (int i = 0, count = 0; i < transferList.size(); i++) {
-                prepareIfRequired();
-                Transfer transfer = transferList.get(i);
-                try {
-                    boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
-                    if (isDistributedUpdate) {
-                        session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
-                        transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
-                    } else {
-                        session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
-                        transfer.writeInt(FrontendSession.COMMAND_EXECUTE_UPDATE).writeInt(id);
-                    }
-                    sendParameters(transfer);
-                    session.done(transfer);
-
-                    if (isDistributedUpdate)
-                        session.getTransaction().addLocalTransactionNames(transfer.readString());
-
-                    updateCount = transfer.readInt();
-                    autoCommit = transfer.readBoolean();
-                } catch (IOException e) {
-                    session.removeServer(e, i--, ++count);
+            prepareIfRequired();
+            try {
+                boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+                if (isDistributedUpdate) {
+                    session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
+                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
+                } else {
+                    session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
+                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_UPDATE).writeInt(id);
                 }
+                sendParameters(transfer);
+                session.done(transfer);
+
+                if (isDistributedUpdate)
+                    session.getTransaction().addLocalTransactionNames(transfer.readString());
+
+                updateCount = transfer.readInt();
+                autoCommit = transfer.readBoolean();
+            } catch (IOException e) {
+                session.handleException(e);
             }
-            session.setAutoCommitFromServer(autoCommit);
-            session.autoCommitIfCluster();
             session.readSessionState();
             return updateCount;
         }
@@ -248,12 +226,10 @@ public class FrontendCommand implements CommandInterface {
         }
         synchronized (session) {
             session.traceOperation("COMMAND_CLOSE", id);
-            for (Transfer transfer : transferList) {
-                try {
-                    transfer.writeInt(FrontendSession.COMMAND_CLOSE).writeInt(id);
-                } catch (IOException e) {
-                    trace.error(e, "close");
-                }
+            try {
+                transfer.writeInt(FrontendSession.COMMAND_CLOSE).writeInt(id);
+            } catch (IOException e) {
+                trace.error(e, "close");
             }
         }
         session = null;

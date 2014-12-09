@@ -28,7 +28,6 @@ import org.lealone.dbobject.User;
 import org.lealone.message.DbException;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
-import org.lealone.util.StringUtils;
 
 /**
  * The engine contains a map of all open databases.
@@ -201,7 +200,6 @@ public class DatabaseEngine implements SessionFactory {
                 database.removeSession(null);
                 throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
             }
-            checkClustering(ci, database);
             Session session = database.createSession(user);
             registerMBean(ci, database, session);
             return session;
@@ -212,26 +210,6 @@ public class DatabaseEngine implements SessionFactory {
     }
 
     protected void unregisterMBean(String dbName) {
-    }
-
-    private static void checkClustering(ConnectionInfo ci, Database database) {
-        String clusterSession = ci.getProperty(SetTypes.CLUSTER, null);
-        if (Constants.CLUSTERING_DISABLED.equals(clusterSession)) {
-            // in this case, no checking is made
-            // (so that a connection can be made to disable/change clustering)
-            return;
-        }
-        String clusterDb = database.getCluster();
-        if (!Constants.CLUSTERING_DISABLED.equals(clusterDb)) {
-            if (!Constants.CLUSTERING_ENABLED.equals(clusterSession)) {
-                if (!StringUtils.equals(clusterSession, clusterDb)) {
-                    if (clusterDb.equals(Constants.CLUSTERING_DISABLED)) {
-                        throw DbException.get(ErrorCode.CLUSTER_ERROR_DATABASE_RUNS_ALONE);
-                    }
-                    throw DbException.get(ErrorCode.CLUSTER_ERROR_DATABASE_RUNS_CLUSTERED_1, clusterDb);
-                }
-            }
-        }
     }
 
     /**

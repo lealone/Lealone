@@ -131,7 +131,6 @@ public class Database implements DataHandler {
     private long modificationDataId;
     private long modificationMetaId;
     private CompareMode compareMode;
-    private String cluster = Constants.CLUSTERING_DISABLED;
     protected boolean readOnly;
     protected int writeDelay = Constants.DEFAULT_WRITE_DELAY;
     protected DatabaseEventListener eventListener;
@@ -1196,10 +1195,6 @@ public class Database implements DataHandler {
         return cacheType;
     }
 
-    public String getCluster() {
-        return cluster;
-    }
-
     public CompareMode getCompareMode() {
         return compareMode;
     }
@@ -1526,10 +1521,6 @@ public class Database implements DataHandler {
 
     public void setCompareMode(CompareMode compareMode) {
         this.compareMode = compareMode;
-    }
-
-    public void setCluster(String cluster) {
-        this.cluster = cluster;
     }
 
     @Override

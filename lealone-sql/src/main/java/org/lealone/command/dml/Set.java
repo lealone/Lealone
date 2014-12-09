@@ -16,7 +16,6 @@ import org.lealone.compress.Compressor;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.Setting;
 import org.lealone.dbobject.table.Table;
-import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Mode;
 import org.lealone.engine.Session;
@@ -25,7 +24,6 @@ import org.lealone.expression.Expression;
 import org.lealone.expression.ValueExpression;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
-import org.lealone.util.StringUtils;
 import org.lealone.value.CompareMode;
 import org.lealone.value.ValueInt;
 
@@ -49,6 +47,7 @@ public class Set extends Prepared {
         this.stringValue = v;
     }
 
+    @Override
     public boolean isTransactional() {
         switch (type) {
         case SetTypes.CLUSTER:
@@ -66,6 +65,7 @@ public class Set extends Prepared {
         return false;
     }
 
+    @Override
     public int update() {
         Database database = session.getDatabase();
         String name = SetTypes.getTypeName(type);
@@ -88,25 +88,6 @@ public class Set extends Prepared {
             database.setCacheSize(getIntValue());
             addOrUpdateSetting(name, null, getIntValue());
             break;
-        case SetTypes.CLUSTER: {
-            if (Constants.CLUSTERING_ENABLED.equals(stringValue)) {
-                // this value is used when connecting
-                // ignore, as the cluster setting is checked later
-                break;
-            }
-            String value = StringUtils.quoteStringSQL(stringValue);
-            if (!value.equals(database.getCluster()) && !value.equals(Constants.CLUSTERING_DISABLED)) {
-                // anybody can disable the cluster
-                // (if he can't access a cluster node)
-                session.getUser().checkAdmin();
-            }
-            database.setCluster(value);
-            // use the system session so that the current transaction
-            // (if any) is not committed
-            addOrUpdateSetting(database.getSystemSession(), name, value, 0);
-            database.getSystemSession().commit(true);
-            break;
-        }
         case SetTypes.COLLATION: {
             session.getUser().checkAdmin();
             Table table = database.getFirstUserTable();
@@ -464,10 +445,12 @@ public class Set extends Prepared {
         }
     }
 
+    @Override
     public boolean needRecompile() {
         return false;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         return null;
     }
@@ -476,6 +459,7 @@ public class Set extends Prepared {
         this.stringValueList = list;
     }
 
+    @Override
     public int getType() {
         return CommandInterface.SET;
     }

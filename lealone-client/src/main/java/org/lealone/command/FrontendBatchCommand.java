@@ -31,22 +31,22 @@ import org.lealone.value.Value;
 
 public class FrontendBatchCommand implements CommandInterface {
     private FrontendSession session;
-    private ArrayList<Transfer> transferList;
+    private Transfer transfer;
     private ArrayList<String> batchCommands; //对应JdbcStatement.executeBatch()
     private ArrayList<Value[]> batchParameters; //对应JdbcPreparedStatement.executeBatch()
     private int id = -1;
     private int[] result;
 
-    public FrontendBatchCommand(FrontendSession session, ArrayList<Transfer> transferList, ArrayList<String> batchCommands) {
+    public FrontendBatchCommand(FrontendSession session, Transfer transfer, ArrayList<String> batchCommands) {
         this.session = session;
-        this.transferList = transferList;
+        this.transfer = transfer;
         this.batchCommands = batchCommands;
     }
 
-    public FrontendBatchCommand(FrontendSession session, ArrayList<Transfer> transferList, CommandInterface preparedCommand,
+    public FrontendBatchCommand(FrontendSession session, Transfer transfer, CommandInterface preparedCommand,
             ArrayList<Value[]> batchParameters) {
         this.session = session;
-        this.transferList = transferList;
+        this.transfer = transfer;
         this.batchParameters = batchParameters;
 
         if (preparedCommand instanceof FrontendCommand)
@@ -78,43 +78,40 @@ public class FrontendBatchCommand implements CommandInterface {
         if (id == -1)
             id = session.getNextId();
 
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            try {
-                Transfer transfer = transferList.get(i);
-                if (batchCommands != null) {
-                    session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT", id);
-                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT);
-                    int size = batchCommands.size();
-                    result = new int[size];
-                    transfer.writeInt(size);
-                    for (int j = 0; j < size; j++)
-                        transfer.writeString(batchCommands.get(j));
-                    session.done(transfer);
+        try {
+            if (batchCommands != null) {
+                session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT", id);
+                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT);
+                int size = batchCommands.size();
+                result = new int[size];
+                transfer.writeInt(size);
+                for (int j = 0; j < size; j++)
+                    transfer.writeString(batchCommands.get(j));
+                session.done(transfer);
 
-                    for (int j = 0; j < size; j++)
-                        result[j] = transfer.readInt();
-                } else {
-                    session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT", id);
-                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT).writeInt(id);
-                    int size = batchParameters.size();
-                    result = new int[size];
-                    transfer.writeInt(size);
-                    Value[] values;
-                    int len;
-                    for (int j = 0; j < size; j++) {
-                        values = batchParameters.get(j);
-                        len = values.length;
-                        for (int m = 0; m < len; m++)
-                            transfer.writeValue(values[m]);
-                    }
-                    session.done(transfer);
-
-                    for (int j = 0; j < size; j++)
-                        result[j] = transfer.readInt();
+                for (int j = 0; j < size; j++)
+                    result[j] = transfer.readInt();
+            } else {
+                session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT", id);
+                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT).writeInt(id);
+                int size = batchParameters.size();
+                result = new int[size];
+                transfer.writeInt(size);
+                Value[] values;
+                int len;
+                for (int j = 0; j < size; j++) {
+                    values = batchParameters.get(j);
+                    len = values.length;
+                    for (int m = 0; m < len; m++)
+                        transfer.writeValue(values[m]);
                 }
-            } catch (IOException e) {
-                session.removeServer(e, i--, ++count);
+                session.done(transfer);
+
+                for (int j = 0; j < size; j++)
+                    result[j] = transfer.readInt();
             }
+        } catch (IOException e) {
+            session.handleException(e);
         }
 
         return 0;
@@ -126,10 +123,7 @@ public class FrontendBatchCommand implements CommandInterface {
             return;
         }
         session = null;
-        //不能clear，否则把SessionRemote中的transferList也clear了，
-        //会导致JdbcSQLException: Database is already closed
-        //transferList.clear();
-        transferList = null;
+        transfer = null;
 
         if (batchCommands != null) {
             batchCommands.clear();

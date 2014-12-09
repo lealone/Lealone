@@ -12,7 +12,6 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Random;
 
-import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendBatchCommand;
@@ -28,11 +27,9 @@ import org.lealone.store.fs.FileUtils;
 import org.lealone.transaction.Transaction;
 import org.lealone.util.MathUtils;
 import org.lealone.util.NetUtils;
-import org.lealone.util.New;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.util.StringUtils;
 import org.lealone.util.TempFileDeleter;
-import org.lealone.util.Utils;
 import org.lealone.value.Transfer;
 import org.lealone.value.Value;
 import org.lealone.zookeeper.ZooKeeperAdmin;
@@ -51,7 +48,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     public static final int RESULT_FETCH_ROWS = 5;
     public static final int RESULT_RESET = 6;
     public static final int RESULT_CLOSE = 7;
-    public static final int COMMAND_COMMIT = 8;
+    //public static final int COMMAND_COMMIT = 8; //不再使用
     public static final int CHANGE_ID = 9;
     public static final int COMMAND_GET_META_DATA = 10;
     public static final int SESSION_PREPARE_READ_PARAMS = 11;
@@ -88,7 +85,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
 
     private TraceSystem traceSystem;
     private Trace trace;
-    private ArrayList<Transfer> transferList = New.arrayList();
+    private Transfer transfer;
     private int nextId;
     private boolean autoCommit = true;
     private ConnectionInfo connectionInfo;
@@ -101,9 +98,8 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     private boolean autoReconnect;
     private int lastReconnect;
     private SessionInterface embedded;
-    private DatabaseEventListener eventListener;
+    //private DatabaseEventListener eventListener;
     private LobStorage lobStorage;
-    private boolean cluster;
     private Transaction transaction;
 
     public FrontendSession(ConnectionInfo ci) {
@@ -144,16 +140,13 @@ public class FrontendSession extends SessionWithState implements DataHandler {
 
     @Override
     public int getUndoLogPos() {
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            Transfer transfer = transferList.get(i);
-            try {
-                traceOperation("SESSION_UNDO_LOG_POS", 0);
-                transfer.writeInt(FrontendSession.SESSION_UNDO_LOG_POS);
-                done(transfer);
-                return transfer.readInt();
-            } catch (IOException e) {
-                removeServer(e, i--, ++count);
-            }
+        try {
+            traceOperation("SESSION_UNDO_LOG_POS", 0);
+            transfer.writeInt(FrontendSession.SESSION_UNDO_LOG_POS);
+            done(transfer);
+            return transfer.readInt();
+        } catch (IOException e) {
+            handleException(e);
         }
         return 1;
     }
@@ -171,33 +164,19 @@ public class FrontendSession extends SessionWithState implements DataHandler {
      * @param id the statement id
      */
     public void cancelStatement(int id) {
-        for (Transfer transfer : transferList) {
-            try {
-                Transfer trans = transfer.openNewConnection();
-                trans.init();
-                trans.writeInt(clientVersion);
-                trans.writeInt(clientVersion);
-                trans.writeString(null);
-                trans.writeString(null);
-                trans.writeString(sessionId);
-                trans.writeInt(FrontendSession.SESSION_CANCEL_STATEMENT);
-                trans.writeInt(id);
-                trans.close();
-            } catch (IOException e) {
-                trace.debug(e, "could not cancel statement");
-            }
-        }
-    }
-
-    private void checkClusterDisableAutoCommit(String serverList) {
-        if (autoCommit && transferList.size() > 1) {
-            setAutoCommitSend(false);
-            CommandInterface c = prepareCommand("SET CLUSTER " + serverList, Integer.MAX_VALUE);
-            // this will set autoCommit to false
-            c.executeUpdate();
-            // so we need to switch it on
-            autoCommit = true;
-            cluster = true;
+        try {
+            Transfer trans = transfer.openNewConnection();
+            trans.init();
+            trans.writeInt(clientVersion);
+            trans.writeInt(clientVersion);
+            trans.writeString(null);
+            trans.writeString(null);
+            trans.writeString(sessionId);
+            trans.writeInt(FrontendSession.SESSION_CANCEL_STATEMENT);
+            trans.writeInt(id);
+            trans.close();
+        } catch (IOException e) {
+            trace.debug(e, "could not cancel statement");
         }
     }
 
@@ -208,55 +187,21 @@ public class FrontendSession extends SessionWithState implements DataHandler {
 
     @Override
     public void setAutoCommit(boolean autoCommit) {
-        if (!cluster) {
-            setAutoCommitSend(autoCommit);
-        }
+        setAutoCommitSend(autoCommit);
         this.autoCommit = autoCommit;
     }
 
     public void setAutoCommitFromServer(boolean autoCommit) {
-        if (cluster) {
-            if (autoCommit) {
-                // the user executed SET AUTOCOMMIT TRUE
-                setAutoCommitSend(false);
-                this.autoCommit = true;
-            }
-        } else {
-            this.autoCommit = autoCommit;
-        }
+        this.autoCommit = autoCommit;
     }
 
     private void setAutoCommitSend(boolean autoCommit) {
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            Transfer transfer = transferList.get(i);
-            try {
-                traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-                transfer.writeInt(FrontendSession.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
-                done(transfer);
-            } catch (IOException e) {
-                removeServer(e, i--, ++count);
-            }
-        }
-    }
-
-    /**
-     * Calls COMMIT if the session is in cluster mode.
-     */
-    public void autoCommitIfCluster() {
-        if (autoCommit && cluster) {
-            // server side auto commit is off because of race conditions
-            // (update set id=1 where id=0, but update set id=2 where id=0 is
-            // faster)
-            for (int i = 0, count = 0; i < transferList.size(); i++) {
-                Transfer transfer = transferList.get(i);
-                try {
-                    traceOperation("COMMAND_COMMIT", 0);
-                    transfer.writeInt(FrontendSession.COMMAND_COMMIT);
-                    done(transfer);
-                } catch (IOException e) {
-                    removeServer(e, i--, ++count);
-                }
-            }
+        try {
+            traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
+            transfer.writeInt(FrontendSession.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
+            done(transfer);
+        } catch (IOException e) {
+            handleException(e);
         }
     }
 
@@ -367,7 +312,6 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         String serverList = null;
         if (server.indexOf(',') >= 0) {
             serverList = StringUtils.quoteStringSQL(server);
-            ci.setProperty("CLUSTER", Constants.CLUSTERING_ENABLED);
         }
         autoReconnect = Boolean.valueOf(ci.getProperty("AUTO_RECONNECT", "false")).booleanValue();
         // AUTO_SERVER implies AUTO_RECONNECT
@@ -376,17 +320,17 @@ public class FrontendSession extends SessionWithState implements DataHandler {
             throw DbException.getUnsupportedException("autoServer && serverList != null");
         }
         autoReconnect |= autoServer;
-        if (autoReconnect) {
-            String className = ci.getProperty("DATABASE_EVENT_LISTENER");
-            if (className != null) {
-                className = StringUtils.trim(className, true, true, "'");
-                try {
-                    eventListener = (DatabaseEventListener) Utils.loadUserClass(className).newInstance();
-                } catch (Throwable e) {
-                    throw DbException.convert(e);
-                }
-            }
-        }
+        //        if (autoReconnect) {
+        //            String className = ci.getProperty("DATABASE_EVENT_LISTENER");
+        //            if (className != null) {
+        //                className = StringUtils.trim(className, true, true, "'");
+        //                try {
+        //                    eventListener = (DatabaseEventListener) Utils.loadUserClass(className).newInstance();
+        //                } catch (Throwable e) {
+        //                    throw DbException.convert(e);
+        //                }
+        //            }
+        //        }
         cipher = ci.getProperty("CIPHER");
         if (cipher != null) {
             fileEncryptionKey = MathUtils.secureRandomBytes(32);
@@ -397,118 +341,101 @@ public class FrontendSession extends SessionWithState implements DataHandler {
             servers = new String[] { getOnlineServer(ci, server) };
         } else {
             servers = StringUtils.arraySplit(server, ',', true);
-
-            if (servers.length > 1 && !ci.removeProperty("USE_H2_CLUSTER_MODE", false))
-                servers = new String[] { servers[random.nextInt(servers.length)] };
         }
         int len = servers.length;
-        transferList.clear();
+        transfer = null;
         sessionId = StringUtils.convertBytesToHex(MathUtils.secureRandomBytes(32));
-        // TODO cluster: support more than 2 connections
-        boolean switchOffCluster = false;
+
         try {
             for (int i = 0; i < len; i++) {
-                String s = servers[i];
+                String s = servers[random.nextInt(len)];
                 try {
-                    Transfer trans = initTransfer(ci, databaseName, s);
-                    transferList.add(trans);
+                    transfer = initTransfer(ci, databaseName, s);
                 } catch (IOException e) {
-                    if (len == 1) {
+                    if (i == len - 1) {
                         throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, e + ": " + s);
                     }
-                    switchOffCluster = true;
+                    int index = 0;
+                    String[] newServers = new String[len - 1];
+                    for (int j = 0; j < len; j++) {
+                        if (j != i)
+                            newServers[index++] = servers[j];
+                    }
+                    servers = newServers;
+                    len--;
+                    i = -1;
                 }
             }
             checkClosed();
-            if (switchOffCluster) {
-                switchOffCluster();
-            }
-            checkClusterDisableAutoCommit(serverList);
         } catch (DbException e) {
             traceSystem.close();
             throw e;
         }
     }
 
-    private void switchOffCluster() {
-        CommandInterface ci = prepareCommand("SET CLUSTER ''", Integer.MAX_VALUE);
-        ci.executeUpdate();
-    }
-
-    /**
-     * Remove a server from the list of cluster nodes and disables the cluster
-     * mode.
-     *
-     * @param e the exception (used for debugging)
-     * @param i the index of the server to remove
-     * @param count the retry count index
-     */
-    public void removeServer(IOException e, int i, int count) {
-        transferList.remove(i);
-        if (transferList.size() == 0 && autoReconnect(count)) {
-            return;
-        }
+    //TODO
+    public void handleException(IOException e) {
         checkClosed();
-        switchOffCluster();
     }
 
     @Override
     public synchronized CommandInterface prepareCommand(String sql, int fetchSize) {
         checkClosed();
-        return new FrontendCommand(this, transferList, sql, fetchSize);
+        return new FrontendCommand(this, transfer, sql, fetchSize);
     }
 
+    //TODO
     /**
      * Automatically re-connect if necessary and if configured to do so.
      *
      * @param count the retry count index
      * @return true if reconnected
      */
-    private boolean autoReconnect(int count) {
-        if (!isClosed()) {
-            return false;
-        }
-        if (!autoReconnect) {
-            return false;
-        }
-        if (!cluster && !autoCommit) {
-            return false;
-        }
-        if (count > SysProperties.MAX_RECONNECT) {
-            return false;
-        }
-        lastReconnect++;
-        while (true) {
-            try {
-                embedded = connectEmbeddedOrServer(false);
-                break;
-            } catch (DbException e) {
-                if (e.getErrorCode() != ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE) {
-                    throw e;
-                }
-                // exclusive mode: re-try endlessly
-                try {
-                    Thread.sleep(500);
-                } catch (Exception e2) {
-                    // ignore
-                }
-            }
-        }
-        if (embedded == this) {
-            // connected to a server somewhere else
-            embedded = null;
-        } else {
-            // opened an embedded connection now -
-            // must connect to this database in server mode
-            // unfortunately
-            connectEmbeddedOrServer(true);
-        }
-        recreateSessionState();
-        if (eventListener != null) {
-            eventListener.setProgress(DatabaseEventListener.STATE_RECONNECTED, databaseName, count, SysProperties.MAX_RECONNECT);
-        }
-        return true;
-    }
+    //    private boolean autoReconnect(int count) {
+    //        if (!isClosed()) {
+    //            return false;
+    //        }
+    //        if (!autoReconnect) {
+    //            return false;
+    //        }
+    //        if (!cluster && !autoCommit) {
+    //            return false;
+    //        }
+    //        if (count > SysProperties.MAX_RECONNECT) {
+    //            return false;
+    //        }
+    //        lastReconnect++;
+    //        while (true) {
+    //            try {
+    //                embedded = connectEmbeddedOrServer(false);
+    //                break;
+    //            } catch (DbException e) {
+    //                if (e.getErrorCode() != ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE) {
+    //                    throw e;
+    //                }
+    //                // exclusive mode: re-try endlessly
+    //                try {
+    //                    Thread.sleep(500);
+    //                } catch (Exception e2) {
+    //                    // ignore
+    //                }
+    //            }
+    //        }
+    //        if (embedded == this) {
+    //            // connected to a server somewhere else
+    //            embedded = null;
+    //        } else {
+    //            // opened an embedded connection now -
+    //            // must connect to this database in server mode
+    //            // unfortunately
+    //            connectEmbeddedOrServer(true);
+    //        }
+    //        recreateSessionState();
+    //        if (eventListener != null) {
+    //            eventListener.setProgress(DatabaseEventListener.STATE_RECONNECTED, databaseName, count, SysProperties.MAX_RECONNECT);
+    //        }
+    //        return true;
+    //    }
 
     /**
      * Check if this session is closed and throws an exception if so.
@@ -524,23 +451,21 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     @Override
     public void close() {
         RuntimeException closeError = null;
-        if (transferList != null) {
+        if (transfer != null) {
             synchronized (this) {
-                for (Transfer transfer : transferList) {
-                    try {
-                        traceOperation("SESSION_CLOSE", 0);
-                        transfer.writeInt(FrontendSession.SESSION_CLOSE);
-                        done(transfer);
-                        transfer.close();
-                    } catch (RuntimeException e) {
-                        trace.error(e, "close");
-                        closeError = e;
-                    } catch (Exception e) {
-                        trace.error(e, "close");
-                    }
+                try {
+                    traceOperation("SESSION_CLOSE", 0);
+                    transfer.writeInt(FrontendSession.SESSION_CLOSE);
+                    done(transfer);
+                    transfer.close();
+                } catch (RuntimeException e) {
+                    trace.error(e, "close");
+                    closeError = e;
+                } catch (Exception e) {
+                    trace.error(e, "close");
                 }
             }
-            transferList = null;
+            transfer = null;
         }
         traceSystem.close();
         if (embedded != null) {
@@ -586,7 +511,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         if (status == STATUS_ERROR) {
             parseError(transfer);
         } else if (status == STATUS_CLOSED) {
-            transferList = null;
+            transfer = null;
         } else if (status == STATUS_OK_STATE_CHANGED) {
             sessionStateChanged = true;
         } else if (status == STATUS_OK) {
@@ -612,18 +537,9 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         throw DbException.convert(s);
     }
 
-    /**
-     * Returns true if the connection was opened in cluster mode.
-     *
-     * @return true if it is
-     */
-    public boolean isClustered() {
-        return cluster;
-    }
-
     @Override
     public boolean isClosed() {
-        return transferList == null || transferList.size() == 0;
+        return transfer == null;
     }
 
     /**
@@ -738,78 +654,64 @@ public class FrontendSession extends SessionWithState implements DataHandler {
 
     @Override
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            Transfer transfer = transferList.get(i);
-            try {
-                traceOperation("LOB_READ", (int) lobId);
-                transfer.writeInt(FrontendSession.LOB_READ);
-                transfer.writeLong(lobId);
-                transfer.writeBytes(hmac);
-                transfer.writeLong(offset);
-                transfer.writeInt(length);
-                done(transfer);
-                length = transfer.readInt();
-                if (length <= 0) {
-                    return length;
-                }
-                transfer.readBytes(buff, off, length);
+
+        try {
+            traceOperation("LOB_READ", (int) lobId);
+            transfer.writeInt(FrontendSession.LOB_READ);
+            transfer.writeLong(lobId);
+            transfer.writeBytes(hmac);
+            transfer.writeLong(offset);
+            transfer.writeInt(length);
+            done(transfer);
+            length = transfer.readInt();
+            if (length <= 0) {
                 return length;
-            } catch (IOException e) {
-                removeServer(e, i--, ++count);
             }
+            transfer.readBytes(buff, off, length);
+            return length;
+        } catch (IOException e) {
+            handleException(e);
         }
         return 1;
     }
 
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            Transfer transfer = transferList.get(i);
-            try {
-                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeString(allLocalTransactionNames);
-                done(transfer);
-            } catch (IOException e) {
-                removeServer(e, i--, ++count);
-            }
+        try {
+            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeString(allLocalTransactionNames);
+            done(transfer);
+        } catch (IOException e) {
+            handleException(e);
         }
     }
 
     public synchronized void rollbackTransaction() {
         checkClosed();
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            Transfer transfer = transferList.get(i);
-            try {
-                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
-                done(transfer);
-            } catch (IOException e) {
-                removeServer(e, i--, ++count);
-            }
+        try {
+            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
+            done(transfer);
+        } catch (IOException e) {
+            handleException(e);
         }
     }
 
     public synchronized void addSavepoint(String name) {
         checkClosed();
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            Transfer transfer = transferList.get(i);
-            try {
-                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD).writeString(name);
-                done(transfer);
-            } catch (IOException e) {
-                removeServer(e, i--, ++count);
-            }
+        try {
+            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD).writeString(name);
+            done(transfer);
+        } catch (IOException e) {
+            handleException(e);
         }
     }
 
     public synchronized void rollbackToSavepoint(String name) {
         checkClosed();
-        for (int i = 0, count = 0; i < transferList.size(); i++) {
-            Transfer transfer = transferList.get(i);
-            try {
-                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK).writeString(name);
-                done(transfer);
-            } catch (IOException e) {
-                removeServer(e, i--, ++count);
-            }
+        try {
+            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK).writeString(name);
+            done(transfer);
+        } catch (IOException e) {
+            handleException(e);
         }
     }
 
@@ -823,13 +725,13 @@ public class FrontendSession extends SessionWithState implements DataHandler {
 
     public synchronized FrontendBatchCommand getFrontendBatchCommand(ArrayList<String> batchCommands) {
         checkClosed();
-        return new FrontendBatchCommand(this, transferList, batchCommands);
+        return new FrontendBatchCommand(this, transfer, batchCommands);
     }
 
     public synchronized FrontendBatchCommand getFrontendBatchCommand(CommandInterface preparedCommand,
             ArrayList<Value[]> batchParameters) {
         checkClosed();
-        return new FrontendBatchCommand(this, transferList, preparedCommand, batchParameters);
+        return new FrontendBatchCommand(this, transfer, preparedCommand, batchParameters);
     }
 
     public String getURL() {
@@ -837,16 +739,12 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     }
 
     public synchronized void checkTransfers() {
-        if (transferList != null) {
-            for (int i = 0; i < transferList.size(); i++) {
-                Transfer transfer = transferList.get(i);
-
-                try {
-                    if (transfer.available() > 0)
-                        throw DbException.throwInternalError("the transfer available bytes was " + transfer.available());
-                } catch (IOException e) {
-                    throw DbException.convert(e);
-                }
+        if (transfer != null) {
+            try {
+                if (transfer.available() > 0)
+                    throw DbException.throwInternalError("the transfer available bytes was " + transfer.available());
+            } catch (IOException e) {
+                throw DbException.convert(e);
             }
         }
     }
