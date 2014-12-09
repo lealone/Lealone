@@ -110,8 +110,6 @@ public class Session extends SessionWithState {
     protected final int queryCacheSize;
     protected SmallLRUCache<String, Command> queryCache;
 
-    private boolean isRoot = true;
-
     public Session(Database database, User user, int id) {
         this.database = database;
         this.queryTimeout = database.getSettings().maxQueryTimeout;
@@ -1315,6 +1313,8 @@ public class Session extends SessionWithState {
         return new Sequence(schema, id, name, belongsToTable);
     }
 
+    private boolean isRoot = true;
+
     public boolean isRoot() {
         return isRoot;
     }
@@ -1330,49 +1330,10 @@ public class Session extends SessionWithState {
     private volatile Transaction transaction;
 
     public Transaction getTransaction() {
-        //        if (transaction == null)
-        //            transaction = new LocalTransaction();
         return transaction;
     }
 
     public void setTransaction(Transaction t) {
         transaction = t;
     }
-    //
-    //    static final AtomicLong count = new AtomicLong();
-    //    private volatile Transaction transaction;
-    //
-    //    private class LocalTransaction implements org.lealone.transaction.Transaction {
-    //
-    //        private final long transactionId;
-    //
-    //        public LocalTransaction() {
-    //            transactionId = count.getAndIncrement();
-    //        }
-    //
-    //        @Override
-    //        public long getTransactionId() {
-    //            return transactionId;
-    //        }
-    //
-    //        @Override
-    //        public long getCommitTimestamp() {
-    //            return count.getAndIncrement();
-    //        }
-    //
-    //        @Override
-    //        public boolean isAutoCommit() {
-    //            return Session.this.getAutoCommit();
-    //        }
-    //
-    //        @Override
-    //        public void addLocalTransactionNames(String localTransactionNames) {
-    //        }
-    //
-    //        @Override
-    //        public String getLocalTransactionNames() {
-    //            return null;
-    //        }
-    //
-    //    }
 }

@@ -24,10 +24,13 @@ import org.lealone.command.ddl.CreateTableData;
 
 public class MemoryTableEngine implements TableEngine {
     public static final String NAME = "MEMORY";
+    private static final MemoryTableEngine INSTANCE = new MemoryTableEngine();
 
-    //见TableEngineManager.TableEngineService中的注释
-    public MemoryTableEngine() {
-        TableEngineManager.registerTableEngine(this);
+    public static MemoryTableEngine getInstance() {
+        return INSTANCE;
+    }
+
+    private MemoryTableEngine() {
     }
 
     @Override
