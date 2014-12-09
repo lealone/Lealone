@@ -18,6 +18,7 @@
 		<module>lealone-client</module>
 		<module>lealone-sql</module>
 		<module>lealone-server</module>
+		<module>lealone-cluster</module>
 		<module>lealone-cbase</module>
 		<module>lealone-hbase</module>
 		<module>lealone-cassandra</module>
