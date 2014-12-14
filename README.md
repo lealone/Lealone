@@ -1,10 +1,3 @@
-## Lealone名字的由来
-
-Lealone 发音 ['li:ləʊn]
-这是我新造的英文单词，灵感来自于办公桌上那些叫绿萝的室内植物，一直想做个项目以它命名。 
-绿萝的拼音是lv luo，与Lealone英文发音有点相同，
-Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现在的心境：思路辽阔但又孤独。
-反过来念更有意思。
 
 ## Lealone是什么
 
@@ -12,11 +5,18 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 
 * 也是一个可以独立运行的分布式数据库
 
+## Lealone名字的由来
 
-## 有哪些特性
+Lealone 发音 ['li:ləʊn]
+这是我新造的英文单词，灵感来自于办公桌上那些叫绿萝的室内植物，一直想做个项目以它命名。 
+绿萝的拼音是lv luo，与Lealone英文发音有点相同，
+Lealone是lea + lone的组，反过来念更有意思哦。:)
+
+
+## Lealone有哪些特性
 
 * 支持高性能的分布式事务，<br>
-  使用一个非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/wiki/Lealone-transaction-model)
+  使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/wiki/Lealone-transaction-model)
 
 * 对[H2数据库](http://www.h2database.com/html/main.html)的SQL引擎进行了大量的改进和扩展
 
@@ -69,5 +69,6 @@ Lealone是lea + lone的组合(lea 草地/草原, lone 孤独的)，也算是现�
 * lealone-common
 * lealone-server
 * lealone-sql
+* lealone-cbase
 
 除此之外的代码使用[Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
