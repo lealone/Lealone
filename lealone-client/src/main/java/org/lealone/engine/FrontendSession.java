@@ -95,7 +95,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     private final Object lobSyncObject = new Object();
     private String sessionId;
     private int clientVersion;
-    private boolean autoReconnect;
+    //private boolean autoReconnect;
     private int lastReconnect;
     private SessionInterface embedded;
     //private DatabaseEventListener eventListener;
@@ -313,13 +313,13 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         if (server.indexOf(',') >= 0) {
             serverList = StringUtils.quoteStringSQL(server);
         }
-        autoReconnect = Boolean.valueOf(ci.getProperty("AUTO_RECONNECT", "false")).booleanValue();
+        //autoReconnect = Boolean.valueOf(ci.getProperty("AUTO_RECONNECT", "false")).booleanValue();
         // AUTO_SERVER implies AUTO_RECONNECT
         boolean autoServer = Boolean.valueOf(ci.getProperty("AUTO_SERVER", "false")).booleanValue();
         if (autoServer && serverList != null) {
             throw DbException.getUnsupportedException("autoServer && serverList != null");
         }
-        autoReconnect |= autoServer;
+        //autoReconnect |= autoServer;
         //        if (autoReconnect) {
         //            String className = ci.getProperty("DATABASE_EVENT_LISTENER");
         //            if (className != null) {

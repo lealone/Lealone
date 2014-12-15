@@ -10,6 +10,8 @@ import org.lealone.cluster.dht.Token;
 import com.google.common.collect.SetMultimap;
 
 public class SystemKeyspace {
+    public static final String NAME = "system";
+
     public enum BootstrapState {
         NEEDS_BOOTSTRAP, COMPLETED, IN_PROGRESS
     }
@@ -64,4 +66,29 @@ public class SystemKeyspace {
     public static void setBootstrapState(BootstrapState state) {
 
     }
+
+    public static synchronized void updateTokens(InetAddress ep, Collection<Token> tokens) {
+    }
+
+    public static synchronized void updateTokens(Collection<Token> tokens) {
+    }
+
+    public static synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value) {
+    }
+
+    /**
+     * Convenience method to update the list of tokens in the local system keyspace.
+     *
+     * @param addTokens tokens to add
+     * @param rmTokens tokens to remove
+     * @return the collection of persisted tokens
+     */
+    public static synchronized Collection<Token> updateLocalTokens(Collection<Token> addTokens, Collection<Token> rmTokens) {
+        Collection<Token> tokens = getSavedTokens();
+        tokens.removeAll(rmTokens);
+        tokens.addAll(addTokens);
+        updateTokens(tokens);
+        return tokens;
+    }
+
 }

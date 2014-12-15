@@ -38,7 +38,7 @@ public class FrontendCommand implements CommandInterface {
     private FrontendSession session;
     private int id;
     private boolean isQuery;
-    private boolean readonly;
+    //private boolean readonly;
     private final int created;
 
     public FrontendCommand(FrontendSession session, Transfer transfer, String sql, int fetchSize) {
@@ -66,7 +66,8 @@ public class FrontendCommand implements CommandInterface {
             }
             s.done(transfer);
             isQuery = transfer.readBoolean();
-            readonly = transfer.readBoolean();
+            //readonly = transfer.readBoolean();
+            transfer.readBoolean();
             int paramCount = transfer.readInt();
             if (createParams) {
                 parameters.clear();
@@ -178,7 +179,7 @@ public class FrontendCommand implements CommandInterface {
         checkParameters();
         synchronized (session) {
             int updateCount = 0;
-            boolean autoCommit = false;
+            //boolean autoCommit = false;
             prepareIfRequired();
             try {
                 boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
@@ -196,7 +197,8 @@ public class FrontendCommand implements CommandInterface {
                     session.getTransaction().addLocalTransactionNames(transfer.readString());
 
                 updateCount = transfer.readInt();
-                autoCommit = transfer.readBoolean();
+                transfer.readBoolean();
+                //autoCommit = transfer.readBoolean();
             } catch (IOException e) {
                 session.handleException(e);
             }

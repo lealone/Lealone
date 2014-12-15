@@ -134,6 +134,8 @@ public class DataResource implements IResource {
             return root();
         case COLUMN_FAMILY:
             return keyspace(keyspace);
+        default:
+            break;
         }
         throw new IllegalStateException("Root-level resource can't have a parent");
     }

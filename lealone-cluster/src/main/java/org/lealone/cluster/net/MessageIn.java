@@ -27,14 +27,10 @@ import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.utils.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableMap;
 
 public class MessageIn<T> {
-    private static final Logger logger = LoggerFactory.getLogger(MessageIn.class);
-
     public final InetAddress from;
     public final T payload;
     public final Map<String, byte[]> parameters;

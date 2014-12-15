@@ -94,23 +94,23 @@ public interface StorageServiceMBean extends NotificationEmitter {
      */
     public String getSchemaVersion();
 
-    /**
-     * Get the list of all data file locations from conf
-     * @return String array of all locations
-     */
-    public String[] getAllDataFileLocations();
-
-    /**
-     * Get location of the commit log
-     * @return a string path
-     */
-    public String getCommitLogLocation();
-
-    /**
-     * Get location of the saved caches dir
-     * @return a string path
-     */
-    public String getSavedCachesLocation();
+    //    /**
+    //     * Get the list of all data file locations from conf
+    //     * @return String array of all locations
+    //     */
+    //    public String[] getAllDataFileLocations();
+    //
+    //    /**
+    //     * Get location of the commit log
+    //     * @return a string path
+    //     */
+    //    public String getCommitLogLocation();
+    //
+    //    /**
+    //     * Get location of the saved caches dir
+    //     * @return a string path
+    //     */
+    //    public String getSavedCachesLocation();
 
     /**
      * Retrieve a map of range to end points that describe the ring topology
@@ -229,8 +229,8 @@ public interface StorageServiceMBean extends NotificationEmitter {
     /**
      * Forces major compaction of a single keyspace
      */
-    public void forceKeyspaceCompaction(String keyspaceName, String... columnFamilies) throws IOException, ExecutionException,
-            InterruptedException;
+    //    public void forceKeyspaceCompaction(String keyspaceName, String... columnFamilies) throws IOException, ExecutionException,
+    //            InterruptedException;
 
     /**
      * Trigger a cleanup of keys on a single keyspace
@@ -244,15 +244,15 @@ public interface StorageServiceMBean extends NotificationEmitter {
      *
      * Scrubbed CFs will be snapshotted first, if disableSnapshot is false
      */
-    public int scrub(boolean disableSnapshot, boolean skipCorrupted, String keyspaceName, String... columnFamilies)
-            throws IOException, ExecutionException, InterruptedException;
-
-    /**
-     * Rewrite all sstables to the latest version.
-     * Unlike scrub, it doesn't skip bad rows and do not snapshot sstables first.
-     */
-    public int upgradeSSTables(String keyspaceName, boolean excludeCurrentVersion, String... columnFamilies) throws IOException,
-            ExecutionException, InterruptedException;
+    //    public int scrub(boolean disableSnapshot, boolean skipCorrupted, String keyspaceName, String... columnFamilies)
+    //            throws IOException, ExecutionException, InterruptedException;
+    //
+    //    /**
+    //     * Rewrite all sstables to the latest version.
+    //     * Unlike scrub, it doesn't skip bad rows and do not snapshot sstables first.
+    //     */
+    //    public int upgradeSSTables(String keyspaceName, boolean excludeCurrentVersion, String... columnFamilies) throws IOException,
+    //            ExecutionException, InterruptedException;
 
     /**
      * Flush all memtables for the given column families, or all columnfamilies for the given keyspace
@@ -275,7 +275,7 @@ public interface StorageServiceMBean extends NotificationEmitter {
      * @param options repair option.
      * @return Repair command number, or 0 if nothing to repair
      */
-    public int repairAsync(String keyspace, Map<String, String> options);
+    //public int repairAsync(String keyspace, Map<String, String> options);
 
     //    @Deprecated
     //    public int forceRepairAsync(String keyspace, boolean isSequential, Collection<String> dataCenters, Collection<String> hosts,
@@ -303,7 +303,7 @@ public interface StorageServiceMBean extends NotificationEmitter {
     //    public int forceRepairRangeAsync(String beginToken, String endToken, String keyspaceName, boolean isSequential,
     //            boolean isLocal, boolean repairedAt, String... columnFamilies);
 
-    public void forceTerminateAllRepairSessions();
+    //public void forceTerminateAllRepairSessions();
 
     /**
      * transfer this node's data to other machines and remove it from service.
@@ -347,10 +347,10 @@ public interface StorageServiceMBean extends NotificationEmitter {
      * 
      *  @see ch.qos.logback.classic.Level#toLevel(String)
      */
-    public void setLoggingLevel(String classQualifier, String level) throws Exception;
-
-    /** get the runtime logging levels */
-    public Map<String, String> getLoggingLevels();
+    //    public void setLoggingLevel(String classQualifier, String level) throws Exception;
+    //
+    //    /** get the runtime logging levels */
+    //    public Map<String, String> getLoggingLevels();
 
     /** get the operational mode (leaving, joining, normal, decommissioned, client) **/
     public String getOperationMode();
@@ -389,11 +389,11 @@ public interface StorageServiceMBean extends NotificationEmitter {
      * in the cluster have the same replication strategies and if yes then we will
      * use the first else a empty Map is returned.
      */
-    public Map<InetAddress, Float> effectiveOwnership(String keyspace) throws IllegalStateException;
+    //public Map<InetAddress, Float> effectiveOwnership(String keyspace) throws IllegalStateException;
 
-    public List<String> getKeyspaces();
-
-    public List<String> getNonSystemKeyspaces();
+    //    public List<String> getKeyspaces();
+    //
+    //    public List<String> getNonSystemKeyspaces();
 
     /**
      * Change endpointsnitch class and dynamic-ness (and dynamic attributes) at runtime
@@ -465,24 +465,24 @@ public interface StorageServiceMBean extends NotificationEmitter {
      */
     public void rebuild(String sourceDc);
 
-    /** Starts a bulk load and blocks until it completes. */
-    public void bulkLoad(String directory);
+    //    /** Starts a bulk load and blocks until it completes. */
+    //    public void bulkLoad(String directory);
+    //
+    //    /**
+    //     * Starts a bulk load asynchronously and returns the String representation of the planID for the new
+    //     * streaming session.
+    //     */
+    //    public String bulkLoadAsync(String directory);
 
-    /**
-     * Starts a bulk load asynchronously and returns the String representation of the planID for the new
-     * streaming session.
-     */
-    public String bulkLoadAsync(String directory);
-
-    public void rescheduleFailedDeletions();
-
-    /**
-     * Load new SSTables to the given keyspace/columnFamily
-     *
-     * @param ksName The parent keyspace name
-     * @param cfName The ColumnFamily name where SSTables belong
-     */
-    public void loadNewSSTables(String ksName, String cfName);
+    //    public void rescheduleFailedDeletions();
+    //
+    //    /**
+    //     * Load new SSTables to the given keyspace/columnFamily
+    //     *
+    //     * @param ksName The parent keyspace name
+    //     * @param cfName The ColumnFamily name where SSTables belong
+    //     */
+    //    public void loadNewSSTables(String ksName, String cfName);
 
     /**
      * Return a List of Tokens representing a sample of keys across all ColumnFamilyStores.
@@ -492,14 +492,14 @@ public interface StorageServiceMBean extends NotificationEmitter {
      *
      * @return set of Tokens as Strings
      */
-    public List<String> sampleKeyRange();
+    //public List<String> sampleKeyRange();
 
     /**
      * rebuild the specified indexes
      */
-    public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames);
-
-    public void resetLocalSchema() throws IOException;
+    //    public void rebuildSecondaryIndex(String ksName, String cfName, String... idxNames);
+    //
+    //    public void resetLocalSchema() throws IOException;
 
     /**
      * Enables/Disables tracing for the whole system. Only thrift requests can start tracing currently.
@@ -515,9 +515,9 @@ public interface StorageServiceMBean extends NotificationEmitter {
      */
     public double getTraceProbability();
 
-    void disableAutoCompaction(String ks, String... columnFamilies) throws IOException;
-
-    void enableAutoCompaction(String ks, String... columnFamilies) throws IOException;
+    //    void disableAutoCompaction(String ks, String... columnFamilies) throws IOException;
+    //
+    //    void enableAutoCompaction(String ks, String... columnFamilies) throws IOException;
 
     public void deliverHints(String host) throws UnknownHostException;
 
