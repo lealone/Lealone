@@ -30,16 +30,16 @@
 
 ## Lealone用户文档
 
-1. [HBase用户文档](https://github.com/codefollower/Lealone/wiki/HBase%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
+* [HBase用户文档](https://github.com/codefollower/Lealone/wiki/HBase%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
 
-2. [Cassandra用户文档](https://github.com/codefollower/Lealone/wiki/Cassandra%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
+* [Cassandra用户文档](https://github.com/codefollower/Lealone/wiki/Cassandra%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
 
-3. [CBase用户文档](https://github.com/codefollower/Lealone/wiki/CBase%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
+* [CBase用户文档](https://github.com/codefollower/Lealone/wiki/CBase%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
 
 
 ## Lealone开发者文档
 
-1. [Lealone开发者文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)
+* [Lealone开发者文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)
 
 
 ## Lealone 1.0 Roadmap
