@@ -17,7 +17,8 @@
  */
 package org.lealone.cluster.gms;
 
-import java.io.*;
+import java.io.DataInput;
+import java.io.IOException;
 import java.net.InetAddress;
 
 import org.lealone.cluster.db.TypeSizes;
@@ -29,45 +30,40 @@ import org.lealone.cluster.net.CompactEndpointSerializationHelper;
  * Contains information about a specified list of Endpoints and the largest version
  * of the state they have generated as known by the local endpoint.
  */
-public class GossipDigest implements Comparable<GossipDigest>
-{
+public class GossipDigest implements Comparable<GossipDigest> {
     public static final IVersionedSerializer<GossipDigest> serializer = new GossipDigestSerializer();
 
     final InetAddress endpoint;
     final int generation;
     final int maxVersion;
 
-    GossipDigest(InetAddress ep, int gen, int version)
-    {
+    GossipDigest(InetAddress ep, int gen, int version) {
         endpoint = ep;
         generation = gen;
         maxVersion = version;
     }
 
-    InetAddress getEndpoint()
-    {
+    InetAddress getEndpoint() {
         return endpoint;
     }
 
-    int getGeneration()
-    {
+    int getGeneration() {
         return generation;
     }
 
-    int getMaxVersion()
-    {
+    int getMaxVersion() {
         return maxVersion;
     }
 
-    public int compareTo(GossipDigest gDigest)
-    {
+    @Override
+    public int compareTo(GossipDigest gDigest) {
         if (generation != gDigest.generation)
             return (generation - gDigest.generation);
         return (maxVersion - gDigest.maxVersion);
     }
 
-    public String toString()
-    {
+    @Override
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(endpoint);
         sb.append(":");
@@ -78,25 +74,24 @@ public class GossipDigest implements Comparable<GossipDigest>
     }
 }
 
-class GossipDigestSerializer implements IVersionedSerializer<GossipDigest>
-{
-    public void serialize(GossipDigest gDigest, DataOutputPlus out, int version) throws IOException
-    {
+class GossipDigestSerializer implements IVersionedSerializer<GossipDigest> {
+    @Override
+    public void serialize(GossipDigest gDigest, DataOutputPlus out, int version) throws IOException {
         CompactEndpointSerializationHelper.serialize(gDigest.endpoint, out);
         out.writeInt(gDigest.generation);
         out.writeInt(gDigest.maxVersion);
     }
 
-    public GossipDigest deserialize(DataInput in, int version) throws IOException
-    {
+    @Override
+    public GossipDigest deserialize(DataInput in, int version) throws IOException {
         InetAddress endpoint = CompactEndpointSerializationHelper.deserialize(in);
         int generation = in.readInt();
         int maxVersion = in.readInt();
         return new GossipDigest(endpoint, generation, maxVersion);
     }
 
-    public long serializedSize(GossipDigest gDigest, int version)
-    {
+    @Override
+    public long serializedSize(GossipDigest gDigest, int version) {
         long size = CompactEndpointSerializationHelper.serializedSize(gDigest.endpoint);
         size += TypeSizes.NATIVE.sizeof(gDigest.generation);
         size += TypeSizes.NATIVE.sizeof(gDigest.maxVersion);

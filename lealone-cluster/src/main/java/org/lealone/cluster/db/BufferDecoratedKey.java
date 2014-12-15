@@ -21,19 +21,16 @@ import java.nio.ByteBuffer;
 
 import org.lealone.cluster.dht.Token;
 
-public class BufferDecoratedKey extends DecoratedKey
-{
+public class BufferDecoratedKey extends DecoratedKey {
     private final ByteBuffer key;
 
-    public BufferDecoratedKey(Token token, ByteBuffer key)
-    {
+    public BufferDecoratedKey(Token token, ByteBuffer key) {
         super(token);
         assert key != null;
         this.key = key;
     }
 
-    public ByteBuffer getKey()
-    {
+    public ByteBuffer getKey() {
         return key;
     }
 }

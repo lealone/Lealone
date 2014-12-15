@@ -22,8 +22,7 @@ import com.yammer.metrics.core.Gauge;
 
 import org.lealone.cluster.concurrent.SEPExecutor;
 
-public class SEPMetrics
-{
+public class SEPMetrics {
     /** Number of active tasks. */
     public final Gauge<Integer> activeTasks;
     /** Number of tasks that had blocked before being accepted (or rejected). */
@@ -48,48 +47,36 @@ public class SEPMetrics
      * @param path Type of thread pool
      * @param poolName Name of thread pool to identify metrics
      */
-    public SEPMetrics(final SEPExecutor executor, String path, String poolName)
-    {
+    public SEPMetrics(final SEPExecutor executor, String path, String poolName) {
         this.factory = new ThreadPoolMetricNameFactory("ThreadPools", path, poolName);
-        activeTasks = Metrics.newGauge(factory.createMetricName("ActiveTasks"), new Gauge<Integer>()
-        {
-            public Integer value()
-            {
+        activeTasks = Metrics.newGauge(factory.createMetricName("ActiveTasks"), new Gauge<Integer>() {
+            public Integer value() {
                 return executor.getActiveCount();
             }
         });
-        pendingTasks = Metrics.newGauge(factory.createMetricName("PendingTasks"), new Gauge<Long>()
-        {
-            public Long value()
-            {
+        pendingTasks = Metrics.newGauge(factory.createMetricName("PendingTasks"), new Gauge<Long>() {
+            public Long value() {
                 return executor.getPendingTasks();
             }
         });
-        totalBlocked = Metrics.newGauge(factory.createMetricName("TotalBlockedTasks"), new Gauge<Integer>()
-        {
-            public Integer value()
-            {
+        totalBlocked = Metrics.newGauge(factory.createMetricName("TotalBlockedTasks"), new Gauge<Integer>() {
+            public Integer value() {
                 return executor.getTotalBlockedTasks();
             }
         });
-        currentBlocked = Metrics.newGauge(factory.createMetricName("CurrentlyBlockedTasks"), new Gauge<Long>()
-        {
-            public Long value()
-            {
+        currentBlocked = Metrics.newGauge(factory.createMetricName("CurrentlyBlockedTasks"), new Gauge<Long>() {
+            public Long value() {
                 return (long) executor.getCurrentlyBlockedTasks();
             }
         });
-        completedTasks = Metrics.newGauge(factory.createMetricName("CompletedTasks"), new Gauge<Long>()
-        {
-            public Long value()
-            {
+        completedTasks = Metrics.newGauge(factory.createMetricName("CompletedTasks"), new Gauge<Long>() {
+            public Long value() {
                 return executor.getCompletedTasks();
             }
         });
     }
 
-    public void release()
-    {
+    public void release() {
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("ActiveTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("PendingTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CompletedTasks"));

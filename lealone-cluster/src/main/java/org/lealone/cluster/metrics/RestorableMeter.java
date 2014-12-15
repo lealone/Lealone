@@ -33,8 +33,7 @@ import static java.lang.Math.exp;
  *
  * @see <a href="http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average">EMA</a>
  */
-public class RestorableMeter
-{
+public class RestorableMeter {
     private static final long TICK_INTERVAL = TimeUnit.SECONDS.toNanos(5);
     private static final double NANOS_PER_SECOND = TimeUnit.SECONDS.toNanos(1);
 

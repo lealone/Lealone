@@ -30,22 +30,18 @@ import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.utils.Pair;
 
-public abstract class AbstractBounds<T extends RingPosition<T>> implements Serializable
-{
+public abstract class AbstractBounds<T extends RingPosition<T>> implements Serializable {
     private static final long serialVersionUID = 1L;
     public static final AbstractBoundsSerializer serializer = new AbstractBoundsSerializer();
 
-    private enum Type
-    {
-        RANGE,
-        BOUNDS
+    private enum Type {
+        RANGE, BOUNDS
     }
 
     public final T left;
     public final T right;
 
-    public AbstractBounds(T left, T right)
-    {
+    public AbstractBounds(T left, T right) {
         assert left.getPartitioner() == right.getPartitioner();
         this.left = left;
         this.right = right;
@@ -68,16 +64,13 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
     public abstract Pair<AbstractBounds<T>, AbstractBounds<T>> split(T position);
 
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return 31 * left.hashCode() + right.hashCode();
     }
 
     /** return true if @param range intersects any of the given @param ranges */
-    public boolean intersects(Iterable<Range<T>> ranges)
-    {
-        for (Range<T> range2 : ranges)
-        {
+    public boolean intersects(Iterable<Range<T>> ranges) {
+        for (Range<T> range2 : ranges) {
             if (range2.intersects(this))
                 return true;
         }
@@ -88,24 +81,20 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
 
     public abstract List<? extends AbstractBounds<T>> unwrap();
 
-    public String getString(AbstractType<?> keyValidator)
-    {
+    public String getString(AbstractType<?> keyValidator) {
         return getOpeningString() + format(left, keyValidator) + ", " + format(right, keyValidator) + getClosingString();
     }
 
-    private String format(T value, AbstractType<?> keyValidator)
-    {
-        if (value instanceof DecoratedKey)
-        {
-            return keyValidator.getString(((DecoratedKey)value).getKey());
-        }
-        else
-        {
+    private String format(T value, AbstractType<?> keyValidator) {
+        if (value instanceof DecoratedKey) {
+            return keyValidator.getString(((DecoratedKey) value).getKey());
+        } else {
             return value.toString();
         }
     }
 
     protected abstract String getOpeningString();
+
     protected abstract String getClosingString();
 
     /**
@@ -122,50 +111,40 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
 
     public abstract AbstractBounds<T> withNewRight(T newRight);
 
-    public static class AbstractBoundsSerializer implements IVersionedSerializer<AbstractBounds<?>>
-    {
-        public void serialize(AbstractBounds<?> range, DataOutputPlus out, int version) throws IOException
-        {
+    public static class AbstractBoundsSerializer implements IVersionedSerializer<AbstractBounds<?>> {
+        public void serialize(AbstractBounds<?> range, DataOutputPlus out, int version) throws IOException {
             /*
              * The first int tells us if it's a range or bounds (depending on the value) _and_ if it's tokens or keys (depending on the
              * sign). We use negative kind for keys so as to preserve the serialization of token from older version.
              */
             out.writeInt(kindInt(range));
-            if (range.left instanceof Token)
-            {
+            if (range.left instanceof Token) {
                 Token.serializer.serialize((Token) range.left, out);
                 Token.serializer.serialize((Token) range.right, out);
-            }
-            else
-            {
+            } else {
                 RowPosition.serializer.serialize((RowPosition) range.left, out);
                 RowPosition.serializer.serialize((RowPosition) range.right, out);
             }
         }
 
-        private int kindInt(AbstractBounds<?> ab)
-        {
+        private int kindInt(AbstractBounds<?> ab) {
             int kind = ab instanceof Range ? Type.RANGE.ordinal() : Type.BOUNDS.ordinal();
             if (!(ab.left instanceof Token))
                 kind = -(kind + 1);
             return kind;
         }
 
-        public AbstractBounds<?> deserialize(DataInput in, int version) throws IOException
-        {
+        public AbstractBounds<?> deserialize(DataInput in, int version) throws IOException {
             int kind = in.readInt();
             boolean isToken = kind >= 0;
             if (!isToken)
-                kind = -(kind+1);
+                kind = -(kind + 1);
 
             RingPosition<?> left, right;
-            if (isToken)
-            {
+            if (isToken) {
                 left = Token.serializer.deserialize(in);
                 right = Token.serializer.deserialize(in);
-            }
-            else
-            {
+            } else {
                 left = RowPosition.serializer.deserialize(in);
                 right = RowPosition.serializer.deserialize(in);
             }
@@ -175,16 +154,12 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
             return new Bounds(left, right);
         }
 
-        public long serializedSize(AbstractBounds<?> ab, int version)
-        {
+        public long serializedSize(AbstractBounds<?> ab, int version) {
             int size = TypeSizes.NATIVE.sizeof(kindInt(ab));
-            if (ab.left instanceof Token)
-            {
+            if (ab.left instanceof Token) {
                 size += Token.serializer.serializedSize((Token) ab.left, TypeSizes.NATIVE);
                 size += Token.serializer.serializedSize((Token) ab.right, TypeSizes.NATIVE);
-            }
-            else
-            {
+            } else {
                 size += RowPosition.serializer.serializedSize((RowPosition) ab.left, TypeSizes.NATIVE);
                 size += RowPosition.serializer.serializedSize((RowPosition) ab.right, TypeSizes.NATIVE);
             }

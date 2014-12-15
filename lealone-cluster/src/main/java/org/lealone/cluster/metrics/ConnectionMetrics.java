@@ -29,12 +29,12 @@ import org.lealone.cluster.net.OutboundTcpConnectionPool;
 /**
  * Metrics for {@link OutboundTcpConnectionPool}.
  */
-public class ConnectionMetrics
-{
+public class ConnectionMetrics {
     public static final String TYPE_NAME = "Connection";
 
     /** Total number of timeouts happened on this node */
-    public static final Meter totalTimeouts = Metrics.newMeter(DefaultNameFactory.createMetricName(TYPE_NAME, "TotalTimeouts", null), "total timeouts", TimeUnit.SECONDS);
+    public static final Meter totalTimeouts = Metrics.newMeter(
+            DefaultNameFactory.createMetricName(TYPE_NAME, "TotalTimeouts", null), "total timeouts", TimeUnit.SECONDS);
     private static long recentTimeouts;
 
     public final String address;
@@ -61,53 +61,41 @@ public class ConnectionMetrics
      * @param ip IP address to use for metrics label
      * @param connectionPool Connection pool
      */
-    public ConnectionMetrics(InetAddress ip, final OutboundTcpConnectionPool connectionPool)
-    {
+    public ConnectionMetrics(InetAddress ip, final OutboundTcpConnectionPool connectionPool) {
         // ipv6 addresses will contain colons, which are invalid in a JMX ObjectName
         address = ip.getHostAddress().replaceAll(":", ".");
 
         factory = new DefaultNameFactory("Connection", address);
 
-        commandPendingTasks = Metrics.newGauge(factory.createMetricName("CommandPendingTasks"), new Gauge<Integer>()
-        {
-            public Integer value()
-            {
+        commandPendingTasks = Metrics.newGauge(factory.createMetricName("CommandPendingTasks"), new Gauge<Integer>() {
+            public Integer value() {
                 return connectionPool.cmdCon.getPendingMessages();
             }
         });
-        commandCompletedTasks = Metrics.newGauge(factory.createMetricName("CommandCompletedTasks"), new Gauge<Long>()
-        {
-            public Long value()
-            {
+        commandCompletedTasks = Metrics.newGauge(factory.createMetricName("CommandCompletedTasks"), new Gauge<Long>() {
+            public Long value() {
                 return connectionPool.cmdCon.getCompletedMesssages();
             }
         });
-        commandDroppedTasks = Metrics.newGauge(factory.createMetricName("CommandDroppedTasks"), new Gauge<Long>()
-        {
-            public Long value()
-            {
+        commandDroppedTasks = Metrics.newGauge(factory.createMetricName("CommandDroppedTasks"), new Gauge<Long>() {
+            public Long value() {
                 return connectionPool.cmdCon.getDroppedMessages();
             }
         });
-        responsePendingTasks = Metrics.newGauge(factory.createMetricName("ResponsePendingTasks"), new Gauge<Integer>()
-        {
-            public Integer value()
-            {
+        responsePendingTasks = Metrics.newGauge(factory.createMetricName("ResponsePendingTasks"), new Gauge<Integer>() {
+            public Integer value() {
                 return connectionPool.ackCon.getPendingMessages();
             }
         });
-        responseCompletedTasks = Metrics.newGauge(factory.createMetricName("ResponseCompletedTasks"), new Gauge<Long>()
-        {
-            public Long value()
-            {
+        responseCompletedTasks = Metrics.newGauge(factory.createMetricName("ResponseCompletedTasks"), new Gauge<Long>() {
+            public Long value() {
                 return connectionPool.ackCon.getCompletedMesssages();
             }
         });
         timeouts = Metrics.newMeter(factory.createMetricName("Timeouts"), "timeouts", TimeUnit.SECONDS);
     }
 
-    public void release()
-    {
+    public void release() {
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CommandPendingTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CommandCompletedTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CommandDroppedTasks"));
@@ -117,8 +105,7 @@ public class ConnectionMetrics
     }
 
     @Deprecated
-    public static long getRecentTotalTimeout()
-    {
+    public static long getRecentTotalTimeout() {
         long total = totalTimeouts.count();
         long recent = total - recentTimeouts;
         recentTimeouts = total;
@@ -126,8 +113,7 @@ public class ConnectionMetrics
     }
 
     @Deprecated
-    public long getRecentTimeout()
-    {
+    public long getRecentTimeout() {
         long timeoutCount = timeouts.count();
         long recent = timeoutCount - recentTimeoutCount;
         recentTimeoutCount = timeoutCount;

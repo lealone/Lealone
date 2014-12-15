@@ -19,8 +19,7 @@ package org.lealone.cluster.net;
 
 import java.net.InetAddress;
 
-public interface IAsyncCallbackWithFailure<T> extends IAsyncCallback<T>
-{
+public interface IAsyncCallbackWithFailure<T> extends IAsyncCallback<T> {
 
     /**
      * Called when there is an exception on the remote node or timeout happens

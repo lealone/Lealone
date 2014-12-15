@@ -17,10 +17,8 @@
  */
 package org.lealone.cluster.exceptions;
 
-public class AuthenticationException extends RequestValidationException
-{
-    public AuthenticationException(String msg)
-    {
+public class AuthenticationException extends RequestValidationException {
+    public AuthenticationException(String msg) {
         super(ExceptionCode.BAD_CREDENTIALS, msg);
     }
 }

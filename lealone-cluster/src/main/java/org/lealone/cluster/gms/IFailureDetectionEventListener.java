@@ -25,8 +25,7 @@ import java.net.InetAddress;
  * times of the heart beats.
  */
 
-public interface IFailureDetectionEventListener
-{
+public interface IFailureDetectionEventListener {
     /**
      * Convict the specified endpoint.
      *

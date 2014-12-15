@@ -21,8 +21,7 @@ package org.lealone.cluster.concurrent;
  * @see org.lealone.cluster.metrics.ThreadPoolMetrics
  */
 @Deprecated
-public interface JMXEnabledThreadPoolExecutorMBean extends IExecutorMBean
-{
+public interface JMXEnabledThreadPoolExecutorMBean extends IExecutorMBean {
     /**
      * Get the number of tasks that had blocked before being accepted (or
      * rejected).

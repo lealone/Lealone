@@ -17,25 +17,21 @@
  */
 package org.lealone.cluster.exceptions;
 
-public class AlreadyExistsException extends ConfigurationException
-{
+public class AlreadyExistsException extends ConfigurationException {
     public final String ksName;
     public final String cfName;
 
-    private AlreadyExistsException(String ksName, String cfName, String msg)
-    {
+    private AlreadyExistsException(String ksName, String cfName, String msg) {
         super(ExceptionCode.ALREADY_EXISTS, msg);
         this.ksName = ksName;
         this.cfName = cfName;
     }
 
-    public AlreadyExistsException(String ksName, String cfName)
-    {
+    public AlreadyExistsException(String ksName, String cfName) {
         this(ksName, cfName, String.format("Cannot add already existing table \"%s\" to keyspace \"%s\"", cfName, ksName));
     }
 
-    public AlreadyExistsException(String ksName)
-    {
+    public AlreadyExistsException(String ksName) {
         this(ksName, "", String.format("Cannot add existing keyspace \"%s\"", ksName));
     }
 

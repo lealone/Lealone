@@ -39,5 +39,6 @@ public interface IResponseResolver<TMessage, TResolved> {
     public TResolved getData();
 
     public void preprocess(MessageIn<TMessage> message);
+
     public Iterable<MessageIn<TMessage>> getMessages();
 }

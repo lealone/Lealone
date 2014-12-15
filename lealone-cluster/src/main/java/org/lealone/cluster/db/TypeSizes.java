@@ -20,8 +20,7 @@ package org.lealone.cluster.db;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
-public abstract class TypeSizes
-{
+public abstract class TypeSizes {
     public static final TypeSizes NATIVE = new NativeDBTypeSizes();
     public static final TypeSizes VINT = new VIntEncodedTypeSizes();
 
@@ -32,25 +31,26 @@ public abstract class TypeSizes
     private static final int UUID_SIZE = 16;
 
     public abstract int sizeof(boolean value);
+
     public abstract int sizeof(short value);
+
     public abstract int sizeof(int value);
+
     public abstract int sizeof(long value);
+
     public abstract int sizeof(UUID value);
 
     /** assumes UTF8 */
-    public int sizeof(String value)
-    {
+    public int sizeof(String value) {
         int length = encodedUTF8Length(value);
         assert length <= Short.MAX_VALUE;
         return sizeof((short) length) + length;
     }
 
-    public static int encodedUTF8Length(String st)
-    {
+    public static int encodedUTF8Length(String st) {
         int strlen = st.length();
         int utflen = 0;
-        for (int i = 0; i < strlen; i++)
-        {
+        for (int i = 0; i < strlen; i++) {
             int c = st.charAt(i);
             if ((c >= 0x0001) && (c <= 0x007F))
                 utflen++;
@@ -62,63 +62,51 @@ public abstract class TypeSizes
         return utflen;
     }
 
-    public int sizeofWithShortLength(ByteBuffer value)
-    {
+    public int sizeofWithShortLength(ByteBuffer value) {
         return sizeof((short) value.remaining()) + value.remaining();
     }
 
-    public int sizeofWithLength(ByteBuffer value)
-    {
+    public int sizeofWithLength(ByteBuffer value) {
         return sizeof(value.remaining()) + value.remaining();
     }
 
-    public static class NativeDBTypeSizes extends TypeSizes
-    {
-        public int sizeof(boolean value)
-        {
+    public static class NativeDBTypeSizes extends TypeSizes {
+        public int sizeof(boolean value) {
             return BOOL_SIZE;
         }
 
-        public int sizeof(short value)
-        {
+        public int sizeof(short value) {
             return SHORT_SIZE;
         }
 
-        public int sizeof(int value)
-        {
+        public int sizeof(int value) {
             return INT_SIZE;
         }
 
-        public int sizeof(long value)
-        {
+        public int sizeof(long value) {
             return LONG_SIZE;
         }
 
-        public int sizeof(UUID value)
-        {
+        public int sizeof(UUID value) {
             return UUID_SIZE;
         }
     }
 
-    public static class VIntEncodedTypeSizes extends TypeSizes
-    {
+    public static class VIntEncodedTypeSizes extends TypeSizes {
         private static final int BOOL_SIZE = 1;
 
-        public int sizeofVInt(long i)
-        {
+        public int sizeofVInt(long i) {
             if (i >= -112 && i <= 127)
                 return 1;
 
             int size = 0;
             int len = -112;
-            if (i < 0)
-            {
+            if (i < 0) {
                 i ^= -1L; // take one's complement'
                 len = -120;
             }
             long tmp = i;
-            while (tmp != 0)
-            {
+            while (tmp != 0) {
                 tmp = tmp >> 8;
                 len--;
             }
@@ -128,28 +116,23 @@ public abstract class TypeSizes
             return size;
         }
 
-        public int sizeof(long i)
-        {
+        public int sizeof(long i) {
             return sizeofVInt(i);
         }
 
-        public int sizeof(boolean i)
-        {
+        public int sizeof(boolean i) {
             return BOOL_SIZE;
         }
 
-        public int sizeof(short i)
-        {
+        public int sizeof(short i) {
             return sizeofVInt(i);
         }
 
-        public int sizeof(int i)
-        {
+        public int sizeof(int i) {
             return sizeofVInt(i);
         }
 
-        public int sizeof(UUID value)
-        {
+        public int sizeof(UUID value) {
             return sizeofVInt(value.getMostSignificantBits()) + sizeofVInt(value.getLeastSignificantBits());
         }
     }

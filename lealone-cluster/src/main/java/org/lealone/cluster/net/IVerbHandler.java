@@ -23,8 +23,7 @@ package org.lealone.cluster.net;
  * for a given verb.
  */
 
-public interface IVerbHandler<T>
-{
+public interface IVerbHandler<T> {
     /**
      * This method delivers a message to the implementing class (if the implementing
      * class was registered by a call to MessagingService.registerVerbHandlers).

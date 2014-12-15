@@ -24,8 +24,7 @@ import java.util.Map;
 import org.lealone.cluster.db.DecoratedKey;
 import org.lealone.cluster.db.marshal.AbstractType;
 
-public interface IPartitioner
-{
+public interface IPartitioner {
     /**
      * Transform key to object representation of the on-disk format.
      *

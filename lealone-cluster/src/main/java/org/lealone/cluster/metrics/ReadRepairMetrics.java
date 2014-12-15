@@ -25,14 +25,12 @@ import com.yammer.metrics.core.Meter;
 /**
  * Metrics related to Read Repair.
  */
-public class ReadRepairMetrics
-{
+public class ReadRepairMetrics {
     private static final MetricNameFactory factory = new DefaultNameFactory("ReadRepair");
 
-    public static final Meter repairedBlocking =
-            Metrics.newMeter(factory.createMetricName("RepairedBlocking"), "RepairedBlocking", TimeUnit.SECONDS);
-    public static final Meter repairedBackground =
-            Metrics.newMeter(factory.createMetricName("RepairedBackground"), "RepairedBackground", TimeUnit.SECONDS);
-    public static final Meter attempted = 
-            Metrics.newMeter(factory.createMetricName("Attempted"), "Attempted", TimeUnit.SECONDS);
+    public static final Meter repairedBlocking = Metrics.newMeter(factory.createMetricName("RepairedBlocking"),
+            "RepairedBlocking", TimeUnit.SECONDS);
+    public static final Meter repairedBackground = Metrics.newMeter(factory.createMetricName("RepairedBackground"),
+            "RepairedBackground", TimeUnit.SECONDS);
+    public static final Meter attempted = Metrics.newMeter(factory.createMetricName("Attempted"), "Attempted", TimeUnit.SECONDS);
 }

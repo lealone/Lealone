@@ -22,8 +22,7 @@ import java.io.IOException;
 
 import org.lealone.cluster.io.util.DataOutputPlus;
 
-public interface IVersionedSerializer<T>
-{
+public interface IVersionedSerializer<T> {
     /**
      * Serialize the specified type into the specified DataOutputStream instance.
      *

@@ -23,39 +23,30 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 
-public abstract class AbstractTextSerializer implements TypeSerializer<String>
-{
+public abstract class AbstractTextSerializer implements TypeSerializer<String> {
     private final Charset charset;
 
-    protected AbstractTextSerializer(Charset charset)
-    {
+    protected AbstractTextSerializer(Charset charset) {
         this.charset = charset;
     }
 
-    public String deserialize(ByteBuffer bytes)
-    {
-        try
-        {
+    public String deserialize(ByteBuffer bytes) {
+        try {
             return ByteBufferUtil.string(bytes, charset);
-        }
-        catch (CharacterCodingException e)
-        {
+        } catch (CharacterCodingException e) {
             throw new MarshalException("Invalid " + charset + " bytes " + ByteBufferUtil.bytesToHex(bytes));
         }
     }
 
-    public ByteBuffer serialize(String value)
-    {
+    public ByteBuffer serialize(String value) {
         return ByteBufferUtil.bytes(value, charset);
     }
 
-    public String toString(String value)
-    {
+    public String toString(String value) {
         return value;
     }
 
-    public Class<String> getType()
-    {
+    public Class<String> getType() {
         return String.class;
     }
 }

@@ -20,8 +20,7 @@ package org.lealone.cluster.utils;
 import java.io.Closeable;
 import java.nio.ByteBuffer;
 
-public interface IFilter extends Closeable
-{
+public interface IFilter extends Closeable {
     void add(ByteBuffer key);
 
     boolean isPresent(ByteBuffer key);

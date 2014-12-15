@@ -27,33 +27,32 @@ import org.cliffc.high_scale_lib.NonBlockingHashMap;
 /**
  * Metrics for streaming.
  */
-public class StreamingMetrics
-{
+public class StreamingMetrics {
     public static final String TYPE_NAME = "Streaming";
 
     private static final ConcurrentMap<InetAddress, StreamingMetrics> instances = new NonBlockingHashMap<InetAddress, StreamingMetrics>();
 
-    public static final Counter activeStreamsOutbound = Metrics.newCounter(DefaultNameFactory.createMetricName(TYPE_NAME, "ActiveOutboundStreams", null));
-    public static final Counter totalIncomingBytes = Metrics.newCounter(DefaultNameFactory.createMetricName(TYPE_NAME, "TotalIncomingBytes", null));
-    public static final Counter totalOutgoingBytes = Metrics.newCounter(DefaultNameFactory.createMetricName(TYPE_NAME, "TotalOutgoingBytes", null));
+    public static final Counter activeStreamsOutbound = Metrics.newCounter(DefaultNameFactory.createMetricName(TYPE_NAME,
+            "ActiveOutboundStreams", null));
+    public static final Counter totalIncomingBytes = Metrics.newCounter(DefaultNameFactory.createMetricName(TYPE_NAME,
+            "TotalIncomingBytes", null));
+    public static final Counter totalOutgoingBytes = Metrics.newCounter(DefaultNameFactory.createMetricName(TYPE_NAME,
+            "TotalOutgoingBytes", null));
     public final Counter incomingBytes;
     public final Counter outgoingBytes;
 
-    public static StreamingMetrics get(InetAddress ip)
-    {
-       StreamingMetrics metrics = instances.get(ip);
-       if (metrics == null)
-       {
-           metrics = new StreamingMetrics(ip);
-           instances.put(ip, metrics);
-       }
-       return metrics;
+    public static StreamingMetrics get(InetAddress ip) {
+        StreamingMetrics metrics = instances.get(ip);
+        if (metrics == null) {
+            metrics = new StreamingMetrics(ip);
+            instances.put(ip, metrics);
+        }
+        return metrics;
     }
 
-    public StreamingMetrics(final InetAddress peer)
-    {
+    public StreamingMetrics(final InetAddress peer) {
         MetricNameFactory factory = new DefaultNameFactory("Streaming", peer.getHostAddress().replaceAll(":", "."));
         incomingBytes = Metrics.newCounter(factory.createMetricName("IncomingBytes"));
-        outgoingBytes= Metrics.newCounter(factory.createMetricName("OutgoingBytes"));
+        outgoingBytes = Metrics.newCounter(factory.createMetricName("OutgoingBytes"));
     }
 }

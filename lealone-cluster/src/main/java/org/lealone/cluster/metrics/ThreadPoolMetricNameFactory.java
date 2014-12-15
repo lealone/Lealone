@@ -19,21 +19,18 @@ package org.lealone.cluster.metrics;
 
 import com.yammer.metrics.core.MetricName;
 
-class ThreadPoolMetricNameFactory implements MetricNameFactory
-{
+class ThreadPoolMetricNameFactory implements MetricNameFactory {
     private final String type;
     private final String path;
     private final String poolName;
 
-    ThreadPoolMetricNameFactory(String type, String path, String poolName)
-    {
+    ThreadPoolMetricNameFactory(String type, String path, String poolName) {
         this.type = type;
         this.path = path;
         this.poolName = poolName;
     }
 
-    public MetricName createMetricName(String metricName)
-    {
+    public MetricName createMetricName(String metricName) {
         String groupName = ThreadPoolMetrics.class.getPackage().getName();
         StringBuilder mbeanName = new StringBuilder();
         mbeanName.append(groupName).append(":");

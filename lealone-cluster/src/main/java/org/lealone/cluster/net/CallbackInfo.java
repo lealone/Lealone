@@ -26,15 +26,13 @@ import org.lealone.cluster.io.IVersionedSerializer;
  * The ability to set the message is useful in cases for when a hint needs 
  * to be written due to a timeout in the response from a replica.
  */
-public class CallbackInfo
-{
+public class CallbackInfo {
     protected final InetAddress target;
     protected final IAsyncCallback callback;
     protected final IVersionedSerializer<?> serializer;
     private final boolean failureCallback;
 
-    public CallbackInfo(InetAddress target, IAsyncCallback callback, IVersionedSerializer<?> serializer)
-    {
+    public CallbackInfo(InetAddress target, IAsyncCallback callback, IVersionedSerializer<?> serializer) {
         this(target, callback, serializer, false);
     }
 
@@ -45,31 +43,23 @@ public class CallbackInfo
      * @param callback
      * @param serializer serializer to deserialize response message
      */
-    public CallbackInfo(InetAddress target, IAsyncCallback callback, IVersionedSerializer<?> serializer, boolean failureCallback)
-    {
+    public CallbackInfo(InetAddress target, IAsyncCallback callback, IVersionedSerializer<?> serializer, boolean failureCallback) {
         this.target = target;
         this.callback = callback;
         this.serializer = serializer;
         this.failureCallback = failureCallback;
     }
 
-    public boolean shouldHint()
-    {
+    public boolean shouldHint() {
         return false;
     }
 
-    public boolean isFailureCallback()
-    {
+    public boolean isFailureCallback() {
         return failureCallback;
     }
 
-    public String toString()
-    {
-        return "CallbackInfo(" +
-               "target=" + target +
-               ", callback=" + callback +
-               ", serializer=" + serializer +
-               ", failureCallback=" + failureCallback +
-               ')';
+    public String toString() {
+        return "CallbackInfo(" + "target=" + target + ", callback=" + callback + ", serializer=" + serializer
+                + ", failureCallback=" + failureCallback + ')';
     }
 }

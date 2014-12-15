@@ -48,7 +48,7 @@ public class AnotherHRegionServerStarter {
 
         hbaseRegionServerPort = 60021;
         hbaseRegionServerInfoPort = 60031;
-        lealoneRegionServerTcpPort = 5211;
+        lealoneRegionServerTcpPort = 5212;
         lealoneRegionServerPgPort = 5436;
 
         new Thread(new MyHRegionServerCommandLine(regionServerClass, conf, args, hbaseRegionServerPort,

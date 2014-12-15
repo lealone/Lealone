@@ -27,16 +27,16 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  *
  * @param <E>
  */
-public class Accumulator<E> implements Iterable<E>
-{
+public class Accumulator<E> implements Iterable<E> {
     private volatile int nextIndex;
     private volatile int presentCount;
     private final Object[] values;
-    private static final AtomicIntegerFieldUpdater<Accumulator> nextIndexUpdater = AtomicIntegerFieldUpdater.newUpdater(Accumulator.class, "nextIndex");
-    private static final AtomicIntegerFieldUpdater<Accumulator> presentCountUpdater = AtomicIntegerFieldUpdater.newUpdater(Accumulator.class, "presentCount");
+    private static final AtomicIntegerFieldUpdater<Accumulator> nextIndexUpdater = AtomicIntegerFieldUpdater.newUpdater(
+            Accumulator.class, "nextIndex");
+    private static final AtomicIntegerFieldUpdater<Accumulator> presentCountUpdater = AtomicIntegerFieldUpdater.newUpdater(
+            Accumulator.class, "presentCount");
 
-    public Accumulator(int size)
-    {
+    public Accumulator(int size) {
         values = new Object[size];
     }
 
@@ -49,11 +49,9 @@ public class Accumulator<E> implements Iterable<E>
      *
      * @param item add to collection
      */
-    public void add(E item)
-    {
+    public void add(E item) {
         int insertPos;
-        while (true)
-        {
+        while (true) {
             insertPos = nextIndex;
             if (insertPos >= values.length)
                 throw new IllegalStateException();
@@ -67,14 +65,11 @@ public class Accumulator<E> implements Iterable<E>
         //
         // we piggyback off presentCountUpdater to get volatile write semantics for our update to values
         boolean volatileWrite = false;
-        while (true)
-        {
+        while (true) {
             int cur = presentCount;
-            if (cur != insertPos && (cur == values.length || values[cur] == null))
-            {
+            if (cur != insertPos && (cur == values.length || values[cur] == null)) {
                 // ensure our item has been made visible before aborting
-                if (!volatileWrite && cur < insertPos && !presentCountUpdater.compareAndSet(this, cur, cur))
-                {
+                if (!volatileWrite && cur < insertPos && !presentCountUpdater.compareAndSet(this, cur, cur)) {
                     // if we fail to CAS it means an older write has completed, and may have not fixed us up
                     // due to our write not being visible
                     volatileWrite = true;
@@ -87,44 +82,36 @@ public class Accumulator<E> implements Iterable<E>
         }
     }
 
-    public boolean isEmpty()
-    {
+    public boolean isEmpty() {
         return presentCount == 0;
     }
 
     /**
      * @return the size of guaranteed-to-be-visible portion of the list
      */
-    public int size()
-    {
+    public int size() {
         return presentCount;
     }
 
-    public Iterator<E> iterator()
-    {
-        return new Iterator<E>()
-        {
+    public Iterator<E> iterator() {
+        return new Iterator<E>() {
             int p = 0;
 
-            public boolean hasNext()
-            {
+            public boolean hasNext() {
                 return p < presentCount;
             }
 
-            public E next()
-            {
+            public E next() {
                 return (E) values[p++];
             }
 
-            public void remove()
-            {
+            public void remove() {
                 throw new UnsupportedOperationException();
             }
         };
     }
 
-    public E get(int i)
-    {
+    public E get(int i) {
         // we read presentCount to guarantee a volatile read of values
         if (i >= presentCount)
             throw new IndexOutOfBoundsException();

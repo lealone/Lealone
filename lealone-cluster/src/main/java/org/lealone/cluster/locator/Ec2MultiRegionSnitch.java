@@ -37,14 +37,12 @@ import org.lealone.cluster.service.StorageService;
  * Operational: All the nodes in this cluster needs to be able to (modify the
  * Security group settings in AWS) communicate via Public IP's.
  */
-public class Ec2MultiRegionSnitch extends Ec2Snitch
-{
+public class Ec2MultiRegionSnitch extends Ec2Snitch {
     private static final String PUBLIC_IP_QUERY_URL = "http://169.254.169.254/latest/meta-data/public-ipv4";
     private static final String PRIVATE_IP_QUERY_URL = "http://169.254.169.254/latest/meta-data/local-ipv4";
     private final String localPrivateAddress;
 
-    public Ec2MultiRegionSnitch() throws IOException, ConfigurationException
-    {
+    public Ec2MultiRegionSnitch() throws IOException, ConfigurationException {
         super();
         InetAddress localPublicAddress = InetAddress.getByName(awsApiCall(PUBLIC_IP_QUERY_URL));
         logger.info("EC2Snitch using publicIP as identifier: {}", localPublicAddress);
@@ -55,10 +53,10 @@ public class Ec2MultiRegionSnitch extends Ec2Snitch
     }
 
     @Override
-    public void gossiperStarting()
-    {
+    public void gossiperStarting() {
         super.gossiperStarting();
-        Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP, StorageService.instance.valueFactory.internalIP(localPrivateAddress));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
+                StorageService.instance.valueFactory.internalIP(localPrivateAddress));
         Gossiper.instance.register(new ReconnectableSnitchHelper(this, ec2region, true));
     }
 }

@@ -19,16 +19,11 @@ package org.lealone.cluster.utils;
 
 import com.google.common.base.Throwables;
 
-public abstract class WrappedRunnable implements Runnable
-{
-    public final void run()
-    {
-        try
-        {
+public abstract class WrappedRunnable implements Runnable {
+    public final void run() {
+        try {
             runMayThrow();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             throw Throwables.propagate(e);
         }
     }

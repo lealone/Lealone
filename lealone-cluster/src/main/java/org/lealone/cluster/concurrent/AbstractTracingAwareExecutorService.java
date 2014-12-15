@@ -33,62 +33,53 @@ import org.lealone.cluster.utils.concurrent.SimpleCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import static org.lealone.cluster.tracing.Tracing.isTracing;
 
-public abstract class AbstractTracingAwareExecutorService implements TracingAwareExecutorService
-{
+public abstract class AbstractTracingAwareExecutorService implements TracingAwareExecutorService {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTracingAwareExecutorService.class);
 
     protected abstract void addTask(FutureTask<?> futureTask);
+
     protected abstract void onCompletion();
 
     /** Task Submission / Creation / Objects **/
 
-    public <T> FutureTask<T> submit(Callable<T> task)
-    {
+    public <T> FutureTask<T> submit(Callable<T> task) {
         return submit(newTaskFor(task));
     }
 
-    public FutureTask<?> submit(Runnable task)
-    {
+    public FutureTask<?> submit(Runnable task) {
         return submit(newTaskFor(task, null));
     }
 
-    public <T> FutureTask<T> submit(Runnable task, T result)
-    {
+    public <T> FutureTask<T> submit(Runnable task, T result) {
         return submit(newTaskFor(task, result));
     }
 
-    public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks)
-    {
+    public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) {
         throw new UnsupportedOperationException();
     }
 
-    public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException
-    {
+    public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
+            throws InterruptedException {
         throw new UnsupportedOperationException();
     }
 
-    public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException
-    {
+    public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
         throw new UnsupportedOperationException();
     }
 
-    public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException
-    {
+    public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException,
+            ExecutionException, TimeoutException {
         throw new UnsupportedOperationException();
     }
 
-    protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result)
-    {
+    protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result) {
         return newTaskFor(runnable, result, Tracing.instance.get());
     }
 
-    protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result, TraceState traceState)
-    {
-        if (traceState != null)
-        {
+    protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result, TraceState traceState) {
+        if (traceState != null) {
             if (runnable instanceof TraceSessionFutureTask)
                 return (TraceSessionFutureTask<T>) runnable;
             return new TraceSessionFutureTask<T>(runnable, result, traceState);
@@ -98,10 +89,8 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         return new FutureTask<>(runnable, result);
     }
 
-    protected <T> FutureTask<T> newTaskFor(Callable<T> callable)
-    {
-        if (isTracing())
-        {
+    protected <T> FutureTask<T> newTaskFor(Callable<T> callable) {
+        if (isTracing()) {
             if (callable instanceof TraceSessionFutureTask)
                 return (TraceSessionFutureTask<T>) callable;
             return new TraceSessionFutureTask<T>(callable, Tracing.instance.get());
@@ -111,89 +100,70 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         return new FutureTask<>(callable);
     }
 
-    private class TraceSessionFutureTask<T> extends FutureTask<T>
-    {
+    private class TraceSessionFutureTask<T> extends FutureTask<T> {
         private final TraceState state;
 
-        public TraceSessionFutureTask(Callable<T> callable, TraceState state)
-        {
+        public TraceSessionFutureTask(Callable<T> callable, TraceState state) {
             super(callable);
             this.state = state;
         }
 
-        public TraceSessionFutureTask(Runnable runnable, T result, TraceState state)
-        {
+        public TraceSessionFutureTask(Runnable runnable, T result, TraceState state) {
             super(runnable, result);
             this.state = state;
         }
 
-        public void run()
-        {
+        public void run() {
             TraceState oldState = Tracing.instance.get();
             Tracing.instance.set(state);
-            try
-            {
+            try {
                 super.run();
-            }
-            finally
-            {
+            } finally {
                 Tracing.instance.set(oldState);
             }
         }
     }
 
-    class FutureTask<T> extends SimpleCondition implements Future<T>, Runnable
-    {
+    class FutureTask<T> extends SimpleCondition implements Future<T>, Runnable {
         private boolean failure;
         private Object result = this;
         private final Callable<T> callable;
 
-        public FutureTask(Callable<T> callable)
-        {
+        public FutureTask(Callable<T> callable) {
             this.callable = callable;
         }
-        public FutureTask(Runnable runnable, T result)
-        {
+
+        public FutureTask(Runnable runnable, T result) {
             this(Executors.callable(runnable, result));
         }
 
-        public void run()
-        {
-            try
-            {
+        public void run() {
+            try {
                 result = callable.call();
-            }
-            catch (Throwable t)
-            {
+            } catch (Throwable t) {
                 JVMStabilityInspector.inspectThrowable(t);
                 logger.warn("Uncaught exception on thread {}: {}", Thread.currentThread(), t);
                 result = t;
                 failure = true;
-            }
-            finally
-            {
+            } finally {
                 signalAll();
                 onCompletion();
             }
         }
 
-        public boolean cancel(boolean mayInterruptIfRunning)
-        {
+        public boolean cancel(boolean mayInterruptIfRunning) {
             return false;
         }
 
-        public boolean isCancelled()
-        {
+        public boolean isCancelled() {
             return false;
         }
 
-        public boolean isDone()
-        {
+        public boolean isDone() {
             return isSignaled();
         }
 
-        public T get() throws InterruptedException, ExecutionException
-        {
+        public T get() throws InterruptedException, ExecutionException {
             await();
             Object result = this.result;
             if (failure)
@@ -201,8 +171,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
             return (T) result;
         }
 
-        public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException
-        {
+        public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
             await(timeout, unit);
             Object result = this.result;
             if (failure)
@@ -211,19 +180,16 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         }
     }
 
-    private <T> FutureTask<T> submit(FutureTask<T> task)
-    {
+    private <T> FutureTask<T> submit(FutureTask<T> task) {
         addTask(task);
         return task;
     }
 
-    public void execute(Runnable command)
-    {
+    public void execute(Runnable command) {
         addTask(newTaskFor(command, null));
     }
 
-    public void execute(Runnable command, TraceState state)
-    {
+    public void execute(Runnable command, TraceState state) {
         addTask(newTaskFor(command, null, state));
     }
 }

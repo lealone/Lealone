@@ -19,19 +19,16 @@ package org.lealone.cluster.exceptions;
 
 import org.lealone.cluster.db.ConsistencyLevel;
 
-public class UnavailableException extends RequestExecutionException
-{
+public class UnavailableException extends RequestExecutionException {
     public final ConsistencyLevel consistency;
     public final int required;
     public final int alive;
 
-    public UnavailableException(ConsistencyLevel consistency, int required, int alive)
-    {
+    public UnavailableException(ConsistencyLevel consistency, int required, int alive) {
         this("Cannot achieve consistency level " + consistency, consistency, required, alive);
     }
 
-    public UnavailableException(String msg, ConsistencyLevel consistency, int required, int alive)
-    {
+    public UnavailableException(String msg, ConsistencyLevel consistency, int required, int alive) {
         super(ExceptionCode.UNAVAILABLE, msg);
         this.consistency = consistency;
         this.required = required;

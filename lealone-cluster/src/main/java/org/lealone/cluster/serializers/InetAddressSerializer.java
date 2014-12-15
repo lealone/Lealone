@@ -24,52 +24,41 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 
-public class InetAddressSerializer implements TypeSerializer<InetAddress>
-{
+public class InetAddressSerializer implements TypeSerializer<InetAddress> {
     public static final InetAddressSerializer instance = new InetAddressSerializer();
 
-    public InetAddress deserialize(ByteBuffer bytes)
-    {
+    public InetAddress deserialize(ByteBuffer bytes) {
         if (bytes.remaining() == 0)
             return null;
 
-        try
-        {
+        try {
             return InetAddress.getByAddress(ByteBufferUtil.getArray(bytes));
-        }
-        catch (UnknownHostException e)
-        {
+        } catch (UnknownHostException e) {
             throw new AssertionError(e);
         }
     }
 
-    public ByteBuffer serialize(InetAddress value)
-    {
+    public ByteBuffer serialize(InetAddress value) {
         return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBuffer.wrap(value.getAddress());
     }
 
-    public void validate(ByteBuffer bytes) throws MarshalException
-    {
+    public void validate(ByteBuffer bytes) throws MarshalException {
         if (bytes.remaining() == 0)
             return;
 
-        try
-        {
+        try {
             InetAddress.getByAddress(ByteBufferUtil.getArray(bytes));
-        }
-        catch (UnknownHostException e)
-        {
-            throw new MarshalException(String.format("Expected 4 or 16 byte inetaddress; got %s", ByteBufferUtil.bytesToHex(bytes)));
+        } catch (UnknownHostException e) {
+            throw new MarshalException(String.format("Expected 4 or 16 byte inetaddress; got %s",
+                    ByteBufferUtil.bytesToHex(bytes)));
         }
     }
 
-    public String toString(InetAddress value)
-    {
+    public String toString(InetAddress value) {
         return value == null ? "" : value.getHostAddress();
     }
 
-    public Class<InetAddress> getType()
-    {
+    public Class<InetAddress> getType() {
         return InetAddress.class;
     }
 }

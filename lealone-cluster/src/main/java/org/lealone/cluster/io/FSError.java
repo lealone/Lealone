@@ -20,12 +20,10 @@ package org.lealone.cluster.io;
 import java.io.File;
 import java.io.IOError;
 
-public abstract class FSError extends IOError
-{
+public abstract class FSError extends IOError {
     public final File path;
 
-    public FSError(Throwable cause, File path)
-    {
+    public FSError(Throwable cause, File path) {
         super(cause);
         this.path = path;
     }
@@ -35,10 +33,8 @@ public abstract class FSError extends IOError
      * @param top the top-level Throwable to unwrap
      * @return FSError if found any, null otherwise
      */
-    public static FSError findNested(Throwable top)
-    {
-        for (Throwable t = top; t != null; t = t.getCause())
-        {
+    public static FSError findNested(Throwable top) {
+        for (Throwable t = top; t != null; t = t.getCause()) {
             if (t instanceof FSError)
                 return (FSError) t;
         }

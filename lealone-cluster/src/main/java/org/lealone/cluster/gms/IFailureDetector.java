@@ -26,8 +26,7 @@ import java.net.InetAddress;
  * for notifications of liveness information of nodes.
  */
 
-public interface IFailureDetector
-{
+public interface IFailureDetector {
     /**
      * Failure Detector's knowledge of whether a node is up or
      * down.

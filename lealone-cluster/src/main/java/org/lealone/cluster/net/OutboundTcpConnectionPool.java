@@ -34,8 +34,7 @@ import org.lealone.cluster.metrics.ConnectionMetrics;
 import org.lealone.cluster.security.SSLFactory;
 import org.lealone.cluster.utils.FBUtilities;
 
-public class OutboundTcpConnectionPool
-{
+public class OutboundTcpConnectionPool {
     // pointer for the real Address.
     private final InetAddress id;
     private final CountDownLatch started;
@@ -45,8 +44,7 @@ public class OutboundTcpConnectionPool
     private InetAddress resetEndpoint;
     private ConnectionMetrics metrics;
 
-    OutboundTcpConnectionPool(InetAddress remoteEp)
-    {
+    OutboundTcpConnectionPool(InetAddress remoteEp) {
         id = remoteEp;
         resetEndpoint = SystemKeyspace.getPreferredIP(remoteEp);
         started = new CountDownLatch(1);
@@ -59,24 +57,18 @@ public class OutboundTcpConnectionPool
      * returns the appropriate connection based on message type.
      * returns null if a connection could not be established.
      */
-    OutboundTcpConnection getConnection(MessageOut msg)
-    {
+    OutboundTcpConnection getConnection(MessageOut msg) {
         Stage stage = msg.getStage();
-        return stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP
-               ? ackCon
-               : cmdCon;
+        return stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP ? ackCon : cmdCon;
     }
 
-    void reset()
-    {
+    void reset() {
         for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
             conn.closeSocket(false);
     }
 
-    public void resetToNewerVersion(int version)
-    {
-        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
-        {
+    public void resetToNewerVersion(int version) {
+        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon }) {
             if (version > conn.getTargetVersion())
                 conn.softCloseSocket();
         }
@@ -87,8 +79,7 @@ public class OutboundTcpConnectionPool
      * Used by Ec2MultiRegionSnitch to force nodes in the same region to communicate over their private IPs.
      * @param remoteEP
      */
-    public void reset(InetAddress remoteEP)
-    {
+    public void reset(InetAddress remoteEP) {
         SystemKeyspace.updatePreferredIP(id, remoteEP);
         resetEndpoint = remoteEP;
         for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
@@ -99,38 +90,32 @@ public class OutboundTcpConnectionPool
         metrics = new ConnectionMetrics(resetEndpoint, this);
     }
 
-    public long getTimeouts()
-    {
-       return metrics.timeouts.count();
+    public long getTimeouts() {
+        return metrics.timeouts.count();
     }
 
-    public long getRecentTimeouts()
-    {
+    public long getRecentTimeouts() {
         return metrics.getRecentTimeout();
     }
 
-    public void incrementTimeout()
-    {
+    public void incrementTimeout() {
         metrics.timeouts.mark();
     }
 
-    public Socket newSocket() throws IOException
-    {
+    public Socket newSocket() throws IOException {
         return newSocket(endPoint());
     }
 
-    public static Socket newSocket(InetAddress endpoint) throws IOException
-    {
+    public static Socket newSocket(InetAddress endpoint) throws IOException {
         // zero means 'bind on any available port.'
-        if (isEncryptedChannel(endpoint))
-        {
+        if (isEncryptedChannel(endpoint)) {
             if (Config.getOutboundBindAny())
-                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.getSSLStoragePort());
+                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint,
+                        DatabaseDescriptor.getSSLStoragePort());
             else
-                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint, DatabaseDescriptor.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
-        }
-        else
-        {
+                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint,
+                        DatabaseDescriptor.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
+        } else {
             Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.getStoragePort())).socket();
             if (Config.getOutboundBindAny() && !socket.isBound())
                 socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(), 0));
@@ -138,59 +123,51 @@ public class OutboundTcpConnectionPool
         }
     }
 
-    public InetAddress endPoint()
-    {
+    public InetAddress endPoint() {
         if (id.equals(FBUtilities.getBroadcastAddress()))
             return FBUtilities.getLocalAddress();
         return resetEndpoint;
     }
 
-    public static boolean isEncryptedChannel(InetAddress address)
-    {
+    public static boolean isEncryptedChannel(InetAddress address) {
         IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
-        switch (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption)
-        {
-            case none:
-                return false; // if nothing needs to be encrypted then return immediately.
-            case all:
-                break;
-            case dc:
-                if (snitch.getDatacenter(address).equals(snitch.getDatacenter(FBUtilities.getBroadcastAddress())))
-                    return false;
-                break;
-            case rack:
-                // for rack then check if the DC's are the same.
-                if (snitch.getRack(address).equals(snitch.getRack(FBUtilities.getBroadcastAddress()))
-                        && snitch.getDatacenter(address).equals(snitch.getDatacenter(FBUtilities.getBroadcastAddress())))
-                    return false;
-                break;
+        switch (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption) {
+        case none:
+            return false; // if nothing needs to be encrypted then return immediately.
+        case all:
+            break;
+        case dc:
+            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(FBUtilities.getBroadcastAddress())))
+                return false;
+            break;
+        case rack:
+            // for rack then check if the DC's are the same.
+            if (snitch.getRack(address).equals(snitch.getRack(FBUtilities.getBroadcastAddress()))
+                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(FBUtilities.getBroadcastAddress())))
+                return false;
+            break;
         }
         return true;
     }
-    
-    public void start()
-    {
+
+    public void start() {
         cmdCon.start();
         ackCon.start();
 
         metrics = new ConnectionMetrics(id, this);
-        
+
         started.countDown();
     }
-    
-    public void waitForStarted()
-    {
+
+    public void waitForStarted() {
         if (started.getCount() == 0)
             return;
 
         boolean error = false;
-        try
-        {
+        try {
             if (!started.await(1, TimeUnit.MINUTES))
                 error = true;
-        }
-        catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             error = true;
         }
@@ -198,14 +175,13 @@ public class OutboundTcpConnectionPool
             throw new IllegalStateException(String.format("Connections to %s are not started!", id.getHostAddress()));
     }
 
-    public void close()
-    {
+    public void close() {
         // these null guards are simply for tests
         if (ackCon != null)
             ackCon.closeSocket(true);
         if (cmdCon != null)
             cmdCon.closeSocket(true);
-        
+
         metrics.release();
     }
 }

@@ -19,8 +19,7 @@ package org.lealone.cluster.auth;
 
 import org.lealone.cluster.exceptions.AuthenticationException;
 
-public interface ISaslAwareAuthenticator extends IAuthenticator
-{
+public interface ISaslAwareAuthenticator extends IAuthenticator {
     /**
      * Provide a SaslAuthenticator to be used by the CQL binary protocol server. If
      * the configured IAuthenticator requires authentication but does not implement this
@@ -31,11 +30,11 @@ public interface ISaslAwareAuthenticator extends IAuthenticator
      */
     SaslAuthenticator newAuthenticator();
 
-
-    public interface SaslAuthenticator
-    {
+    public interface SaslAuthenticator {
         public byte[] evaluateResponse(byte[] clientResponse) throws AuthenticationException;
+
         public boolean isComplete();
+
         public AuthenticatedUser getAuthenticatedUser() throws AuthenticationException;
     }
 }

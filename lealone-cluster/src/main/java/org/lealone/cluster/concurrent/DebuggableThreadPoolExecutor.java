@@ -24,7 +24,6 @@ import org.lealone.cluster.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import static org.lealone.cluster.tracing.Tracing.isTracing;
 
 /**
@@ -44,50 +43,41 @@ import static org.lealone.cluster.tracing.Tracing.isTracing;
  *   threads and the queue is full, we want the enqueuer to block.  But to allow the number of threads to drop if a
  *   stage is less busy, core thread timeout is enabled.
  */
-public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements TracingAwareExecutorService
-{
+public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements TracingAwareExecutorService {
     protected static final Logger logger = LoggerFactory.getLogger(DebuggableThreadPoolExecutor.class);
-    public static final RejectedExecutionHandler blockingExecutionHandler = new RejectedExecutionHandler()
-    {
-        public void rejectedExecution(Runnable task, ThreadPoolExecutor executor)
-        {
+    public static final RejectedExecutionHandler blockingExecutionHandler = new RejectedExecutionHandler() {
+        public void rejectedExecution(Runnable task, ThreadPoolExecutor executor) {
             ((DebuggableThreadPoolExecutor) executor).onInitialRejection(task);
             BlockingQueue<Runnable> queue = executor.getQueue();
-            while (true)
-            {
-                if (executor.isShutdown())
-                {
+            while (true) {
+                if (executor.isShutdown()) {
                     ((DebuggableThreadPoolExecutor) executor).onFinalRejection(task);
                     throw new RejectedExecutionException("ThreadPoolExecutor has shut down");
                 }
-                try
-                {
-                    if (queue.offer(task, 1000, TimeUnit.MILLISECONDS))
-                    {
+                try {
+                    if (queue.offer(task, 1000, TimeUnit.MILLISECONDS)) {
                         ((DebuggableThreadPoolExecutor) executor).onFinalAccept(task);
                         break;
                     }
-                }
-                catch (InterruptedException e)
-                {
+                } catch (InterruptedException e) {
                     throw new AssertionError(e);
                 }
             }
         }
     };
 
-    public DebuggableThreadPoolExecutor(String threadPoolName, int priority)
-    {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName, priority));
+    public DebuggableThreadPoolExecutor(String threadPoolName, int priority) {
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName,
+                priority));
     }
 
-    public DebuggableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> queue, ThreadFactory factory)
-    {
+    public DebuggableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> queue,
+            ThreadFactory factory) {
         this(corePoolSize, corePoolSize, keepAliveTime, unit, queue, factory);
     }
 
-    public DebuggableThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory)
-    {
+    public DebuggableThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,
+            BlockingQueue<Runnable> workQueue, ThreadFactory threadFactory) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
         allowCoreThreadTimeOut(true);
 
@@ -106,12 +96,9 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      * @param threadPoolName the name of the threads created by this executor
      * @return The new DebuggableThreadPoolExecutor
      */
-    public static DebuggableThreadPoolExecutor createCachedThreadpoolWithMaxSize(String threadPoolName)
-    {
-        return new DebuggableThreadPoolExecutor(0, Integer.MAX_VALUE,
-                                                60L, TimeUnit.SECONDS,
-                                                new SynchronousQueue<Runnable>(),
-                                                new NamedThreadFactory(threadPoolName));
+    public static DebuggableThreadPoolExecutor createCachedThreadpoolWithMaxSize(String threadPoolName) {
+        return new DebuggableThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
+                new NamedThreadFactory(threadPoolName));
     }
 
     /**
@@ -122,8 +109,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      * @param size the fixed number of threads for this executor
      * @return the new DebuggableThreadPoolExecutor
      */
-    public static DebuggableThreadPoolExecutor createWithFixedPoolSize(String threadPoolName, int size)
-    {
+    public static DebuggableThreadPoolExecutor createWithFixedPoolSize(String threadPoolName, int size) {
         return createWithMaximumPoolSize(threadPoolName, size, Integer.MAX_VALUE, TimeUnit.SECONDS);
     }
 
@@ -137,69 +123,63 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      * @param unit tht time unit for {@code keepAliveTime}
      * @return the new DebuggableThreadPoolExecutor
      */
-    public static DebuggableThreadPoolExecutor createWithMaximumPoolSize(String threadPoolName, int size, int keepAliveTime, TimeUnit unit)
-    {
-        return new DebuggableThreadPoolExecutor(size, Integer.MAX_VALUE, keepAliveTime, unit, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName));
+    public static DebuggableThreadPoolExecutor createWithMaximumPoolSize(String threadPoolName, int size, int keepAliveTime,
+            TimeUnit unit) {
+        return new DebuggableThreadPoolExecutor(size, Integer.MAX_VALUE, keepAliveTime, unit,
+                new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName));
     }
 
-    protected void onInitialRejection(Runnable task) {}
-    protected void onFinalAccept(Runnable task) {}
-    protected void onFinalRejection(Runnable task) {}
-
-    public void execute(Runnable command, TraceState state)
-    {
-        super.execute(state == null || command instanceof TraceSessionWrapper
-                      ? command
-                      : new TraceSessionWrapper<Object>(command, state));
+    protected void onInitialRejection(Runnable task) {
     }
 
-    public void maybeExecuteImmediately(Runnable command)
-    {
+    protected void onFinalAccept(Runnable task) {
+    }
+
+    protected void onFinalRejection(Runnable task) {
+    }
+
+    public void execute(Runnable command, TraceState state) {
+        super.execute(state == null || command instanceof TraceSessionWrapper ? command : new TraceSessionWrapper<Object>(
+                command, state));
+    }
+
+    public void maybeExecuteImmediately(Runnable command) {
         execute(command);
     }
 
     // execute does not call newTaskFor
     @Override
-    public void execute(Runnable command)
-    {
-        super.execute(isTracing() && !(command instanceof TraceSessionWrapper)
-                      ? new TraceSessionWrapper<Object>(Executors.callable(command, null))
-                      : command);
+    public void execute(Runnable command) {
+        super.execute(isTracing() && !(command instanceof TraceSessionWrapper) ? new TraceSessionWrapper<Object>(Executors
+                .callable(command, null)) : command);
     }
 
     @Override
-    protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T result)
-    {
-        if (isTracing() && !(runnable instanceof TraceSessionWrapper))
-        {
+    protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T result) {
+        if (isTracing() && !(runnable instanceof TraceSessionWrapper)) {
             return new TraceSessionWrapper<T>(Executors.callable(runnable, result));
         }
         return super.newTaskFor(runnable, result);
     }
 
     @Override
-    protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable)
-    {
-        if (isTracing() && !(callable instanceof TraceSessionWrapper))
-        {
+    protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
+        if (isTracing() && !(callable instanceof TraceSessionWrapper)) {
             return new TraceSessionWrapper<T>(callable);
         }
         return super.newTaskFor(callable);
     }
 
     @Override
-    protected void afterExecute(Runnable r, Throwable t)
-    {
+    protected void afterExecute(Runnable r, Throwable t) {
         super.afterExecute(r, t);
 
         maybeResetTraceSessionWrapper(r);
         logExceptionsAfterExecute(r, t);
     }
 
-    protected static void maybeResetTraceSessionWrapper(Runnable r)
-    {
-        if (r instanceof TraceSessionWrapper)
-        {
+    protected static void maybeResetTraceSessionWrapper(Runnable r) {
+        if (r instanceof TraceSessionWrapper) {
             TraceSessionWrapper tsw = (TraceSessionWrapper) r;
             // we have to reset trace state as its presence is what denotes the current thread is tracing
             // and if left this thread might start tracing unrelated tasks
@@ -208,8 +188,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     }
 
     @Override
-    protected void beforeExecute(Thread t, Runnable r)
-    {
+    protected void beforeExecute(Thread t, Runnable r) {
         if (r instanceof TraceSessionWrapper)
             ((TraceSessionWrapper) r).setupContext();
 
@@ -220,8 +199,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      * Send @param t and any exception wrapped by @param r to the default uncaught exception handler,
      * or log them if none such is set up
      */
-    public static void logExceptionsAfterExecute(Runnable r, Throwable t)
-    {
+    public static void logExceptionsAfterExecute(Runnable r, Throwable t) {
         Throwable hiddenThrowable = extractThrowable(r);
         if (hiddenThrowable != null)
             handleOrLog(hiddenThrowable);
@@ -236,8 +214,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     /**
      * Send @param t to the default uncaught exception handler, or log it if none such is set up
      */
-    public static void handleOrLog(Throwable t)
-    {
+    public static void handleOrLog(Throwable t) {
         if (Thread.getDefaultUncaughtExceptionHandler() == null)
             logger.error("Error in ThreadPoolExecutor", t);
         else
@@ -247,29 +224,20 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     /**
      * @return any exception wrapped by @param runnable, i.e., if it is a FutureTask
      */
-    public static Throwable extractThrowable(Runnable runnable)
-    {
+    public static Throwable extractThrowable(Runnable runnable) {
         // Check for exceptions wrapped by FutureTask.  We do this by calling get(), which will
         // cause it to throw any saved exception.
         //
         // Complicating things, calling get() on a ScheduledFutureTask will block until the task
         // is cancelled.  Hence, the extra isDone check beforehand.
-        if ((runnable instanceof Future<?>) && ((Future<?>) runnable).isDone())
-        {
-            try
-            {
+        if ((runnable instanceof Future<?>) && ((Future<?>) runnable).isDone()) {
+            try {
                 ((Future<?>) runnable).get();
-            }
-            catch (InterruptedException e)
-            {
+            } catch (InterruptedException e) {
                 throw new AssertionError(e);
-            }
-            catch (CancellationException e)
-            {
+            } catch (CancellationException e) {
                 logger.debug("Task cancelled", e);
-            }
-            catch (ExecutionException e)
-            {
+            } catch (ExecutionException e) {
                 return e.getCause();
             }
         }
@@ -283,29 +251,24 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      *
      * @param <T>
      */
-    private static class TraceSessionWrapper<T> extends FutureTask<T>
-    {
+    private static class TraceSessionWrapper<T> extends FutureTask<T> {
         private final TraceState state;
 
-        public TraceSessionWrapper(Callable<T> callable)
-        {
+        public TraceSessionWrapper(Callable<T> callable) {
             super(callable);
             state = Tracing.instance.get();
         }
 
-        public TraceSessionWrapper(Runnable command, TraceState state)
-        {
+        public TraceSessionWrapper(Runnable command, TraceState state) {
             super(command, null);
             this.state = state;
         }
 
-        private void setupContext()
-        {
+        private void setupContext() {
             Tracing.instance.set(state);
         }
 
-        private void reset()
-        {
+        private void reset() {
             Tracing.instance.set(null);
         }
     }

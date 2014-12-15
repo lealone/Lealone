@@ -22,23 +22,20 @@ import java.util.List;
 
 import org.lealone.cluster.utils.Hex;
 
-public final class Resources
-{
+public final class Resources {
     /**
      * Construct a chain of resource parents starting with the resource and ending with the root.
      *
      * @param resource The staring point.
      * @return list of resource in the chain form start to the root.
      */
-    public static List<? extends IResource> chain(IResource resource)
-    {
+    public static List<? extends IResource> chain(IResource resource) {
         List<IResource> chain = new ArrayList<IResource>();
-        while (true)
-        {
-           chain.add(resource);
-           if (!resource.hasParent())
-               break;
-           resource = resource.getParent();
+        while (true) {
+            chain.add(resource);
+            if (!resource.hasParent())
+                break;
+            resource = resource.getParent();
         }
         return chain;
     }
@@ -49,14 +46,12 @@ public final class Resources
     public final static String KEYSPACES = "keyspaces";
 
     @Deprecated
-    public static String toString(List<Object> resource)
-    {
+    public static String toString(List<Object> resource) {
         StringBuilder buff = new StringBuilder();
-        for (Object component : resource)
-        {
+        for (Object component : resource) {
             buff.append("/");
             if (component instanceof byte[])
-                buff.append(Hex.bytesToHex((byte[])component));
+                buff.append(Hex.bytesToHex((byte[]) component));
             else
                 buff.append(component);
         }

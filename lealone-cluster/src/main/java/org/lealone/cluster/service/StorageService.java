@@ -82,6 +82,7 @@ import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.exceptions.InvalidRequestException;
 import org.lealone.cluster.exceptions.UnavailableException;
 import org.lealone.cluster.gms.ApplicationState;
+import org.lealone.cluster.gms.EchoVerbHandler;
 import org.lealone.cluster.gms.EndpointState;
 import org.lealone.cluster.gms.FailureDetector;
 import org.lealone.cluster.gms.GossipDigestAck2VerbHandler;

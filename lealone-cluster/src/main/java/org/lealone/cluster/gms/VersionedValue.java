@@ -27,7 +27,6 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 import com.google.common.collect.Iterables;
 
-
 import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.dht.IPartitioner;
@@ -36,7 +35,6 @@ import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.utils.FBUtilities;
-
 
 /**
  * This abstraction represents the state associated with a particular node which an
@@ -50,14 +48,13 @@ import org.lealone.cluster.utils.FBUtilities;
  * Gossiper.instance.addApplicationState("LOAD STATE", loadState);
  */
 
-public class VersionedValue implements Comparable<VersionedValue>
-{
+public class VersionedValue implements Comparable<VersionedValue> {
 
     public static final IVersionedSerializer<VersionedValue> serializer = new VersionedValueSerializer();
 
     // this must be a char that cannot be present in any token
     public final static char DELIMITER = ',';
-    public final static String DELIMITER_STR = new String(new char[]{ DELIMITER });
+    public final static String DELIMITER_STR = new String(new char[] { DELIMITER });
 
     // values for ApplicationState.STATUS
     public final static String STATUS_BOOTSTRAPPING = "BOOT";
@@ -77,8 +74,7 @@ public class VersionedValue implements Comparable<VersionedValue>
     public final int version;
     public final String value;
 
-    private VersionedValue(String value, int version)
-    {
+    private VersionedValue(String value, int version) {
         assert value != null;
         // blindly interning everything is somewhat suboptimal -- lots of VersionedValues are unique --
         // but harmless, and interning the non-unique ones saves significant memory.  (Unfortunately,
@@ -88,186 +84,146 @@ public class VersionedValue implements Comparable<VersionedValue>
         this.version = version;
     }
 
-    private VersionedValue(String value)
-    {
+    private VersionedValue(String value) {
         this(value, VersionGenerator.getNextVersion());
     }
 
-    public int compareTo(VersionedValue value)
-    {
+    public int compareTo(VersionedValue value) {
         return this.version - value.version;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "Value(" + value + "," + version + ")";
     }
 
-    private static String versionString(String... args)
-    {
+    private static String versionString(String... args) {
         return StringUtils.join(args, VersionedValue.DELIMITER);
     }
 
-    public static class VersionedValueFactory
-    {
+    public static class VersionedValueFactory {
         final IPartitioner partitioner;
 
-        public VersionedValueFactory(IPartitioner partitioner)
-        {
+        public VersionedValueFactory(IPartitioner partitioner) {
             this.partitioner = partitioner;
         }
-        
-        public VersionedValue cloneWithHigherVersion(VersionedValue value)
-        {
+
+        public VersionedValue cloneWithHigherVersion(VersionedValue value) {
             return new VersionedValue(value.value);
         }
 
-        public VersionedValue bootstrapping(Collection<Token> tokens)
-        {
-            return new VersionedValue(versionString(VersionedValue.STATUS_BOOTSTRAPPING,
-                                                    makeTokenString(tokens)));
+        public VersionedValue bootstrapping(Collection<Token> tokens) {
+            return new VersionedValue(versionString(VersionedValue.STATUS_BOOTSTRAPPING, makeTokenString(tokens)));
         }
 
-        public VersionedValue normal(Collection<Token> tokens)
-        {
-            return new VersionedValue(versionString(VersionedValue.STATUS_NORMAL,
-                                                    makeTokenString(tokens)));
+        public VersionedValue normal(Collection<Token> tokens) {
+            return new VersionedValue(versionString(VersionedValue.STATUS_NORMAL, makeTokenString(tokens)));
         }
 
-        private String makeTokenString(Collection<Token> tokens)
-        {
+        private String makeTokenString(Collection<Token> tokens) {
             return partitioner.getTokenFactory().toString(Iterables.get(tokens, 0));
         }
 
-        public VersionedValue load(double load)
-        {
+        public VersionedValue load(double load) {
             return new VersionedValue(String.valueOf(load));
         }
 
-        public VersionedValue schema(UUID newVersion)
-        {
+        public VersionedValue schema(UUID newVersion) {
             return new VersionedValue(newVersion.toString());
         }
 
-        public VersionedValue leaving(Collection<Token> tokens)
-        {
-            return new VersionedValue(versionString(VersionedValue.STATUS_LEAVING,
-                                                    makeTokenString(tokens)));
+        public VersionedValue leaving(Collection<Token> tokens) {
+            return new VersionedValue(versionString(VersionedValue.STATUS_LEAVING, makeTokenString(tokens)));
         }
 
-        public VersionedValue left(Collection<Token> tokens, long expireTime)
-        {
-            return new VersionedValue(versionString(VersionedValue.STATUS_LEFT,
-                                                    makeTokenString(tokens),
-                                                    Long.toString(expireTime)));
+        public VersionedValue left(Collection<Token> tokens, long expireTime) {
+            return new VersionedValue(versionString(VersionedValue.STATUS_LEFT, makeTokenString(tokens),
+                    Long.toString(expireTime)));
         }
 
-        public VersionedValue moving(Token token)
-        {
-            return new VersionedValue(VersionedValue.STATUS_MOVING + VersionedValue.DELIMITER + partitioner.getTokenFactory().toString(token));
+        public VersionedValue moving(Token token) {
+            return new VersionedValue(VersionedValue.STATUS_MOVING + VersionedValue.DELIMITER
+                    + partitioner.getTokenFactory().toString(token));
         }
 
-        public VersionedValue hostId(UUID hostId)
-        {
+        public VersionedValue hostId(UUID hostId) {
             return new VersionedValue(hostId.toString());
         }
 
-        public VersionedValue tokens(Collection<Token> tokens)
-        {
+        public VersionedValue tokens(Collection<Token> tokens) {
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             DataOutputStream out = new DataOutputStream(bos);
-            try
-            {
+            try {
                 TokenSerializer.serialize(partitioner, tokens, out);
-            }
-            catch (IOException e)
-            {
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
             return new VersionedValue(new String(bos.toByteArray(), ISO_8859_1));
         }
 
-        public VersionedValue removingNonlocal(UUID hostId)
-        {
+        public VersionedValue removingNonlocal(UUID hostId) {
             return new VersionedValue(versionString(VersionedValue.REMOVING_TOKEN, hostId.toString()));
         }
 
-        public VersionedValue removedNonlocal(UUID hostId, long expireTime)
-        {
+        public VersionedValue removedNonlocal(UUID hostId, long expireTime) {
             return new VersionedValue(versionString(VersionedValue.REMOVED_TOKEN, hostId.toString(), Long.toString(expireTime)));
         }
 
-        public VersionedValue removalCoordinator(UUID hostId)
-        {
+        public VersionedValue removalCoordinator(UUID hostId) {
             return new VersionedValue(versionString(VersionedValue.REMOVAL_COORDINATOR, hostId.toString()));
         }
 
-        public VersionedValue hibernate(boolean value)
-        {
+        public VersionedValue hibernate(boolean value) {
             return new VersionedValue(VersionedValue.HIBERNATE + VersionedValue.DELIMITER + value);
         }
 
-        public VersionedValue datacenter(String dcId)
-        {
+        public VersionedValue datacenter(String dcId) {
             return new VersionedValue(dcId);
         }
 
-        public VersionedValue rack(String rackId)
-        {
+        public VersionedValue rack(String rackId) {
             return new VersionedValue(rackId);
         }
 
-        public VersionedValue rpcaddress(InetAddress endpoint)
-        {
+        public VersionedValue rpcaddress(InetAddress endpoint) {
             return new VersionedValue(endpoint.getHostAddress());
         }
 
-        public VersionedValue releaseVersion()
-        {
+        public VersionedValue releaseVersion() {
             return new VersionedValue(FBUtilities.getReleaseVersionString());
         }
 
-        public VersionedValue networkVersion()
-        {
+        public VersionedValue networkVersion() {
             return new VersionedValue(String.valueOf(MessagingService.current_version));
         }
 
-        public VersionedValue internalIP(String private_ip)
-        {
+        public VersionedValue internalIP(String private_ip) {
             return new VersionedValue(private_ip);
         }
 
-        public VersionedValue severity(double value)
-        {
+        public VersionedValue severity(double value) {
             return new VersionedValue(String.valueOf(value));
         }
     }
 
-    private static class VersionedValueSerializer implements IVersionedSerializer<VersionedValue>
-    {
-        public void serialize(VersionedValue value, DataOutputPlus out, int version) throws IOException
-        {
+    private static class VersionedValueSerializer implements IVersionedSerializer<VersionedValue> {
+        public void serialize(VersionedValue value, DataOutputPlus out, int version) throws IOException {
             out.writeUTF(outValue(value, version));
             out.writeInt(value.version);
         }
 
-        private String outValue(VersionedValue value, int version)
-        {
+        private String outValue(VersionedValue value, int version) {
             return value.value;
         }
 
-        public VersionedValue deserialize(DataInput in, int version) throws IOException
-        {
+        public VersionedValue deserialize(DataInput in, int version) throws IOException {
             String value = in.readUTF();
             int valVersion = in.readInt();
             return new VersionedValue(value, valVersion);
         }
 
-        public long serializedSize(VersionedValue value, int version)
-        {
+        public long serializedSize(VersionedValue value, int version) {
             return TypeSizes.NATIVE.sizeof(outValue(value, version)) + TypeSizes.NATIVE.sizeof(value.version);
         }
     }
 }
-

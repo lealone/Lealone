@@ -28,94 +28,77 @@ import org.lealone.cluster.db.marshal.AbstractType;
 import org.lealone.cluster.utils.ByteBufferUtil;
 import org.lealone.cluster.utils.ObjectSizes;
 
-public class LocalPartitioner implements IPartitioner
-{
+public class LocalPartitioner implements IPartitioner {
     private static final long EMPTY_SIZE = ObjectSizes.measure(new LocalPartitioner(null).new LocalToken(null));
 
-    final AbstractType<?> comparator;   // package-private to avoid access workarounds in embedded LocalToken.
+    final AbstractType<?> comparator; // package-private to avoid access workarounds in embedded LocalToken.
 
-    public LocalPartitioner(AbstractType<?> comparator)
-    {
+    public LocalPartitioner(AbstractType<?> comparator) {
         this.comparator = comparator;
     }
 
-    public DecoratedKey decorateKey(ByteBuffer key)
-    {
+    public DecoratedKey decorateKey(ByteBuffer key) {
         return new BufferDecoratedKey(getToken(key), key);
     }
 
-    public Token midpoint(Token left, Token right)
-    {
+    public Token midpoint(Token left, Token right) {
         throw new UnsupportedOperationException();
     }
 
-    public LocalToken getMinimumToken()
-    {
+    public LocalToken getMinimumToken() {
         return new LocalToken(ByteBufferUtil.EMPTY_BYTE_BUFFER);
     }
 
-    public LocalToken getToken(ByteBuffer key)
-    {
+    public LocalToken getToken(ByteBuffer key) {
         return new LocalToken(key);
     }
 
-    public LocalToken getRandomToken()
-    {
+    public LocalToken getRandomToken() {
         throw new UnsupportedOperationException();
     }
 
-    public Token.TokenFactory getTokenFactory()
-    {
+    public Token.TokenFactory getTokenFactory() {
         throw new UnsupportedOperationException();
     }
 
-    public boolean preservesOrder()
-    {
+    public boolean preservesOrder() {
         return true;
     }
 
-    public Map<Token, Float> describeOwnership(List<Token> sortedTokens)
-    {
-        return Collections.singletonMap((Token)getMinimumToken(), new Float(1.0));
+    public Map<Token, Float> describeOwnership(List<Token> sortedTokens) {
+        return Collections.singletonMap((Token) getMinimumToken(), new Float(1.0));
     }
 
-    public AbstractType<?> getTokenValidator()
-    {
+    public AbstractType<?> getTokenValidator() {
         return comparator;
     }
 
-    public class LocalToken extends ComparableObjectToken<ByteBuffer>
-    {
+    public class LocalToken extends ComparableObjectToken<ByteBuffer> {
         static final long serialVersionUID = 8437543776403014875L;
 
-        public LocalToken(ByteBuffer token)
-        {
+        public LocalToken(ByteBuffer token) {
             super(token);
         }
 
         @Override
-        public String toString()
-        {
+        public String toString() {
             return comparator.getString(token);
         }
 
         @Override
-        public int compareTo(Token o)
-        {
+        public int compareTo(Token o) {
             assert getPartitioner() == o.getPartitioner();
             return comparator.compare(token, ((LocalToken) o).token);
         }
 
         @Override
-        public int hashCode()
-        {
+        public int hashCode() {
             final int prime = 31;
             return prime + token.hashCode();
         }
 
         @Override
-        public boolean equals(Object obj)
-        {
+        public boolean equals(Object obj) {
             if (this == obj)
                 return true;
             if (!(obj instanceof LocalToken))
@@ -125,14 +108,12 @@ public class LocalPartitioner implements IPartitioner
         }
 
         @Override
-        public IPartitioner getPartitioner()
-        {
+        public IPartitioner getPartitioner() {
             return LocalPartitioner.this;
         }
 
         @Override
-        public long getHeapSize()
-        {
+        public long getHeapSize() {
             return EMPTY_SIZE + ObjectSizes.sizeOnHeapOf(token);
         }
     }

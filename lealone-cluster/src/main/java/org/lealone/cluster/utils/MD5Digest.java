@@ -27,49 +27,41 @@ import java.util.Arrays;
  *   1. MD5Digest is a more explicit name than ByteBuffer to represent a md5.
  *   2. Using our own class allows to use our FastByteComparison for equals.
  */
-public class MD5Digest
-{
+public class MD5Digest {
     public final byte[] bytes;
 
-    private MD5Digest(byte[] bytes)
-    {
+    private MD5Digest(byte[] bytes) {
         this.bytes = bytes;
     }
 
-    public static MD5Digest wrap(byte[] digest)
-    {
+    public static MD5Digest wrap(byte[] digest) {
         return new MD5Digest(digest);
     }
 
-    public static MD5Digest compute(byte[] toHash)
-    {
+    public static MD5Digest compute(byte[] toHash) {
         return new MD5Digest(FBUtilities.threadLocalMD5Digest().digest(toHash));
     }
 
-    public static MD5Digest compute(String toHash)
-    {
+    public static MD5Digest compute(String toHash) {
         return compute(toHash.getBytes());
     }
 
     @Override
-    public final int hashCode()
-    {
+    public final int hashCode() {
         return Arrays.hashCode(bytes);
     }
 
     @Override
-    public final boolean equals(Object o)
-    {
-        if(!(o instanceof MD5Digest))
+    public final boolean equals(Object o) {
+        if (!(o instanceof MD5Digest))
             return false;
-        MD5Digest that = (MD5Digest)o;
+        MD5Digest that = (MD5Digest) o;
         // handles nulls properly
         return FBUtilities.compareUnsigned(this.bytes, that.bytes, 0, 0, this.bytes.length, that.bytes.length) == 0;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return Hex.bytesToHex(bytes);
     }
 }

@@ -23,8 +23,7 @@ import java.net.InetAddress;
 
 import org.lealone.cluster.exceptions.ConfigurationException;
 
-public interface IInternodeAuthenticator
-{
+public interface IInternodeAuthenticator {
     /**
      * Decides whether or not a peer is allowed to connect to this node.
      * If this method returns false, the socket will be immediately closed.

@@ -23,52 +23,40 @@ import javax.management.ObjectName;
 
 import org.lealone.cluster.metrics.SEPMetrics;
 
-public class JMXEnabledSharedExecutorPool extends SharedExecutorPool
-{
+public class JMXEnabledSharedExecutorPool extends SharedExecutorPool {
 
     public static final JMXEnabledSharedExecutorPool SHARED = new JMXEnabledSharedExecutorPool("SharedPool");
 
-    public JMXEnabledSharedExecutorPool(String poolName)
-    {
+    public JMXEnabledSharedExecutorPool(String poolName) {
         super(poolName);
     }
 
-    public interface JMXEnabledSEPExecutorMBean extends JMXEnabledThreadPoolExecutorMBean
-    {
+    public interface JMXEnabledSEPExecutorMBean extends JMXEnabledThreadPoolExecutorMBean {
     }
 
-    public class JMXEnabledSEPExecutor extends SEPExecutor implements JMXEnabledSEPExecutorMBean
-    {
+    public class JMXEnabledSEPExecutor extends SEPExecutor implements JMXEnabledSEPExecutorMBean {
 
         private final SEPMetrics metrics;
         private final String mbeanName;
 
-        public JMXEnabledSEPExecutor(int poolSize, int maxQueuedLength, String name, String jmxPath)
-        {
+        public JMXEnabledSEPExecutor(int poolSize, int maxQueuedLength, String name, String jmxPath) {
             super(JMXEnabledSharedExecutorPool.this, poolSize, maxQueuedLength);
             metrics = new SEPMetrics(this, jmxPath, name);
 
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
             mbeanName = "org.apache.cassandra." + jmxPath + ":type=" + name;
 
-            try
-            {
+            try {
                 mbs.registerMBean(this, new ObjectName(mbeanName));
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
 
-        private void unregisterMBean()
-        {
-            try
-            {
+        private void unregisterMBean() {
+            try {
                 ManagementFactory.getPlatformMBeanServer().unregisterMBean(new ObjectName(mbeanName));
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
 
@@ -77,35 +65,29 @@ public class JMXEnabledSharedExecutorPool extends SharedExecutorPool
         }
 
         @Override
-        public synchronized void shutdown()
-        {
+        public synchronized void shutdown() {
             // synchronized, because there is no way to access super.mainLock, which would be
             // the preferred way to make this threadsafe
-            if (!isShutdown())
-            {
+            if (!isShutdown()) {
                 unregisterMBean();
             }
             super.shutdown();
         }
 
-        public int getCoreThreads()
-        {
+        public int getCoreThreads() {
             return 0;
         }
 
-        public void setCoreThreads(int number)
-        {
+        public void setCoreThreads(int number) {
             throw new UnsupportedOperationException();
         }
 
-        public void setMaximumThreads(int number)
-        {
+        public void setMaximumThreads(int number) {
             throw new UnsupportedOperationException();
         }
     }
 
-    public TracingAwareExecutorService newExecutor(int maxConcurrency, int maxQueuedTasks, String name, String jmxPath)
-    {
+    public TracingAwareExecutorService newExecutor(int maxConcurrency, int maxQueuedTasks, String name, String jmxPath) {
         JMXEnabledSEPExecutor executor = new JMXEnabledSEPExecutor(maxConcurrency, maxQueuedTasks, name, jmxPath);
         executors.add(executor);
         return executor;

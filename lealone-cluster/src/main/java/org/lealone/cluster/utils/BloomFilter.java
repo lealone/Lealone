@@ -23,12 +23,9 @@ import com.google.common.annotations.VisibleForTesting;
 
 import org.lealone.cluster.utils.obs.IBitSet;
 
-public abstract class BloomFilter implements IFilter
-{
-    private static final ThreadLocal<long[]> reusableIndexes = new ThreadLocal<long[]>()
-    {
-        protected long[] initialValue()
-        {
+public abstract class BloomFilter implements IFilter {
+    private static final ThreadLocal<long[]> reusableIndexes = new ThreadLocal<long[]>() {
+        protected long[] initialValue() {
             return new long[21];
         }
     };
@@ -36,8 +33,7 @@ public abstract class BloomFilter implements IFilter
     public final IBitSet bitset;
     public final int hashCount;
 
-    BloomFilter(int hashes, IBitSet bitset)
-    {
+    BloomFilter(int hashes, IBitSet bitset) {
         this.hashCount = hashes;
         this.bitset = bitset;
     }
@@ -52,8 +48,7 @@ public abstract class BloomFilter implements IFilter
     // tests ask for ridiculous numbers of hashes so here is a special case for them
     // rather than using the threadLocal like we do in production
     @VisibleForTesting
-    public long[] getHashBuckets(ByteBuffer key, int hashCount, long max)
-    {
+    public long[] getHashBuckets(ByteBuffer key, int hashCount, long max) {
         long[] hash = new long[2];
         hash(key, key.position(), key.remaining(), 0L, hash);
         long[] indexes = new long[hashCount];
@@ -65,8 +60,7 @@ public abstract class BloomFilter implements IFilter
     // to avoid generating a lot of garbage since stack allocation currently does not support stores
     // (CASSANDRA-6609).  it returns the array so that the caller does not need to perform
     // a second threadlocal lookup.
-    private long[] indexes(ByteBuffer key)
-    {
+    private long[] indexes(ByteBuffer key) {
         // we use the same array both for storing the hash result, and for storing the indexes we return,
         // so that we do not need to allocate two arrays.
         long[] indexes = reusableIndexes.get();
@@ -75,44 +69,35 @@ public abstract class BloomFilter implements IFilter
         return indexes;
     }
 
-    private void setIndexes(long base, long inc, int count, long max, long[] results)
-    {
-        for (int i = 0; i < count; i++)
-        {
+    private void setIndexes(long base, long inc, int count, long max, long[] results) {
+        for (int i = 0; i < count; i++) {
             results[i] = FBUtilities.abs(base % max);
             base += inc;
         }
     }
 
-    public void add(ByteBuffer key)
-    {
+    public void add(ByteBuffer key) {
         long[] indexes = indexes(key);
-        for (int i = 0; i < hashCount; i++)
-        {
+        for (int i = 0; i < hashCount; i++) {
             bitset.set(indexes[i]);
         }
     }
 
-    public final boolean isPresent(ByteBuffer key)
-    {
+    public final boolean isPresent(ByteBuffer key) {
         long[] indexes = indexes(key);
-        for (int i = 0; i < hashCount; i++)
-        {
-            if (!bitset.get(indexes[i]))
-            {
+        for (int i = 0; i < hashCount; i++) {
+            if (!bitset.get(indexes[i])) {
                 return false;
             }
         }
         return true;
     }
 
-    public void clear()
-    {
+    public void clear() {
         bitset.clear();
     }
 
-    public void close()
-    {
+    public void close() {
         bitset.close();
     }
 }

@@ -20,8 +20,7 @@ package org.lealone.cluster.gms;
 import java.net.UnknownHostException;
 import java.util.Map;
 
-public interface FailureDetectorMBean
-{
+public interface FailureDetectorMBean {
     public void dumpInterArrivalTimes();
 
     public void setPhiConvictThreshold(double phi);

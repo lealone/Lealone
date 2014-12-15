@@ -23,50 +23,40 @@ import org.lealone.cluster.gms.Gossiper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-public class MessageDeliveryTask implements Runnable
-{
+public class MessageDeliveryTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageDeliveryTask.class);
 
     private final MessageIn message;
     private final long constructionTime;
     private final int id;
 
-    public MessageDeliveryTask(MessageIn message, int id, long timestamp)
-    {
+    public MessageDeliveryTask(MessageIn message, int id, long timestamp) {
         assert message != null;
         this.message = message;
         this.id = id;
         constructionTime = timestamp;
     }
 
-    public void run()
-    {
+    public void run() {
         MessagingService.Verb verb = message.verb;
         if (MessagingService.DROPPABLE_VERBS.contains(verb)
-            && System.currentTimeMillis() > constructionTime + message.getTimeout())
-        {
+                && System.currentTimeMillis() > constructionTime + message.getTimeout()) {
             MessagingService.instance().incrementDroppedMessages(verb);
             return;
         }
 
         IVerbHandler verbHandler = MessagingService.instance().getVerbHandler(verb);
-        if (verbHandler == null)
-        {
+        if (verbHandler == null) {
             logger.debug("Unknown verb {}", verb);
             return;
         }
 
-        try
-        {
+        try {
             verbHandler.doVerb(message, id);
-        }
-        catch (Throwable t)
-        {
-            if (message.doCallbackOnFailure())
-            {
-                MessageOut response = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE)
-                                                    .withParameter(MessagingService.FAILURE_RESPONSE_PARAM, MessagingService.ONE_BYTE);
+        } catch (Throwable t) {
+            if (message.doCallbackOnFailure()) {
+                MessageOut response = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE).withParameter(
+                        MessagingService.FAILURE_RESPONSE_PARAM, MessagingService.ONE_BYTE);
                 MessagingService.instance().sendReply(response, id, message.from);
             }
 
@@ -77,6 +67,5 @@ public class MessageDeliveryTask implements Runnable
     }
 
     EnumSet<MessagingService.Verb> GOSSIP_VERBS = EnumSet.of(MessagingService.Verb.GOSSIP_DIGEST_ACK,
-                                                             MessagingService.Verb.GOSSIP_DIGEST_ACK2,
-                                                             MessagingService.Verb.GOSSIP_DIGEST_SYN);
+            MessagingService.Verb.GOSSIP_DIGEST_ACK2, MessagingService.Verb.GOSSIP_DIGEST_SYN);
 }

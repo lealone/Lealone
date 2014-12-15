@@ -1,4 +1,3 @@
-package org.lealone.cluster.service;
 /*
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -20,8 +19,8 @@ package org.lealone.cluster.service;
  * 
  */
 
+package org.lealone.cluster.gms;
 
-import org.lealone.cluster.gms.EchoMessage;
 import org.lealone.cluster.net.IVerbHandler;
 import org.lealone.cluster.net.MessageIn;
 import org.lealone.cluster.net.MessageOut;
@@ -29,14 +28,15 @@ import org.lealone.cluster.net.MessagingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class EchoVerbHandler implements IVerbHandler<EchoMessage>
-{
+public class EchoVerbHandler implements IVerbHandler<EchoMessage> {
     private static final Logger logger = LoggerFactory.getLogger(EchoVerbHandler.class);
 
-    public void doVerb(MessageIn<EchoMessage> message, int id)
-    {
-        MessageOut<EchoMessage> echoMessage = new MessageOut<EchoMessage>(MessagingService.Verb.REQUEST_RESPONSE, new EchoMessage(), EchoMessage.serializer);
-        logger.trace("Sending a EchoMessage reply {}", message.from);
+    @Override
+    public void doVerb(MessageIn<EchoMessage> message, int id) {
+        MessageOut<EchoMessage> echoMessage = new MessageOut<EchoMessage>(MessagingService.Verb.REQUEST_RESPONSE,
+                new EchoMessage(), EchoMessage.serializer);
+        if (logger.isTraceEnabled())
+            logger.trace("Sending a EchoMessage reply {}", message.from);
         MessagingService.instance().sendReply(echoMessage, id, message.from);
     }
 }

@@ -23,8 +23,7 @@ import java.io.IOException;
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.io.util.DataOutputPlus;
 
-public interface ISerializer<T>
-{
+public interface ISerializer<T> {
     /**
      * Serialize the specified type into the specified DataOutput instance.
      *

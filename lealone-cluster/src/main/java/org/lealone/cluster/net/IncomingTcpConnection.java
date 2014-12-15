@@ -35,9 +35,7 @@ import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.XXHashFactory;
 import org.xerial.snappy.SnappyInputStream;
 
-
-public class IncomingTcpConnection extends Thread
-{
+public class IncomingTcpConnection extends Thread {
     private static final Logger logger = LoggerFactory.getLogger(IncomingTcpConnection.class);
 
     private final int version;
@@ -45,20 +43,15 @@ public class IncomingTcpConnection extends Thread
     private final Socket socket;
     public InetAddress from;
 
-    public IncomingTcpConnection(int version, boolean compressed, Socket socket)
-    {
+    public IncomingTcpConnection(int version, boolean compressed, Socket socket) {
         assert socket != null;
         this.version = version;
         this.compressed = compressed;
         this.socket = socket;
-        if (DatabaseDescriptor.getInternodeRecvBufferSize() != null)
-        {
-            try
-            {
+        if (DatabaseDescriptor.getInternodeRecvBufferSize() != null) {
+            try {
                 this.socket.setReceiveBufferSize(DatabaseDescriptor.getInternodeRecvBufferSize());
-            }
-            catch (SocketException se)
-            {
+            } catch (SocketException se) {
                 logger.warn("Failed to set receive buffer size on internode socket.", se);
             }
         }
@@ -70,38 +63,26 @@ public class IncomingTcpConnection extends Thread
      * we've determined the type of the connection.
      */
     @Override
-    public void run()
-    {
-        try
-        {
+    public void run() {
+        try {
             if (version < MessagingService.VERSION_20)
                 throw new UnsupportedOperationException(String.format("Unable to read obsolete message version %s; "
-                                                                      + "The earliest version supported is 2.0.0",
-                                                                      version));
+                        + "The earliest version supported is 2.0.0", version));
 
             receiveMessages();
-        }
-        catch (EOFException e)
-        {
+        } catch (EOFException e) {
             logger.trace("eof reading from socket; closing", e);
             // connection will be reset so no need to throw an exception.
-        }
-        catch (UnknownColumnFamilyException e)
-        {
+        } catch (UnknownColumnFamilyException e) {
             logger.warn("UnknownColumnFamilyException reading from socket; closing", e);
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             logger.debug("IOException reading from socket; closing", e);
-        }
-        finally
-        {
+        } finally {
             close();
         }
     }
 
-    private void receiveMessages() throws IOException
-    {
+    private void receiveMessages() throws IOException {
         // handshake (true) endpoint versions
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
         out.writeInt(MessagingService.current_version);
@@ -114,29 +95,21 @@ public class IncomingTcpConnection extends Thread
         MessagingService.instance().setVersion(from, maxVersion);
         logger.debug("Set version for {} to {} (will use {})", from, maxVersion, MessagingService.instance().getVersion(from));
 
-        if (compressed)
-        {
+        if (compressed) {
             logger.debug("Upgrading incoming connection to be compressed");
-            if (version < MessagingService.VERSION_21)
-            {
+            if (version < MessagingService.VERSION_21) {
                 in = new DataInputStream(new SnappyInputStream(socket.getInputStream()));
-            }
-            else
-            {
+            } else {
                 LZ4FastDecompressor decompressor = LZ4Factory.fastestInstance().fastDecompressor();
-                Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(OutboundTcpConnection.LZ4_HASH_SEED).asChecksum();
-                in = new DataInputStream(new LZ4BlockInputStream(socket.getInputStream(),
-                                                                 decompressor,
-                                                                 checksum));
+                Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(OutboundTcpConnection.LZ4_HASH_SEED)
+                        .asChecksum();
+                in = new DataInputStream(new LZ4BlockInputStream(socket.getInputStream(), decompressor, checksum));
             }
-        }
-        else
-        {
+        } else {
             in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 4096));
         }
 
-        if (version > MessagingService.current_version)
-        {
+        if (version > MessagingService.current_version) {
             // save the endpoint so gossip will reconnect to it
             Gossiper.instance.addSavedEndpoint(from);
             logger.info("Received messages from newer protocol version {}. Ignoring", version);
@@ -144,15 +117,13 @@ public class IncomingTcpConnection extends Thread
         }
         // outbound side will reconnect if necessary to upgrade version
 
-        while (true)
-        {
+        while (true) {
             MessagingService.validateMagic(in.readInt());
             receiveMessage(in, version);
         }
     }
 
-    private InetAddress receiveMessage(DataInputStream input, int version) throws IOException
-    {
+    private InetAddress receiveMessage(DataInputStream input, int version) throws IOException {
         int id;
         if (version < MessagingService.VERSION_20)
             id = Integer.parseInt(input.readUTF());
@@ -166,30 +137,22 @@ public class IncomingTcpConnection extends Thread
             timestamp = (timestamp & 0xFFFFFFFF00000000L) | (((partial & 0xFFFFFFFFL) << 2) >> 2);
 
         MessageIn message = MessageIn.read(input, version, id);
-        if (message == null)
-        {
+        if (message == null) {
             // callback expired; nothing to do
             return null;
         }
-        if (version <= MessagingService.current_version)
-        {
+        if (version <= MessagingService.current_version) {
             MessagingService.instance().receive(message, id, timestamp);
-        }
-        else
-        {
+        } else {
             logger.debug("Received connection from newer protocol version {}. Ignoring message", version);
         }
         return message.from;
     }
 
-    private void close()
-    {
-        try
-        {
+    private void close() {
+        try {
             socket.close();
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             logger.debug("Error closing socket", e);
         }
     }

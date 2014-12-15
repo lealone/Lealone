@@ -1,4 +1,5 @@
 package org.lealone.cluster.gms;
+
 /*
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -20,30 +21,27 @@ package org.lealone.cluster.gms;
  * 
  */
 
-
 import java.io.DataInput;
 import java.io.IOException;
 
 import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.io.util.DataOutputPlus;
 
-public class EchoMessage
-{
-    public static IVersionedSerializer<EchoMessage> serializer = new EchoMessageSerializer();
+public class EchoMessage {
+    public static final IVersionedSerializer<EchoMessage> serializer = new EchoMessageSerializer();
 
-    public static class EchoMessageSerializer implements IVersionedSerializer<EchoMessage>
-    {
-        public void serialize(EchoMessage t, DataOutputPlus out, int version) throws IOException
-        {
+    public static class EchoMessageSerializer implements IVersionedSerializer<EchoMessage> {
+        @Override
+        public void serialize(EchoMessage t, DataOutputPlus out, int version) throws IOException {
         }
 
-        public EchoMessage deserialize(DataInput in, int version) throws IOException
-        {
+        @Override
+        public EchoMessage deserialize(DataInput in, int version) throws IOException {
             return new EchoMessage();
         }
 
-        public long serializedSize(EchoMessage t, int version)
-        {
+        @Override
+        public long serializedSize(EchoMessage t, int version) {
             return 0;
         }
     }

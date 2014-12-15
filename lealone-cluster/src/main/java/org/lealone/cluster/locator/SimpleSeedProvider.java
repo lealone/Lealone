@@ -29,33 +29,25 @@ import org.lealone.cluster.config.DatabaseDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SimpleSeedProvider implements SeedProvider
-{
+public class SimpleSeedProvider implements SeedProvider {
     private static final Logger logger = LoggerFactory.getLogger(SimpleSeedProvider.class);
 
-    public SimpleSeedProvider(Map<String, String> args) {}
+    public SimpleSeedProvider(Map<String, String> args) {
+    }
 
-    public List<InetAddress> getSeeds()
-    {
+    public List<InetAddress> getSeeds() {
         Config conf;
-        try
-        {
+        try {
             conf = DatabaseDescriptor.loadConfig();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             throw new AssertionError(e);
         }
         String[] hosts = conf.seed_provider.parameters.get("seeds").split(",", -1);
         List<InetAddress> seeds = new ArrayList<InetAddress>(hosts.length);
-        for (String host : hosts)
-        {
-            try
-            {
+        for (String host : hosts) {
+            try {
                 seeds.add(InetAddress.getByName(host.trim()));
-            }
-            catch (UnknownHostException ex)
-            {
+            } catch (UnknownHostException ex) {
                 // not fatal... DD will bark if there end up being zero seeds.
                 logger.warn("Seed provider couldn't lookup host {}", host);
             }

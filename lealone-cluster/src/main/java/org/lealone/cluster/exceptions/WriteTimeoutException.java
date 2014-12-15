@@ -20,12 +20,10 @@ package org.lealone.cluster.exceptions;
 import org.lealone.cluster.db.ConsistencyLevel;
 import org.lealone.cluster.db.WriteType;
 
-public class WriteTimeoutException extends RequestTimeoutException
-{
+public class WriteTimeoutException extends RequestTimeoutException {
     public final WriteType writeType;
 
-    public WriteTimeoutException(WriteType writeType, ConsistencyLevel consistency, int received, int blockFor)
-    {
+    public WriteTimeoutException(WriteType writeType, ConsistencyLevel consistency, int received, int blockFor) {
         super(ExceptionCode.WRITE_TIMEOUT, consistency, received, blockFor);
         this.writeType = writeType;
     }

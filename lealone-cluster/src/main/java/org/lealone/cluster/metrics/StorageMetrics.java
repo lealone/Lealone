@@ -23,12 +23,11 @@ import com.yammer.metrics.core.Counter;
 /**
  * Metrics related to Storage.
  */
-public class StorageMetrics
-{
+public class StorageMetrics {
     private static final MetricNameFactory factory = new DefaultNameFactory("Storage");
 
     public static final Counter load = Metrics.newCounter(factory.createMetricName("Load"));
     public static final Counter exceptions = Metrics.newCounter(factory.createMetricName("Exceptions"));
-    public static final Counter totalHintsInProgress  = Metrics.newCounter(factory.createMetricName("TotalHintsInProgress"));
+    public static final Counter totalHintsInProgress = Metrics.newCounter(factory.createMetricName("TotalHintsInProgress"));
     public static final Counter totalHints = Metrics.newCounter(factory.createMetricName("TotalHints"));
 }

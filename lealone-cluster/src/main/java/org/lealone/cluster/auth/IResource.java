@@ -24,8 +24,7 @@ package org.lealone.cluster.auth;
  * Currently just one resource type is supported by Cassandra
  * @see DataResource
  */
-public interface IResource
-{
+public interface IResource {
     /**
      * @return printable name of the resource.
      */

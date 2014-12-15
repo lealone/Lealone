@@ -23,22 +23,18 @@ import java.io.IOException;
 import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.io.util.DataOutputPlus;
 
-public class BooleanSerializer implements IVersionedSerializer<Boolean>
-{
+public class BooleanSerializer implements IVersionedSerializer<Boolean> {
     public static BooleanSerializer serializer = new BooleanSerializer();
 
-    public void serialize(Boolean b, DataOutputPlus out, int version) throws IOException
-    {
+    public void serialize(Boolean b, DataOutputPlus out, int version) throws IOException {
         out.writeBoolean(b);
     }
 
-    public Boolean deserialize(DataInput in, int version) throws IOException
-    {
+    public Boolean deserialize(DataInput in, int version) throws IOException {
         return in.readBoolean();
     }
 
-    public long serializedSize(Boolean aBoolean, int version)
-    {
+    public long serializedSize(Boolean aBoolean, int version) {
         return 1;
     }
 }

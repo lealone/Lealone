@@ -25,20 +25,15 @@ import org.lealone.cluster.net.MessageIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck2>
-{
+public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck2> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestAck2VerbHandler.class);
 
-    public void doVerb(MessageIn<GossipDigestAck2> message, int id)
-    {
-        if (logger.isTraceEnabled())
-        {
+    public void doVerb(MessageIn<GossipDigestAck2> message, int id) {
+        if (logger.isTraceEnabled()) {
             InetAddress from = message.from;
             logger.trace("Received a GossipDigestAck2Message from {}", from);
         }
-        if (!Gossiper.instance.isEnabled())
-        {
+        if (!Gossiper.instance.isEnabled()) {
             if (logger.isTraceEnabled())
                 logger.trace("Ignoring GossipDigestAck2Message because gossip is disabled");
             return;

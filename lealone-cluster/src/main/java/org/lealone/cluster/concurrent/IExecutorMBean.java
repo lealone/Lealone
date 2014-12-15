@@ -21,8 +21,7 @@ package org.lealone.cluster.concurrent;
  * @see org.lealone.cluster.metrics.ThreadPoolMetrics
  */
 @Deprecated
-public interface IExecutorMBean
-{
+public interface IExecutorMBean {
     /**
      * Get the current number of running tasks
      */

@@ -17,7 +17,6 @@
  */
 package org.lealone.cluster.exceptions;
 
-
 /**
  * Exceptions thrown when a client didn't respect the protocol.
  */

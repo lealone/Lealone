@@ -34,44 +34,37 @@ import org.lealone.cluster.utils.ByteBufferUtil;
  * if this matters, you can subclass RP to use a stronger hash, or use a non-lossy tokenization scheme (as in the
  * OrderPreservingPartitioner classes).
  */
-public abstract class DecoratedKey implements RowPosition
-{
-    public static final Comparator<DecoratedKey> comparator = new Comparator<DecoratedKey>()
-    {
-        public int compare(DecoratedKey o1, DecoratedKey o2)
-        {
+public abstract class DecoratedKey implements RowPosition {
+    public static final Comparator<DecoratedKey> comparator = new Comparator<DecoratedKey>() {
+        public int compare(DecoratedKey o1, DecoratedKey o2) {
             return o1.compareTo(o2);
         }
     };
 
     private final Token token;
 
-    public DecoratedKey(Token token)
-    {
+    public DecoratedKey(Token token) {
         assert token != null;
         this.token = token;
     }
 
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return getKey().hashCode(); // hash of key is enough
     }
 
     @Override
-    public boolean equals(Object obj)
-    {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null || !(obj instanceof DecoratedKey))
             return false;
 
-        DecoratedKey other = (DecoratedKey)obj;
+        DecoratedKey other = (DecoratedKey) obj;
         return ByteBufferUtil.compareUnsigned(getKey(), other.getKey()) == 0; // we compare faster than BB.equals for array backed BB
     }
 
-    public int compareTo(RowPosition pos)
-    {
+    public int compareTo(RowPosition pos) {
         if (this == pos)
             return 0;
 
@@ -84,8 +77,7 @@ public abstract class DecoratedKey implements RowPosition
         return cmp == 0 ? ByteBufferUtil.compareUnsigned(getKey(), otherKey.getKey()) : cmp;
     }
 
-    public static int compareTo(IPartitioner partitioner, ByteBuffer key, RowPosition position)
-    {
+    public static int compareTo(IPartitioner partitioner, ByteBuffer key, RowPosition position) {
         // delegate to Token.KeyBound if needed
         if (!(position instanceof DecoratedKey))
             return -position.compareTo(partitioner.decorateKey(key));
@@ -95,36 +87,30 @@ public abstract class DecoratedKey implements RowPosition
         return cmp == 0 ? ByteBufferUtil.compareUnsigned(key, otherKey.getKey()) : cmp;
     }
 
-    public IPartitioner getPartitioner()
-    {
+    public IPartitioner getPartitioner() {
         return getToken().getPartitioner();
     }
 
-    public KeyBound minValue()
-    {
+    public KeyBound minValue() {
         return getPartitioner().getMinimumToken().minKeyBound();
     }
 
-    public boolean isMinimum()
-    {
+    public boolean isMinimum() {
         // A DecoratedKey can never be the minimum position on the ring
         return false;
     }
 
-    public RowPosition.Kind kind()
-    {
+    public RowPosition.Kind kind() {
         return RowPosition.Kind.ROW_KEY;
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         String keystring = getKey() == null ? "null" : ByteBufferUtil.bytesToHex(getKey());
         return "DecoratedKey(" + getToken() + ", " + keystring + ")";
     }
 
-    public Token getToken()
-    {
+    public Token getToken() {
         return token;
     }
 

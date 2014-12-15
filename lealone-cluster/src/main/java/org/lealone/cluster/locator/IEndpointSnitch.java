@@ -27,8 +27,7 @@ import java.util.List;
  * data center.
  */
 
-public interface IEndpointSnitch
-{
+public interface IEndpointSnitch {
     /**
      * returns a String repesenting the rack this endpoint belongs to
      */

@@ -17,10 +17,8 @@
  */
 package org.lealone.cluster.exceptions;
 
-public class SyntaxException extends RequestValidationException
-{
-    public SyntaxException(String msg)
-    {
+public class SyntaxException extends RequestValidationException {
+    public SyntaxException(String msg) {
         super(ExceptionCode.SYNTAX_ERROR, msg);
     }
 }

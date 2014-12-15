@@ -23,14 +23,11 @@ import java.net.InetAddress;
 
 import org.lealone.cluster.exceptions.ConfigurationException;
 
-public class AllowAllInternodeAuthenticator implements IInternodeAuthenticator
-{
-    public boolean authenticate(InetAddress remoteAddress, int remotePort)
-    {
+public class AllowAllInternodeAuthenticator implements IInternodeAuthenticator {
+    public boolean authenticate(InetAddress remoteAddress, int remotePort) {
         return true;
     }
 
-    public void validateConfiguration() throws ConfigurationException
-    {
+    public void validateConfiguration() throws ConfigurationException {
     }
 }

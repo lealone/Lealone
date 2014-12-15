@@ -24,12 +24,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * local node.
  */
 
-public class VersionGenerator
-{
+public class VersionGenerator {
     private static final AtomicInteger version = new AtomicInteger(0);
 
-    public static int getNextVersion()
-    {
+    public static int getNextVersion() {
         return version.incrementAndGet();
     }
 }

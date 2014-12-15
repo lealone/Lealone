@@ -17,4 +17,5 @@
  */
 package org.lealone.cluster.io.util;
 
-public interface FileMark {}
+public interface FileMark {
+}

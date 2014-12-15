@@ -31,28 +31,23 @@ import org.lealone.cluster.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-public class ExpiringMap<K, V>
-{
+public class ExpiringMap<K, V> {
     private static final Logger logger = LoggerFactory.getLogger(ExpiringMap.class);
     private volatile boolean shutdown;
 
-    public static class CacheableObject<T>
-    {
+    public static class CacheableObject<T> {
         public final T value;
         public final long timeout;
         private final long createdAt;
 
-        private CacheableObject(T value, long timeout)
-        {
+        private CacheableObject(T value, long timeout) {
             assert value != null;
             this.value = value;
             this.timeout = timeout;
             this.createdAt = System.nanoTime();
         }
 
-        private boolean isReadyToDieAt(long atNano)
-        {
+        private boolean isReadyToDieAt(long atNano) {
             return atNano - createdAt > TimeUnit.MILLISECONDS.toNanos(timeout);
         }
     }
@@ -63,8 +58,7 @@ public class ExpiringMap<K, V>
     private final ConcurrentMap<K, CacheableObject<V>> cache = new ConcurrentHashMap<K, CacheableObject<V>>();
     private final long defaultExpiration;
 
-    public ExpiringMap(long defaultExpiration)
-    {
+    public ExpiringMap(long defaultExpiration) {
         this(defaultExpiration, null);
     }
 
@@ -72,27 +66,20 @@ public class ExpiringMap<K, V>
      *
      * @param defaultExpiration the TTL for objects in the cache in milliseconds
      */
-    public ExpiringMap(long defaultExpiration, final Function<Pair<K,CacheableObject<V>>, ?> postExpireHook)
-    {
+    public ExpiringMap(long defaultExpiration, final Function<Pair<K, CacheableObject<V>>, ?> postExpireHook) {
         this.defaultExpiration = defaultExpiration;
 
-        if (defaultExpiration <= 0)
-        {
+        if (defaultExpiration <= 0) {
             throw new IllegalArgumentException("Argument specified must be a positive number");
         }
 
-        Runnable runnable = new Runnable()
-        {
-            public void run()
-            {
+        Runnable runnable = new Runnable() {
+            public void run() {
                 long start = System.nanoTime();
                 int n = 0;
-                for (Map.Entry<K, CacheableObject<V>> entry : cache.entrySet())
-                {
-                    if (entry.getValue().isReadyToDieAt(start))
-                    {
-                        if (cache.remove(entry.getKey()) != null)
-                        {
+                for (Map.Entry<K, CacheableObject<V>> entry : cache.entrySet()) {
+                    if (entry.getValue().isReadyToDieAt(start)) {
+                        if (cache.remove(entry.getKey()) != null) {
                             n++;
                             if (postExpireHook != null)
                                 postExpireHook.apply(Pair.create(entry.getKey(), entry.getValue()));
@@ -105,34 +92,26 @@ public class ExpiringMap<K, V>
         service.scheduleWithFixedDelay(runnable, defaultExpiration / 2, defaultExpiration / 2, TimeUnit.MILLISECONDS);
     }
 
-    public void shutdownBlocking()
-    {
+    public void shutdownBlocking() {
         service.shutdown();
-        try
-        {
+        try {
             service.awaitTermination(defaultExpiration * 2, TimeUnit.MILLISECONDS);
-        }
-        catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             throw new AssertionError(e);
         }
     }
 
-    public void reset()
-    {
+    public void reset() {
         shutdown = false;
         cache.clear();
     }
 
-    public V put(K key, V value)
-    {
+    public V put(K key, V value) {
         return put(key, value, this.defaultExpiration);
     }
 
-    public V put(K key, V value, long timeout)
-    {
-        if (shutdown)
-        {
+    public V put(K key, V value, long timeout) {
+        if (shutdown) {
             // StorageProxy isn't equipped to deal with "I'm nominally alive, but I can't send any messages out."
             // So we'll just sit on this thread until the rest of the server shutdown completes.
             //
@@ -143,14 +122,12 @@ public class ExpiringMap<K, V>
         return (previous == null) ? null : previous.value;
     }
 
-    public V get(K key)
-    {
+    public V get(K key) {
         CacheableObject<V> co = cache.get(key);
         return co == null ? null : co.value;
     }
 
-    public V remove(K key)
-    {
+    public V remove(K key) {
         CacheableObject<V> co = cache.remove(key);
         return co == null ? null : co.value;
     }
@@ -158,29 +135,24 @@ public class ExpiringMap<K, V>
     /**
      * @return System.nanoTime() when key was put into the map.
      */
-    public long getAge(K key)
-    {
+    public long getAge(K key) {
         CacheableObject<V> co = cache.get(key);
         return co == null ? 0 : co.createdAt;
     }
 
-    public int size()
-    {
+    public int size() {
         return cache.size();
     }
 
-    public boolean containsKey(K key)
-    {
+    public boolean containsKey(K key) {
         return cache.containsKey(key);
     }
 
-    public boolean isEmpty()
-    {
+    public boolean isEmpty() {
         return cache.isEmpty();
     }
 
-    public Set<K> keySet()
-    {
+    public Set<K> keySet() {
         return cache.keySet();
     }
 }

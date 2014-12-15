@@ -29,12 +29,9 @@ import org.lealone.cluster.gms.FailureDetector;
  * service.  In particular, if any shared state is referenced, making
  * response alone synchronized will not suffice.
  */
-public interface IAsyncCallback<T>
-{
-    public static Predicate<InetAddress> isAlive = new Predicate<InetAddress>()
-    {
-        public boolean apply(InetAddress endpoint)
-        {
+public interface IAsyncCallback<T> {
+    public static Predicate<InetAddress> isAlive = new Predicate<InetAddress>() {
+        public boolean apply(InetAddress endpoint) {
             return FailureDetector.instance.isAlive(endpoint);
         }
     };

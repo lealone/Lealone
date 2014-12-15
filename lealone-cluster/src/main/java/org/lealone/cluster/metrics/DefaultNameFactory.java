@@ -22,47 +22,39 @@ import com.yammer.metrics.core.MetricName;
 /**
  * MetricNameFactory that generates default MetricName of metrics.
  */
-public class DefaultNameFactory implements MetricNameFactory
-{
+public class DefaultNameFactory implements MetricNameFactory {
     public static final String GROUP_NAME = "org.apache.cassandra.metrics";
 
     private final String type;
     private final String scope;
 
-    public DefaultNameFactory(String type)
-    {
+    public DefaultNameFactory(String type) {
         this(type, null);
     }
 
-    public DefaultNameFactory(String type, String scope)
-    {
+    public DefaultNameFactory(String type, String scope) {
         this.type = type;
         this.scope = scope;
     }
 
-    public MetricName createMetricName(String metricName)
-    {
+    public MetricName createMetricName(String metricName) {
         return createMetricName(type, metricName, scope);
     }
 
-    public static MetricName createMetricName(String type, String metricName, String scope)
-    {
+    public static MetricName createMetricName(String type, String metricName, String scope) {
         return new MetricName(GROUP_NAME, type, metricName, scope, createDefaultMBeanName(type, metricName, scope));
     }
 
-    protected static String createDefaultMBeanName(String type, String name, String scope)
-    {
+    protected static String createDefaultMBeanName(String type, String name, String scope) {
         final StringBuilder nameBuilder = new StringBuilder();
         nameBuilder.append(GROUP_NAME);
         nameBuilder.append(":type=");
         nameBuilder.append(type);
-        if (scope != null)
-        {
+        if (scope != null) {
             nameBuilder.append(",scope=");
             nameBuilder.append(scope);
         }
-        if (name.length() > 0)
-        {
+        if (name.length() > 0) {
             nameBuilder.append(",name=");
             nameBuilder.append(name);
         }

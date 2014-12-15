@@ -22,8 +22,7 @@ import java.util.Map;
 /**
  *
  */
-public class RequestSchedulerOptions
-{
+public class RequestSchedulerOptions {
     public static final Integer DEFAULT_THROTTLE_LIMIT = 80;
     public static final Integer DEFAULT_WEIGHT = 1;
 

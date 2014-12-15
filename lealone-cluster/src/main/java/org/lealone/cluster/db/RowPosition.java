@@ -27,26 +27,21 @@ import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.ByteBufferUtil;
 
-public interface RowPosition extends RingPosition<RowPosition>
-{
-    public static enum Kind
-    {
+public interface RowPosition extends RingPosition<RowPosition> {
+    public static enum Kind {
         // Only add new values to the end of the enum, the ordinal is used
         // during serialization
         ROW_KEY, MIN_BOUND, MAX_BOUND;
 
         private static final Kind[] allKinds = Kind.values();
 
-        static Kind fromOrdinal(int ordinal)
-        {
+        static Kind fromOrdinal(int ordinal) {
             return allKinds[ordinal];
         }
     }
 
-    public static final class ForKey
-    {
-        public static RowPosition get(ByteBuffer key, IPartitioner p)
-        {
+    public static final class ForKey {
+        public static RowPosition get(ByteBuffer key, IPartitioner p) {
             return key == null || key.remaining() == 0 ? p.getMinimumToken().minKeyBound() : p.decorateKey(key);
         }
     }
@@ -54,10 +49,10 @@ public interface RowPosition extends RingPosition<RowPosition>
     public static final RowPositionSerializer serializer = new RowPositionSerializer();
 
     public Kind kind();
+
     public boolean isMinimum();
 
-    public static class RowPositionSerializer implements ISerializer<RowPosition>
-    {
+    public static class RowPositionSerializer implements ISerializer<RowPosition> {
         /*
          * We need to be able to serialize both Token.KeyBound and
          * DecoratedKey. To make this compact, we first write a byte whose
@@ -69,42 +64,33 @@ public interface RowPosition extends RingPosition<RowPosition>
          * token is recreated on the other side). In the other cases, we then
          * serialize the token.
          */
-        public void serialize(RowPosition pos, DataOutputPlus out) throws IOException
-        {
+        public void serialize(RowPosition pos, DataOutputPlus out) throws IOException {
             Kind kind = pos.kind();
             out.writeByte(kind.ordinal());
             if (kind == Kind.ROW_KEY)
-                ByteBufferUtil.writeWithShortLength(((DecoratedKey)pos).getKey(), out);
+                ByteBufferUtil.writeWithShortLength(((DecoratedKey) pos).getKey(), out);
             else
                 Token.serializer.serialize(pos.getToken(), out);
         }
 
-        public RowPosition deserialize(DataInput in) throws IOException
-        {
+        public RowPosition deserialize(DataInput in) throws IOException {
             Kind kind = Kind.fromOrdinal(in.readByte());
-            if (kind == Kind.ROW_KEY)
-            {
+            if (kind == Kind.ROW_KEY) {
                 ByteBuffer k = ByteBufferUtil.readWithShortLength(in);
                 return StorageService.getPartitioner().decorateKey(k);
-            }
-            else
-            {
+            } else {
                 Token t = Token.serializer.deserialize(in);
                 return kind == Kind.MIN_BOUND ? t.minKeyBound() : t.maxKeyBound();
             }
         }
 
-        public long serializedSize(RowPosition pos, TypeSizes typeSizes)
-        {
+        public long serializedSize(RowPosition pos, TypeSizes typeSizes) {
             Kind kind = pos.kind();
             int size = 1; // 1 byte for enum
-            if (kind == Kind.ROW_KEY)
-            {
-                int keySize = ((DecoratedKey)pos).getKey().remaining();
+            if (kind == Kind.ROW_KEY) {
+                int keySize = ((DecoratedKey) pos).getKey().remaining();
                 size += typeSizes.sizeof((short) keySize) + keySize;
-            }
-            else
-            {
+            } else {
                 size += Token.serializer.serializedSize(pos.getToken(), typeSizes);
             }
             return size;

@@ -34,8 +34,7 @@ import org.lealone.cluster.io.util.DataOutputPlus;
  * Yael Ben-Haim and Elad Tom-Tov, "A Streaming Parallel Decision Tree Algorithm" (2010)
  * http://jmlr.csail.mit.edu/papers/volume11/ben-haim10a/ben-haim10a.pdf
  */
-public class StreamingHistogram
-{
+public class StreamingHistogram {
     public static final StreamingHistogramSerializer serializer = new StreamingHistogramSerializer();
 
     // TreeMap to hold bins of histogram.
@@ -48,14 +47,12 @@ public class StreamingHistogram
      * Creates a new histogram with max bin size of maxBinSize
      * @param maxBinSize maximum number of bins this histogram can have
      */
-    public StreamingHistogram(int maxBinSize)
-    {
+    public StreamingHistogram(int maxBinSize) {
         this.maxBinSize = maxBinSize;
         bin = new TreeMap<>();
     }
 
-    private StreamingHistogram(int maxBinSize, Map<Double, Long> bin)
-    {
+    private StreamingHistogram(int maxBinSize, Map<Double, Long> bin) {
         this.maxBinSize = maxBinSize;
         this.bin = new TreeMap<>(bin);
     }
@@ -64,8 +61,7 @@ public class StreamingHistogram
      * Adds new point p to this histogram.
      * @param p
      */
-    public void update(double p)
-    {
+    public void update(double p) {
         update(p, 1);
     }
 
@@ -74,33 +70,26 @@ public class StreamingHistogram
      * @param p
      * @param m
      */
-    public void update(double p, long m)
-    {
+    public void update(double p, long m) {
         Long mi = bin.get(p);
-        if (mi != null)
-        {
+        if (mi != null) {
             // we found the same p so increment that counter
             bin.put(p, mi + m);
-        }
-        else
-        {
+        } else {
             bin.put(p, m);
             // if bin size exceeds maximum bin size then trim down to max size
-            while (bin.size() > maxBinSize)
-            {
+            while (bin.size() > maxBinSize) {
                 // find points p1, p2 which have smallest difference
                 Iterator<Double> keys = bin.keySet().iterator();
                 double p1 = keys.next();
                 double p2 = keys.next();
                 double smallestDiff = p2 - p1;
                 double q1 = p1, q2 = p2;
-                while (keys.hasNext())
-                {
+                while (keys.hasNext()) {
                     p1 = p2;
                     p2 = keys.next();
                     double diff = p2 - p1;
-                    if (diff < smallestDiff)
-                    {
+                    if (diff < smallestDiff) {
                         smallestDiff = diff;
                         q1 = p1;
                         q2 = p2;
@@ -119,8 +108,7 @@ public class StreamingHistogram
      *
      * @param other histogram to merge
      */
-    public void merge(StreamingHistogram other)
-    {
+    public void merge(StreamingHistogram other) {
         if (other == null)
             return;
 
@@ -134,20 +122,16 @@ public class StreamingHistogram
      * @param b upper bound of a interval to calculate sum
      * @return estimated number of points in a interval [-inf,b].
      */
-    public double sum(double b)
-    {
+    public double sum(double b) {
         double sum = 0;
         // find the points pi, pnext which satisfy pi <= b < pnext
         Map.Entry<Double, Long> pnext = bin.higherEntry(b);
-        if (pnext == null)
-        {
+        if (pnext == null) {
             // if b is greater than any key in this histogram,
             // just count all appearance and return
             for (Long value : bin.values())
                 sum += value;
-        }
-        else
-        {
+        } else {
             Map.Entry<Double, Long> pi = bin.floorEntry(b);
             if (pi == null)
                 return 0;
@@ -163,40 +147,33 @@ public class StreamingHistogram
         return sum;
     }
 
-    public Map<Double, Long> getAsMap()
-    {
+    public Map<Double, Long> getAsMap() {
         return Collections.unmodifiableMap(bin);
     }
 
-    public static class StreamingHistogramSerializer implements ISerializer<StreamingHistogram>
-    {
-        public void serialize(StreamingHistogram histogram, DataOutputPlus out) throws IOException
-        {
+    public static class StreamingHistogramSerializer implements ISerializer<StreamingHistogram> {
+        public void serialize(StreamingHistogram histogram, DataOutputPlus out) throws IOException {
             out.writeInt(histogram.maxBinSize);
             Map<Double, Long> entries = histogram.getAsMap();
             out.writeInt(entries.size());
-            for (Map.Entry<Double, Long> entry : entries.entrySet())
-            {
+            for (Map.Entry<Double, Long> entry : entries.entrySet()) {
                 out.writeDouble(entry.getKey());
                 out.writeLong(entry.getValue());
             }
         }
 
-        public StreamingHistogram deserialize(DataInput in) throws IOException
-        {
+        public StreamingHistogram deserialize(DataInput in) throws IOException {
             int maxBinSize = in.readInt();
             int size = in.readInt();
             Map<Double, Long> tmp = new HashMap<>(size);
-            for (int i = 0; i < size; i++)
-            {
+            for (int i = 0; i < size; i++) {
                 tmp.put(in.readDouble(), in.readLong());
             }
 
             return new StreamingHistogram(maxBinSize, tmp);
         }
 
-        public long serializedSize(StreamingHistogram histogram, TypeSizes typeSizes)
-        {
+        public long serializedSize(StreamingHistogram histogram, TypeSizes typeSizes) {
             long size = typeSizes.sizeof(histogram.maxBinSize);
             Map<Double, Long> entries = histogram.getAsMap();
             size += typeSizes.sizeof(entries.size());
@@ -207,8 +184,7 @@ public class StreamingHistogram
     }
 
     @Override
-    public boolean equals(Object o)
-    {
+    public boolean equals(Object o) {
         if (this == o)
             return true;
 
@@ -220,8 +196,7 @@ public class StreamingHistogram
     }
 
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return Objects.hashCode(bin.hashCode(), maxBinSize);
     }
 

@@ -1,4 +1,5 @@
 package org.lealone.cluster.utils;
+
 /*
  * 
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -20,7 +21,6 @@ package org.lealone.cluster.utils;
  * 
  */
 
-
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.management.ManagementFactory;
@@ -40,8 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
-public class BackgroundActivityMonitor
-{
+public class BackgroundActivityMonitor {
     private static final Logger logger = LoggerFactory.getLogger(BackgroundActivityMonitor.class);
 
     public static final int USER_INDEX = 0;
@@ -62,15 +61,11 @@ public class BackgroundActivityMonitor
     private RandomAccessFile statsFile;
     private long[] lastReading;
 
-    public BackgroundActivityMonitor()
-    {
-        try
-        {
+    public BackgroundActivityMonitor() {
+        try {
             statsFile = new RandomAccessFile(PROC_STAT_PATH, "r");
             lastReading = readAndCompute();
-        }
-        catch (IOException ex)
-        {
+        } catch (IOException ex) {
             if (FBUtilities.isUnix())
                 logger.warn("Couldn't open /proc/stats");
             statsFile = null;
@@ -78,8 +73,7 @@ public class BackgroundActivityMonitor
         reportThread.scheduleAtFixedRate(new BackgroundActivityReporter(), 1, 1, TimeUnit.SECONDS);
     }
 
-    private long[] readAndCompute() throws IOException
-    {
+    private long[] readAndCompute() throws IOException {
         statsFile.seek(0);
         StringTokenizer tokenizer = new StringTokenizer(statsFile.readLine());
         String name = tokenizer.nextToken();
@@ -90,11 +84,9 @@ public class BackgroundActivityMonitor
         return returned;
     }
 
-    private float compareAtIndex(long[] reading1, long[] reading2, int index)
-    {
+    private float compareAtIndex(long[] reading1, long[] reading2, int index) {
         long total1 = 0, total2 = 0;
-        for (int i = 0; i <= SOFTIRQ_INDEX; i++)
-        {
+        for (int i = 0; i <= SOFTIRQ_INDEX; i++) {
             total1 += reading1[i];
             total2 += reading2[i];
         }
@@ -108,18 +100,15 @@ public class BackgroundActivityMonitor
                                          // unit?]
     }
 
-    public void incrCompactionSeverity(double sev)
-    {
+    public void incrCompactionSeverity(double sev) {
         compaction_severity.addAndGet(sev);
     }
 
-    public void incrManualSeverity(double sev)
-    {
+    public void incrManualSeverity(double sev) {
         manual_severity.addAndGet(sev);
     }
 
-    public double getIOWait() throws IOException
-    {
+    public double getIOWait() throws IOException {
         if (statsFile == null)
             return -1d;
         long[] newComp = readAndCompute();
@@ -128,14 +117,12 @@ public class BackgroundActivityMonitor
         return value;
     }
 
-    public double getNormalizedLoadAvg()
-    {
+    public double getNormalizedLoadAvg() {
         double avg = ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage();
         return avg / NUM_CPUS;
     }
 
-    public double getSeverity(InetAddress endpoint)
-    {
+    public double getSeverity(InetAddress endpoint) {
         VersionedValue event;
         EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (state != null && (event = state.getApplicationState(ApplicationState.SEVERITY)) != null)
@@ -143,17 +130,12 @@ public class BackgroundActivityMonitor
         return 0.0;
     }
 
-    public class BackgroundActivityReporter implements Runnable
-    {
-        public void run()
-        {
+    public class BackgroundActivityReporter implements Runnable {
+        public void run() {
             double report = -1;
-            try
-            {
+            try {
                 report = getIOWait();
-            }
-            catch (IOException e)
-            {
+            } catch (IOException e) {
                 // ignore;
                 if (FBUtilities.isUnix())
                     logger.warn("Couldn't read /proc/stats");

@@ -20,9 +20,9 @@ package org.lealone.cluster.serializers;
 
 import java.nio.ByteBuffer;
 
-public interface TypeSerializer<T>
-{
+public interface TypeSerializer<T> {
     public ByteBuffer serialize(T value);
+
     public T deserialize(ByteBuffer bytes);
 
     /*

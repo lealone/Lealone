@@ -19,14 +19,12 @@ package org.lealone.cluster.exceptions;
 
 import org.lealone.cluster.db.ConsistencyLevel;
 
-public class RequestTimeoutException extends RequestExecutionException
-{
+public class RequestTimeoutException extends RequestExecutionException {
     public final ConsistencyLevel consistency;
     public final int received;
     public final int blockFor;
 
-    protected RequestTimeoutException(ExceptionCode code, ConsistencyLevel consistency, int received, int blockFor)
-    {
+    protected RequestTimeoutException(ExceptionCode code, ConsistencyLevel consistency, int received, int blockFor) {
         super(code, String.format("Operation timed out - received only %d responses.", received));
         this.consistency = consistency;
         this.received = received;

@@ -25,8 +25,7 @@ import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.exceptions.RequestExecutionException;
 import org.lealone.cluster.exceptions.RequestValidationException;
 
-public interface IAuthenticator
-{
+public interface IAuthenticator {
     static final String USERNAME_KEY = "username";
     static final String PASSWORD_KEY = "password";
 
@@ -34,8 +33,7 @@ public interface IAuthenticator
      * Supported CREATE USER/ALTER USER options.
      * Currently only PASSWORD is available.
      */
-    enum Option
-    {
+    enum Option {
         PASSWORD
     }
 
@@ -91,7 +89,6 @@ public interface IAuthenticator
      */
     void alter(String username, Map<Option, Object> options) throws RequestValidationException, RequestExecutionException;
 
-
     /**
      * Called during execution of DROP USER query.
      *
@@ -101,11 +98,11 @@ public interface IAuthenticator
      */
     void drop(String username) throws RequestValidationException, RequestExecutionException;
 
-     /**
-     * Set of resources that should be made inaccessible to users and only accessible internally.
-     *
-     * @return Keyspaces, column families that will be unmodifiable by users; other resources.
-     */
+    /**
+    * Set of resources that should be made inaccessible to users and only accessible internally.
+    *
+    * @return Keyspaces, column families that will be unmodifiable by users; other resources.
+    */
     Set<? extends IResource> protectedResources();
 
     /**

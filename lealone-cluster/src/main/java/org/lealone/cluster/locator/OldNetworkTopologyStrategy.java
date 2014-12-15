@@ -35,15 +35,13 @@ import org.lealone.cluster.exceptions.ConfigurationException;
  * the third replica in a different rack in the first datacenter, and
  * any remaining replicas on the first unused nodes on the ring.
  */
-public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
-{
-    public OldNetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions)
-    {
+public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy {
+    public OldNetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
+            Map<String, String> configOptions) {
         super(keyspaceName, tokenMetadata, snitch, configOptions);
     }
 
-    public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
-    {
+    public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata) {
         int replicas = getReplicationFactor();
         List<InetAddress> endpoints = new ArrayList<InetAddress>(replicas);
         ArrayList<Token> tokens = metadata.sortedTokens();
@@ -57,27 +55,23 @@ public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
 
         boolean bDataCenter = false;
         boolean bOtherRack = false;
-        while (endpoints.size() < replicas && iter.hasNext())
-        {
+        while (endpoints.size() < replicas && iter.hasNext()) {
             // First try to find one in a different data center
             Token t = iter.next();
-            if (!snitch.getDatacenter(metadata.getEndpoint(primaryToken)).equals(snitch.getDatacenter(metadata.getEndpoint(t))))
-            {
+            if (!snitch.getDatacenter(metadata.getEndpoint(primaryToken)).equals(snitch.getDatacenter(metadata.getEndpoint(t)))) {
                 // If we have already found something in a diff datacenter no need to find another
-                if (!bDataCenter)
-                {
+                if (!bDataCenter) {
                     endpoints.add(metadata.getEndpoint(t));
                     bDataCenter = true;
                 }
                 continue;
             }
             // Now  try to find one on a different rack
-            if (!snitch.getRack(metadata.getEndpoint(primaryToken)).equals(snitch.getRack(metadata.getEndpoint(t))) &&
-                snitch.getDatacenter(metadata.getEndpoint(primaryToken)).equals(snitch.getDatacenter(metadata.getEndpoint(t))))
-            {
+            if (!snitch.getRack(metadata.getEndpoint(primaryToken)).equals(snitch.getRack(metadata.getEndpoint(t)))
+                    && snitch.getDatacenter(metadata.getEndpoint(primaryToken)).equals(
+                            snitch.getDatacenter(metadata.getEndpoint(t)))) {
                 // If we have already found something in a diff rack no need to find another
-                if (!bOtherRack)
-                {
+                if (!bOtherRack) {
                     endpoints.add(metadata.getEndpoint(t));
                     bOtherRack = true;
                 }
@@ -87,11 +81,9 @@ public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
 
         // If we found N number of nodes we are good. This loop wil just exit. Otherwise just
         // loop through the list and add until we have N nodes.
-        if (endpoints.size() < replicas)
-        {
+        if (endpoints.size() < replicas) {
             iter = TokenMetadata.ringIterator(tokens, token, false);
-            while (endpoints.size() < replicas && iter.hasNext())
-            {
+            while (endpoints.size() < replicas && iter.hasNext()) {
                 Token t = iter.next();
                 if (!endpoints.contains(metadata.getEndpoint(t)))
                     endpoints.add(metadata.getEndpoint(t));
@@ -101,22 +93,18 @@ public class OldNetworkTopologyStrategy extends AbstractReplicationStrategy
         return endpoints;
     }
 
-    public int getReplicationFactor()
-    {
+    public int getReplicationFactor() {
         return Integer.parseInt(this.configOptions.get("replication_factor"));
     }
 
-    public void validateOptions() throws ConfigurationException
-    {
-        if (configOptions == null || configOptions.get("replication_factor") == null)
-        {
+    public void validateOptions() throws ConfigurationException {
+        if (configOptions == null || configOptions.get("replication_factor") == null) {
             throw new ConfigurationException("SimpleStrategy requires a replication_factor strategy option.");
         }
         validateReplicationFactor(configOptions.get("replication_factor"));
     }
 
-    public Collection<String> recognizedOptions()
-    {
-        return Collections.<String>singleton("replication_factor");
+    public Collection<String> recognizedOptions() {
+        return Collections.<String> singleton("replication_factor");
     }
 }

@@ -17,26 +17,23 @@
  */
 package org.lealone.cluster.gms;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
 
 import org.lealone.cluster.dht.IPartitioner;
 import org.lealone.cluster.dht.Token;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-
-
-public class TokenSerializer
-{
+public class TokenSerializer {
     private static final Logger logger = LoggerFactory.getLogger(TokenSerializer.class);
 
-    public static void serialize(IPartitioner partitioner, Collection<Token> tokens, DataOutput out) throws IOException
-    {
-        for (Token token : tokens)
-        {
+    public static void serialize(IPartitioner partitioner, Collection<Token> tokens, DataOutput out) throws IOException {
+        for (Token token : tokens) {
             byte[] bintoken = partitioner.getTokenFactory().toByteArray(token).array();
             out.writeInt(bintoken.length);
             out.write(bintoken);
@@ -44,15 +41,14 @@ public class TokenSerializer
         out.writeInt(0);
     }
 
-    public static Collection<Token> deserialize(IPartitioner partitioner, DataInput in) throws IOException
-    {
+    public static Collection<Token> deserialize(IPartitioner partitioner, DataInput in) throws IOException {
         Collection<Token> tokens = new ArrayList<Token>();
-        while (true)
-        {
+        while (true) {
             int size = in.readInt();
             if (size < 1)
                 break;
-            logger.trace("Reading token of {} bytes", size);
+            if (logger.isTraceEnabled())
+                logger.trace("Reading token of {} bytes", size);
             byte[] bintoken = new byte[size];
             in.readFully(bintoken);
             tokens.add(partitioner.getTokenFactory().fromByteArray(ByteBuffer.wrap(bintoken)));

@@ -51,8 +51,7 @@ import static org.lealone.cluster.concurrent.SEPWorker.Work;
  * themselves when it is detected that there are too many for the current rate of operation arrival. This is decided as a function 
  * of the total time spent spinning by all workers in an interval; as more workers spin, workers are descheduled more rapidly.
  */
-public class SharedExecutorPool
-{
+public class SharedExecutorPool {
 
     // the name assigned to workers in the pool, and the id suffix
     final String poolName;
@@ -72,13 +71,11 @@ public class SharedExecutorPool
     // the collection of threads that have been asked to stop/deschedule - new workers are scheduled from here last
     final ConcurrentSkipListMap<Long, SEPWorker> descheduled = new ConcurrentSkipListMap<>();
 
-    public SharedExecutorPool(String poolName)
-    {
+    public SharedExecutorPool(String poolName) {
         this.poolName = poolName;
     }
 
-    void schedule(Work work)
-    {
+    void schedule(Work work) {
         // we try to hand-off our work to the spinning queue before the descheduled queue, even though we expect it to be empty
         // all we're doing here is hoping to find a worker without work to do, but it doesn't matter too much what we find;
         // we atomically set the task so even if this were a collection of all workers it would be safe, and if they are both
@@ -92,8 +89,7 @@ public class SharedExecutorPool
             new SEPWorker(workerId.incrementAndGet(), work, this);
     }
 
-    void maybeStartSpinningWorker()
-    {
+    void maybeStartSpinningWorker() {
         // in general the workers manage spinningCount directly; however if it is zero, we increment it atomically
         // ourselves to avoid starting a worker unless we have to
         int current = spinningCount.get();

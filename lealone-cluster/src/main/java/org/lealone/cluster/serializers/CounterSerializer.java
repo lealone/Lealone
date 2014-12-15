@@ -17,6 +17,5 @@
  */
 package org.lealone.cluster.serializers;
 
-public class CounterSerializer extends LongSerializer
-{
+public class CounterSerializer extends LongSerializer {
 }

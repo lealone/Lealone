@@ -67,14 +67,14 @@ import java.util.concurrent.locks.LockSupport;
  * <p>5. This scheme is not fair</p>
  * <p>6. Only the thread that calls register() may call await()</p>
  */
-public final class WaitQueue
-{
+public final class WaitQueue {
 
     private static final int CANCELLED = -1;
     private static final int SIGNALLED = 1;
     private static final int NOT_SET = 0;
 
-    private static final AtomicIntegerFieldUpdater signalledUpdater = AtomicIntegerFieldUpdater.newUpdater(RegisteredSignal.class, "state");
+    private static final AtomicIntegerFieldUpdater signalledUpdater = AtomicIntegerFieldUpdater.newUpdater(
+            RegisteredSignal.class, "state");
 
     // the waiting signals
     private final ConcurrentLinkedQueue<RegisteredSignal> queue = new ConcurrentLinkedQueue<>();
@@ -83,8 +83,7 @@ public final class WaitQueue
      * The calling thread MUST be the thread that uses the signal
      * @return                                x
      */
-    public Signal register()
-    {
+    public Signal register() {
         RegisteredSignal signal = new RegisteredSignal();
         queue.add(signal);
         return signal;
@@ -96,8 +95,7 @@ public final class WaitQueue
      * or the waiting thread is interrupted.
      * @return
      */
-    public Signal register(TimerContext context)
-    {
+    public Signal register(TimerContext context) {
         assert context != null;
         RegisteredSignal signal = new TimedSignal(context);
         queue.add(signal);
@@ -107,12 +105,10 @@ public final class WaitQueue
     /**
      * Signal one waiting thread
      */
-    public boolean signal()
-    {
+    public boolean signal() {
         if (!hasWaiters())
             return false;
-        while (true)
-        {
+        while (true) {
             RegisteredSignal s = queue.poll();
             if (s == null || s.signal() != null)
                 return s != null;
@@ -122,8 +118,7 @@ public final class WaitQueue
     /**
      * Signal all waiting threads
      */
-    public void signalAll()
-    {
+    public void signalAll() {
         if (!hasWaiters())
             return;
 
@@ -134,18 +129,15 @@ public final class WaitQueue
         int i = 0, s = 5;
         Thread randomThread = null;
         Iterator<RegisteredSignal> iter = queue.iterator();
-        while (iter.hasNext())
-        {
+        while (iter.hasNext()) {
             RegisteredSignal signal = iter.next();
             Thread signalled = signal.signal();
 
-            if (signalled != null)
-            {
+            if (signalled != null) {
                 if (signalled == randomThread)
                     break;
 
-                if (++i == s)
-                {
+                if (++i == s) {
                     randomThread = signalled;
                     s <<= 1;
                 }
@@ -155,20 +147,17 @@ public final class WaitQueue
         }
     }
 
-    private void cleanUpCancelled()
-    {
+    private void cleanUpCancelled() {
         // TODO: attempt to remove the cancelled from the beginning only (need atomic cas of head)
         Iterator<RegisteredSignal> iter = queue.iterator();
-        while (iter.hasNext())
-        {
+        while (iter.hasNext()) {
             RegisteredSignal s = iter.next();
             if (s.isCancelled())
                 iter.remove();
         }
     }
 
-    public boolean hasWaiters()
-    {
+    public boolean hasWaiters() {
         return !queue.isEmpty();
     }
 
@@ -176,14 +165,12 @@ public final class WaitQueue
      * Return how many threads are waiting
      * @return
      */
-    public int getWaiting()
-    {
+    public int getWaiting() {
         if (!hasWaiters())
             return 0;
         Iterator<RegisteredSignal> iter = queue.iterator();
         int count = 0;
-        while (iter.hasNext())
-        {
+        while (iter.hasNext()) {
             Signal next = iter.next();
             if (!next.isCancelled())
                 count++;
@@ -206,8 +193,7 @@ public final class WaitQueue
      * thread that registered itself with WaitQueue(s) to obtain the underlying RegisteredSignal(s);
      * only the owning thread should use a Signal.
      */
-    public static interface Signal
-    {
+    public static interface Signal {
 
         /**
          * @return true if signalled; once true, must be discarded by the owning thread.
@@ -267,13 +253,10 @@ public final class WaitQueue
     /**
      * An abstract signal implementation
      */
-    public static abstract class AbstractSignal implements Signal
-    {
-        public void awaitUninterruptibly()
-        {
+    public static abstract class AbstractSignal implements Signal {
+        public void awaitUninterruptibly() {
             boolean interrupted = false;
-            while (!isSignalled())
-            {
+            while (!isSignalled()) {
                 if (Thread.interrupted())
                     interrupted = true;
                 LockSupport.park();
@@ -283,21 +266,17 @@ public final class WaitQueue
             checkAndClear();
         }
 
-        public void await() throws InterruptedException
-        {
-            while (!isSignalled())
-            {
+        public void await() throws InterruptedException {
+            while (!isSignalled()) {
                 checkInterrupted();
                 LockSupport.park();
             }
             checkAndClear();
         }
 
-        public boolean awaitUntil(long until) throws InterruptedException
-        {
+        public boolean awaitUntil(long until) throws InterruptedException {
             long now;
-            while (until > (now = System.nanoTime()) && !isSignalled())
-            {
+            while (until > (now = System.nanoTime()) && !isSignalled()) {
                 checkInterrupted();
                 long delta = until - now;
                 LockSupport.parkNanos(delta);
@@ -305,10 +284,8 @@ public final class WaitQueue
             return checkAndClear();
         }
 
-        private void checkInterrupted() throws InterruptedException
-        {
-            if (Thread.interrupted())
-            {
+        private void checkInterrupted() throws InterruptedException {
+            if (Thread.interrupted()) {
                 cancel();
                 throw new InterruptedException();
             }
@@ -318,30 +295,24 @@ public final class WaitQueue
     /**
      * A signal registered with this WaitQueue
      */
-    private class RegisteredSignal extends AbstractSignal
-    {
+    private class RegisteredSignal extends AbstractSignal {
         private volatile Thread thread = Thread.currentThread();
         volatile int state;
 
-        public boolean isSignalled()
-        {
+        public boolean isSignalled() {
             return state == SIGNALLED;
         }
 
-        public boolean isCancelled()
-        {
+        public boolean isCancelled() {
             return state == CANCELLED;
         }
 
-        public boolean isSet()
-        {
+        public boolean isSet() {
             return state != NOT_SET;
         }
 
-        private Thread signal()
-        {
-            if (!isSet() && signalledUpdater.compareAndSet(this, NOT_SET, SIGNALLED))
-            {
+        private Thread signal() {
+            if (!isSet() && signalledUpdater.compareAndSet(this, NOT_SET, SIGNALLED)) {
                 Thread thread = this.thread;
                 LockSupport.unpark(thread);
                 this.thread = null;
@@ -350,10 +321,8 @@ public final class WaitQueue
             return null;
         }
 
-        public boolean checkAndClear()
-        {
-            if (!isSet() && signalledUpdater.compareAndSet(this, NOT_SET, CANCELLED))
-            {
+        public boolean checkAndClear() {
+            if (!isSet() && signalledUpdater.compareAndSet(this, NOT_SET, CANCELLED)) {
                 thread = null;
                 cleanUpCancelled();
                 return false;
@@ -366,12 +335,10 @@ public final class WaitQueue
          * Should only be called by the registered thread. Indicates the signal can be retired,
          * and if signalled propagates the signal to another waiting thread
          */
-        public void cancel()
-        {
+        public void cancel() {
             if (isCancelled())
                 return;
-            if (!signalledUpdater.compareAndSet(this, NOT_SET, CANCELLED))
-            {
+            if (!signalledUpdater.compareAndSet(this, NOT_SET, CANCELLED)) {
                 // must already be signalled - switch to cancelled and
                 state = CANCELLED;
                 // propagate the signal
@@ -387,27 +354,22 @@ public final class WaitQueue
      * finished waiting. i.e. if the timer is started when the signal is registered it tracks the
      * time in between registering and invalidating the signal.
      */
-    private final class TimedSignal extends RegisteredSignal
-    {
+    private final class TimedSignal extends RegisteredSignal {
         private final TimerContext context;
 
-        private TimedSignal(TimerContext context)
-        {
+        private TimedSignal(TimerContext context) {
             this.context = context;
         }
 
         @Override
-        public boolean checkAndClear()
-        {
+        public boolean checkAndClear() {
             context.stop();
             return super.checkAndClear();
         }
 
         @Override
-        public void cancel()
-        {
-            if (!isCancelled())
-            {
+        public void cancel() {
+            if (!isCancelled()) {
                 context.stop();
                 super.cancel();
             }
@@ -417,31 +379,27 @@ public final class WaitQueue
     /**
      * An abstract signal wrapping multiple delegate signals
      */
-    private abstract static class MultiSignal extends AbstractSignal
-    {
+    private abstract static class MultiSignal extends AbstractSignal {
         final Signal[] signals;
-        protected MultiSignal(Signal[] signals)
-        {
+
+        protected MultiSignal(Signal[] signals) {
             this.signals = signals;
         }
 
-        public boolean isCancelled()
-        {
+        public boolean isCancelled() {
             for (Signal signal : signals)
                 if (!signal.isCancelled())
                     return false;
             return true;
         }
 
-        public boolean checkAndClear()
-        {
+        public boolean checkAndClear() {
             for (Signal signal : signals)
                 signal.checkAndClear();
             return isSignalled();
         }
 
-        public void cancel()
-        {
+        public void cancel() {
             for (Signal signal : signals)
                 signal.cancel();
         }
@@ -450,23 +408,19 @@ public final class WaitQueue
     /**
      * A Signal that wraps multiple Signals and returns when any single one of them would have returned
      */
-    private static class AnySignal extends MultiSignal
-    {
-        protected AnySignal(Signal ... signals)
-        {
+    private static class AnySignal extends MultiSignal {
+        protected AnySignal(Signal... signals) {
             super(signals);
         }
 
-        public boolean isSignalled()
-        {
+        public boolean isSignalled() {
             for (Signal signal : signals)
                 if (signal.isSignalled())
                     return true;
             return false;
         }
 
-        public boolean isSet()
-        {
+        public boolean isSet() {
             for (Signal signal : signals)
                 if (signal.isSet())
                     return true;
@@ -477,23 +431,19 @@ public final class WaitQueue
     /**
      * A Signal that wraps multiple Signals and returns when all of them would have finished returning
      */
-    private static class AllSignal extends MultiSignal
-    {
-        protected AllSignal(Signal ... signals)
-        {
+    private static class AllSignal extends MultiSignal {
+        protected AllSignal(Signal... signals) {
             super(signals);
         }
 
-        public boolean isSignalled()
-        {
+        public boolean isSignalled() {
             for (Signal signal : signals)
                 if (!signal.isSignalled())
                     return false;
             return true;
         }
 
-        public boolean isSet()
-        {
+        public boolean isSet() {
             for (Signal signal : signals)
                 if (!signal.isSet())
                     return false;
@@ -505,8 +455,7 @@ public final class WaitQueue
      * @param signals
      * @return a signal that returns only when any of the provided signals would have returned
      */
-    public static Signal any(Signal ... signals)
-    {
+    public static Signal any(Signal... signals) {
         return new AnySignal(signals);
     }
 
@@ -514,8 +463,7 @@ public final class WaitQueue
      * @param signals
      * @return a signal that returns only when all provided signals would have returned
      */
-    public static Signal all(Signal ... signals)
-    {
+    public static Signal all(Signal... signals) {
         return new AllSignal(signals);
     }
 }

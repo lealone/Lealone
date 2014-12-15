@@ -19,14 +19,14 @@ package org.lealone.cluster.io.util;
 
 import java.io.*;
 
-public abstract class AbstractDataInput extends InputStream implements DataInput
-{
+public abstract class AbstractDataInput extends InputStream implements DataInput {
     public abstract void seek(long position) throws IOException;
+
     public abstract long getPosition();
+
     public abstract long getPositionLimit();
 
-    public int skipBytes(int n) throws IOException
-    {
+    public int skipBytes(int n) throws IOException {
         if (n <= 0)
             return 0;
         long oldPosition = getPosition();
@@ -90,7 +90,7 @@ public abstract class AbstractDataInput extends InputStream implements DataInput
         int ch2 = this.read();
         if ((ch1 | ch2) < 0)
             throw new EOFException();
-        return (char)((ch1 << 8) + (ch2 << 0));
+        return (char) ((ch1 << 8) + (ch2 << 0));
     }
 
     /**
@@ -137,8 +137,7 @@ public abstract class AbstractDataInput extends InputStream implements DataInput
      * @throws NullPointerException
      *             if {@code buffer} is {@code null}.
      */
-    public void readFully(byte[] buffer) throws IOException
-    {
+    public void readFully(byte[] buffer) throws IOException {
         readFully(buffer, 0, buffer.length);
     }
 
@@ -164,14 +163,12 @@ public abstract class AbstractDataInput extends InputStream implements DataInput
      * @throws NullPointerException
      *             if {@code buffer} is {@code null}.
      */
-    public void readFully(byte[] buffer, int offset, int count) throws IOException
-    {
+    public void readFully(byte[] buffer, int offset, int count) throws IOException {
         if (buffer == null) {
             throw new NullPointerException();
         }
         // avoid int overflow
-        if (offset < 0 || offset > buffer.length || count < 0
-                || count > buffer.length - offset) {
+        if (offset < 0 || offset > buffer.length || count < 0 || count > buffer.length - offset) {
             throw new IndexOutOfBoundsException();
         }
         while (count > 0) {
@@ -226,25 +223,25 @@ public abstract class AbstractDataInput extends InputStream implements DataInput
         while (true) {
             int nextByte = read();
             switch (nextByte) {
-                case -1:
-                    return line.length() != 0 ? line.toString() : null;
-                case (byte) '\r':
-                    if (foundTerminator) {
-                        seek(unreadPosition);
-                        return line.toString();
-                    }
-                    foundTerminator = true;
-                    /* Have to be able to peek ahead one byte */
-                    unreadPosition = getPosition();
-                    break;
-                case (byte) '\n':
+            case -1:
+                return line.length() != 0 ? line.toString() : null;
+            case (byte) '\r':
+                if (foundTerminator) {
+                    seek(unreadPosition);
                     return line.toString();
-                default:
-                    if (foundTerminator) {
-                        seek(unreadPosition);
-                        return line.toString();
-                    }
-                    line.append((char) nextByte);
+                }
+                foundTerminator = true;
+                /* Have to be able to peek ahead one byte */
+                unreadPosition = getPosition();
+                break;
+            case (byte) '\n':
+                return line.toString();
+            default:
+                if (foundTerminator) {
+                    seek(unreadPosition);
+                    return line.toString();
+                }
+                line.append((char) nextByte);
             }
         }
     }
@@ -261,7 +258,7 @@ public abstract class AbstractDataInput extends InputStream implements DataInput
      *             if this file is closed or another I/O error occurs.
      */
     public long readLong() throws IOException {
-        return ((long)(readInt()) << 32) + (readInt() & 0xFFFFFFFFL);
+        return ((long) (readInt()) << 32) + (readInt() & 0xFFFFFFFFL);
     }
 
     /**
@@ -280,7 +277,7 @@ public abstract class AbstractDataInput extends InputStream implements DataInput
         int ch2 = this.read();
         if ((ch1 | ch2) < 0)
             throw new EOFException();
-        return (short)((ch1 << 8) + (ch2 << 0));
+        return (short) ((ch1 << 8) + (ch2 << 0));
     }
 
     /**

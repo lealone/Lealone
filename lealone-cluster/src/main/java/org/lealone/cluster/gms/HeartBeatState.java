@@ -26,65 +26,53 @@ import org.lealone.cluster.io.util.DataOutputPlus;
 /**
  * HeartBeat State associated with any given endpoint.
  */
-class HeartBeatState
-{
+class HeartBeatState {
     public static final IVersionedSerializer<HeartBeatState> serializer = new HeartBeatStateSerializer();
 
     private int generation;
     private int version;
 
-    HeartBeatState(int gen)
-    {
+    HeartBeatState(int gen) {
         this(gen, 0);
     }
 
-    HeartBeatState(int gen, int ver)
-    {
+    HeartBeatState(int gen, int ver) {
         generation = gen;
         version = ver;
     }
 
-    int getGeneration()
-    {
+    int getGeneration() {
         return generation;
     }
 
-    void updateHeartBeat()
-    {
+    void updateHeartBeat() {
         version = VersionGenerator.getNextVersion();
     }
 
-    int getHeartBeatVersion()
-    {
+    int getHeartBeatVersion() {
         return version;
     }
 
-    void forceNewerGenerationUnsafe()
-    {
+    void forceNewerGenerationUnsafe() {
         generation += 1;
     }
 
-    public String toString()
-    {
+    public String toString() {
         return String.format("HeartBeat: generation = %d, version = %d", generation, version);
     }
 }
 
-class HeartBeatStateSerializer implements IVersionedSerializer<HeartBeatState>
-{
-    public void serialize(HeartBeatState hbState, DataOutputPlus out, int version) throws IOException
-    {
+class HeartBeatStateSerializer implements IVersionedSerializer<HeartBeatState> {
+    public void serialize(HeartBeatState hbState, DataOutputPlus out, int version) throws IOException {
         out.writeInt(hbState.getGeneration());
         out.writeInt(hbState.getHeartBeatVersion());
     }
 
-    public HeartBeatState deserialize(DataInput in, int version) throws IOException
-    {
+    public HeartBeatState deserialize(DataInput in, int version) throws IOException {
         return new HeartBeatState(in.readInt(), in.readInt());
     }
 
-    public long serializedSize(HeartBeatState state, int version)
-    {
+    public long serializedSize(HeartBeatState state, int version) {
         return TypeSizes.NATIVE.sizeof(state.getGeneration()) + TypeSizes.NATIVE.sizeof(state.getHeartBeatVersion());
     }
 }

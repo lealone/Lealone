@@ -23,8 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
-public interface FileDataInput extends DataInput, Closeable
-{
+public interface FileDataInput extends DataInput, Closeable {
     public String getPath();
 
     public boolean isEOF() throws IOException;

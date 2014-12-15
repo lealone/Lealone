@@ -29,10 +29,9 @@ import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.utils.FBUtilities;
 
-public class LocalStrategy extends AbstractReplicationStrategy
-{
-    public LocalStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch, Map<String, String> configOptions)
-    {
+public class LocalStrategy extends AbstractReplicationStrategy {
+    public LocalStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
+            Map<String, String> configOptions) {
         super(keyspaceName, tokenMetadata, snitch, configOptions);
     }
 
@@ -42,30 +41,25 @@ public class LocalStrategy extends AbstractReplicationStrategy
      * LocalStrategy may be used before tokens are set up.
      */
     @Override
-    public ArrayList<InetAddress> getNaturalEndpoints(RingPosition searchPosition)
-    {
+    public ArrayList<InetAddress> getNaturalEndpoints(RingPosition searchPosition) {
         ArrayList<InetAddress> l = new ArrayList<InetAddress>(1);
         l.add(FBUtilities.getBroadcastAddress());
         return l;
     }
 
-    public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata)
-    {
+    public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata) {
         return Collections.singletonList(FBUtilities.getBroadcastAddress());
     }
 
-    public int getReplicationFactor()
-    {
+    public int getReplicationFactor() {
         return 1;
     }
 
-    public void validateOptions() throws ConfigurationException
-    {
+    public void validateOptions() throws ConfigurationException {
     }
 
-    public Collection<String> recognizedOptions()
-    {
+    public Collection<String> recognizedOptions() {
         // LocalStrategy doesn't expect any options.
-        return Collections.<String>emptySet();
+        return Collections.<String> emptySet();
     }
 }

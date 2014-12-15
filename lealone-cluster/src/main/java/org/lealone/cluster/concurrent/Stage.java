@@ -17,47 +17,32 @@
  */
 package org.lealone.cluster.concurrent;
 
-public enum Stage
-{
-    READ,
-    MUTATION,
-    COUNTER_MUTATION,
-    GOSSIP,
-    REQUEST_RESPONSE,
-    ANTI_ENTROPY,
-    MIGRATION,
-    MISC,
-    TRACING,
-    INTERNAL_RESPONSE,
-    READ_REPAIR;
+public enum Stage {
+    READ, MUTATION, COUNTER_MUTATION, GOSSIP, REQUEST_RESPONSE, ANTI_ENTROPY, MIGRATION, MISC, TRACING, INTERNAL_RESPONSE, READ_REPAIR;
 
-    public String getJmxType()
-    {
-        switch (this)
-        {
-            case ANTI_ENTROPY:
-            case GOSSIP:
-            case MIGRATION:
-            case MISC:
-            case TRACING:
-            case INTERNAL_RESPONSE:
-                return "internal";
-            case MUTATION:
-            case COUNTER_MUTATION:
-            case READ:
-            case REQUEST_RESPONSE:
-            case READ_REPAIR:
-                return "request";
-            default:
-                throw new AssertionError("Unknown stage " + this);
+    public String getJmxType() {
+        switch (this) {
+        case ANTI_ENTROPY:
+        case GOSSIP:
+        case MIGRATION:
+        case MISC:
+        case TRACING:
+        case INTERNAL_RESPONSE:
+            return "internal";
+        case MUTATION:
+        case COUNTER_MUTATION:
+        case READ:
+        case REQUEST_RESPONSE:
+        case READ_REPAIR:
+            return "request";
+        default:
+            throw new AssertionError("Unknown stage " + this);
         }
     }
 
-    public String getJmxName()
-    {
+    public String getJmxName() {
         String name = "";
-        for (String word : toString().split("_"))
-        {
+        for (String word : toString().split("_")) {
             name += word.substring(0, 1) + word.substring(1).toLowerCase();
         }
         return name + "Stage";

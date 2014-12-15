@@ -25,23 +25,19 @@ import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.io.util.DataOutputPlus;
 
-public class UUIDSerializer implements IVersionedSerializer<UUID>
-{
+public class UUIDSerializer implements IVersionedSerializer<UUID> {
     public static UUIDSerializer serializer = new UUIDSerializer();
 
-    public void serialize(UUID uuid, DataOutputPlus out, int version) throws IOException
-    {
+    public void serialize(UUID uuid, DataOutputPlus out, int version) throws IOException {
         out.writeLong(uuid.getMostSignificantBits());
         out.writeLong(uuid.getLeastSignificantBits());
     }
 
-    public UUID deserialize(DataInput in, int version) throws IOException
-    {
+    public UUID deserialize(DataInput in, int version) throws IOException {
         return new UUID(in.readLong(), in.readLong());
     }
 
-    public long serializedSize(UUID uuid, int version)
-    {
+    public long serializedSize(UUID uuid, int version) {
         return TypeSizes.NATIVE.sizeof(uuid.getMostSignificantBits()) + TypeSizes.NATIVE.sizeof(uuid.getLeastSignificantBits());
     }
 }

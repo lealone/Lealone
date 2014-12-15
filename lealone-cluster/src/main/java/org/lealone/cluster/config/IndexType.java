@@ -17,9 +17,6 @@
  */
 package org.lealone.cluster.config;
 
-public enum IndexType
-{
-    KEYS,
-    CUSTOM,
-    COMPOSITES
+public enum IndexType {
+    KEYS, CUSTOM, COMPOSITES
 }

@@ -23,15 +23,12 @@ import java.net.InetAddress;
  * A simple endpoint snitch implementation that assumes datacenter and rack information is encoded
  * in the 2nd and 3rd octets of the ip address, respectively.
  */
-public class RackInferringSnitch extends AbstractNetworkTopologySnitch
-{
-    public String getRack(InetAddress endpoint)
-    {
+public class RackInferringSnitch extends AbstractNetworkTopologySnitch {
+    public String getRack(InetAddress endpoint) {
         return Integer.toString(endpoint.getAddress()[2] & 0xFF, 10);
     }
 
-    public String getDatacenter(InetAddress endpoint)
-    {
+    public String getDatacenter(InetAddress endpoint) {
         return Integer.toString(endpoint.getAddress()[1] & 0xFF, 10);
     }
 }

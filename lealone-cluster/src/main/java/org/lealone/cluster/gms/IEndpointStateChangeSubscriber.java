@@ -27,8 +27,7 @@ import java.net.InetAddress;
  * instance to decide what he does with this change. Not all modules maybe interested
  * in all state changes.
  */
-public interface IEndpointStateChangeSubscriber
-{
+public interface IEndpointStateChangeSubscriber {
     /**
      * Use to inform interested parties about the change in the state
      * for specified endpoint
@@ -37,8 +36,9 @@ public interface IEndpointStateChangeSubscriber
      * @param epState  state that actually changed for the above endpoint.
      */
     public void onJoin(InetAddress endpoint, EndpointState epState);
-    
-    public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey, VersionedValue newValue);
+
+    public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
+            VersionedValue newValue);
 
     public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value);
 

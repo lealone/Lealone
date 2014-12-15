@@ -19,21 +19,17 @@ package org.lealone.cluster.io;
 
 import java.io.File;
 
-public class FSWriteError extends FSError
-{
-    public FSWriteError(Throwable cause, File path)
-    {
+public class FSWriteError extends FSError {
+    public FSWriteError(Throwable cause, File path) {
         super(cause, path);
     }
 
-    public FSWriteError(Throwable cause, String path)
-    {
+    public FSWriteError(Throwable cause, String path) {
         this(cause, new File(path));
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "FSWriteError in " + path;
     }
 }

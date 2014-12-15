@@ -32,8 +32,7 @@ import org.lealone.cluster.net.IAsyncCallback;
 import org.lealone.cluster.net.MessageIn;
 import org.lealone.cluster.utils.concurrent.SimpleCondition;
 
-public abstract class AbstractWriteResponseHandler implements IAsyncCallback
-{
+public abstract class AbstractWriteResponseHandler implements IAsyncCallback {
     private final SimpleCondition condition = new SimpleCondition();
     protected final Keyspace keyspace;
     protected final long start;
@@ -46,13 +45,8 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
     /**
      * @param callback A callback to be called when the write is successful.
      */
-    protected AbstractWriteResponseHandler(Keyspace keyspace,
-                                           Collection<InetAddress> naturalEndpoints,
-                                           Collection<InetAddress> pendingEndpoints,
-                                           ConsistencyLevel consistencyLevel,
-                                           Runnable callback,
-                                           WriteType writeType)
-    {
+    protected AbstractWriteResponseHandler(Keyspace keyspace, Collection<InetAddress> naturalEndpoints,
+            Collection<InetAddress> pendingEndpoints, ConsistencyLevel consistencyLevel, Runnable callback, WriteType writeType) {
         this.keyspace = keyspace;
         this.pendingEndpoints = pendingEndpoints;
         this.start = System.nanoTime();
@@ -62,26 +56,20 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
         this.writeType = writeType;
     }
 
-    public void get() throws WriteTimeoutException
-    {
-        long requestTimeout = writeType == WriteType.COUNTER
-                            ? DatabaseDescriptor.getCounterWriteRpcTimeout()
-                            : DatabaseDescriptor.getWriteRpcTimeout();
+    public void get() throws WriteTimeoutException {
+        long requestTimeout = writeType == WriteType.COUNTER ? DatabaseDescriptor.getCounterWriteRpcTimeout()
+                : DatabaseDescriptor.getWriteRpcTimeout();
 
         long timeout = TimeUnit.MILLISECONDS.toNanos(requestTimeout) - (System.nanoTime() - start);
 
         boolean success;
-        try
-        {
+        try {
             success = condition.await(timeout, TimeUnit.NANOSECONDS);
-        }
-        catch (InterruptedException ex)
-        {
+        } catch (InterruptedException ex) {
             throw new AssertionError(ex);
         }
 
-        if (!success)
-        {
+        if (!success) {
             int acks = ackCount();
             int blockedFor = totalBlockFor();
             // It's pretty unlikely, but we can race between exiting await above and here, so
@@ -93,8 +81,7 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
         }
     }
 
-    protected int totalBlockFor()
-    {
+    protected int totalBlockFor() {
         // During bootstrap, we have to include the pending endpoints or we may fail the consistency level
         // guarantees (see #833)
         return consistencyLevel.blockFor(keyspace) + pendingEndpoints.size();
@@ -105,13 +92,12 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback
     /** null message means "response from local write" */
     public abstract void response(MessageIn msg);
 
-    public void assureSufficientLiveNodes() throws UnavailableException
-    {
-        consistencyLevel.assureSufficientLiveNodes(keyspace, Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), isAlive));
+    public void assureSufficientLiveNodes() throws UnavailableException {
+        consistencyLevel.assureSufficientLiveNodes(keyspace,
+                Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), isAlive));
     }
 
-    protected void signal()
-    {
+    protected void signal() {
         condition.signalAll();
         if (callback != null)
             callback.run();

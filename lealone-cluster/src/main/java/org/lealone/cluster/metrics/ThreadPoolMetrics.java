@@ -25,8 +25,7 @@ import com.yammer.metrics.core.*;
 /**
  * Metrics for {@link ThreadPoolExecutor}.
  */
-public class ThreadPoolMetrics
-{
+public class ThreadPoolMetrics {
     /** Number of active tasks. */
     public final Gauge<Integer> activeTasks;
     /** Number of tasks that had blocked before being accepted (or rejected). */
@@ -50,37 +49,29 @@ public class ThreadPoolMetrics
      * @param path Type of thread pool
      * @param poolName Name of thread pool to identify metrics
      */
-    public ThreadPoolMetrics(final ThreadPoolExecutor executor, String path, String poolName)
-    {
+    public ThreadPoolMetrics(final ThreadPoolExecutor executor, String path, String poolName) {
         this.factory = new ThreadPoolMetricNameFactory("ThreadPools", path, poolName);
 
-        activeTasks = Metrics.newGauge(factory.createMetricName("ActiveTasks"), new Gauge<Integer>()
-        {
-            public Integer value()
-            {
+        activeTasks = Metrics.newGauge(factory.createMetricName("ActiveTasks"), new Gauge<Integer>() {
+            public Integer value() {
                 return executor.getActiveCount();
             }
         });
         totalBlocked = Metrics.newCounter(factory.createMetricName("TotalBlockedTasks"));
         currentBlocked = Metrics.newCounter(factory.createMetricName("CurrentlyBlockedTasks"));
-        completedTasks = Metrics.newGauge(factory.createMetricName("CompletedTasks"), new Gauge<Long>()
-        {
-            public Long value()
-            {
+        completedTasks = Metrics.newGauge(factory.createMetricName("CompletedTasks"), new Gauge<Long>() {
+            public Long value() {
                 return executor.getCompletedTaskCount();
             }
         });
-        pendingTasks = Metrics.newGauge(factory.createMetricName("PendingTasks"), new Gauge<Long>()
-        {
-            public Long value()
-            {
+        pendingTasks = Metrics.newGauge(factory.createMetricName("PendingTasks"), new Gauge<Long>() {
+            public Long value() {
                 return executor.getTaskCount() - executor.getCompletedTaskCount();
             }
         });
     }
 
-    public void release()
-    {
+    public void release() {
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("ActiveTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("PendingTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("CompletedTasks"));

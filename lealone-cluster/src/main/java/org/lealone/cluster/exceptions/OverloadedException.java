@@ -17,10 +17,8 @@
  */
 package org.lealone.cluster.exceptions;
 
-public class OverloadedException extends RequestExecutionException
-{
-    public OverloadedException(String reason)
-    {
+public class OverloadedException extends RequestExecutionException {
+    public OverloadedException(String reason) {
         super(ExceptionCode.OVERLOADED, reason);
     }
 }

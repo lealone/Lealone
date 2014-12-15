@@ -22,8 +22,7 @@ import java.net.InetAddress;
 import org.lealone.cluster.net.MessageIn;
 import org.lealone.cluster.net.MessageOut;
 
-public interface IMessageSink
-{
+public interface IMessageSink {
     /**
      * Transform or drop an outgoing message
      *

@@ -40,8 +40,7 @@ import com.google.common.primitives.Longs;
 /**
  * This class generates a BigIntegerToken using a Murmur3 hash.
  */
-public class Murmur3Partitioner implements IPartitioner
-{
+public class Murmur3Partitioner implements IPartitioner {
     public static final LongToken MINIMUM = new LongToken(Long.MIN_VALUE);
     public static final long MAXIMUM = Long.MAX_VALUE;
 
@@ -49,24 +48,18 @@ public class Murmur3Partitioner implements IPartitioner
 
     public static final Murmur3Partitioner instance = new Murmur3Partitioner();
 
-    public DecoratedKey decorateKey(ByteBuffer key)
-    {
+    public DecoratedKey decorateKey(ByteBuffer key) {
         return new BufferDecoratedKey(getToken(key), key);
     }
 
-    public Token midpoint(Token lToken, Token rToken)
-    {
+    public Token midpoint(Token lToken, Token rToken) {
         // using BigInteger to avoid long overflow in intermediate operations
-        BigInteger l = BigInteger.valueOf(((LongToken) lToken).token),
-                   r = BigInteger.valueOf(((LongToken) rToken).token),
-                   midpoint;
+        BigInteger l = BigInteger.valueOf(((LongToken) lToken).token), r = BigInteger.valueOf(((LongToken) rToken).token), midpoint;
 
-        if (l.compareTo(r) < 0)
-        {
+        if (l.compareTo(r) < 0) {
             BigInteger sum = l.add(r);
             midpoint = sum.shiftRight(1);
-        }
-        else // wrapping case
+        } else // wrapping case
         {
             BigInteger max = BigInteger.valueOf(MAXIMUM);
             BigInteger min = BigInteger.valueOf(MINIMUM.token);
@@ -81,62 +74,52 @@ public class Murmur3Partitioner implements IPartitioner
         return new LongToken(midpoint.longValue());
     }
 
-    public LongToken getMinimumToken()
-    {
+    public LongToken getMinimumToken() {
         return MINIMUM;
     }
 
-    public static class LongToken extends Token
-    {
+    public static class LongToken extends Token {
         static final long serialVersionUID = -5833580143318243006L;
 
         final long token;
 
-        public LongToken(long token)
-        {
+        public LongToken(long token) {
             this.token = token;
         }
 
-        public String toString()
-        {
+        public String toString() {
             return Long.toString(token);
         }
 
-        public boolean equals(Object obj)
-        {
+        public boolean equals(Object obj) {
             if (this == obj)
                 return true;
             if (obj == null || this.getClass() != obj.getClass())
                 return false;
 
-            return token == (((LongToken)obj).token);
+            return token == (((LongToken) obj).token);
         }
 
-        public int hashCode()
-        {
+        public int hashCode() {
             return Longs.hashCode(token);
         }
 
-        public int compareTo(Token o)
-        {
+        public int compareTo(Token o) {
             return Long.compare(token, ((LongToken) o).token);
         }
 
         @Override
-        public IPartitioner getPartitioner()
-        {
+        public IPartitioner getPartitioner() {
             return instance;
         }
 
         @Override
-        public long getHeapSize()
-        {
+        public long getHeapSize() {
             return HEAP_SIZE;
         }
 
         @Override
-        public Object getTokenValue()
-        {
+        public Object getTokenValue() {
             return token;
         }
     }
@@ -147,8 +130,7 @@ public class Murmur3Partitioner implements IPartitioner
      * In particular we don't want MINIMUM to correspond to any key because the range (MINIMUM, X] doesn't
      * include MINIMUM but we use such range to select all data whose token is smaller than X.
      */
-    public LongToken getToken(ByteBuffer key)
-    {
+    public LongToken getToken(ByteBuffer key) {
         if (key.remaining() == 0)
             return MINIMUM;
 
@@ -157,24 +139,20 @@ public class Murmur3Partitioner implements IPartitioner
         return new LongToken(normalize(hash[0]));
     }
 
-    public LongToken getRandomToken()
-    {
+    public LongToken getRandomToken() {
         return new LongToken(normalize(ThreadLocalRandom.current().nextLong()));
     }
 
-    private long normalize(long v)
-    {
+    private long normalize(long v) {
         // We exclude the MINIMUM value; see getToken()
         return v == Long.MIN_VALUE ? Long.MAX_VALUE : v;
     }
 
-    public boolean preservesOrder()
-    {
+    public boolean preservesOrder() {
         return false;
     }
 
-    public Map<Token, Float> describeOwnership(List<Token> sortedTokens)
-    {
+    public Map<Token, Float> describeOwnership(List<Token> sortedTokens) {
         Map<Token, Float> ownerships = new HashMap<Token, Float>();
         Iterator<Token> i = sortedTokens.iterator();
 
@@ -185,79 +163,70 @@ public class Murmur3Partitioner implements IPartitioner
         if (sortedTokens.size() == 1)
             ownerships.put((Token) i.next(), new Float(1.0));
         // n-case
-        else
-        {
-            final BigInteger ri = BigInteger.valueOf(MAXIMUM).subtract(BigInteger.valueOf(MINIMUM.token + 1));  //  (used for addition later)
-            final BigDecimal r  = new BigDecimal(ri);
-            Token start = i.next();BigInteger ti = BigInteger.valueOf(((LongToken)start).token);  // The first token and its value
-            Token t; BigInteger tim1 = ti;                                                                // The last token and its value (after loop)
+        else {
+            final BigInteger ri = BigInteger.valueOf(MAXIMUM).subtract(BigInteger.valueOf(MINIMUM.token + 1)); //  (used for addition later)
+            final BigDecimal r = new BigDecimal(ri);
+            Token start = i.next();
+            BigInteger ti = BigInteger.valueOf(((LongToken) start).token); // The first token and its value
+            Token t;
+            BigInteger tim1 = ti; // The last token and its value (after loop)
 
-            while (i.hasNext())
-            {
-                t = (Token) i.next(); ti = BigInteger.valueOf(((LongToken) t).token); // The next token and its value
-                float age = new BigDecimal(ti.subtract(tim1).add(ri).mod(ri)).divide(r, 6, BigDecimal.ROUND_HALF_EVEN).floatValue(); // %age = ((T(i) - T(i-1) + R) % R) / R
-                ownerships.put(t, age);                           // save (T(i) -> %age)
-                tim1 = ti;                                        // -> advance loop
+            while (i.hasNext()) {
+                t = (Token) i.next();
+                ti = BigInteger.valueOf(((LongToken) t).token); // The next token and its value
+                float age = new BigDecimal(ti.subtract(tim1).add(ri).mod(ri)).divide(r, 6, BigDecimal.ROUND_HALF_EVEN)
+                        .floatValue(); // %age = ((T(i) - T(i-1) + R) % R) / R
+                ownerships.put(t, age); // save (T(i) -> %age)
+                tim1 = ti; // -> advance loop
             }
 
             // The start token's range extends backward to the last token, which is why both were saved above.
-            float x = new BigDecimal(BigInteger.valueOf(((LongToken)start).token).subtract(ti).add(ri).mod(ri)).divide(r, 6, BigDecimal.ROUND_HALF_EVEN).floatValue();
+            float x = new BigDecimal(BigInteger.valueOf(((LongToken) start).token).subtract(ti).add(ri).mod(ri)).divide(r, 6,
+                    BigDecimal.ROUND_HALF_EVEN).floatValue();
             ownerships.put(start, x);
         }
 
         return ownerships;
     }
 
-    public Token.TokenFactory getTokenFactory()
-    {
+    public Token.TokenFactory getTokenFactory() {
         return tokenFactory;
     }
 
-    private final Token.TokenFactory tokenFactory = new Token.TokenFactory()
-    {
-        public ByteBuffer toByteArray(Token token)
-        {
+    private final Token.TokenFactory tokenFactory = new Token.TokenFactory() {
+        public ByteBuffer toByteArray(Token token) {
             LongToken longToken = (LongToken) token;
             return ByteBufferUtil.bytes(longToken.token);
         }
 
-        public Token fromByteArray(ByteBuffer bytes)
-        {
+        public Token fromByteArray(ByteBuffer bytes) {
             return new LongToken(ByteBufferUtil.toLong(bytes));
         }
 
-        public String toString(Token token)
-        {
+        public String toString(Token token) {
             return token.toString();
         }
 
-        public void validate(String token) throws ConfigurationException
-        {
-            try
-            {
+        public void validate(String token) throws ConfigurationException {
+            try {
                 Long.valueOf(token);
-            }
-            catch (NumberFormatException e)
-            {
+            } catch (NumberFormatException e) {
                 throw new ConfigurationException(e.getMessage());
             }
         }
 
-        public Token fromString(String string)
-        {
-            try
-            {
+        public Token fromString(String string) {
+            try {
                 return new LongToken(Long.valueOf(string));
-            }
-            catch (NumberFormatException e)
-            {
-                throw new IllegalArgumentException(String.format("Invalid token for Murmur3Partitioner. Got %s but expected a long value (unsigned 8 bytes integer).", string));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(String.format(
+                        "Invalid token for Murmur3Partitioner. Got %s but expected a long value (unsigned 8 bytes integer).",
+                        string));
             }
         }
     };
 
-    public AbstractType<?> getTokenValidator()
-    {
+    public AbstractType<?> getTokenValidator() {
         return LongType.instance;
     }
 }

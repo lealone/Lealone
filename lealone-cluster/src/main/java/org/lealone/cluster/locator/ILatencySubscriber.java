@@ -19,7 +19,6 @@ package org.lealone.cluster.locator;
 
 import java.net.InetAddress;
 
-public interface ILatencySubscriber
-{
+public interface ILatencySubscriber {
     public void receiveTiming(InetAddress address, long latency);
 }

@@ -31,8 +31,7 @@ import com.yammer.metrics.core.Timer;
 /**
  * Metrics about latencies
  */
-public class LatencyMetrics
-{
+public class LatencyMetrics {
     /** Latency */
     public final Timer latency;
     /** Total latency in micro sec */
@@ -40,12 +39,14 @@ public class LatencyMetrics
 
     /** parent metrics to replicate any updates to **/
     private List<LatencyMetrics> parents = Lists.newArrayList();
-    
+
     protected final MetricNameFactory factory;
     protected final String namePrefix;
 
-    @Deprecated public final EstimatedHistogram totalLatencyHistogram = new EstimatedHistogram();
-    @Deprecated public final EstimatedHistogram recentLatencyHistogram = new EstimatedHistogram();
+    @Deprecated
+    public final EstimatedHistogram totalLatencyHistogram = new EstimatedHistogram();
+    @Deprecated
+    public final EstimatedHistogram recentLatencyHistogram = new EstimatedHistogram();
     protected long lastLatency;
     protected long lastOpCount;
 
@@ -55,8 +56,7 @@ public class LatencyMetrics
      * @param type Type name
      * @param scope Scope
      */
-    public LatencyMetrics(String type, String scope)
-    {
+    public LatencyMetrics(String type, String scope) {
         this(type, "", scope);
     }
 
@@ -67,8 +67,7 @@ public class LatencyMetrics
      * @param namePrefix Prefix to append to each metric name
      * @param scope Scope of metrics
      */
-    public LatencyMetrics(String type, String namePrefix, String scope)
-    {
+    public LatencyMetrics(String type, String namePrefix, String scope) {
         this(new DefaultNameFactory(type, scope), namePrefix);
     }
 
@@ -78,15 +77,14 @@ public class LatencyMetrics
      * @param factory MetricName factory to use
      * @param namePrefix Prefix to append to each metric name
      */
-    public LatencyMetrics(MetricNameFactory factory, String namePrefix)
-    {
+    public LatencyMetrics(MetricNameFactory factory, String namePrefix) {
         this.factory = factory;
         this.namePrefix = namePrefix;
 
         latency = Metrics.newTimer(factory.createMetricName(namePrefix + "Latency"), TimeUnit.MICROSECONDS, TimeUnit.SECONDS);
         totalLatency = Metrics.newCounter(factory.createMetricName(namePrefix + "TotalLatency"));
     }
-    
+
     /**
      * Create LatencyMetrics with given group, type, prefix to append to each metric name, and scope.  Any updates
      * to this will also run on parent
@@ -95,45 +93,37 @@ public class LatencyMetrics
      * @param namePrefix Prefix to append to each metric name
      * @param parents any amount of parents to replicate updates to
      */
-    public LatencyMetrics(MetricNameFactory factory, String namePrefix, LatencyMetrics ... parents)
-    {
+    public LatencyMetrics(MetricNameFactory factory, String namePrefix, LatencyMetrics... parents) {
         this(factory, namePrefix);
         this.parents.addAll(ImmutableList.copyOf(parents));
     }
 
     /** takes nanoseconds **/
-    public void addNano(long nanos)
-    {
+    public void addNano(long nanos) {
         // convert to microseconds. 1 millionth
         latency.update(nanos, TimeUnit.NANOSECONDS);
         totalLatency.inc(nanos / 1000);
         totalLatencyHistogram.add(nanos / 1000);
         recentLatencyHistogram.add(nanos / 1000);
-        for(LatencyMetrics parent : parents)
-        {
+        for (LatencyMetrics parent : parents) {
             parent.addNano(nanos);
         }
     }
 
-    public void release()
-    {
+    public void release() {
         Metrics.defaultRegistry().removeMetric(factory.createMetricName(namePrefix + "Latency"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName(namePrefix + "TotalLatency"));
     }
 
     @Deprecated
-    public synchronized double getRecentLatency()
-    {
+    public synchronized double getRecentLatency() {
         long ops = latency.count();
         long n = totalLatency.count();
         if (ops == lastOpCount)
             return 0;
-        try
-        {
+        try {
             return ((double) n - lastLatency) / (ops - lastOpCount);
-        }
-        finally
-        {
+        } finally {
             lastLatency = n;
             lastOpCount = ops;
         }

@@ -17,10 +17,10 @@
  */
 package org.lealone.cluster.utils;
 
-public interface SearchIterator<K, V>
-{
+public interface SearchIterator<K, V> {
 
     public boolean hasNext();
+
     public V next(K key);
 
 }

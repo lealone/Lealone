@@ -19,8 +19,7 @@ package org.lealone.cluster.config;
 
 import org.lealone.cluster.exceptions.ConfigurationException;
 
-public interface ConfigurationLoader
-{
+public interface ConfigurationLoader {
     /**
      * Loads a {@link Config} object to use to configure a node.
      *

@@ -26,8 +26,7 @@ import org.lealone.cluster.exceptions.RequestValidationException;
 /**
  * Primary Cassandra authorization interface.
  */
-public interface IAuthorizer
-{
+public interface IAuthorizer {
     /**
      * The primary IAuthorizer method. Returns a set of permissions of a user on a resource.
      *
@@ -50,7 +49,7 @@ public interface IAuthorizer
      * @throws RequestExecutionException
      */
     void grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, String to)
-    throws RequestValidationException, RequestExecutionException;
+            throws RequestValidationException, RequestExecutionException;
 
     /**
      * Revokes a set of permissions on a resource from a user.
@@ -65,7 +64,7 @@ public interface IAuthorizer
      * @throws RequestExecutionException
      */
     void revoke(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, String from)
-    throws RequestValidationException, RequestExecutionException;
+            throws RequestValidationException, RequestExecutionException;
 
     /**
      * Returns a list of permissions on a resource of a user.
@@ -82,7 +81,7 @@ public interface IAuthorizer
      * @throws RequestExecutionException
      */
     Set<PermissionDetails> list(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, String of)
-    throws RequestValidationException, RequestExecutionException;
+            throws RequestValidationException, RequestExecutionException;
 
     /**
      * This method is called before deleting a user with DROP USER query so that a new user with the same

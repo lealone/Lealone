@@ -17,21 +17,19 @@
  */
 package org.lealone.cluster.gms;
 
-
 import org.lealone.cluster.net.IVerbHandler;
 import org.lealone.cluster.net.MessageIn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GossipShutdownVerbHandler implements IVerbHandler
-{
+public class GossipShutdownVerbHandler implements IVerbHandler<Void> {
     private static final Logger logger = LoggerFactory.getLogger(GossipShutdownVerbHandler.class);
 
-    public void doVerb(MessageIn message, int id)
-    {
-        if (!Gossiper.instance.isEnabled())
-        {
-            logger.debug("Ignoring shutdown message from {} because gossip is disabled", message.from);
+    @Override
+    public void doVerb(MessageIn<Void> message, int id) {
+        if (!Gossiper.instance.isEnabled()) {
+            if (logger.isDebugEnabled())
+                logger.debug("Ignoring shutdown message from {} because gossip is disabled", message.from);
             return;
         }
         FailureDetector.instance.forceConviction(message.from);

@@ -277,7 +277,7 @@ class ArrivalWindow {
     // because everyone seems pretty accustomed to the default of 8, and users who have
     // already tuned their phi_convict_threshold for their own environments won't need to
     // change.
-    private final double PHI_FACTOR = 1.0 / Math.log(10.0);
+    //private final double PHI_FACTOR = 1.0 / Math.log(10.0);
 
     // in the event of a long partition, never record an interval longer than the rpc timeout,
     // since if a host is regularly experiencing connectivity problems lasting this long we'd

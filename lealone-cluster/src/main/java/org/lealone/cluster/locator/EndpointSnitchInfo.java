@@ -17,7 +17,6 @@
  */
 package org.lealone.cluster.locator;
 
-
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -26,33 +25,25 @@ import javax.management.ObjectName;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
 
-public class EndpointSnitchInfo implements EndpointSnitchInfoMBean
-{
-    public static void create()
-    {
+public class EndpointSnitchInfo implements EndpointSnitchInfoMBean {
+    public static void create() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        try
-        {
+        try {
             mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName("org.apache.cassandra.db:type=EndpointSnitchInfo"));
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public String getDatacenter(String host) throws UnknownHostException
-    {
+    public String getDatacenter(String host) throws UnknownHostException {
         return DatabaseDescriptor.getEndpointSnitch().getDatacenter(InetAddress.getByName(host));
     }
 
-    public String getRack(String host) throws UnknownHostException
-    {
+    public String getRack(String host) throws UnknownHostException {
         return DatabaseDescriptor.getEndpointSnitch().getRack(InetAddress.getByName(host));
     }
 
-    public String getSnitchName()
-    {
+    public String getSnitchName() {
         return DatabaseDescriptor.getEndpointSnitch().getClass().getName();
     }
 }

@@ -30,8 +30,7 @@ import com.google.common.base.Objects;
  * Note: The following code uses a slight variation from the document above in
  * that it doesn't allow dashes in pre-release and build identifier.
  */
-public class SemanticVersion implements Comparable<SemanticVersion>
-{
+public class SemanticVersion implements Comparable<SemanticVersion> {
     private static final String VERSION_REGEXP = "(\\d+)\\.(\\d+)\\.(\\d+)(\\-[.\\w]+)?(\\+[.\\w]+)?";
     private static final Pattern pattern = Pattern.compile(VERSION_REGEXP);
 
@@ -42,8 +41,7 @@ public class SemanticVersion implements Comparable<SemanticVersion>
     private final String[] preRelease;
     private final String[] build;
 
-    private SemanticVersion(int major, int minor, int patch, String[] preRelease, String[] build)
-    {
+    private SemanticVersion(int major, int minor, int patch, String[] preRelease, String[] build) {
         this.major = major;
         this.minor = minor;
         this.patch = patch;
@@ -58,14 +56,12 @@ public class SemanticVersion implements Comparable<SemanticVersion>
      * @throws IllegalArgumentException if the provided string does not
      * represent a semantic version
      */
-    public SemanticVersion(String version)
-    {
+    public SemanticVersion(String version) {
         Matcher matcher = pattern.matcher(version);
         if (!matcher.matches())
             throw new IllegalArgumentException("Invalid version value: " + version + " (see http://semver.org/ for details)");
 
-        try
-        {
+        try {
             this.major = Integer.parseInt(matcher.group(1));
             this.minor = Integer.parseInt(matcher.group(2));
             this.patch = Integer.parseInt(matcher.group(3));
@@ -76,28 +72,23 @@ public class SemanticVersion implements Comparable<SemanticVersion>
             this.preRelease = pr == null || pr.isEmpty() ? null : parseIdentifiers(version, pr);
             this.build = bld == null || bld.isEmpty() ? null : parseIdentifiers(version, bld);
 
-        }
-        catch (NumberFormatException e)
-        {
+        } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid version value: " + version + " (see http://semver.org/ for details)");
         }
     }
 
-    private static String[] parseIdentifiers(String version, String str)
-    {
+    private static String[] parseIdentifiers(String version, String str) {
         // Drop initial - or +
         str = str.substring(1);
         String[] parts = str.split("\\.");
-        for (String part : parts)
-        {
+        for (String part : parts) {
             if (!part.matches("\\w+"))
                 throw new IllegalArgumentException("Invalid version value: " + version + " (see http://semver.org/ for details)");
         }
         return parts;
     }
 
-    public int compareTo(SemanticVersion other)
-    {
+    public int compareTo(SemanticVersion other) {
         if (major < other.major)
             return -1;
         if (major > other.major)
@@ -131,44 +122,36 @@ public class SemanticVersion implements Comparable<SemanticVersion>
      *   "2.0.3".findSupportingVersion("2.0.0") == "2.0.0"
      *   "2.1.0".findSupportingVersion("2.0.0") == null
      */
-    public SemanticVersion findSupportingVersion(SemanticVersion... versions)
-    {
-        for (SemanticVersion version : versions)
-        {
+    public SemanticVersion findSupportingVersion(SemanticVersion... versions) {
+        for (SemanticVersion version : versions) {
             if (isSupportedBy(version))
                 return version;
         }
         return null;
     }
 
-    public boolean isSupportedBy(SemanticVersion version)
-    {
+    public boolean isSupportedBy(SemanticVersion version) {
         return major == version.major && this.compareTo(version) <= 0;
     }
 
-    private static int compareIdentifiers(String[] ids1, String[] ids2, int defaultPred)
-    {
+    private static int compareIdentifiers(String[] ids1, String[] ids2, int defaultPred) {
         if (ids1 == null)
             return ids2 == null ? 0 : defaultPred;
         else if (ids2 == null)
             return -defaultPred;
 
         int min = Math.min(ids1.length, ids2.length);
-        for (int i = 0; i < min; i++)
-        {
+        for (int i = 0; i < min; i++) {
             Integer i1 = tryParseInt(ids1[i]);
             Integer i2 = tryParseInt(ids2[i]);
 
-            if (i1 != null)
-            {
+            if (i1 != null) {
                 // integer have precedence
                 if (i2 == null || i1 < i2)
                     return -1;
                 else if (i1 > i2)
                     return 1;
-            }
-            else
-            {
+            } else {
                 // integer have precedence
                 if (i2 != null)
                     return 1;
@@ -186,40 +169,30 @@ public class SemanticVersion implements Comparable<SemanticVersion>
         return 0;
     }
 
-    private static Integer tryParseInt(String str)
-    {
-        try
-        {
+    private static Integer tryParseInt(String str) {
+        try {
             return Integer.valueOf(str);
-        }
-        catch (NumberFormatException e)
-        {
+        } catch (NumberFormatException e) {
             return null;
         }
     }
 
     @Override
-    public boolean equals(Object o)
-    {
-        if(!(o instanceof SemanticVersion))
+    public boolean equals(Object o) {
+        if (!(o instanceof SemanticVersion))
             return false;
-        SemanticVersion that = (SemanticVersion)o;
-        return major == that.major
-            && minor == that.minor
-            && patch == that.patch
-            && Arrays.equals(preRelease, that.preRelease)
-            && Arrays.equals(build, that.build);
+        SemanticVersion that = (SemanticVersion) o;
+        return major == that.major && minor == that.minor && patch == that.patch && Arrays.equals(preRelease, that.preRelease)
+                && Arrays.equals(build, that.build);
     }
 
     @Override
-    public int hashCode()
-    {
+    public int hashCode() {
         return Objects.hashCode(major, minor, patch, preRelease, build);
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(major).append('.').append(minor).append('.').append(patch);
         if (preRelease != null)

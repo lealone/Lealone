@@ -17,10 +17,8 @@
  */
 package org.lealone.cluster.exceptions;
 
-public class InvalidRequestException extends RequestValidationException
-{
-    public InvalidRequestException(String msg)
-    {
+public class InvalidRequestException extends RequestValidationException {
+    public InvalidRequestException(String msg) {
         super(ExceptionCode.INVALID, msg);
     }
 }

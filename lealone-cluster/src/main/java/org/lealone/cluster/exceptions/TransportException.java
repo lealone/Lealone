@@ -17,8 +17,7 @@
  */
 package org.lealone.cluster.exceptions;
 
-public interface TransportException
-{
+public interface TransportException {
     /**
      * The exception code.
      */

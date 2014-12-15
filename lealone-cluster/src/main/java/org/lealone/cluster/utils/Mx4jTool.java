@@ -30,18 +30,15 @@ import org.slf4j.LoggerFactory;
  * The default port is 8081. To override that provide e.g. -Dmx4jport=8082
  * The default listen address is 0.0.0.0. To override that provide -Dmx4jaddress=127.0.0.1
  */
-public class Mx4jTool
-{
+public class Mx4jTool {
     private static final Logger logger = LoggerFactory.getLogger(Mx4jTool.class);
 
     /**
      * Starts a JMX over http interface if and mx4j-tools.jar is in the classpath.
      * @return true if successfully loaded.
      */
-    public static boolean maybeLoad()
-    {
-        try
-        {
+    public static boolean maybeLoad() {
+        try {
             logger.debug("Will try to load mx4j now, if it's in the classpath");
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
             ObjectName processorName = new ObjectName("Server:name=XSLTProcessor");
@@ -56,35 +53,28 @@ public class Mx4jTool
 
             Class<?> xsltProcessorClass = Class.forName("mx4j.tools.adaptor.http.XSLTProcessor");
             Object xsltProcessor = xsltProcessorClass.newInstance();
-            httpAdaptorClass.getMethod("setProcessor", Class.forName("mx4j.tools.adaptor.http.ProcessorMBean")).
-                    invoke(httpAdaptor, xsltProcessor);
+            httpAdaptorClass.getMethod("setProcessor", Class.forName("mx4j.tools.adaptor.http.ProcessorMBean")).invoke(
+                    httpAdaptor, xsltProcessor);
             mbs.registerMBean(xsltProcessor, processorName);
             httpAdaptorClass.getMethod("start").invoke(httpAdaptor);
             logger.info("mx4j successfuly loaded");
             return true;
-        }
-        catch (ClassNotFoundException e)
-        {
+        } catch (ClassNotFoundException e) {
             logger.debug("Will not load MX4J, mx4j-tools.jar is not in the classpath");
-        }
-        catch(Exception e)
-        {
+        } catch (Exception e) {
             logger.warn("Could not start register mbean in JMX", e);
         }
         return false;
     }
 
-    private static String getAddress()
-    {
+    private static String getAddress() {
         return System.getProperty("mx4jaddress", FBUtilities.getBroadcastAddress().getHostAddress());
     }
 
-    private static int getPort()
-    {
+    private static int getPort() {
         int port = 8081;
         String sPort = System.getProperty("mx4jport");
-        if (sPort != null && !sPort.equals(""))
-        {
+        if (sPort != null && !sPort.equals("")) {
             port = Integer.parseInt(sPort);
         }
         return port;

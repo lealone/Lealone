@@ -17,8 +17,6 @@
  */
 package org.lealone.cluster.net;
 
-
-
 import java.net.UnknownHostException;
 import java.util.Map;
 
@@ -26,8 +24,7 @@ import java.util.Map;
  * MBean exposing MessagingService metrics.
  * - OutboundConnectionPools - Command/Response - Pending/Completed Tasks
  */
-public interface MessagingServiceMBean
-{
+public interface MessagingServiceMBean {
     /**
      * Pending tasks for Command(Mutations, Read etc) TCP Connections
      */

@@ -17,10 +17,8 @@
  */
 package org.lealone.cluster.exceptions;
 
-public class UnauthorizedException extends RequestValidationException
-{
-    public UnauthorizedException(String msg)
-    {
+public class UnauthorizedException extends RequestValidationException {
+    public UnauthorizedException(String msg) {
         super(ExceptionCode.UNAUTHORIZED, msg);
     }
 }

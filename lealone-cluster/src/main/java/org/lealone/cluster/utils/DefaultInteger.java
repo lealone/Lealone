@@ -17,35 +17,28 @@
  */
 package org.lealone.cluster.utils;
 
-
-public class DefaultInteger
-{
+public class DefaultInteger {
     private final int originalValue;
     private int currentValue;
 
-    public DefaultInteger(int value)
-    {
+    public DefaultInteger(int value) {
         originalValue = value;
         currentValue = value;
     }
 
-    public int value()
-    {
+    public int value() {
         return currentValue;
     }
 
-    public void set(int i)
-    {
+    public void set(int i) {
         currentValue = i;
     }
 
-    public void reset()
-    {
+    public void reset() {
         currentValue = originalValue;
     }
 
-    public boolean isModified()
-    {
+    public boolean isModified() {
         return originalValue != currentValue;
     }
 }

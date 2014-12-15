@@ -23,8 +23,7 @@ import java.io.IOException;
 
 import org.lealone.cluster.db.TypeSizes;
 
-public interface IBitSet extends Closeable
-{
+public interface IBitSet extends Closeable {
     public long capacity();
 
     /**

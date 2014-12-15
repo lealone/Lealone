@@ -24,60 +24,45 @@ import java.util.concurrent.TimeoutException;
  * A callback specialized for returning a value from a single target; that is, this is for messages
  * that we only send to one recipient.
  */
-public class AsyncOneResponse<T> implements IAsyncCallback<T>
-{
+public class AsyncOneResponse<T> implements IAsyncCallback<T> {
     private T result;
     private boolean done;
     private final long start = System.nanoTime();
 
-    public T get(long timeout, TimeUnit tu) throws TimeoutException
-    {
+    public T get(long timeout, TimeUnit tu) throws TimeoutException {
         timeout = tu.toNanos(timeout);
         boolean interrupted = false;
-        try
-        {
-            synchronized (this)
-            {
-                while (!done)
-                {
-                    try
-                    {
+        try {
+            synchronized (this) {
+                while (!done) {
+                    try {
                         long overallTimeout = timeout - (System.nanoTime() - start);
-                        if (overallTimeout <= 0)
-                        {
+                        if (overallTimeout <= 0) {
                             throw new TimeoutException("Operation timed out.");
                         }
                         TimeUnit.NANOSECONDS.timedWait(this, overallTimeout);
-                    }
-                    catch (InterruptedException e)
-                    {
+                    } catch (InterruptedException e) {
                         interrupted = true;
                     }
                 }
             }
-        }
-        finally
-        {
-            if (interrupted)
-            {
+        } finally {
+            if (interrupted) {
                 Thread.currentThread().interrupt();
             }
         }
         return result;
     }
 
-    public synchronized void response(MessageIn<T> response)
-    {
-        if (!done)
-        {
+    public synchronized void response(MessageIn<T> response) {
+        if (!done) {
             result = response.payload;
             done = true;
             this.notifyAll();
         }
     }
 
-    public boolean isLatencyForSnitch()
-    {
+    public boolean isLatencyForSnitch() {
         return false;
     }
 }

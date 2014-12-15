@@ -27,22 +27,18 @@ import org.lealone.cluster.utils.Pair;
 /**
  * AbstractBounds containing neither of its endpoints: (left, right).  Used by CQL key > X AND key < Y range scans.
  */
-public class ExcludingBounds<T extends RingPosition<T>> extends AbstractBounds<T>
-{
-    public ExcludingBounds(T left, T right)
-    {
+public class ExcludingBounds<T extends RingPosition<T>> extends AbstractBounds<T> {
+    public ExcludingBounds(T left, T right) {
         super(left, right);
         // unlike a Range, an ExcludingBounds may not wrap, nor be empty
         assert left.compareTo(right) < 0 || right.isMinimum() : "(" + left + "," + right + ")";
     }
 
-    public boolean contains(T position)
-    {
+    public boolean contains(T position) {
         return Range.contains(left, right, position) && !right.equals(position);
     }
 
-    public Pair<AbstractBounds<T>, AbstractBounds<T>> split(T position)
-    {
+    public Pair<AbstractBounds<T>, AbstractBounds<T>> split(T position) {
         assert contains(position) || left.equals(position);
         if (left.equals(position))
             return null;
@@ -51,59 +47,51 @@ public class ExcludingBounds<T extends RingPosition<T>> extends AbstractBounds<T
         return Pair.create(lb, rb);
     }
 
-    public List<? extends AbstractBounds<T>> unwrap()
-    {
+    public List<? extends AbstractBounds<T>> unwrap() {
         // ExcludingBounds objects never wrap
-        return Collections.<AbstractBounds<T>>singletonList(this);
+        return Collections.<AbstractBounds<T>> singletonList(this);
     }
 
     @Override
-    public boolean equals(Object o)
-    {
+    public boolean equals(Object o) {
         if (!(o instanceof ExcludingBounds))
             return false;
-        ExcludingBounds<T> rhs = (ExcludingBounds<T>)o;
+        ExcludingBounds<T> rhs = (ExcludingBounds<T>) o;
         return left.equals(rhs.left) && right.equals(rhs.right);
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "(" + left + "," + right + ")";
     }
 
-    protected String getOpeningString()
-    {
+    protected String getOpeningString() {
         return "(";
     }
 
-    protected String getClosingString()
-    {
+    protected String getClosingString() {
         return ")";
     }
 
     /**
      * Compute a bounds of keys corresponding to a given bounds of token.
      */
-    private static ExcludingBounds<RowPosition> makeRowBounds(Token left, Token right)
-    {
+    private static ExcludingBounds<RowPosition> makeRowBounds(Token left, Token right) {
         return new ExcludingBounds<RowPosition>(left.maxKeyBound(), right.minKeyBound());
     }
 
     @SuppressWarnings("unchecked")
-    public AbstractBounds<RowPosition> toRowBounds()
-    {
-        return (left instanceof Token) ? makeRowBounds((Token)left, (Token)right) : (ExcludingBounds<RowPosition>)this;
+    public AbstractBounds<RowPosition> toRowBounds() {
+        return (left instanceof Token) ? makeRowBounds((Token) left, (Token) right) : (ExcludingBounds<RowPosition>) this;
     }
 
     @SuppressWarnings("unchecked")
-    public AbstractBounds<Token> toTokenBounds()
-    {
-        return (left instanceof RowPosition) ? new ExcludingBounds<Token>(((RowPosition)left).getToken(), ((RowPosition)right).getToken()) : (ExcludingBounds<Token>)this;
+    public AbstractBounds<Token> toTokenBounds() {
+        return (left instanceof RowPosition) ? new ExcludingBounds<Token>(((RowPosition) left).getToken(),
+                ((RowPosition) right).getToken()) : (ExcludingBounds<Token>) this;
     }
 
-    public AbstractBounds<T> withNewRight(T newRight)
-    {
+    public AbstractBounds<T> withNewRight(T newRight) {
         return new ExcludingBounds<T>(left, newRight);
     }
 }

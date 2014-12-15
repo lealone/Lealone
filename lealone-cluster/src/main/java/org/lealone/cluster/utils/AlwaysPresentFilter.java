@@ -19,24 +19,26 @@ package org.lealone.cluster.utils;
 
 import java.nio.ByteBuffer;
 
-public class AlwaysPresentFilter implements IFilter
-{
-    public boolean isPresent(ByteBuffer key)
-    {
+public class AlwaysPresentFilter implements IFilter {
+    public boolean isPresent(ByteBuffer key) {
         return true;
     }
 
-    public void add(ByteBuffer key) { }
+    public void add(ByteBuffer key) {
+    }
 
-    public void clear() { }
+    public void clear() {
+    }
 
-    public void close() { }
+    public void close() {
+    }
 
-    public long serializedSize() { return 0; }
+    public long serializedSize() {
+        return 0;
+    }
 
     @Override
-    public long offHeapSize()
-    {
+    public long offHeapSize() {
         return 0;
     }
 }

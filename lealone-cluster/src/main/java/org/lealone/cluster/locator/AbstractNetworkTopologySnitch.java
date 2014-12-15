@@ -23,8 +23,7 @@ import java.net.InetAddress;
  * An endpoint snitch tells Cassandra information about network topology that it can use to route
  * requests more efficiently.
  */
-public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnitch
-{
+public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnitch {
     /**
      * Return the rack for which an endpoint resides in
      * @param endpoint a specified endpoint
@@ -39,8 +38,7 @@ public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnit
      */
     abstract public String getDatacenter(InetAddress endpoint);
 
-    public int compareEndpoints(InetAddress address, InetAddress a1, InetAddress a2)
-    {
+    public int compareEndpoints(InetAddress address, InetAddress a1, InetAddress a2) {
         if (address.equals(a1) && !address.equals(a2))
             return -1;
         if (address.equals(a2) && !address.equals(a1))

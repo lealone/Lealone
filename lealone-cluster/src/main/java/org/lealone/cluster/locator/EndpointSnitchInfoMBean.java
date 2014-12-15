@@ -22,8 +22,7 @@ import java.net.UnknownHostException;
 /**
  * MBean exposing standard Snitch info
  */
-public interface EndpointSnitchInfoMBean
-{
+public interface EndpointSnitchInfoMBean {
     /**
      * Provides the Rack name depending on the respective snitch used, given the host name/ip
      * @param host
@@ -37,7 +36,6 @@ public interface EndpointSnitchInfoMBean
      * @throws UnknownHostException
      */
     public String getDatacenter(String host) throws UnknownHostException;
-
 
     /**
      * Provides the snitch name of the cluster

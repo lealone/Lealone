@@ -19,8 +19,7 @@ package org.lealone.cluster.metrics;
 
 import com.yammer.metrics.core.MetricName;
 
-public interface MetricNameFactory
-{
+public interface MetricNameFactory {
     /**
      * Create a qualified name from given metric name.
      *

@@ -19,8 +19,7 @@ package org.lealone.cluster.sink;
 
 import org.lealone.cluster.db.IMutation;
 
-public interface IRequestSink
-{
+public interface IRequestSink {
     /**
      * Transform or drop a write request (represented by a Mutation).
      *

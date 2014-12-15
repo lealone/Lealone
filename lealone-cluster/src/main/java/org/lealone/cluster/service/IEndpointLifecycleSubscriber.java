@@ -27,8 +27,7 @@ import java.net.InetAddress;
  * changes (IEndpointStateChangeSubscriber.onJoin() is called when a node join
  * gossip), this interface allows to be notified about higher level events.
  */
-public interface IEndpointLifecycleSubscriber
-{
+public interface IEndpointLifecycleSubscriber {
     /**
      * Called when a new node joins the cluster, i.e. either has just been
      * bootstrapped or "instajoins".

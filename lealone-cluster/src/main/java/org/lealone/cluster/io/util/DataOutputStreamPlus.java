@@ -24,31 +24,26 @@ import java.io.OutputStream;
  * When possible use {@link DataOutputStreamAndChannel} instead of this class, as it will
  * be more efficient. This class is only for situations where it cannot be used
  */
-public class DataOutputStreamPlus extends AbstractDataOutput implements DataOutputPlus
-{
+public class DataOutputStreamPlus extends AbstractDataOutput implements DataOutputPlus {
     protected final OutputStream out;
-    public DataOutputStreamPlus(OutputStream out)
-    {
+
+    public DataOutputStreamPlus(OutputStream out) {
         this.out = out;
     }
 
-    public void write(byte[] buffer, int offset, int count) throws IOException
-    {
+    public void write(byte[] buffer, int offset, int count) throws IOException {
         out.write(buffer, offset, count);
     }
 
-    public void write(int oneByte) throws IOException
-    {
+    public void write(int oneByte) throws IOException {
         out.write(oneByte);
     }
 
-    public void close() throws IOException
-    {
+    public void close() throws IOException {
         out.close();
     }
 
-    public void flush() throws IOException
-    {
+    public void flush() throws IOException {
         out.flush();
     }
 }

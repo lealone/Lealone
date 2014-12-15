@@ -21,8 +21,7 @@ package org.lealone.cluster.utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public interface OutputHandler
-{
+public interface OutputHandler {
     // called when an important info need to be displayed
     public void output(String msg);
 
@@ -31,62 +30,52 @@ public interface OutputHandler
 
     // called when the user needs to be warn
     public void warn(String msg);
+
     public void warn(String msg, Throwable th);
 
-    public static class LogOutput implements OutputHandler
-    {
+    public static class LogOutput implements OutputHandler {
         private static Logger logger = LoggerFactory.getLogger(LogOutput.class);
 
-        public void output(String msg)
-        {
+        public void output(String msg) {
             logger.info(msg);
         }
 
-        public void debug(String msg)
-        {
+        public void debug(String msg) {
             logger.debug(msg);
         }
 
-        public void warn(String msg)
-        {
+        public void warn(String msg) {
             logger.warn(msg);
         }
 
-        public void warn(String msg, Throwable th)
-        {
+        public void warn(String msg, Throwable th) {
             logger.warn(msg, th);
         }
     }
 
-    public static class SystemOutput implements OutputHandler
-    {
+    public static class SystemOutput implements OutputHandler {
         public final boolean debug;
         public final boolean printStack;
 
-        public SystemOutput(boolean debug, boolean printStack)
-        {
+        public SystemOutput(boolean debug, boolean printStack) {
             this.debug = debug;
             this.printStack = printStack;
         }
 
-        public void output(String msg)
-        {
+        public void output(String msg) {
             System.out.println(msg);
         }
 
-        public void debug(String msg)
-        {
+        public void debug(String msg) {
             if (debug)
                 System.out.println(msg);
         }
 
-        public void warn(String msg)
-        {
+        public void warn(String msg) {
             warn(msg, null);
         }
 
-        public void warn(String msg, Throwable th)
-        {
+        public void warn(String msg, Throwable th) {
             System.out.println("WARNING: " + msg);
             if (printStack && th != null)
                 th.printStackTrace(System.out);

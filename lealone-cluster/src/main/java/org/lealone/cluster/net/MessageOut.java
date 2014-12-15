@@ -39,8 +39,7 @@ import static org.lealone.cluster.tracing.Tracing.TRACE_HEADER;
 import static org.lealone.cluster.tracing.Tracing.TRACE_TYPE;
 import static org.lealone.cluster.tracing.Tracing.isTracing;
 
-public class MessageOut<T>
-{
+public class MessageOut<T> {
     public final InetAddress from;
     public final MessagingService.Verb verb;
     public final T payload;
@@ -48,30 +47,24 @@ public class MessageOut<T>
     public final Map<String, byte[]> parameters;
 
     // we do support messages that just consist of a verb
-    public MessageOut(MessagingService.Verb verb)
-    {
+    public MessageOut(MessagingService.Verb verb) {
         this(verb, null, null);
     }
 
-    public MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer)
-    {
-        this(verb,
-             payload,
-             serializer,
-             isTracing()
-                 ? ImmutableMap.of(TRACE_HEADER, UUIDGen.decompose(Tracing.instance.getSessionId()),
-                                   TRACE_TYPE, new byte[] { Tracing.TraceType.serialize(Tracing.instance.getTraceType()) })
-                 : Collections.<String, byte[]>emptyMap());
+    public MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer) {
+        this(verb, payload, serializer, isTracing() ? ImmutableMap.of(TRACE_HEADER,
+                UUIDGen.decompose(Tracing.instance.getSessionId()), TRACE_TYPE,
+                new byte[] { Tracing.TraceType.serialize(Tracing.instance.getTraceType()) }) : Collections
+                .<String, byte[]> emptyMap());
     }
 
-    private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters)
-    {
+    private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters) {
         this(FBUtilities.getBroadcastAddress(), verb, payload, serializer, parameters);
     }
 
     @VisibleForTesting
-    public MessageOut(InetAddress from, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters)
-    {
+    public MessageOut(InetAddress from, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
+            Map<String, byte[]> parameters) {
         this.from = from;
         this.verb = verb;
         this.payload = payload;
@@ -79,38 +72,32 @@ public class MessageOut<T>
         this.parameters = parameters;
     }
 
-    public MessageOut<T> withParameter(String key, byte[] value)
-    {
+    public MessageOut<T> withParameter(String key, byte[] value) {
         ImmutableMap.Builder<String, byte[]> builder = ImmutableMap.builder();
         builder.putAll(parameters).put(key, value);
         return new MessageOut<T>(verb, payload, serializer, builder.build());
     }
 
-    public Stage getStage()
-    {
+    public Stage getStage() {
         return MessagingService.verbStages.get(verb);
     }
 
-    public long getTimeout()
-    {
+    public long getTimeout() {
         return DatabaseDescriptor.getTimeout(verb);
     }
 
-    public String toString()
-    {
+    public String toString() {
         StringBuilder sbuf = new StringBuilder();
         sbuf.append("TYPE:").append(getStage()).append(" VERB:").append(verb);
         return sbuf.toString();
     }
 
-    public void serialize(DataOutputPlus out, int version) throws IOException
-    {
+    public void serialize(DataOutputPlus out, int version) throws IOException {
         CompactEndpointSerializationHelper.serialize(from, out);
 
         out.writeInt(verb.ordinal());
         out.writeInt(parameters.size());
-        for (Map.Entry<String, byte[]> entry : parameters.entrySet())
-        {
+        for (Map.Entry<String, byte[]> entry : parameters.entrySet()) {
             out.writeUTF(entry.getKey());
             out.writeInt(entry.getValue().length);
             out.write(entry.getValue());
@@ -123,14 +110,12 @@ public class MessageOut<T>
             serializer.serialize(payload, out, version);
     }
 
-    public int serializedSize(int version)
-    {
+    public int serializedSize(int version) {
         int size = CompactEndpointSerializationHelper.serializedSize(from);
 
         size += TypeSizes.NATIVE.sizeof(verb.ordinal());
         size += TypeSizes.NATIVE.sizeof(parameters.size());
-        for (Map.Entry<String, byte[]> entry : parameters.entrySet())
-        {
+        for (Map.Entry<String, byte[]> entry : parameters.entrySet()) {
             TypeSizes.NATIVE.sizeof(entry.getKey());
             TypeSizes.NATIVE.sizeof(entry.getValue().length);
             size += entry.getValue().length;

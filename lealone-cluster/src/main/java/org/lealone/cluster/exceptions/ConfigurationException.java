@@ -17,20 +17,16 @@
  */
 package org.lealone.cluster.exceptions;
 
-public class ConfigurationException extends RequestValidationException
-{
-    public ConfigurationException(String msg)
-    {
+public class ConfigurationException extends RequestValidationException {
+    public ConfigurationException(String msg) {
         super(ExceptionCode.CONFIG_ERROR, msg);
     }
 
-    public ConfigurationException(String msg, Throwable e)
-    {
+    public ConfigurationException(String msg, Throwable e) {
         super(ExceptionCode.CONFIG_ERROR, msg, e);
     }
 
-    protected ConfigurationException(ExceptionCode code, String msg)
-    {
+    protected ConfigurationException(ExceptionCode code, String msg) {
         super(code, msg);
     }
 }
