@@ -50,7 +50,7 @@ public class TraceState {
     private Status status;
 
     // Multiple requests can use the same TraceState at a time, so we need to reference count.
-    // See CASSANDRA-7626 for more details.
+    // See lealone-7626 for more details.
     private final AtomicInteger references = new AtomicInteger(1);
 
     public TraceState(InetAddress coordinator, UUID sessionId) {

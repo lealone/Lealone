@@ -183,7 +183,7 @@ public class OutboundTcpConnection extends Thread {
                 UUID sessionId = UUIDGen.getUUID(ByteBuffer.wrap(sessionBytes));
                 TraceState state = Tracing.instance.get(sessionId);
                 String message = String.format("Sending message to %s", poolReference.endPoint());
-                // session may have already finished; see CASSANDRA-5668
+                // session may have already finished; see lealone-5668
                 if (state == null) {
                     byte[] traceTypeBytes = qm.message.parameters.get(Tracing.TRACE_TYPE);
                     Tracing.TraceType traceType = traceTypeBytes == null ? Tracing.TraceType.QUERY : Tracing.TraceType
@@ -208,7 +208,7 @@ public class OutboundTcpConnection extends Thread {
                     logger.debug("error writing to {}", poolReference.endPoint(), e);
 
                 // if the message was important, such as a repair acknowledgement, put it back on the queue
-                // to retry after re-connecting.  See CASSANDRA-5393
+                // to retry after re-connecting.  See lealone-5393
                 if (qm.shouldRetry()) {
                     try {
                         backlog.put(new RetriedQueuedMessage(qm));

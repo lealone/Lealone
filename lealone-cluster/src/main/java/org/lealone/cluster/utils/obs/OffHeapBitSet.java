@@ -17,14 +17,14 @@ package org.lealone.cluster.utils.obs;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.cassandra.utils.obs;
+//package org.apache.lealone.utils.obs;
 //
 //import java.io.DataInput;
 //import java.io.DataOutput;
 //import java.io.IOException;
 //
-//import org.apache.cassandra.db.TypeSizes;
-//import org.apache.cassandra.io.util.Memory;
+//import org.apache.lealone.db.TypeSizes;
+//import org.apache.lealone.io.util.Memory;
 //
 ///**
 // * Off-heap bitset,

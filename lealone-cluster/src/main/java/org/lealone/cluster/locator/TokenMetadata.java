@@ -52,7 +52,7 @@ public class TokenMetadata {
     /** Maintains endpoint to host ID map of every node in the cluster */
     private final BiMap<InetAddress, UUID> endpointToHostIdMap;
 
-    // Prior to CASSANDRA-603, we just had <tt>Map<Range, InetAddress> pendingRanges<tt>,
+    // Prior to lealone-603, we just had <tt>Map<Range, InetAddress> pendingRanges<tt>,
     // which was added to when a node began bootstrap and removed from when it finished.
     //
     // This is inadequate when multiple changes are allowed simultaneously.  For example,
@@ -151,7 +151,7 @@ public class TokenMetadata {
      * Update token map with a set of token/endpoint pairs in normal state.
      *
      * Prefer this whenever there are multiple pairs to update, as each update (whether a single or multiple)
-     * is expensive (CASSANDRA-3831).
+     * is expensive (lealone-3831).
      *
      * @param endpointTokens
      */
@@ -452,7 +452,7 @@ public class TokenMetadata {
         if (tm != null)
             return tm;
 
-        // synchronize to prevent thundering herd (CASSANDRA-6345)
+        // synchronize to prevent thundering herd (lealone-6345)
         synchronized (this) {
             if ((tm = cachedTokenMap.get()) != null)
                 return tm;

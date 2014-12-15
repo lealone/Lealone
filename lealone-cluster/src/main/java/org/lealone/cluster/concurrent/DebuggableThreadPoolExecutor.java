@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import static org.lealone.cluster.tracing.Tracing.isTracing;
 
 /**
- * This class encorporates some Executor best practices for Cassandra.  Most of the executors in the system
+ * This class encorporates some Executor best practices for lealone.  Most of the executors in the system
  * should use or extend this.  There are two main improvements over a vanilla TPE:
  *
  * - If a task throws an exception, the default uncaught exception handler will be invoked; if there is

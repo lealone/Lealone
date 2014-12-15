@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
  */
 public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     private static final Logger logger = LoggerFactory.getLogger(FailureDetector.class);
-    public static final String MBEAN_NAME = "org.apache.cassandra.net:type=FailureDetector";
+    public static final String MBEAN_NAME = "org.apache.lealone.net:type=FailureDetector";
     private static final int SAMPLE_SIZE = 1000;
     protected static final long INITIAL_VALUE_NANOS = TimeUnit.NANOSECONDS.convert(getInitialValue(), TimeUnit.MILLISECONDS);
 
@@ -78,7 +78,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     private static long getInitialValue() {
-        String newvalue = System.getProperty("cassandra.fd_initial_value_ms");
+        String newvalue = System.getProperty("lealone.fd_initial_value_ms");
         if (newvalue == null) {
             return Gossiper.intervalInMillis * 2;
         } else {
@@ -183,7 +183,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);
         // we could assert not-null, but having isAlive fail screws a node over so badly that
         // it's worth being defensive here so minor bugs don't cause disproportionate
-        // badness.  (See CASSANDRA-1463 for an example).
+        // badness.  (See lealone-1463 for an example).
         if (epState == null)
             logger.error("unknown endpoint {}", ep);
         return epState != null && epState.isAlive();
@@ -290,7 +290,7 @@ class ArrivalWindow {
     }
 
     private static long getMaxInterval() {
-        String newvalue = System.getProperty("cassandra.fd_max_interval_ms");
+        String newvalue = System.getProperty("lealone.fd_max_interval_ms");
         if (newvalue == null) {
             return FailureDetector.INITIAL_VALUE_NANOS;
         } else {
@@ -320,7 +320,7 @@ class ArrivalWindow {
         return arrivalIntervals.mean();
     }
 
-    // see CASSANDRA-2597 for an explanation of the math at work here.
+    // see lealone-2597 for an explanation of the math at work here.
     double phi(long tnow) {
         assert arrivalIntervals.size() > 0 && tLast > 0; // should not be called before any samples arrive
         long t = tnow - tLast;

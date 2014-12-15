@@ -12,12 +12,14 @@
 	<version>${lealone.version}</version>
 	<name>lealone common</name>
 
+<!-- 
 	<dependencies>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
-			<version>1.4.3</version>
+			<version>1.7.2</version>
 			<optional>true</optional>
 		</dependency>
 	</dependencies>
+ -->
 </project>

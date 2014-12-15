@@ -44,13 +44,13 @@ import com.google.common.io.ByteStreams;
 public class YamlConfigurationLoader implements ConfigurationLoader {
     private static final Logger logger = LoggerFactory.getLogger(YamlConfigurationLoader.class);
 
-    private final static String DEFAULT_CONFIGURATION = "cassandra.yaml";
+    private final static String DEFAULT_CONFIGURATION = "lealone.yaml";
 
     /**
      * Inspect the classpath to find storage configuration file
      */
     private URL getStorageConfigURL() throws ConfigurationException {
-        String configUrl = System.getProperty("cassandra.config");
+        String configUrl = System.getProperty("lealone.config");
         if (configUrl == null)
             configUrl = DEFAULT_CONFIGURATION;
 
@@ -65,7 +65,7 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
                 String required = "file:" + File.separator + File.separator;
                 if (!configUrl.startsWith(required))
                     throw new ConfigurationException(
-                            "Expecting URI in variable: [cassandra.config].  Please prefix the file with " + required
+                            "Expecting URI in variable: [lealone.config].  Please prefix the file with " + required
                                     + File.separator + " for local files or " + required + "<server>" + File.separator
                                     + " for remote files.  Aborting.");
                 throw new ConfigurationException("Cannot locate " + configUrl
@@ -141,7 +141,7 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
         public void check() throws ConfigurationException {
             if (!missingProperties.isEmpty()) {
                 throw new ConfigurationException("Invalid yaml. Please remove properties " + missingProperties
-                        + " from your cassandra.yaml");
+                        + " from your lealone.yaml");
             }
         }
     }

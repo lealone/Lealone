@@ -17,7 +17,7 @@ package org.lealone.cluster.service;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.cassandra.service;
+//package org.apache.lealone.service;
 //
 //import java.io.DataInput;
 //import java.io.IOException;
@@ -34,28 +34,28 @@ package org.lealone.cluster.service;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 //
-//import org.apache.cassandra.concurrent.ScheduledExecutors;
-//import org.apache.cassandra.concurrent.Stage;
-//import org.apache.cassandra.concurrent.StageManager;
-//import org.apache.cassandra.config.CFMetaData;
-//import org.apache.cassandra.config.KSMetaData;
-//import org.apache.cassandra.config.UTMetaData;
-//import org.apache.cassandra.config.Schema;
-//import org.apache.cassandra.cql3.functions.AggregateFunction;
-//import org.apache.cassandra.cql3.functions.ScalarFunction;
-//import org.apache.cassandra.cql3.functions.UDFunction;
-//import org.apache.cassandra.db.*;
-//import org.apache.cassandra.db.marshal.AbstractType;
-//import org.apache.cassandra.db.marshal.UserType;
-//import org.apache.cassandra.exceptions.AlreadyExistsException;
-//import org.apache.cassandra.exceptions.ConfigurationException;
-//import org.apache.cassandra.gms.*;
-//import org.apache.cassandra.io.IVersionedSerializer;
-//import org.apache.cassandra.io.util.DataOutputPlus;
-//import org.apache.cassandra.net.MessageOut;
-//import org.apache.cassandra.net.MessagingService;
-//import org.apache.cassandra.utils.FBUtilities;
-//import org.apache.cassandra.utils.WrappedRunnable;
+//import org.apache.lealone.concurrent.ScheduledExecutors;
+//import org.apache.lealone.concurrent.Stage;
+//import org.apache.lealone.concurrent.StageManager;
+//import org.apache.lealone.config.CFMetaData;
+//import org.apache.lealone.config.KSMetaData;
+//import org.apache.lealone.config.UTMetaData;
+//import org.apache.lealone.config.Schema;
+//import org.apache.lealone.cql3.functions.AggregateFunction;
+//import org.apache.lealone.cql3.functions.ScalarFunction;
+//import org.apache.lealone.cql3.functions.UDFunction;
+//import org.apache.lealone.db.*;
+//import org.apache.lealone.db.marshal.AbstractType;
+//import org.apache.lealone.db.marshal.UserType;
+//import org.apache.lealone.exceptions.AlreadyExistsException;
+//import org.apache.lealone.exceptions.ConfigurationException;
+//import org.apache.lealone.gms.*;
+//import org.apache.lealone.io.IVersionedSerializer;
+//import org.apache.lealone.io.util.DataOutputPlus;
+//import org.apache.lealone.net.MessageOut;
+//import org.apache.lealone.net.MessagingService;
+//import org.apache.lealone.utils.FBUtilities;
+//import org.apache.lealone.utils.WrappedRunnable;
 //
 //public class MigrationManager
 //{
@@ -110,7 +110,7 @@ package org.lealone.cluster.service;
 //        else
 //        {
 //            // Include a delay to make sure we have a chance to apply any changes being
-//            // pushed out simultaneously. See CASSANDRA-5025
+//            // pushed out simultaneously. See lealone-5025
 //            Runnable runnable = new Runnable()
 //            {
 //                public void run()
@@ -140,7 +140,7 @@ package org.lealone.cluster.service;
 //    private static Future<?> submitMigrationTask(InetAddress endpoint)
 //    {
 //        /*
-//         * Do not de-ref the future because that causes distributed deadlock (CASSANDRA-3832) because we are
+//         * Do not de-ref the future because that causes distributed deadlock (lealone-3832) because we are
 //         * running in the gossip stage.
 //         */
 //        return StageManager.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint));

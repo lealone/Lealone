@@ -120,7 +120,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private final AtomicLong notificationSerialNumber = new AtomicLong();
 
     private static int getRingDelay() {
-        String newdelay = System.getProperty("cassandra.ring_delay_ms");
+        String newdelay = System.getProperty("lealone.ring_delay_ms");
         if (newdelay != null) {
             logger.info("Overriding RING_DELAY to {}ms", newdelay);
             return Integer.parseInt(newdelay);
@@ -154,7 +154,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
-    //private CassandraDaemon daemon;
+    //private lealoneDaemon daemon;
 
     private InetAddress removingNode;
 
@@ -162,7 +162,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private boolean isBootstrapMode;
 
     /* we bootstrap but do NOT join the ring unless told to do so */
-    private boolean isSurveyMode = Boolean.parseBoolean(System.getProperty("cassandra.write_survey", "false"));
+    private boolean isSurveyMode = Boolean.parseBoolean(System.getProperty("lealone.write_survey", "false"));
 
     private boolean initialized;
     private volatile boolean joined = false;
@@ -210,7 +210,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public StorageService() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            jmxObjectName = new ObjectName("org.apache.cassandra.db:type=StorageService");
+            jmxObjectName = new ObjectName("org.apache.lealone.db:type=StorageService");
             mbs.registerMBean(this, jmxObjectName);
             //mbs.registerMBean(StreamManager.instance, new ObjectName(StreamManager.OBJECT_NAME));
         } catch (Exception e) {
@@ -255,7 +255,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler());
     }
 
-    //    public void registerDaemon(CassandraDaemon daemon) {
+    //    public void registerDaemon(lealoneDaemon daemon) {
     //        this.daemon = daemon;
     //    }
 
@@ -410,7 +410,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (epState != null && !Gossiper.instance.isDeadState(epState)
                 && !Gossiper.instance.isGossipOnlyMember(FBUtilities.getBroadcastAddress())) {
             throw new RuntimeException(String.format("A node with address %s already exists, cancelling join. "
-                    + "Use cassandra.replace_address if you want to replace this node.", FBUtilities.getBroadcastAddress()));
+                    + "Use lealone.replace_address if you want to replace this node.", FBUtilities.getBroadcastAddress()));
         }
         //        if (RangeStreamer.useStrictConsistency) {
         //            for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.getEndpointStates()) {
@@ -424,7 +424,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         //                if (state.equals(VersionedValue.STATUS_BOOTSTRAPPING) || state.equals(VersionedValue.STATUS_LEAVING)
         //                        || state.equals(VersionedValue.STATUS_MOVING))
         //                    throw new UnsupportedOperationException(
-        //                            "Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while cassandra.consistent.rangemovement is true");
+        //                            "Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while lealone.consistent.rangemovement is true");
         //            }
         //        }
         Gossiper.instance.resetEndpointStateMap();
@@ -445,23 +445,23 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     public synchronized void initServer(int delay) throws ConfigurationException {
-        logger.info("Cassandra version: {}", FBUtilities.getReleaseVersionString());
-        //logger.info("Thrift API version: {}", cassandraConstants.VERSION);
+        logger.info("lealone version: {}", FBUtilities.getReleaseVersionString());
+        //logger.info("Thrift API version: {}", lealoneConstants.VERSION);
         //        logger.info("CQL supported versions: {} (default: {})", StringUtils.join(ClientState.getCQLSupportedVersion(), ","),
         //                ClientState.DEFAULT_CQL_VERSION);
 
         initialized = true;
 
         //        try {
-        //            // Ensure StorageProxy is initialized on start-up; see CASSANDRA-3797.
-        //            Class.forName("org.apache.cassandra.service.StorageProxy");
+        //            // Ensure StorageProxy is initialized on start-up; see lealone-3797.
+        //            Class.forName("org.apache.lealone.service.StorageProxy");
         //            // also IndexSummaryManager, which is otherwise unreferenced
-        //            Class.forName("org.apache.cassandra.io.sstable.IndexSummaryManager");
+        //            Class.forName("org.apache.lealone.io.sstable.IndexSummaryManager");
         //        } catch (ClassNotFoundException e) {
         //            throw new AssertionError(e);
         //        }
 
-        if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state", "true"))) {
+        if (Boolean.parseBoolean(System.getProperty("lealone.load_ring_state", "true"))) {
             logger.info("Loading persisted ring state");
             Multimap<InetAddress, Token> loadedTokens = SystemKeyspace.loadTokens();
             Map<InetAddress, UUID> loadedHostIds = SystemKeyspace.loadHostIds();
@@ -534,7 +534,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         //            if (cfs.metadata.isCounter())
         //                cfs.initCounterCache();
 
-        if (Boolean.parseBoolean(System.getProperty("cassandra.join_ring", "true"))) {
+        if (Boolean.parseBoolean(System.getProperty("lealone.join_ring", "true"))) {
             joinTokenRing(delay);
         } else {
             Collection<Token> tokens = SystemKeyspace.getSavedTokens();
@@ -567,10 +567,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!joined) {
             Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
 
-            if (DatabaseDescriptor.isReplacing() && !(Boolean.parseBoolean(System.getProperty("cassandra.join_ring", "true"))))
+            if (DatabaseDescriptor.isReplacing() && !(Boolean.parseBoolean(System.getProperty("lealone.join_ring", "true"))))
                 throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
             if (DatabaseDescriptor.getReplaceTokens().size() > 0 || DatabaseDescriptor.getReplaceNode() != null)
-                throw new RuntimeException("Replace method removed; use cassandra.replace_address instead");
+                throw new RuntimeException("Replace method removed; use lealone.replace_address instead");
             if (DatabaseDescriptor.isReplacing()) {
                 if (SystemKeyspace.bootstrapComplete())
                     throw new RuntimeException("Cannot replace address with a node that is already bootstrapped");
@@ -622,7 +622,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // which is useful for both new users and testing.
         //
         // We attempted to replace this with a schema-presence check, but you need a meaningful sleep
-        // to get schema info from gossip which defeats the purpose.  See CASSANDRA-4427 for the gory details.
+        // to get schema info from gossip which defeats the purpose.  See lealone-4427 for the gory details.
         Set<InetAddress> current = new HashSet<>();
         logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(),
                 SystemKeyspace.bootstrapInProgress(), SystemKeyspace.bootstrapComplete(),
@@ -646,7 +646,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             //                Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             //            }
             // if our schema hasn't matched yet, keep sleeping until it does
-            // (post CASSANDRA-1391 we don't expect this to be necessary very often, but it doesn't hurt to be careful)
+            // (post lealone-1391 we don't expect this to be necessary very often, but it doesn't hurt to be careful)
             //            while (!MigrationManager.isReadyForBootstrap()) {
             //                setMode(Mode.JOINING, "waiting for schema information to complete", true);
             //                Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
@@ -659,11 +659,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             if (logger.isDebugEnabled())
                 logger.debug("... got ring + schema info");
 
-            if (Boolean.parseBoolean(System.getProperty("cassandra.consistent.rangemovement", "true"))
+            if (Boolean.parseBoolean(System.getProperty("lealone.consistent.rangemovement", "true"))
                     && (tokenMetadata.getBootstrapTokens().valueSet().size() > 0
                             || tokenMetadata.getLeavingEndpoints().size() > 0 || tokenMetadata.getMovingEndpoints().size() > 0))
                 throw new UnsupportedOperationException(
-                        "Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while cassandra.consistent.rangemovement is true");
+                        "Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while lealone.consistent.rangemovement is true");
 
             if (!DatabaseDescriptor.isReplacing()) {
                 if (tokenMetadata.isMember(FBUtilities.getBroadcastAddress())) {
@@ -715,7 +715,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     bootstrapTokens = BootStrapper.getRandomTokens(tokenMetadata, DatabaseDescriptor.getNumTokens());
                     if (DatabaseDescriptor.getNumTokens() == 1)
                         logger.warn(
-                                "Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/cassandra/Operations",
+                                "Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/lealone/Operations",
                                 bootstrapTokens);
                     else
                         logger.info("Generated random tokens. tokens are {}", bootstrapTokens);
@@ -1344,7 +1344,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             logger.info("Node {} state jump to normal", endpoint);
 
         updatePeerInfo(endpoint);
-        // Order Matters, TM.updateHostID() should be called before TM.updateNormalToken(), (see CASSANDRA-4300).
+        // Order Matters, TM.updateHostID() should be called before TM.updateNormalToken(), (see lealone-4300).
         if (Gossiper.instance.usesHostId(endpoint)) {
             UUID hostId = Gossiper.instance.getHostId(endpoint);
             InetAddress existing = tokenMetadata.getEndpointForHostId(hostId);
@@ -1409,7 +1409,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         for (InetAddress ep : endpointsToRemove) {
             removeEndpoint(ep);
             if (DatabaseDescriptor.isReplacing() && DatabaseDescriptor.getReplaceAddress().equals(ep))
-                Gossiper.instance.replacementQuarantine(ep); // quarantine locally longer than normally; see CASSANDRA-8260
+                Gossiper.instance.replacementQuarantine(ep); // quarantine locally longer than normally; see lealone-8260
         }
         if (!tokensToUpdateInSystemKeyspace.isEmpty())
             SystemKeyspace.updateTokens(endpoint, tokensToUpdateInSystemKeyspace);
@@ -2765,7 +2765,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     //            int index = (int) Math.round(i * step);
     //            Token token = tokens.get(index);
     //            Range<Token> range = new Range<>(prevToken, token);
-    //            // always return an estimate > 0 (see CASSANDRA-7322)
+    //            // always return an estimate > 0 (see lealone-7322)
     //            splits.add(Pair.create(range, Math.max(cfs.metadata.getMinIndexInterval(), cfs.estimatedKeysForRange(range))));
     //            prevToken = token;
     //        }
@@ -3038,7 +3038,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     //                                    Set<InetAddress> newEndpoints = Sets.newHashSet(strategy.calculateNaturalEndpoints(
     //                                            toFetch.right, tokenMetaCloneAllSettled));
     //
-    //                                    //Due to CASSANDRA-5953 we can have a higher RF then we have endpoints.
+    //                                    //Due to lealone-5953 we can have a higher RF then we have endpoints.
     //                                    //So we need to be careful to only be strict when endpoints == RF
     //                                    if (oldEndpoints.size() == strategy.getReplicationFactor()) {
     //                                        oldEndpoints.removeAll(newEndpoints);
@@ -3074,7 +3074,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     //                                throw new RuntimeException(
     //                                        "A node required to move the data consistently is down ("
     //                                                + sourceIp
-    //                                                + ").  If you wish to move the data from a potentially inconsistent replica, restart the node with -Dcassandra.consistent.rangemovement=false");
+    //                                                + ").  If you wish to move the data from a potentially inconsistent replica, restart the node with -Dlealone.consistent.rangemovement=false");
     //                        }
     //                    }
     //
@@ -3317,7 +3317,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         //            remainingCFs--;
         //        }
         //        // flush the system ones after all the rest are done, just in case flushing modifies any system state
-        //        // like CASSANDRA-5151. don't bother with progress tracking since system data is tiny.
+        //        // like lealone-5151. don't bother with progress tracking since system data is tiny.
         //        flushes.clear();
         //        for (Keyspace keyspace : Keyspace.system()) {
         //            for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
@@ -3659,7 +3659,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      * #{@inheritDoc}
      */
     //    @Override
-    //    public List<String> sampleKeyRange() // do not rename to getter - see CASSANDRA-4452 for details
+    //    public List<String> sampleKeyRange() // do not rename to getter - see lealone-4452 for details
     //    {
     //        List<DecoratedKey> keys = new ArrayList<>();
     //        for (Keyspace keyspace : Keyspace.nonSystem()) {

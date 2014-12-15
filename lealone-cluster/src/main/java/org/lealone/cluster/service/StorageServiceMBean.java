@@ -83,8 +83,8 @@ public interface StorageServiceMBean extends NotificationEmitter {
     public List<String> getTokens(String endpoint) throws UnknownHostException;
 
     /**
-     * Fetch a string representation of the Cassandra version.
-     * @return A string representation of the Cassandra version.
+     * Fetch a string representation of the lealone version.
+     * @return A string representation of the lealone version.
      */
     public String getReleaseVersion();
 
@@ -114,7 +114,7 @@ public interface StorageServiceMBean extends NotificationEmitter {
 
     /**
      * Retrieve a map of range to end points that describe the ring topology
-     * of a Cassandra cluster.
+     * of a lealone cluster.
      *
      * @return mapping of ranges to end points
      */
@@ -122,7 +122,7 @@ public interface StorageServiceMBean extends NotificationEmitter {
 
     /**
      * Retrieve a map of range to rpc addresses that describe the ring topology
-     * of a Cassandra cluster.
+     * of a lealone cluster.
      *
      * @return mapping of ranges to rpc addresses
      */
@@ -415,7 +415,7 @@ public interface StorageServiceMBean extends NotificationEmitter {
     // allows a user to see whether gossip is running or not
     public boolean isGossipRunning();
 
-    // allows a user to forcibly completely stop cassandra
+    // allows a user to forcibly completely stop lealone
     public void stopDaemon();
 
     // to determine if gossip is disabled
@@ -488,7 +488,7 @@ public interface StorageServiceMBean extends NotificationEmitter {
      * Return a List of Tokens representing a sample of keys across all ColumnFamilyStores.
      *
      * Note: this should be left as an operation, not an attribute (methods starting with "get")
-     * to avoid sending potentially multiple MB of data when accessing this mbean by default.  See CASSANDRA-4452.
+     * to avoid sending potentially multiple MB of data when accessing this mbean by default.  See lealone-4452.
      *
      * @return set of Tokens as Strings
      */

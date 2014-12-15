@@ -17,7 +17,7 @@ package org.lealone.cluster.dht;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.cassandra.dht;
+//package org.apache.lealone.dht;
 //
 //import java.net.InetAddress;
 //import java.util.*;
@@ -26,23 +26,23 @@ package org.lealone.cluster.dht;
 //import com.google.common.collect.HashMultimap;
 //import com.google.common.collect.Multimap;
 //import com.google.common.collect.Sets;
-//import org.apache.cassandra.gms.EndpointState;
+//import org.apache.lealone.gms.EndpointState;
 //import org.apache.commons.lang3.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 //
-//import org.apache.cassandra.config.DatabaseDescriptor;
-//import org.apache.cassandra.db.Keyspace;
-//import org.apache.cassandra.db.SystemKeyspace;
-//import org.apache.cassandra.gms.FailureDetector;
-//import org.apache.cassandra.gms.Gossiper;
-//import org.apache.cassandra.gms.IFailureDetector;
-//import org.apache.cassandra.locator.AbstractReplicationStrategy;
-//import org.apache.cassandra.locator.IEndpointSnitch;
-//import org.apache.cassandra.locator.TokenMetadata;
-//import org.apache.cassandra.streaming.StreamPlan;
-//import org.apache.cassandra.streaming.StreamResultFuture;
-//import org.apache.cassandra.utils.FBUtilities;
+//import org.apache.lealone.config.DatabaseDescriptor;
+//import org.apache.lealone.db.Keyspace;
+//import org.apache.lealone.db.SystemKeyspace;
+//import org.apache.lealone.gms.FailureDetector;
+//import org.apache.lealone.gms.Gossiper;
+//import org.apache.lealone.gms.IFailureDetector;
+//import org.apache.lealone.locator.AbstractReplicationStrategy;
+//import org.apache.lealone.locator.IEndpointSnitch;
+//import org.apache.lealone.locator.TokenMetadata;
+//import org.apache.lealone.streaming.StreamPlan;
+//import org.apache.lealone.streaming.StreamResultFuture;
+//import org.apache.lealone.utils.FBUtilities;
 //
 ///**
 // * Assists in streaming ranges to a node.
@@ -50,7 +50,7 @@ package org.lealone.cluster.dht;
 //public class RangeStreamer
 //{
 //    private static final Logger logger = LoggerFactory.getLogger(RangeStreamer.class);
-//    public static final boolean useStrictConsistency = Boolean.parseBoolean(System.getProperty("cassandra.consistent.rangemovement","true"));
+//    public static final boolean useStrictConsistency = Boolean.parseBoolean(System.getProperty("lealone.consistent.rangemovement","true"));
 //    private final Collection<Token> tokens;
 //    private final TokenMetadata metadata;
 //    private final InetAddress address;
@@ -216,7 +216,7 @@ package org.lealone.cluster.dht;
 //                    Set<InetAddress> oldEndpoints = Sets.newHashSet(preEntry.getValue());
 //                    Set<InetAddress> newEndpoints = Sets.newHashSet(pendingRangeAddresses.get(desiredRange));
 //
-//                    //Due to CASSANDRA-5953 we can have a higher RF then we have endpoints.
+//                    //Due to lealone-5953 we can have a higher RF then we have endpoints.
 //                    //So we need to be careful to only be strict when endpoints == RF
 //                    if (oldEndpoints.size() == strat.getReplicationFactor())
 //                    {
@@ -239,7 +239,7 @@ package org.lealone.cluster.dht;
 //            InetAddress sourceIp = addressList.iterator().next();
 //            EndpointState sourceState = Gossiper.instance.getEndpointStateForEndpoint(sourceIp);
 //            if (Gossiper.instance.isEnabled() && (sourceState == null || !sourceState.isAlive()))
-//                throw new RuntimeException("A node required to move the data consistently is down ("+sourceIp+").  If you wish to move the data from a potentially inconsistent replica, restart the node with -Dcassandra.consistent.rangemovement=false");
+//                throw new RuntimeException("A node required to move the data consistently is down ("+sourceIp+").  If you wish to move the data from a potentially inconsistent replica, restart the node with -Dlealone.consistent.rangemovement=false");
 //        }
 //
 //        return rangeSources;

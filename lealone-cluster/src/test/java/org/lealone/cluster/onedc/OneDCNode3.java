@@ -15,22 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.cluster.exceptions;
+package org.lealone.cluster.onedc;
 
-public abstract class CassandraException extends Exception implements TransportException {
-    private final ExceptionCode code;
+import org.lealone.cluster.standalone.LealoneStandalone;
 
-    protected CassandraException(ExceptionCode code, String msg) {
-        super(msg);
-        this.code = code;
+public class OneDCNode3 extends LealoneStandalone {
+    public static void main(String[] args) {
+        setConfigLoader(OneDCNode3.class);
+        System.setProperty("mx4jaddress", "127.0.0.3");
+        System.setProperty("mx4jport", "8083");
+        run(args, "lealone-onedc.yaml");
     }
 
-    protected CassandraException(ExceptionCode code, String msg, Throwable cause) {
-        super(msg, cause);
-        this.code = code;
-    }
-
-    public ExceptionCode code() {
-        return code;
+    public OneDCNode3() {
+        this.listen_address = "127.0.0.3";
+        this.dir = "onedc/node3";
     }
 }

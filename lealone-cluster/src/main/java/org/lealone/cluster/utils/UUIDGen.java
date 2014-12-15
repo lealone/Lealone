@@ -37,7 +37,7 @@ public class UUIDGen {
 
     /*
      * The min and max possible lsb for a UUID.
-     * Note that his is not 0 and all 1's because Cassandra TimeUUIDType
+     * Note that his is not 0 and all 1's because lealone TimeUUIDType
      * compares the lsb parts as a signed byte array comparison. So the min
      * value is 8 times -128 and the max is 8 times +127.
      *

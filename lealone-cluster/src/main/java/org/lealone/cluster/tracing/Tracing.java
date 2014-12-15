@@ -207,7 +207,7 @@ public class Tracing {
             traceType = TraceType.deserialize(tmpBytes[0]);
 
         if (message.verb == MessagingService.Verb.REQUEST_RESPONSE) {
-            // received a message for a session we've already closed out.  see CASSANDRA-5668
+            // received a message for a session we've already closed out.  see lealone-5668
             return new ExpiredTraceState(sessionId, traceType);
         } else {
             ts = new TraceState(message.from, sessionId, traceType);

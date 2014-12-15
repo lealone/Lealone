@@ -84,7 +84,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
 public final class MessagingService implements MessagingServiceMBean {
-    public static final String MBEAN_NAME = "org.apache.cassandra.net:type=MessagingService";
+    public static final String MBEAN_NAME = "org.apache.lealone.net:type=MessagingService";
 
     // 8 bits version, so don't waste versions
     public static final int VERSION_12 = 6;
@@ -185,7 +185,7 @@ public final class MessagingService implements MessagingServiceMBean {
      * The exception is the REQUEST_RESPONSE verb, which just means "a reply to something you told me to do."
      * Traditionally, this was fine since each VerbHandler knew what type of payload it expected, and
      * handled the deserialization itself.  Now that we do that in ITC, to avoid the extra copy to an
-     * intermediary byte[] (See CASSANDRA-3716), we need to wire that up to the CallbackInfo object
+     * intermediary byte[] (See lealone-3716), we need to wire that up to the CallbackInfo object
      * (see below).
      */
     public static final EnumMap<Verb, IVersionedSerializer<?>> verbSerializers = new EnumMap<Verb, IVersionedSerializer<?>>(
@@ -430,12 +430,12 @@ public final class MessagingService implements MessagingServiceMBean {
                 if (e.getMessage().contains("in use"))
                     throw new ConfigurationException(
                             address
-                                    + " is in use by another process.  Change listen_address:storage_port in cassandra.yaml to values that do not conflict with other services");
+                                    + " is in use by another process.  Change listen_address:storage_port in lealone.yaml to values that do not conflict with other services");
                 else if (e.getMessage().contains("Cannot assign requested address"))
                     throw new ConfigurationException(
                             "Unable to bind to address "
                                     + address
-                                    + ". Set listen_address in cassandra.yaml to an interface you can bind to, e.g., your private IP address on EC2");
+                                    + ". Set listen_address in lealone.yaml to an interface you can bind to, e.g., your private IP address on EC2");
                 else
                     throw new RuntimeException(e);
             } catch (IOException e) {

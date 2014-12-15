@@ -82,8 +82,8 @@ public class FBUtilities {
     private static final boolean isWindows = System.getProperty("os.name").startsWith("Windows");
 
     public static int getAvailableProcessors() {
-        if (System.getProperty("cassandra.available_processors") != null)
-            return Integer.parseInt(System.getProperty("cassandra.available_processors"));
+        if (System.getProperty("lealone.available_processors") != null)
+            return Integer.parseInt(System.getProperty("lealone.available_processors"));
         else
             return Runtime.getRuntime().availableProcessors();
     }
@@ -294,10 +294,10 @@ public class FBUtilities {
         return new File(scpurl.getFile()).getAbsolutePath();
     }
 
-    public static File cassandraTriggerDir() {
+    public static File lealoneTriggerDir() {
         File triggerDir = null;
-        if (System.getProperty("cassandra.triggers_dir") != null) {
-            triggerDir = new File(System.getProperty("cassandra.triggers_dir"));
+        if (System.getProperty("lealone.triggers_dir") != null) {
+            triggerDir = new File(System.getProperty("lealone.triggers_dir"));
         } else {
             URL confDir = FBUtilities.class.getClassLoader().getResource(DEFAULT_TRIGGER_DIR);
             if (confDir != null)
@@ -313,13 +313,13 @@ public class FBUtilities {
     public static String getReleaseVersionString() {
         InputStream in = null;
         try {
-            in = FBUtilities.class.getClassLoader().getResourceAsStream("org/apache/cassandra/config/version.properties");
+            in = FBUtilities.class.getClassLoader().getResourceAsStream("org/lealone/config/version.properties");
             if (in == null) {
-                return System.getProperty("cassandra.releaseVersion", "Unknown");
+                return System.getProperty("lealone.releaseVersion", "Unknown");
             }
             Properties props = new Properties();
             props.load(in);
-            return props.getProperty("CassandraVersion");
+            return props.getProperty("lealoneVersion");
         } catch (Exception e) {
             JVMStabilityInspector.inspectThrowable(e);
             logger.warn("Unable to load version.properties", e);
@@ -357,25 +357,25 @@ public class FBUtilities {
 
     public static IPartitioner newPartitioner(String partitionerClassName) throws ConfigurationException {
         if (!partitionerClassName.contains("."))
-            partitionerClassName = "org.apache.cassandra.dht." + partitionerClassName;
+            partitionerClassName = "org.apache.lealone.dht." + partitionerClassName;
         return FBUtilities.instanceOrConstruct(partitionerClassName, "partitioner");
     }
 
     //    public static IAllocator newOffHeapAllocator(String offheap_allocator) throws ConfigurationException {
     //        if (!offheap_allocator.contains("."))
-    //            offheap_allocator = "org.apache.cassandra.io.util." + offheap_allocator;
+    //            offheap_allocator = "org.apache.lealone.io.util." + offheap_allocator;
     //        return FBUtilities.construct(offheap_allocator, "off-heap allocator");
     //    }
 
     public static IAuthorizer newAuthorizer(String className) throws ConfigurationException {
         if (!className.contains("."))
-            className = "org.apache.cassandra.auth." + className;
+            className = "org.apache.lealone.auth." + className;
         return FBUtilities.construct(className, "authorizer");
     }
 
     public static IAuthenticator newAuthenticator(String className) throws ConfigurationException {
         if (!className.contains("."))
-            className = "org.apache.cassandra.auth." + className;
+            className = "org.apache.lealone.auth." + className;
         return FBUtilities.construct(className, "authenticator");
     }
 
@@ -589,7 +589,7 @@ public class FBUtilities {
     }
 
     //    public static File getToolsOutputDirectory() {
-    //        File historyDir = new File(System.getProperty("user.home"), ".cassandra");
+    //        File historyDir = new File(System.getProperty("user.home"), ".lealone");
     //        FileUtils.createDirectory(historyDir);
     //        return historyDir;
     //    }

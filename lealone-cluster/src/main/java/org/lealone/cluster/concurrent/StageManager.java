@@ -96,7 +96,7 @@ public class StageManager {
 
     /**
      * A TPE that disallows submit so that we don't need to worry about unwrapping exceptions on the
-     * tracing stage.  See CASSANDRA-1123 for background.
+     * tracing stage.  See lealone-1123 for background.
      */
     private static class ExecuteOnlyExecutor extends ThreadPoolExecutor implements TracingAwareExecutorService {
         public ExecuteOnlyExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit,

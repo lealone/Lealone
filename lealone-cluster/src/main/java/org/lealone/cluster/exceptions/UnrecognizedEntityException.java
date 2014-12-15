@@ -17,10 +17,10 @@ package org.lealone.cluster.exceptions;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.cassandra.exceptions;
+//package org.apache.lealone.exceptions;
 //
-//import org.apache.cassandra.cql3.ColumnIdentifier;
-//import org.apache.cassandra.cql3.Relation;
+//import org.apache.lealone.cql3.ColumnIdentifier;
+//import org.apache.lealone.cql3.Relation;
 //
 ///**
 // * Exception thrown when an entity is not recognized within a relation.

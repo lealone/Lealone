@@ -17,7 +17,7 @@ package org.lealone.cluster.service;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.cassandra.service;
+//package org.apache.lealone.service;
 //
 //import java.io.IOException;
 //import java.lang.management.ManagementFactory;
@@ -33,43 +33,43 @@ package org.lealone.cluster.service;
 //import com.google.common.cache.CacheLoader;
 //import com.google.common.collect.*;
 //import com.google.common.util.concurrent.Uninterruptibles;
-//import org.apache.cassandra.metrics.*;
+//import org.apache.lealone.metrics.*;
 //import org.apache.commons.lang3.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 //
-//import org.apache.cassandra.concurrent.Stage;
-//import org.apache.cassandra.concurrent.StageManager;
-//import org.apache.cassandra.config.CFMetaData;
-//import org.apache.cassandra.config.DatabaseDescriptor;
-//import org.apache.cassandra.config.Schema;
-//import org.apache.cassandra.db.*;
-//import org.apache.cassandra.db.Keyspace;
-//import org.apache.cassandra.db.index.SecondaryIndex;
-//import org.apache.cassandra.db.index.SecondaryIndexSearcher;
-//import org.apache.cassandra.db.marshal.UUIDType;
-//import org.apache.cassandra.dht.AbstractBounds;
-//import org.apache.cassandra.dht.Bounds;
-//import org.apache.cassandra.dht.RingPosition;
-//import org.apache.cassandra.dht.Token;
-//import org.apache.cassandra.exceptions.*;
-//import org.apache.cassandra.gms.FailureDetector;
-//import org.apache.cassandra.gms.Gossiper;
-//import org.apache.cassandra.io.util.DataOutputBuffer;
-//import org.apache.cassandra.locator.AbstractReplicationStrategy;
-//import org.apache.cassandra.locator.IEndpointSnitch;
-//import org.apache.cassandra.locator.LocalStrategy;
-//import org.apache.cassandra.locator.TokenMetadata;
-//import org.apache.cassandra.net.*;
-//import org.apache.cassandra.service.paxos.*;
-//import org.apache.cassandra.sink.SinkManager;
-//import org.apache.cassandra.tracing.Tracing;
-//import org.apache.cassandra.triggers.TriggerExecutor;
-//import org.apache.cassandra.utils.*;
+//import org.apache.lealone.concurrent.Stage;
+//import org.apache.lealone.concurrent.StageManager;
+//import org.apache.lealone.config.CFMetaData;
+//import org.apache.lealone.config.DatabaseDescriptor;
+//import org.apache.lealone.config.Schema;
+//import org.apache.lealone.db.*;
+//import org.apache.lealone.db.Keyspace;
+//import org.apache.lealone.db.index.SecondaryIndex;
+//import org.apache.lealone.db.index.SecondaryIndexSearcher;
+//import org.apache.lealone.db.marshal.UUIDType;
+//import org.apache.lealone.dht.AbstractBounds;
+//import org.apache.lealone.dht.Bounds;
+//import org.apache.lealone.dht.RingPosition;
+//import org.apache.lealone.dht.Token;
+//import org.apache.lealone.exceptions.*;
+//import org.apache.lealone.gms.FailureDetector;
+//import org.apache.lealone.gms.Gossiper;
+//import org.apache.lealone.io.util.DataOutputBuffer;
+//import org.apache.lealone.locator.AbstractReplicationStrategy;
+//import org.apache.lealone.locator.IEndpointSnitch;
+//import org.apache.lealone.locator.LocalStrategy;
+//import org.apache.lealone.locator.TokenMetadata;
+//import org.apache.lealone.net.*;
+//import org.apache.lealone.service.paxos.*;
+//import org.apache.lealone.sink.SinkManager;
+//import org.apache.lealone.tracing.Tracing;
+//import org.apache.lealone.triggers.TriggerExecutor;
+//import org.apache.lealone.utils.*;
 //
 //public class StorageProxy implements StorageProxyMBean
 //{
-//    public static final String MBEAN_NAME = "org.apache.cassandra.db:type=StorageProxy";
+//    public static final String MBEAN_NAME = "org.apache.lealone.db:type=StorageProxy";
 //    private static final Logger logger = LoggerFactory.getLogger(StorageProxy.class);
 //    static final boolean OPTIMIZE_LOCAL_REQUESTS = true; // set to false to test messagingservice path on single node
 //
@@ -316,7 +316,7 @@ package org.lealone.cluster.service;
 //            pendingEndpoints = ImmutableList.copyOf(Iterables.filter(pendingEndpoints, isLocalDc));
 //        }
 //        int participants = pendingEndpoints.size() + naturalEndpoints.size();
-//        int requiredParticipants = participants + 1  / 2; // See CASSANDRA-833
+//        int requiredParticipants = participants + 1  / 2; // See lealone-833
 //        List<InetAddress> liveEndpoints = ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints, pendingEndpoints), IAsyncCallback.isAlive));
 //        if (liveEndpoints.size() < requiredParticipants)
 //            throw new UnavailableException(consistencyForPaxos, requiredParticipants, liveEndpoints.size());
@@ -406,7 +406,7 @@ package org.lealone.cluster.service;
 //            }
 //
 //            // To be able to propose our value on a new round, we need a quorum of replica to have learn the previous one. Why is explained at:
-//            // https://issues.apache.org/jira/browse/CASSANDRA-5062?focusedCommentId=13619810&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-13619810)
+//            // https://issues.apache.org/jira/browse/lealone-5062?focusedCommentId=13619810&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-13619810)
 //            // Since we waited for quorum nodes, if some of them haven't seen the last commit (which may just be a timing issue, but may also
 //            // mean we lost messages), we pro-actively "repair" those nodes, and retry.
 //            Iterable<InetAddress> missingMRC = summary.replicasMissingMostRecentCommit();
@@ -416,7 +416,7 @@ package org.lealone.cluster.service;
 //                sendCommit(mostRecent, missingMRC);
 //                // TODO: provided commits don't invalid the prepare we just did above (which they don't), we could just wait
 //                // for all the missingMRC to acknowledge this commit and then move on with proposing our value. But that means
-//                // adding the ability to have commitPaxos block, which is exactly CASSANDRA-5442 will do. So once we have that
+//                // adding the ability to have commitPaxos block, which is exactly lealone-5442 will do. So once we have that
 //                // latter ticket, we can pass CL.ALL to the commit above and remove the 'continue'.
 //                continue;
 //            }
@@ -560,7 +560,7 @@ package org.lealone.cluster.service;
 //                    for (InetAddress target : Iterables.concat(naturalEndpoints, pendingEndpoints))
 //                    {
 //                        // local writes can timeout, but cannot be dropped (see LocalMutationRunnable and
-//                        // CASSANDRA-6510), so there is no need to hint or retry
+//                        // lealone-6510), so there is no need to hint or retry
 //                        if (!target.equals(FBUtilities.getBroadcastAddress()) && shouldHint(target))
 //                            submitHint((Mutation) mutation, target, null);
 //                    }
@@ -880,7 +880,7 @@ package org.lealone.cluster.service;
 //                    if (message == null)
 //                        message = mutation.createMessage();
 //                    String dc = DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
-//                    // direct writes to local DC or old Cassandra versions
+//                    // direct writes to local DC or old lealone versions
 //                    // (1.1 knows how to forward old-style String message IDs; updated to int in 2.0)
 //                    if (localDataCenter.equals(dc))
 //                    {

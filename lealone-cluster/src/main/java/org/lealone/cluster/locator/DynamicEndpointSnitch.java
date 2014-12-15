@@ -63,7 +63,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     }
 
     public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance) {
-        mbeanName = "org.apache.cassandra.db:type=DynamicEndpointSnitch";
+        mbeanName = "org.apache.lealone.db:type=DynamicEndpointSnitch";
         if (instance != null)
             mbeanName += ",instance=" + instance;
         subsnitch = snitch;
@@ -222,7 +222,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
         for (Map.Entry<InetAddress, ExponentiallyDecayingSample> entry : samples.entrySet()) {
             double score = entry.getValue().getSnapshot().getMedian() / maxLatency;
             // finally, add the severity without any weighting, since hosts scale this relative to their own load and the size of the task causing the severity.
-            // "Severity" is basically a measure of compaction activity (CASSANDRA-3722).
+            // "Severity" is basically a measure of compaction activity (lealone-3722).
             score += StorageService.instance.getSeverity(entry.getKey());
             // lowest score (least amount of badness) wins.
             scores.put(entry.getKey(), score);

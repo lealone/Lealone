@@ -113,7 +113,9 @@ public class DatabaseDescriptor {
 
     @VisibleForTesting
     public static Config loadConfig() throws ConfigurationException {
-        String loaderClass = System.getProperty("cassandra.config.loader");
+        if (conf != null)
+            return conf;
+        String loaderClass = System.getProperty("lealone.config.loader");
         ConfigurationLoader loader = loaderClass == null ? new YamlConfigurationLoader() : FBUtilities
                 .<ConfigurationLoader> construct(loaderClass, "configuration loading");
         return loader.loadConfig();
@@ -163,7 +165,7 @@ public class DatabaseDescriptor {
                 logger.info("DiskAccessMode is {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
             }
         }
-        // Always force standard mode access on Windows - CASSANDRA-6993. Windows won't allow deletion of hard-links to files that
+        // Always force standard mode access on Windows - lealone-6993. Windows won't allow deletion of hard-links to files that
         // are memory-mapped which causes trouble with snapshots.
         else {
             conf.disk_access_mode = Config.DiskAccessMode.standard;
@@ -196,7 +198,7 @@ public class DatabaseDescriptor {
             throw new ConfigurationException("Missing directive: partitioner");
         }
         try {
-            partitioner = FBUtilities.newPartitioner(System.getProperty("cassandra.partitioner", conf.partitioner));
+            partitioner = FBUtilities.newPartitioner(System.getProperty("lealone.partitioner", conf.partitioner));
         } catch (Exception e) {
             throw new ConfigurationException("Invalid partitioner class " + conf.partitioner);
         }
@@ -222,9 +224,6 @@ public class DatabaseDescriptor {
 
         if (conf.concurrent_counter_writes != null && conf.concurrent_counter_writes < 2)
             throw new ConfigurationException("concurrent_counter_writes must be at least 2");
-
-        if (conf.concurrent_replicates != null)
-            logger.warn("concurrent_replicates has been deprecated and should be removed from cassandra.yaml");
 
         if (conf.file_cache_size_in_mb == null)
             conf.file_cache_size_in_mb = Math.min(512, (int) (Runtime.getRuntime().maxMemory() / (4 * 1048576)));
@@ -374,24 +373,24 @@ public class DatabaseDescriptor {
             requestSchedulerId = RequestSchedulerId.keyspace;
         }
 
-        // if data dirs, commitlog dir, or saved caches dir are set in cassandra.yaml, use that.  Otherwise,
-        // use -Dcassandra.storagedir (set in cassandra-env.sh) as the parent dir for data/, commitlog/, and saved_caches/
+        // if data dirs, commitlog dir, or saved caches dir are set in lealone.yaml, use that.  Otherwise,
+        // use -Dlealone.storagedir (set in lealone-env.sh) as the parent dir for data/, commitlog/, and saved_caches/
         if (conf.commitlog_directory == null) {
-            conf.commitlog_directory = System.getProperty("cassandra.storagedir", null);
+            conf.commitlog_directory = System.getProperty("lealone.storagedir", null);
             if (conf.commitlog_directory == null)
-                throw new ConfigurationException("commitlog_directory is missing and -Dcassandra.storagedir is not set");
+                throw new ConfigurationException("commitlog_directory is missing and -Dlealone.storagedir is not set");
             conf.commitlog_directory += File.separator + "commitlog";
         }
         if (conf.saved_caches_directory == null) {
-            conf.saved_caches_directory = System.getProperty("cassandra.storagedir", null);
+            conf.saved_caches_directory = System.getProperty("lealone.storagedir", null);
             if (conf.saved_caches_directory == null)
-                throw new ConfigurationException("saved_caches_directory is missing and -Dcassandra.storagedir is not set");
+                throw new ConfigurationException("saved_caches_directory is missing and -Dlealone.storagedir is not set");
             conf.saved_caches_directory += File.separator + "saved_caches";
         }
         if (conf.data_file_directories == null) {
-            String defaultDataDir = System.getProperty("cassandra.storagedir", null);
+            String defaultDataDir = System.getProperty("lealone.storagedir", null);
             if (defaultDataDir == null)
-                throw new ConfigurationException("data_file_directories is not missing and -Dcassandra.storagedir is not set");
+                throw new ConfigurationException("data_file_directories is not missing and -Dlealone.storagedir is not set");
             conf.data_file_directories = new String[] { defaultDataDir + File.separator + "data" };
         }
 
@@ -475,12 +474,6 @@ public class DatabaseDescriptor {
 
         //        memoryAllocator = FBUtilities.newOffHeapAllocator(conf.memory_allocator);
 
-        if (conf.encryption_options != null) {
-            logger.warn("Please rename encryption_options as server_encryption_options in the yaml");
-            //operate under the assumption that server_encryption_options is not set in yaml rather than both
-            conf.server_encryption_options = conf.encryption_options;
-        }
-
         //        // hardcoded system keyspace
         //        Schema.instance.load(SystemKeyspace.definition());
 
@@ -507,7 +500,7 @@ public class DatabaseDescriptor {
 
     private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException {
         if (!snitchClassName.contains("."))
-            snitchClassName = "org.apache.cassandra.locator." + snitchClassName;
+            snitchClassName = "org.apache.lealone.locator." + snitchClassName;
         IEndpointSnitch snitch = FBUtilities.construct(snitchClassName, "snitch");
         return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
     }
@@ -653,7 +646,7 @@ public class DatabaseDescriptor {
     }
 
     public static Collection<String> getInitialTokens() {
-        return tokensFromString(System.getProperty("cassandra.initial_token", conf.initial_token));
+        return tokensFromString(System.getProperty("lealone.initial_token", conf.initial_token));
     }
 
     public static Collection<String> tokensFromString(String tokenString) {
@@ -670,10 +663,10 @@ public class DatabaseDescriptor {
 
     public static InetAddress getReplaceAddress() {
         try {
-            if (System.getProperty("cassandra.replace_address", null) != null)
-                return InetAddress.getByName(System.getProperty("cassandra.replace_address", null));
-            else if (System.getProperty("cassandra.replace_address_first_boot", null) != null)
-                return InetAddress.getByName(System.getProperty("cassandra.replace_address_first_boot", null));
+            if (System.getProperty("lealone.replace_address", null) != null)
+                return InetAddress.getByName(System.getProperty("lealone.replace_address", null));
+            else if (System.getProperty("lealone.replace_address_first_boot", null) != null)
+                return InetAddress.getByName(System.getProperty("lealone.replace_address_first_boot", null));
             return null;
         } catch (UnknownHostException e) {
             return null;
@@ -681,19 +674,19 @@ public class DatabaseDescriptor {
     }
 
     public static Collection<String> getReplaceTokens() {
-        return tokensFromString(System.getProperty("cassandra.replace_token", null));
+        return tokensFromString(System.getProperty("lealone.replace_token", null));
     }
 
     public static UUID getReplaceNode() {
         try {
-            return UUID.fromString(System.getProperty("cassandra.replace_node", null));
+            return UUID.fromString(System.getProperty("lealone.replace_node", null));
         } catch (NullPointerException e) {
             return null;
         }
     }
 
     public static boolean isReplacing() {
-        if (System.getProperty("cassandra.replace_address_first_boot", null) != null && SystemKeyspace.bootstrapComplete()) {
+        if (System.getProperty("lealone.replace_address_first_boot", null) != null && SystemKeyspace.bootstrapComplete()) {
             logger.info("Replace address on first boot requested; this node is already bootstrapped");
             return false;
         }
@@ -709,15 +702,15 @@ public class DatabaseDescriptor {
     }
 
     public static int getStoragePort() {
-        return Integer.parseInt(System.getProperty("cassandra.storage_port", conf.storage_port.toString()));
+        return Integer.parseInt(System.getProperty("lealone.storage_port", conf.storage_port.toString()));
     }
 
     public static int getSSLStoragePort() {
-        return Integer.parseInt(System.getProperty("cassandra.ssl_storage_port", conf.ssl_storage_port.toString()));
+        return Integer.parseInt(System.getProperty("lealone.ssl_storage_port", conf.ssl_storage_port.toString()));
     }
 
     public static int getRpcPort() {
-        return Integer.parseInt(System.getProperty("cassandra.rpc_port", conf.rpc_port.toString()));
+        return Integer.parseInt(System.getProperty("lealone.rpc_port", conf.rpc_port.toString()));
     }
 
     public static int getRpcListenBacklog() {
@@ -851,7 +844,7 @@ public class DatabaseDescriptor {
     }
 
     public static boolean getDisableSTCSInL0() {
-        return Boolean.getBoolean("cassandra.disable_stcs_in_l0");
+        return Boolean.getBoolean("lealone.disable_stcs_in_l0");
     }
 
     public static int getStreamThroughputOutboundMegabitsPerSec() {
@@ -978,7 +971,7 @@ public class DatabaseDescriptor {
     }
 
     public static int getNativeTransportPort() {
-        return Integer.parseInt(System.getProperty("cassandra.native_transport_port", conf.native_transport_port.toString()));
+        return Integer.parseInt(System.getProperty("lealone.native_transport_port", conf.native_transport_port.toString()));
     }
 
     public static Integer getNativeTransportMaxThreads() {
@@ -1043,7 +1036,7 @@ public class DatabaseDescriptor {
     }
 
     public static boolean isAutoBootstrap() {
-        return Boolean.parseBoolean(System.getProperty("cassandra.auto_bootstrap", conf.auto_bootstrap.toString()));
+        return Boolean.parseBoolean(System.getProperty("lealone.auto_bootstrap", conf.auto_bootstrap.toString()));
     }
 
     public static void setHintedHandoffEnabled(boolean hintedHandoffEnabled) {

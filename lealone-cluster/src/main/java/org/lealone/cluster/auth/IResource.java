@@ -18,10 +18,10 @@
 package org.lealone.cluster.auth;
 
 /**
- * The interface at the core of Cassandra authorization.
+ * The interface at the core of lealone authorization.
  *
  * Represents a resource in the hierarchy.
- * Currently just one resource type is supported by Cassandra
+ * Currently just one resource type is supported by lealone
  * @see DataResource
  */
 public interface IResource {
@@ -46,7 +46,7 @@ public interface IResource {
     boolean hasParent();
 
     /**
-     * @return Whether or not this resource exists in Cassandra.
+     * @return Whether or not this resource exists in lealone.
      */
     boolean exists();
 }

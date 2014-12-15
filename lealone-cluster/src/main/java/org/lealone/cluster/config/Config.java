@@ -32,7 +32,7 @@ import org.supercsv.prefs.CsvPreference;
 import com.google.common.collect.Sets;
 
 /**
- * A class that contains configuration properties for the cassandra node it runs within.
+ * A class that contains configuration properties for the lealone node it runs within.
  * 
  * Properties declared as volatile can be mutated via JMX.
  */
@@ -84,9 +84,6 @@ public class Config {
     public Integer concurrent_reads = 32;
     public Integer concurrent_writes = 32;
     public Integer concurrent_counter_writes = 32;
-
-    @Deprecated
-    public Integer concurrent_replicates = null;
 
     public Integer memtable_flush_writers = null;
     public Integer memtable_heap_space_in_mb;
@@ -164,13 +161,8 @@ public class Config {
 
     public ServerEncryptionOptions server_encryption_options = new ServerEncryptionOptions();
     public ClientEncryptionOptions client_encryption_options = new ClientEncryptionOptions();
-    // this encOptions is for backward compatibility (a warning is logged by DatabaseDescriptor)
-    public ServerEncryptionOptions encryption_options;
 
     public InternodeCompression internode_compression = InternodeCompression.none;
-
-    @Deprecated
-    public Integer index_interval = null;
 
     public int hinted_handoff_throttle_in_kb = 1024;
     public int batchlog_replay_throttle_in_kb = 1024;

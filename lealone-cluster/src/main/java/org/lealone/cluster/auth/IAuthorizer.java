@@ -24,7 +24,7 @@ import org.lealone.cluster.exceptions.RequestExecutionException;
 import org.lealone.cluster.exceptions.RequestValidationException;
 
 /**
- * Primary Cassandra authorization interface.
+ * Primary lealone authorization interface.
  */
 public interface IAuthorizer {
     /**

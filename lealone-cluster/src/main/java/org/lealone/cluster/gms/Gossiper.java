@@ -177,7 +177,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                        someone will gossip to it, and then do a gossip to a random seed from the
                        gossipedToSeed check.
 
-                       See CASSANDRA-150 for more exposition. */
+                       See lealone-150 for more exposition. */
                     if (!gossipedToSeed || liveEndpoints.size() < seeds.size())
                         doGossipToSeed(message);
 

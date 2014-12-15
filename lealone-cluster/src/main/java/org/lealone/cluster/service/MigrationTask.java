@@ -17,7 +17,7 @@ package org.lealone.cluster.service;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.cassandra.service;
+//package org.apache.lealone.service;
 //
 //import java.io.IOException;
 //import java.net.InetAddress;
@@ -26,15 +26,15 @@ package org.lealone.cluster.service;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 //
-//import org.apache.cassandra.db.Mutation;
-//import org.apache.cassandra.exceptions.ConfigurationException;
-//import org.apache.cassandra.db.DefsTables;
-//import org.apache.cassandra.gms.FailureDetector;
-//import org.apache.cassandra.net.IAsyncCallback;
-//import org.apache.cassandra.net.MessageIn;
-//import org.apache.cassandra.net.MessageOut;
-//import org.apache.cassandra.net.MessagingService;
-//import org.apache.cassandra.utils.WrappedRunnable;
+//import org.apache.lealone.db.Mutation;
+//import org.apache.lealone.exceptions.ConfigurationException;
+//import org.apache.lealone.db.DefsTables;
+//import org.apache.lealone.gms.FailureDetector;
+//import org.apache.lealone.net.IAsyncCallback;
+//import org.apache.lealone.net.MessageIn;
+//import org.apache.lealone.net.MessageOut;
+//import org.apache.lealone.net.MessagingService;
+//import org.apache.lealone.utils.WrappedRunnable;
 //
 //
 //class MigrationTask extends WrappedRunnable

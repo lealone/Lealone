@@ -41,7 +41,7 @@ public final class Resources {
     }
 
     @Deprecated
-    public final static String ROOT = "cassandra";
+    public final static String ROOT = "lealone";
     @Deprecated
     public final static String KEYSPACES = "keyspaces";
 

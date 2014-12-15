@@ -19,9 +19,9 @@ package org.lealone.cluster.config;
 
 public abstract class EncryptionOptions {
     public String keystore = "conf/.keystore";
-    public String keystore_password = "cassandra";
+    public String keystore_password = "lealone";
     public String truststore = "conf/.truststore";
-    public String truststore_password = "cassandra";
+    public String truststore_password = "lealone";
     public String[] cipher_suites = { "TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA",
             "TLS_DHE_RSA_WITH_AES_128_CBC_SHA", "TLS_DHE_RSA_WITH_AES_256_CBC_SHA", "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
             "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA" };

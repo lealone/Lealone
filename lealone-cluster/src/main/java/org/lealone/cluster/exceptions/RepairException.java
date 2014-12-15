@@ -17,9 +17,9 @@ package org.lealone.cluster.exceptions;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.cassandra.exceptions;
+//package org.apache.lealone.exceptions;
 //
-//import org.apache.cassandra.repair.RepairJobDesc;
+//import org.apache.lealone.repair.RepairJobDesc;
 //
 ///**
 // * Exception thrown during repair

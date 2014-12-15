@@ -58,7 +58,7 @@ public abstract class BloomFilter implements IFilter {
 
     // note that this method uses the threadLocal that may be longer than hashCount
     // to avoid generating a lot of garbage since stack allocation currently does not support stores
-    // (CASSANDRA-6609).  it returns the array so that the caller does not need to perform
+    // (lealone-6609).  it returns the array so that the caller does not need to perform
     // a second threadlocal lookup.
     private long[] indexes(ByteBuffer key) {
         // we use the same array both for storing the hash result, and for storing the indexes we return,

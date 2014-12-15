@@ -44,7 +44,7 @@ public class JMXEnabledSharedExecutorPool extends SharedExecutorPool {
             metrics = new SEPMetrics(this, jmxPath, name);
 
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbeanName = "org.apache.cassandra." + jmxPath + ":type=" + name;
+            mbeanName = "org.apache.lealone." + jmxPath + ":type=" + name;
 
             try {
                 mbs.registerMBean(this, new ObjectName(mbeanName));

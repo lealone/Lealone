@@ -55,7 +55,7 @@ public class Ec2Snitch extends AbstractNetworkTopologySnitch {
         String[] splits = az.split("-");
         ec2zone = splits[splits.length - 1];
 
-        // hack for CASSANDRA-4026
+        // hack for lealone-4026
         ec2region = az.substring(0, az.length() - 1);
         if (ec2region.endsWith("1"))
             ec2region = az.substring(0, az.length() - 3);

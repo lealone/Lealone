@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
 public class PropertyFileSnitch extends AbstractNetworkTopologySnitch {
     private static final Logger logger = LoggerFactory.getLogger(PropertyFileSnitch.class);
 
-    public static final String SNITCH_PROPERTIES_FILENAME = "cassandra-topology.properties";
+    public static final String SNITCH_PROPERTIES_FILENAME = "lealone-topology.properties";
 
     private static volatile Map<InetAddress, String[]> endpointMap;
     private static volatile String[] defaultDCRack;
@@ -175,7 +175,7 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch {
         }
 
         endpointMap = reloadedMap;
-        if (StorageService.instance != null) // null check tolerates circular dependency; see CASSANDRA-4145
+        if (StorageService.instance != null) // null check tolerates circular dependency; see lealone-4145
             StorageService.instance.getTokenMetadata().invalidateCachedRings();
 
         if (gossipStarted)

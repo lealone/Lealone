@@ -49,9 +49,9 @@ import org.lealone.cluster.db.TypeSizes;
 public class OpenBitSet implements IBitSet {
     /**
      * We break the bitset up into multiple arrays to avoid promotion failure caused by attempting to allocate
-     * large, contiguous arrays (CASSANDRA-2466).  All sub-arrays but the last are uniformly PAGE_SIZE words;
-     * to avoid waste in small bloom filters (of which Cassandra has many: one per row) the last sub-array
-     * is sized to exactly the remaining number of words required to achieve the desired set size (CASSANDRA-3618).
+     * large, contiguous arrays (lealone-2466).  All sub-arrays but the last are uniformly PAGE_SIZE words;
+     * to avoid waste in small bloom filters (of which lealone has many: one per row) the last sub-array
+     * is sized to exactly the remaining number of words required to achieve the desired set size (lealone-3618).
      */
     private final long[][] bits;
     private int wlen; // number of words (elements) used in the array

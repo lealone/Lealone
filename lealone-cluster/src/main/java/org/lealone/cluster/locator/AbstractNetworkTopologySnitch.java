@@ -20,7 +20,7 @@ package org.lealone.cluster.locator;
 import java.net.InetAddress;
 
 /**
- * An endpoint snitch tells Cassandra information about network topology that it can use to route
+ * An endpoint snitch tells lealone information about network topology that it can use to route
  * requests more efficiently.
  */
 public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnitch {

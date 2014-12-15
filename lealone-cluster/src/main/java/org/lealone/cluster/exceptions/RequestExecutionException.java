@@ -17,7 +17,7 @@
  */
 package org.lealone.cluster.exceptions;
 
-public abstract class RequestExecutionException extends CassandraException {
+public abstract class RequestExecutionException extends LealoneException {
     protected RequestExecutionException(ExceptionCode code, String msg) {
         super(code, msg);
     }

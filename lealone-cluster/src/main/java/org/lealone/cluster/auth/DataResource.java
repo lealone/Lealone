@@ -22,7 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import com.google.common.base.Objects;
 
 /**
- * The primary type of resource in Cassandra.
+ * The primary type of resource in lealone.
  *
  * Used to represent a column family or a keyspace or the root level "data" resource.
  * "data"                                 - the root level data resource.
@@ -179,7 +179,7 @@ public class DataResource implements IResource {
     }
 
     /**
-     * @return Whether or not the resource exists in Cassandra.
+     * @return Whether or not the resource exists in lealone.
      */
     @Override
     public boolean exists() {
