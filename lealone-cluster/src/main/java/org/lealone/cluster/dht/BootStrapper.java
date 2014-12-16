@@ -71,8 +71,7 @@ public class BootStrapper {
     }
 
     /**
-     * if initialtoken was specified, use that (split on comma).
-     * otherwise, if num_tokens == 1, pick a token to assume half the load of the most-loaded node.
+     * if num_tokens == 1, pick a token to assume half the load of the most-loaded node.
      * else choose num_tokens tokens at random
      */
     public static Collection<Token> getBootstrapTokens(final TokenMetadata metadata) throws ConfigurationException {
@@ -81,7 +80,7 @@ public class BootStrapper {
             throw new ConfigurationException("num_tokens must be >= 1");
 
         if (numTokens == 1)
-            logger.warn("Picking random token for a single vnode.  You should probably add more vnodes; failing that, you should probably specify the token manually");
+            logger.warn("Picking random token for a single vnode. You should probably add more vnodes.");
 
         return getRandomTokens(metadata, numTokens);
     }
