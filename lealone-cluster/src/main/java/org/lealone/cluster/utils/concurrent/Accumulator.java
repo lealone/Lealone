@@ -31,8 +31,10 @@ public class Accumulator<E> implements Iterable<E> {
     private volatile int nextIndex;
     private volatile int presentCount;
     private final Object[] values;
+    @SuppressWarnings("rawtypes")
     private static final AtomicIntegerFieldUpdater<Accumulator> nextIndexUpdater = AtomicIntegerFieldUpdater.newUpdater(
             Accumulator.class, "nextIndex");
+    @SuppressWarnings("rawtypes")
     private static final AtomicIntegerFieldUpdater<Accumulator> presentCountUpdater = AtomicIntegerFieldUpdater.newUpdater(
             Accumulator.class, "presentCount");
 
@@ -93,24 +95,30 @@ public class Accumulator<E> implements Iterable<E> {
         return presentCount;
     }
 
+    @Override
     public Iterator<E> iterator() {
         return new Iterator<E>() {
             int p = 0;
 
+            @Override
             public boolean hasNext() {
                 return p < presentCount;
             }
 
+            @SuppressWarnings("unchecked")
+            @Override
             public E next() {
                 return (E) values[p++];
             }
 
+            @Override
             public void remove() {
                 throw new UnsupportedOperationException();
             }
         };
     }
 
+    @SuppressWarnings("unchecked")
     public E get(int i) {
         // we read presentCount to guarantee a volatile read of values
         if (i >= presentCount)

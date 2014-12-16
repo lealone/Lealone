@@ -28,11 +28,11 @@ import org.lealone.cluster.io.IVersionedSerializer;
  */
 public class CallbackInfo {
     protected final InetAddress target;
-    protected final IAsyncCallback callback;
+    protected final IAsyncCallback<?> callback;
     protected final IVersionedSerializer<?> serializer;
     private final boolean failureCallback;
 
-    public CallbackInfo(InetAddress target, IAsyncCallback callback, IVersionedSerializer<?> serializer) {
+    public CallbackInfo(InetAddress target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer) {
         this(target, callback, serializer, false);
     }
 
@@ -43,7 +43,8 @@ public class CallbackInfo {
      * @param callback
      * @param serializer serializer to deserialize response message
      */
-    public CallbackInfo(InetAddress target, IAsyncCallback callback, IVersionedSerializer<?> serializer, boolean failureCallback) {
+    public CallbackInfo(InetAddress target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer,
+            boolean failureCallback) {
         this.target = target;
         this.callback = callback;
         this.serializer = serializer;
@@ -58,6 +59,7 @@ public class CallbackInfo {
         return failureCallback;
     }
 
+    @Override
     public String toString() {
         return "CallbackInfo(" + "target=" + target + ", callback=" + callback + ", serializer=" + serializer
                 + ", failureCallback=" + failureCallback + ')';

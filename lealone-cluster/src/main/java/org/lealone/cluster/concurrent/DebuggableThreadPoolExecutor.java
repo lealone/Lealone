@@ -17,14 +17,28 @@
  */
 package org.lealone.cluster.concurrent;
 
-import java.util.concurrent.*;
+import static org.lealone.cluster.tracing.Tracing.isTracing;
+
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.lealone.cluster.tracing.TraceState;
 import org.lealone.cluster.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.lealone.cluster.tracing.Tracing.isTracing;
 
 /**
  * This class encorporates some Executor best practices for lealone.  Most of the executors in the system
@@ -46,6 +60,7 @@ import static org.lealone.cluster.tracing.Tracing.isTracing;
 public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements TracingAwareExecutorService {
     protected static final Logger logger = LoggerFactory.getLogger(DebuggableThreadPoolExecutor.class);
     public static final RejectedExecutionHandler blockingExecutionHandler = new RejectedExecutionHandler() {
+        @Override
         public void rejectedExecution(Runnable task, ThreadPoolExecutor executor) {
             ((DebuggableThreadPoolExecutor) executor).onInitialRejection(task);
             BlockingQueue<Runnable> queue = executor.getQueue();
@@ -138,11 +153,13 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     protected void onFinalRejection(Runnable task) {
     }
 
+    @Override
     public void execute(Runnable command, TraceState state) {
         super.execute(state == null || command instanceof TraceSessionWrapper ? command : new TraceSessionWrapper<Object>(
                 command, state));
     }
 
+    @Override
     public void maybeExecuteImmediately(Runnable command) {
         execute(command);
     }
@@ -180,7 +197,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
 
     protected static void maybeResetTraceSessionWrapper(Runnable r) {
         if (r instanceof TraceSessionWrapper) {
-            TraceSessionWrapper tsw = (TraceSessionWrapper) r;
+            TraceSessionWrapper<?> tsw = (TraceSessionWrapper<?>) r;
             // we have to reset trace state as its presence is what denotes the current thread is tracing
             // and if left this thread might start tracing unrelated tasks
             tsw.reset();
@@ -190,7 +207,7 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     @Override
     protected void beforeExecute(Thread t, Runnable r) {
         if (r instanceof TraceSessionWrapper)
-            ((TraceSessionWrapper) r).setupContext();
+            ((TraceSessionWrapper<?>) r).setupContext();
 
         super.beforeExecute(t, r);
     }

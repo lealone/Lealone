@@ -17,16 +17,24 @@
  */
 package org.lealone.cluster.concurrent;
 
+import static org.lealone.cluster.config.DatabaseDescriptor.getConcurrentCounterWriters;
+import static org.lealone.cluster.config.DatabaseDescriptor.getConcurrentReaders;
+import static org.lealone.cluster.config.DatabaseDescriptor.getConcurrentWriters;
+
 import java.util.EnumMap;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.tracing.TraceState;
 import org.lealone.cluster.utils.FBUtilities;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import static org.lealone.cluster.config.DatabaseDescriptor.*;
 
 /**
  * This class manages executor services for Messages recieved: each Message requests
@@ -34,8 +42,6 @@ import static org.lealone.cluster.config.DatabaseDescriptor.*;
  * even though stages (executors) are not created dynamically.
  */
 public class StageManager {
-    private static final Logger logger = LoggerFactory.getLogger(StageManager.class);
-
     private static final EnumMap<Stage, TracingAwareExecutorService> stages = new EnumMap<Stage, TracingAwareExecutorService>(
             Stage.class);
 
@@ -59,6 +65,7 @@ public class StageManager {
 
     private static ExecuteOnlyExecutor tracingExecutor() {
         RejectedExecutionHandler reh = new RejectedExecutionHandler() {
+            @Override
             public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
                 MessagingService.instance().incrementDroppedMessages(MessagingService.Verb._TRACE);
             }
@@ -104,11 +111,13 @@ public class StageManager {
             super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);
         }
 
+        @Override
         public void execute(Runnable command, TraceState state) {
             assert state == null;
             super.execute(command);
         }
 
+        @Override
         public void maybeExecuteImmediately(Runnable command) {
             execute(command);
         }

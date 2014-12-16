@@ -18,12 +18,12 @@
  */
 package org.lealone.cluster.utils.concurrent;
 
-import com.yammer.metrics.core.TimerContext;
-
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
+
+import com.yammer.metrics.core.TimerContext;
 
 /**
  * <p>A relatively easy to use utility for general purpose thread signalling.</p>
@@ -73,7 +73,7 @@ public final class WaitQueue {
     private static final int SIGNALLED = 1;
     private static final int NOT_SET = 0;
 
-    private static final AtomicIntegerFieldUpdater signalledUpdater = AtomicIntegerFieldUpdater.newUpdater(
+    private static final AtomicIntegerFieldUpdater<RegisteredSignal> signalledUpdater = AtomicIntegerFieldUpdater.newUpdater(
             RegisteredSignal.class, "state");
 
     // the waiting signals
@@ -254,6 +254,7 @@ public final class WaitQueue {
      * An abstract signal implementation
      */
     public static abstract class AbstractSignal implements Signal {
+        @Override
         public void awaitUninterruptibly() {
             boolean interrupted = false;
             while (!isSignalled()) {
@@ -266,6 +267,7 @@ public final class WaitQueue {
             checkAndClear();
         }
 
+        @Override
         public void await() throws InterruptedException {
             while (!isSignalled()) {
                 checkInterrupted();
@@ -274,6 +276,7 @@ public final class WaitQueue {
             checkAndClear();
         }
 
+        @Override
         public boolean awaitUntil(long until) throws InterruptedException {
             long now;
             while (until > (now = System.nanoTime()) && !isSignalled()) {
@@ -299,14 +302,17 @@ public final class WaitQueue {
         private volatile Thread thread = Thread.currentThread();
         volatile int state;
 
+        @Override
         public boolean isSignalled() {
             return state == SIGNALLED;
         }
 
+        @Override
         public boolean isCancelled() {
             return state == CANCELLED;
         }
 
+        @Override
         public boolean isSet() {
             return state != NOT_SET;
         }
@@ -321,6 +327,7 @@ public final class WaitQueue {
             return null;
         }
 
+        @Override
         public boolean checkAndClear() {
             if (!isSet() && signalledUpdater.compareAndSet(this, NOT_SET, CANCELLED)) {
                 thread = null;
@@ -335,6 +342,7 @@ public final class WaitQueue {
          * Should only be called by the registered thread. Indicates the signal can be retired,
          * and if signalled propagates the signal to another waiting thread
          */
+        @Override
         public void cancel() {
             if (isCancelled())
                 return;
@@ -386,6 +394,7 @@ public final class WaitQueue {
             this.signals = signals;
         }
 
+        @Override
         public boolean isCancelled() {
             for (Signal signal : signals)
                 if (!signal.isCancelled())
@@ -393,12 +402,14 @@ public final class WaitQueue {
             return true;
         }
 
+        @Override
         public boolean checkAndClear() {
             for (Signal signal : signals)
                 signal.checkAndClear();
             return isSignalled();
         }
 
+        @Override
         public void cancel() {
             for (Signal signal : signals)
                 signal.cancel();
@@ -413,6 +424,7 @@ public final class WaitQueue {
             super(signals);
         }
 
+        @Override
         public boolean isSignalled() {
             for (Signal signal : signals)
                 if (signal.isSignalled())
@@ -420,6 +432,7 @@ public final class WaitQueue {
             return false;
         }
 
+        @Override
         public boolean isSet() {
             for (Signal signal : signals)
                 if (signal.isSet())
@@ -436,6 +449,7 @@ public final class WaitQueue {
             super(signals);
         }
 
+        @Override
         public boolean isSignalled() {
             for (Signal signal : signals)
                 if (!signal.isSignalled())
@@ -443,6 +457,7 @@ public final class WaitQueue {
             return true;
         }
 
+        @Override
         public boolean isSet() {
             for (Signal signal : signals)
                 if (!signal.isSet())

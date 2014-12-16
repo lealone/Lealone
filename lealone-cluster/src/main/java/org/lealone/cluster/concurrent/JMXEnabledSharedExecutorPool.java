@@ -18,11 +18,13 @@
 package org.lealone.cluster.concurrent;
 
 import java.lang.management.ManagementFactory;
+
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.lealone.cluster.metrics.SEPMetrics;
 
+@SuppressWarnings("deprecation")
 public class JMXEnabledSharedExecutorPool extends SharedExecutorPool {
 
     public static final JMXEnabledSharedExecutorPool SHARED = new JMXEnabledSharedExecutorPool("SharedPool");
@@ -74,14 +76,17 @@ public class JMXEnabledSharedExecutorPool extends SharedExecutorPool {
             super.shutdown();
         }
 
+        @Override
         public int getCoreThreads() {
             return 0;
         }
 
+        @Override
         public void setCoreThreads(int number) {
             throw new UnsupportedOperationException();
         }
 
+        @Override
         public void setMaximumThreads(int number) {
             throw new UnsupportedOperationException();
         }

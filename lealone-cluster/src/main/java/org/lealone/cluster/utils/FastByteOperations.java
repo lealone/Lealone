@@ -24,10 +24,12 @@ import java.nio.ByteOrder;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
-import com.google.common.primitives.*;
-
 import net.nicoulaj.compilecommand.annotations.Inline;
 import sun.misc.Unsafe;
+
+import com.google.common.primitives.Longs;
+import com.google.common.primitives.UnsignedBytes;
+import com.google.common.primitives.UnsignedLongs;
 
 /**
  * Utility code to do optimized byte-array comparison.
@@ -99,7 +101,6 @@ public class FastByteOperations {
                 Class<?> theClass = Class.forName(UNSAFE_COMPARER_NAME);
 
                 // yes, UnsafeComparer does implement Comparer<byte[]>
-                @SuppressWarnings("unchecked")
                 ByteOperations comparer = (ByteOperations) theClass.getConstructor().newInstance();
                 return comparer;
             } catch (Throwable t) {
@@ -111,7 +112,6 @@ public class FastByteOperations {
 
     }
 
-    @SuppressWarnings("unused")
     // used via reflection
     public static final class UnsafeOperations implements ByteOperations {
         static final Unsafe theUnsafe;
@@ -154,11 +154,13 @@ public class FastByteOperations {
 
         static final boolean BIG_ENDIAN = ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN);
 
+        @Override
         public int compare(byte[] buffer1, int offset1, int length1, byte[] buffer2, int offset2, int length2) {
             return compareTo(buffer1, BYTE_ARRAY_BASE_OFFSET + offset1, length1, buffer2, BYTE_ARRAY_BASE_OFFSET + offset2,
                     length2);
         }
 
+        @Override
         public int compare(ByteBuffer buffer1, byte[] buffer2, int offset2, int length2) {
             Object obj1;
             long offset1;
@@ -179,10 +181,12 @@ public class FastByteOperations {
             return compareTo(obj1, offset1, length1, buffer2, BYTE_ARRAY_BASE_OFFSET + offset2, length2);
         }
 
+        @Override
         public int compare(ByteBuffer buffer1, ByteBuffer buffer2) {
             return compareTo(buffer1, buffer2);
         }
 
+        @Override
         public void copy(ByteBuffer src, int srcPosition, byte[] trg, int trgPosition, int length) {
             if (src.hasArray())
                 System.arraycopy(src.array(), src.arrayOffset() + srcPosition, trg, trgPosition, length);
@@ -190,6 +194,7 @@ public class FastByteOperations {
                 copy(null, srcPosition + theUnsafe.getLong(src, DIRECT_BUFFER_ADDRESS_OFFSET), trg, trgPosition, length);
         }
 
+        @Override
         public void copy(ByteBuffer srcBuf, int srcPosition, ByteBuffer trgBuf, int trgPosition, int length) {
             Object src;
             long srcOffset;
@@ -294,8 +299,8 @@ public class FastByteOperations {
              */
             int wordComparisons = minLength & ~7;
             for (int i = 0; i < wordComparisons; i += Longs.BYTES) {
-                long lw = theUnsafe.getLong(buffer1, memoryOffset1 + (long) i);
-                long rw = theUnsafe.getLong(buffer2, memoryOffset2 + (long) i);
+                long lw = theUnsafe.getLong(buffer1, memoryOffset1 + i);
+                long rw = theUnsafe.getLong(buffer2, memoryOffset2 + i);
 
                 if (lw != rw) {
                     if (BIG_ENDIAN)
@@ -317,7 +322,6 @@ public class FastByteOperations {
 
     }
 
-    @SuppressWarnings("unused")
     public static final class PureJavaOperations implements ByteOperations {
         @Override
         public int compare(byte[] buffer1, int offset1, int length1, byte[] buffer2, int offset2, int length2) {
@@ -337,6 +341,7 @@ public class FastByteOperations {
             return length1 - length2;
         }
 
+        @Override
         public int compare(ByteBuffer buffer1, byte[] buffer2, int offset2, int length2) {
             if (buffer1.hasArray())
                 return compare(buffer1.array(), buffer1.arrayOffset() + buffer1.position(), buffer1.remaining(), buffer2,
@@ -344,6 +349,7 @@ public class FastByteOperations {
             return compare(buffer1, ByteBuffer.wrap(buffer2, offset2, length2));
         }
 
+        @Override
         public int compare(ByteBuffer buffer1, ByteBuffer buffer2) {
             int end1 = buffer1.limit();
             int end2 = buffer2.limit();
@@ -357,6 +363,7 @@ public class FastByteOperations {
             return buffer1.remaining() - buffer2.remaining();
         }
 
+        @Override
         public void copy(ByteBuffer src, int srcPosition, byte[] trg, int trgPosition, int length) {
             if (src.hasArray()) {
                 System.arraycopy(src.array(), src.arrayOffset() + srcPosition, trg, trgPosition, length);
@@ -367,6 +374,7 @@ public class FastByteOperations {
             src.get(trg, trgPosition, length);
         }
 
+        @Override
         public void copy(ByteBuffer src, int srcPosition, ByteBuffer trg, int trgPosition, int length) {
             if (src.hasArray() && trg.hasArray()) {
                 System.arraycopy(src.array(), src.arrayOffset() + srcPosition, trg.array(), trg.arrayOffset() + trgPosition,

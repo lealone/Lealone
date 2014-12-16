@@ -50,7 +50,7 @@ public class SinkManager {
         requestSinks.clear();
     }
 
-    public static MessageOut processOutboundMessage(MessageOut message, int id, InetAddress to) {
+    public static MessageOut<?> processOutboundMessage(MessageOut<?> message, int id, InetAddress to) {
         if (messageSinks.isEmpty())
             return message;
 
@@ -62,7 +62,7 @@ public class SinkManager {
         return message;
     }
 
-    public static MessageIn processInboundMessage(MessageIn message, int id) {
+    public static MessageIn<?> processInboundMessage(MessageIn<?> message, int id) {
         if (messageSinks.isEmpty())
             return message;
 

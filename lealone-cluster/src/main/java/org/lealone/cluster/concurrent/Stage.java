@@ -18,7 +18,17 @@
 package org.lealone.cluster.concurrent;
 
 public enum Stage {
-    READ, MUTATION, COUNTER_MUTATION, GOSSIP, REQUEST_RESPONSE, ANTI_ENTROPY, MIGRATION, MISC, TRACING, INTERNAL_RESPONSE, READ_REPAIR;
+    READ,
+    MUTATION,
+    COUNTER_MUTATION,
+    GOSSIP,
+    REQUEST_RESPONSE,
+    ANTI_ENTROPY,
+    MIGRATION,
+    MISC,
+    TRACING,
+    INTERNAL_RESPONSE,
+    READ_REPAIR;
 
     public String getJmxType() {
         switch (this) {

@@ -48,8 +48,6 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.zip.Checksum;
 
 import org.apache.commons.lang3.StringUtils;
@@ -61,7 +59,6 @@ import org.lealone.cluster.dht.IPartitioner;
 import org.lealone.cluster.dht.Range;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.exceptions.ConfigurationException;
-import org.lealone.cluster.net.AsyncOneResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -336,7 +333,7 @@ public class FBUtilities {
     }
 
     public static void waitOnFutures(Iterable<Future<?>> futures) {
-        for (Future f : futures)
+        for (Future<?> f : futures)
             waitOnFuture(f);
     }
 
@@ -350,10 +347,10 @@ public class FBUtilities {
         }
     }
 
-    public static void waitOnFutures(List<AsyncOneResponse> results, long ms) throws TimeoutException {
-        for (AsyncOneResponse result : results)
-            result.get(ms, TimeUnit.MILLISECONDS);
-    }
+    //    public static void waitOnFutures(List<AsyncOneResponse> results, long ms) throws TimeoutException {
+    //        for (AsyncOneResponse<?> result : results)
+    //            result.get(ms, TimeUnit.MILLISECONDS);
+    //    }
 
     public static IPartitioner newPartitioner(String partitionerClassName) throws ConfigurationException {
         if (!partitionerClassName.contains("."))
@@ -385,6 +382,7 @@ public class FBUtilities {
      * @param readable Descriptive noun for the role the class plays.
      * @throws ConfigurationException If the class cannot be found.
      */
+    @SuppressWarnings("unchecked")
     public static <T> Class<T> classForName(String classname, String readable) throws ConfigurationException {
         try {
             return (Class<T>) Class.forName(classname);
@@ -456,7 +454,7 @@ public class FBUtilities {
      * @param fieldName - name of the field
      * @return Field or null on error
      */
-    public static Field getProtectedField(Class klass, String fieldName) {
+    public static Field getProtectedField(Class<?> klass, String fieldName) {
         Field field;
 
         try {

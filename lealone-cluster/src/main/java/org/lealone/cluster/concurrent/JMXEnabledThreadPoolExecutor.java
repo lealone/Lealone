@@ -33,7 +33,7 @@ import org.lealone.cluster.metrics.ThreadPoolMetrics;
  * Runtime Exceptions.
  */
 
-public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor implements JMXEnabledThreadPoolExecutorMBean {
+public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor {
     private final String mbeanName;
     private final ThreadPoolMetrics metrics;
 

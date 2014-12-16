@@ -25,8 +25,9 @@ public class SeedProviderDef {
     public String class_name;
     public Map<String, String> parameters;
 
+    @SuppressWarnings("unchecked")
     public SeedProviderDef(LinkedHashMap<String, ?> p) {
         class_name = (String) p.get("class_name");
-        parameters = (Map<String, String>) ((List) p.get("parameters")).get(0);
+        parameters = (Map<String, String>) ((List<?>) p.get("parameters")).get(0);
     }
 }

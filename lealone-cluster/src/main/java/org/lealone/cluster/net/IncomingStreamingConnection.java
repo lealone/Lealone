@@ -19,22 +19,19 @@ package org.lealone.cluster.net;
 
 import java.net.Socket;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Thread to consume stream init messages.
  */
 public class IncomingStreamingConnection extends Thread {
-    private static final Logger logger = LoggerFactory.getLogger(IncomingStreamingConnection.class);
-
-    private final int version;
-    private final Socket socket;
+    //    private static final Logger logger = LoggerFactory.getLogger(IncomingStreamingConnection.class);
+    //
+    //    private final int version;
+    //    private final Socket socket;
 
     public IncomingStreamingConnection(int version, Socket socket) {
         super("STREAM-INIT-" + socket.getRemoteSocketAddress());
-        this.version = version;
-        this.socket = socket;
+        //        this.version = version;
+        //        this.socket = socket;
     }
 
     @Override

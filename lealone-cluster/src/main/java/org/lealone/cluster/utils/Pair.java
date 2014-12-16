@@ -38,7 +38,7 @@ public class Pair<T1, T2> {
     public final boolean equals(Object o) {
         if (!(o instanceof Pair))
             return false;
-        Pair that = (Pair) o;
+        Pair<?, ?> that = (Pair<?, ?>) o;
         // handles nulls properly
         return Objects.equal(left, that.left) && Objects.equal(right, that.right);
     }

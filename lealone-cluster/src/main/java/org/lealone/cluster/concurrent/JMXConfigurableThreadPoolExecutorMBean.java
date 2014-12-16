@@ -17,6 +17,7 @@
  */
 package org.lealone.cluster.concurrent;
 
+@SuppressWarnings("deprecation")
 public interface JMXConfigurableThreadPoolExecutorMBean extends JMXEnabledThreadPoolExecutorMBean {
     void setCorePoolSize(int n);
 

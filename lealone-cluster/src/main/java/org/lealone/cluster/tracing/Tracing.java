@@ -135,9 +135,9 @@ public class Tracing {
         {
             logger.debug("request complete");
         } else {
-            final int elapsed = state.elapsed();
-            final ByteBuffer sessionId = state.sessionIdBytes;
-            final int ttl = state.ttl;
+            //            final int elapsed = state.elapsed();
+            //            final ByteBuffer sessionId = state.sessionIdBytes;
+            //            final int ttl = state.ttl;
 
             //            StageManager.getStage(Stage.TRACING).execute(new Runnable()
             //            {
@@ -169,10 +169,10 @@ public class Tracing {
         assert isTracing();
 
         final TraceState state = this.state.get();
-        final long startedAt = System.currentTimeMillis();
-        final ByteBuffer sessionId = state.sessionIdBytes;
-        final String command = state.traceType.toString();
-        final int ttl = state.ttl;
+        //        final long startedAt = System.currentTimeMillis();
+        //        final ByteBuffer sessionId = state.sessionIdBytes;
+        //        final String command = state.traceType.toString();
+        //        final int ttl = state.ttl;
 
         //        StageManager.getStage(Stage.TRACING).execute(new Runnable() {
         //            @Override

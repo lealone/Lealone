@@ -17,22 +17,26 @@
  */
 package org.lealone.cluster.net;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.zip.Checksum;
+
+import net.jpountz.lz4.LZ4BlockInputStream;
+import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.lz4.LZ4FastDecompressor;
+import net.jpountz.xxhash.XXHashFactory;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.UnknownColumnFamilyException;
 import org.lealone.cluster.gms.Gossiper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import net.jpountz.lz4.LZ4BlockInputStream;
-import net.jpountz.lz4.LZ4FastDecompressor;
-import net.jpountz.lz4.LZ4Factory;
-import net.jpountz.xxhash.XXHashFactory;
 import org.xerial.snappy.SnappyInputStream;
 
 public class IncomingTcpConnection extends Thread {
@@ -136,7 +140,7 @@ public class IncomingTcpConnection extends Thread {
         if (DatabaseDescriptor.hasCrossNodeTimeout())
             timestamp = (timestamp & 0xFFFFFFFF00000000L) | (((partial & 0xFFFFFFFFL) << 2) >> 2);
 
-        MessageIn message = MessageIn.read(input, version, id);
+        MessageIn<?> message = MessageIn.read(input, version, id);
         if (message == null) {
             // callback expired; nothing to do
             return null;

@@ -17,6 +17,8 @@
  */
 package org.lealone.cluster.concurrent;
 
+import static org.lealone.cluster.tracing.Tracing.isTracing;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -33,8 +35,6 @@ import org.lealone.cluster.utils.concurrent.SimpleCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.lealone.cluster.tracing.Tracing.isTracing;
-
 public abstract class AbstractTracingAwareExecutorService implements TracingAwareExecutorService {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTracingAwareExecutorService.class);
 
@@ -44,31 +44,38 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
 
     /** Task Submission / Creation / Objects **/
 
+    @Override
     public <T> FutureTask<T> submit(Callable<T> task) {
         return submit(newTaskFor(task));
     }
 
+    @Override
     public FutureTask<?> submit(Runnable task) {
         return submit(newTaskFor(task, null));
     }
 
+    @Override
     public <T> FutureTask<T> submit(Runnable task, T result) {
         return submit(newTaskFor(task, result));
     }
 
+    @Override
     public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks) {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit)
             throws InterruptedException {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> T invokeAny(Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws InterruptedException,
             ExecutionException, TimeoutException {
         throw new UnsupportedOperationException();
@@ -78,6 +85,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         return newTaskFor(runnable, result, Tracing.instance.get());
     }
 
+    @SuppressWarnings("unchecked")
     protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result, TraceState traceState) {
         if (traceState != null) {
             if (runnable instanceof TraceSessionFutureTask)
@@ -89,6 +97,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         return new FutureTask<>(runnable, result);
     }
 
+    @SuppressWarnings("unchecked")
     protected <T> FutureTask<T> newTaskFor(Callable<T> callable) {
         if (isTracing()) {
             if (callable instanceof TraceSessionFutureTask)
@@ -113,6 +122,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
             this.state = state;
         }
 
+        @Override
         public void run() {
             TraceState oldState = Tracing.instance.get();
             Tracing.instance.set(state);
@@ -124,6 +134,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         }
     }
 
+    @SuppressWarnings("unchecked")
     class FutureTask<T> extends SimpleCondition implements Future<T>, Runnable {
         private boolean failure;
         private Object result = this;
@@ -137,6 +148,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
             this(Executors.callable(runnable, result));
         }
 
+        @Override
         public void run() {
             try {
                 result = callable.call();
@@ -151,18 +163,22 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
             }
         }
 
+        @Override
         public boolean cancel(boolean mayInterruptIfRunning) {
             return false;
         }
 
+        @Override
         public boolean isCancelled() {
             return false;
         }
 
+        @Override
         public boolean isDone() {
             return isSignaled();
         }
 
+        @Override
         public T get() throws InterruptedException, ExecutionException {
             await();
             Object result = this.result;
@@ -171,6 +187,7 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
             return (T) result;
         }
 
+        @Override
         public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
             await(timeout, unit);
             Object result = this.result;
@@ -185,10 +202,12 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         return task;
     }
 
+    @Override
     public void execute(Runnable command) {
         addTask(newTaskFor(command, null));
     }
 
+    @Override
     public void execute(Runnable command, TraceState state) {
         addTask(newTaskFor(command, null, state));
     }
