@@ -18,10 +18,8 @@
 package org.lealone.cluster.dht;
 
 import java.net.InetAddress;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
@@ -78,21 +76,6 @@ public class BootStrapper {
      * else choose num_tokens tokens at random
      */
     public static Collection<Token> getBootstrapTokens(final TokenMetadata metadata) throws ConfigurationException {
-        Collection<String> initialTokens = DatabaseDescriptor.getInitialTokens();
-        // if user specified tokens, use those
-        if (initialTokens.size() > 0) {
-            logger.debug("tokens manually specified as {}", initialTokens);
-            List<Token> tokens = new ArrayList<Token>(initialTokens.size());
-            for (String tokenString : initialTokens) {
-                Token token = StorageService.getPartitioner().getTokenFactory().fromString(tokenString);
-                if (metadata.getEndpoint(token) != null)
-                    throw new ConfigurationException("Bootstrapping to existing token " + tokenString
-                            + " is not allowed (decommission/removenode the old node first).");
-                tokens.add(token);
-            }
-            return tokens;
-        }
-
         int numTokens = DatabaseDescriptor.getNumTokens();
         if (numTokens < 1)
             throw new ConfigurationException("num_tokens must be >= 1");

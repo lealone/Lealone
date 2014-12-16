@@ -710,21 +710,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         } else {
             bootstrapTokens = SystemKeyspace.getSavedTokens();
             if (bootstrapTokens.isEmpty()) {
-                Collection<String> initialTokens = DatabaseDescriptor.getInitialTokens();
-                if (initialTokens.size() < 1) {
-                    bootstrapTokens = BootStrapper.getRandomTokens(tokenMetadata, DatabaseDescriptor.getNumTokens());
-                    if (DatabaseDescriptor.getNumTokens() == 1)
-                        logger.warn(
-                                "Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/lealone/Operations",
-                                bootstrapTokens);
-                    else
-                        logger.info("Generated random tokens. tokens are {}", bootstrapTokens);
-                } else {
-                    bootstrapTokens = new ArrayList<Token>(initialTokens.size());
-                    for (String token : initialTokens)
-                        bootstrapTokens.add(getPartitioner().getTokenFactory().fromString(token));
-                    logger.info("Saved tokens not found. Using configuration value: {}", bootstrapTokens);
-                }
+                bootstrapTokens = BootStrapper.getRandomTokens(tokenMetadata, DatabaseDescriptor.getNumTokens());
+                if (DatabaseDescriptor.getNumTokens() == 1)
+                    logger.warn(
+                            "Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/lealone/Operations",
+                            bootstrapTokens);
+                else
+                    logger.info("Generated random tokens. tokens are {}", bootstrapTokens);
             } else {
                 if (bootstrapTokens.size() != DatabaseDescriptor.getNumTokens())
                     throw new ConfigurationException("Cannot change the number of tokens from " + bootstrapTokens.size() + " to "

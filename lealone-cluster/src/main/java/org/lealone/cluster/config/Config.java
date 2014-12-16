@@ -57,8 +57,6 @@ public class Config {
     public DiskFailurePolicy disk_failure_policy = DiskFailurePolicy.ignore;
     public CommitFailurePolicy commit_failure_policy = CommitFailurePolicy.stop;
 
-    /* initial token in the ring */
-    public String initial_token;
     public Integer num_tokens = 1;
 
     public volatile Long request_timeout_in_ms = 10000L;

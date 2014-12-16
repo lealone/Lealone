@@ -429,10 +429,6 @@ public class DatabaseDescriptor {
         if (conf.concurrent_compactors <= 0)
             throw new ConfigurationException("concurrent_compactors should be strictly greater than 0");
 
-        if (conf.initial_token != null)
-            for (String token : tokensFromString(conf.initial_token))
-                partitioner.getTokenFactory().validate(token);
-
         if (conf.num_tokens == null)
             conf.num_tokens = 1;
         else if (conf.num_tokens > MAX_NUM_TOKENS)
@@ -643,10 +639,6 @@ public class DatabaseDescriptor {
 
     public static void setBatchSizeFailThresholdInKB(int threshold) {
         conf.batch_size_fail_threshold_in_kb = threshold;
-    }
-
-    public static Collection<String> getInitialTokens() {
-        return tokensFromString(System.getProperty("lealone.initial_token", conf.initial_token));
     }
 
     public static Collection<String> tokensFromString(String tokenString) {
