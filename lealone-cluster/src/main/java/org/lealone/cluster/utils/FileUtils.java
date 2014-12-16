@@ -1,21 +1,15 @@
 package org.lealone.cluster.utils;
 
-import java.io.Closeable;
-import java.io.DataInput;
-import java.io.EOFException;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
+import org.lealone.cluster.io.FSWriteError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import sun.nio.ch.DirectBuffer;
+
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.text.DecimalFormat;
 import java.util.Arrays;
-
-import org.lealone.cluster.io.FSWriteError;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import sun.nio.ch.DirectBuffer;
 
 public class FileUtils {
     private static final Logger logger = LoggerFactory.getLogger(FileUtils.class);
@@ -24,7 +18,7 @@ public class FileUtils {
     private static final double GB = 1024 * 1024 * 1024d;
     private static final double TB = 1024 * 1024 * 1024 * 1024d;
 
-    private static final DecimalFormat df = new DecimalFormat("#.##");
+    // private static final DecimalFormat df = new DecimalFormat("#.##");
     private static final boolean canCleanDirectBuffers;
 
     static {
@@ -100,6 +94,7 @@ public class FileUtils {
     }
 
     public static String stringifyFileSize(double value) {
+        DecimalFormat df = new DecimalFormat("#.##");
         double d;
         if (value >= TB) {
             d = value / TB;
