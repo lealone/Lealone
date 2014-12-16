@@ -19,12 +19,14 @@ package org.lealone.cluster.locator;
 
 import java.lang.reflect.Constructor;
 import java.net.InetAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-
+import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.lealone.cluster.db.ConsistencyLevel;
 import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.db.WriteType;
@@ -40,7 +42,9 @@ import org.lealone.cluster.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.cliffc.high_scale_lib.NonBlockingHashMap;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 
 /**
  * A abstract parent for all replication strategies.
@@ -96,7 +100,7 @@ public abstract class AbstractReplicationStrategy {
      * @param searchPosition the position the natural endpoints are requested for
      * @return a copy of the natural endpoints for the given token
      */
-    public ArrayList<InetAddress> getNaturalEndpoints(RingPosition searchPosition) {
+    public ArrayList<InetAddress> getNaturalEndpoints(RingPosition<?> searchPosition) {
         Token searchToken = searchPosition.getToken();
         Token keyToken = TokenMetadata.firstToken(tokenMetadata.sortedTokens(), searchToken);
         ArrayList<InetAddress> endpoints = getCachedEndpoints(keyToken);
@@ -211,7 +215,7 @@ public abstract class AbstractReplicationStrategy {
             Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
             Map<String, String> strategyOptions) throws ConfigurationException {
         AbstractReplicationStrategy strategy;
-        Class[] parameterTypes = new Class[] { String.class, TokenMetadata.class, IEndpointSnitch.class, Map.class };
+        Class<?>[] parameterTypes = new Class[] { String.class, TokenMetadata.class, IEndpointSnitch.class, Map.class };
         try {
             Constructor<? extends AbstractReplicationStrategy> constructor = strategyClass.getConstructor(parameterTypes);
             strategy = constructor.newInstance(keyspaceName, tokenMetadata, snitch, strategyOptions);
@@ -272,7 +276,7 @@ public abstract class AbstractReplicationStrategy {
     }
 
     private void validateExpectedOptions() throws ConfigurationException {
-        Collection expectedOptions = recognizedOptions();
+        Collection<?> expectedOptions = recognizedOptions();
         if (expectedOptions == null)
             return;
 

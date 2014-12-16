@@ -19,8 +19,8 @@ package org.lealone.cluster.locator;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -41,23 +41,27 @@ public class LocalStrategy extends AbstractReplicationStrategy {
      * LocalStrategy may be used before tokens are set up.
      */
     @Override
-    public ArrayList<InetAddress> getNaturalEndpoints(RingPosition searchPosition) {
+    public ArrayList<InetAddress> getNaturalEndpoints(RingPosition<?> searchPosition) {
         ArrayList<InetAddress> l = new ArrayList<InetAddress>(1);
         l.add(FBUtilities.getBroadcastAddress());
         return l;
     }
 
+    @Override
     public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata) {
         return Collections.singletonList(FBUtilities.getBroadcastAddress());
     }
 
+    @Override
     public int getReplicationFactor() {
         return 1;
     }
 
+    @Override
     public void validateOptions() throws ConfigurationException {
     }
 
+    @Override
     public Collection<String> recognizedOptions() {
         // LocalStrategy doesn't expect any options.
         return Collections.<String> emptySet();

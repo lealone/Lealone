@@ -19,14 +19,24 @@ package org.lealone.cluster.locator;
 
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import com.google.common.collect.*;
 import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.dht.Range;
@@ -38,6 +48,17 @@ import org.lealone.cluster.utils.Pair;
 import org.lealone.cluster.utils.SortedBiMultiValMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.AbstractIterator;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Sets;
 
 public class TokenMetadata {
     private static final Logger logger = LoggerFactory.getLogger(TokenMetadata.class);
@@ -92,6 +113,7 @@ public class TokenMetadata {
     private final Topology topology;
 
     private static final Comparator<InetAddress> inetaddressCmp = new Comparator<InetAddress>() {
+        @Override
         public int compare(InetAddress o1, InetAddress o2) {
             return ByteBuffer.wrap(o1.getAddress()).compareTo(ByteBuffer.wrap(o2.getAddress()));
         }
@@ -523,7 +545,7 @@ public class TokenMetadata {
         return ranges;
     }
 
-    @Deprecated
+    //@Deprecated
     public Range<Token> getPrimaryRangeFor(Token right) {
         return getPrimaryRangesFor(Arrays.asList(right)).iterator().next();
     }
@@ -658,17 +680,17 @@ public class TokenMetadata {
     }
 
     public Token getPredecessor(Token token) {
-        List tokens = sortedTokens();
+        List<Token> tokens = sortedTokens();
         int index = Collections.binarySearch(tokens, token);
         assert index >= 0 : token + " not found in " + StringUtils.join(tokenToEndpointMap.keySet(), ", ");
-        return (Token) (index == 0 ? tokens.get(tokens.size() - 1) : tokens.get(index - 1));
+        return index == 0 ? tokens.get(tokens.size() - 1) : tokens.get(index - 1);
     }
 
     public Token getSuccessor(Token token) {
-        List tokens = sortedTokens();
+        List<Token> tokens = sortedTokens();
         int index = Collections.binarySearch(tokens, token);
         assert index >= 0 : token + " not found in " + StringUtils.join(tokenToEndpointMap.keySet(), ", ");
-        return (Token) ((index == (tokens.size() - 1)) ? tokens.get(0) : tokens.get(index + 1));
+        return (index == (tokens.size() - 1)) ? tokens.get(0) : tokens.get(index + 1);
     }
 
     /** @return a copy of the bootstrapping tokens map */
@@ -713,7 +735,7 @@ public class TokenMetadata {
         }
     }
 
-    public static int firstTokenIndex(final ArrayList ring, Token start, boolean insertMin) {
+    public static int firstTokenIndex(final ArrayList<Token> ring, Token start, boolean insertMin) {
         assert ring.size() > 0;
         // insert the minimum token (at index == -1) if we were asked to include it and it isn't a member of the ring
         int i = Collections.binarySearch(ring, start);
@@ -744,6 +766,7 @@ public class TokenMetadata {
         return new AbstractIterator<Token>() {
             int j = startIndex;
 
+            @Override
             protected Token computeNext() {
                 if (j < -1)
                     return endOfData();
@@ -783,6 +806,7 @@ public class TokenMetadata {
         }
     }
 
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         lock.readLock().lock();
@@ -860,6 +884,7 @@ public class TokenMetadata {
     /**
      * @deprecated retained for benefit of old tests
      */
+    @Deprecated
     public Collection<InetAddress> getWriteEndpoints(Token token, String keyspaceName, Collection<InetAddress> naturalEndpoints) {
         return ImmutableList.copyOf(Iterables.concat(naturalEndpoints, pendingEndpointsFor(token, keyspaceName)));
     }
