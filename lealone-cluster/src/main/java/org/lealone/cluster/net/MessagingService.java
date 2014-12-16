@@ -54,7 +54,6 @@ import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.cluster.db.ConsistencyLevel;
 import org.lealone.cluster.db.IMutation;
-import org.lealone.cluster.dht.BootStrapper;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.EchoMessage;
 import org.lealone.cluster.gms.GossipDigestAck;
@@ -106,28 +105,35 @@ public final class MessagingService implements MessagingServiceMBean {
 
     /* All verb handler identifiers */
     public enum Verb {
-        MUTATION, @Deprecated
-        BINARY, READ_REPAIR, READ, REQUEST_RESPONSE, // client-initiated reads and writes
-        @Deprecated
-        STREAM_INITIATE, @Deprecated
-        STREAM_INITIATE_DONE, @Deprecated
-        STREAM_REPLY, @Deprecated
-        STREAM_REQUEST, RANGE_SLICE, @Deprecated
-        BOOTSTRAP_TOKEN, @Deprecated
-        TREE_REQUEST, @Deprecated
-        TREE_RESPONSE, @Deprecated
-        JOIN, GOSSIP_DIGEST_SYN, GOSSIP_DIGEST_ACK, GOSSIP_DIGEST_ACK2, @Deprecated
-        DEFINITIONS_ANNOUNCE, DEFINITIONS_UPDATE, TRUNCATE, SCHEMA_CHECK, @Deprecated
-        INDEX_SCAN, REPLICATION_FINISHED, INTERNAL_RESPONSE, // responses to internal calls
-        COUNTER_MUTATION, @Deprecated
-        STREAMING_REPAIR_REQUEST, @Deprecated
-        STREAMING_REPAIR_RESPONSE, SNAPSHOT, // Similar to nt snapshot
-        MIGRATION_REQUEST, GOSSIP_SHUTDOWN, _TRACE, // dummy verb so we can use MS.droppedMessages
-        ECHO, REPAIR_MESSAGE,
+        MUTATION, //
+        READ_REPAIR,
+        READ,
+        REQUEST_RESPONSE, // client-initiated reads and writes
+        RANGE_SLICE,
+        GOSSIP_DIGEST_SYN,
+        GOSSIP_DIGEST_ACK,
+        GOSSIP_DIGEST_ACK2,
+        DEFINITIONS_UPDATE,
+        TRUNCATE,
+        SCHEMA_CHECK,
+        REPLICATION_FINISHED,
+        INTERNAL_RESPONSE, // responses to internal calls
+        COUNTER_MUTATION,
+        SNAPSHOT, // Similar to nt snapshot
+        MIGRATION_REQUEST,
+        GOSSIP_SHUTDOWN,
+        _TRACE, // dummy verb so we can use MS.droppedMessages
+        ECHO,
+        REPAIR_MESSAGE,
         // use as padding for backwards compatability where a previous version needs to validate a verb from the future.
-        PAXOS_PREPARE, PAXOS_PROPOSE, PAXOS_COMMIT, PAGED_RANGE,
+        PAXOS_PREPARE,
+        PAXOS_PROPOSE,
+        PAXOS_COMMIT,
+        PAGED_RANGE,
         // remember to add new verbs at the end, since we serialize by ordinal
-        UNUSED_1, UNUSED_2, UNUSED_3, ;
+        UNUSED_1,
+        UNUSED_2,
+        UNUSED_3, ;
     }
 
     public static final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(
@@ -143,21 +149,14 @@ public final class MessagingService implements MessagingServiceMBean {
 
             put(Verb.READ, Stage.READ);
             put(Verb.RANGE_SLICE, Stage.READ);
-            put(Verb.INDEX_SCAN, Stage.READ);
             put(Verb.PAGED_RANGE, Stage.READ);
 
             put(Verb.REQUEST_RESPONSE, Stage.REQUEST_RESPONSE);
             put(Verb.INTERNAL_RESPONSE, Stage.INTERNAL_RESPONSE);
 
-            put(Verb.STREAM_REPLY, Stage.MISC); // actually handled by FileStreamTask and streamExecutors
-            put(Verb.STREAM_REQUEST, Stage.MISC);
             put(Verb.REPLICATION_FINISHED, Stage.MISC);
             put(Verb.SNAPSHOT, Stage.MISC);
 
-            put(Verb.TREE_REQUEST, Stage.ANTI_ENTROPY);
-            put(Verb.TREE_RESPONSE, Stage.ANTI_ENTROPY);
-            put(Verb.STREAMING_REPAIR_REQUEST, Stage.ANTI_ENTROPY);
-            put(Verb.STREAMING_REPAIR_RESPONSE, Stage.ANTI_ENTROPY);
             put(Verb.REPAIR_MESSAGE, Stage.ANTI_ENTROPY);
             put(Verb.GOSSIP_DIGEST_ACK, Stage.GOSSIP);
             put(Verb.GOSSIP_DIGEST_ACK2, Stage.GOSSIP);
@@ -167,7 +166,6 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.DEFINITIONS_UPDATE, Stage.MIGRATION);
             put(Verb.SCHEMA_CHECK, Stage.MIGRATION);
             put(Verb.MIGRATION_REQUEST, Stage.MIGRATION);
-            put(Verb.INDEX_SCAN, Stage.READ);
             put(Verb.REPLICATION_FINISHED, Stage.MISC);
             put(Verb.COUNTER_MUTATION, Stage.MUTATION);
             put(Verb.SNAPSHOT, Stage.MISC);
@@ -233,7 +231,6 @@ public final class MessagingService implements MessagingServiceMBean {
 
             //put(Verb.MIGRATION_REQUEST, MigrationManager.MigrationsSerializer.instance);
             put(Verb.SCHEMA_CHECK, UUIDSerializer.serializer);
-            put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
             put(Verb.REPLICATION_FINISHED, null);
 
             //            put(Verb.PAXOS_PREPARE, PrepareResponse.serializer);
@@ -283,8 +280,8 @@ public final class MessagingService implements MessagingServiceMBean {
      * all correspond to client requests or something triggered by them; we don't want to
      * drop internal messages like bootstrap or repair notifications.
      */
-    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb.BINARY, Verb._TRACE, Verb.MUTATION,
-            Verb.COUNTER_MUTATION, Verb.READ_REPAIR, Verb.READ, Verb.RANGE_SLICE, Verb.PAGED_RANGE, Verb.REQUEST_RESPONSE);
+    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb._TRACE, Verb.MUTATION, Verb.COUNTER_MUTATION,
+            Verb.READ_REPAIR, Verb.READ, Verb.RANGE_SLICE, Verb.PAGED_RANGE, Verb.REQUEST_RESPONSE);
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<Verb, DroppedMessageMetrics>(Verb.class);

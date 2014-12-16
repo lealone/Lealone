@@ -17,8 +17,6 @@
  */
 package org.lealone.cluster.dht;
 
-import java.io.DataInput;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,10 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.exceptions.ConfigurationException;
-import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.locator.TokenMetadata;
 import org.lealone.cluster.service.StorageService;
 import org.slf4j.Logger;
@@ -116,24 +111,5 @@ public class BootStrapper {
                 tokens.add(token);
         }
         return tokens;
-    }
-
-    public static class StringSerializer implements IVersionedSerializer<String> {
-        public static final StringSerializer instance = new StringSerializer();
-
-        @Override
-        public void serialize(String s, DataOutputPlus out, int version) throws IOException {
-            out.writeUTF(s);
-        }
-
-        @Override
-        public String deserialize(DataInput in, int version) throws IOException {
-            return in.readUTF();
-        }
-
-        @Override
-        public long serializedSize(String s, int version) {
-            return TypeSizes.NATIVE.sizeof(s);
-        }
     }
 }
