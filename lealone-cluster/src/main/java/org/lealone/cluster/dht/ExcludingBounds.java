@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.lealone.cluster.db.RowPosition;
-import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Pair;
 
 /**
@@ -34,10 +33,12 @@ public class ExcludingBounds<T extends RingPosition<T>> extends AbstractBounds<T
         assert left.compareTo(right) < 0 || right.isMinimum() : "(" + left + "," + right + ")";
     }
 
+    @Override
     public boolean contains(T position) {
         return Range.contains(left, right, position) && !right.equals(position);
     }
 
+    @Override
     public Pair<AbstractBounds<T>, AbstractBounds<T>> split(T position) {
         assert contains(position) || left.equals(position);
         if (left.equals(position))
@@ -47,11 +48,13 @@ public class ExcludingBounds<T extends RingPosition<T>> extends AbstractBounds<T
         return Pair.create(lb, rb);
     }
 
+    @Override
     public List<? extends AbstractBounds<T>> unwrap() {
         // ExcludingBounds objects never wrap
         return Collections.<AbstractBounds<T>> singletonList(this);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object o) {
         if (!(o instanceof ExcludingBounds))
@@ -65,10 +68,12 @@ public class ExcludingBounds<T extends RingPosition<T>> extends AbstractBounds<T
         return "(" + left + "," + right + ")";
     }
 
+    @Override
     protected String getOpeningString() {
         return "(";
     }
 
+    @Override
     protected String getClosingString() {
         return ")";
     }
@@ -80,17 +85,20 @@ public class ExcludingBounds<T extends RingPosition<T>> extends AbstractBounds<T
         return new ExcludingBounds<RowPosition>(left.maxKeyBound(), right.minKeyBound());
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public AbstractBounds<RowPosition> toRowBounds() {
         return (left instanceof Token) ? makeRowBounds((Token) left, (Token) right) : (ExcludingBounds<RowPosition>) this;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public AbstractBounds<Token> toTokenBounds() {
         return (left instanceof RowPosition) ? new ExcludingBounds<Token>(((RowPosition) left).getToken(),
                 ((RowPosition) right).getToken()) : (ExcludingBounds<Token>) this;
     }
 
+    @Override
     public AbstractBounds<T> withNewRight(T newRight) {
         return new ExcludingBounds<T>(left, newRight);
     }

@@ -18,7 +18,15 @@
 package org.lealone.cluster.dht;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.lealone.cluster.db.RowPosition;
@@ -86,6 +94,7 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
      * @param point point in question
      * @return true if the point contains within the range else false.
      */
+    @Override
     public boolean contains(T point) {
         return contains(left, right, point);
     }
@@ -134,6 +143,7 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
      * say you have nodes G and M, with query range (D,T]; the intersection is (M-T] and (D-G].
      * If there is no intersection, an empty list is returned.
      */
+    @SuppressWarnings("unchecked")
     public Set<Range<T>> intersectionWith(Range<T> that) {
         if (that.contains(this))
             return rangeSet(this);
@@ -186,6 +196,7 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         return Collections.unmodifiableSet(intersection);
     }
 
+    @Override
     public Pair<AbstractBounds<T>, AbstractBounds<T>> split(T position) {
         assert contains(position) || left.equals(position);
         // Check if the split would have no effect on the range
@@ -197,6 +208,7 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         return Pair.create(lb, rb);
     }
 
+    @Override
     public List<Range<T>> unwrap() {
         T minValue = right.minValue();
         if (!isWrapAround() || right.equals(minValue))
@@ -214,6 +226,7 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         return left.compareTo(right) >= 0;
     }
 
+    @Override
     public int compareTo(Range<T> rhs) {
         /*
          * If the range represented by the "this" pointer
@@ -265,7 +278,7 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
             result.add(rhs);
         } else {
             @SuppressWarnings("unchecked")
-            Range<T>[] intersections = (Range<T>[]) new Range[intersectionSet.size()];
+            Range<T>[] intersections = new Range[intersectionSet.size()];
             intersectionSet.toArray(intersections);
             if (intersections.length == 1) {
                 result = new HashSet<Range<T>>(rhs.subtractContained(intersections[0]));
@@ -308,10 +321,12 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         return "(" + left + "," + right + "]";
     }
 
+    @Override
     protected String getOpeningString() {
         return "(";
     }
 
+    @Override
     protected String getClosingString() {
         return "]";
     }
@@ -338,6 +353,7 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
 
         // sort by left
         Collections.sort(output, new Comparator<Range<T>>() {
+            @Override
             public int compare(Range<T> b1, Range<T> b2) {
                 return b1.left.compareTo(b2.left);
             }
@@ -360,7 +376,7 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         Iterator<Range<T>> iter = ranges.iterator();
         Range<T> current = iter.next();
 
-        T min = (T) current.left.minValue();
+        T min = current.left.minValue();
         while (iter.hasNext()) {
             // If current goes to the end of the ring, we're done
             if (current.right.equals(min)) {
@@ -397,17 +413,20 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         return new Range<RowPosition>(left.maxKeyBound(), right.maxKeyBound());
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public AbstractBounds<RowPosition> toRowBounds() {
         return (left instanceof Token) ? makeRowRange((Token) left, (Token) right) : (Range<RowPosition>) this;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public AbstractBounds<Token> toTokenBounds() {
         return (left instanceof RowPosition) ? new Range<Token>(((RowPosition) left).getToken(), ((RowPosition) right).getToken())
                 : (Range<Token>) this;
     }
 
+    @Override
     public AbstractBounds<T> withNewRight(T newRight) {
         return new Range<T>(left, newRight);
     }

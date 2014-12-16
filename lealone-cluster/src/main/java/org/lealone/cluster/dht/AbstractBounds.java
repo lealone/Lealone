@@ -20,7 +20,7 @@ package org.lealone.cluster.dht;
 import java.io.DataInput;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.*;
+import java.util.List;
 
 import org.lealone.cluster.db.DecoratedKey;
 import org.lealone.cluster.db.RowPosition;
@@ -112,6 +112,7 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
     public abstract AbstractBounds<T> withNewRight(T newRight);
 
     public static class AbstractBoundsSerializer implements IVersionedSerializer<AbstractBounds<?>> {
+        @Override
         public void serialize(AbstractBounds<?> range, DataOutputPlus out, int version) throws IOException {
             /*
              * The first int tells us if it's a range or bounds (depending on the value) _and_ if it's tokens or keys (depending on the
@@ -134,6 +135,8 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
             return kind;
         }
 
+        @SuppressWarnings({ "rawtypes", "unchecked" })
+        @Override
         public AbstractBounds<?> deserialize(DataInput in, int version) throws IOException {
             int kind = in.readInt();
             boolean isToken = kind >= 0;
@@ -154,6 +157,7 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
             return new Bounds(left, right);
         }
 
+        @Override
         public long serializedSize(AbstractBounds<?> ab, int version) {
             int size = TypeSizes.NATIVE.sizeof(kindInt(ab));
             if (ab.left instanceof Token) {
