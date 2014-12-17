@@ -7,15 +7,19 @@
 		<version>1.0.0</version>
 	</parent>
 
-	<artifactId>lealone-cassandra</artifactId>
+	<artifactId>lealone-test-cassandra</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
-	<name>lealone cassandra</name>
+	<name>lealone test cassandra</name>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-server</artifactId>
+			<artifactId>lealone-test-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.lealone</groupId>
+			<artifactId>lealone-cassandra</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.cassandra</groupId>

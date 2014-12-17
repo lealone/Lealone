@@ -17,6 +17,7 @@
 			<groupId>org.lealone</groupId>
 			<artifactId>lealone-server</artifactId>
 		</dependency>
+
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>

@@ -22,7 +22,10 @@
 		<module>lealone-cbase</module>
 		<module>lealone-hbase</module>
 		<module>lealone-cassandra</module>
-		<module>lealone-test</module>
+		<module>lealone-test-common</module>
+		<module>lealone-test-cbase</module>
+		<module>lealone-test-hbase</module>
+		<module>lealone-test-cassandra</module>
 	</modules>
 
 	<build>
@@ -134,6 +137,16 @@
 				<artifactId>lealone-cassandra</artifactId>
 				<version>${lealone.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-cluster</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-test-common</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
 
 			<dependency>
 				<groupId>commons-logging</groupId>
@@ -157,6 +170,12 @@
 				<groupId>org.apache.hadoop</groupId>
 				<artifactId>hadoop-core</artifactId>
 				<version>1.0.4</version>
+				<scope>provided</scope>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.cassandra</groupId>
+				<artifactId>cassandra-all</artifactId>
+				<version>2.1.1</version>
 				<scope>provided</scope>
 			</dependency>
 		</dependencies>
