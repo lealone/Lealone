@@ -17,13 +17,10 @@
  */
 package org.lealone.cluster.concurrent;
 
-import java.lang.management.ManagementFactory;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
 import org.lealone.cluster.metrics.ThreadPoolMetrics;
 
@@ -33,58 +30,42 @@ import org.lealone.cluster.metrics.ThreadPoolMetrics;
  * Runtime Exceptions.
  */
 
-public class JMXEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor {
-    private final String mbeanName;
+public class MetricsEnabledThreadPoolExecutor extends DebuggableThreadPoolExecutor {
     private final ThreadPoolMetrics metrics;
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName) {
+    public MetricsEnabledThreadPoolExecutor(String threadPoolName) {
         this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName),
                 "internal");
     }
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName, String jmxPath) {
+    public MetricsEnabledThreadPoolExecutor(String threadPoolName, String jmxPath) {
         this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName),
                 jmxPath);
     }
 
-    public JMXEnabledThreadPoolExecutor(String threadPoolName, int priority) {
+    public MetricsEnabledThreadPoolExecutor(String threadPoolName, int priority) {
         this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName,
                 priority), "internal");
     }
 
-    public JMXEnabledThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue,
+    public MetricsEnabledThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue,
             NamedThreadFactory threadFactory, String jmxPath) {
         this(corePoolSize, corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath);
     }
 
-    public JMXEnabledThreadPoolExecutor(int corePoolSize, int maxPoolSize, long keepAliveTime, TimeUnit unit,
+    public MetricsEnabledThreadPoolExecutor(int corePoolSize, int maxPoolSize, long keepAliveTime, TimeUnit unit,
             BlockingQueue<Runnable> workQueue, NamedThreadFactory threadFactory, String jmxPath) {
         super(corePoolSize, maxPoolSize, keepAliveTime, unit, workQueue, threadFactory);
         super.prestartAllCoreThreads();
 
         metrics = new ThreadPoolMetrics(this, jmxPath, threadFactory.id);
-
-        MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-        mbeanName = "org.apache.lealone." + jmxPath + ":type=" + threadFactory.id;
-
-        try {
-            mbs.registerMBean(this, new ObjectName(mbeanName));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
-    public JMXEnabledThreadPoolExecutor(Stage stage) {
+    public MetricsEnabledThreadPoolExecutor(Stage stage) {
         this(stage.getJmxName(), stage.getJmxType());
     }
 
     private void unregisterMBean() {
-        try {
-            ManagementFactory.getPlatformMBeanServer().unregisterMBean(new ObjectName(mbeanName));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
         // release metrics
         metrics.release();
     }

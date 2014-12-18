@@ -81,6 +81,9 @@ public class LealoneStandalone extends YamlConfigurationLoader {
 
         System.setProperty("lealone.unsafesystem", "true"); //不要每次更新元数据就刷新到硬盘，产生大量文件，只在测试时用
 
+        System.setProperty("java.io.tmpdir", "./lealone-test-data/tmp");
+        System.setProperty("lealone.base.dir", "./lealone-test-data/cbase");
+
         LealoneDaemon.main(args);
     }
 

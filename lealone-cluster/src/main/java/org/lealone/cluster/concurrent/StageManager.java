@@ -55,10 +55,10 @@ public class StageManager {
                 multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, FBUtilities.getAvailableProcessors()));
         stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors()));
         // the rest are all single-threaded
-        stages.put(Stage.GOSSIP, new JMXEnabledThreadPoolExecutor(Stage.GOSSIP));
-        stages.put(Stage.ANTI_ENTROPY, new JMXEnabledThreadPoolExecutor(Stage.ANTI_ENTROPY));
-        stages.put(Stage.MIGRATION, new JMXEnabledThreadPoolExecutor(Stage.MIGRATION));
-        stages.put(Stage.MISC, new JMXEnabledThreadPoolExecutor(Stage.MISC));
+        stages.put(Stage.GOSSIP, new MetricsEnabledThreadPoolExecutor(Stage.GOSSIP));
+        stages.put(Stage.ANTI_ENTROPY, new MetricsEnabledThreadPoolExecutor(Stage.ANTI_ENTROPY));
+        stages.put(Stage.MIGRATION, new MetricsEnabledThreadPoolExecutor(Stage.MIGRATION));
+        stages.put(Stage.MISC, new MetricsEnabledThreadPoolExecutor(Stage.MISC));
         stages.put(Stage.READ_REPAIR, multiThreadedStage(Stage.READ_REPAIR, FBUtilities.getAvailableProcessors()));
         stages.put(Stage.TRACING, tracingExecutor());
     }
@@ -74,13 +74,13 @@ public class StageManager {
                 new NamedThreadFactory(Stage.TRACING.getJmxName()), reh);
     }
 
-    private static JMXEnabledThreadPoolExecutor multiThreadedStage(Stage stage, int numThreads) {
-        return new JMXEnabledThreadPoolExecutor(numThreads, KEEPALIVE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
+    private static MetricsEnabledThreadPoolExecutor multiThreadedStage(Stage stage, int numThreads) {
+        return new MetricsEnabledThreadPoolExecutor(numThreads, KEEPALIVE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
                 new NamedThreadFactory(stage.getJmxName()), stage.getJmxType());
     }
 
     private static TracingAwareExecutorService multiThreadedLowSignalStage(Stage stage, int numThreads) {
-        return JMXEnabledSharedExecutorPool.SHARED.newExecutor(numThreads, Integer.MAX_VALUE, stage.getJmxName(),
+        return MetricsEnabledSharedExecutorPool.SHARED.newExecutor(numThreads, Integer.MAX_VALUE, stage.getJmxName(),
                 stage.getJmxType());
     }
 

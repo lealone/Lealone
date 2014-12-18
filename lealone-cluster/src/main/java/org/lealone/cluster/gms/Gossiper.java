@@ -45,7 +45,7 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.lealone.cluster.concurrent.DebuggableScheduledThreadPoolExecutor;
-import org.lealone.cluster.concurrent.JMXEnabledThreadPoolExecutor;
+import org.lealone.cluster.concurrent.MetricsEnabledThreadPoolExecutor;
 import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.concurrent.StageManager;
 import org.lealone.cluster.config.DatabaseDescriptor;
@@ -627,7 +627,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         long now = System.currentTimeMillis();
         long nowNano = System.nanoTime();
 
-        long pending = ((JMXEnabledThreadPoolExecutor) StageManager.getStage(Stage.GOSSIP)).getPendingTasks();
+        long pending = ((MetricsEnabledThreadPoolExecutor) StageManager.getStage(Stage.GOSSIP)).getPendingTasks();
         if (pending > 0 && lastProcessedMessageAt < now - 1000) {
             // if some new messages just arrived, give the executor some time to work on them
             Uninterruptibles.sleepUninterruptibly(100, TimeUnit.MILLISECONDS);

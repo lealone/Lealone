@@ -24,7 +24,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.cluster.concurrent.JMXEnabledThreadPoolExecutor;
+import org.lealone.cluster.concurrent.MetricsEnabledThreadPoolExecutor;
 import org.lealone.cluster.concurrent.NamedThreadFactory;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.slf4j.Logger;
@@ -34,7 +34,7 @@ public class PendingRangeCalculatorService {
     public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService();
 
     private static Logger logger = LoggerFactory.getLogger(PendingRangeCalculatorService.class);
-    private final JMXEnabledThreadPoolExecutor executor = new JMXEnabledThreadPoolExecutor(1, Integer.MAX_VALUE,
+    private final MetricsEnabledThreadPoolExecutor executor = new MetricsEnabledThreadPoolExecutor(1, Integer.MAX_VALUE,
             TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(1), new NamedThreadFactory("PendingRangeCalculator"), "internal");
 
     private final AtomicInteger updateJobs = new AtomicInteger(0);

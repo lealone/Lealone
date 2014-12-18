@@ -17,9 +17,14 @@
  */
 package org.lealone.cluster.concurrent;
 
-@SuppressWarnings("deprecation")
-public interface JMXConfigurableThreadPoolExecutorMBean extends JMXEnabledThreadPoolExecutorMBean {
-    void setCorePoolSize(int n);
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
-    int getCorePoolSize();
+public class ConfigurableThreadPoolExecutor extends MetricsEnabledThreadPoolExecutor {
+
+    public ConfigurableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit,
+            BlockingQueue<Runnable> workQueue, NamedThreadFactory threadFactory, String jmxPath) {
+        super(corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath);
+    }
+
 }
