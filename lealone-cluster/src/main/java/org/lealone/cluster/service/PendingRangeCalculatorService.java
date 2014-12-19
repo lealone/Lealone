@@ -26,6 +26,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.cluster.concurrent.MetricsEnabledThreadPoolExecutor;
 import org.lealone.cluster.concurrent.NamedThreadFactory;
+import org.lealone.cluster.config.Schema;
+import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,13 +53,15 @@ public class PendingRangeCalculatorService {
     private static class PendingRangeTask implements Runnable {
         @Override
         public void run() {
-            //            long start = System.currentTimeMillis();
-            //            for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
-            //            {
-            //                calculatePendingRanges(Keyspace.open(keyspaceName).getReplicationStrategy(), keyspaceName);
-            //            }
-            //            PendingRangeCalculatorService.instance.finishUpdate();
-            //            logger.debug("finished calculation for {} keyspaces in {}ms", Schema.instance.getNonSystemKeyspaces().size(), System.currentTimeMillis() - start);
+            long start = System.currentTimeMillis();
+            for (String keyspaceName : Schema.instance.getNonSystemKeyspaces()) {
+                calculatePendingRanges(Keyspace.open(keyspaceName).getReplicationStrategy(), keyspaceName);
+            }
+            PendingRangeCalculatorService.instance.finishUpdate();
+
+            if (logger.isDebugEnabled())
+                logger.debug("finished calculation for {} keyspaces in {}ms", Schema.instance.getNonSystemKeyspaces().size(),
+                        System.currentTimeMillis() - start);
         }
     }
 

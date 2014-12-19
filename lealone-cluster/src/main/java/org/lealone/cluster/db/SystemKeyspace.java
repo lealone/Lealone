@@ -9,11 +9,15 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.service.StorageService;
 import org.slf4j.Logger;
@@ -88,8 +92,41 @@ public class SystemKeyspace {
 
     }
 
+    public static BootstrapState getBootstrapState() {
+        String req = "SELECT bootstrapped FROM %s WHERE key='%s'";
+        try {
+            ResultSet rs = stmt.executeQuery(String.format(req, LOCAL_TABLE, LOCAL_KEY));
+            if (rs.next()) {
+                String bootstrapped = rs.getString(1);
+                if (bootstrapped != null) {
+                    rs.close();
+                    return BootstrapState.valueOf(bootstrapped);
+                }
+            }
+            rs.close();
+        } catch (Exception e) {
+            handleException(e);
+        }
+
+        return BootstrapState.NEEDS_BOOTSTRAP;
+    }
+
     public static boolean bootstrapComplete() {
-        return false;
+        return getBootstrapState() == BootstrapState.COMPLETED;
+    }
+
+    public static boolean bootstrapInProgress() {
+        return getBootstrapState() == BootstrapState.IN_PROGRESS;
+    }
+
+    public static void setBootstrapState(BootstrapState state) {
+        //String req = "INSERT INTO %s (key, bootstrapped) VALUES ('%s', '%s')";
+        String req = "UPDATE %s SET bootstrapped = '%s' WHERE key = '%s'";
+        try {
+            stmt.executeUpdate(String.format(req, LOCAL_TABLE, state.name(), LOCAL_KEY));
+        } catch (SQLException e) {
+            handleException(e);
+        }
     }
 
     private static Collection<Token> deserializeTokens(Collection<String> tokensStrings) {
@@ -155,7 +192,24 @@ public class SystemKeyspace {
     }
 
     public static Collection<Token> getSavedTokens() {
-        return null;
+        String req = "SELECT tokens FROM %s WHERE key='%s'";
+
+        try {
+            ResultSet rs = stmt.executeQuery(String.format(req, LOCAL_TABLE, LOCAL_KEY));
+            if (rs.next()) {
+                String tokens = rs.getString(1);
+                if (tokens != null) {
+                    List<String> list = Arrays.asList(tokens.split(","));
+                    rs.close();
+                    return deserializeTokens(list);
+                }
+            }
+            rs.close();
+        } catch (Exception e) {
+            handleException(e);
+        }
+
+        return Collections.<Token> emptyList();
     }
 
     public static UUID getLocalHostId() {
@@ -232,18 +286,25 @@ public class SystemKeyspace {
         return generation;
     }
 
-    public static boolean bootstrapInProgress() {
-        return true;
-    }
-
-    public static void setBootstrapState(BootstrapState state) {
-
-    }
-
     public static synchronized void updateTokens(InetAddress ep, Collection<Token> tokens) {
     }
 
     public static synchronized void updateTokens(Collection<Token> tokens) {
+        assert !tokens.isEmpty() : "removeEndpoint should be used instead";
+        String req = "UPDATE %s SET tokens = '%s' WHERE key = '%s'";
+        try {
+            stmt.executeUpdate(String.format(req, LOCAL_TABLE, StringUtils.join(tokensAsSet(tokens), ','), LOCAL_KEY));
+        } catch (SQLException e) {
+            handleException(e);
+        }
+    }
+
+    private static Set<String> tokensAsSet(Collection<Token> tokens) {
+        Token.TokenFactory factory = StorageService.getPartitioner().getTokenFactory();
+        Set<String> s = new HashSet<>(tokens.size());
+        for (Token tk : tokens)
+            s.add(factory.toString(tk));
+        return s;
     }
 
     public static synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value) {

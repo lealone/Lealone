@@ -43,12 +43,15 @@ public class LealoneStandalone extends YamlConfigurationLoader {
     @Override
     public Config loadConfig() throws ConfigurationException {
 
-        this.dir = "my-test-data/" + dir + "/";
+        this.dir = "lealone-test-data/" + dir + "/";
         Config config = super.loadConfig();
         config.listen_address = listen_address;
         config.commitlog_directory = dir + "commitlog";
         config.saved_caches_directory = dir + "saved_caches";
         config.data_file_directories = new String[] { dir + "data" };
+
+        System.setProperty("java.io.tmpdir", "./" + config.data_file_directories[0] + "/tmp");
+        System.setProperty("lealone.base.dir", "./" + config.data_file_directories[0] + "/cbase");
 
         //config.dynamic_snitch_update_interval_in_ms = 100000;
         return config;
@@ -80,9 +83,6 @@ public class LealoneStandalone extends YamlConfigurationLoader {
         System.setProperty("lealone.ring_delay_ms", "5000");
 
         System.setProperty("lealone.unsafesystem", "true"); //不要每次更新元数据就刷新到硬盘，产生大量文件，只在测试时用
-
-        System.setProperty("java.io.tmpdir", "./lealone-test-data/tmp");
-        System.setProperty("lealone.base.dir", "./lealone-test-data/cbase");
 
         LealoneDaemon.main(args);
     }
