@@ -23,6 +23,7 @@ import org.lealone.cluster.gms.Gossiper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings({ "rawtypes", "unchecked" })
 public class MessageDeliveryTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageDeliveryTask.class);
 
@@ -37,6 +38,7 @@ public class MessageDeliveryTask implements Runnable {
         constructionTime = timestamp;
     }
 
+    @Override
     public void run() {
         MessagingService.Verb verb = message.verb;
         if (MessagingService.DROPPABLE_VERBS.contains(verb)

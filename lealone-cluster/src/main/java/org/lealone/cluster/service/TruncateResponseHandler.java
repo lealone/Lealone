@@ -28,7 +28,7 @@ import org.lealone.cluster.utils.concurrent.SimpleCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TruncateResponseHandler implements IAsyncCallback {
+public class TruncateResponseHandler implements IAsyncCallback<Object> {
     protected static final Logger logger = LoggerFactory.getLogger(TruncateResponseHandler.class);
     protected final SimpleCondition condition = new SimpleCondition();
     private final int responseCount;
@@ -58,12 +58,14 @@ public class TruncateResponseHandler implements IAsyncCallback {
         }
     }
 
-    public void response(MessageIn message) {
+    @Override
+    public void response(MessageIn<Object> message) {
         responses.incrementAndGet();
         if (responses.get() >= responseCount)
             condition.signalAll();
     }
 
+    @Override
     public boolean isLatencyForSnitch() {
         return false;
     }

@@ -57,7 +57,7 @@ public class OutboundTcpConnectionPool {
      * returns the appropriate connection based on message type.
      * returns null if a connection could not be established.
      */
-    OutboundTcpConnection getConnection(MessageOut msg) {
+    OutboundTcpConnection getConnection(MessageOut<?> msg) {
         Stage stage = msg.getStage();
         return stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP ? ackCon : cmdCon;
     }
@@ -94,6 +94,7 @@ public class OutboundTcpConnectionPool {
         return metrics.timeouts.count();
     }
 
+    @SuppressWarnings("deprecation")
     public long getRecentTimeouts() {
         return metrics.getRecentTimeout();
     }

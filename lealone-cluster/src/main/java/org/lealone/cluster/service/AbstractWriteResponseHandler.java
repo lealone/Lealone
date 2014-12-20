@@ -21,18 +21,19 @@ import java.net.InetAddress;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
-import com.google.common.collect.Iterables;
-
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.ConsistencyLevel;
 import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.db.WriteType;
-import org.lealone.cluster.exceptions.*;
+import org.lealone.cluster.exceptions.UnavailableException;
+import org.lealone.cluster.exceptions.WriteTimeoutException;
 import org.lealone.cluster.net.IAsyncCallback;
 import org.lealone.cluster.net.MessageIn;
 import org.lealone.cluster.utils.concurrent.SimpleCondition;
 
-public abstract class AbstractWriteResponseHandler implements IAsyncCallback {
+import com.google.common.collect.Iterables;
+
+public abstract class AbstractWriteResponseHandler implements IAsyncCallback<Object> {
     private final SimpleCondition condition = new SimpleCondition();
     protected final Keyspace keyspace;
     protected final long start;
@@ -90,7 +91,8 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback {
     protected abstract int ackCount();
 
     /** null message means "response from local write" */
-    public abstract void response(MessageIn msg);
+    @Override
+    public abstract void response(MessageIn<Object> msg);
 
     public void assureSufficientLiveNodes() throws UnavailableException {
         consistencyLevel.assureSufficientLiveNodes(keyspace,

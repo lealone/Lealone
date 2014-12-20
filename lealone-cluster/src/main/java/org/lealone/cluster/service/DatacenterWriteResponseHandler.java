@@ -36,7 +36,7 @@ public class DatacenterWriteResponseHandler extends WriteResponseHandler {
     }
 
     @Override
-    public void response(MessageIn message) {
+    public void response(MessageIn<Object> message) {
         if (message == null || consistencyLevel.isLocal(message.from))
             super.response(message);
     }

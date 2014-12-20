@@ -50,6 +50,7 @@ public class MessageIn<T> {
         return new MessageIn<T>(from, payload, parameters, verb, version);
     }
 
+    @SuppressWarnings("unchecked")
     public static <T2> MessageIn<T2> read(DataInput in, int version, int id) throws IOException {
         InetAddress from = CompactEndpointSerializationHelper.deserialize(in);
 

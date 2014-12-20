@@ -37,6 +37,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.Checksum;
 
+import net.jpountz.lz4.LZ4BlockOutputStream;
+import net.jpountz.lz4.LZ4Compressor;
+import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.xxhash.XXHashFactory;
+
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.io.util.DataOutputStreamPlus;
@@ -47,11 +52,6 @@ import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.lealone.cluster.utils.UUIDGen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import net.jpountz.lz4.LZ4BlockOutputStream;
-import net.jpountz.lz4.LZ4Compressor;
-import net.jpountz.lz4.LZ4Factory;
-import net.jpountz.xxhash.XXHashFactory;
 import org.xerial.snappy.SnappyOutputStream;
 
 import com.google.common.util.concurrent.Uninterruptibles;
@@ -59,7 +59,7 @@ import com.google.common.util.concurrent.Uninterruptibles;
 public class OutboundTcpConnection extends Thread {
     private static final Logger logger = LoggerFactory.getLogger(OutboundTcpConnection.class);
 
-    private static final MessageOut CLOSE_SENTINEL = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE);
+    private static final MessageOut<Void> CLOSE_SENTINEL = new MessageOut<>(MessagingService.Verb.INTERNAL_RESPONSE);
     private volatile boolean isStopped = false;
 
     private static final int OPEN_RETRY_DELAY = 100; // ms between retries
@@ -114,6 +114,7 @@ public class OutboundTcpConnection extends Thread {
         return targetVersion;
     }
 
+    @Override
     public void run() {
         // keeping list (batch) size small for now; that way we don't have an unbounded array (that we never resize)
         final List<QueuedMessage> drainedMessages = new ArrayList<>(128);
@@ -223,7 +224,7 @@ public class OutboundTcpConnection extends Thread {
         }
     }
 
-    private void writeInternal(MessageOut message, int id, long timestamp) throws IOException {
+    private void writeInternal(MessageOut<?> message, int id, long timestamp) throws IOException {
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
 
         if (targetVersion < MessagingService.VERSION_20)
@@ -416,6 +417,7 @@ public class OutboundTcpConnection extends Thread {
             super(msg.message, msg.id);
         }
 
+        @Override
         boolean shouldRetry() {
             return false;
         }

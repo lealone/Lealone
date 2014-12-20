@@ -23,6 +23,7 @@ import java.net.InetAddress;
 import org.lealone.cluster.db.ConsistencyLevel;
 import org.lealone.cluster.io.IVersionedSerializer;
 
+@SuppressWarnings({ "rawtypes", "unused" })
 public class WriteCallbackInfo extends CallbackInfo {
     public final MessageOut sentMessage;
     private final ConsistencyLevel consistencyLevel;

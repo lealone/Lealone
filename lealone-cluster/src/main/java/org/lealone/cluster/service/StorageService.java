@@ -44,7 +44,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.MBeanServer;
@@ -77,15 +76,12 @@ import org.lealone.cluster.gms.GossipDigestSynVerbHandler;
 import org.lealone.cluster.gms.GossipShutdownVerbHandler;
 import org.lealone.cluster.gms.Gossiper;
 import org.lealone.cluster.gms.IEndpointStateChangeSubscriber;
-import org.lealone.cluster.gms.IFailureDetector;
 import org.lealone.cluster.gms.TokenSerializer;
 import org.lealone.cluster.gms.VersionedValue;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.locator.TokenMetadata;
 import org.lealone.cluster.metrics.StorageMetrics;
-import org.lealone.cluster.net.AsyncOneResponse;
-import org.lealone.cluster.net.MessageOut;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.net.ResponseVerbHandler;
 import org.lealone.cluster.utils.BackgroundActivityMonitor;
@@ -99,7 +95,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -179,7 +174,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /* Used for tracking drain progress */
     private volatile int totalCFs, remainingCFs;
 
-    private static final AtomicInteger nextRepairCommand = new AtomicInteger();
+    //private static final AtomicInteger nextRepairCommand = new AtomicInteger();
 
     private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
 
@@ -344,10 +339,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
     }
 
-    private void shutdownClientServers() {
-        stopRPCServer();
-        stopNativeTransport();
-    }
+    //    private void shutdownClientServers() {
+    //        stopRPCServer();
+    //        stopNativeTransport();
+    //    }
 
     public void stopClient() {
         Gossiper.instance.unregister(this);
@@ -1124,13 +1119,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      * @param ranges
      * @return mapping of ranges to the replicas responsible for them.
     */
-    private Map<Range<Token>, List<InetAddress>> constructRangeToEndpointMap(String keyspace, List<Range<Token>> ranges) {
-        Map<Range<Token>, List<InetAddress>> rangeToEndpointMap = new HashMap<>(ranges.size());
-        for (Range<Token> range : ranges) {
-            rangeToEndpointMap.put(range, Keyspace.open(keyspace).getReplicationStrategy().getNaturalEndpoints(range.right));
-        }
-        return rangeToEndpointMap;
-    }
+    //    private Map<Range<Token>, List<InetAddress>> constructRangeToEndpointMap(String keyspace, List<Range<Token>> ranges) {
+    //        Map<Range<Token>, List<InetAddress>> rangeToEndpointMap = new HashMap<>(ranges.size());
+    //        for (Range<Token> range : ranges) {
+    //            rangeToEndpointMap.put(range, Keyspace.open(keyspace).getReplicationStrategy().getNaturalEndpoints(range.right));
+    //        }
+    //        return rangeToEndpointMap;
+    //    }
 
     @Override
     public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
@@ -1572,52 +1567,52 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      * @param ranges the ranges to find sources for
      * @return multimap of addresses to ranges the address is responsible for
      */
-    private Multimap<InetAddress, Range<Token>> getNewSourceRanges(String keyspaceName, Set<Range<Token>> ranges) {
-        InetAddress myAddress = FBUtilities.getBroadcastAddress();
-        Multimap<Range<Token>, InetAddress> rangeAddresses = Keyspace.open(keyspaceName).getReplicationStrategy()
-                .getRangeAddresses(tokenMetadata.cloneOnlyTokenMap());
-        Multimap<InetAddress, Range<Token>> sourceRanges = HashMultimap.create();
-        IFailureDetector failureDetector = FailureDetector.instance;
-
-        // find alive sources for our new ranges
-        for (Range<Token> range : ranges) {
-            Collection<InetAddress> possibleRanges = rangeAddresses.get(range);
-            IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
-            List<InetAddress> sources = snitch.getSortedListByProximity(myAddress, possibleRanges);
-
-            assert (!sources.contains(myAddress));
-
-            for (InetAddress source : sources) {
-                if (failureDetector.isAlive(source)) {
-                    sourceRanges.put(source, range);
-                    break;
-                }
-            }
-        }
-        return sourceRanges;
-    }
+    //    private Multimap<InetAddress, Range<Token>> getNewSourceRanges(String keyspaceName, Set<Range<Token>> ranges) {
+    //        InetAddress myAddress = FBUtilities.getBroadcastAddress();
+    //        Multimap<Range<Token>, InetAddress> rangeAddresses = Keyspace.open(keyspaceName).getReplicationStrategy()
+    //                .getRangeAddresses(tokenMetadata.cloneOnlyTokenMap());
+    //        Multimap<InetAddress, Range<Token>> sourceRanges = HashMultimap.create();
+    //        IFailureDetector failureDetector = FailureDetector.instance;
+    //
+    //        // find alive sources for our new ranges
+    //        for (Range<Token> range : ranges) {
+    //            Collection<InetAddress> possibleRanges = rangeAddresses.get(range);
+    //            IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+    //            List<InetAddress> sources = snitch.getSortedListByProximity(myAddress, possibleRanges);
+    //
+    //            assert (!sources.contains(myAddress));
+    //
+    //            for (InetAddress source : sources) {
+    //                if (failureDetector.isAlive(source)) {
+    //                    sourceRanges.put(source, range);
+    //                    break;
+    //                }
+    //            }
+    //        }
+    //        return sourceRanges;
+    //    }
 
     /**
      * Sends a notification to a node indicating we have finished replicating data.
      *
      * @param remote node to send notification to
      */
-    private void sendReplicationNotification(InetAddress remote) {
-        // notify the remote token
-        MessageOut msg = new MessageOut(MessagingService.Verb.REPLICATION_FINISHED);
-        IFailureDetector failureDetector = FailureDetector.instance;
-        if (logger.isDebugEnabled())
-            logger.debug("Notifying {} of replication completion\n", remote);
-        while (failureDetector.isAlive(remote)) {
-            AsyncOneResponse iar = MessagingService.instance().sendRR(msg, remote);
-            try {
-                iar.get(DatabaseDescriptor.getRpcTimeout(), TimeUnit.MILLISECONDS);
-                return; // done
-            } catch (TimeoutException e) {
-                // try again
-            }
-        }
-    }
+    //    private void sendReplicationNotification(InetAddress remote) {
+    //        // notify the remote token
+    //        MessageOut msg = new MessageOut(MessagingService.Verb.REPLICATION_FINISHED);
+    //        IFailureDetector failureDetector = FailureDetector.instance;
+    //        if (logger.isDebugEnabled())
+    //            logger.debug("Notifying {} of replication completion\n", remote);
+    //        while (failureDetector.isAlive(remote)) {
+    //            AsyncOneResponse iar = MessagingService.instance().sendRR(msg, remote);
+    //            try {
+    //                iar.get(DatabaseDescriptor.getRpcTimeout(), TimeUnit.MILLISECONDS);
+    //                return; // done
+    //            } catch (TimeoutException e) {
+    //                // try again
+    //            }
+    //        }
+    //    }
 
     /**
      * Called when an endpoint is removed from the ring. This function checks
@@ -1674,49 +1669,49 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     // needs to be modified to accept either a keyspace or ARS.
-    private Multimap<Range<Token>, InetAddress> getChangedRangesForLeaving(String keyspaceName, InetAddress endpoint) {
-        // First get all ranges the leaving endpoint is responsible for
-        Collection<Range<Token>> ranges = getRangesForEndpoint(keyspaceName, endpoint);
-
-        if (logger.isDebugEnabled())
-            logger.debug("Node {} ranges [{}]", endpoint, StringUtils.join(ranges, ", "));
-
-        Map<Range<Token>, List<InetAddress>> currentReplicaEndpoints = new HashMap<>(ranges.size());
-
-        // Find (for each range) all nodes that store replicas for these ranges as well
-        TokenMetadata metadata = tokenMetadata.cloneOnlyTokenMap(); // don't do this in the loop! #7758
-        for (Range<Token> range : ranges)
-            currentReplicaEndpoints.put(range,
-                    Keyspace.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, metadata));
-
-        TokenMetadata temp = tokenMetadata.cloneAfterAllLeft();
-
-        // endpoint might or might not be 'leaving'. If it was not leaving (that is, removenode
-        // command was used), it is still present in temp and must be removed.
-        if (temp.isMember(endpoint))
-            temp.removeEndpoint(endpoint);
-
-        Multimap<Range<Token>, InetAddress> changedRanges = HashMultimap.create();
-
-        // Go through the ranges and for each range check who will be
-        // storing replicas for these ranges when the leaving endpoint
-        // is gone. Whoever is present in newReplicaEndpoints list, but
-        // not in the currentReplicaEndpoints list, will be needing the
-        // range.
-        for (Range<Token> range : ranges) {
-            Collection<InetAddress> newReplicaEndpoints = Keyspace.open(keyspaceName).getReplicationStrategy()
-                    .calculateNaturalEndpoints(range.right, temp);
-            newReplicaEndpoints.removeAll(currentReplicaEndpoints.get(range));
-            if (logger.isDebugEnabled())
-                if (newReplicaEndpoints.isEmpty())
-                    logger.debug("Range {} already in all replicas", range);
-                else
-                    logger.debug("Range {} will be responsibility of {}", range, StringUtils.join(newReplicaEndpoints, ", "));
-            changedRanges.putAll(range, newReplicaEndpoints);
-        }
-
-        return changedRanges;
-    }
+    //    private Multimap<Range<Token>, InetAddress> getChangedRangesForLeaving(String keyspaceName, InetAddress endpoint) {
+    //        // First get all ranges the leaving endpoint is responsible for
+    //        Collection<Range<Token>> ranges = getRangesForEndpoint(keyspaceName, endpoint);
+    //
+    //        if (logger.isDebugEnabled())
+    //            logger.debug("Node {} ranges [{}]", endpoint, StringUtils.join(ranges, ", "));
+    //
+    //        Map<Range<Token>, List<InetAddress>> currentReplicaEndpoints = new HashMap<>(ranges.size());
+    //
+    //        // Find (for each range) all nodes that store replicas for these ranges as well
+    //        TokenMetadata metadata = tokenMetadata.cloneOnlyTokenMap(); // don't do this in the loop! #7758
+    //        for (Range<Token> range : ranges)
+    //            currentReplicaEndpoints.put(range,
+    //                    Keyspace.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right, metadata));
+    //
+    //        TokenMetadata temp = tokenMetadata.cloneAfterAllLeft();
+    //
+    //        // endpoint might or might not be 'leaving'. If it was not leaving (that is, removenode
+    //        // command was used), it is still present in temp and must be removed.
+    //        if (temp.isMember(endpoint))
+    //            temp.removeEndpoint(endpoint);
+    //
+    //        Multimap<Range<Token>, InetAddress> changedRanges = HashMultimap.create();
+    //
+    //        // Go through the ranges and for each range check who will be
+    //        // storing replicas for these ranges when the leaving endpoint
+    //        // is gone. Whoever is present in newReplicaEndpoints list, but
+    //        // not in the currentReplicaEndpoints list, will be needing the
+    //        // range.
+    //        for (Range<Token> range : ranges) {
+    //            Collection<InetAddress> newReplicaEndpoints = Keyspace.open(keyspaceName).getReplicationStrategy()
+    //                    .calculateNaturalEndpoints(range.right, temp);
+    //            newReplicaEndpoints.removeAll(currentReplicaEndpoints.get(range));
+    //            if (logger.isDebugEnabled())
+    //                if (newReplicaEndpoints.isEmpty())
+    //                    logger.debug("Range {} already in all replicas", range);
+    //                else
+    //                    logger.debug("Range {} will be responsibility of {}", range, StringUtils.join(newReplicaEndpoints, ", "));
+    //            changedRanges.putAll(range, newReplicaEndpoints);
+    //        }
+    //
+    //        return changedRanges;
+    //    }
 
     @Override
     public void onJoin(InetAddress endpoint, EndpointState epState) {
@@ -2276,7 +2271,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      * @param endToken end token of the range
      * @return collection of ranges that match ring layout in TokenMetadata
      */
-    @SuppressWarnings("unchecked")
     @VisibleForTesting
     Collection<Range<Token>> createRepairRangeFrom(String beginToken, String endToken) {
         Token parsedBeginToken = getPartitioner().getTokenFactory().fromString(beginToken);
@@ -2656,7 +2650,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      * @param pos position for which we need to find the endpoint
      * @return the endpoint responsible for this token
      */
-    public List<InetAddress> getNaturalEndpoints(String keyspaceName, RingPosition pos) {
+    public List<InetAddress> getNaturalEndpoints(String keyspaceName, RingPosition<?> pos) {
         return Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalEndpoints(pos);
     }
 
@@ -2672,7 +2666,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         return getLiveNaturalEndpoints(keyspace, getPartitioner().decorateKey(key));
     }
 
-    public List<InetAddress> getLiveNaturalEndpoints(Keyspace keyspace, RingPosition pos) {
+    public List<InetAddress> getLiveNaturalEndpoints(Keyspace keyspace, RingPosition<?> pos) {
         List<InetAddress> endpoints = keyspace.getReplicationStrategy().getNaturalEndpoints(pos);
         List<InetAddress> liveEps = new ArrayList<>(endpoints.size());
 
@@ -2824,17 +2818,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         //        unbootstrap(finishLeaving);
     }
 
-    private void leaveRing() {
-        SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.NEEDS_BOOTSTRAP);
-        tokenMetadata.removeEndpoint(FBUtilities.getBroadcastAddress());
-        PendingRangeCalculatorService.instance.update();
-
-        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,
-                valueFactory.left(getLocalTokens(), Gossiper.computeExpireTime()));
-        int delay = Math.max(RING_DELAY, Gossiper.intervalInMillis * 2);
-        logger.info("Announcing that I have left the ring for {}ms", delay);
-        Uninterruptibles.sleepUninterruptibly(delay, TimeUnit.MILLISECONDS);
-    }
+    //    private void leaveRing() {
+    //        SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.NEEDS_BOOTSTRAP);
+    //        tokenMetadata.removeEndpoint(FBUtilities.getBroadcastAddress());
+    //        PendingRangeCalculatorService.instance.update();
+    //
+    //        Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,
+    //                valueFactory.left(getLocalTokens(), Gossiper.computeExpireTime()));
+    //        int delay = Math.max(RING_DELAY, Gossiper.intervalInMillis * 2);
+    //        logger.info("Announcing that I have left the ring for {}ms", delay);
+    //        Uninterruptibles.sleepUninterruptibly(delay, TimeUnit.MILLISECONDS);
+    //    }
 
     //    private void unbootstrap(Runnable onFinish) {
     //        Map<String, Multimap<Range<Token>, InetAddress>> rangesToStream = new HashMap<>();
@@ -3122,6 +3116,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /**
      * Get the status of a token removal.
      */
+    @SuppressWarnings("deprecation")
     @Override
     public String getRemovalStatus() {
         if (removingNode == null) {
@@ -3554,9 +3549,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         Set<Range<Token>> toStream = new HashSet<>();
         Set<Range<Token>> toFetch = new HashSet<>();
 
-        for (Range r1 : current) {
+        for (Range<Token> r1 : current) {
             boolean intersect = false;
-            for (Range r2 : updated) {
+            for (Range<Token> r2 : updated) {
                 if (r1.intersects(r2)) {
                     // adding difference ranges to fetch from a ring
                     toStream.addAll(r1.subtract(r2));
@@ -3568,9 +3563,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
         }
 
-        for (Range r2 : updated) {
+        for (Range<Token> r2 : updated) {
             boolean intersect = false;
-            for (Range r1 : current) {
+            for (Range<Token> r1 : current) {
                 if (r2.intersects(r1)) {
                     // adding difference ranges to fetch from a ring
                     toFetch.addAll(r2.subtract(r1));

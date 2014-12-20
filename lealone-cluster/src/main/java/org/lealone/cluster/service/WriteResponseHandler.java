@@ -54,15 +54,18 @@ public class WriteResponseHandler extends AbstractWriteResponseHandler {
         this(endpoint, writeType, null);
     }
 
-    public void response(MessageIn m) {
+    @Override
+    public void response(MessageIn<Object> m) {
         if (responsesUpdater.decrementAndGet(this) == 0)
             signal();
     }
 
+    @Override
     protected int ackCount() {
         return totalBlockFor() - responses;
     }
 
+    @Override
     public boolean isLatencyForSnitch() {
         return false;
     }

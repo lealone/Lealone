@@ -82,6 +82,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
+@SuppressWarnings({ "rawtypes", "deprecation" })
 public final class MessagingService implements MessagingServiceMBean {
     public static final String MBEAN_NAME = "org.apache.lealone.net:type=MessagingService";
 
@@ -773,13 +774,13 @@ public final class MessagingService implements MessagingServiceMBean {
     }
 
     private void logDroppedMessages() {
-        boolean logTpstats = false;
+        //boolean logTpstats = false;
         for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet()) {
             int dropped = (int) entry.getValue().dropped.count();
             Verb verb = entry.getKey();
             int recent = dropped - lastDroppedInternal.get(verb);
             if (recent > 0) {
-                logTpstats = true;
+                //logTpstats = true;
                 logger.info("{} {} messages dropped in last {}ms", new Object[] { recent, verb, LOG_DROPPED_INTERVAL_IN_MS });
                 lastDroppedInternal.put(verb, dropped);
             }

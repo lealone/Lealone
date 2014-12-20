@@ -23,9 +23,11 @@ import org.lealone.cluster.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings({ "rawtypes", "unchecked" })
 public class ResponseVerbHandler implements IVerbHandler {
     private static final Logger logger = LoggerFactory.getLogger(ResponseVerbHandler.class);
 
+    @Override
     public void doVerb(MessageIn message, int id) {
         long latency = TimeUnit.NANOSECONDS
                 .toMillis(System.nanoTime() - MessagingService.instance().getRegisteredCallbackAge(id));

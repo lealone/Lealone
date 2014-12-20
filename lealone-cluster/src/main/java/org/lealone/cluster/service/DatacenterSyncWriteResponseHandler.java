@@ -60,7 +60,8 @@ public class DatacenterSyncWriteResponseHandler extends AbstractWriteResponseHan
         }
     }
 
-    public void response(MessageIn message) {
+    @Override
+    public void response(MessageIn<Object> message) {
         String dataCenter = message == null ? DatabaseDescriptor.getLocalDataCenter() : snitch.getDatacenter(message.from);
 
         responses.get(dataCenter).getAndDecrement();
@@ -75,10 +76,12 @@ public class DatacenterSyncWriteResponseHandler extends AbstractWriteResponseHan
         signal();
     }
 
+    @Override
     protected int ackCount() {
         return acks.get();
     }
 
+    @Override
     public boolean isLatencyForSnitch() {
         return false;
     }
