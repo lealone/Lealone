@@ -1,166 +1,306 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
+ * Initial Developer: H2 Group
  */
 package org.lealone.cbase.dbobject.index;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.List;
+import java.util.TreeSet;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.cbase.dbobject.table.CBaseTable;
+import org.lealone.cbase.dbobject.table.CBaseTableEngine;
+import org.lealone.cbase.mvstore.MVMap;
+import org.lealone.cbase.transaction.TransactionStore.Transaction;
+import org.lealone.cbase.transaction.TransactionStore.TransactionMap;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
-import org.lealone.dbobject.table.Table;
+import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
+import org.lealone.util.New;
+import org.lealone.value.CompareMode;
 import org.lealone.value.Value;
 import org.lealone.value.ValueArray;
 import org.lealone.value.ValueLong;
+import org.lealone.value.ValueNull;
 
-public class CBaseSecondaryIndex extends BaseIndex {
-    private final ConcurrentNavigableMap<Value, Row> rows = new ConcurrentSkipListMap<Value, Row>();
+/**
+ * A table stored in a MVStore.
+ */
+public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
+
+    /**
+     * The multi-value table.
+     */
+    final CBaseTable mvTable;
+
     private final int keyColumns;
+    private final String mapName;
+    private final TransactionMap<Value, Value> dataMap;
 
-    public CBaseSecondaryIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+    public CBaseSecondaryIndex(Database db, CBaseTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+        this.mvTable = table;
         initBaseIndex(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }
-
         // always store the row key in the map key,
         // even for unique indexes, as some of the index columns could be null
         keyColumns = columns.length + 1;
+        mapName = "index." + getId();
+        int[] sortTypes = new int[keyColumns];
+        for (int i = 0; i < columns.length; i++) {
+            sortTypes[i] = columns[i].sortType;
+        }
+        sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
+        ValueDataType keyType = new ValueDataType(db.getCompareMode(), db, sortTypes);
+        ValueDataType valueType = new ValueDataType(null, null, null);
+        dataMap = mvTable.getTransaction(null).openMap(mapName, keyType, valueType);
+        if (!keyType.equals(dataMap.getKeyType())) {
+            throw DbException.throwInternalError("Incompatible key type");
+        }
     }
 
-    //    private static void checkIndexColumnTypes(IndexColumn[] columns) {
-    //        for (IndexColumn c : columns) {
-    //            int type = c.column.getType();
-    //            if (type == Value.CLOB || type == Value.BLOB) {
-    //                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1,
-    //                        "Index on BLOB or CLOB column: " + c.column.getCreateSQL());
-    //            }
-    //        }
-    //    }
+    @Override
+    public void addRowsToBuffer(List<Row> rows, String bufferName) {
+        MVMap<Value, Value> map = openMap(bufferName);
+        for (Row row : rows) {
+            ValueArray key = convertToKey(row);
+            map.put(key, ValueNull.INSTANCE);
+        }
+    }
+
+    @Override
+    public void addBufferedRows(List<String> bufferNames) {
+        ArrayList<String> mapNames = New.arrayList(bufferNames);
+        final CompareMode compareMode = database.getCompareMode();
+        /**
+         * A source of values.
+         */
+        class Source implements Comparable<Source> {
+            Value value;
+            Iterator<Value> next;
+            int sourceId;
+
+            @Override
+            public int compareTo(Source o) {
+                int comp = value.compareTo(o.value, compareMode);
+                if (comp == 0) {
+                    comp = sourceId - o.sourceId;
+                }
+                return comp;
+            }
+        }
+        TreeSet<Source> sources = new TreeSet<Source>();
+        for (int i = 0; i < bufferNames.size(); i++) {
+            MVMap<Value, Value> map = openMap(bufferNames.get(i));
+            Iterator<Value> it = map.keyIterator(null);
+            if (it.hasNext()) {
+                Source s = new Source();
+                s.value = it.next();
+                s.next = it;
+                s.sourceId = i;
+                sources.add(s);
+            }
+        }
+        try {
+            while (true) {
+                Source s = sources.first();
+                Value v = s.value;
+
+                if (indexType.isUnique()) {
+                    Value[] array = ((ValueArray) v).getList();
+                    // don't change the original value
+                    array = Arrays.copyOf(array, array.length);
+                    array[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+                    ValueArray unique = ValueArray.get(array);
+                    ValueArray key = (ValueArray) dataMap.getLatestCeilingKey(unique);
+                    if (key != null) {
+                        SearchRow r2 = convertToSearchRow(key);
+                        SearchRow row = convertToSearchRow((ValueArray) v);
+                        if (compareRows(row, r2) == 0) {
+                            if (!containsNullAndAllowMultipleNull(r2)) {
+                                throw getDuplicateKeyException(key.toString());
+                            }
+                        }
+                    }
+                }
+
+                dataMap.putCommitted(v, ValueNull.INSTANCE);
+
+                Iterator<Value> it = s.next;
+                if (!it.hasNext()) {
+                    sources.remove(s);
+                    if (sources.size() == 0) {
+                        break;
+                    }
+                } else {
+                    Value nextValue = it.next();
+                    sources.remove(s);
+                    s.value = nextValue;
+                    sources.add(s);
+                }
+            }
+        } finally {
+            for (String tempMapName : mapNames) {
+                MVMap<Value, Value> map = openMap(tempMapName);
+                map.getStore().removeMap(map);
+            }
+        }
+    }
+
+    private MVMap<Value, Value> openMap(String mapName) {
+        int[] sortTypes = new int[keyColumns];
+        for (int i = 0; i < indexColumns.length; i++) {
+            sortTypes[i] = indexColumns[i].sortType;
+        }
+        sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
+        ValueDataType keyType = new ValueDataType(database.getCompareMode(), database, sortTypes);
+        ValueDataType valueType = new ValueDataType(null, null, null);
+        MVMap.Builder<Value, Value> builder = new MVMap.Builder<Value, Value>().keyType(keyType).valueType(valueType);
+        MVMap<Value, Value> map = CBaseTableEngine.getStore(database).getStore().openMap(mapName, builder);
+        if (!keyType.equals(map.getKeyType())) {
+            throw DbException.throwInternalError("Incompatible key type");
+        }
+        return map;
+    }
 
     @Override
     public void close(Session session) {
-    }
-
-    private Value getKey(Value v) {
-        v.compareMode = table.getCompareMode();
-        return v;
+        // ok
     }
 
     @Override
     public void add(Session session, Row row) {
+        TransactionMap<Value, Value> map = getMap(session);
         ValueArray array = convertToKey(row);
-        rows.put(getKey(array), row);
+        ValueArray unique = null;
+        if (indexType.isUnique()) {
+            // this will detect committed entries only
+            unique = convertToKey(row);
+            unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+            ValueArray key = (ValueArray) map.getLatestCeilingKey(unique);
+            if (key != null) {
+                SearchRow r2 = convertToSearchRow(key);
+                if (compareRows(row, r2) == 0) {
+                    if (!containsNullAndAllowMultipleNull(r2)) {
+                        throw getDuplicateKeyException(key.toString());
+                    }
+                }
+            }
+        }
+        try {
+            map.put(array, ValueNull.INSTANCE);
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+        }
+        if (indexType.isUnique()) {
+            Iterator<Value> it = map.keyIterator(unique, true);
+            while (it.hasNext()) {
+                ValueArray k = (ValueArray) it.next();
+                SearchRow r2 = convertToSearchRow(k);
+                if (compareRows(row, r2) != 0) {
+                    break;
+                }
+                if (containsNullAndAllowMultipleNull(r2)) {
+                    // this is allowed
+                    continue;
+                }
+                if (map.isSameTransaction(k)) {
+                    continue;
+                }
+                if (map.get(k) != null) {
+                    // committed
+                    throw getDuplicateKeyException(k.toString());
+                }
+                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName());
+            }
+        }
     }
 
     @Override
     public void remove(Session session, Row row) {
         ValueArray array = convertToKey(row);
-        rows.remove(getKey(array));
+        TransactionMap<Value, Value> map = getMap(session);
+        try {
+            Value old = map.remove(array);
+            if (old == null) {
+                throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
+            }
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+        }
     }
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        ValueArray firstArray = convertToKey(first);
-        ValueArray lastArray = convertToKey(last);
-        if (lastArray != null) {
-            lastArray.getList()[keyColumns - 1] = CBasePrimaryIndex.MAX;
+        return find(session, first, false, last);
+    }
+
+    private Cursor find(Session session, SearchRow first, boolean bigger, SearchRow last) {
+        ValueArray min = convertToKey(first);
+        if (min != null) {
+            min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         }
-        return new CBaseSecondaryIndexCursor(rows.tailMap(getKey(firstArray)).entrySet().iterator(), lastArray, session
-                .getTransaction().getTransactionId());
-    }
-
-    @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
-        try {
-            return 10 * getCostRangeIndex(masks, rows.size(), sortOrder);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+        TransactionMap<Value, Value> map = getMap(session);
+        if (bigger && min != null) {
+            // search for the next: first skip 1, then 2, 4, 8, until
+            // we have a higher key; then skip 4, 2,...
+            // (binary search), until 1
+            int offset = 1;
+            while (true) {
+                ValueArray v = (ValueArray) map.relativeKey(min, offset);
+                if (v != null) {
+                    boolean foundHigher = false;
+                    for (int i = 0; i < keyColumns - 1; i++) {
+                        int idx = columnIds[i];
+                        Value b = first.getValue(idx);
+                        if (b == null) {
+                            break;
+                        }
+                        Value a = v.getList()[i];
+                        if (database.compare(a, b) > 0) {
+                            foundHigher = true;
+                            break;
+                        }
+                    }
+                    if (!foundHigher) {
+                        offset += offset;
+                        min = v;
+                        continue;
+                    }
+                }
+                if (offset > 1) {
+                    offset /= 2;
+                    continue;
+                }
+                if (map.get(v) == null) {
+                    min = (ValueArray) map.higherKey(min);
+                    if (min == null) {
+                        break;
+                    }
+                    continue;
+                }
+                min = v;
+                break;
+            }
+            if (min == null) {
+                return new MVStoreCursor(session, Collections.<Value> emptyList().iterator(), null);
+            }
         }
-    }
-
-    @Override
-    public void remove(Session session) {
-        rows.clear();
-    }
-
-    @Override
-    public void truncate(Session session) {
-        rows.clear();
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return true;
-    }
-
-    @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
-        Row row = (first ? rows.firstEntry().getValue() : rows.lastEntry().getValue());
-        if (row == null) {
-            return new CBaseSecondaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
-                    .getTransaction().getTransactionId());
-        }
-        ValueArray array = convertToKey(row);
-        HashMap<Value, Row> e = new HashMap<>(1);
-        Value key = getKey(array);
-        e.put(key, row);
-        CBaseSecondaryIndexCursor c = new CBaseSecondaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
-                .getTransactionId());
-        c.next();
-        return c;
-    }
-
-    @Override
-    public boolean needRebuild() {
-        return rows.size() == 0;
-    }
-
-    @Override
-    public long getRowCount(Session session) {
-        return rows.size();
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return rows.size();
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
-    }
-
-    @Override
-    public void checkRename() {
-        //ok
+        return new MVStoreCursor(session, map.keyIterator(min), last);
     }
 
     private ValueArray convertToKey(SearchRow r) {
@@ -180,47 +320,197 @@ public class CBaseSecondaryIndex extends BaseIndex {
         return ValueArray.get(array);
     }
 
-    class CBaseSecondaryIndexCursor implements Cursor {
+    /**
+     * Convert array of values to a SearchRow.
+     *
+     * @param array the index key
+     * @return the row
+     */
+    SearchRow convertToSearchRow(ValueArray key) {
+        Value[] array = key.getList();
+        SearchRow searchRow = mvTable.getTemplateRow();
+        searchRow.setKey((array[array.length - 1]).getLong());
+        Column[] cols = getColumns();
+        for (int i = 0; i < array.length - 1; i++) {
+            Column c = cols[i];
+            int idx = c.getColumnId();
+            Value v = array[i];
+            searchRow.setValue(idx, v);
+        }
+        return searchRow;
+    }
 
-        private final Iterator<Entry<Value, Row>> it;
-        private final Value last;
-        private Entry<Value, Row> current;
+    @Override
+    public CBaseTable getTable() {
+        return mvTable;
+    }
+
+    //    @Override
+    //    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    //        try {
+    //            return 10 * getCostRangeIndex(masks, dataMap.sizeAsLongMax(), filter, sortOrder);
+    //        } catch (IllegalStateException e) {
+    //            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+    //        }
+    //    }
+
+    @Override
+    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+        try {
+            return 10 * getCostRangeIndex(masks, dataMap.sizeAsLongMax(), sortOrder);
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+        }
+    }
+
+    @Override
+    public void remove(Session session) {
+        TransactionMap<Value, Value> map = getMap(session);
+        if (!map.isClosed()) {
+            Transaction t = mvTable.getTransaction(session);
+            t.removeMap(map);
+        }
+    }
+
+    @Override
+    public void truncate(Session session) {
+        TransactionMap<Value, Value> map = getMap(session);
+        map.clear();
+    }
+
+    @Override
+    public boolean canGetFirstOrLast() {
+        return true;
+    }
+
+    @Override
+    public Cursor findFirstOrLast(Session session, boolean first) {
+        TransactionMap<Value, Value> map = getMap(session);
+        Value key = first ? map.firstKey() : map.lastKey();
+        while (true) {
+            if (key == null) {
+                return new MVStoreCursor(session, Collections.<Value> emptyList().iterator(), null);
+            }
+            if (((ValueArray) key).getList()[0] != ValueNull.INSTANCE) {
+                break;
+            }
+            key = first ? map.higherKey(key) : map.lowerKey(key);
+        }
+        ArrayList<Value> list = New.arrayList();
+        list.add(key);
+        MVStoreCursor cursor = new MVStoreCursor(session, list.iterator(), null);
+        cursor.next();
+        return cursor;
+    }
+
+    @Override
+    public boolean needRebuild() {
+        try {
+            return dataMap.sizeAsLongMax() == 0;
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+        }
+    }
+
+    @Override
+    public long getRowCount(Session session) {
+        TransactionMap<Value, Value> map = getMap(session);
+        return map.sizeAsLong();
+    }
+
+    @Override
+    public long getRowCountApproximation() {
+        try {
+            return dataMap.sizeAsLongMax();
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+        }
+    }
+
+    @Override
+    public long getDiskSpaceUsed() {
+        // TODO estimate disk space usage
+        return 0;
+    }
+
+    @Override
+    public boolean canFindNext() {
+        return true;
+    }
+
+    @Override
+    public Cursor findNext(Session session, SearchRow higherThan, SearchRow last) {
+        return find(session, higherThan, true, last);
+    }
+
+    @Override
+    public void checkRename() {
+        // ok
+    }
+
+    /**
+     * Get the map to store the data.
+     *
+     * @param session the session
+     * @return the map
+     */
+    TransactionMap<Value, Value> getMap(Session session) {
+        if (session == null) {
+            return dataMap;
+        }
+        Transaction t = mvTable.getTransaction(session);
+        return dataMap.getInstance(t, Long.MAX_VALUE);
+    }
+
+    /**
+     * A cursor.
+     */
+    class MVStoreCursor implements Cursor {
+
+        private final Session session;
+        private final Iterator<Value> it;
+        private final SearchRow last;
+        private Value current;
+        private SearchRow searchRow;
         private Row row;
 
-        private final long transactionId;
-
-        public CBaseSecondaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
+        public MVStoreCursor(Session session, Iterator<Value> it, SearchRow last) {
+            this.session = session;
             this.it = it;
             this.last = last;
-            this.transactionId = transactionId;
         }
 
         @Override
         public Row get() {
             if (row == null) {
-                if (current != null) {
-                    row = current.getValue();
+                SearchRow r = getSearchRow();
+                if (r != null) {
+                    row = mvTable.getRow(session, r.getKey());
                 }
             }
-            if (row != null)
-                row.setTransactionId(transactionId);
             return row;
         }
 
         @Override
         public SearchRow getSearchRow() {
-            return get();
+            if (searchRow == null) {
+                if (current != null) {
+                    searchRow = convertToSearchRow((ValueArray) current);
+                }
+            }
+            return searchRow;
         }
 
         @Override
         public boolean next() {
             current = it.hasNext() ? it.next() : null;
-            if (current != null && current.getKey().compareTo(last) > 0) {
-                current = null;
+            searchRow = null;
+            if (current != null) {
+                if (last != null && compareRows(getSearchRow(), last) > 0) {
+                    searchRow = null;
+                    current = null;
+                }
             }
-            if (current != null && current.getValue().isDeleted()) //过滤掉已删除的行
-                return next();
-
             row = null;
             return current != null;
         }
@@ -231,4 +521,5 @@ public class CBaseSecondaryIndex extends BaseIndex {
         }
 
     }
+
 }

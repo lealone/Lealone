@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.mvstore.db;
+package org.lealone.cbase.transaction;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -29,7 +29,7 @@ public class TransactionStore {
     /**
      * The store.
      */
-    final MVStore store;
+    public final MVStore store;
 
     /**
      * The persisted map of prepared transactions.
@@ -267,7 +267,7 @@ public class TransactionStore {
      * @param <V> the value type
      * @param map the map
      */
-    synchronized <K, V> void removeMap(TransactionMap<K, V> map) {
+    public synchronized <K, V> void removeMap(TransactionMap<K, V> map) {
         maps.remove(map.mapId);
         store.removeMap(map.map);
     }
@@ -716,6 +716,7 @@ public class TransactionStore {
         /**
          * Commit the transaction. Afterwards, this transaction is closed.
          */
+        @Override
         public void commit() {
             checkNotClosed();
             store.commit(this, logId);
@@ -831,7 +832,7 @@ public class TransactionStore {
          * Key: key the key of the data.
          * Value: { transactionId, oldVersion, value }
          */
-        final MVMap<K, VersionedValue> map;
+        public final MVMap<K, VersionedValue> map;
 
         private final Transaction transaction;
 

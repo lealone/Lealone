@@ -1,21 +1,11 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
+ * Initial Developer: H2 Group
  */
 package org.lealone.cbase.dbobject.index;
+
+import java.util.List;
 
 import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.dbobject.index.BaseIndex;
@@ -23,24 +13,37 @@ import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
-import org.lealone.dbobject.table.TableFilter;
-import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
+import org.lealone.value.ValueLong;
 
-public class CBaseDelegateIndex extends BaseIndex {
+/**
+ * An index that delegates indexing to another index.
+ */
+public class CBaseDelegateIndex extends BaseIndex implements CBaseIndex {
 
     private final CBasePrimaryIndex mainIndex;
 
-    public CBaseDelegateIndex(CBaseTable table, int id, String name, IndexColumn[] cols, CBasePrimaryIndex mainIndex,
-            IndexType indexType) {
-        if (id < 0)
-            throw DbException.throwInternalError(name);
+    public CBaseDelegateIndex(CBaseTable table, int id, String name, CBasePrimaryIndex mainIndex, IndexType indexType) {
+        IndexColumn[] cols = IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) });
         this.initBaseIndex(table, id, name, cols, indexType);
         this.mainIndex = mainIndex;
+        if (id < 0) {
+            throw DbException.throwInternalError("" + name);
+        }
+    }
+
+    @Override
+    public void addRowsToBuffer(List<Row> rows, String bufferName) {
+        throw DbException.throwInternalError();
+    }
+
+    @Override
+    public void addBufferedRows(List<String> bufferNames) {
+        throw DbException.throwInternalError();
     }
 
     @Override
@@ -50,7 +53,7 @@ public class CBaseDelegateIndex extends BaseIndex {
 
     @Override
     public boolean canGetFirstOrLast() {
-        return false;
+        return true;
     }
 
     @Override
@@ -60,12 +63,11 @@ public class CBaseDelegateIndex extends BaseIndex {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        return mainIndex.find(session, first, last);
-    }
-
-    @Override
-    public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        return mainIndex.find(filter, first, last);
+        ValueLong min = mainIndex.getKey(first, CBasePrimaryIndex.MIN, CBasePrimaryIndex.MIN);
+        // ifNull is MIN_VALUE as well, because the column is never NULL
+        // so avoid returning all rows (returning one row is OK)
+        ValueLong max = mainIndex.getKey(last, CBasePrimaryIndex.MAX, CBasePrimaryIndex.MIN);
+        return mainIndex.find(session, min, max);
     }
 
     @Override
@@ -75,19 +77,20 @@ public class CBaseDelegateIndex extends BaseIndex {
 
     @Override
     public int getColumnIndex(Column col) {
-        if (col.getColumnId() == columns[0].getColumnId()) {
+        if (col.getColumnId() == mainIndex.getMainIndexColumn()) {
             return 0;
         }
         return -1;
     }
 
+    //    @Override
+    //    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    //        return 10 * getCostRangeIndex(masks, mainIndex.getRowCountApproximation(), filter, sortOrder);
+    //    }
+
     @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
-        int mask = masks[columns[0].getColumnId()];
-        if (mask != 0)
-            return 3;
-        else
-            return 10 * Constants.COST_ROW_OFFSET;
+        return 10 * getCostRangeIndex(masks, mainIndex.getRowCountApproximation(), sortOrder);
     }
 
     @Override
@@ -102,7 +105,7 @@ public class CBaseDelegateIndex extends BaseIndex {
 
     @Override
     public void remove(Session session) {
-        // nothing to do
+        mainIndex.setMainIndexColumn(-1);
     }
 
     @Override
@@ -127,7 +130,7 @@ public class CBaseDelegateIndex extends BaseIndex {
 
     @Override
     public long getDiskSpaceUsed() {
-        return mainIndex.getDiskSpaceUsed();
+        return 0;
     }
 
 }
