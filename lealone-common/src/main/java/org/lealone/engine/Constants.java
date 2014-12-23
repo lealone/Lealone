@@ -23,6 +23,8 @@ public class Constants {
      */
     public static final String PROJECT_NAME_PREFIX = PROJECT_NAME + ".";
 
+    public static final String DEFAULT_TABLE_ENGINE_NAME = "CBASE";
+
     public static final String TCP_SERVER_NAME = "tcp_server";
 
     /**

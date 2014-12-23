@@ -84,7 +84,6 @@ public class TableEngineManager {
             return;
         }
         initialized = true;
-        registerTableEngine(MemoryTableEngine.getInstance());
         loadTableEngines();
     }
 

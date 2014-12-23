@@ -39,7 +39,6 @@ import org.lealone.dbobject.constraint.ConstraintUnique;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.index.MetaIndex;
-import org.lealone.dbobject.index.MultiVersionIndex;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Csv;
 import org.lealone.engine.Database;
@@ -545,12 +544,7 @@ public class MetaTable extends Table {
                         }
                     }
                     IndexColumn[] cols = index.getIndexColumns();
-                    String indexClass;
-                    if (index instanceof MultiVersionIndex) {
-                        indexClass = ((MultiVersionIndex) index).getBaseIndex().getClass().getName();
-                    } else {
-                        indexClass = index.getClass().getName();
-                    }
+                    String indexClass = index.getClass().getName();
                     for (int k = 0; k < cols.length; k++) {
                         IndexColumn idxCol = cols[k];
                         Column column = idxCol.column;

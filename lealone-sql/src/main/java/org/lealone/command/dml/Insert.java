@@ -18,7 +18,6 @@ import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
-import org.lealone.engine.UndoLogRecord;
 import org.lealone.expression.Expression;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
@@ -116,7 +115,6 @@ public class Insert extends Prepared implements ResultTarget {
                 if (!done) {
                     table.lock(session, true, false);
                     table.addRow(session, newRow);
-                    session.log(table, UndoLogRecord.INSERT, newRow);
                     table.fireAfterRow(session, null, newRow, false);
                 }
             }
@@ -153,7 +151,6 @@ public class Insert extends Prepared implements ResultTarget {
         boolean done = table.fireBeforeRow(session, null, newRow);
         if (!done) {
             table.addRow(session, newRow);
-            session.log(table, UndoLogRecord.INSERT, newRow);
             table.fireAfterRow(session, null, newRow, false);
         }
     }

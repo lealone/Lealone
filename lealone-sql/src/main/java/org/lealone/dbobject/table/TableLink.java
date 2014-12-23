@@ -23,7 +23,6 @@ import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.index.LinkedIndex;
 import org.lealone.engine.Session;
-import org.lealone.engine.UndoLogRecord;
 import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;
 import org.lealone.result.Row;
@@ -588,8 +587,6 @@ public class TableLink extends Table {
                 Row oldRow = rows.next();
                 Row newRow = rows.next();
                 linkedIndex.update(oldRow, newRow);
-                session.log(this, UndoLogRecord.DELETE, oldRow);
-                session.log(this, UndoLogRecord.INSERT, newRow);
             }
             deleteInsert = false;
         } else {

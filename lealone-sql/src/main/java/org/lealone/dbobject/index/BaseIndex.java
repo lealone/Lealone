@@ -276,7 +276,7 @@ public abstract class BaseIndex extends SchemaObjectBase implements Index {
      * @param compare the second row
      * @return 0 if both rows are equal, -1 if the first row is smaller, otherwise 1
      */
-    int compareKeys(SearchRow rowData, SearchRow compare) {
+    protected int compareKeys(SearchRow rowData, SearchRow compare) {
         long k1 = rowData.getKey();
         long k2 = compare.getKey();
         if (k1 == k2) {

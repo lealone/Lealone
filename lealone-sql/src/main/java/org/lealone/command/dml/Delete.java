@@ -14,7 +14,6 @@ import org.lealone.dbobject.table.PlanItem;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
-import org.lealone.engine.UndoLogRecord;
 import org.lealone.expression.Expression;
 import org.lealone.result.ResultInterface;
 import org.lealone.result.Row;
@@ -49,6 +48,7 @@ public class Delete extends Prepared {
         this.condition = condition;
     }
 
+    @Override
     public int update() {
         tableFilter.startQuery(session);
         tableFilter.reset();
@@ -91,7 +91,6 @@ public class Delete extends Prepared {
                 }
                 Row row = rows.next();
                 table.removeRow(session, row);
-                session.log(table, UndoLogRecord.DELETE, row);
             }
             if (table.fireRow()) {
                 for (rows.reset(); rows.hasNext();) {
@@ -106,6 +105,7 @@ public class Delete extends Prepared {
         }
     }
 
+    @Override
     public String getPlanSQL() {
         StringBuilder buff = new StringBuilder();
         buff.append("DELETE ");
@@ -119,6 +119,7 @@ public class Delete extends Prepared {
         return buff.toString();
     }
 
+    @Override
     public void prepare() {
         if (condition != null) {
             condition.mapColumns(tableFilter, 0);
@@ -130,14 +131,17 @@ public class Delete extends Prepared {
         tableFilter.prepare();
     }
 
+    @Override
     public boolean isTransactional() {
         return true;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         return null;
     }
 
+    @Override
     public int getType() {
         return CommandInterface.DELETE;
     }
@@ -146,6 +150,7 @@ public class Delete extends Prepared {
         this.limitExpr = limit;
     }
 
+    @Override
     public boolean isCacheable() {
         return true;
     }

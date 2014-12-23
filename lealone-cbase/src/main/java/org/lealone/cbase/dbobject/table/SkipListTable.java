@@ -15,17 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.dbobject.table;
+package org.lealone.cbase.dbobject.table;
 
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.cbase.dbobject.index.SkipListDelegateIndex;
+import org.lealone.cbase.dbobject.index.SkipListPrimaryIndex;
+import org.lealone.cbase.dbobject.index.SkipListSecondaryIndex;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
-import org.lealone.dbobject.index.SkipListDelegateIndex;
-import org.lealone.dbobject.index.SkipListPrimaryIndex;
-import org.lealone.dbobject.index.SkipListSecondaryIndex;
+import org.lealone.dbobject.table.Column;
+import org.lealone.dbobject.table.IndexColumn;
+import org.lealone.dbobject.table.Table;
+import org.lealone.dbobject.table.TableBase;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;

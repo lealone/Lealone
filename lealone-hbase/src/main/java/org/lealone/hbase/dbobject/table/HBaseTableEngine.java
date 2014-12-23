@@ -21,9 +21,9 @@ package org.lealone.hbase.dbobject.table;
 
 import org.lealone.api.TableEngine;
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.MemoryTable;
 import org.lealone.dbobject.table.TableBase;
 import org.lealone.dbobject.table.TableEngineManager;
+import org.lealone.engine.Constants;
 
 /**
  * 
@@ -40,9 +40,10 @@ public class HBaseTableEngine implements TableEngine {
 
     @Override
     public TableBase createTable(CreateTableData data) {
-        if (data.isMemoryTable())
-            return new MemoryTable(data);
-        else
+        if (data.isMemoryTable()) {
+            data.persistData = false;
+            return TableEngineManager.getTableEngine(Constants.DEFAULT_TABLE_ENGINE_NAME).createTable(data);
+        } else
             return new HBaseTable(data);
     }
 

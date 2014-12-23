@@ -4,8 +4,12 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.dbobject.index;
+package org.lealone.cbase.dbobject.index;
 
+import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.Cursor;
+import org.lealone.dbobject.index.IndexCondition;
+import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.TableBase;
@@ -41,10 +45,12 @@ public class HashIndex extends BaseIndex {
         rows = ValueHashMap.newInstance();
     }
 
+    @Override
     public void truncate(Session session) {
         reset();
     }
 
+    @Override
     public void add(Session session, Row row) {
         Value key = row.getValue(indexColumn);
         Object old = rows.get(key);
@@ -55,10 +61,12 @@ public class HashIndex extends BaseIndex {
         rows.put(key, row.getKey());
     }
 
+    @Override
     public void remove(Session session, Row row) {
         rows.remove(row.getValue(indexColumn));
     }
 
+    @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         if (first == null || last == null) {
             // TODO hash index: should additionally check if values are the same
@@ -74,26 +82,32 @@ public class HashIndex extends BaseIndex {
         return new SingleRowCursor(result);
     }
 
+    @Override
     public long getRowCount(Session session) {
         return getRowCountApproximation();
     }
 
+    @Override
     public long getRowCountApproximation() {
         return rows.size();
     }
 
+    @Override
     public long getDiskSpaceUsed() {
         return 0;
     }
 
+    @Override
     public void close(Session session) {
         // nothing to do
     }
 
+    @Override
     public void remove(Session session) {
         // nothing to do
     }
 
+    @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         for (Column column : columns) {
             int index = column.getColumnId();
@@ -105,24 +119,72 @@ public class HashIndex extends BaseIndex {
         return 2;
     }
 
+    @Override
     public void checkRename() {
         // ok
     }
 
+    @Override
     public boolean needRebuild() {
         return true;
     }
 
+    @Override
     public boolean canGetFirstOrLast() {
         return false;
     }
 
+    @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
         throw DbException.getUnsupportedException("HASH");
     }
 
+    @Override
     public boolean canScan() {
         return false;
+    }
+
+    /**
+     * A cursor with at most one row.
+     */
+    private static class SingleRowCursor implements Cursor {
+        private Row row;
+        private boolean end;
+
+        /**
+         * Create a new cursor.
+         *
+         * @param row - the single row (if null then cursor is empty)
+         */
+        public SingleRowCursor(Row row) {
+            this.row = row;
+        }
+
+        @Override
+        public Row get() {
+            return row;
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            return row;
+        }
+
+        @Override
+        public boolean next() {
+            if (row == null || end) {
+                row = null;
+                return false;
+            }
+            end = true;
+            return true;
+        }
+
+        @Override
+        public boolean previous() {
+            throw DbException.throwInternalError();
+        }
+
     }
 
 }

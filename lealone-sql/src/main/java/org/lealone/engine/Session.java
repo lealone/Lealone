@@ -68,7 +68,6 @@ public class Session extends SessionWithState {
     private final User user;
     private final int id;
     private final ArrayList<Table> locks = New.arrayList();
-    private final UndoLog undoLog;
     private boolean autoCommit = true;
     private Random random;
     private int lockTimeout;
@@ -114,7 +113,6 @@ public class Session extends SessionWithState {
         this.database = database;
         this.queryTimeout = database.getSettings().maxQueryTimeout;
         this.queryCacheSize = database.getSettings().queryCacheSize;
-        this.undoLog = new UndoLog(this);
         this.user = user;
         this.id = id;
         Setting setting = database.findSetting(SetTypes.getTypeName(SetTypes.DEFAULT_LOCK_TIMEOUT));
@@ -483,25 +481,6 @@ public class Session extends SessionWithState {
             // (create/drop table and so on)
             database.commit(this);
         }
-        if (undoLog.size() > 0) {
-            // commit the rows when using MVCC
-            if (database.isMultiVersion()) {
-                ArrayList<Row> rows = New.arrayList();
-                synchronized (database) {
-                    while (undoLog.size() > 0) {
-                        UndoLogRecord entry = undoLog.getLast();
-                        entry.commit();
-                        rows.add(entry.getRow());
-                        undoLog.removeLast(false);
-                    }
-                    for (int i = 0, size = rows.size(); i < size; i++) {
-                        Row r = rows.get(i);
-                        r.commit();
-                    }
-                }
-            }
-            undoLog.clear();
-        }
         if (!ddl) {
             // do not clean the temp tables if the last command was a
             // create/drop
@@ -536,12 +515,7 @@ public class Session extends SessionWithState {
     public void rollback() {
         checkCommitRollback();
         currentTransactionName = null;
-        boolean needCommit = false;
-        if (undoLog.size() > 0) {
-            rollbackTo(0, false);
-            needCommit = true;
-        }
-        if (locks.size() > 0 || needCommit) {
+        if (locks.size() > 0) {
             database.commit(this);
         }
         cleanTempTables(false);
@@ -559,11 +533,6 @@ public class Session extends SessionWithState {
      * @param trimToSize if the list should be trimmed
      */
     public void rollbackTo(int index, boolean trimToSize) {
-        while (undoLog.size() > index) {
-            UndoLogRecord entry = undoLog.getLast();
-            entry.undo(this);
-            undoLog.removeLast(trimToSize);
-        }
         if (savepoints != null) {
             String[] names = new String[savepoints.size()];
             savepoints.keySet().toArray(names);
@@ -578,7 +547,7 @@ public class Session extends SessionWithState {
 
     @Override
     public int getUndoLogPos() {
-        return undoLog.size();
+        return 0; //TODO 删除无用方法
     }
 
     public int getId() {
@@ -596,7 +565,6 @@ public class Session extends SessionWithState {
             try {
                 database.checkPowerOff();
                 cleanTempTables(true);
-                undoLog.clear();
                 database.removeSession(this);
             } finally {
                 closed = true;
@@ -627,31 +595,30 @@ public class Session extends SessionWithState {
      * @param row the row
      */
     public void log(Table table, short operation, Row row) {
-        if (undoLogEnabled) {
-            UndoLogRecord log = new UndoLogRecord(table, operation, row);
-            // called _after_ the row was inserted successfully into the table,
-            // otherwise rollback will try to rollback a not-inserted row
-            if (SysProperties.CHECK) {
-                int lockMode = database.getLockMode();
-                if (lockMode != Constants.LOCK_MODE_OFF && !database.isMultiVersion()) {
-                    String tableType = log.getTable().getTableType();
-                    if (locks.indexOf(log.getTable()) < 0 && !Table.TABLE_LINK.equals(tableType)
-                            && !Table.EXTERNAL_TABLE_ENGINE.equals(tableType)) {
-                        DbException.throwInternalError();
-                    }
-                }
+        //        if (undoLogEnabled) {
+        //            UndoLogRecord log = new UndoLogRecord(table, operation, row);
+        //            // called _after_ the row was inserted successfully into the table,
+        //            // otherwise rollback will try to rollback a not-inserted row
+        //            if (SysProperties.CHECK) {
+        //                int lockMode = database.getLockMode();
+        //                if (lockMode != Constants.LOCK_MODE_OFF && !database.isMultiVersion()) {
+        //                    String tableType = log.getTable().getTableType();
+        //                    if (locks.indexOf(log.getTable()) < 0 && !Table.TABLE_LINK.equals(tableType)
+        //                            && !Table.EXTERNAL_TABLE_ENGINE.equals(tableType)) {
+        //                        DbException.throwInternalError();
+        //                    }
+        //                }
+        //            }
+        //            undoLog.add(log);
+        //        } else {
+        if (database.isMultiVersion()) {
+            // see also UndoLogRecord.commit
+            ArrayList<Index> indexes = table.getIndexes();
+            for (int i = 0, size = indexes.size(); i < size; i++) {
+                Index index = indexes.get(i);
+                index.commit(operation, row);
             }
-            undoLog.add(log);
-        } else {
-            if (database.isMultiVersion()) {
-                // see also UndoLogRecord.commit
-                ArrayList<Index> indexes = table.getIndexes();
-                for (int i = 0, size = indexes.size(); i < size; i++) {
-                    Index index = indexes.get(i);
-                    index.commit(operation, row);
-                }
-                row.commit();
-            }
+            row.commit();
         }
     }
 
@@ -687,11 +654,6 @@ public class Session extends SessionWithState {
     }
 
     private void unlockAll() {
-        if (SysProperties.CHECK) {
-            if (undoLog.size() > 0) {
-                DbException.throwInternalError();
-            }
-        }
         if (locks.size() > 0) {
             synchronized (database) {
                 // don't use the enhanced for loop to save memory
@@ -1278,7 +1240,7 @@ public class Session extends SessionWithState {
     }
 
     public Value getTransactionId() {
-        if (undoLog.size() == 0 || !database.isPersistent()) {
+        if (!database.isPersistent()) {
             return ValueNull.INSTANCE;
         }
         return ValueString.get(firstUncommittedLog + "-" + firstUncommittedPos + "-" + id);

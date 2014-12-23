@@ -41,7 +41,7 @@ import org.lealone.util.New;
  * A table engine that internally uses the MVStore.
  */
 public class CBaseTableEngine implements TableEngine {
-    public static final String NAME = "CBASE";
+    public static final String NAME = Constants.DEFAULT_TABLE_ENGINE_NAME;
 
     //见TableEngineManager.TableEngineService中的注释
     public CBaseTableEngine() {

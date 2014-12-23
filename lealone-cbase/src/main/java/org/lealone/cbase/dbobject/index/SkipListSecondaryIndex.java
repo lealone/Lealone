@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.dbobject.index;
+package org.lealone.cbase.dbobject.index;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,6 +25,9 @@ import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.Cursor;
+import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.Table;

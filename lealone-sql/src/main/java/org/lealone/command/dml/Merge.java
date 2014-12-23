@@ -18,7 +18,6 @@ import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
-import org.lealone.engine.UndoLogRecord;
 import org.lealone.expression.Expression;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
@@ -45,6 +44,7 @@ public class Merge extends Prepared {
         super(session);
     }
 
+    @Override
     public void setCommand(Command command) {
         super.setCommand(command);
         if (query != null) {
@@ -77,6 +77,7 @@ public class Merge extends Prepared {
         list.add(expr);
     }
 
+    @Override
     public int update() {
         int count;
         session.getUser().checkRight(table, Right.INSERT);
@@ -178,7 +179,6 @@ public class Merge extends Prepared {
                 if (!done) {
                     table.lock(session, true, false);
                     table.addRow(session, row);
-                    session.log(table, UndoLogRecord.INSERT, row);
                     table.fireAfterRow(session, null, row, false);
                 }
             } catch (DbException e) {
@@ -209,6 +209,7 @@ public class Merge extends Prepared {
         }
     }
 
+    @Override
     public String getPlanSQL() {
         StatementBuilder buff = new StatementBuilder("MERGE INTO ");
         buff.append(table.getSQL()).append('(');
@@ -252,6 +253,7 @@ public class Merge extends Prepared {
         return buff.toString();
     }
 
+    @Override
     public void prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
@@ -302,18 +304,22 @@ public class Merge extends Prepared {
         update = session.prepare(sql);
     }
 
+    @Override
     public boolean isTransactional() {
         return true;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         return null;
     }
 
+    @Override
     public int getType() {
         return CommandInterface.MERGE;
     }
 
+    @Override
     public boolean isCacheable() {
         return true;
     }

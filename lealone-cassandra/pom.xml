@@ -17,6 +17,12 @@
 			<groupId>org.lealone</groupId>
 			<artifactId>lealone-server</artifactId>
 		</dependency>
+		<!-- 用于支持内存表 -->
+		<dependency>
+			<groupId>org.lealone</groupId>
+			<artifactId>lealone-cbase</artifactId>
+			<scope>runtime</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.apache.cassandra</groupId>
 			<artifactId>cassandra-all</artifactId>

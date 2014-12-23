@@ -19,7 +19,6 @@ import org.lealone.dbobject.constraint.ConstraintReferential;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
-import org.lealone.dbobject.index.MultiVersionIndex;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
@@ -191,17 +190,17 @@ public abstract class TableBase extends Table {
                 throw e2;
             }
             DbException de = DbException.convert(e);
-            if (de.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
-                for (int j = 0; j < indexes.size(); j++) {
-                    Index index = indexes.get(j);
-                    if (index.getIndexType().isUnique() && index instanceof MultiVersionIndex) {
-                        MultiVersionIndex mv = (MultiVersionIndex) index;
-                        if (mv.isUncommittedFromOtherSession(session, row)) {
-                            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, index.getName());
-                        }
-                    }
-                }
-            }
+            //            if (de.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
+            //                for (int j = 0; j < indexes.size(); j++) {
+            //                    Index index = indexes.get(j);
+            //                    if (index.getIndexType().isUnique() && index instanceof MultiVersionIndex) {
+            //                        MultiVersionIndex mv = (MultiVersionIndex) index;
+            //                        if (mv.isUncommittedFromOtherSession(session, row)) {
+            //                            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, index.getName());
+            //                        }
+            //                    }
+            //                }
+            //            }
             throw de;
         }
         analyzeIfRequired(session);

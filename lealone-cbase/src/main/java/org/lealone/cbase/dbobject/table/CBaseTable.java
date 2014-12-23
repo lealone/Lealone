@@ -18,6 +18,8 @@ import org.lealone.cbase.dbobject.index.CBaseDelegateIndex;
 import org.lealone.cbase.dbobject.index.CBaseIndex;
 import org.lealone.cbase.dbobject.index.CBasePrimaryIndex;
 import org.lealone.cbase.dbobject.index.CBaseSecondaryIndex;
+import org.lealone.cbase.dbobject.index.HashIndex;
+import org.lealone.cbase.dbobject.index.NonUniqueHashIndex;
 import org.lealone.cbase.dbobject.table.CBaseTableEngine.Store;
 import org.lealone.cbase.transaction.TransactionStore;
 import org.lealone.cbase.transaction.TransactionStore.Transaction;
@@ -30,7 +32,6 @@ import org.lealone.dbobject.constraint.ConstraintReferential;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
-import org.lealone.dbobject.index.MultiVersionIndex;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.Table;
@@ -404,7 +405,7 @@ public class CBaseTable extends TableBase {
         if (!isSessionTemporary) {
             database.lockMeta(session);
         }
-        CBaseIndex index;
+        Index index;
         // TODO support in-memory indexes
         // if (isPersistIndexes() && indexType.isPersistent()) {
         int mainIndexColumn;
@@ -421,11 +422,17 @@ public class CBaseTable extends TableBase {
             index = new CBaseDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
             //        } else if (indexType.isSpatial()) {
             //            index = new MVSpatialIndex(session.getDatabase(), this, indexId, indexName, cols, indexType);
+        } else if (indexType.isHash() && cols.length <= 1) { //TODO 是否要支持多版本
+            if (indexType.isUnique()) {
+                index = new HashIndex(this, indexId, indexName, cols, indexType);
+            } else {
+                index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
+            }
         } else {
             index = new CBaseSecondaryIndex(session.getDatabase(), this, indexId, indexName, cols, indexType);
         }
-        if (index.needRebuild()) {
-            rebuildIndex(session, index, indexName);
+        if (index instanceof CBaseIndex && index.needRebuild()) {
+            rebuildIndex(session, (CBaseIndex) index, indexName);
         }
         index.setTemporary(isTemporary());
         if (index.getCreateSQL() != null) {
@@ -622,17 +629,17 @@ public class CBaseTable extends TableBase {
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepoint);
             DbException de = DbException.convert(e);
-            if (de.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
-                for (int j = 0; j < indexes.size(); j++) {
-                    Index index = indexes.get(j);
-                    if (index.getIndexType().isUnique() && index instanceof MultiVersionIndex) {
-                        MultiVersionIndex mv = (MultiVersionIndex) index;
-                        if (mv.isUncommittedFromOtherSession(session, row)) {
-                            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, index.getName());
-                        }
-                    }
-                }
-            }
+            //            if (de.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
+            //                for (int j = 0; j < indexes.size(); j++) {
+            //                    Index index = indexes.get(j);
+            //                    if (index.getIndexType().isUnique() && index instanceof MultiVersionIndex) {
+            //                        MultiVersionIndex mv = (MultiVersionIndex) index;
+            //                        if (mv.isUncommittedFromOtherSession(session, row)) {
+            //                            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, index.getName());
+            //                        }
+            //                    }
+            //                }
+            //            }
             throw de;
         }
         analyzeIfRequired(session);

@@ -24,7 +24,6 @@ import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
-import org.lealone.engine.UndoLogRecord;
 import org.lealone.expression.Expression;
 import org.lealone.expression.ExpressionVisitor;
 import org.lealone.message.DbException;
@@ -451,7 +450,6 @@ public abstract class Table extends SchemaObjectBase {
             Row o = rows.next();
             rows.next();
             removeRow(session, o);
-            session.log(this, UndoLogRecord.DELETE, o);
         }
         // add the new rows
         for (rows.reset(); rows.hasNext();) {
@@ -468,7 +466,6 @@ public abstract class Table extends SchemaObjectBase {
                 }
                 throw e;
             }
-            session.log(this, UndoLogRecord.INSERT, n);
         }
     }
 

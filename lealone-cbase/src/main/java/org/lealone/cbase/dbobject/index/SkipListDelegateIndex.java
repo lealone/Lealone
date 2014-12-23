@@ -15,11 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.dbobject.index;
+package org.lealone.cbase.dbobject.index;
 
+import org.lealone.cbase.dbobject.table.SkipListTable;
+import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.Cursor;
+import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
-import org.lealone.dbobject.table.SkipListTable;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
