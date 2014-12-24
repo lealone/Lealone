@@ -1,7 +1,10 @@
 package org.lealone.cluster.service;
 
+import java.util.ArrayList;
+
+import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.exceptions.ConfigurationException;
+import org.lealone.server.TcpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,10 +18,35 @@ public class LealoneDaemon {
 
         try {
             StorageService.instance.initServer();
-        } catch (ConfigurationException e) {
+            startTcpServer();
+        } catch (Exception e) {
             System.err.println(e.getMessage() + //
                     "\nFatal configuration error; unable to start server.  See log for stacktrace.");
         }
+    }
+
+    private static void startTcpServer() throws Exception {
+        Config config = DatabaseDescriptor.loadConfig();
+        ArrayList<String> list = new ArrayList<>();
+        list.add("-baseDir");
+        list.add(config.base_dir);
+        if (config.tcp_port > 0) {
+            list.add("-tcpPort");
+            list.add(Integer.toString(config.tcp_port));
+        }
+
+        if (config.tcp_allow_others)
+            list.add("-tcpAllowOthers");
+
+        if (config.tcp_daemon)
+            list.add("-tcpDaemon");
+
+        TcpServer server = new TcpServer();
+
+        server.init(list.toArray(new String[list.size()]));
+        server.start();
+        logger.info("Lealone daemon started, listening tcp port: {}", server.getPort());
+        server.listen();
     }
 
 }

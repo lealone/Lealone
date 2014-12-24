@@ -115,9 +115,6 @@ public class Config {
     public Integer native_transport_max_threads = 128;
     public Integer native_transport_max_frame_size_in_mb = 256;
 
-    @Deprecated
-    public Integer thrift_max_message_length_in_mb = 16;
-
     public Integer thrift_framed_transport_size_in_mb = 15;
     public Boolean snapshot_before_compaction = false;
     public Boolean auto_snapshot = true;
@@ -205,6 +202,12 @@ public class Config {
     // TTL for different types of trace events.
     public Integer tracetype_query_ttl = 60 * 60 * 24;
     public Integer tracetype_repair_ttl = 60 * 60 * 24 * 7;
+
+    //TCP Server
+    public String base_dir;
+    public int tcp_port = 0;
+    public boolean tcp_daemon = true;
+    public boolean tcp_allow_others = true;
 
     public static boolean getOutboundBindAny() {
         return outboundBindAny;
