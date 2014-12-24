@@ -17,7 +17,6 @@ import org.lealone.dbobject.constraint.Constraint;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableEngineManager;
-import org.lealone.dbobject.table.TableLink;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
@@ -568,28 +567,4 @@ public class Schema extends DbObjectBase {
             throw DbException.convert(new NullPointerException("table engine is null"));
         }
     }
-
-    /**
-     * Add a linked table to the schema.
-     *
-     * @param id the object id
-     * @param tableName the table name of the alias
-     * @param driver the driver class name
-     * @param url the database URL
-     * @param user the user name
-     * @param password the password
-     * @param originalSchema the schema name of the target table
-     * @param originalTable the table name of the target table
-     * @param emitUpdates if updates should be emitted instead of delete/insert
-     * @param force create the object even if the database can not be accessed
-     * @return the {@link TableLink} object
-     */
-    public TableLink createTableLink(int id, String tableName, String driver, String url, String user, String password,
-            String originalSchema, String originalTable, boolean emitUpdates, boolean force) {
-        synchronized (database) {
-            return new TableLink(this, id, tableName, driver, url, user, password, originalSchema, originalTable, emitUpdates,
-                    force);
-        }
-    }
-
 }

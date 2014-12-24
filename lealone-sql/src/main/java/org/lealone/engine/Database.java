@@ -42,7 +42,6 @@ import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.MetaTable;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableBase;
-import org.lealone.dbobject.table.TableLinkConnection;
 import org.lealone.dbobject.table.TableView;
 import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
@@ -159,7 +158,6 @@ public class Database implements DataHandler {
     private SmallLRUCache<String, String[]> lobFileListCache;
     protected boolean autoServerMode;
     protected int autoServerPort;
-    private HashMap<TableLinkConnection, TableLinkConnection> linkConnections;
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
     protected Properties reconnectLastLock;
     protected volatile long reconnectCheckNext;
@@ -1864,22 +1862,6 @@ public class Database implements DataHandler {
             meta.unlock(session);
             session.unlock(meta);
         }
-    }
-
-    /**
-     * Open a new connection or get an existing connection to another database.
-     *
-     * @param driver the database driver or null
-     * @param url the database URL
-     * @param user the user name
-     * @param password the password
-     * @return the connection
-     */
-    public TableLinkConnection getLinkConnection(String driver, String url, String user, String password) {
-        if (linkConnections == null) {
-            linkConnections = New.hashMap();
-        }
-        return TableLinkConnection.open(linkConnections, driver, url, user, password, dbSettings.shareLinkedConnections);
     }
 
     @Override

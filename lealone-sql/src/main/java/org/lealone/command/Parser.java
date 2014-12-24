@@ -15,7 +15,6 @@ import java.util.HashSet;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
-import org.lealone.command.CommandInterface;
 import org.lealone.command.ddl.AlterIndexRename;
 import org.lealone.command.ddl.AlterSchemaRename;
 import org.lealone.command.ddl.AlterSequence;
@@ -32,7 +31,6 @@ import org.lealone.command.ddl.CreateAggregate;
 import org.lealone.command.ddl.CreateConstant;
 import org.lealone.command.ddl.CreateFunctionAlias;
 import org.lealone.command.ddl.CreateIndex;
-import org.lealone.command.ddl.CreateLinkedTable;
 import org.lealone.command.ddl.CreateRole;
 import org.lealone.command.ddl.CreateSchema;
 import org.lealone.command.ddl.CreateSequence;
@@ -95,8 +93,8 @@ import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.RangeTable;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableFilter;
-import org.lealone.dbobject.table.TableView;
 import org.lealone.dbobject.table.TableFilter.TableFilterVisitor;
+import org.lealone.dbobject.table.TableView;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
@@ -1723,6 +1721,7 @@ public class Parser {
             TableFilter n = top.getNestedJoin();
             if (n != null) {
                 n.visit(new TableFilterVisitor() {
+                    @Override
                     public void accept(TableFilter f) {
                         command.addTableFilter(f, false);
                     }
@@ -3840,8 +3839,6 @@ public class Parser {
             return parseCreateUserDataType();
         } else if (readIf("AGGREGATE")) {
             return parseCreateAggregate(force);
-        } else if (readIf("LINKED")) {
-            return parseCreateLinkedTable(false, false, force);
         }
         // tables or linked tables
         boolean memory = false, cached = false, dynamicTable = true;
@@ -3858,22 +3855,13 @@ public class Parser {
         }
         if (readIf("LOCAL")) {
             read("TEMPORARY");
-            if (readIf("LINKED")) {
-                return parseCreateLinkedTable(true, false, force);
-            }
             read("TABLE");
             return parseCreateTable(true, false, cached, dynamicTable);
         } else if (readIf("GLOBAL")) {
             read("TEMPORARY");
-            if (readIf("LINKED")) {
-                return parseCreateLinkedTable(true, true, force);
-            }
             read("TABLE");
             return parseCreateTable(true, true, cached, dynamicTable);
         } else if (readIf("TEMP") || readIf("TEMPORARY")) {
-            if (readIf("LINKED")) {
-                return parseCreateLinkedTable(true, true, force);
-            }
             read("TABLE");
             return parseCreateTable(true, true, cached, dynamicTable);
         } else if (readIf("TABLE")) {
@@ -5249,42 +5237,6 @@ public class Parser {
         } else {
             readIf("DEFERRABLE");
         }
-    }
-
-    private CreateLinkedTable parseCreateLinkedTable(boolean temp, boolean globalTemp, boolean force) {
-        read("TABLE");
-        boolean ifNotExists = readIfNoExists();
-        String tableName = readIdentifierWithSchema();
-        CreateLinkedTable command = new CreateLinkedTable(session, getSchema());
-        command.setTemporary(temp);
-        command.setGlobalTemporary(globalTemp);
-        command.setForce(force);
-        command.setIfNotExists(ifNotExists);
-        command.setTableName(tableName);
-        command.setComment(readCommentIf());
-        read("(");
-        command.setDriver(readString());
-        read(",");
-        command.setUrl(readString());
-        read(",");
-        command.setUser(readString());
-        read(",");
-        command.setPassword(readString());
-        read(",");
-        String originalTable = readString();
-        if (readIf(",")) {
-            command.setOriginalSchema(originalTable);
-            originalTable = readString();
-        }
-        command.setOriginalTable(originalTable);
-        read(")");
-        if (readIf("EMIT")) {
-            read("UPDATES");
-            command.setEmitUpdates(true);
-        } else if (readIf("READONLY")) {
-            command.setReadOnly(true);
-        }
-        return command;
     }
 
     protected Column parseColumn(Schema schema, CreateTable command, String tableName, String cfName) {
