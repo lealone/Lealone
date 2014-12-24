@@ -36,7 +36,6 @@ import org.lealone.dbobject.constraint.Constraint;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
-import org.lealone.dbobject.index.PersistentIndex;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.MetaTable;
@@ -2086,8 +2085,8 @@ public class Database implements DataHandler {
 
     }
 
-    public PersistentIndex createPersistentIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols,
-            IndexType indexType, boolean create, Session session) {
+    public Index createIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols, IndexType indexType,
+            boolean create, Session session) {
         throw DbException.throwInternalError();
     }
 

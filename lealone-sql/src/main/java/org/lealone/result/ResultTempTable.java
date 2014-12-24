@@ -62,7 +62,7 @@ public class ResultTempTable implements ResultExternal {
         IndexType indexType;
         indexType = IndexType.createPrimaryKey(true, false);
         IndexColumn[] indexCols = { indexColumn };
-        index = db.createPersistentIndex(table, indexId, data.tableName, indexCols, indexType, true, session);
+        index = db.createIndex(table, indexId, data.tableName, indexCols, indexType, true, session);
         index.setTemporary(true);
         table.getIndexes().add(index);
         parent = null;
@@ -78,6 +78,7 @@ public class ResultTempTable implements ResultExternal {
         reset();
     }
 
+    @Override
     public synchronized ResultExternal createShallowCopy() {
         if (parent != null) {
             return parent.createShallowCopy();
@@ -89,6 +90,7 @@ public class ResultTempTable implements ResultExternal {
         return new ResultTempTable(this);
     }
 
+    @Override
     public int removeRow(Value[] values) {
         Row row = convertToRow(values);
         Cursor cursor = find(row);
@@ -99,10 +101,12 @@ public class ResultTempTable implements ResultExternal {
         return (int) table.getRowCount(session);
     }
 
+    @Override
     public boolean contains(Value[] values) {
         return find(convertToRow(values)) != null;
     }
 
+    @Override
     public int addRow(Value[] values) {
         Row row = convertToRow(values);
         Cursor cursor = find(row);
@@ -112,6 +116,7 @@ public class ResultTempTable implements ResultExternal {
         return (int) table.getRowCount(session);
     }
 
+    @Override
     public int addRows(ArrayList<Value[]> rows) {
         if (sort != null) {
             sort.sort(rows);
@@ -128,6 +133,7 @@ public class ResultTempTable implements ResultExternal {
         }
     }
 
+    @Override
     public synchronized void close() {
         if (closed) {
             return;
@@ -171,10 +177,12 @@ public class ResultTempTable implements ResultExternal {
         }
     }
 
+    @Override
     public void done() {
         // nothing to do
     }
 
+    @Override
     public Value[] next() {
         if (!resultCursor.next()) {
             return null;
@@ -184,6 +192,7 @@ public class ResultTempTable implements ResultExternal {
         return data.getList();
     }
 
+    @Override
     public void reset() {
         resultCursor = index.find(session, null, null);
     }
