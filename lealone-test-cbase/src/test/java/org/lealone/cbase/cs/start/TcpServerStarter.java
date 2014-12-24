@@ -22,7 +22,9 @@ package org.lealone.cbase.cs.start;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-import org.lealone.server.LealoneDaemon;
+import org.lealone.server.PgServer;
+import org.lealone.server.Service;
+import org.lealone.server.TcpServer;
 
 public class TcpServerStarter {
     public static void main(String[] args) throws SQLException {
@@ -41,6 +43,40 @@ public class TcpServerStarter {
         //list.add("-pg");
         list.add("-tcp");
 
-        LealoneDaemon.main(list.toArray(new String[list.size()]));
+        start(list.toArray(new String[list.size()]));
+    }
+
+    public static void start(String[] args) {
+        Service server = null;
+        String arg;
+        for (int i = 0; args != null && i < args.length; i++) {
+            arg = args[i];
+            if (arg != null && !arg.isEmpty()) {
+                arg = arg.trim();
+                switch (arg) {
+                case "-tcp":
+                    server = new TcpServer();
+                    break;
+                case "-pg":
+                    server = new PgServer();
+                    break;
+                }
+                if (server != null)
+                    break;
+            }
+        }
+
+        if (server == null)
+            server = new TcpServer();
+
+        try {
+            server.init(args);
+            server.start();
+            System.out.println("Lealone daemon started, listening tcp port: " + server.getPort());
+            server.listen();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
     }
 }

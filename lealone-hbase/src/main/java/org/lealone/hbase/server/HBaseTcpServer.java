@@ -116,30 +116,8 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     }
 
     @Override
-    public String getName() {
-        return "Lealone tcp server";
-    }
-
-    @Override
     protected TcpServerThread createTcpServerThread(Socket socket, int threadId) {
         return new HBaseTcpServerThread(socket, this, threadId);
-    }
-
-    @Override
-    protected void initManagementDb() throws SQLException {
-        SERVERS.put(getPort(), this);
-    }
-
-    @Override
-    protected void stopManagementDb() {
-    }
-
-    @Override
-    protected void addConnection(int id, String url, String user) {
-    }
-
-    @Override
-    protected void removeConnection(int id) {
     }
 
     private void init(Configuration conf) {

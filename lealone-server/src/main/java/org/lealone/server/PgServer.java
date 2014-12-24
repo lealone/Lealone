@@ -82,6 +82,7 @@ public class PgServer implements Service {
     private boolean isDaemon;
     private boolean ifExists;
 
+    @Override
     public void init(String... args) {
         port = DEFAULT_PORT;
         for (int i = 0; args != null && i < args.length; i++) {
@@ -141,10 +142,12 @@ public class PgServer implements Service {
         }
     }
 
+    @Override
     public String getURL() {
         return "pg://" + NetUtils.getLocalAddress() + ":" + port;
     }
 
+    @Override
     public int getPort() {
         return port;
     }
@@ -161,6 +164,7 @@ public class PgServer implements Service {
         }
     }
 
+    @Override
     public void start() {
         try {
             serverSocket = NetUtils.createServerSocket(port, false);
@@ -174,6 +178,7 @@ public class PgServer implements Service {
         port = serverSocket.getLocalPort();
     }
 
+    @Override
     public void listen() {
         String threadName = Thread.currentThread().getName();
         try {
@@ -203,6 +208,7 @@ public class PgServer implements Service {
         return new PgServerThread(socket, this);
     }
 
+    @Override
     public void stop() {
         // TODO server: combine with tcp server
         if (!stop) {
@@ -232,6 +238,7 @@ public class PgServer implements Service {
         }
     }
 
+    @Override
     public boolean isRunning(boolean traceError) {
         if (serverSocket == null) {
             return false;
@@ -252,16 +259,19 @@ public class PgServer implements Service {
         return baseDir;
     }
 
+    @Override
     public boolean getAllowOthers() {
         return allowOthers;
     }
 
+    @Override
     public String getType() {
         return "PG";
     }
 
+    @Override
     public String getName() {
-        return "Lealone PG Server";
+        return "PG Server";
     }
 
     public boolean getIfExists() {
@@ -496,6 +506,7 @@ public class PgServer implements Service {
         }
     }
 
+    @Override
     public boolean isDaemon() {
         return isDaemon;
     }

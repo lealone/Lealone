@@ -49,7 +49,7 @@ public class TcpServer implements Service {
      * The name of the in-memory management database used by the TCP server
      * to keep the active sessions.
      */
-    public static final String MANAGEMENT_DB_PREFIX = "management_db_";
+    private static final String MANAGEMENT_DB_PREFIX = "management_db_";
 
     protected static final Map<Integer, TcpServer> SERVERS = Collections.synchronizedMap(new HashMap<Integer, TcpServer>());
 
@@ -80,7 +80,6 @@ public class TcpServer implements Service {
      * @return the database name (usually starting with mem:)
      */
     public static String getManagementDbName(int port) {
-        //return Constants.URL_EMBED + MANAGEMENT_DB_PREFIX + port + ";default_table_engine=" + MemoryTableEngine.NAME;
         return Constants.URL_MEM + Constants.URL_EMBED + MANAGEMENT_DB_PREFIX + port;
     }
 
@@ -415,7 +414,7 @@ public class TcpServer implements Service {
 
     @Override
     public String getName() {
-        return "H2 TCP Server";
+        return "TCP Server";
     }
 
     public boolean getIfExists() {
