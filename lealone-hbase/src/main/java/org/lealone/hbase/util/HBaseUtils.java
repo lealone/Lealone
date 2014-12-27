@@ -418,7 +418,7 @@ public class HBaseUtils {
             if (isLocal(session, hri)) {
                 sqlRoutingInfo.localRegion = hri.getRegionName();
             } else {
-                sqlRoutingInfo.remoteCommand = FrontendSessionPool.getCommandRemote(session, prepared, hri.getRegionServerURL(),
+                sqlRoutingInfo.remoteCommand = FrontendSessionPool.getFrontendCommand(session, prepared, hri.getRegionServerURL(),
                         createSQL(hri.getRegionName(), sql));
             }
         } else {
@@ -449,7 +449,7 @@ public class HBaseUtils {
                 for (Map.Entry<String, List<HBaseRegionInfo>> e : servers.entrySet()) {
                     if (sqlRoutingInfo.remoteCommands == null)
                         sqlRoutingInfo.remoteCommands = New.arrayList();
-                    sqlRoutingInfo.remoteCommands.add(FrontendSessionPool.getCommandRemote(session, prepared, e.getKey(),
+                    sqlRoutingInfo.remoteCommands.add(FrontendSessionPool.getFrontendCommand(session, prepared, e.getKey(),
                             HBaseUtils.createSQL(e.getValue(), planSQL)));
                 }
 

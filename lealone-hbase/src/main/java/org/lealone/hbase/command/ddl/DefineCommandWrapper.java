@@ -60,8 +60,8 @@ public class DefineCommandWrapper extends DefineCommand {
             FrontendSession sr = null;
             FrontendCommand cr = null;
             try {
-                sr = FrontendSessionPool.getMasterSessionRemote(session.getOriginalProperties());
-                cr = FrontendSessionPool.getCommandRemote(sr, sql, getParameters(), dc.getFetchSize());
+                sr = FrontendSessionPool.getMasterFrontendSession(session.getOriginalProperties());
+                cr = FrontendSessionPool.getFrontendCommand(sr, sql, getParameters(), dc.getFetchSize());
                 int updateCount = cr.executeUpdate();
                 refreshMetaTable();
                 return updateCount;
@@ -86,8 +86,8 @@ public class DefineCommandWrapper extends DefineCommand {
             FrontendSession sr = null;
             FrontendCommand cr = null;
             try {
-                sr = FrontendSessionPool.getMasterSessionRemote(session.getOriginalProperties());
-                cr = FrontendSessionPool.getCommandRemote(sr, sql, getParameters(), dc.getFetchSize());
+                sr = FrontendSessionPool.getMasterFrontendSession(session.getOriginalProperties());
+                cr = FrontendSessionPool.getFrontendCommand(sr, sql, getParameters(), dc.getFetchSize());
                 ResultInterface ri = cr.executeQuery(maxRows, false);
                 refreshMetaTable();
                 return ri;

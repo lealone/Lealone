@@ -36,8 +36,7 @@ public class FrontendSessionPool {
             HBaseConstants.DEFAULT_SESSION_CORE_POOL_SIZE);
 
     //key是Master或RegionServer的URL
-    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<FrontendSession>> //
-    pool = new ConcurrentHashMap<String, ConcurrentLinkedQueue<FrontendSession>>();
+    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<FrontendSession>> pool = new ConcurrentHashMap<>();
 
     private static ConcurrentLinkedQueue<FrontendSession> getQueue(String url) {
         ConcurrentLinkedQueue<FrontendSession> queue = pool.get(url);
@@ -46,7 +45,7 @@ public class FrontendSessionPool {
             synchronized (FrontendSessionPool.class) {
                 queue = pool.get(url);
                 if (queue == null) {
-                    queue = new ConcurrentLinkedQueue<FrontendSession>();
+                    queue = new ConcurrentLinkedQueue<>();
                     pool.put(url, queue);
                 }
             }
@@ -54,14 +53,14 @@ public class FrontendSessionPool {
         return queue;
     }
 
-    public static FrontendSession getMasterSessionRemote(Properties info) {
-        return getSessionRemote(info, HBaseUtils.getMasterURL());
+    public static FrontendSession getMasterFrontendSession(Properties info) {
+        return getFrontendSession(info, HBaseUtils.getMasterURL());
     }
 
-    public static FrontendSession getSessionRemote(Properties info, String url) {
-        FrontendSession sr = getQueue(url).poll();
+    public static FrontendSession getFrontendSession(Properties info, String url) {
+        FrontendSession fs = getQueue(url).poll();
 
-        if (sr == null || sr.isClosed()) {
+        if (fs == null || fs.isClosed()) {
             byte[] userPasswordHash = null;
             byte[] filePasswordHash = null;
             Properties prop = new Properties();
@@ -80,55 +79,56 @@ public class FrontendSessionPool {
             ConnectionInfo ci = new ConnectionInfo(url, prop);
             ci.setUserPasswordHash(userPasswordHash);
             ci.setFilePasswordHash(filePasswordHash);
-            sr = (FrontendSession) new FrontendSession(ci).connectEmbeddedOrServer(false);
+            fs = (FrontendSession) new FrontendSession(ci).connectEmbeddedOrServer(false);
         }
 
-        return sr;
+        return fs;
     }
 
-    public static void release(FrontendSession sr) {
-        if (sr == null || sr.isClosed())
+    public static void release(FrontendSession fs) {
+        if (fs == null || fs.isClosed())
             return;
 
-        ConcurrentLinkedQueue<FrontendSession> queue = getQueue(sr.getURL());
+        ConcurrentLinkedQueue<FrontendSession> queue = getQueue(fs.getURL());
         if (queue.size() > corePoolSize)
-            sr.close();
+            fs.close();
         else
-            queue.offer(sr);
+            queue.offer(fs);
     }
 
-    public static FrontendCommand getCommandRemote(HBaseSession originalSession, Prepared prepared, //
+    public static FrontendCommand getFrontendCommand(HBaseSession originalSession, Prepared prepared, //
             String url, String sql) throws Exception {
-        FrontendSession sessionRemote = originalSession.getSessionRemote(url);
-        if (sessionRemote != null && sessionRemote.isClosed())
-            sessionRemote = null;
+        FrontendSession fs = originalSession.getFrontendSession(url);
+        if (fs != null && fs.isClosed())
+            fs = null;
         boolean isNew = false;
-        if (sessionRemote == null) {
+        if (fs == null) {
             isNew = true;
-            sessionRemote = getSessionRemote(originalSession.getOriginalProperties(), url);
+            fs = getFrontendSession(originalSession.getOriginalProperties(), url);
         }
 
-        if (sessionRemote.getTransaction() == null)
-            sessionRemote.setTransaction(originalSession.getTransaction());
+        if (fs.getTransaction() == null)
+            fs.setTransaction(originalSession.getTransaction());
 
         if (isNew)
-            originalSession.addSessionRemote(url, sessionRemote);
+            originalSession.addFrontendSession(url, fs);
 
-        return getCommandRemote(sessionRemote, sql, prepared.getParameters(), prepared.getFetchSize());
+        return getFrontendCommand(fs, sql, prepared.getParameters(), prepared.getFetchSize());
     }
 
-    public static FrontendCommand getCommandRemote(FrontendSession sr, String sql, List<Parameter> parameters, int fetchSize) {
-        FrontendCommand cr = (FrontendCommand) sr.prepareCommand(sql, fetchSize);
+    public static FrontendCommand getFrontendCommand(FrontendSession fs, String sql, //
+            List<Parameter> parameters, int fetchSize) {
+        FrontendCommand fc = (FrontendCommand) fs.prepareCommand(sql, fetchSize);
 
-        //传递最初的参数值到新的CommandRemote
+        //传递最初的参数值到新的FrontendCommand
         if (parameters != null) {
-            ArrayList<? extends ParameterInterface> newParams = cr.getParameters();
+            ArrayList<? extends ParameterInterface> newParams = fc.getParameters();
             for (int i = 0, size = parameters.size(); i < size; i++) {
                 newParams.get(i).setValue(parameters.get(i).getParamValue(), true);
             }
         }
 
-        return cr;
+        return fc;
     }
 
     public static void check() {

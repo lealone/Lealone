@@ -40,8 +40,8 @@ public class HBaseSequence extends Sequence {
             FrontendSession sr = null;
             FrontendCommand cr = null;
             try {
-                sr = FrontendSessionPool.getMasterSessionRemote(s.getOriginalProperties());
-                cr = FrontendSessionPool.getCommandRemote(sr, "ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", null, 1);
+                sr = FrontendSessionPool.getMasterFrontendSession(s.getOriginalProperties());
+                cr = FrontendSessionPool.getFrontendCommand(sr, "ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", null, 1);
                 //cr.executeUpdate();
                 ResultInterface ri = cr.executeQuery(-1, false);
                 ri.next();

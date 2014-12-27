@@ -31,8 +31,8 @@ import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.User;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Database;
-import org.lealone.engine.Session;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.Session;
 import org.lealone.hbase.command.CommandParallel;
 import org.lealone.hbase.command.HBaseParser;
 import org.lealone.hbase.command.dml.HBaseInsert;
@@ -66,18 +66,18 @@ public class HBaseSession extends Session {
     private volatile Transaction transaction;
 
     //参与本次事务的其他SessionRemote
-    private final Map<String, FrontendSession> sessionRemoteCache = New.hashMap();
+    private final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
     }
 
-    void addSessionRemote(String url, FrontendSession sessionRemote) {
-        sessionRemoteCache.put(url, sessionRemote);
+    void addFrontendSession(String url, FrontendSession frontendSession) {
+        frontendSessionCache.put(url, frontendSession);
     }
 
-    FrontendSession getSessionRemote(String url) {
-        return sessionRemoteCache.get(url);
+    FrontendSession getFrontendSession(String url) {
+        return frontendSessionCache.get(url);
     }
 
     public HMaster getMaster() {
@@ -105,8 +105,7 @@ public class HBaseSession extends Session {
     public void setRegionServer(HRegionServer regionServer) {
         this.regionServer = regionServer;
         if (regionServer != null)
-            this.timestampService = ((org.lealone.hbase.engine.HBaseRegionServer) regionServer)
-                    .getTimestampService();
+            this.timestampService = ((org.lealone.hbase.engine.HBaseRegionServer) regionServer).getTimestampService();
     }
 
     public boolean isRegionServer() {
@@ -172,13 +171,13 @@ public class HBaseSession extends Session {
     }
 
     private void endTransaction() {
-        if (!sessionRemoteCache.isEmpty()) {
-            for (FrontendSession sr : sessionRemoteCache.values()) {
-                sr.setTransaction(null);
-                FrontendSessionPool.release(sr);
+        if (!frontendSessionCache.isEmpty()) {
+            for (FrontendSession fs : frontendSessionCache.values()) {
+                fs.setTransaction(null);
+                FrontendSessionPool.release(fs);
             }
 
-            sessionRemoteCache.clear();
+            frontendSessionCache.clear();
         }
 
         if (!isRoot())
@@ -200,7 +199,7 @@ public class HBaseSession extends Session {
                 if (allLocalTransactionNames == null)
                     allLocalTransactionNames = transaction.getAllLocalTransactionNames();
                 List<Future<Void>> futures = null;
-                if (!getAutoCommit() && sessionRemoteCache.size() > 0)
+                if (!getAutoCommit() && frontendSessionCache.size() > 0)
                     futures = parallelCommitOrRollback(allLocalTransactionNames);
 
                 transaction.commit(allLocalTransactionNames);
@@ -221,7 +220,7 @@ public class HBaseSession extends Session {
                 Transaction transaction = this.transaction;
                 this.transaction = null;
                 List<Future<Void>> futures = null;
-                if (!getAutoCommit() && sessionRemoteCache.size() > 0)
+                if (!getAutoCommit() && frontendSessionCache.size() > 0)
                     futures = parallelCommitOrRollback(null);
 
                 transaction.rollback();
@@ -236,15 +235,16 @@ public class HBaseSession extends Session {
     }
 
     private List<Future<Void>> parallelCommitOrRollback(final String allLocalTransactionNames) {
-        int size = sessionRemoteCache.size();
+        int size = frontendSessionCache.size();
         List<Future<Void>> futures = New.arrayList(size);
-        for (final FrontendSession sessionRemote : sessionRemoteCache.values()) {
+        for (final FrontendSession fs : frontendSessionCache.values()) {
             futures.add(pool.submit(new Callable<Void>() {
+                @Override
                 public Void call() throws Exception {
                     if (allLocalTransactionNames != null)
-                        sessionRemote.commitTransaction(allLocalTransactionNames);
+                        fs.commitTransaction(allLocalTransactionNames);
                     else
-                        sessionRemote.rollbackTransaction();
+                        fs.rollbackTransaction();
                     return null;
                 }
             }));
@@ -279,7 +279,7 @@ public class HBaseSession extends Session {
     @Override
     public void addSavepoint(String name) {
         if (transaction != null) {
-            if (!getAutoCommit() && sessionRemoteCache.size() > 0)
+            if (!getAutoCommit() && frontendSessionCache.size() > 0)
                 parallelSavepoint(true, name);
 
             transaction.addSavepoint(name);
@@ -289,7 +289,7 @@ public class HBaseSession extends Session {
     @Override
     public void rollbackToSavepoint(String name) {
         if (transaction != null) {
-            if (!getAutoCommit() && sessionRemoteCache.size() > 0)
+            if (!getAutoCommit() && frontendSessionCache.size() > 0)
                 parallelSavepoint(false, name);
 
             transaction.rollbackToSavepoint(name);
@@ -297,15 +297,16 @@ public class HBaseSession extends Session {
     }
 
     private void parallelSavepoint(final boolean add, final String name) {
-        int size = sessionRemoteCache.size();
+        int size = frontendSessionCache.size();
         List<Future<Void>> futures = New.arrayList(size);
-        for (final FrontendSession sessionRemote : sessionRemoteCache.values()) {
+        for (final FrontendSession fs : frontendSessionCache.values()) {
             futures.add(pool.submit(new Callable<Void>() {
+                @Override
                 public Void call() throws Exception {
                     if (add)
-                        sessionRemote.addSavepoint(name);
+                        fs.addSavepoint(name);
                     else
-                        sessionRemote.rollbackToSavepoint(name);
+                        fs.rollbackToSavepoint(name);
                     return null;
                 }
             }));

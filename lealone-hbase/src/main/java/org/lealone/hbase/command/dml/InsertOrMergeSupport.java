@@ -122,7 +122,7 @@ public class InsertOrMergeSupport {
             if (!servers.isEmpty()) {
                 List<CommandInterface> commands = New.arrayList(servers.size());
                 for (Map.Entry<String, Map<String, List<String>>> e : servers.entrySet()) {
-                    FrontendCommand c = FrontendSessionPool.getCommandRemote(session, prepared, e.getKey(), //
+                    FrontendCommand c = FrontendSessionPool.getFrontendCommand(session, prepared, e.getKey(), //
                             getPlanSQL(insertFromSelect, sortedInsertMode, e.getValue().entrySet()));
 
                     commands.add(c);
@@ -133,7 +133,7 @@ public class InsertOrMergeSupport {
 
             if (table.isColumnsModified()) {
                 table.setColumnsModified(false);
-                SessionInterface si = FrontendSessionPool.getMasterSessionRemote(session.getOriginalProperties());
+                SessionInterface si = FrontendSessionPool.getMasterFrontendSession(session.getOriginalProperties());
                 for (Column c : alterColumns) {
                     CommandInterface ci = si.prepareCommand(alterTable + c.getCreateSQL(true), 1);
                     ci.executeUpdate();
