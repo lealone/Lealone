@@ -18,16 +18,21 @@
 		<module>lealone-client</module>
 		<module>lealone-sql</module>
 		<module>lealone-server</module>
-		<module>lealone-cluster</module>
-		<module>lealone-cbase</module>
-		<module>lealone-hbase</module>
-		<module>lealone-cassandra</module>
 		<module>lealone-transaction</module>
-		<module>lealone-mysql</module>
-		<module>lealone-test-common</module>
-		<module>lealone-test-cbase</module>
-		<module>lealone-test-hbase</module>
-		<module>lealone-test-cassandra</module>
+		<module>lealone-cluster</module>
+
+		<module>lealone-storage/cassandra</module>
+		<module>lealone-storage/cbase</module>
+		<module>lealone-storage/hbase</module>
+		<module>lealone-storage/mysql</module>
+		<module>lealone-storage/postgresql</module>
+
+		<module>lealone-test/common</module>
+		<module>lealone-test/cassandra</module>
+		<module>lealone-test/cbase</module>
+		<module>lealone-test/hbase</module>
+		<module>lealone-test/mysql</module>
+		<module>lealone-test/postgresql</module>
 	</modules>
 
 	<build>
@@ -131,24 +136,36 @@
 			</dependency>
 			<dependency>
 				<groupId>org.lealone</groupId>
-				<artifactId>lealone-cbase</artifactId>
-				<version>${lealone.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.lealone</groupId>
-				<artifactId>lealone-hbase</artifactId>
-				<version>${lealone.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.lealone</groupId>
-				<artifactId>lealone-cassandra</artifactId>
-				<version>${lealone.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.lealone</groupId>
 				<artifactId>lealone-cluster</artifactId>
 				<version>${lealone.version}</version>
 			</dependency>
+
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-storage-cassandra</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-storage-cbase</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-storage-hbase</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-storage-mysql</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.lealone</groupId>
+				<artifactId>lealone-storage-postgresql</artifactId>
+				<version>${lealone.version}</version>
+			</dependency>
+
 			<dependency>
 				<groupId>org.lealone</groupId>
 				<artifactId>lealone-test-common</artifactId>

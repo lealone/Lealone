@@ -10,7 +10,6 @@
 	<artifactId>lealone-cluster</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
-	<name>lealone cluster</name>
 
 	<dependencies>
 		<dependency>

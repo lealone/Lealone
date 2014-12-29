@@ -55,6 +55,6 @@
 * lealone-common
 * lealone-server
 * lealone-sql
-* lealone-cbase
+* lealone-storage-cbase
 
 除此之外的代码使用[Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)

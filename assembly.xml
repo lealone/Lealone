@@ -26,11 +26,11 @@
 
 		<moduleSet>
 			<includes>
-				<include>org.lealone:lealone-hbase</include>
+				<include>org.lealone:lealone-storage-cassandra</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>lealone-hbase</outputDirectory>
+				<outputDirectory>lealone-storage-cassandra</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
@@ -42,11 +42,11 @@
 
 		<moduleSet>
 			<includes>
-				<include>org.lealone:lealone-cassandra</include>
+				<include>org.lealone:lealone-storage-cbase</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>lealone-cassandra</outputDirectory>
+				<outputDirectory>lealone-storage-cbase</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
@@ -58,11 +58,43 @@
 
 		<moduleSet>
 			<includes>
-				<include>org.lealone:lealone-cbase</include>
+				<include>org.lealone:lealone-storage-hbase</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>lealone-cbase</outputDirectory>
+				<outputDirectory>lealone-storage-hbase</outputDirectory>
+				<dependencySets>
+					<dependencySet>
+						<useTransitiveFiltering>true</useTransitiveFiltering>
+						<useTransitiveDependencies>true</useTransitiveDependencies>
+					</dependencySet>
+				</dependencySets>
+			</binaries>
+		</moduleSet>
+		
+		<moduleSet>
+			<includes>
+				<include>org.lealone:lealone-storage-mysql</include>
+			</includes>
+			<binaries>
+				<unpack>false</unpack>
+				<outputDirectory>lealone-storage-mysql</outputDirectory>
+				<dependencySets>
+					<dependencySet>
+						<useTransitiveFiltering>true</useTransitiveFiltering>
+						<useTransitiveDependencies>true</useTransitiveDependencies>
+					</dependencySet>
+				</dependencySets>
+			</binaries>
+		</moduleSet>
+		
+		<moduleSet>
+			<includes>
+				<include>org.lealone:lealone-storage-postgresql</include>
+			</includes>
+			<binaries>
+				<unpack>false</unpack>
+				<outputDirectory>lealone-storage-postgresql</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>

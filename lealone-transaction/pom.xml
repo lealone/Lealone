@@ -10,7 +10,6 @@
 	<artifactId>lealone-transaction</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
-	<name>lealone transaction</name>
 
 	<dependencies>
 		<dependency>

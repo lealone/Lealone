@@ -1,0 +1,39 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.lealone</groupId>
+		<artifactId>lealone</artifactId>
+		<version>1.0.0</version>
+		<relativePath>../../pom.xml</relativePath>
+	</parent>
+
+	<artifactId>lealone-storage-hbase</artifactId>
+	<packaging>jar</packaging>
+	<version>${lealone.version}</version>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.lealone</groupId>
+			<artifactId>lealone-server</artifactId>
+		</dependency>
+		<!-- 用于支持内存表 -->
+		<dependency>
+			<groupId>org.lealone</groupId>
+			<artifactId>lealone-storage-cbase</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>commons-logging</groupId>
+			<artifactId>commons-logging</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hbase</groupId>
+			<artifactId>hbase</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-core</artifactId>
+		</dependency>
+	</dependencies>
+</project>

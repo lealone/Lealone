@@ -5,16 +5,27 @@
 		<groupId>org.lealone</groupId>
 		<artifactId>lealone</artifactId>
 		<version>1.0.0</version>
+		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>lealone-server</artifactId>
+	<artifactId>lealone-storage-cassandra</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-sql</artifactId>
+			<artifactId>lealone-server</artifactId>
+		</dependency>
+		<!-- 用于支持内存表 -->
+		<dependency>
+			<groupId>org.lealone</groupId>
+			<artifactId>lealone-storage-cbase</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.cassandra</groupId>
+			<artifactId>cassandra-all</artifactId>
 		</dependency>
 	</dependencies>
 </project>

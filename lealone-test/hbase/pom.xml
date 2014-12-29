@@ -5,16 +5,28 @@
 		<groupId>org.lealone</groupId>
 		<artifactId>lealone</artifactId>
 		<version>1.0.0</version>
+		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>lealone-server</artifactId>
+	<artifactId>lealone-test-hbase</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
-
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-sql</artifactId>
+			<artifactId>lealone-test-common</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.lealone</groupId>
+			<artifactId>lealone-storage-hbase</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hbase</groupId>
+			<artifactId>hbase</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-core</artifactId>
 		</dependency>
 	</dependencies>
 </project>

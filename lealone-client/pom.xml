@@ -10,7 +10,6 @@
 	<artifactId>lealone-client</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
-	<name>lealone client</name>
 
 	<dependencies>
 		<dependency>
