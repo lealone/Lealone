@@ -179,6 +179,10 @@ public abstract class Table extends SchemaObjectBase {
      */
     public abstract void removeRow(Session session, Row row);
 
+    public void removeRow(final Session session, final Row row, boolean isUndo) {
+        //TODO
+    }
+
     /**
      * Remove all rows from the table and indexes.
      *
@@ -1155,5 +1159,15 @@ public abstract class Table extends SchemaObjectBase {
 
     public boolean doesColumnFamilyExist(String columnFamilyName) {
         return false;
+    }
+
+    private boolean isColumnsModified;
+
+    public boolean isColumnsModified() {
+        return isColumnsModified;
+    }
+
+    public void setColumnsModified(boolean modified) {
+        this.isColumnsModified = modified;
     }
 }

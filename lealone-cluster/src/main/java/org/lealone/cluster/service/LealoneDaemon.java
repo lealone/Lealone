@@ -4,6 +4,8 @@ import java.util.ArrayList;
 
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
+import org.lealone.cluster.router.DefaultRouter;
+import org.lealone.engine.Session;
 import org.lealone.server.TcpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +19,12 @@ public class LealoneDaemon {
             logger.info("32bit JVM detected.  It is recommended to run lealone on a 64bit JVM for better performance.");
 
         try {
-            StorageService.instance.initServer();
+            if (DatabaseDescriptor.loadConfig().isClusterMode()) {
+                Session.setClusterMode(true);
+                Session.setRouter(DefaultRouter.getInstance());
+                StorageService.instance.initServer();
+            }
+
             startTcpServer();
         } catch (Exception e) {
             System.err.println(e.getMessage() + //
@@ -30,6 +37,8 @@ public class LealoneDaemon {
         ArrayList<String> list = new ArrayList<>();
         list.add("-baseDir");
         list.add(config.base_dir);
+        list.add("-tcpListenAddress");
+        list.add(config.listen_address);
         if (config.tcp_port > 0) {
             list.add("-tcpPort");
             list.add(Integer.toString(config.tcp_port));

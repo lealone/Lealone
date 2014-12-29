@@ -1,6 +1,4 @@
 /*
- * Copyright 2011 The Apache Software Foundation
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,24 +15,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction;
+package org.lealone.command.router;
 
-public interface Transaction {
-    long getTransactionId();
+import org.lealone.dbobject.index.Cursor;
+import org.lealone.result.ResultInterface;
+import org.lealone.result.Row;
+import org.lealone.result.SearchRow;
 
-    long getCommitTimestamp();
+public class MergedCursor implements Cursor {
+    private final ResultInterface result;
 
-    boolean isAutoCommit();
+    public MergedCursor(ResultInterface result) {
+        this.result = result;
+    }
 
-    void addLocalTransactionNames(String localTransactionNames);
+    @Override
+    public Row get() {
+        return new Row(result.currentRow(), -1);
+    }
 
-    String getLocalTransactionNames();
+    @Override
+    public SearchRow getSearchRow() {
+        return get();
+    }
 
-    void commit();
+    @Override
+    public boolean next() {
+        return result.next();
+    }
 
-    void commit(String allLocalTransactionNames);
+    @Override
+    public boolean previous() {
+        return false;
+    }
 
-    void rollback();
-
-    void rollbackToSavepoint(String name);
 }

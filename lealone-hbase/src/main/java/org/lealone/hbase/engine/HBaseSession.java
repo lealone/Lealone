@@ -65,18 +65,20 @@ public class HBaseSession extends Session {
     private TimestampService timestampService;
     private volatile Transaction transaction;
 
-    //参与本次事务的其他SessionRemote
+    //参与本次事务的其他FrontendSession
     private final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
     }
 
-    void addFrontendSession(String url, FrontendSession frontendSession) {
+    @Override
+    public void addFrontendSession(String url, FrontendSession frontendSession) {
         frontendSessionCache.put(url, frontendSession);
     }
 
-    FrontendSession getFrontendSession(String url) {
+    @Override
+    public FrontendSession getFrontendSession(String url) {
         return frontendSessionCache.get(url);
     }
 
@@ -112,10 +114,12 @@ public class HBaseSession extends Session {
         return regionServer != null;
     }
 
+    @Override
     public Properties getOriginalProperties() {
         return originalProperties;
     }
 
+    @Override
     public void setOriginalProperties(Properties originalProperties) {
         this.originalProperties = originalProperties;
     }

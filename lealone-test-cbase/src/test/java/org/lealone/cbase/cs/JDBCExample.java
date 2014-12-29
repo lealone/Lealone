@@ -42,7 +42,7 @@ public class JDBCExample {
         Statement stmt = conn.createStatement();
         ResultSet rs;
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine cbase"); //");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long) engine memory");
+        stmt.executeUpdate("CREATE memory TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test3 (f1 int primary key, f2 long)"); //cbase
 
         stmt.executeUpdate("CREATE INDEX IF NOT EXISTS test_f2 ON test(f2)");

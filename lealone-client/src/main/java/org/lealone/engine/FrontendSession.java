@@ -351,6 +351,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
                 String s = servers[random.nextInt(len)];
                 try {
                     transfer = initTransfer(ci, databaseName, s);
+                    break;
                 } catch (IOException e) {
                     if (i == len - 1) {
                         throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, e + ": " + s);

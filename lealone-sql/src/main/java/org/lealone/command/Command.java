@@ -11,7 +11,6 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.ParameterInterface;
-import org.lealone.command.CommandInterface;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
@@ -72,6 +71,7 @@ public abstract class Command implements CommandInterface {
      *
      * @return true if it is
      */
+    @Override
     public abstract boolean isQuery();
 
     /**
@@ -79,6 +79,7 @@ public abstract class Command implements CommandInterface {
      *
      * @return the list of parameters
      */
+    @Override
     public abstract ArrayList<? extends ParameterInterface> getParameters();
 
     /**
@@ -108,14 +109,15 @@ public abstract class Command implements CommandInterface {
     /**
      * Execute a query statement, if this is possible.
      *
-     * @param maxrows the maximum number of rows returned
+     * @param maxRows the maximum number of rows returned
      * @return the local result set
      * @throws DbException if the command is not a query
      */
-    public ResultInterface query(int maxrows) {
+    public ResultInterface query(int maxRows) {
         throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
     }
 
+    @Override
     public final ResultInterface getMetaData() {
         return queryMeta();
     }
@@ -172,11 +174,12 @@ public abstract class Command implements CommandInterface {
      * Execute a query and return the result.
      * This method prepares everything and calls {@link #query(int)} finally.
      *
-     * @param maxrows the maximum number of rows to return
+     * @param maxRows the maximum number of rows to return
      * @param scrollable if the result set must be scrollable (ignored)
      * @return the result set
      */
-    public ResultInterface executeQuery(int maxrows, boolean scrollable) {
+    @Override
+    public ResultInterface executeQuery(int maxRows, boolean scrollable) {
         startTime = 0;
         long start = 0;
         Database database = session.getDatabase();
@@ -194,7 +197,7 @@ public abstract class Command implements CommandInterface {
                 while (true) {
                     database.checkPowerOff();
                     try {
-                        return query(maxrows);
+                        return query(maxRows);
                     } catch (DbException e) {
                         start = filterConcurrentUpdate(e, start);
                     } catch (Throwable e) {
@@ -214,6 +217,7 @@ public abstract class Command implements CommandInterface {
         }
     }
 
+    @Override
     public int executeUpdate() {
         long start = 0;
         Database database = session.getDatabase();
@@ -301,14 +305,17 @@ public abstract class Command implements CommandInterface {
         return start == 0 ? now : start;
     }
 
+    @Override
     public void close() {
         canReuse = true;
     }
 
+    @Override
     public void cancel() {
         this.cancel = true;
     }
 
+    @Override
     public String toString() {
         return sql + Trace.formatParams(getParameters());
     }

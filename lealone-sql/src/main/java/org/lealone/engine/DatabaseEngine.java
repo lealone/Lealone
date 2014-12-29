@@ -201,6 +201,7 @@ public class DatabaseEngine implements SessionFactory {
                 throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
             }
             Session session = database.createSession(user);
+            session.setConnectionInfo(ci);
             registerMBean(ci, database, session);
             return session;
         }

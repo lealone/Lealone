@@ -209,6 +209,12 @@ public class Config {
     public boolean tcp_daemon = true;
     public boolean tcp_allow_others = true;
 
+    public RunMode run_mode = RunMode.cluster;
+
+    public boolean isClusterMode() {
+        return run_mode == RunMode.cluster;
+    }
+
     public static boolean getOutboundBindAny() {
         return outboundBindAny;
     }
@@ -266,5 +272,9 @@ public class Config {
 
     public static enum RequestSchedulerId {
         keyspace
+    }
+
+    public static enum RunMode {
+        cluster, client_server, embedded
     }
 }

@@ -6,9 +6,12 @@
  */
 package org.lealone.engine;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 
 import org.lealone.api.ErrorCode;
@@ -17,6 +20,7 @@ import org.lealone.command.Parser;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.Insert;
 import org.lealone.command.dml.Query;
+import org.lealone.command.router.Router;
 import org.lealone.dbobject.Procedure;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.Sequence;
@@ -387,7 +391,9 @@ public class Session extends SessionWithState {
     public Prepared prepare(String sql, boolean rightsChecked) {
         Parser parser = createParser();
         parser.setRightsChecked(rightsChecked);
-        return parser.prepare(sql);
+        Prepared p = parser.prepare(sql);
+        setLocal(p);
+        return p;
     }
 
     /**
@@ -398,7 +404,17 @@ public class Session extends SessionWithState {
      * @return the prepared statement
      */
     public Command prepareLocal(String sql) {
-        return prepareCommand(sql);
+        Command c = prepareCommand(sql);
+        c.getPrepared().setLocal(true);
+        return c;
+    }
+
+    private void setLocal(Prepared p) {
+        p.setLocal(isLocal());
+    }
+
+    public boolean isLocal() {
+        return connectionInfo == null || connectionInfo.isEmbedded() || !Session.isClusterMode();
     }
 
     @Override
@@ -429,6 +445,7 @@ public class Session extends SessionWithState {
                 queryCache.put(sql, command);
             }
         }
+        setLocal(command.getPrepared());
         return command;
     }
 
@@ -446,8 +463,8 @@ public class Session extends SessionWithState {
         database.setPowerOffCount(count);
     }
 
-    public void commit(boolean ddl, String allLocalTransactionNames) {
-        commit(ddl);
+    public void commit(boolean ddl) {
+        commit(ddl, null);
     }
 
     /**
@@ -457,7 +474,7 @@ public class Session extends SessionWithState {
      *
      * @param ddl if the statement was a data definition statement
      */
-    public void commit(boolean ddl) {
+    public void commit(boolean ddl, String allLocalTransactionNames) {
         checkCommitRollback();
         currentTransactionName = null;
         transactionStart = 0;
@@ -473,8 +490,10 @@ public class Session extends SessionWithState {
             //                    }
             //                }
             //            }
-            transaction.commit();
-            transaction = null;
+            //避免重复commit
+            Transaction transaction = this.transaction;
+            this.transaction = null;
+            transaction.commit(allLocalTransactionNames);
         }
         if (containsUncommitted()) {
             // need to commit even if rollback is not possible
@@ -515,6 +534,9 @@ public class Session extends SessionWithState {
     public void rollback() {
         checkCommitRollback();
         currentTransactionName = null;
+        if (transaction != null) {
+            transaction.rollback();
+        }
         if (locks.size() > 0) {
             database.commit(this);
         }
@@ -1285,8 +1307,31 @@ public class Session extends SessionWithState {
         this.isRoot = isRoot;
     }
 
+    private String hostAndPort;
+
     public String getHostAndPort() {
-        return null;
+        return hostAndPort;
+    }
+
+    public void setHostAndPort(String host, int port) {
+        hostAndPort = host + ":" + port;
+    }
+
+    public String getURL(InetAddress host) {
+        if (connectionInfo == null)
+            return null;
+        StringBuilder buff = new StringBuilder();
+        String url = connectionInfo.getURL();
+        int pos1 = url.indexOf("//");
+        buff.append(url.substring(0, pos1 + 2));
+        buff.append(host.getHostAddress());
+        int pos2 = url.indexOf(':', pos1 + 2);
+        int pos3 = url.indexOf('/', pos1 + 2);
+        if (pos2 != -1)
+            buff.append(url.substring(pos2));
+        else
+            buff.append(url.substring(pos3));
+        return buff.toString();
     }
 
     private volatile Transaction transaction;
@@ -1297,5 +1342,49 @@ public class Session extends SessionWithState {
 
     public void setTransaction(Transaction t) {
         transaction = t;
+    }
+
+    private static Router router;
+
+    public static Router getRouter() {
+        return router;
+    }
+
+    public static void setRouter(Router r) {
+        router = r;
+    }
+
+    private static boolean isClusterMode;
+
+    public static boolean isClusterMode() {
+        return isClusterMode;
+    }
+
+    public static void setClusterMode(boolean isClusterMode) {
+        Session.isClusterMode = isClusterMode;
+    }
+
+    /**
+     * 最初从Client端传递过来的配置参数
+     */
+    private Properties originalProperties;
+
+    //参与本次事务的其他FrontendSession
+    private final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
+
+    public void addFrontendSession(String url, FrontendSession frontendSession) {
+        frontendSessionCache.put(url, frontendSession);
+    }
+
+    public FrontendSession getFrontendSession(String url) {
+        return frontendSessionCache.get(url);
+    }
+
+    public Properties getOriginalProperties() {
+        return originalProperties;
+    }
+
+    public void setOriginalProperties(Properties originalProperties) {
+        this.originalProperties = originalProperties;
     }
 }

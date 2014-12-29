@@ -42,13 +42,13 @@ public class LealoneStandalone extends YamlConfigurationLoader {
 
     @Override
     public Config loadConfig() throws ConfigurationException {
-
-        this.dir = "lealone-test-data/" + dir + "/";
         Config config = super.loadConfig();
+
+        config.base_dir = config.base_dir + "/" + dir;
         config.listen_address = listen_address;
-        config.commitlog_directory = dir + "commitlog";
-        config.saved_caches_directory = dir + "saved_caches";
-        config.data_file_directories = new String[] { dir + "data" };
+        config.commitlog_directory = config.base_dir + "/commitlog";
+        config.saved_caches_directory = config.base_dir + "/saved_caches";
+        config.data_file_directories = new String[] { config.base_dir + "/data" };
 
         System.setProperty("java.io.tmpdir", "./" + config.data_file_directories[0] + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.data_file_directories[0] + "/cbase");

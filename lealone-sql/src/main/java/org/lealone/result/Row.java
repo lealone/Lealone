@@ -6,6 +6,8 @@
  */
 package org.lealone.result;
 
+import org.lealone.dbobject.table.Column;
+import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Constants;
 import org.lealone.store.Data;
 import org.lealone.util.StatementBuilder;
@@ -132,10 +134,25 @@ public class Row implements SearchRow {
         return size;
     }
 
+    public void setValue(int i, Value v, Column c) {
+        if (c.isRowKeyColumn())
+            this.rowKey = v;
+        if (i == -1) {
+            this.key = v.getLong();
+            this.rowKey = v;
+        } else if (i == -2) {
+            this.rowKey = v;
+        } else {
+            v.version = transactionId;
+            data[i] = v;
+        }
+    }
+
     @Override
     public void setValue(int i, Value v) {
         if (i == -1) {
             this.key = v.getLong();
+            this.rowKey = v;
         } else if (i == -2) {
             this.rowKey = v;
         } else {
@@ -240,5 +257,10 @@ public class Row implements SearchRow {
                 data[i] = newRow.data[i];
             }
         }
+    }
+
+    //TODO
+    public Table getTable() {
+        return null;
     }
 }

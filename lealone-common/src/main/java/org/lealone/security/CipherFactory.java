@@ -123,6 +123,21 @@ public class CipherFactory {
         return socket;
     }
 
+    public static ServerSocket createServerSocket(String listenAddress, int port) throws IOException {
+        ServerSocket socket = null;
+        setKeystore();
+        ServerSocketFactory f = SSLServerSocketFactory.getDefault();
+        SSLServerSocket secureSocket = (SSLServerSocket) f.createServerSocket();
+        if (SysProperties.ENABLE_ANONYMOUS_SSL) {
+            String[] list = secureSocket.getEnabledCipherSuites();
+            list = addAnonymous(list);
+            secureSocket.setEnabledCipherSuites(list);
+        }
+        socket = secureSocket;
+        socket.bind(new InetSocketAddress(listenAddress, port));
+        return socket;
+    }
+
     private static byte[] getKeyStoreBytes(KeyStore store, String password) throws IOException {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         try {

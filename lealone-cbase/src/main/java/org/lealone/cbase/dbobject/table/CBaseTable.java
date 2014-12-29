@@ -21,8 +21,8 @@ import org.lealone.cbase.dbobject.index.CBaseSecondaryIndex;
 import org.lealone.cbase.dbobject.index.HashIndex;
 import org.lealone.cbase.dbobject.index.NonUniqueHashIndex;
 import org.lealone.cbase.dbobject.table.CBaseTableEngine.Store;
+import org.lealone.cbase.transaction.CBaseTransaction;
 import org.lealone.cbase.transaction.TransactionStore;
-import org.lealone.cbase.transaction.TransactionStore.Transaction;
 import org.lealone.command.ddl.Analyze;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.DbObject;
@@ -592,7 +592,7 @@ public class CBaseTable extends TableBase {
     @Override
     public void removeRow(Session session, Row row) {
         lastModificationId = database.getNextModificationDataId();
-        Transaction t = getTransaction(session);
+        CBaseTransaction t = getTransaction(session);
         long savepoint = t.setSavepoint();
         try {
             for (int i = indexes.size() - 1; i >= 0; i--) {
@@ -619,7 +619,7 @@ public class CBaseTable extends TableBase {
     @Override
     public void addRow(Session session, Row row) {
         lastModificationId = database.getNextModificationDataId();
-        Transaction t = getTransaction(session);
+        CBaseTransaction t = getTransaction(session);
         long savepoint = t.setSavepoint();
         try {
             for (int i = 0, size = indexes.size(); i < size; i++) {
@@ -770,17 +770,17 @@ public class CBaseTable extends TableBase {
      * @param session the session
      * @return the transaction
      */
-    public Transaction getTransaction(Session session) {
+    public CBaseTransaction getTransaction(Session session) {
         if (session == null) {
             // TODO need to commit/rollback the transaction
             return store.begin();
         } else if (session.getTransaction() == null) {
-            Transaction t = store.begin();
+            CBaseTransaction t = store.begin();
             session.setTransaction(t);
             return t;
         }
 
-        return (Transaction) session.getTransaction();
+        return (CBaseTransaction) session.getTransaction();
     }
 
     @Override

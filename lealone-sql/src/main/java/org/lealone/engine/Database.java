@@ -152,7 +152,7 @@ public class Database implements DataHandler {
     private boolean multiVersion;
     private DatabaseCloser closeOnExit;
     private Mode mode = Mode.getInstance(Mode.REGULAR);
-    private boolean multiThreaded;
+    private boolean multiThreaded = true; //如果是false，整个数据库是串行的
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
     private SmallLRUCache<String, String[]> lobFileListCache;
     protected boolean autoServerMode;

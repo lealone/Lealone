@@ -62,6 +62,7 @@ public class ConnectionInfo implements Cloneable {
     private boolean remote;
     private boolean ssl;
     private boolean dynamic;
+    private boolean embedded;
 
     private boolean persistent;
 
@@ -81,6 +82,7 @@ public class ConnectionInfo implements Cloneable {
         url = url.substring(Constants.URL_PREFIX.length());
         if (url.startsWith(Constants.URL_MEM)) {
             persistent = false;
+            embedded = true;
         } else {
             persistent = true;
         }
@@ -133,6 +135,7 @@ public class ConnectionInfo implements Cloneable {
             dbName = dbName.substring(Constants.URL_SSL.length());
         } else if (dbName.startsWith(Constants.URL_EMBED)) {
             remote = false;
+            embedded = true;
             dbName = dbName.substring(Constants.URL_EMBED.length());
         } else if (dbName.startsWith(Constants.URL_DYNAMIC)) {
             dynamic = true;
@@ -642,6 +645,10 @@ public class ConnectionInfo implements Cloneable {
 
     public boolean isDynamic() {
         return dynamic;
+    }
+
+    public boolean isEmbedded() {
+        return embedded;
     }
 
     public void setSession(SessionInterface session) {

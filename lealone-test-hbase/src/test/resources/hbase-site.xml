@@ -269,5 +269,21 @@
 		<name>hbase.master.wait.on.regionservers.timeout</name>
 		<value>450000</value>
 	</property>
+	
+	<!-- 
+	<property>
+		<name>hbase.master.dns.interface</name>
+		<value>127.0.0.1</value>
+	</property>
+	<property>
+		<name>hbase.master.dns.nameserver</name>
+		<value>127.0.0.1</value>
+	</property>
+	
+	<property>
+		<name>hbase.master.port</name>
+		<value>5210</value>
+	</property>
+	-->
 
 </configuration>

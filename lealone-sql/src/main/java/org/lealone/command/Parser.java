@@ -76,6 +76,7 @@ import org.lealone.command.dml.SelectUnion;
 import org.lealone.command.dml.Set;
 import org.lealone.command.dml.TransactionCommand;
 import org.lealone.command.dml.Update;
+import org.lealone.command.router.DefineCommandWrapper;
 import org.lealone.dbobject.DbObject;
 import org.lealone.dbobject.FunctionAlias;
 import org.lealone.dbobject.Procedure;
@@ -259,6 +260,10 @@ public class Parser {
         }
         p.setPrepareAlways(recompileAlways);
         p.setParameterList(parameters);
+
+        if (p instanceof DefineCommand && !session.isLocal()) {
+            p = new DefineCommandWrapper(session, (DefineCommand) p);
+        }
         return p;
     }
 

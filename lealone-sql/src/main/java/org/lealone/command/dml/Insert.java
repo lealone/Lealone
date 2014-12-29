@@ -7,6 +7,8 @@
 package org.lealone.command.dml;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
@@ -32,15 +34,19 @@ import org.lealone.value.Value;
  * This class represents the statement
  * INSERT
  */
-public class Insert extends Prepared implements ResultTarget {
+public class Insert extends Prepared implements ResultTarget, Callable<Integer> {
 
     protected Table table;
     protected Column[] columns;
+    //TODO
+    //protected Expression[] first; //大多数情况下每次都只有一条记录
     protected ArrayList<Expression[]> list = New.arrayList();
     protected Query query;
     protected boolean sortedInsertMode;
     protected int rowNumber;
     protected boolean insertFromSelect;
+
+    //protected InsertOrMergeRouter router;
 
     public Insert(Session session) {
         super(session);
@@ -58,6 +64,10 @@ public class Insert extends Prepared implements ResultTarget {
         this.table = table;
     }
 
+    public Table getTable() {
+        return table;
+    }
+
     public void setColumns(Column[] columns) {
         this.columns = columns;
     }
@@ -66,60 +76,116 @@ public class Insert extends Prepared implements ResultTarget {
         this.query = query;
     }
 
+    public List<Row> getRows() {
+        return rows;
+    }
+
     /**
      * Add a row to this merge statement.
      *
      * @param expr the list of values
      */
     public void addRow(Expression[] expr) {
+        //        if (first == null)
+        //            first = expr;
+        //        else {
+        //            if (list == null)
+        //                list = New.arrayList();
+        //            list.add(expr);
+        //        }
+
         list.add(expr);
     }
 
+    //    private ArrayList<Value> partitionKeys;
+    //    private final int partitionKeyIndex = -1;
+
+    //    private void parsePartitionKeys() {
+    //        partitionKeys = New.arrayList();
+    //        if (partitionKeyIndex == -1 && query != null) {
+    //            int index = -1;
+    //            for (Column c : columns) {
+    //                index++;
+    //                if (c.isRowKeyColumn()) {
+    //                    partitionKeyIndex = index;
+    //                    break;
+    //                }
+    //            }
+    //        }
+    //
+    //        int listSize = list.size();
+    //        if (listSize > 0) {
+    //            if (partitionKeyIndex == -1) {
+    //                for (int i = 0; i < listSize; i++) {
+    //                    partitionKeys.add(ValueUuid.getNewRandom());
+    //                }
+    //            } else {
+    //                Expression[] expr;
+    //                Expression e;
+    //                Value v;
+    //                Column c = columns[partitionKeyIndex];
+    //                for (int i = 0; i < listSize; i++) {
+    //                    expr = list.get(i);
+    //                    v = null;
+    //                    if (expr != null && expr.length > 0) {
+    //                        e = expr[partitionKeyIndex];
+    //                        if (e != null) {
+    //                            // e can be null (DEFAULT)
+    //                            e = e.optimize(session);
+    //                            v = c.convert(e.getValue(session));
+    //                        }
+    //                    }
+    //
+    //                    if (v == null)
+    //                        partitionKeys.add(ValueUuid.getNewRandom());
+    //                    else
+    //                        partitionKeys.add(v);
+    //                }
+    //            }
+    //        }
+    //    }
+
     @Override
     public int update() {
-        Index index = null;
-        if (sortedInsertMode) {
-            index = table.getScanIndex(session);
-            index.setSortedInsertMode(true);
-        }
-        try {
-            return insertRows();
-        } finally {
-            if (index != null) {
-                index.setSortedInsertMode(false);
-            }
-        }
-    }
+        createRows();
 
-    private int insertRows() {
-        session.getUser().checkRight(table, Right.INSERT);
-        setCurrentRowNumber(0);
-        table.fire(session, Trigger.INSERT, true);
-        rowNumber = 0;
-        int listSize = list.size();
-        if (listSize > 0) {
-            for (int x = 0; x < listSize; x++) {
-                Expression[] expr = list.get(x);
-                Row newRow;
-                try {
-                    newRow = createRow(expr, x);
-                    if (newRow == null) {
-                        continue;
-                    }
-                } catch (DbException ex) {
-                    throw setRow(ex, rowNumber + 1, getSQL(expr));
-                }
-                setCurrentRowNumber(++rowNumber);
-                table.validateConvertUpdateSequence(session, newRow);
-                boolean done = table.fireBeforeRow(session, null, newRow);
-                if (!done) {
-                    table.lock(session, true, false);
-                    table.addRow(session, newRow);
-                    table.fireAfterRow(session, null, newRow, false);
+        if (isLocal()) {
+            Index index = null;
+            if (sortedInsertMode) {
+                index = table.getScanIndex(session);
+                index.setSortedInsertMode(true);
+            }
+
+            try {
+                return insertRows();
+            } finally {
+                if (index != null) {
+                    index.setSortedInsertMode(false);
                 }
             }
         } else {
-            table.lock(session, true, false);
+            //parsePartitionKeys();
+            return Session.getRouter().executeInsert(this);
+        }
+    }
+
+    private List<Row> rows;
+
+    private void createRows() {
+        int listSize = list.size();
+        if (listSize > 0) {
+            rows = New.arrayList(listSize);
+            for (int x = 0; x < listSize; x++) {
+                Expression[] expr = list.get(x);
+                try {
+                    createRow(expr, x);
+                } catch (DbException ex) {
+                    throw setRow(ex, x + 1, getSQL(expr));
+                }
+            }
+        } else {
+            rows = New.arrayList();
+            rowNumber = 0;
             if (insertFromSelect) {
                 query.query(0, this);
             } else {
@@ -131,30 +197,102 @@ public class Insert extends Prepared implements ResultTarget {
                 rows.close();
             }
         }
+    }
+
+    private int insertRows() {
+        session.getUser().checkRight(table, Right.INSERT);
+        setCurrentRowNumber(0);
+        table.fire(session, Trigger.INSERT, true);
+        rowNumber = 0;
+
+        Row newRow;
+        for (int i = 0, size = rows.size(); i < size; i++) {
+            newRow = rows.get(i);
+            setCurrentRowNumber(++rowNumber);
+            table.validateConvertUpdateSequence(session, newRow);
+            boolean done = table.fireBeforeRow(session, null, newRow);
+            if (!done) {
+                table.lock(session, true, false);
+                table.addRow(session, newRow);
+                table.fireAfterRow(session, null, newRow, false);
+            }
+        }
+
         table.fire(session, Trigger.INSERT, false);
         return rowNumber;
     }
 
+    //    private int insertRows2() {
+    //        session.getUser().checkRight(table, Right.INSERT);
+    //        setCurrentRowNumber(0);
+    //        table.fire(session, Trigger.INSERT, true);
+    //        rowNumber = 0;
+    //        int listSize = list.size();
+    //        if (listSize > 0) {
+    //            for (int x = 0; x < listSize; x++) {
+    //                Expression[] expr = list.get(x);
+    //                Row newRow;
+    //                try {
+    //                    newRow = createRow(expr, x);
+    //                    if (newRow == null) {
+    //                        continue;
+    //                    }
+    //                } catch (DbException ex) {
+    //                    throw setRow(ex, rowNumber + 1, getSQL(expr));
+    //                }
+    //                setCurrentRowNumber(++rowNumber);
+    //                table.validateConvertUpdateSequence(session, newRow);
+    //                boolean done = table.fireBeforeRow(session, null, newRow);
+    //                if (!done) {
+    //                    table.lock(session, true, false);
+    //                    table.addRow(session, newRow);
+    //                    table.fireAfterRow(session, null, newRow, false);
+    //                }
+    //            }
+    //        } else {
+    //            table.lock(session, true, false);
+    //            if (insertFromSelect) {
+    //                query.query(0, this);
+    //            } else {
+    //                ResultInterface rows = query.query(0);
+    //                while (rows.next()) {
+    //                    Value[] r = rows.currentRow();
+    //                    addRow(r);
+    //                }
+    //                rows.close();
+    //            }
+    //        }
+    //        table.fire(session, Trigger.INSERT, false);
+    //        return rowNumber;
+    //    }
+
     @Override
     public void addRow(Value[] values) {
-        Row newRow;
+        ++rowNumber;
         try {
-            newRow = createRow(values);
-            if (newRow == null) {
-                return;
-            }
+            createRow(values);
         } catch (DbException ex) {
-            throw setRow(ex, rowNumber + 1, getSQL(values));
+            throw setRow(ex, rowNumber, getSQL(values));
         }
-        setCurrentRowNumber(++rowNumber);
-        table.validateConvertUpdateSequence(session, newRow);
-        boolean done = table.fireBeforeRow(session, null, newRow);
-        if (!done) {
-            table.addRow(session, newRow);
-            table.fireAfterRow(session, null, newRow, false);
-        }
+        //        Row newRow;
+        //        try {
+        //            newRow = createRow(values);
+        //            if (newRow == null) {
+        //                return;
+        //            }
+        //        } catch (DbException ex) {
+        //            throw setRow(ex, rowNumber + 1, getSQL(values));
+        //        }
+        //        setCurrentRowNumber(++rowNumber);
+        //        table.validateConvertUpdateSequence(session, newRow);
+        //        boolean done = table.fireBeforeRow(session, null, newRow);
+        //        if (!done) {
+        //            table.addRow(session, newRow);
+        //            table.fireAfterRow(session, null, newRow, false);
+        //        }
     }
 
+    //子类有可能要用rowId
     protected Row createRow(Expression[] expr, int rowId) {
         Row row = table.getTemplateRow();
         //row.setTransactionId(session.getTransaction().getTransactionId());
@@ -166,23 +304,23 @@ public class Insert extends Prepared implements ResultTarget {
                 // e can be null (DEFAULT)
                 e = e.optimize(session);
                 Value v = c.convert(e.getValue(session));
-                row.setValue(index, v);
+                row.setValue(index, v, c);
             }
         }
-
+        rows.add(row);
         return row;
     }
 
     protected Row createRow(Value[] values) {
-        Row newRow = table.getTemplateRow();
+        Row row = table.getTemplateRow();
         for (int j = 0, len = columns.length; j < len; j++) {
             Column c = columns[j];
             int index = c.getColumnId();
             Value v = c.convert(values[j]);
-            newRow.setValue(index, v);
+            row.setValue(index, v, c);
         }
-
-        return newRow;
+        rows.add(row);
+        return row;
     }
 
     @Override
@@ -229,6 +367,44 @@ public class Insert extends Prepared implements ResultTarget {
             }
         } else {
             buff.append(query.getPlanSQL());
+        }
+        return buff.toString();
+    }
+
+    public String getPlanSQL(List<Row> rows) {
+        StatementBuilder buff = new StatementBuilder("INSERT INTO ");
+        buff.append(table.getSQL()).append('(');
+        for (Column c : columns) {
+            buff.appendExceptFirst(", ");
+            buff.append(c.getSQL());
+        }
+        buff.append(") ");
+
+        if (sortedInsertMode) {
+            buff.append("SORTED ");
+        }
+
+        buff.resetCount();
+        if (rows.size() > 0) {
+            buff.append("VALUES ");
+            int i = 0;
+            for (Row row : rows) {
+                buff.appendExceptFirst(", ");
+                if (i++ > 0) {
+                    buff.append(",");
+                }
+                buff.append('(');
+                buff.resetCount();
+                for (Value v : row.getValueList()) {
+                    buff.appendExceptFirst(", ");
+                    if (v == null) {
+                        buff.append("DEFAULT");
+                    } else {
+                        buff.append(v.getString());
+                    }
+                }
+                buff.append(')');
+            }
         }
         return buff.toString();
     }
@@ -296,4 +472,12 @@ public class Insert extends Prepared implements ResultTarget {
         return true;
     }
 
+    public void setRows(List<Row> rows) {
+        this.rows = rows;
+    }
+
+    @Override
+    public Integer call() {
+        return Integer.valueOf(insertRows());
+    }
 }

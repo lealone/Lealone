@@ -16,8 +16,8 @@ import org.lealone.api.ErrorCode;
 import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.cbase.dbobject.table.CBaseTableEngine;
 import org.lealone.cbase.mvstore.MVMap;
-import org.lealone.cbase.transaction.TransactionStore.Transaction;
-import org.lealone.cbase.transaction.TransactionStore.TransactionMap;
+import org.lealone.cbase.transaction.CBaseTransaction;
+import org.lealone.cbase.transaction.TransactionMap;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
@@ -367,7 +367,7 @@ public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
     public void remove(Session session) {
         TransactionMap<Value, Value> map = getMap(session);
         if (!map.isClosed()) {
-            Transaction t = mvTable.getTransaction(session);
+            CBaseTransaction t = mvTable.getTransaction(session);
             t.removeMap(map);
         }
     }
@@ -458,7 +458,7 @@ public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
         if (session == null) {
             return dataMap;
         }
-        Transaction t = mvTable.getTransaction(session);
+        CBaseTransaction t = mvTable.getTransaction(session);
         return dataMap.getInstance(t, Long.MAX_VALUE);
     }
 

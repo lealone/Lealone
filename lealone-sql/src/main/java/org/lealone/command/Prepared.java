@@ -359,6 +359,7 @@ public abstract class Prepared {
      *
      * @return the SQL statement
      */
+    @Override
     public String toString() {
         return sqlStatement;
     }
@@ -446,6 +447,16 @@ public abstract class Prepared {
         this.executeDirec = executeDirec;
     }
 
+    private boolean local = true;
+
+    public boolean isLocal() {
+        return local;
+    }
+
+    public void setLocal(boolean local) {
+        this.local = local;
+    }
+
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
     public int getFetchSize() {
@@ -460,5 +471,9 @@ public abstract class Prepared {
             fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
         }
         this.fetchSize = fetchSize;
+    }
+
+    public Session getSession() {
+        return session;
     }
 }

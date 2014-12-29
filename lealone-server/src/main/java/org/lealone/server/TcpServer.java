@@ -53,6 +53,7 @@ public class TcpServer implements Service {
 
     protected static final Map<Integer, TcpServer> SERVERS = Collections.synchronizedMap(new HashMap<Integer, TcpServer>());
 
+    private String listenAddress;
     private int port;
     private boolean portIsSet;
     private boolean trace;
@@ -170,7 +171,9 @@ public class TcpServer implements Service {
         port = Constants.DEFAULT_TCP_PORT;
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
-            if (isOption(a, "-trace")) {
+            if (isOption(a, "-tcpListenAddress")) {
+                listenAddress = args[++i];
+            } else if (isOption(a, "-trace")) {
                 trace = true;
             } else if (isOption(a, "-tcpSSL")) {
                 ssl = true;
@@ -228,7 +231,7 @@ public class TcpServer implements Service {
     public synchronized void start() throws SQLException {
         stop = false;
         try {
-            serverSocket = NetUtils.createServerSocket(port, ssl);
+            serverSocket = NetUtils.createServerSocket(listenAddress, port, ssl);
         } catch (DbException e) {
             if (!portIsSet) {
                 serverSocket = NetUtils.createServerSocket(0, ssl);
@@ -389,6 +392,10 @@ public class TcpServer implements Service {
         if (trace) {
             System.out.println(s);
         }
+    }
+
+    boolean isTraceEnabled() {
+        return trace;
     }
 
     /**

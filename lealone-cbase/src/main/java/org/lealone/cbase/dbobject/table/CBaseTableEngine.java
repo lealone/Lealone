@@ -20,9 +20,9 @@ import org.lealone.cbase.dbobject.index.ValueDataType;
 import org.lealone.cbase.mvstore.MVMap;
 import org.lealone.cbase.mvstore.MVStore;
 import org.lealone.cbase.mvstore.MVStoreTool;
+import org.lealone.cbase.transaction.CBaseTransaction;
+import org.lealone.cbase.transaction.TransactionMap;
 import org.lealone.cbase.transaction.TransactionStore;
-import org.lealone.cbase.transaction.TransactionStore.Transaction;
-import org.lealone.cbase.transaction.TransactionStore.TransactionMap;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.TableBase;
 import org.lealone.dbobject.table.TableEngineManager;
@@ -229,11 +229,11 @@ public class CBaseTableEngine implements TableEngine {
          * rollback all open transactions.
          */
         public void initTransactions() {
-            List<Transaction> list = transactionStore.getOpenTransactions();
-            for (Transaction t : list) {
-                if (t.getStatus() == Transaction.STATUS_COMMITTING) {
+            List<CBaseTransaction> list = transactionStore.getOpenTransactions();
+            for (CBaseTransaction t : list) {
+                if (t.getStatus() == CBaseTransaction.STATUS_COMMITTING) {
                     t.commit();
-                } else if (t.getStatus() != Transaction.STATUS_PREPARED) {
+                } else if (t.getStatus() != CBaseTransaction.STATUS_PREPARED) {
                     t.rollback();
                 }
             }
@@ -254,7 +254,7 @@ public class CBaseTableEngine implements TableEngine {
                     if (!objectIds.get(id)) {
                         ValueDataType keyType = new ValueDataType(null, null, null);
                         ValueDataType valueType = new ValueDataType(null, null, null);
-                        Transaction t = transactionStore.begin();
+                        CBaseTransaction t = transactionStore.begin();
                         TransactionMap<?, ?> m = t.openMap(mapName, keyType, valueType);
                         transactionStore.removeMap(m);
                         t.commit();
@@ -279,17 +279,17 @@ public class CBaseTableEngine implements TableEngine {
          * @param transactionName the transaction name (may be null)
          */
         public void prepareCommit(Session session, String transactionName) {
-            Transaction t = (Transaction) session.getTransaction();
+            CBaseTransaction t = (CBaseTransaction) session.getTransaction();
             t.setName(transactionName);
             t.prepare();
             store.commit();
         }
 
         public ArrayList<InDoubtTransaction> getInDoubtTransactions() {
-            List<Transaction> list = transactionStore.getOpenTransactions();
+            List<CBaseTransaction> list = transactionStore.getOpenTransactions();
             ArrayList<InDoubtTransaction> result = New.arrayList();
-            for (Transaction t : list) {
-                if (t.getStatus() == Transaction.STATUS_PREPARED) {
+            for (CBaseTransaction t : list) {
+                if (t.getStatus() == CBaseTransaction.STATUS_PREPARED) {
                     result.add(new MVInDoubtTransaction(store, t));
                 }
             }
@@ -403,10 +403,10 @@ public class CBaseTableEngine implements TableEngine {
     private static class MVInDoubtTransaction implements InDoubtTransaction {
 
         private final MVStore store;
-        private final Transaction transaction;
+        private final CBaseTransaction transaction;
         private int state = InDoubtTransaction.IN_DOUBT;
 
-        MVInDoubtTransaction(MVStore store, Transaction transaction) {
+        MVInDoubtTransaction(MVStore store, CBaseTransaction transaction) {
             this.store = store;
             this.transaction = transaction;
         }

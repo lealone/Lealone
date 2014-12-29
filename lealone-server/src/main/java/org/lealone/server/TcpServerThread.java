@@ -15,6 +15,7 @@ import java.io.StringWriter;
 import java.net.Socket;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Properties;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.ParameterInterface;
@@ -73,7 +74,8 @@ public class TcpServerThread implements Runnable {
     public void run() {
         try {
             transfer.init();
-            trace("Connect");
+            if (server.isTraceEnabled())
+                trace("Connect");
             // TODO server: should support a list of allowed databases
             // and a list of allowed clients
             try {
@@ -124,7 +126,8 @@ public class TcpServerThread implements Runnable {
                 transfer.writeInt(clientVersion);
                 transfer.flush();
                 server.addConnection(threadId, originalURL, userName);
-                trace("Connected");
+                if (server.isTraceEnabled())
+                    trace("Connected");
             } catch (Throwable e) {
                 sendError(e);
                 stop = true;
@@ -136,7 +139,8 @@ public class TcpServerThread implements Runnable {
                     sendError(e);
                 }
             }
-            trace("Disconnect");
+            if (server.isTraceEnabled())
+                trace("Disconnect");
         } catch (Throwable e) {
             server.traceError(e);
         } finally {
@@ -145,28 +149,65 @@ public class TcpServerThread implements Runnable {
     }
 
     protected Session createSession(String dbName, String originalURL, String userName, Transfer transfer) throws IOException {
+        byte[] userPasswordHash = transfer.readBytes();
+        byte[] filePasswordHash = transfer.readBytes();
+
+        Properties originalProperties = new Properties();
+
+        int len = transfer.readInt();
+        for (int i = 0; i < len; i++) {
+            originalProperties.setProperty(transfer.readString(), transfer.readString());
+        }
         String baseDir = server.getBaseDir();
         if (baseDir == null) {
             baseDir = SysProperties.getBaseDir();
         }
+
         dbName = server.checkKeyAndGetDatabaseName(dbName);
         ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
-        ci.setUserName(userName);
-        ci.setUserPasswordHash(transfer.readBytes());
-        ci.setFilePasswordHash(transfer.readBytes());
-        int len = transfer.readInt();
-        for (int i = 0; i < len; i++) {
-            ci.setProperty(transfer.readString(), transfer.readString());
-        }
-        // override client's requested properties with server settings
+
         if (baseDir != null) {
             ci.setBaseDir(baseDir);
         }
         if (server.getIfExists()) {
             ci.setProperty("IFEXISTS", "TRUE");
         }
+        ci.setUserName(userName);
+
+        ci.setUserPasswordHash(userPasswordHash);
+        ci.setFilePasswordHash(filePasswordHash);
+        ci.readProperties(originalProperties);
+
+        originalProperties.setProperty("user", userName);
+        if (userPasswordHash != null)
+            originalProperties.put("_userPasswordHash_", userPasswordHash);
+        if (filePasswordHash != null)
+            originalProperties.put("_filePasswordHash_", filePasswordHash);
+
+        //        String baseDir = server.getBaseDir();
+        //        if (baseDir == null) {
+        //            baseDir = SysProperties.getBaseDir();
+        //        }
+        //        dbName = server.checkKeyAndGetDatabaseName(dbName);
+        //        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
+        //        ci.setUserName(userName);
+        //        ci.setUserPasswordHash(transfer.readBytes());
+        //        ci.setFilePasswordHash(transfer.readBytes());
+        //        int len = transfer.readInt();
+        //        for (int i = 0; i < len; i++) {
+        //            ci.setProperty(transfer.readString(), transfer.readString());
+        //        }
+        //        // override client's requested properties with server settings
+        //        if (baseDir != null) {
+        //            ci.setBaseDir(baseDir);
+        //        }
+        //        if (server.getIfExists()) {
+        //            ci.setProperty("IFEXISTS", "TRUE");
+        //        }
         try {
-            return (Session) ci.getSessionFactory().createSession(ci);
+            Session session = (Session) ci.getSessionFactory().createSession(ci);
+            session.setOriginalProperties(originalProperties);
+            return session;
         } catch (SQLException e) {
             throw DbException.convert(e);
         }
@@ -214,7 +255,8 @@ public class TcpServerThread implements Runnable {
             server.traceError(e);
         } finally {
             transfer.close();
-            trace("Close");
+            if (server.isTraceEnabled())
+                trace("Close");
             server.remove(this);
         }
     }
@@ -556,7 +598,8 @@ public class TcpServerThread implements Runnable {
             break;
         }
         default:
-            trace("Unknown operation: " + operation);
+            if (server.isTraceEnabled())
+                trace("Unknown operation: " + operation);
             closeSession();
             close();
         }

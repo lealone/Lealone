@@ -15,7 +15,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-sql</artifactId>
+			<artifactId>lealone-transaction</artifactId>
 		</dependency>
 	</dependencies>
 </project>

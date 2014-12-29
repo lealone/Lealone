@@ -1,6 +1,4 @@
 /*
- * Copyright 2011 The Apache Software Foundation
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,24 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction;
+package org.lealone.command.router;
 
-public interface Transaction {
-    long getTransactionId();
+import org.lealone.command.ddl.DefineCommand;
+import org.lealone.command.dml.Insert;
 
-    long getCommitTimestamp();
+public interface Router {
+    int executeInsert(Insert insert);
 
-    boolean isAutoCommit();
-
-    void addLocalTransactionNames(String localTransactionNames);
-
-    String getLocalTransactionNames();
-
-    void commit();
-
-    void commit(String allLocalTransactionNames);
-
-    void rollback();
-
-    void rollbackToSavepoint(String name);
+    int executeDefineCommand(DefineCommand defineCommand);
 }

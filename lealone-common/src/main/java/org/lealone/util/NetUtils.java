@@ -157,6 +157,15 @@ public class NetUtils {
         }
     }
 
+    public static ServerSocket createServerSocket(String listenAddress, int port, boolean ssl) {
+        try {
+            return createServerSocketTry(listenAddress, port, ssl);
+        } catch (Exception e) {
+            // try again
+            return createServerSocketTry(listenAddress, port, ssl);
+        }
+    }
+
     /**
      * Get the bind address if the system property lealone.bindAddress is set, or
      * null if not.
@@ -186,6 +195,22 @@ public class NetUtils {
                 return new ServerSocket(port);
             }
             return new ServerSocket(port, 0, bindAddress);
+        } catch (BindException be) {
+            throw DbException.get(ErrorCode.EXCEPTION_OPENING_PORT_2, be, "" + port, be.toString());
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "port: " + port + " ssl: " + ssl);
+        }
+    }
+
+    private static ServerSocket createServerSocketTry(String listenAddress, int port, boolean ssl) {
+        try {
+            if (ssl) {
+                return CipherFactory.createServerSocket(listenAddress, port);
+            }
+            ServerSocket socket = new ServerSocket();
+            socket.setReuseAddress(true);
+            socket.bind(new InetSocketAddress(listenAddress, port));
+            return socket;
         } catch (BindException be) {
             throw DbException.get(ErrorCode.EXCEPTION_OPENING_PORT_2, be, "" + port, be.toString());
         } catch (IOException e) {
