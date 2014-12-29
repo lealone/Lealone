@@ -142,7 +142,6 @@ public class DefaultRouter implements Router {
 
                 commands.add(call);
             }
-
         }
     }
 

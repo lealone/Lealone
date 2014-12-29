@@ -41,6 +41,8 @@ public class JDBCExample {
         Connection conn = getConnection();
         Statement stmt = conn.createStatement();
         ResultSet rs;
+
+        stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine cbase"); //");
         stmt.executeUpdate("CREATE memory TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test3 (f1 int primary key, f2 long)"); //cbase
@@ -83,7 +85,6 @@ public class JDBCExample {
             System.out.println("count=" + rs.getInt(1));
         }
 
-        //stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt2.close();
         conn2.close();
 

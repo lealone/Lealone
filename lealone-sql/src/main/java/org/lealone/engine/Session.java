@@ -414,7 +414,13 @@ public class Session extends SessionWithState {
     }
 
     public boolean isLocal() {
-        return connectionInfo == null || connectionInfo.isEmbedded() || !Session.isClusterMode();
+        return local || connectionInfo == null || connectionInfo.isEmbedded() || !Session.isClusterMode();
+    }
+
+    private boolean local;
+
+    public void setLocal(boolean local) {
+        this.local = local;
     }
 
     @Override

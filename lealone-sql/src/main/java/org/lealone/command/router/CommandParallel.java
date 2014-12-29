@@ -149,12 +149,14 @@ public class CommandParallel {
     }
 
     public static int executeUpdate(List<CommandInterface> commands) {
-        if (commands.size() == 1) {
+        int size = commands.size();
+        if (size == 0)
+            return 0;
+        if (size == 1) {
             CommandInterface c = commands.get(0);
             return c.executeUpdate();
         }
         int updateCount = 0;
-        int size = commands.size();
         List<Future<Integer>> futures = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);

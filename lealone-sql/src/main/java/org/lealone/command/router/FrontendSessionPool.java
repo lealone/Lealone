@@ -34,7 +34,7 @@ import org.lealone.expression.Parameter;
 public class FrontendSessionPool {
     private static final int QUEUE_SIZE = 3;
 
-    //key是Master或RegionServer的URL
+    //key是集群中每个节点的URL
     private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<FrontendSession>> pool = new ConcurrentHashMap<>();
 
     private static ConcurrentLinkedQueue<FrontendSession> getQueue(String url) {
@@ -71,6 +71,7 @@ public class FrontendSessionPool {
                     prop.setProperty(key, info.getProperty(key));
 
             }
+            prop.setProperty("IS_LOCAL", "true");
             ConnectionInfo ci = new ConnectionInfo(url, prop);
             ci.setUserPasswordHash(userPasswordHash);
             ci.setFilePasswordHash(filePasswordHash);
