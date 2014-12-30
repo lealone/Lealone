@@ -29,6 +29,7 @@ public class Row implements SearchRow {
     private boolean deleted;
     private int sessionId;
     private Value rowKey;
+    private Table table;
 
     private long transactionId = -1;
     private boolean isUpdate;
@@ -134,8 +135,9 @@ public class Row implements SearchRow {
         return size;
     }
 
+    @Override
     public void setValue(int i, Value v, Column c) {
-        if (c.isRowKeyColumn())
+        if (c != null && c.isRowKeyColumn())
             this.rowKey = v;
         if (i == -1) {
             this.key = v.getLong();
@@ -150,15 +152,7 @@ public class Row implements SearchRow {
 
     @Override
     public void setValue(int i, Value v) {
-        if (i == -1) {
-            this.key = v.getLong();
-            this.rowKey = v;
-        } else if (i == -2) {
-            this.rowKey = v;
-        } else {
-            v.version = transactionId;
-            data[i] = v;
-        }
+        setValue(i, v, null);
     }
 
     public boolean isEmpty() {
@@ -261,6 +255,6 @@ public class Row implements SearchRow {
 
     //TODO
     public Table getTable() {
-        return null;
+        return table;
     }
 }

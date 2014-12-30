@@ -6,6 +6,7 @@
  */
 package org.lealone.result;
 
+import org.lealone.dbobject.table.Column;
 import org.lealone.value.Value;
 
 /**
@@ -41,6 +42,8 @@ public interface SearchRow {
      * @param v the new value
      */
     void setValue(int index, Value v);
+
+    void setValue(int index, Value v, Column column);
 
     /**
      * Set the position and version to match another row.

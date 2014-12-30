@@ -8,6 +8,7 @@ package org.lealone.command.dml;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.Callable;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
@@ -36,7 +37,7 @@ import org.lealone.value.ValueNull;
  * This class represents the statement
  * UPDATE
  */
-public class Update extends Prepared {
+public class Update extends Prepared implements Callable<Integer> {
 
     protected Expression condition;
     protected TableFilter tableFilter;
@@ -53,6 +54,10 @@ public class Update extends Prepared {
 
     public void setTableFilter(TableFilter tableFilter) {
         this.tableFilter = tableFilter;
+    }
+
+    public TableFilter getTableFilter() {
+        return tableFilter;
     }
 
     public void setCondition(Expression condition) {
@@ -79,6 +84,18 @@ public class Update extends Prepared {
 
     @Override
     public int update() {
+        if (isLocal())
+            return updateRows();
+        else
+            return Session.getRouter().executeUpdate(this);
+    }
+
+    @Override
+    public Integer call() {
+        return Integer.valueOf(updateRows());
+    }
+
+    private int updateRows() {
         tableFilter.startQuery(session);
         tableFilter.reset();
         RowList rows = new RowList(session);

@@ -6,6 +6,8 @@
  */
 package org.lealone.command.dml;
 
+import java.util.concurrent.Callable;
+
 import org.lealone.api.Trigger;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
@@ -26,7 +28,7 @@ import org.lealone.value.ValueNull;
  * This class represents the statement
  * DELETE
  */
-public class Delete extends Prepared {
+public class Delete extends Prepared implements Callable<Integer> {
 
     private Expression condition;
     protected TableFilter tableFilter;
@@ -44,12 +46,28 @@ public class Delete extends Prepared {
         this.tableFilter = tableFilter;
     }
 
+    public TableFilter getTableFilter() {
+        return tableFilter;
+    }
+
     public void setCondition(Expression condition) {
         this.condition = condition;
     }
 
     @Override
     public int update() {
+        if (isLocal())
+            return deleteRows();
+        else
+            return Session.getRouter().executeDelete(this);
+    }
+
+    @Override
+    public Integer call() {
+        return Integer.valueOf(deleteRows());
+    }
+
+    private int deleteRows() {
         tableFilter.startQuery(session);
         tableFilter.reset();
         Table table = tableFilter.getTable();

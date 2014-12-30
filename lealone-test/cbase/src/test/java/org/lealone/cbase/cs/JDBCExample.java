@@ -49,14 +49,18 @@ public class JDBCExample {
 
         stmt.executeUpdate("CREATE INDEX IF NOT EXISTS test_f2 ON test(f2)");
 
-        stmt.executeUpdate("DELETE FROM test");
+        //stmt.executeUpdate("DELETE FROM test");
 
         for (int i = 1; i <= 10; i++) {
             stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")");
         }
 
         stmt.executeUpdate("UPDATE test SET f2 = 1 where f1 = 1");
-        rs = stmt.executeQuery("SELECT * FROM test where f1 <= 3");
+
+        //stmt.executeUpdate("UPDATE test SET f2 = 1 where f1 >= 2");
+
+        //rs = stmt.executeQuery("SELECT * FROM test where f1 <= 3");
+        rs = stmt.executeQuery("SELECT * FROM test where f1 = 3");
         while (rs.next()) {
             System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
         }

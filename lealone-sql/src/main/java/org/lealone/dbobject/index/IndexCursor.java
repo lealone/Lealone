@@ -127,10 +127,10 @@ public class IndexCursor implements Cursor {
                     }
                 }
                 if (isStart) {
-                    start = getSearchRow(start, id, v, true);
+                    start = getSearchRow(column, start, id, v, true);
                 }
                 if (isEnd) {
-                    end = getSearchRow(end, id, v, false);
+                    end = getSearchRow(column, end, id, v, false);
                 }
                 if (isStart || isEnd) {
                     // an X=? condition will produce less rows than
@@ -168,7 +168,7 @@ public class IndexCursor implements Cursor {
         return idxCol == null || idxCol.column == column;
     }
 
-    private SearchRow getSearchRow(SearchRow row, int id, Value v, boolean max) {
+    private SearchRow getSearchRow(Column column, SearchRow row, int id, Value v, boolean max) {
         if (row == null) {
             row = table.getTemplateRow();
         } else {
@@ -179,7 +179,7 @@ public class IndexCursor implements Cursor {
         } else if (id < 0) {
             row.setKey(v.getLong());
         } else {
-            row.setValue(id, v);
+            row.setValue(id, v, column);
         }
         return row;
     }
@@ -223,6 +223,7 @@ public class IndexCursor implements Cursor {
         return alwaysFalse;
     }
 
+    @Override
     public Row get() {
         if (cursor == null) {
             return null;
@@ -230,10 +231,12 @@ public class IndexCursor implements Cursor {
         return cursor.get();
     }
 
+    @Override
     public SearchRow getSearchRow() {
         return cursor.getSearchRow();
     }
 
+    @Override
     public boolean next() {
         while (true) {
             if (cursor == null) {
@@ -285,6 +288,7 @@ public class IndexCursor implements Cursor {
         cursor = index.find(tableFilter, start, start);
     }
 
+    @Override
     public boolean previous() {
         throw DbException.throwInternalError();
     }

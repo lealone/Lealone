@@ -18,10 +18,20 @@
 package org.lealone.command.router;
 
 import org.lealone.command.ddl.DefineCommand;
+import org.lealone.command.dml.Delete;
 import org.lealone.command.dml.Insert;
+import org.lealone.command.dml.Query;
+import org.lealone.command.dml.Update;
+import org.lealone.result.ResultInterface;
 
 public interface Router {
     int executeInsert(Insert insert);
+
+    int executeDelete(Delete delete);
+
+    int executeUpdate(Update update);
+
+    ResultInterface executeQuery(Query query, int maxRows, boolean scrollable);
 
     int executeDefineCommand(DefineCommand defineCommand);
 }

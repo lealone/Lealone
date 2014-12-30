@@ -87,7 +87,7 @@ public class Select extends Query {
     private SortOrder sort;
     private int currentGroupRowId;
 
-    private Map<String, ArrayList<Column>> columnsMap = New.hashMap();
+    private final Map<String, ArrayList<Column>> columnsMap = New.hashMap();
 
     public boolean isGroupQuery() {
         return isGroupQuery;
@@ -139,6 +139,11 @@ public class Select extends Query {
         return topFilters;
     }
 
+    @Override
+    public TableFilter getTableFilter() {
+        return getTopTableFilter();
+    }
+
     public void setExpressions(ArrayList<Expression> expressions) {
         this.expressions = expressions;
     }
@@ -166,6 +171,7 @@ public class Select extends Query {
         return currentGroupRowId;
     }
 
+    @Override
     public void setOrder(ArrayList<SelectOrderBy> order) {
         orderList = order;
     }
@@ -678,12 +684,14 @@ public class Select extends Query {
         result.addRow(row);
     }
 
+    @Override
     public ResultInterface queryMeta() {
         LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount);
         result.done();
         return result;
     }
 
+    @Override
     protected LocalResult queryWithoutCache(int maxRows, ResultTarget target) {
         int limitRows = maxRows == 0 ? -1 : maxRows;
         if (limitExpr != null) {
@@ -824,6 +832,7 @@ public class Select extends Query {
         }
     }
 
+    @Override
     public void init() {
         if (SysProperties.CHECK && checkInit) {
             DbException.throwInternalError();
@@ -932,6 +941,7 @@ public class Select extends Query {
             }
     }
 
+    @Override
     public void prepare() {
         if (isPrepared) {
             // sometimes a subquery is prepared twice (CREATE TABLE AS SELECT)
@@ -1033,10 +1043,12 @@ public class Select extends Query {
         isPrepared = true;
     }
 
+    @Override
     public double getCost() {
         return cost;
     }
 
+    @Override
     public HashSet<Table> getTables() {
         HashSet<Table> set = New.hashSet();
         for (TableFilter filter : filters) {
@@ -1045,6 +1057,7 @@ public class Select extends Query {
         return set;
     }
 
+    @Override
     public void fireBeforeSelectTriggers() {
         for (int i = 0, size = filters.size(); i < size; i++) {
             TableFilter filter = filters.get(i);
@@ -1118,6 +1131,7 @@ public class Select extends Query {
         }
     }
 
+    @Override
     public String getPlanSQL() {
         return getPlanSQL(false);
     }
@@ -1249,6 +1263,7 @@ public class Select extends Query {
         return having;
     }
 
+    @Override
     public int getColumnCount() {
         return visibleColumnCount;
     }
@@ -1257,10 +1272,12 @@ public class Select extends Query {
         return topTableFilter;
     }
 
+    @Override
     public ArrayList<Expression> getExpressions() {
         return expressions;
     }
 
+    @Override
     public void setForUpdate(boolean b) {
         this.isForUpdate = b;
         if (session.getDatabase().getSettings().selectForUpdateMvcc && session.getDatabase().isMultiVersion()) {
@@ -1268,6 +1285,7 @@ public class Select extends Query {
         }
     }
 
+    @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         for (Expression e : expressions) {
             e.mapColumns(resolver, level);
@@ -1277,6 +1295,7 @@ public class Select extends Query {
         }
     }
 
+    @Override
     public void setEvaluatable(TableFilter tableFilter, boolean b) {
         for (Expression e : expressions) {
             e.setEvaluatable(tableFilter, b);
@@ -1297,6 +1316,7 @@ public class Select extends Query {
         return isQuickAggregateQuery;
     }
 
+    @Override
     public void addGlobalCondition(Parameter param, int columnId, int comparisonType) {
         addParameter(param);
         Expression comp;
@@ -1339,6 +1359,7 @@ public class Select extends Query {
         }
     }
 
+    @Override
     public void updateAggregate(Session s) {
         for (Expression e : expressions) {
             e.updateAggregate(s);
@@ -1351,6 +1372,7 @@ public class Select extends Query {
         }
     }
 
+    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         switch (visitor.getType()) {
         case ExpressionVisitor.DETERMINISTIC: {
@@ -1408,18 +1430,22 @@ public class Select extends Query {
         return result;
     }
 
+    @Override
     public boolean isReadOnly() {
         return isEverything(ExpressionVisitor.READONLY_VISITOR);
     }
 
+    @Override
     public boolean isCacheable() {
         return !isForUpdate;
     }
 
+    @Override
     public int getType() {
         return CommandInterface.SELECT;
     }
 
+    @Override
     public boolean allowGlobalConditions() {
         if (offsetExpr == null && (limitExpr == null || sort == null)) {
             return true;

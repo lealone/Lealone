@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
@@ -33,19 +34,27 @@ import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendCommand;
+import org.lealone.command.Prepared;
 import org.lealone.command.ddl.DefineCommand;
+import org.lealone.command.dml.Delete;
 import org.lealone.command.dml.Insert;
+import org.lealone.command.dml.Query;
+import org.lealone.command.dml.Update;
 import org.lealone.command.router.CommandParallel;
 import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.command.router.Router;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.message.DbException;
+import org.lealone.result.ResultInterface;
 import org.lealone.result.Row;
+import org.lealone.result.SearchRow;
 import org.lealone.util.New;
 import org.lealone.value.Value;
 
 import com.google.common.collect.Iterables;
 
 public class DefaultRouter implements Router {
+    private static final Random random = new Random(System.currentTimeMillis());
     private static final DefaultRouter INSTANCE = new DefaultRouter();
 
     public static DefaultRouter getInstance() {
@@ -127,20 +136,37 @@ public class DefaultRouter implements Router {
         return updateCount;
     }
 
+    private static Callable<Integer> createCallable(InetAddress endpoint, Prepared p, String sql) throws Exception {
+        final FrontendCommand c = FrontendSessionPool.getFrontendCommand(p.getSession(), p, //
+                p.getSession().getURL(endpoint), sql);
+        Callable<Integer> call = new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                return c.executeUpdate();
+            }
+        };
+
+        return call;
+    }
+
+    //    private static Callable<ResultInterface> createQueryCallable(InetAddress endpoint, Query query, String sql) throws Exception {
+    //        final FrontendCommand c = FrontendSessionPool.getFrontendCommand(query.getSession(), query, //
+    //                query.getSession().getURL(endpoint), sql);
+    //        Callable<ResultInterface> call = new Callable<ResultInterface>() {
+    //            @Override
+    //            public ResultInterface call() throws Exception {
+    //                return c.executeQuery(query.g, false);
+    //            }
+    //        };
+    //
+    //        return call;
+    //    }
+
     private static void createUpdateCallable(Insert insert, //
             List<Callable<Integer>> commands, Map<InetAddress, List<Row>> rows) throws Exception {
         if (rows != null) {
             for (Map.Entry<InetAddress, List<Row>> e : rows.entrySet()) {
-                final FrontendCommand c = FrontendSessionPool.getFrontendCommand(insert.getSession(), insert, //
-                        insert.getSession().getURL(e.getKey()), insert.getPlanSQL(e.getValue()));
-                Callable<Integer> call = new Callable<Integer>() {
-                    @Override
-                    public Integer call() throws Exception {
-                        return c.executeUpdate();
-                    }
-                };
-
-                commands.add(call);
+                commands.add(createCallable(e.getKey(), insert, insert.getPlanSQL(e.getValue())));
             }
         }
     }
@@ -166,5 +192,148 @@ public class DefaultRouter implements Router {
             throw DbException.convert(e);
         }
         return updateCount;
+    }
+
+    @Override
+    public int executeDelete(Delete delete) {
+        return executeUpdateOrDelete(delete.getTableFilter(), delete);
+    }
+
+    @Override
+    public int executeUpdate(Update update) {
+        return executeUpdateOrDelete(update.getTableFilter(), update);
+    }
+
+    @Override
+    public ResultInterface executeQuery(Query query, int maxRows, boolean scrollable) {
+        TableFilter tableFilter = query.getTableFilter();
+        SearchRow startRow = tableFilter.getStartSearchRow();
+        SearchRow endRow = tableFilter.getEndSearchRow();
+
+        Value startPK = getPartitionKey(startRow);
+        Value endPK = getPartitionKey(endRow);
+
+        boolean isEqual = false;
+        if (startPK != null && endPK != null && startPK == endPK)
+            isEqual = true;
+
+        if (isEqual) {
+            List<InetAddress> targetEndpoints = getTargetEndpoints(tableFilter, startPK);
+
+            boolean isLocal = targetEndpoints.contains(FBUtilities.getBroadcastAddress());
+            if (isLocal)
+                return query.call();
+
+            int size = targetEndpoints.size();
+            InetAddress endpoint;
+            if (size == 1)
+                endpoint = targetEndpoints.get(0);
+            else
+                endpoint = targetEndpoints.get(random.nextInt(size));
+
+            try {
+                final FrontendCommand c = FrontendSessionPool.getFrontendCommand(query.getSession(), query, //
+                        query.getSession().getURL(endpoint), query.getSQL());
+                return c.executeQuery(maxRows, scrollable);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+
+            //List<Callable<Integer>> commands = New.arrayList(targetEndpoints.size());
+
+            //            Callable<ResultInterface> = createCallable(endpoint, p, p.getSQL())
+
+            //            try {
+            //                for (InetAddress endpoint : targetEndpoints) {
+            //                    if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
+            //                        commands.add((Callable<Integer>) p);
+            //                    } else {
+            //                        commands.add(createCallable(endpoint, p, p.getSQL()));
+            //                    }
+            //                }
+            //                return CommandParallel.executeUpdateCallable(commands);
+            //            } catch (Exception e) {
+            //                throw DbException.convert(e);
+            //            }
+        } else {
+            //            Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+            //            List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
+            //            try {
+            //                for (InetAddress endpoint : liveMembers) {
+            //                    if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
+            //                        commands.add((Callable<Integer>) p);
+            //                    } else {
+            //                        commands.add(createCallable(endpoint, p, p.getSQL()));
+            //                    }
+            //                }
+            //                return CommandParallel.executeUpdateCallable(commands);
+            //            } catch (Exception e) {
+            //                throw DbException.convert(e);
+            //            }
+        }
+        return query.call();
+    }
+
+    @SuppressWarnings("unchecked")
+    private int executeUpdateOrDelete(TableFilter tableFilter, Prepared p) {
+        SearchRow startRow = tableFilter.getStartSearchRow();
+        SearchRow endRow = tableFilter.getEndSearchRow();
+
+        Value startPK = getPartitionKey(startRow);
+        Value endPK = getPartitionKey(endRow);
+
+        boolean isEqual = false;
+        if (startPK != null && endPK != null && startPK == endPK)
+            isEqual = true;
+
+        if (isEqual) {
+            List<InetAddress> targetEndpoints = getTargetEndpoints(tableFilter, startPK);
+            List<Callable<Integer>> commands = New.arrayList(targetEndpoints.size());
+
+            try {
+                for (InetAddress endpoint : targetEndpoints) {
+                    if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
+                        commands.add((Callable<Integer>) p);
+                    } else {
+                        commands.add(createCallable(endpoint, p, p.getSQL()));
+                    }
+                }
+                return CommandParallel.executeUpdateCallable(commands);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        } else {
+            Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+            List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
+            try {
+                for (InetAddress endpoint : liveMembers) {
+                    if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
+                        commands.add((Callable<Integer>) p);
+                    } else {
+                        commands.add(createCallable(endpoint, p, p.getSQL()));
+                    }
+                }
+                return CommandParallel.executeUpdateCallable(commands);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+    }
+
+    private Value getPartitionKey(SearchRow row) {
+        if (row == null)
+            return null;
+        return row.getRowKey();
+    }
+
+    private static List<InetAddress> getTargetEndpoints(TableFilter tableFilter, Value partitionKey) {
+        String keyspaceName = tableFilter.getTable().getSchema().getName();
+        Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
+        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
+        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,
+                keyspaceName);
+
+        naturalEndpoints.addAll(pendingEndpoints);
+        return naturalEndpoints;
     }
 }

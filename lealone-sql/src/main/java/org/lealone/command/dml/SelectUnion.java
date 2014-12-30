@@ -94,10 +94,12 @@ public class SelectUnion extends Query {
         return right;
     }
 
+    @Override
     public void setSQL(String sql) {
         this.sqlStatement = sql;
     }
 
+    @Override
     public void setOrder(ArrayList<SelectOrderBy> order) {
         orderList = order;
     }
@@ -110,6 +112,7 @@ public class SelectUnion extends Query {
         return values;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         int columnCount = left.getColumnCount();
         LocalResult result = new LocalResult(session, expressionArray, columnCount);
@@ -122,6 +125,7 @@ public class SelectUnion extends Query {
         return new LocalResult(session, expressionArray, columnCount);
     }
 
+    @Override
     protected LocalResult queryWithoutCache(int maxRows, ResultTarget target) {
         if (maxRows != 0) {
             // maxRows is set (maxRows 0 means no limit)
@@ -240,6 +244,7 @@ public class SelectUnion extends Query {
         return result;
     }
 
+    @Override
     public void init() {
         if (SysProperties.CHECK && checkInit) {
             DbException.throwInternalError();
@@ -261,6 +266,7 @@ public class SelectUnion extends Query {
         }
     }
 
+    @Override
     public void prepare() {
         if (isPrepared) {
             // sometimes a subquery is prepared twice (CREATE TABLE AS SELECT)
@@ -297,40 +303,48 @@ public class SelectUnion extends Query {
         expressions.toArray(expressionArray);
     }
 
+    @Override
     public double getCost() {
         return left.getCost() + right.getCost();
     }
 
+    @Override
     public HashSet<Table> getTables() {
         HashSet<Table> set = left.getTables();
         set.addAll(right.getTables());
         return set;
     }
 
+    @Override
     public ArrayList<Expression> getExpressions() {
         return expressions;
     }
 
+    @Override
     public void setForUpdate(boolean forUpdate) {
         left.setForUpdate(forUpdate);
         right.setForUpdate(forUpdate);
         isForUpdate = forUpdate;
     }
 
+    @Override
     public int getColumnCount() {
         return left.getColumnCount();
     }
 
+    @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         left.mapColumns(resolver, level);
         right.mapColumns(resolver, level);
     }
 
+    @Override
     public void setEvaluatable(TableFilter tableFilter, boolean b) {
         left.setEvaluatable(tableFilter, b);
         right.setEvaluatable(tableFilter, b);
     }
 
+    @Override
     public void addGlobalCondition(Parameter param, int columnId, int comparisonType) {
         addParameter(param);
         switch (unionType) {
@@ -350,6 +364,7 @@ public class SelectUnion extends Query {
         }
     }
 
+    @Override
     public String getPlanSQL() {
         StringBuilder buff = new StringBuilder();
         buff.append('(').append(left.getPlanSQL()).append(')');
@@ -389,33 +404,40 @@ public class SelectUnion extends Query {
         return buff.toString();
     }
 
+    @Override
     public LocalResult query(int limit, ResultTarget target) {
         // union doesn't always know the parameter list of the left and right queries
         return queryWithoutCache(limit, target);
     }
 
+    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         return left.isEverything(visitor) && right.isEverything(visitor);
     }
 
+    @Override
     public boolean isReadOnly() {
         return left.isReadOnly() && right.isReadOnly();
     }
 
+    @Override
     public void updateAggregate(Session s) {
         left.updateAggregate(s);
         right.updateAggregate(s);
     }
 
+    @Override
     public void fireBeforeSelectTriggers() {
         left.fireBeforeSelectTriggers();
         right.fireBeforeSelectTriggers();
     }
 
+    @Override
     public int getType() {
         return CommandInterface.SELECT;
     }
 
+    @Override
     public boolean allowGlobalConditions() {
         return left.allowGlobalConditions() && right.allowGlobalConditions();
     }
@@ -425,5 +447,10 @@ public class SelectUnion extends Query {
         List<TableFilter> filters = left.getTopFilters();
         filters.addAll(right.getTopFilters());
         return filters;
+    }
+
+    @Override
+    public TableFilter getTableFilter() {
+        return getTopFilters().get(0);
     }
 }

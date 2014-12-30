@@ -46,7 +46,7 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
     protected int rowNumber;
     protected boolean insertFromSelect;
 
-    //protected InsertOrMergeRouter router;
+    private List<Row> rows;
 
     public Insert(Session session) {
         super(session);
@@ -78,6 +78,10 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
 
     public List<Row> getRows() {
         return rows;
+    }
+
+    public void setRows(List<Row> rows) {
+        this.rows = rows;
     }
 
     /**
@@ -164,12 +168,14 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
                 }
             }
         } else {
-            //parsePartitionKeys();
             return Session.getRouter().executeInsert(this);
         }
     }
 
-    private List<Row> rows;
+    @Override
+    public Integer call() {
+        return Integer.valueOf(insertRows());
+    }
 
     private void createRows() {
         int listSize = list.size();
@@ -222,50 +228,6 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
         return rowNumber;
     }
 
-    //    private int insertRows2() {
-    //        session.getUser().checkRight(table, Right.INSERT);
-    //        setCurrentRowNumber(0);
-    //        table.fire(session, Trigger.INSERT, true);
-    //        rowNumber = 0;
-    //        int listSize = list.size();
-    //        if (listSize > 0) {
-    //            for (int x = 0; x < listSize; x++) {
-    //                Expression[] expr = list.get(x);
-    //                Row newRow;
-    //                try {
-    //                    newRow = createRow(expr, x);
-    //                    if (newRow == null) {
-    //                        continue;
-    //                    }
-    //                } catch (DbException ex) {
-    //                    throw setRow(ex, rowNumber + 1, getSQL(expr));
-    //                }
-    //                setCurrentRowNumber(++rowNumber);
-    //                table.validateConvertUpdateSequence(session, newRow);
-    //                boolean done = table.fireBeforeRow(session, null, newRow);
-    //                if (!done) {
-    //                    table.lock(session, true, false);
-    //                    table.addRow(session, newRow);
-    //                    table.fireAfterRow(session, null, newRow, false);
-    //                }
-    //            }
-    //        } else {
-    //            table.lock(session, true, false);
-    //            if (insertFromSelect) {
-    //                query.query(0, this);
-    //            } else {
-    //                ResultInterface rows = query.query(0);
-    //                while (rows.next()) {
-    //                    Value[] r = rows.currentRow();
-    //                    addRow(r);
-    //                }
-    //                rows.close();
-    //            }
-    //        }
-    //        table.fire(session, Trigger.INSERT, false);
-    //        return rowNumber;
-    //    }
-
     @Override
     public void addRow(Value[] values) {
         ++rowNumber;
@@ -274,28 +236,16 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
         } catch (DbException ex) {
             throw setRow(ex, rowNumber, getSQL(values));
         }
-        //        Row newRow;
-        //        try {
-        //            newRow = createRow(values);
-        //            if (newRow == null) {
-        //                return;
-        //            }
-        //        } catch (DbException ex) {
-        //            throw setRow(ex, rowNumber + 1, getSQL(values));
-        //        }
-        //        setCurrentRowNumber(++rowNumber);
-        //        table.validateConvertUpdateSequence(session, newRow);
-        //        boolean done = table.fireBeforeRow(session, null, newRow);
-        //        if (!done) {
-        //            table.addRow(session, newRow);
-        //            table.fireAfterRow(session, null, newRow, false);
-        //        }
+    }
+
+    @Override
+    public int getRowCount() {
+        return rowNumber;
     }
 
     //子类有可能要用rowId
     protected Row createRow(Expression[] expr, int rowId) {
         Row row = table.getTemplateRow();
-        //row.setTransactionId(session.getTransaction().getTransactionId());
         for (int i = 0, len = columns.length; i < len; i++) {
             Column c = columns[i];
             int index = c.getColumnId();
@@ -321,11 +271,6 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
         }
         rows.add(row);
         return row;
-    }
-
-    @Override
-    public int getRowCount() {
-        return rowNumber;
     }
 
     @Override
@@ -470,14 +415,5 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
     @Override
     public boolean isCacheable() {
         return true;
-    }
-
-    public void setRows(List<Row> rows) {
-        this.rows = rows;
-    }
-
-    @Override
-    public Integer call() {
-        return Integer.valueOf(insertRows());
     }
 }
