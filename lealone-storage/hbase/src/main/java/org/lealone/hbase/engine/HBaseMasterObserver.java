@@ -23,8 +23,11 @@ import org.apache.hadoop.hbase.CoprocessorEnvironment;
 import org.apache.hadoop.hbase.coprocessor.BaseMasterObserver;
 import org.apache.hadoop.hbase.coprocessor.MasterCoprocessorEnvironment;
 import org.apache.hadoop.hbase.master.HMaster;
+import org.lealone.engine.Session;
+import org.lealone.hbase.command.router.MasterSlaveRouter;
 import org.lealone.hbase.server.HBaseTcpServer;
 import org.lealone.hbase.transaction.TimestampService;
+import org.lealone.transaction.TransactionalRouter;
 
 /**
  * 
@@ -47,6 +50,8 @@ public class HBaseMasterObserver extends BaseMasterObserver {
 
     @Override
     public synchronized void start(CoprocessorEnvironment env) throws IOException {
+        Session.setRouter(new TransactionalRouter(MasterSlaveRouter.getInstance()));
+
         if (server == null) {
             HMaster m = (HMaster) ((MasterCoprocessorEnvironment) env).getMasterServices();
             hostAndPort = m.getServerName().getHostAndPort();

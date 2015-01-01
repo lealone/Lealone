@@ -21,9 +21,12 @@ import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.coprocessor.CoprocessorHost;
+import org.lealone.engine.Session;
+import org.lealone.hbase.command.router.MasterSlaveRouter;
 import org.lealone.hbase.server.HBasePgServer;
 import org.lealone.hbase.server.HBaseTcpServer;
 import org.lealone.hbase.transaction.TimestampService;
+import org.lealone.transaction.TransactionalRouter;
 
 /**
  * 
@@ -56,6 +59,8 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
 
     @Override
     public void run() {
+        Session.setRouter(new TransactionalRouter(MasterSlaveRouter.getInstance()));
+
         HBaseTcpServer server = new HBaseTcpServer(this);
         server.start();
 

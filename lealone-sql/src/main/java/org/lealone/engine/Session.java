@@ -1358,6 +1358,7 @@ public class Session extends SessionWithState {
 
     public static void setRouter(Router r) {
         router = r;
+        setClusterMode(r != null);
     }
 
     private static boolean isClusterMode;

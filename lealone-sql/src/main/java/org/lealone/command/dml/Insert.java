@@ -416,4 +416,8 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
     public boolean isCacheable() {
         return true;
     }
+
+    public boolean isBatch() {
+        return query != null || list.size() > 1; // || table.doesSecondaryIndexExist();
+    }
 }

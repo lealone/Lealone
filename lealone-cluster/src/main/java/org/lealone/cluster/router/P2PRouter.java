@@ -57,15 +57,15 @@ import org.lealone.value.Value;
 
 import com.google.common.collect.Iterables;
 
-public class DefaultRouter implements Router {
+public class P2PRouter implements Router {
     private static final Random random = new Random(System.currentTimeMillis());
-    private static final DefaultRouter INSTANCE = new DefaultRouter();
+    private static final P2PRouter INSTANCE = new P2PRouter();
 
-    public static DefaultRouter getInstance() {
+    public static P2PRouter getInstance() {
         return INSTANCE;
     }
 
-    private DefaultRouter() {
+    private P2PRouter() {
     }
 
     @Override

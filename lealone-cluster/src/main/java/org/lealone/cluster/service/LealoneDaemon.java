@@ -4,9 +4,10 @@ import java.util.ArrayList;
 
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.router.DefaultRouter;
+import org.lealone.cluster.router.P2PRouter;
 import org.lealone.engine.Session;
 import org.lealone.server.TcpServer;
+import org.lealone.transaction.TransactionalRouter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,8 +21,7 @@ public class LealoneDaemon {
 
         try {
             if (DatabaseDescriptor.loadConfig().isClusterMode()) {
-                Session.setClusterMode(true);
-                Session.setRouter(DefaultRouter.getInstance());
+                Session.setRouter(new TransactionalRouter(P2PRouter.getInstance()));
                 StorageService.instance.initServer();
             }
 
