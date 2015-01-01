@@ -120,7 +120,7 @@ public class HBaseDatabase extends Database {
         try {
             fromZookeeper = true;
             Prepared p = systemSession.prepare(sql, true);
-            p.setExecuteDirec(true);
+            p.setLocal(true);
             p.update();
         } finally {
             fromZookeeper = false;

@@ -39,15 +39,15 @@ public class HBaseInsert extends Insert implements InsertOrMerge {
     @Override
     public void prepare() {
         super.prepare();
-        if (table.isDistributed())
+        if (table.supportsSharding())
             insertOrMergeSupport.postPrepare(table, query, list, columns, null);
         else
-            setExecuteDirec(true);
+            setLocal(true);
     }
 
     @Override
     public int update() {
-        if (isExecuteDirec())
+        if (isLocal())
             return super.update();
         else
             return insertOrMergeSupport.update(insertFromSelect, sortedInsertMode, this);

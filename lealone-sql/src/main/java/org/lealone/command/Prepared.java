@@ -427,26 +427,6 @@ public abstract class Prepared {
         return command;
     }
 
-    protected String[] localRegionNames;
-
-    public String[] getLocalRegionNames() {
-        return localRegionNames;
-    }
-
-    public void setLocalRegionNames(String[] localRegionNames) {
-        this.localRegionNames = localRegionNames;
-    }
-
-    private boolean executeDirec;
-
-    public boolean isExecuteDirec() {
-        return executeDirec;
-    }
-
-    public void setExecuteDirec(boolean executeDirec) {
-        this.executeDirec = executeDirec;
-    }
-
     private boolean local = true;
 
     public boolean isLocal() {

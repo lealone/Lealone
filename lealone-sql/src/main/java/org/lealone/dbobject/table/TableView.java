@@ -511,14 +511,14 @@ public class TableView extends Table {
     }
 
     @Override
-    public boolean isDistributed() {
+    public boolean supportsSharding() {
         for (Table t : tables) {
             if (t instanceof TableView) {
-                return ((TableView) t).isDistributed();
+                return ((TableView) t).supportsSharding();
             } else {
-                return t.isDistributed();
+                return t.supportsSharding();
             }
         }
-        return super.isDistributed();
+        return super.supportsSharding();
     }
 }

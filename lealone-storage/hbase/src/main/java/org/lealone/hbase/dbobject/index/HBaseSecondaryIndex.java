@@ -56,13 +56,13 @@ public class HBaseSecondaryIndex extends BaseIndex {
         buff.append("(C char))");
 
         Prepared p = session.prepare(buff.toString(), true);
-        p.setExecuteDirec(true);
+        p.setLocal(true);
         p.update();
     }
 
     public synchronized static void dropIndexTableIfExists(Session session, String indexName) {
         Prepared p = session.prepare("DROP TABLE IF EXISTS " + indexName, true);
-        p.setExecuteDirec(true);
+        p.setLocal(true);
         p.update();
     }
 

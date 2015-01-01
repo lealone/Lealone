@@ -110,7 +110,7 @@ public class CassandraTable extends TableBase {
     }
 
     @Override
-    public boolean isDistributed() {
+    public boolean supportsSharding() {
         return true;
     }
 

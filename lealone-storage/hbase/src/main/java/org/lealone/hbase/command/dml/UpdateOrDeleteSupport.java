@@ -20,55 +20,52 @@ package org.lealone.hbase.command.dml;
 import java.util.concurrent.Callable;
 
 import org.lealone.command.Prepared;
-import org.lealone.command.dml.TransactionCommand;
-import org.lealone.dbobject.table.TableFilter;
-import org.lealone.engine.Session;
+import org.lealone.command.dml.Delete;
+import org.lealone.command.dml.Update;
 import org.lealone.hbase.command.CommandParallel;
 import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
 
 public class UpdateOrDeleteSupport implements Callable<Integer> {
-    private final WhereClauseSupport whereClauseSupport = new WhereClauseSupport();
+    private final WhereClauseSupport whereClauseSupport;
     private final HBaseSession session;
-    private final UpdateOrDelete uod;
     private final Prepared prepared;
+    private final Callable<Integer> callable;
 
     private SQLRoutingInfo sqlRoutingInfo;
 
-    public UpdateOrDeleteSupport(Session session, UpdateOrDelete uod) {
-        this.session = (HBaseSession) session;
-        this.uod = uod;
-        this.prepared = (Prepared) uod;
+    public UpdateOrDeleteSupport(Delete delete) {
+        this.session = (HBaseSession) delete.getSession();
+        this.prepared = delete;
+        this.callable = delete;
+
+        delete.getTableFilter().setPrepared(delete);
+        whereClauseSupport = ((WithWhereClause) delete).getWhereClauseSupport();
+        whereClauseSupport.setTableFilter(delete.getTableFilter());
     }
 
-    public void postPrepare(TableFilter tableFilter) {
-        tableFilter.setPrepared(prepared);
-        whereClauseSupport.setTableFilter(tableFilter);
+    public UpdateOrDeleteSupport(Update update) {
+        this.session = (HBaseSession) update.getSession();
+        this.prepared = update;
+        this.callable = update;
+
+        update.getTableFilter().setPrepared(update);
+        whereClauseSupport = ((WithWhereClause) update).getWhereClauseSupport();
+        whereClauseSupport.setTableFilter(update.getTableFilter());
     }
 
-    public int update() {
-        boolean isTopTransaction = false;
-        boolean isNestedTransaction = false;
-
+    public int execute() {
         try {
-            if (session.getAutoCommit()) {
-                session.setAutoCommit(false);
-                isTopTransaction = true;
-            } else {
-                isNestedTransaction = true;
-                session.addSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
-            }
-
             int updateCount = 0;
-            if (prepared.getLocalRegionNames() != null) {
+            if (whereClauseSupport.getLocalRegionNames() != null) {
                 updateCount = call().intValue();
             } else {
                 sqlRoutingInfo = HBaseUtils.getSQLRoutingInfo(session, whereClauseSupport, prepared);
 
                 if (sqlRoutingInfo.localRegion != null) {
-                    whereClauseSupport.setRegionName(sqlRoutingInfo.localRegion);
-                    updateCount = uod.internalUpdate();
+                    whereClauseSupport.setCurrentRegionName(sqlRoutingInfo.localRegion);
+                    updateCount = callable.call();
                 } else if (sqlRoutingInfo.remoteCommand != null) {
                     updateCount = sqlRoutingInfo.remoteCommand.executeUpdate();
                 } else {
@@ -78,22 +75,9 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
                         updateCount = CommandParallel.executeUpdate(sqlRoutingInfo, this);
                 }
             }
-
-            if (isTopTransaction)
-                session.commit(false);
             return updateCount;
         } catch (Exception e) {
-            if (isTopTransaction)
-                session.rollback();
-
-            //嵌套事务出错时提前rollback
-            if (isNestedTransaction)
-                session.rollbackToSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
-
             throw DbException.convert(e);
-        } finally {
-            if (isTopTransaction)
-                session.setAutoCommit(true);
         }
     }
 
@@ -101,21 +85,17 @@ public class UpdateOrDeleteSupport implements Callable<Integer> {
     public Integer call() throws Exception {
         int updateCount = 0;
 
-        if (prepared.getLocalRegionNames() != null) {
-            for (String regionName : prepared.getLocalRegionNames()) {
-                whereClauseSupport.setRegionName(regionName);
-                updateCount += uod.internalUpdate();
+        if (whereClauseSupport.getLocalRegionNames() != null) {
+            for (String regionName : whereClauseSupport.getLocalRegionNames()) {
+                whereClauseSupport.setCurrentRegionName(regionName);
+                updateCount += callable.call();
             }
         } else if (sqlRoutingInfo.localRegions != null && !sqlRoutingInfo.localRegions.isEmpty()) {
             for (String regionName : sqlRoutingInfo.localRegions) {
-                whereClauseSupport.setRegionName(regionName);
-                updateCount += uod.internalUpdate();
+                whereClauseSupport.setCurrentRegionName(regionName);
+                updateCount += callable.call();
             }
         }
         return Integer.valueOf(updateCount);
-    }
-
-    public WhereClauseSupport getWhereClauseSupport() {
-        return whereClauseSupport;
     }
 }

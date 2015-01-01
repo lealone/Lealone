@@ -47,6 +47,7 @@ import org.lealone.hbase.command.dml.HBaseInsert;
 import org.lealone.hbase.command.dml.HBaseMerge;
 import org.lealone.hbase.command.dml.HBaseSelect;
 import org.lealone.hbase.command.dml.HBaseUpdate;
+import org.lealone.hbase.command.dml.WithWhereClause;
 import org.lealone.hbase.engine.HBaseConstants;
 import org.lealone.hbase.engine.HBaseDatabase;
 import org.lealone.hbase.engine.HBaseSession;
@@ -75,7 +76,7 @@ public class HBaseParser extends Parser {
     private Prepared parseInTheRegion() {
         String[] regionNames = parseRegionNames();
         Prepared p = parsePrepared();
-        p.setLocalRegionNames(regionNames);
+        ((WithWhereClause) p).setLocalRegionNames(regionNames);
         return p;
     }
 

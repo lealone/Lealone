@@ -19,4 +19,8 @@ package org.lealone.hbase.command.dml;
 
 public interface WithWhereClause {
     WhereClauseSupport getWhereClauseSupport();
+
+    String[] getLocalRegionNames();
+
+    void setLocalRegionNames(String[] localRegionNames);
 }

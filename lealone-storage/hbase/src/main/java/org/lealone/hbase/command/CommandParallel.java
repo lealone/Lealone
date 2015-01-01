@@ -17,6 +17,13 @@
  */
 package org.lealone.hbase.command;
 
+import static org.lealone.hbase.engine.HBaseConstants.COMMAND_PARALLEL_CORE_POOL_SIZE;
+import static org.lealone.hbase.engine.HBaseConstants.COMMAND_PARALLEL_KEEP_ALIVE_TIME;
+import static org.lealone.hbase.engine.HBaseConstants.COMMAND_PARALLEL_MAX_POOL_SIZE;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_COMMAND_PARALLEL_CORE_POOL_SIZE;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_COMMAND_PARALLEL_KEEP_ALIVE_TIME;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_COMMAND_PARALLEL_MAX_POOL_SIZE;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -41,8 +48,6 @@ import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 import org.lealone.util.New;
-
-import static org.lealone.hbase.engine.HBaseConstants.*;
 
 public class CommandParallel {
     private final static ThreadPoolExecutor pool = initPool();
@@ -76,10 +81,10 @@ public class CommandParallel {
         if (sqlRoutingInfo.localRegions != null) {
             for (String regionName : sqlRoutingInfo.localRegions) {
                 Prepared p = session.prepare(HBaseUtils.getPlanSQL(select), true);
-                p.setExecuteDirec(true);
+                p.setLocal(true);
                 p.setFetchSize(select.getFetchSize());
                 if (p instanceof WithWhereClause) {
-                    ((WithWhereClause) p).getWhereClauseSupport().setRegionName(regionName);
+                    ((WithWhereClause) p).getWhereClauseSupport().setCurrentRegionName(regionName);
                 }
                 commands.add(new CommandWrapper(p));
             }
@@ -96,6 +101,7 @@ public class CommandParallel {
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
             futures.add(pool.submit(new Callable<ResultInterface>() {
+                @Override
                 public ResultInterface call() throws Exception {
                     return c.executeQuery(maxRows, scrollable);
                 }
@@ -114,7 +120,7 @@ public class CommandParallel {
 
         String newSQL = select.getPlanSQL(true);
         Select newSelect = (Select) session.prepare(newSQL, true);
-        newSelect.setExecuteDirec(true);
+        newSelect.setLocal(true);
 
         return new HBaseMergedResult(results, newSelect, select);
     }
@@ -130,6 +136,7 @@ public class CommandParallel {
         for (int i = 0; i < size; i++) {
             final CommandInterface c = commands.get(i);
             futures.add(pool.submit(new Callable<Integer>() {
+                @Override
                 public Integer call() throws Exception {
                     return c.executeUpdate();
                 }
@@ -154,6 +161,7 @@ public class CommandParallel {
         for (int i = 0; i < size - 1; i++) {
             final CommandInterface c = commands.get(i);
             futures.add(pool.submit(new Callable<Integer>() {
+                @Override
                 public Integer call() throws Exception {
                     return c.executeUpdate();
                 }

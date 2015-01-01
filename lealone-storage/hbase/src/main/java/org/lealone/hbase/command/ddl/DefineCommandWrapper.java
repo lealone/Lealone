@@ -23,11 +23,11 @@ import java.util.ArrayList;
 import org.lealone.command.Command;
 import org.lealone.command.FrontendCommand;
 import org.lealone.command.ddl.DefineCommand;
-import org.lealone.engine.Session;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;
-import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.engine.FrontendSessionPool;
+import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
@@ -47,7 +47,7 @@ public class DefineCommandWrapper extends DefineCommand {
 
     @Override
     public int update() {
-        if (isExecuteDirec()) {
+        if (isLocal()) {
             return dc.update();
         } else if (session.isMaster()) {
             try {

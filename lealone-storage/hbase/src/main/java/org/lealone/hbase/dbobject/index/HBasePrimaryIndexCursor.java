@@ -83,7 +83,7 @@ public class HBasePrimaryIndexCursor implements Cursor {
         if (!(p instanceof WithWhereClause))
             throw DbException.throwInternalError("not instanceof WithWhereClause: " + p);
 
-        regionName = Bytes.toBytes(((WithWhereClause) p).getWhereClauseSupport().getRegionName());
+        regionName = Bytes.toBytes(((WithWhereClause) p).getWhereClauseSupport().getCurrentRegionName());
         if (regionName == null)
             throw DbException.throwInternalError("regionName is null");
 

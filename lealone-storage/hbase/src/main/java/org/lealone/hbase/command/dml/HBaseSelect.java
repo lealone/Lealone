@@ -39,10 +39,10 @@ public class HBaseSelect extends Select implements WithWhereClause {
     @Override
     public void prepare() {
         super.prepare();
-        if (topTableFilter.getTable().isDistributed())
+        if (topTableFilter.getTable().supportsSharding())
             whereClauseSupport.setTableFilter(topTableFilter);
         else
-            setExecuteDirec(true);
+            setLocal(true);
     }
 
     @Override
@@ -50,12 +50,13 @@ public class HBaseSelect extends Select implements WithWhereClause {
         boolean addRowToResultTarget = true;
         ResultInterface result;
 
-        if (isExecuteDirec()) {
+        String[] localRegionNames = whereClauseSupport.getLocalRegionNames();
+        if (isLocal()) {
             result = super.query(limit, target);
             addRowToResultTarget = false;
         } else if (localRegionNames != null && localRegionNames.length != 0) {
             if (localRegionNames.length == 1) {
-                whereClauseSupport.setRegionName(localRegionNames[0]);
+                whereClauseSupport.setCurrentRegionName(localRegionNames[0]);
                 result = super.query(limit, target);
                 addRowToResultTarget = false;
             } else {
@@ -71,7 +72,7 @@ public class HBaseSelect extends Select implements WithWhereClause {
             }
 
             if (sqlRoutingInfo.localRegion != null) {
-                whereClauseSupport.setRegionName(sqlRoutingInfo.localRegion);
+                whereClauseSupport.setCurrentRegionName(sqlRoutingInfo.localRegion);
                 result = super.query(limit, target);
                 addRowToResultTarget = false;
             } else if (sqlRoutingInfo.remoteCommand != null) {
@@ -95,4 +96,13 @@ public class HBaseSelect extends Select implements WithWhereClause {
         return whereClauseSupport;
     }
 
+    @Override
+    public String[] getLocalRegionNames() {
+        return whereClauseSupport.getLocalRegionNames();
+    }
+
+    @Override
+    public void setLocalRegionNames(String[] localRegionNames) {
+        whereClauseSupport.setLocalRegionNames(localRegionNames);
+    }
 }

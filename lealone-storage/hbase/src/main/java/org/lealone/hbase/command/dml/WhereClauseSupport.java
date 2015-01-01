@@ -31,9 +31,26 @@ import org.lealone.value.ValueBytes;
 public class WhereClauseSupport {
     private TableFilter tableFilter;
     private byte[] tableNameAsBytes;
-    private String regionName;
+    private String currentRegionName;
+    private String[] localRegionNames;
 
     public WhereClauseSupport() {
+    }
+
+    public String getCurrentRegionName() {
+        return currentRegionName;
+    }
+
+    public void setCurrentRegionName(String currentRegionName) {
+        this.currentRegionName = currentRegionName;
+    }
+
+    public String[] getLocalRegionNames() {
+        return localRegionNames;
+    }
+
+    public void setLocalRegionNames(String[] localRegionNames) {
+        this.localRegionNames = localRegionNames;
     }
 
     public void setTableFilter(TableFilter tableFilter) {
@@ -84,13 +101,5 @@ public class WhereClauseSupport {
                 return end.getRowKey();
         }
         return null;
-    }
-
-    public String getRegionName() {
-        return regionName;
-    }
-
-    public void setRegionName(String regionName) {
-        this.regionName = regionName;
     }
 }

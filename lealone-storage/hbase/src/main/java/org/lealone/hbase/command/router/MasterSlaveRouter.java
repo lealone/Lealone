@@ -23,6 +23,7 @@ import org.lealone.command.dml.Insert;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.Update;
 import org.lealone.command.router.Router;
+import org.lealone.hbase.command.dml.UpdateOrDeleteSupport;
 import org.lealone.result.ResultInterface;
 
 public class MasterSlaveRouter implements Router {
@@ -37,31 +38,26 @@ public class MasterSlaveRouter implements Router {
 
     @Override
     public int executeDefineCommand(DefineCommand defineCommand) {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public int executeInsert(Insert insert) {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public int executeDelete(Delete delete) {
-        // TODO Auto-generated method stub
-        return 0;
+        return new UpdateOrDeleteSupport(delete).execute();
     }
 
     @Override
     public int executeUpdate(Update update) {
-        // TODO Auto-generated method stub
-        return 0;
+        return new UpdateOrDeleteSupport(update).execute();
     }
 
     @Override
     public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
-        // TODO Auto-generated method stub
         return null;
     }
 

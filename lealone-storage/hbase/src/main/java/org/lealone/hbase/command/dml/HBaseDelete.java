@@ -20,39 +20,25 @@ package org.lealone.hbase.command.dml;
 import org.lealone.command.dml.Delete;
 import org.lealone.engine.Session;
 
-public class HBaseDelete extends Delete implements UpdateOrDelete {
-    private final UpdateOrDeleteSupport updateOrDeleteSupport;
+public class HBaseDelete extends Delete implements WithWhereClause {
+    private final WhereClauseSupport whereClauseSupport = new WhereClauseSupport();
 
     public HBaseDelete(Session session) {
         super(session);
-        updateOrDeleteSupport = new UpdateOrDeleteSupport(session, this);
-    }
-
-    @Override
-    public void prepare() {
-        super.prepare();
-        if (tableFilter.getTable().isDistributed())
-            updateOrDeleteSupport.postPrepare(tableFilter);
-        else
-            setExecuteDirec(true);
-    }
-
-    @Override
-    public int update() {
-        if (isExecuteDirec())
-            return super.update();
-        else
-            return updateOrDeleteSupport.update();
     }
 
     @Override
     public WhereClauseSupport getWhereClauseSupport() {
-        return updateOrDeleteSupport.getWhereClauseSupport();
+        return whereClauseSupport;
     }
 
     @Override
-    public int internalUpdate() {
-        return super.update();
+    public String[] getLocalRegionNames() {
+        return whereClauseSupport.getLocalRegionNames();
     }
 
+    @Override
+    public void setLocalRegionNames(String[] localRegionNames) {
+        whereClauseSupport.setLocalRegionNames(localRegionNames);
+    }
 }

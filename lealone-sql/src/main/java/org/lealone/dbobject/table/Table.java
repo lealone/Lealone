@@ -1123,7 +1123,7 @@ public abstract class Table extends SchemaObjectBase {
         return true;
     }
 
-    public boolean isDistributed() {
+    public boolean supportsSharding() {
         return false;
     }
 
