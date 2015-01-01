@@ -1127,6 +1127,10 @@ public abstract class Table extends SchemaObjectBase {
         return false;
     }
 
+    public boolean supportsLocalSecondaryIndex() {
+        return true;
+    }
+
     public String getRowKeyName() {
         return null;
     }

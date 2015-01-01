@@ -20,6 +20,7 @@ package org.lealone.hbase.command.router;
 import org.lealone.command.ddl.DefineCommand;
 import org.lealone.command.dml.Delete;
 import org.lealone.command.dml.Insert;
+import org.lealone.command.dml.Merge;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.Update;
 import org.lealone.command.router.Router;
@@ -43,6 +44,11 @@ public class MasterSlaveRouter implements Router {
 
     @Override
     public int executeInsert(Insert insert) {
+        return 0;
+    }
+
+    @Override
+    public int executeMerge(Merge merge) {
         return 0;
     }
 

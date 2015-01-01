@@ -8,7 +8,6 @@ package org.lealone.command.dml;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
@@ -34,7 +33,7 @@ import org.lealone.value.Value;
  * This class represents the statement
  * INSERT
  */
-public class Insert extends Prepared implements ResultTarget, Callable<Integer> {
+public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
 
     protected Table table;
     protected Column[] columns;
@@ -64,6 +63,7 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
         this.table = table;
     }
 
+    @Override
     public Table getTable() {
         return table;
     }
@@ -76,10 +76,12 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
         this.query = query;
     }
 
+    @Override
     public List<Row> getRows() {
         return rows;
     }
 
+    @Override
     public void setRows(List<Row> rows) {
         this.rows = rows;
     }
@@ -100,54 +102,6 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
 
         list.add(expr);
     }
-
-    //    private ArrayList<Value> partitionKeys;
-    //    private final int partitionKeyIndex = -1;
-
-    //    private void parsePartitionKeys() {
-    //        partitionKeys = New.arrayList();
-    //        if (partitionKeyIndex == -1 && query != null) {
-    //            int index = -1;
-    //            for (Column c : columns) {
-    //                index++;
-    //                if (c.isRowKeyColumn()) {
-    //                    partitionKeyIndex = index;
-    //                    break;
-    //                }
-    //            }
-    //        }
-    //
-    //        int listSize = list.size();
-    //        if (listSize > 0) {
-    //            if (partitionKeyIndex == -1) {
-    //                for (int i = 0; i < listSize; i++) {
-    //                    partitionKeys.add(ValueUuid.getNewRandom());
-    //                }
-    //            } else {
-    //                Expression[] expr;
-    //                Expression e;
-    //                Value v;
-    //                Column c = columns[partitionKeyIndex];
-    //                for (int i = 0; i < listSize; i++) {
-    //                    expr = list.get(i);
-    //                    v = null;
-    //                    if (expr != null && expr.length > 0) {
-    //                        e = expr[partitionKeyIndex];
-    //                        if (e != null) {
-    //                            // e can be null (DEFAULT)
-    //                            e = e.optimize(session);
-    //                            v = c.convert(e.getValue(session));
-    //                        }
-    //                    }
-    //
-    //                    if (v == null)
-    //                        partitionKeys.add(ValueUuid.getNewRandom());
-    //                    else
-    //                        partitionKeys.add(v);
-    //                }
-    //            }
-    //        }
-    //    }
 
     @Override
     public int update() {
@@ -316,6 +270,7 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
         return buff.toString();
     }
 
+    @Override
     public String getPlanSQL(List<Row> rows) {
         StatementBuilder buff = new StatementBuilder("INSERT INTO ");
         buff.append(table.getSQL()).append('(');
@@ -334,7 +289,6 @@ public class Insert extends Prepared implements ResultTarget, Callable<Integer> 
             buff.append("VALUES ");
             int i = 0;
             for (Row row : rows) {
-                buff.appendExceptFirst(", ");
                 if (i++ > 0) {
                     buff.append(",");
                 }

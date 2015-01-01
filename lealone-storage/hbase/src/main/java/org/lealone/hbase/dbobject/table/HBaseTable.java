@@ -190,10 +190,12 @@ public class HBaseTable extends TableBase {
         return isStatic;
     }
 
+    @Override
     public boolean isColumnsModified() {
         return isColumnsModified;
     }
 
+    @Override
     public void setColumnsModified(boolean modified) {
         this.isColumnsModified = modified;
     }
@@ -421,6 +423,7 @@ public class HBaseTable extends TableBase {
         removeRow(session, row, false);
     }
 
+    @Override
     public void removeRow(final Session session, final Row row, boolean isUndo) {
         if (!isUndo) {
             lastModificationId = database.getNextModificationDataId();
@@ -758,6 +761,11 @@ public class HBaseTable extends TableBase {
             if (indexes.get(i) instanceof HBaseSecondaryIndex)
                 return true;
 
+        return false;
+    }
+
+    @Override
+    public boolean supportsLocalSecondaryIndex() { //目前在HBase中实现的都是全局索引
         return false;
     }
 

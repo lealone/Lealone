@@ -17,9 +17,12 @@
  */
 package org.lealone.transaction;
 
+import org.lealone.command.CommandInterface;
+import org.lealone.command.Prepared;
 import org.lealone.command.ddl.DefineCommand;
 import org.lealone.command.dml.Delete;
 import org.lealone.command.dml.Insert;
+import org.lealone.command.dml.Merge;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.TransactionCommand;
 import org.lealone.command.dml.Update;
@@ -42,11 +45,35 @@ public class TransactionalRouter implements Router {
 
     @Override
     public int executeInsert(Insert insert) {
+        return execute(insert.isBatch(), insert);
+    }
+
+    @Override
+    public int executeMerge(Merge merge) {
+        return execute(merge.isBatch(), merge);
+    }
+
+    @Override
+    public int executeDelete(Delete delete) {
+        return execute(true, delete);
+    }
+
+    @Override
+    public int executeUpdate(Update update) {
+        return execute(true, update);
+    }
+
+    @Override
+    public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
+        return nestedRouter.executeSelect(select, maxRows, scrollable);
+    }
+
+    private int execute(boolean isBatch, Prepared p) {
         boolean isTopTransaction = false;
         boolean isNestedTransaction = false;
-        Session session = insert.getSession();
+        Session session = p.getSession();
         try {
-            if (insert.isBatch()) {
+            if (isBatch) {
                 if (session.getAutoCommit()) {
                     session.setAutoCommit(false);
                     isTopTransaction = true;
@@ -55,57 +82,21 @@ public class TransactionalRouter implements Router {
                     session.addSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
                 }
             }
-            int updateCount = nestedRouter.executeInsert(insert);
-            if (isTopTransaction)
-                session.commit(false);
-            return updateCount;
-        } catch (Exception e) {
-            if (isTopTransaction)
-                session.rollback();
-
-            //嵌套事务出错时提前rollback
-            if (isNestedTransaction)
-                session.rollbackToSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
-
-            throw DbException.convert(e);
-        } finally {
-            if (isTopTransaction)
-                session.setAutoCommit(true);
-        }
-    }
-
-    @Override
-    public int executeDelete(Delete delete) {
-        return executeUpdateOrDelete(null, delete);
-    }
-
-    @Override
-    public int executeUpdate(Update update) {
-        return executeUpdateOrDelete(update, null);
-    }
-
-    private int executeUpdateOrDelete(Update update, Delete delete) {
-        boolean isTopTransaction = false;
-        boolean isNestedTransaction = false;
-
-        Session session;
-        if (update != null)
-            session = update.getSession();
-        else
-            session = delete.getSession();
-        try {
-            if (session.getAutoCommit()) {
-                session.setAutoCommit(false);
-                isTopTransaction = true;
-            } else {
-                isNestedTransaction = true;
-                session.addSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
+            int updateCount = 0;
+            switch (p.getType()) {
+            case CommandInterface.INSERT:
+                updateCount = nestedRouter.executeInsert((Insert) p);
+                break;
+            case CommandInterface.UPDATE:
+                updateCount = nestedRouter.executeUpdate((Update) p);
+                break;
+            case CommandInterface.DELETE:
+                updateCount = nestedRouter.executeDelete((Delete) p);
+                break;
+            case CommandInterface.MERGE:
+                updateCount = nestedRouter.executeMerge((Merge) p);
+                break;
             }
-            int updateCount;
-            if (update != null)
-                updateCount = nestedRouter.executeUpdate(update);
-            else
-                updateCount = nestedRouter.executeDelete(delete);
             if (isTopTransaction)
                 session.commit(false);
             return updateCount;
@@ -122,12 +113,5 @@ public class TransactionalRouter implements Router {
             if (isTopTransaction)
                 session.setAutoCommit(true);
         }
-
     }
-
-    @Override
-    public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
-        return nestedRouter.executeSelect(select, maxRows, scrollable);
-    }
-
 }

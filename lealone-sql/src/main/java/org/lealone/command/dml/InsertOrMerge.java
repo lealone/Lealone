@@ -15,8 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.hbase.command.dml;
+package org.lealone.command.dml;
 
-public interface InsertOrMerge {
-    int internalUpdate();
+import java.util.List;
+import java.util.concurrent.Callable;
+
+import org.lealone.dbobject.table.Table;
+import org.lealone.result.Row;
+
+public interface InsertOrMerge extends Callable<Integer> {
+    Table getTable();
+
+    List<Row> getRows();
+
+    void setRows(List<Row> rows);
+
+    String getPlanSQL(List<Row> rows);
+
+    @Override
+    Integer call();
 }

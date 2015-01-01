@@ -23,7 +23,7 @@ import org.lealone.expression.Expression;
 import org.lealone.result.Row;
 import org.lealone.value.Value;
 
-public class HBaseInsert extends Insert implements InsertOrMerge {
+public class HBaseInsert extends Insert {
     private final InsertOrMergeSupport insertOrMergeSupport;
 
     public HBaseInsert(Session session) {
@@ -40,7 +40,7 @@ public class HBaseInsert extends Insert implements InsertOrMerge {
     public void prepare() {
         super.prepare();
         if (table.supportsSharding())
-            insertOrMergeSupport.postPrepare(table, query, list, columns, null);
+            insertOrMergeSupport.prepare(table, query, list, columns, null);
         else
             setLocal(true);
     }
@@ -61,10 +61,5 @@ public class HBaseInsert extends Insert implements InsertOrMerge {
     @Override
     protected Row createRow(Value[] values) {
         return insertOrMergeSupport.createRow(values);
-    }
-
-    @Override
-    public int internalUpdate() {
-        return super.update();
     }
 }

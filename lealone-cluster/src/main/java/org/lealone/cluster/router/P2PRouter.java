@@ -38,6 +38,8 @@ import org.lealone.command.Prepared;
 import org.lealone.command.ddl.DefineCommand;
 import org.lealone.command.dml.Delete;
 import org.lealone.command.dml.Insert;
+import org.lealone.command.dml.InsertOrMerge;
+import org.lealone.command.dml.Merge;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.Update;
 import org.lealone.command.router.CommandParallel;
@@ -87,8 +89,17 @@ public class P2PRouter implements Router {
 
     @Override
     public int executeInsert(Insert insert) {
+        return executeInsertOrMerge(insert);
+    }
+
+    @Override
+    public int executeMerge(Merge merge) {
+        return executeInsertOrMerge(merge);
+    }
+
+    private static int executeInsertOrMerge(InsertOrMerge iom) {
         final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
-        String keyspaceName = insert.getTable().getSchema().getName();
+        String keyspaceName = iom.getTable().getSchema().getName();
         //AbstractReplicationStrategy rs = Keyspace.open(keyspaceName).getReplicationStrategy();
 
         List<Row> localRows = null;
@@ -96,7 +107,7 @@ public class P2PRouter implements Router {
         Map<InetAddress, List<Row>> remoteDataCenterRows = null;
 
         Value partitionKey;
-        for (Row row : insert.getRows()) {
+        for (Row row : iom.getRows()) {
             partitionKey = row.getRowKey();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
             List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
@@ -141,12 +152,12 @@ public class P2PRouter implements Router {
         List<Callable<Integer>> commands = New.arrayList();
         int updateCount = 0;
         try {
-            createInsertCallable(insert, commands, localDataCenterRows);
-            createInsertCallable(insert, commands, remoteDataCenterRows);
+            createInsertOrMergeCallable(iom, commands, localDataCenterRows);
+            createInsertOrMergeCallable(iom, commands, remoteDataCenterRows);
 
             if (localRows != null) {
-                insert.setRows(localRows);
-                commands.add(insert);
+                iom.setRows(localRows);
+                commands.add(iom);
             }
 
             updateCount = CommandParallel.executeUpdateCallable(commands);
@@ -157,11 +168,11 @@ public class P2PRouter implements Router {
         return updateCount;
     }
 
-    private static void createInsertCallable(Insert insert, //
+    private static void createInsertOrMergeCallable(InsertOrMerge iom, //
             List<Callable<Integer>> commands, Map<InetAddress, List<Row>> rows) throws Exception {
         if (rows != null) {
             for (Map.Entry<InetAddress, List<Row>> e : rows.entrySet()) {
-                commands.add(createUpdateCallable(e.getKey(), insert, insert.getPlanSQL(e.getValue())));
+                commands.add(createUpdateCallable(e.getKey(), (Prepared) iom, iom.getPlanSQL(e.getValue())));
             }
         }
     }

@@ -20,6 +20,7 @@ package org.lealone.command.router;
 import org.lealone.command.ddl.DefineCommand;
 import org.lealone.command.dml.Delete;
 import org.lealone.command.dml.Insert;
+import org.lealone.command.dml.Merge;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.Update;
 import org.lealone.result.ResultInterface;
@@ -29,6 +30,8 @@ public interface Router {
     int executeDefineCommand(DefineCommand defineCommand);
 
     int executeInsert(Insert insert);
+
+    int executeMerge(Merge merge);
 
     int executeDelete(Delete delete);
 

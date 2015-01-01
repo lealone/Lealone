@@ -26,8 +26,8 @@ import org.apache.hadoop.hbase.client.Put;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendCommand;
 import org.lealone.command.Prepared;
+import org.lealone.command.dml.InsertOrMerge;
 import org.lealone.command.dml.Query;
-import org.lealone.command.dml.TransactionCommand;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
@@ -35,8 +35,8 @@ import org.lealone.engine.SessionInterface;
 import org.lealone.expression.Expression;
 import org.lealone.hbase.command.CommandParallel;
 import org.lealone.hbase.dbobject.table.HBaseTable;
-import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.engine.FrontendSessionPool;
+import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.result.HBaseRow;
 import org.lealone.hbase.util.HBaseRegionInfo;
 import org.lealone.hbase.util.HBaseUtils;
@@ -55,7 +55,6 @@ public class InsertOrMergeSupport {
     private final HBaseSession session;
     private final InsertOrMerge iom;
     private final boolean isInsert;
-    private Query query;
 
     private StatementBuilder alterTable;
     private ArrayList<Column> alterColumns;
@@ -72,12 +71,11 @@ public class InsertOrMergeSupport {
         this.isInsert = isInsert;
     }
 
-    public void postPrepare(Table table, Query query, ArrayList<Expression[]> list, Column[] columns, Column[] keys) {
+    public void prepare(Table table, Query query, ArrayList<Expression[]> list, Column[] columns, Column[] keys) {
         this.table = (HBaseTable) table;
         this.list = list;
         this.columns = columns;
         this.keys = keys;
-        this.query = query;
 
         if (query != null) {
             int index = -1;
@@ -92,20 +90,6 @@ public class InsertOrMergeSupport {
     }
 
     public int update(boolean insertFromSelect, boolean sortedInsertMode, Prepared prepared) {
-
-        boolean isTopTransaction = false;
-        boolean isNestedTransaction = false;
-
-        if (query != null || list.size() > 1 || table.doesSecondaryIndexExist()) {
-            if (session.getAutoCommit()) {
-                session.setAutoCommit(false);
-                isTopTransaction = true;
-            } else {
-                isNestedTransaction = true;
-                session.addSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
-            }
-        }
-
         //当在Parser中解析insert语句时，如果insert中的一些字段是新的，那么会标注字段列表已修改了，
         //并且新字段的类型是未知的，只有在执行insert时再由字段值的实际类型确定字段的类型。
         if (table.isColumnsModified()) {
@@ -117,7 +101,7 @@ public class InsertOrMergeSupport {
         }
 
         try {
-            int updateCount = iom.internalUpdate();
+            int updateCount = iom.call();
 
             if (!servers.isEmpty()) {
                 List<CommandInterface> commands = New.arrayList(servers.size());
@@ -139,21 +123,10 @@ public class InsertOrMergeSupport {
                     ci.executeUpdate();
                 }
             }
-            if (isTopTransaction)
-                session.commit(false);
             return updateCount;
         } catch (Exception e) {
-            if (isTopTransaction)
-                session.rollback();
-
-            //嵌套事务出错时提前rollback
-            if (isNestedTransaction)
-                session.rollbackToSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
-
             throw DbException.convert(e);
         } finally {
-            if (isTopTransaction)
-                session.setAutoCommit(true);
             servers.clear();
         }
     }
@@ -341,7 +314,7 @@ public class InsertOrMergeSupport {
     }
 
     private byte[] getTableNameAsBytes() {
-        return ((HBaseTable) table).getTableNameAsBytes();
+        return table.getTableNameAsBytes();
     }
 
     private Value getRowKey(Value[] values) {

@@ -7,6 +7,7 @@
 package org.lealone.command.dml;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
@@ -31,7 +32,7 @@ import org.lealone.value.Value;
  * This class represents the statement
  * MERGE
  */
-public class Merge extends Prepared {
+public class Merge extends Prepared implements InsertOrMerge {
 
     protected Table table;
     protected Column[] columns;
@@ -39,6 +40,8 @@ public class Merge extends Prepared {
     protected final ArrayList<Expression[]> list = New.arrayList();
     protected Query query;
     protected Prepared update;
+
+    private List<Row> rows;
 
     public Merge(Session session) {
         super(session);
@@ -54,6 +57,11 @@ public class Merge extends Prepared {
 
     public void setTable(Table table) {
         this.table = table;
+    }
+
+    @Override
+    public Table getTable() {
+        return table;
     }
 
     public void setColumns(Column[] columns) {
@@ -78,47 +86,82 @@ public class Merge extends Prepared {
     }
 
     @Override
+    public List<Row> getRows() {
+        return rows;
+    }
+
+    @Override
+    public void setRows(List<Row> rows) {
+        this.rows = rows;
+    }
+
+    @Override
     public int update() {
-        int count;
+        createRows();
+
+        if (isLocal()) {
+            return mergeRows();
+        } else {
+            return Session.getRouter().executeMerge(this);
+        }
+    }
+
+    @Override
+    public Integer call() {
+        return Integer.valueOf(mergeRows());
+    }
+
+    private void createRows() {
+        int listSize = list.size();
+        if (listSize > 0) {
+            rows = New.arrayList(listSize);
+            for (int x = 0; x < listSize; x++) {
+                Expression[] expr = list.get(x);
+                try {
+                    createRow(expr, x);
+                } catch (DbException ex) {
+                    throw setRow(ex, x + 1, getSQL(expr));
+                }
+            }
+        } else {
+            rows = New.arrayList();
+            int count = 0;
+            ResultInterface rows = query.query(0);
+            while (rows.next()) {
+                Value[] values = rows.currentRow();
+                try {
+                    createRow(values);
+                } catch (DbException ex) {
+                    throw setRow(ex, count + 1, getSQL(values));
+                }
+                ++count;
+            }
+        }
+    }
+
+    private int mergeRows() {
         session.getUser().checkRight(table, Right.INSERT);
         session.getUser().checkRight(table, Right.UPDATE);
+
+        int count = 0;
+        Row newRow;
         setCurrentRowNumber(0);
+
         if (list.size() > 0) {
-            count = 0;
-            for (int x = 0, size = list.size(); x < size; x++) {
-                Expression[] expr = list.get(x);
-                Row newRow;
-                try {
-                    newRow = createRow(expr, x);
-                    if (newRow == null) {
-                        continue;
-                    }
-                } catch (DbException ex) {
-                    throw setRow(ex, count + 1, getSQL(expr));
-                }
+            for (int i = 0, size = rows.size(); i < size; i++) {
+                newRow = rows.get(i);
                 setCurrentRowNumber(++count);
                 merge(newRow);
             }
         } else {
-            ResultInterface rows = query.query(0);
             count = 0;
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
             table.lock(session, true, false);
-            while (rows.next()) {
-                Value[] values = rows.currentRow();
-                Row newRow;
-                try {
-                    newRow = createRow(values);
-                    if (newRow == null) {
-                        continue;
-                    }
-                } catch (DbException ex) {
-                    throw setRow(ex, count + 1, getSQL(values));
-                }
+            for (int i = 0, size = rows.size(); i < size; i++) {
+                newRow = rows.get(i);
                 setCurrentRowNumber(++count);
                 merge(newRow);
             }
-            rows.close();
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, false);
         }
         return count;
@@ -254,6 +297,48 @@ public class Merge extends Prepared {
     }
 
     @Override
+    public String getPlanSQL(List<Row> rows) {
+        StatementBuilder buff = new StatementBuilder("MERGE INTO ");
+        buff.append(table.getSQL()).append('(');
+        for (Column c : columns) {
+            buff.appendExceptFirst(", ");
+            buff.append(c.getSQL());
+        }
+        buff.append(')');
+        if (keys != null) {
+            buff.append(" KEY(");
+            buff.resetCount();
+            for (Column c : keys) {
+                buff.appendExceptFirst(", ");
+                buff.append(c.getSQL());
+            }
+            buff.append(')');
+        }
+        buff.resetCount();
+        if (rows.size() > 0) {
+            buff.append("VALUES ");
+            int i = 0;
+            for (Row row : rows) {
+                if (i++ > 0) {
+                    buff.append(",");
+                }
+                buff.append('(');
+                buff.resetCount();
+                for (Value v : row.getValueList()) {
+                    buff.appendExceptFirst(", ");
+                    if (v == null) {
+                        buff.append("DEFAULT");
+                    } else {
+                        buff.append(v.getString());
+                    }
+                }
+                buff.append(')');
+            }
+        }
+        return buff.toString();
+    }
+
+    @Override
     public void prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
@@ -324,4 +409,7 @@ public class Merge extends Prepared {
         return true;
     }
 
+    public boolean isBatch() {
+        return query != null || list.size() > 1; // || table.doesSecondaryIndexExist();
+    }
 }
