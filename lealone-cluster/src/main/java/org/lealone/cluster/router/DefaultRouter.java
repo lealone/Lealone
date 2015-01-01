@@ -38,11 +38,15 @@ import org.lealone.command.Prepared;
 import org.lealone.command.ddl.DefineCommand;
 import org.lealone.command.dml.Delete;
 import org.lealone.command.dml.Insert;
-import org.lealone.command.dml.Query;
+import org.lealone.command.dml.Select;
 import org.lealone.command.dml.Update;
 import org.lealone.command.router.CommandParallel;
+import org.lealone.command.router.CommandWrapper;
 import org.lealone.command.router.FrontendSessionPool;
+import org.lealone.command.router.MergedResult;
 import org.lealone.command.router.Router;
+import org.lealone.command.router.SerializedResult;
+import org.lealone.command.router.SortedResult;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
@@ -62,6 +66,23 @@ public class DefaultRouter implements Router {
     }
 
     private DefaultRouter() {
+    }
+
+    @Override
+    public int executeDefineCommand(DefineCommand defineCommand) {
+        Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+        List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
+
+        liveMembers.remove(FBUtilities.getBroadcastAddress());
+        commands.add(defineCommand);
+        try {
+            for (InetAddress endpoint : liveMembers) {
+                commands.add(createUpdateCallable(endpoint, defineCommand));
+            }
+            return CommandParallel.executeUpdateCallable(commands);
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     @Override
@@ -120,8 +141,8 @@ public class DefaultRouter implements Router {
         List<Callable<Integer>> commands = New.arrayList();
         int updateCount = 0;
         try {
-            createUpdateCallable(insert, commands, localDataCenterRows);
-            createUpdateCallable(insert, commands, remoteDataCenterRows);
+            createInsertCallable(insert, commands, localDataCenterRows);
+            createInsertCallable(insert, commands, remoteDataCenterRows);
 
             if (localRows != null) {
                 insert.setRows(localRows);
@@ -136,62 +157,13 @@ public class DefaultRouter implements Router {
         return updateCount;
     }
 
-    private static Callable<Integer> createCallable(InetAddress endpoint, Prepared p, String sql) throws Exception {
-        final FrontendCommand c = FrontendSessionPool.getFrontendCommand(p.getSession(), p, //
-                p.getSession().getURL(endpoint), sql);
-        Callable<Integer> call = new Callable<Integer>() {
-            @Override
-            public Integer call() throws Exception {
-                return c.executeUpdate();
-            }
-        };
-
-        return call;
-    }
-
-    //    private static Callable<ResultInterface> createQueryCallable(InetAddress endpoint, Query query, String sql) throws Exception {
-    //        final FrontendCommand c = FrontendSessionPool.getFrontendCommand(query.getSession(), query, //
-    //                query.getSession().getURL(endpoint), sql);
-    //        Callable<ResultInterface> call = new Callable<ResultInterface>() {
-    //            @Override
-    //            public ResultInterface call() throws Exception {
-    //                return c.executeQuery(query.g, false);
-    //            }
-    //        };
-    //
-    //        return call;
-    //    }
-
-    private static void createUpdateCallable(Insert insert, //
+    private static void createInsertCallable(Insert insert, //
             List<Callable<Integer>> commands, Map<InetAddress, List<Row>> rows) throws Exception {
         if (rows != null) {
             for (Map.Entry<InetAddress, List<Row>> e : rows.entrySet()) {
-                commands.add(createCallable(e.getKey(), insert, insert.getPlanSQL(e.getValue())));
+                commands.add(createUpdateCallable(e.getKey(), insert, insert.getPlanSQL(e.getValue())));
             }
         }
-    }
-
-    @Override
-    public int executeDefineCommand(DefineCommand defineCommand) {
-        Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
-        List<CommandInterface> commands = New.arrayList(liveMembers.size() - 1);
-        FrontendCommand c;
-        int updateCount = 0;
-        try {
-            for (InetAddress endpoint : liveMembers) {
-                if (!endpoint.equals(FBUtilities.getBroadcastAddress())) {
-                    c = FrontendSessionPool.getFrontendCommand(defineCommand.getSession(), defineCommand, //
-                            defineCommand.getSession().getURL(endpoint), defineCommand.getSQL());
-
-                    commands.add(c);
-                }
-            }
-            updateCount = defineCommand.update();
-            updateCount += CommandParallel.executeUpdate(commands);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        }
-        return updateCount;
     }
 
     @Override
@@ -204,90 +176,10 @@ public class DefaultRouter implements Router {
         return executeUpdateOrDelete(update.getTableFilter(), update);
     }
 
-    @Override
-    public ResultInterface executeQuery(Query query, int maxRows, boolean scrollable) {
-        TableFilter tableFilter = query.getTableFilter();
-        SearchRow startRow = tableFilter.getStartSearchRow();
-        SearchRow endRow = tableFilter.getEndSearchRow();
-
-        Value startPK = getPartitionKey(startRow);
-        Value endPK = getPartitionKey(endRow);
-
-        boolean isEqual = false;
-        if (startPK != null && endPK != null && startPK == endPK)
-            isEqual = true;
-
-        if (isEqual) {
-            List<InetAddress> targetEndpoints = getTargetEndpoints(tableFilter, startPK);
-
-            boolean isLocal = targetEndpoints.contains(FBUtilities.getBroadcastAddress());
-            if (isLocal)
-                return query.call();
-
-            int size = targetEndpoints.size();
-            InetAddress endpoint;
-            if (size == 1)
-                endpoint = targetEndpoints.get(0);
-            else
-                endpoint = targetEndpoints.get(random.nextInt(size));
-
-            try {
-                final FrontendCommand c = FrontendSessionPool.getFrontendCommand(query.getSession(), query, //
-                        query.getSession().getURL(endpoint), query.getSQL());
-                return c.executeQuery(maxRows, scrollable);
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            }
-
-            //List<Callable<Integer>> commands = New.arrayList(targetEndpoints.size());
-
-            //            Callable<ResultInterface> = createCallable(endpoint, p, p.getSQL())
-
-            //            try {
-            //                for (InetAddress endpoint : targetEndpoints) {
-            //                    if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
-            //                        commands.add((Callable<Integer>) p);
-            //                    } else {
-            //                        commands.add(createCallable(endpoint, p, p.getSQL()));
-            //                    }
-            //                }
-            //                return CommandParallel.executeUpdateCallable(commands);
-            //            } catch (Exception e) {
-            //                throw DbException.convert(e);
-            //            }
-        } else {
-            //            Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
-            //            List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
-            //            try {
-            //                for (InetAddress endpoint : liveMembers) {
-            //                    if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
-            //                        commands.add((Callable<Integer>) p);
-            //                    } else {
-            //                        commands.add(createCallable(endpoint, p, p.getSQL()));
-            //                    }
-            //                }
-            //                return CommandParallel.executeUpdateCallable(commands);
-            //            } catch (Exception e) {
-            //                throw DbException.convert(e);
-            //            }
-        }
-        return query.call();
-    }
-
     @SuppressWarnings("unchecked")
     private int executeUpdateOrDelete(TableFilter tableFilter, Prepared p) {
-        SearchRow startRow = tableFilter.getStartSearchRow();
-        SearchRow endRow = tableFilter.getEndSearchRow();
-
-        Value startPK = getPartitionKey(startRow);
-        Value endPK = getPartitionKey(endRow);
-
-        boolean isEqual = false;
-        if (startPK != null && endPK != null && startPK == endPK)
-            isEqual = true;
-
-        if (isEqual) {
-            List<InetAddress> targetEndpoints = getTargetEndpoints(tableFilter, startPK);
+        List<InetAddress> targetEndpoints = getTargetEndpointsIfEqual(tableFilter);
+        if (targetEndpoints != null) {
             List<Callable<Integer>> commands = New.arrayList(targetEndpoints.size());
 
             try {
@@ -295,7 +187,7 @@ public class DefaultRouter implements Router {
                     if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
                         commands.add((Callable<Integer>) p);
                     } else {
-                        commands.add(createCallable(endpoint, p, p.getSQL()));
+                        commands.add(createUpdateCallable(endpoint, p));
                     }
                 }
                 return CommandParallel.executeUpdateCallable(commands);
@@ -310,7 +202,7 @@ public class DefaultRouter implements Router {
                     if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
                         commands.add((Callable<Integer>) p);
                     } else {
-                        commands.add(createCallable(endpoint, p, p.getSQL()));
+                        commands.add(createUpdateCallable(endpoint, p, p.getSQL()));
                     }
                 }
                 return CommandParallel.executeUpdateCallable(commands);
@@ -320,20 +212,144 @@ public class DefaultRouter implements Router {
         }
     }
 
-    private Value getPartitionKey(SearchRow row) {
+    @Override
+    public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
+        List<InetAddress> targetEndpoints = getTargetEndpointsIfEqual(select.getTopTableFilter());
+        if (targetEndpoints != null) {
+            boolean isLocal = targetEndpoints.contains(FBUtilities.getBroadcastAddress());
+            if (isLocal)
+                return select.call();
+
+            int size = targetEndpoints.size();
+            InetAddress endpoint;
+            if (size == 1)
+                endpoint = targetEndpoints.get(0);
+            else
+                endpoint = targetEndpoints.get(random.nextInt(size));
+
+            try {
+                return createFrontendCommand(endpoint, select).executeQuery(maxRows, scrollable);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        } else {
+            //TODO 处理有多副本的情况
+            Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+
+            try {
+                if (!select.isGroupQuery() && select.getSortOrder() == null) {
+                    List<CommandInterface> commands = New.arrayList(liveMembers.size());
+
+                    //在本地节点执行
+                    liveMembers.remove(FBUtilities.getBroadcastAddress());
+                    String sql = getSelectPlanSQL(select);
+                    Prepared p = select.getSession().prepare(sql, true);
+                    p.setLocal(true);
+                    p.setFetchSize(select.getFetchSize());
+                    commands.add(new CommandWrapper(p));
+
+                    for (InetAddress endpoint : liveMembers) {
+                        commands.add(createFrontendCommand(endpoint, select, sql));
+                    }
+
+                    return new SerializedResult(commands, maxRows, scrollable, select);
+                } else {
+                    List<Callable<ResultInterface>> commands = New.arrayList(liveMembers.size());
+                    for (InetAddress endpoint : liveMembers) {
+                        if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
+                            commands.add(select);
+                        } else {
+                            commands.add(createSelectCallable(endpoint, select, maxRows, scrollable));
+                        }
+                    }
+
+                    List<ResultInterface> results = CommandParallel.executeSelectCallable(commands);
+
+                    if (!select.isGroupQuery() && select.getSortOrder() != null)
+                        return new SortedResult(maxRows, select.getSession(), select, results);
+
+                    String newSQL = select.getPlanSQL(true);
+                    Select newSelect = (Select) select.getSession().prepare(newSQL, true);
+                    newSelect.setLocal(true);
+
+                    return new MergedResult(results, newSelect, select);
+                }
+
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+    }
+
+    private static String getSelectPlanSQL(Select select) {
+        if (select.isGroupQuery() || select.getLimit() != null)
+            return select.getPlanSQL(true);
+        else
+            return select.getSQL();
+    }
+
+    private static Callable<ResultInterface> createSelectCallable(InetAddress endpoint, Select select, final int maxRows,
+            final boolean scrollable) throws Exception {
+        final FrontendCommand c = createFrontendCommand(endpoint, select, getSelectPlanSQL(select));
+
+        Callable<ResultInterface> call = new Callable<ResultInterface>() {
+            @Override
+            public ResultInterface call() throws Exception {
+                return c.executeQuery(maxRows, scrollable);
+            }
+        };
+
+        return call;
+    }
+
+    private static Value getPartitionKey(SearchRow row) {
         if (row == null)
             return null;
         return row.getRowKey();
     }
 
-    private static List<InetAddress> getTargetEndpoints(TableFilter tableFilter, Value partitionKey) {
-        String keyspaceName = tableFilter.getTable().getSchema().getName();
-        Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
-        List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-        Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,
-                keyspaceName);
+    private static List<InetAddress> getTargetEndpointsIfEqual(TableFilter tableFilter) {
+        SearchRow startRow = tableFilter.getStartSearchRow();
+        SearchRow endRow = tableFilter.getEndSearchRow();
 
-        naturalEndpoints.addAll(pendingEndpoints);
-        return naturalEndpoints;
+        Value startPK = getPartitionKey(startRow);
+        Value endPK = getPartitionKey(endRow);
+
+        if (startPK != null && endPK != null && startPK == endPK) {
+            String keyspaceName = tableFilter.getTable().getSchema().getName();
+            Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(startPK.getBytesNoCopy()));
+            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
+            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,
+                    keyspaceName);
+
+            naturalEndpoints.addAll(pendingEndpoints);
+            return naturalEndpoints;
+        }
+
+        return null;
+    }
+
+    private static Callable<Integer> createUpdateCallable(InetAddress endpoint, Prepared p) throws Exception {
+        return createUpdateCallable(endpoint, p, p.getSQL());
+    }
+
+    private static Callable<Integer> createUpdateCallable(InetAddress endpoint, Prepared p, String sql) throws Exception {
+        final FrontendCommand c = createFrontendCommand(endpoint, p, sql);
+        Callable<Integer> call = new Callable<Integer>() {
+            @Override
+            public Integer call() throws Exception {
+                return c.executeUpdate();
+            }
+        };
+
+        return call;
+    }
+
+    private static FrontendCommand createFrontendCommand(InetAddress endpoint, Prepared p) throws Exception {
+        return FrontendSessionPool.getFrontendCommand(p.getSession(), p, p.getSession().getURL(endpoint), p.getSQL());
+    }
+
+    private static FrontendCommand createFrontendCommand(InetAddress endpoint, Prepared p, String sql) throws Exception {
+        return FrontendSessionPool.getFrontendCommand(p.getSession(), p, p.getSession().getURL(endpoint), sql);
     }
 }

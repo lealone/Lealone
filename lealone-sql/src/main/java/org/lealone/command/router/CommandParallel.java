@@ -17,7 +17,6 @@
  */
 package org.lealone.command.router;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -29,9 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.command.CommandInterface;
-import org.lealone.command.FrontendCommand;
 import org.lealone.command.dml.Select;
-import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 import org.lealone.util.New;
@@ -94,60 +91,6 @@ public class CommandParallel {
             return select.getSQL();
     }
 
-    public static ResultInterface executeQuery(Session session, SQLRoutingInfo sqlRoutingInfo, Select select, final int maxRows,
-            final boolean scrollable) {
-
-        List<CommandInterface> commands = new ArrayList<CommandInterface>();
-        if (sqlRoutingInfo.remoteCommands != null) {
-            commands.addAll(sqlRoutingInfo.remoteCommands);
-        }
-        //        if (sqlRoutingInfo.localRegions != null) {
-        //            for (String regionName : sqlRoutingInfo.localRegions) {
-        //                Prepared p = session.prepare(getPlanSQL(select), true);
-        //                p.setExecuteDirec(true);
-        //                p.setFetchSize(select.getFetchSize());
-        //                if (p instanceof WithWhereClause) {
-        //                    ((WithWhereClause) p).getWhereClauseSupport().setRegionName(regionName);
-        //                }
-        //                commands.add(new CommandWrapper(p));
-        //            }
-        //        }
-        //originalSelect.isGroupQuery()如果是false，那么按org.apache.hadoop.hbase.client.ClientScanner的功能来实现。
-        //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery，
-        //对于GroupQuery需要把Select语句同时发给相关的RegionServer，得到结果后再合并。
-        if (!select.isGroupQuery() && select.getSortOrder() == null)
-            return new SerializedResult(commands, maxRows, scrollable, select);
-
-        int size = commands.size();
-        List<Future<ResultInterface>> futures = New.arrayList(size);
-        List<ResultInterface> results = New.arrayList(size);
-        for (int i = 0; i < size; i++) {
-            final CommandInterface c = commands.get(i);
-            futures.add(pool.submit(new Callable<ResultInterface>() {
-                @Override
-                public ResultInterface call() throws Exception {
-                    return c.executeQuery(maxRows, scrollable);
-                }
-            }));
-        }
-        try {
-            for (int i = 0; i < size; i++) {
-                results.add(futures.get(i).get());
-            }
-        } catch (Exception e) {
-            throwException(e);
-        }
-
-        if (!select.isGroupQuery() && select.getSortOrder() != null)
-            return new SortedResult(maxRows, session, select, results);
-
-        String newSQL = select.getPlanSQL(true);
-        Select newSelect = (Select) session.prepare(newSQL, true);
-        newSelect.setExecuteDirec(true);
-
-        return new MergedResult(results, newSelect, select);
-    }
-
     public static int executeUpdate(List<CommandInterface> commands) {
         int size = commands.size();
         if (size == 0)
@@ -177,21 +120,13 @@ public class CommandParallel {
         return updateCount;
     }
 
-    public static int executeUpdate(SQLRoutingInfo sqlRoutingInfo, Callable<Integer> call) {
-        int updateCount = 0;
-        List<FrontendCommand> commands = sqlRoutingInfo.remoteCommands;
-        int size = commands.size() + 1;
+    public static int executeUpdateCallable(List<Callable<Integer>> commands) {
+        int size = commands.size();
         List<Future<Integer>> futures = New.arrayList(size);
-        futures.add(pool.submit(call));
-        for (int i = 0; i < size - 1; i++) {
-            final CommandInterface c = commands.get(i);
-            futures.add(pool.submit(new Callable<Integer>() {
-                @Override
-                public Integer call() throws Exception {
-                    return c.executeUpdate();
-                }
-            }));
+        for (int i = 0; i < size; i++) {
+            futures.add(pool.submit(commands.get(i)));
         }
+        int updateCount = 0;
         try {
             for (int i = 0; i < size; i++) {
                 updateCount += futures.get(i).get();
@@ -202,21 +137,21 @@ public class CommandParallel {
         return updateCount;
     }
 
-    public static int executeUpdateCallable(List<Callable<Integer>> calls) {
-        int size = calls.size();
-        List<Future<Integer>> futures = New.arrayList(size);
+    public static List<ResultInterface> executeSelectCallable(List<Callable<ResultInterface>> commands) {
+        int size = commands.size();
+        List<Future<ResultInterface>> futures = New.arrayList(size);
+        List<ResultInterface> results = New.arrayList(size);
         for (int i = 0; i < size; i++) {
-            futures.add(pool.submit(calls.get(i)));
+            futures.add(pool.submit(commands.get(i)));
         }
-        int updateCount = 0;
         try {
             for (int i = 0; i < size; i++) {
-                updateCount += futures.get(i).get();
+                results.add(futures.get(i).get());
             }
         } catch (Exception e) {
             throwException(e);
         }
-        return updateCount;
+        return results;
     }
 
     public static <T> void execute(List<Callable<T>> calls) {

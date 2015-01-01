@@ -36,6 +36,7 @@ public class MergedIndex extends BaseIndex {
     public MergedIndex(ResultInterface result, Table table, int id, IndexColumn[] columns, IndexType indexType) {
         super();
         this.result = result;
+        initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
     }
 
     @Override

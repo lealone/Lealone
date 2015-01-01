@@ -24,10 +24,10 @@ import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
 import org.lealone.result.ResultInterface;
 
-class CommandWrapper implements CommandInterface {
+public class CommandWrapper implements CommandInterface {
     private Prepared p;
 
-    CommandWrapper(Prepared p) {
+    public CommandWrapper(Prepared p) {
         this.p = p;
     }
 

@@ -17,7 +17,6 @@
  */
 package org.lealone.cluster.concurrent;
 
-import static org.lealone.cluster.config.DatabaseDescriptor.getConcurrentCounterWriters;
 import static org.lealone.cluster.config.DatabaseDescriptor.getConcurrentReaders;
 import static org.lealone.cluster.config.DatabaseDescriptor.getConcurrentWriters;
 
@@ -49,17 +48,17 @@ public class StageManager {
 
     static {
         stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, getConcurrentWriters()));
-        stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, getConcurrentCounterWriters()));
+        //stages.put(Stage.COUNTER_MUTATION, multiThreadedLowSignalStage(Stage.COUNTER_MUTATION, getConcurrentCounterWriters()));
         stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, getConcurrentReaders()));
         stages.put(Stage.REQUEST_RESPONSE,
                 multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, FBUtilities.getAvailableProcessors()));
         stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors()));
         // the rest are all single-threaded
         stages.put(Stage.GOSSIP, new MetricsEnabledThreadPoolExecutor(Stage.GOSSIP));
-        stages.put(Stage.ANTI_ENTROPY, new MetricsEnabledThreadPoolExecutor(Stage.ANTI_ENTROPY));
+        //stages.put(Stage.ANTI_ENTROPY, new MetricsEnabledThreadPoolExecutor(Stage.ANTI_ENTROPY));
         stages.put(Stage.MIGRATION, new MetricsEnabledThreadPoolExecutor(Stage.MIGRATION));
         stages.put(Stage.MISC, new MetricsEnabledThreadPoolExecutor(Stage.MISC));
-        stages.put(Stage.READ_REPAIR, multiThreadedStage(Stage.READ_REPAIR, FBUtilities.getAvailableProcessors()));
+        //stages.put(Stage.READ_REPAIR, multiThreadedStage(Stage.READ_REPAIR, FBUtilities.getAvailableProcessors()));
         stages.put(Stage.TRACING, tracingExecutor());
     }
 

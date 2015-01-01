@@ -9,7 +9,6 @@ package org.lealone.command.dml;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
@@ -37,7 +36,7 @@ import org.lealone.value.ValueNull;
 /**
  * Represents a SELECT statement (simple, or union).
  */
-public abstract class Query extends Prepared implements Callable<ResultInterface> {
+public abstract class Query extends Prepared {
 
     /**
      * The limit expression as specified in the LIMIT or TOP clause.
@@ -288,13 +287,6 @@ public abstract class Query extends Prepared implements Callable<ResultInterface
         return query(maxrows, null);
     }
 
-    private int queryLimit;
-
-    @Override
-    public ResultInterface call() {
-        return query0(queryLimit, null);
-    }
-
     /**
      * Execute the query, writing the result to the target result.
      *
@@ -303,14 +295,6 @@ public abstract class Query extends Prepared implements Callable<ResultInterface
      * @return the result set (if the target is not set).
      */
     public ResultInterface query(int limit, ResultTarget target) {
-        queryLimit = limit;
-        if (isLocal())
-            return query0(limit, null);
-        else
-            return Session.getRouter().executeQuery(this, limit, false);
-    }
-
-    private ResultInterface query0(int limit, ResultTarget target) {
         fireBeforeSelectTriggers();
         if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
             return queryWithoutCache(limit, target);
@@ -535,6 +519,4 @@ public abstract class Query extends Prepared implements Callable<ResultInterface
     }
 
     public abstract List<TableFilter> getTopFilters();
-
-    public abstract TableFilter getTableFilter();
 }

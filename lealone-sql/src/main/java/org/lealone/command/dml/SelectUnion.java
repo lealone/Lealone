@@ -448,9 +448,4 @@ public class SelectUnion extends Query {
         filters.addAll(right.getTopFilters());
         return filters;
     }
-
-    @Override
-    public TableFilter getTableFilter() {
-        return getTopFilters().get(0);
-    }
 }

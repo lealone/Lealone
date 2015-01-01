@@ -6,6 +6,8 @@
  */
 package org.lealone.command.ddl;
 
+import java.util.concurrent.Callable;
+
 import org.lealone.command.Prepared;
 import org.lealone.engine.Session;
 import org.lealone.result.ResultInterface;
@@ -14,7 +16,7 @@ import org.lealone.result.ResultInterface;
  * This class represents a non-transaction statement, for example a CREATE or
  * DROP.
  */
-public abstract class DefineCommand extends Prepared {
+public abstract class DefineCommand extends Prepared implements Callable<Integer> {
 
     /**
      * The transactional behavior. The default is disabled, meaning the command
@@ -31,10 +33,12 @@ public abstract class DefineCommand extends Prepared {
         super(session);
     }
 
+    @Override
     public boolean isReadOnly() {
         return false;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         return null;
     }
@@ -43,8 +47,13 @@ public abstract class DefineCommand extends Prepared {
         this.transactional = transactional;
     }
 
+    @Override
     public boolean isTransactional() {
         return transactional;
     }
 
+    @Override
+    public Integer call() {
+        return Integer.valueOf(update());
+    }
 }

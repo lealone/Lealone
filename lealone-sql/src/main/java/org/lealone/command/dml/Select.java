@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
@@ -63,7 +64,7 @@ import org.lealone.value.ValueNull;
  * @author Thomas Mueller
  * @author Joel Turkel (Group sorted query)
  */
-public class Select extends Query {
+public class Select extends Query implements Callable<ResultInterface> {
     protected TableFilter topTableFilter;
     protected final ArrayList<TableFilter> filters = New.arrayList();
     protected final ArrayList<TableFilter> topFilters = New.arrayList();
@@ -137,11 +138,6 @@ public class Select extends Query {
     @Override
     public ArrayList<TableFilter> getTopFilters() {
         return topFilters;
-    }
-
-    @Override
-    public TableFilter getTableFilter() {
-        return getTopTableFilter();
     }
 
     public void setExpressions(ArrayList<Expression> expressions) {
@@ -1463,5 +1459,23 @@ public class Select extends Query {
             return v == ValueNull.INSTANCE ? -1 : v.getInt();
         } else
             return -1;
+    }
+
+    private int queryLimit;
+    private ResultTarget resultTarget;
+
+    @Override
+    public ResultInterface query(int limit, ResultTarget target) {
+        queryLimit = limit;
+        resultTarget = target;
+        if (isLocal())
+            return super.query(limit, target);
+        else
+            return Session.getRouter().executeSelect(this, limit, false);
+    }
+
+    @Override
+    public ResultInterface call() {
+        return super.query(queryLimit, resultTarget);
     }
 }
