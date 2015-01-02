@@ -18,7 +18,6 @@
 package org.lealone.hbase.engine;
 
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -57,11 +56,6 @@ public class HBaseSession extends Session {
      */
     private HRegionServer regionServer;
 
-    /**
-     * 最初从Client端传递过来的配置参数
-     */
-    private Properties originalProperties;
-
     private TimestampService timestampService;
     private volatile Transaction transaction;
 
@@ -99,16 +93,6 @@ public class HBaseSession extends Session {
 
     public boolean isRegionServer() {
         return regionServer != null;
-    }
-
-    @Override
-    public Properties getOriginalProperties() {
-        return originalProperties;
-    }
-
-    @Override
-    public void setOriginalProperties(Properties originalProperties) {
-        this.originalProperties = originalProperties;
     }
 
     @Override

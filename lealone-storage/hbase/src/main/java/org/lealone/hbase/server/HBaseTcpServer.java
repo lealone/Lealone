@@ -111,7 +111,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable, HBaseServer {
     public void stop() {
         try {
             super.stop();
-            logger.info("Lealone TcpServer stoppedr");
+            logger.info("Lealone TcpServer stopped");
         } finally {
             TcpPortTracker.deleteTcpPortEphemeralNode(serverName, tcpPort, master != null);
         }

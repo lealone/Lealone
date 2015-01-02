@@ -42,12 +42,12 @@ public class DefineCommandWrapper extends org.lealone.command.router.DefineComma
 
     @Override
     public int update() {
-        if (isLocal()) {
-            return dc.update();
-        } else if (session.isMaster()) {
+        if (session.isMaster()) {
             int updateCount = dc.update();
             session.getDatabase().addDDLRedoRecord(session, sql);
             return updateCount;
+        } else if (isLocal()) {
+            return dc.update();
         } else {
             FrontendSession fs = null;
             FrontendCommand fc = null;
