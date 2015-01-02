@@ -20,6 +20,7 @@ import org.lealone.command.Parser;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.Insert;
 import org.lealone.command.dml.Query;
+import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.command.router.Router;
 import org.lealone.dbobject.Procedure;
 import org.lealone.dbobject.Schema;
@@ -694,6 +695,19 @@ public class Session extends SessionWithState {
         }
         savepoints = null;
         sessionStateChanged = true;
+
+        releaseFrontendSessionCache();
+    }
+
+    private void releaseFrontendSessionCache() {
+        if (!frontendSessionCache.isEmpty()) {
+            for (FrontendSession fs : frontendSessionCache.values()) {
+                fs.setTransaction(null);
+                FrontendSessionPool.release(fs);
+            }
+
+            frontendSessionCache.clear();
+        }
     }
 
     private void cleanTempTables(boolean closeSession) {
