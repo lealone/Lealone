@@ -25,9 +25,9 @@ import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;
 import org.lealone.result.ResultInterface;
 
-//只重写了update、query两个方法
+//只重写了update方法
 public class DefineCommandWrapper extends DefineCommand {
-    private final DefineCommand dc;
+    protected final DefineCommand dc;
 
     public DefineCommandWrapper(Session session, DefineCommand dc) {
         super(session);
