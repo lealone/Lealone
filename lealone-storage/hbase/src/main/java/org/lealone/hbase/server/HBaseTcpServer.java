@@ -30,8 +30,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
@@ -43,9 +41,11 @@ import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import org.lealone.message.TraceSystem;
 import org.lealone.server.TcpServer;
 import org.lealone.server.TcpServerThread;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HBaseTcpServer extends TcpServer implements Runnable, HBaseServer {
-    private static final Log log = LogFactory.getLog(HBaseTcpServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(HBaseTcpServer.class);
 
     public static int getMasterTcpPort(Configuration conf) {
         return conf.getInt(MASTER_TCP_PORT, DEFAULT_MASTER_TCP_PORT);
@@ -101,7 +101,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable, HBaseServer {
             t.setDaemon(isDaemon());
             t.start();
 
-            log.info("Lealone TcpServer started, listening port: " + tcpPort);
+            logger.info("Lealone TcpServer started, listening port: {}", tcpPort);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -111,7 +111,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable, HBaseServer {
     public void stop() {
         try {
             super.stop();
-            log.info("Lealone TcpServer stoppedr");
+            logger.info("Lealone TcpServer stoppedr");
         } finally {
             TcpPortTracker.deleteTcpPortEphemeralNode(serverName, tcpPort, master != null);
         }

@@ -19,15 +19,15 @@ package org.lealone.hbase.zookeeper;
 
 import java.io.IOException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.lealone.hbase.util.HBaseUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RegionLocationCacheTracker extends ZooKeeperListener {
-    private static final Log log = LogFactory.getLog(RegionLocationCacheTracker.class);
+    private static final Logger logger = LoggerFactory.getLogger(RegionLocationCacheTracker.class);
 
     public RegionLocationCacheTracker(ZooKeeperWatcher watcher) {
         super(watcher);
@@ -45,7 +45,7 @@ public class RegionLocationCacheTracker extends ZooKeeperListener {
                 getDataAndWatch();
                 HBaseUtils.getConnection().clearRegionCache();
             } catch (IOException e) {
-                log.warn("cannot clear region cache", e);
+                logger.warn("cannot clear region cache", e);
             }
         }
     }
@@ -59,7 +59,7 @@ public class RegionLocationCacheTracker extends ZooKeeperListener {
         try {
             ZKUtil.getDataAndWatch(watcher, ZooKeeperAdmin.REGION_LOCATION_CACHE_NODE);
         } catch (Exception e) {
-            log.warn("cannot watch zk node: " + ZooKeeperAdmin.REGION_LOCATION_CACHE_NODE, e);
+            logger.warn("cannot watch zk node: " + ZooKeeperAdmin.REGION_LOCATION_CACHE_NODE, e);
         }
     }
 }

@@ -169,6 +169,7 @@ public class TcpServer implements Service {
     @Override
     public void init(String... args) {
         port = Constants.DEFAULT_TCP_PORT;
+        listenAddress = "localhost";
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
             if (isOption(a, "-tcpListenAddress")) {

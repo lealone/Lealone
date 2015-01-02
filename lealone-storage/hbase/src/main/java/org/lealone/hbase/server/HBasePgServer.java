@@ -31,8 +31,6 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Map.Entry;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
@@ -43,9 +41,11 @@ import org.lealone.hbase.zookeeper.PgPortTracker;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import org.lealone.message.TraceSystem;
 import org.lealone.server.PgServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
-    private static final Log log = LogFactory.getLog(HBasePgServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(HBasePgServer.class);
 
     public static int getMasterPgPort(Configuration conf) {
         return conf.getInt(MASTER_PG_PORT, DEFAULT_MASTER_PG_PORT);
@@ -104,14 +104,14 @@ public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
         t.setDaemon(isDaemon());
         t.start();
 
-        log.info("Lealone PgServer started, listening port: " + pgPort);
+        logger.info("Lealone PgServer started, listening port: {}", pgPort);
     }
 
     @Override
     public void stop() {
         try {
             super.stop();
-            log.info("Lealone PgServer stopped");
+            logger.info("Lealone PgServer stopped");
         } finally {
             PgPortTracker.deletePgPortEphemeralNode(serverName, pgPort, master != null);
         }
