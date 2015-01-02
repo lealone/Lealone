@@ -38,12 +38,13 @@ import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendCommand;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.Select;
+import org.lealone.command.router.CommandWrapper;
+import org.lealone.command.router.MergedResult;
+import org.lealone.command.router.SerializedResult;
+import org.lealone.command.router.SortedResult;
 import org.lealone.engine.Session;
 import org.lealone.hbase.command.dml.SQLRoutingInfo;
 import org.lealone.hbase.command.dml.WithWhereClause;
-import org.lealone.hbase.command.merge.HBaseMergedResult;
-import org.lealone.hbase.result.HBaseSerializedResult;
-import org.lealone.hbase.result.HBaseSortedResult;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
@@ -93,7 +94,7 @@ public class CommandParallel {
         //只要Select语句中出现聚合函数、groupBy、Having三者之一都被认为是GroupQuery，
         //对于GroupQuery需要把Select语句同时发给相关的RegionServer，得到结果后再合并。
         if (!select.isGroupQuery() && select.getSortOrder() == null)
-            return new HBaseSerializedResult(commands, maxRows, scrollable, select);
+            return new SerializedResult(commands, maxRows, scrollable, select);
 
         int size = commands.size();
         List<Future<ResultInterface>> futures = New.arrayList(size);
@@ -116,13 +117,13 @@ public class CommandParallel {
         }
 
         if (!select.isGroupQuery() && select.getSortOrder() != null)
-            return new HBaseSortedResult(maxRows, session, select, results);
+            return new SortedResult(maxRows, session, select, results);
 
         String newSQL = select.getPlanSQL(true);
         Select newSelect = (Select) session.prepare(newSQL, true);
         newSelect.setLocal(true);
 
-        return new HBaseMergedResult(results, newSelect, select);
+        return new MergedResult(results, newSelect, select);
     }
 
     public static int executeUpdate(List<CommandInterface> commands) {

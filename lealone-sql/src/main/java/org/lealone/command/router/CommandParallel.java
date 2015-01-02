@@ -27,7 +27,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.command.CommandInterface;
 import org.lealone.command.dml.Select;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
@@ -91,35 +90,6 @@ public class CommandParallel {
             return select.getSQL();
     }
 
-    public static int executeUpdate(List<CommandInterface> commands) {
-        int size = commands.size();
-        if (size == 0)
-            return 0;
-        if (size == 1) {
-            CommandInterface c = commands.get(0);
-            return c.executeUpdate();
-        }
-        int updateCount = 0;
-        List<Future<Integer>> futures = New.arrayList(size);
-        for (int i = 0; i < size; i++) {
-            final CommandInterface c = commands.get(i);
-            futures.add(pool.submit(new Callable<Integer>() {
-                @Override
-                public Integer call() throws Exception {
-                    return c.executeUpdate();
-                }
-            }));
-        }
-        try {
-            for (int i = 0; i < size; i++) {
-                updateCount += futures.get(i).get();
-            }
-        } catch (Exception e) {
-            throwException(e);
-        }
-        return updateCount;
-    }
-
     public static int executeUpdateCallable(List<Callable<Integer>> commands) {
         int size = commands.size();
         List<Future<Integer>> futures = New.arrayList(size);
@@ -152,21 +122,6 @@ public class CommandParallel {
             throwException(e);
         }
         return results;
-    }
-
-    public static <T> void execute(List<Callable<T>> calls) {
-        int size = calls.size();
-        List<Future<T>> futures = New.arrayList(size);
-        for (int i = 0; i < size; i++) {
-            futures.add(pool.submit(calls.get(i)));
-        }
-        try {
-            for (int i = 0; i < size; i++) {
-                futures.get(i).get();
-            }
-        } catch (Exception e) {
-            throwException(e);
-        }
     }
 
     private static void throwException(Throwable e) {
