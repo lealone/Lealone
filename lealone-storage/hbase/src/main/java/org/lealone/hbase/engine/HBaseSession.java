@@ -18,7 +18,6 @@
 package org.lealone.hbase.engine;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -27,6 +26,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.lealone.command.Parser;
+import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.User;
 import org.lealone.dbobject.table.Table;
@@ -65,21 +65,8 @@ public class HBaseSession extends Session {
     private TimestampService timestampService;
     private volatile Transaction transaction;
 
-    //参与本次事务的其他FrontendSession
-    private final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
-
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
-    }
-
-    @Override
-    public void addFrontendSession(String url, FrontendSession frontendSession) {
-        frontendSessionCache.put(url, frontendSession);
-    }
-
-    @Override
-    public FrontendSession getFrontendSession(String url) {
-        return frontendSessionCache.get(url);
     }
 
     public HMaster getMaster() {

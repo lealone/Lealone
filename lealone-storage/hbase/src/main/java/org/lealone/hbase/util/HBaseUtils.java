@@ -42,9 +42,9 @@ import org.apache.hadoop.hbase.util.Pair;
 import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.Select;
+import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.hbase.command.dml.SQLRoutingInfo;
 import org.lealone.hbase.command.dml.WhereClauseSupport;
-import org.lealone.hbase.engine.FrontendSessionPool;
 import org.lealone.hbase.engine.HBaseConstants;
 import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
@@ -418,8 +418,8 @@ public class HBaseUtils {
             if (isLocal(session, hri)) {
                 sqlRoutingInfo.localRegion = hri.getRegionName();
             } else {
-                sqlRoutingInfo.remoteCommand = FrontendSessionPool.getFrontendCommand(session, prepared, hri.getRegionServerURL(),
-                        createSQL(hri.getRegionName(), sql));
+                sqlRoutingInfo.remoteCommand = FrontendSessionPool.getFrontendCommand(session, prepared,
+                        hri.getRegionServerURL(), createSQL(hri.getRegionName(), sql));
             }
         } else {
             try {

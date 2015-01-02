@@ -18,12 +18,13 @@
 package org.lealone.hbase.dbobject;
 
 import org.lealone.command.FrontendCommand;
+import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.Sequence;
-import org.lealone.engine.Session;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.Session;
 import org.lealone.hbase.engine.HBaseSession;
-import org.lealone.hbase.engine.FrontendSessionPool;
+import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 
@@ -37,22 +38,22 @@ public class HBaseSequence extends Sequence {
     public synchronized void flush(Session session) {
         HBaseSession s = (HBaseSession) session;
         if (s.getRegionServer() != null) {
-            FrontendSession sr = null;
-            FrontendCommand cr = null;
+            FrontendSession fs = null;
+            FrontendCommand fc = null;
             try {
-                sr = FrontendSessionPool.getMasterFrontendSession(s.getOriginalProperties());
-                cr = FrontendSessionPool.getFrontendCommand(sr, "ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", null, 1);
+                fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(), HBaseUtils.getMasterURL());
+                fc = FrontendSessionPool.getFrontendCommand(fs, "ALTER SEQUENCE " + getSQL() + " NEXT VALUE MARGIN", null, 1);
                 //cr.executeUpdate();
-                ResultInterface ri = cr.executeQuery(-1, false);
+                ResultInterface ri = fc.executeQuery(-1, false);
                 ri.next();
                 valueWithMargin = ri.currentRow()[0].getLong();
                 value = valueWithMargin - increment * cacheSize;
             } catch (Exception e) {
                 throw DbException.convert(e);
             } finally {
-                FrontendSessionPool.release(sr);
-                if (cr != null)
-                    cr.close();
+                FrontendSessionPool.release(fs);
+                if (fc != null)
+                    fc.close();
             }
         } else if (s.getMaster() != null) {
             super.flush(session);

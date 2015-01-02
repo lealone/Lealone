@@ -28,6 +28,7 @@ import org.lealone.command.FrontendCommand;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.InsertOrMerge;
 import org.lealone.command.dml.Query;
+import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
@@ -35,7 +36,6 @@ import org.lealone.engine.SessionInterface;
 import org.lealone.expression.Expression;
 import org.lealone.hbase.command.CommandParallel;
 import org.lealone.hbase.dbobject.table.HBaseTable;
-import org.lealone.hbase.engine.FrontendSessionPool;
 import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.result.HBaseRow;
 import org.lealone.hbase.util.HBaseRegionInfo;
@@ -117,7 +117,8 @@ public class InsertOrMergeSupport {
 
             if (table.isColumnsModified()) {
                 table.setColumnsModified(false);
-                SessionInterface si = FrontendSessionPool.getMasterFrontendSession(session.getOriginalProperties());
+                SessionInterface si = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(),
+                        HBaseUtils.getMasterURL());
                 for (Column c : alterColumns) {
                     CommandInterface ci = si.prepareCommand(alterTable + c.getCreateSQL(true), 1);
                     ci.executeUpdate();

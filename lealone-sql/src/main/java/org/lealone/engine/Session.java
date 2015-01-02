@@ -1377,7 +1377,7 @@ public class Session extends SessionWithState {
     private Properties originalProperties;
 
     //参与本次事务的其他FrontendSession
-    private final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
+    protected final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
 
     public void addFrontendSession(String url, FrontendSession frontendSession) {
         frontendSessionCache.put(url, frontendSession);
