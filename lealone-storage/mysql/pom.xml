@@ -15,7 +15,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-transaction</artifactId>
+			<artifactId>lealone-cluster</artifactId>
 		</dependency>
 		<!-- 用于支持内存表 -->
 		<dependency>

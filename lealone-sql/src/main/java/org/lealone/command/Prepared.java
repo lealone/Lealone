@@ -201,6 +201,10 @@ public abstract class Prepared {
         throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_QUERY);
     }
 
+    public int updateLocal() {
+        return update();
+    }
+
     /**
      * Execute the query.
      *
@@ -210,6 +214,10 @@ public abstract class Prepared {
      */
     public ResultInterface query(int maxrows) {
         throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
+    }
+
+    public ResultInterface queryLocal(int maxrows) {
+        return query(maxrows);
     }
 
     /**

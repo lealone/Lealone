@@ -15,31 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mysql.dbobject.table;
+package org.lealone.mysql.cluster.onedc;
 
-import org.lealone.api.TableEngine;
-import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.TableBase;
-import org.lealone.dbobject.table.TableEngineManager;
+import org.lealone.mysql.cluster.NodeBase;
 
-/**
- * A table engine that internally uses the MVStore.
- */
-public class MySQLTableEngine implements TableEngine {
-    public static final String NAME = "MYSQL";
-
-    //见TableEngineManager.TableEngineService中的注释
-    public MySQLTableEngine() {
-        TableEngineManager.registerTableEngine(this);
+public class OneDCNode2 extends NodeBase {
+    public static void main(String[] args) {
+        setConfigLoader(OneDCNode2.class);
+        run(args, "lealone-onedc.yaml");
     }
 
-    @Override
-    public String getName() {
-        return NAME;
-    }
-
-    @Override
-    public TableBase createTable(CreateTableData data) {
-        return new MySQLTable(data);
+    public OneDCNode2() {
+        this.listen_address = "127.0.0.2";
+        this.dir = "onedc/node2";
+        this.url = "jdbc:mysql://localhost:3307/lealone";
     }
 }

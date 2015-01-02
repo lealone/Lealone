@@ -84,10 +84,15 @@ public class Update extends Prepared implements Callable<Integer> {
 
     @Override
     public int update() {
-        if (isLocal())
-            return updateRows();
-        else
-            return Session.getRouter().executeUpdate(this);
+        //        if (isLocal())
+        //            return updateRows();
+        //        else
+        return Session.getRouter().executeUpdate(this);
+    }
+
+    @Override
+    public int updateLocal() {
+        return updateRows();
     }
 
     @Override

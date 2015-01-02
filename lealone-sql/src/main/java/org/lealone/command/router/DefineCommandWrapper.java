@@ -36,11 +36,18 @@ public class DefineCommandWrapper extends DefineCommand {
 
     @Override
     public int update() {
-        if (isLocal()) {
-            return dc.update();
-        } else {
-            return Session.getRouter().executeDefineCommand(dc);
-        }
+        //        if (isLocal()) {
+        //            return dc.update();
+        //        } else {
+        //            return Session.getRouter().executeDefineCommand(dc);
+        //        }
+
+        return Session.getRouter().executeDefineCommand(dc);
+    }
+
+    @Override
+    public int updateLocal() {
+        return dc.update();
     }
 
     @Override
@@ -162,4 +169,10 @@ public class DefineCommandWrapper extends DefineCommand {
     public Command getCommand() {
         return dc.getCommand();
     }
+
+    @Override
+    public void setLocal(boolean local) {
+        dc.setLocal(local);
+    }
+
 }

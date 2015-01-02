@@ -15,31 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mysql.dbobject.table;
+package org.lealone.mysql.service;
 
-import org.lealone.api.TableEngine;
-import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.TableBase;
-import org.lealone.dbobject.table.TableEngineManager;
+import org.lealone.cluster.service.LealoneDaemon;
+import org.lealone.command.router.Router;
+import org.lealone.mysql.router.MySQLRouter;
 
-/**
- * A table engine that internally uses the MVStore.
- */
-public class MySQLTableEngine implements TableEngine {
-    public static final String NAME = "MYSQL";
-
-    //见TableEngineManager.TableEngineService中的注释
-    public MySQLTableEngine() {
-        TableEngineManager.registerTableEngine(this);
+public class MySQLDaemon extends LealoneDaemon {
+    public static void main(String[] args) {
+        new MySQLDaemon().start();
     }
 
     @Override
-    public String getName() {
-        return NAME;
-    }
-
-    @Override
-    public TableBase createTable(CreateTableData data) {
-        return new MySQLTable(data);
+    protected Router createRouter() {
+        return new MySQLRouter(System.getProperty("url"), System.getProperty("user"), System.getProperty("password"));
     }
 }

@@ -56,10 +56,15 @@ public class Delete extends Prepared implements Callable<Integer> {
 
     @Override
     public int update() {
-        if (isLocal())
-            return deleteRows();
-        else
-            return Session.getRouter().executeDelete(this);
+        //        if (isLocal())
+        //            return deleteRows();
+        //        else
+        return Session.getRouter().executeDelete(this);
+    }
+
+    @Override
+    public int updateLocal() {
+        return deleteRows();
     }
 
     @Override

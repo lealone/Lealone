@@ -261,7 +261,8 @@ public class Parser {
         p.setPrepareAlways(recompileAlways);
         p.setParameterList(parameters);
 
-        if (p instanceof DefineCommand && !session.isLocal()) {
+        //if (p instanceof DefineCommand && !session.isLocal()) {
+        if (p instanceof DefineCommand) {
             p = new DefineCommandWrapper(session, (DefineCommand) p);
         }
         return p;

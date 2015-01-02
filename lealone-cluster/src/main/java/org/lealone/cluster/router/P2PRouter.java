@@ -67,11 +67,14 @@ public class P2PRouter implements Router {
         return INSTANCE;
     }
 
-    private P2PRouter() {
+    protected P2PRouter() {
     }
 
     @Override
     public int executeDefineCommand(DefineCommand defineCommand) {
+        if (defineCommand.isLocal())
+            return defineCommand.updateLocal();
+
         Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
         List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
 
@@ -89,11 +92,17 @@ public class P2PRouter implements Router {
 
     @Override
     public int executeInsert(Insert insert) {
+        if (insert.isLocal())
+            return insert.updateLocal();
+
         return executeInsertOrMerge(insert);
     }
 
     @Override
     public int executeMerge(Merge merge) {
+        if (merge.isLocal())
+            return merge.updateLocal();
+
         return executeInsertOrMerge(merge);
     }
 
@@ -179,11 +188,17 @@ public class P2PRouter implements Router {
 
     @Override
     public int executeDelete(Delete delete) {
+        if (delete.isLocal())
+            return delete.updateLocal();
+
         return executeUpdateOrDelete(delete.getTableFilter(), delete);
     }
 
     @Override
     public int executeUpdate(Update update) {
+        if (update.isLocal())
+            return update.updateLocal();
+
         return executeUpdateOrDelete(update.getTableFilter(), update);
     }
 
@@ -225,6 +240,9 @@ public class P2PRouter implements Router {
 
     @Override
     public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
+        if (select.isLocal())
+            return select.queryLocal(maxRows);
+
         List<InetAddress> targetEndpoints = getTargetEndpointsIfEqual(select.getTopTableFilter());
         if (targetEndpoints != null) {
             boolean isLocal = targetEndpoints.contains(FBUtilities.getBroadcastAddress());

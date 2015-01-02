@@ -107,22 +107,41 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
     public int update() {
         createRows();
 
-        if (isLocal()) {
-            Index index = null;
-            if (sortedInsertMode) {
-                index = table.getScanIndex(session);
-                index.setSortedInsertMode(true);
-            }
+        //        if (isLocal()) {
+        //            Index index = null;
+        //            if (sortedInsertMode) {
+        //                index = table.getScanIndex(session);
+        //                index.setSortedInsertMode(true);
+        //            }
+        //
+        //            try {
+        //                return insertRows();
+        //            } finally {
+        //                if (index != null) {
+        //                    index.setSortedInsertMode(false);
+        //                }
+        //            }
+        //        } else {
+        //            return Session.getRouter().executeInsert(this);
+        //        }
 
-            try {
-                return insertRows();
-            } finally {
-                if (index != null) {
-                    index.setSortedInsertMode(false);
-                }
+        return Session.getRouter().executeInsert(this);
+    }
+
+    @Override
+    public int updateLocal() {
+        Index index = null;
+        if (sortedInsertMode) {
+            index = table.getScanIndex(session);
+            index.setSortedInsertMode(true);
+        }
+
+        try {
+            return insertRows();
+        } finally {
+            if (index != null) {
+                index.setSortedInsertMode(false);
             }
-        } else {
-            return Session.getRouter().executeInsert(this);
         }
     }
 

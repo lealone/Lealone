@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.router.P2PRouter;
+import org.lealone.command.router.Router;
 import org.lealone.engine.Session;
 import org.lealone.server.TcpServer;
 import org.lealone.transaction.TransactionalRouter;
@@ -15,13 +16,21 @@ public class LealoneDaemon {
     private static final Logger logger = LoggerFactory.getLogger(LealoneDaemon.class);
 
     public static void main(String[] args) {
+        new LealoneDaemon().start();
+    }
+
+    protected Router createRouter() {
+        return P2PRouter.getInstance();
+    }
+
+    public void start() {
         // log warnings for different kinds of sub-optimal JVMs.  tldr use 64-bit Oracle >= 1.6u32
         if (!DatabaseDescriptor.hasLargeAddressSpace())
             logger.info("32bit JVM detected.  It is recommended to run lealone on a 64bit JVM for better performance.");
 
         try {
             if (DatabaseDescriptor.loadConfig().isClusterMode()) {
-                Session.setRouter(new TransactionalRouter(P2PRouter.getInstance()));
+                Session.setRouter(new TransactionalRouter(createRouter()));
                 StorageService.instance.initServer();
             }
 
