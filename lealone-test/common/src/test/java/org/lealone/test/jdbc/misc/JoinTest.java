@@ -15,12 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.hbase.jdbc.misc;
+package org.lealone.test.jdbc.misc;
 
 import static junit.framework.Assert.assertEquals;
 
 import org.junit.Test;
-import org.lealone.hbase.jdbc.TestBase;
+import org.lealone.test.jdbc.TestBase;
 
 public class JoinTest extends TestBase {
     @Test
@@ -31,16 +31,16 @@ public class JoinTest extends TestBase {
     }
 
     void init() throws Exception {
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS JoinTest1(" //
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest1(" //
                 + "COLUMN FAMILY cf(id int, name varchar(500), b boolean))");
 
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS JoinTest2(" //
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest2(" //
                 + "COLUMN FAMILY cf(id2 int, name2 varchar(500)))");
 
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS JoinTest3(" //
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest3(" //
                 + "COLUMN FAMILY cf(id3 int, name3 varchar(500)))");
 
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS JoinTest4(" //
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest4(" //
                 + "COLUMN FAMILY cf(id int, name varchar(500)))");
     }
 

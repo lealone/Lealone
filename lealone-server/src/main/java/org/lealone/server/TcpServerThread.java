@@ -148,7 +148,7 @@ public class TcpServerThread implements Runnable {
         }
     }
 
-    protected ConnectionInfo createConnectionInfo(String dbName, String originalURL) {
+    protected ConnectionInfo createConnectionInfo(String originalURL, String dbName) {
         return new ConnectionInfo(originalURL, dbName);
     }
 

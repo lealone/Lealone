@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.hbase.jdbc.index;
+package org.lealone.test.jdbc.index;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -24,7 +24,7 @@ import java.sql.Savepoint;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.hbase.jdbc.TestBase;
+import org.lealone.test.jdbc.TestBase;
 
 public class IndexTest extends TestBase {
     @Test

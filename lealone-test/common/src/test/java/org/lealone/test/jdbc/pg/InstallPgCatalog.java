@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.hbase.pg;
+package org.lealone.test.jdbc.pg;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -27,13 +27,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.lealone.message.DbException;
+import org.lealone.test.jdbc.TestBase;
 import org.lealone.util.IOUtils;
 import org.lealone.util.ScriptReader;
 import org.lealone.util.Utils;
 
 public class InstallPgCatalog {
     public static void main(String[] args) throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:5210/hbasedb";
+        String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db;
         Connection conn = DriverManager.getConnection(url, "sa", "");
         Statement stmt = conn.createStatement();
 
@@ -45,7 +46,7 @@ public class InstallPgCatalog {
     private static void installPgCatalog(Statement stat) throws SQLException {
         Reader r = null;
         try {
-            r = new InputStreamReader(new ByteArrayInputStream(Utils.getResource("/pg_catalog.sql")));
+            r = new InputStreamReader(new ByteArrayInputStream(Utils.getResource("/org/lealone/res/pg_catalog.sql")));
             ScriptReader reader = new ScriptReader(r);
             while (true) {
                 String sql = reader.readStatement();

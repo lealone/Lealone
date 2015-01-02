@@ -15,14 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.hbase.jdbc.misc;
+package org.lealone.test.jdbc.misc;
 
 import static junit.framework.Assert.assertEquals;
 
 import java.sql.PreparedStatement;
 
 import org.junit.Test;
-import org.lealone.hbase.jdbc.TestBase;
+import org.lealone.test.jdbc.TestBase;
 
 public class PreparedStatementTest extends TestBase {
     @Test

@@ -29,14 +29,18 @@ import org.junit.BeforeClass;
 import org.lealone.util.Bytes;
 
 public class TestBase {
+
+    public static final String db = "test";
+
     protected static Connection conn;
     protected static Statement stmt;
+
+    //protected static String url = "jdbc:lealone:tcp://localhost:5210/" + db +";DATABASE_TO_UPPER=false";
+    //protected static String url = "jdbc:lealone:tcp://localhost:5210,localhost:5211/" + db +";USE_H2_CLUSTER_MODE=true";
+    protected static String url = "jdbc:lealone:tcp://localhost:5210/" + db;
+
     protected ResultSet rs;
     protected String sql;
-    protected String db = "hbasedb";
-    //protected static String url = "jdbc:lealone:tcp://localhost:5210/hbasedb;DATABASE_TO_UPPER=false";
-    //protected static String url = "jdbc:lealone:tcp://localhost:5210,localhost:5211/hbasedb;USE_H2_CLUSTER_MODE=true";
-    protected static String url = "jdbc:lealone:tcp://localhost:5210/hbasedb";
 
     public static String getURL() {
         return url;

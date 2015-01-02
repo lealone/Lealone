@@ -15,6 +15,8 @@ drop alias if exists pg_get_oid;
 create alias pg_get_oid deterministic for "org.lealone.server.pg.PgServer.getOid";
 
 create table pg_catalog.pg_version as select 2 as version, 2 as version_read;
+--create table pg_catalog.pg_version(version int, version_read int);
+--insert into pg_catalog.pg_version(version,version_read) values(2,2);
 grant select on pg_catalog.pg_version to public;
 
 create view pg_catalog.pg_roles -- (oid, rolname, rolcreaterole, rolcreatedb)

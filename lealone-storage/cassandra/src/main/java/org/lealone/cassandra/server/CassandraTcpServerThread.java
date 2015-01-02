@@ -32,7 +32,7 @@ public class CassandraTcpServerThread extends TcpServerThread {
     }
 
     @Override
-    protected ConnectionInfo createConnectionInfo(String dbName, String originalURL) {
+    protected ConnectionInfo createConnectionInfo(String originalURL, String dbName) {
         return new CassandraConnectionInfo(originalURL, dbName);
     }
 }

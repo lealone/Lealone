@@ -15,19 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.hbase.jdbc.index;
+package org.lealone.test.jdbc.index;
 
 import org.junit.Test;
-import org.lealone.hbase.jdbc.TestBase;
+import org.lealone.test.jdbc.TestBase;
 
-public class HBaseDelegateIndexTest extends TestBase {
+public class DelegateIndexTest extends TestBase {
     @Test
     public void run() throws Exception {
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS HBaseDelegateIndexTest( date_time TIMESTAMP primary key, intcol INT)");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS DelegateIndexTest( date_time TIMESTAMP primary key, intcol INT)");
 
-        stmt.executeUpdate("INSERT INTO HBaseDelegateIndexTest(date_time, intcol) VALUES('1970-01-01 00:00:01.0', 12)");
+        stmt.executeUpdate("INSERT INTO DelegateIndexTest(date_time, intcol) VALUES('1970-01-01 00:00:01.0', 12)");
 
-        sql = "select * from HBaseDelegateIndexTest where date_time='1970-01-01 00:00:01.0'";
+        sql = "select * from DelegateIndexTest where date_time='1970-01-01 00:00:01.0'";
         printResultSet();
     }
 }

@@ -32,7 +32,7 @@ public class HBaseTcpServerThread extends TcpServerThread {
     }
 
     @Override
-    protected ConnectionInfo createConnectionInfo(String dbName, String originalURL) {
+    protected ConnectionInfo createConnectionInfo(String originalURL, String dbName) {
         ConnectionInfo ci = new HBaseConnectionInfo(server, originalURL, dbName);
         if (server.getMaster() != null)
             ci.setProperty("SERVER_TYPE", "M");
