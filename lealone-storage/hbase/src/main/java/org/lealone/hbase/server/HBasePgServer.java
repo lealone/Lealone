@@ -44,7 +44,7 @@ import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import org.lealone.message.TraceSystem;
 import org.lealone.server.PgServer;
 
-public class HBasePgServer extends PgServer implements Runnable {
+public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
     private static final Log log = LogFactory.getLog(HBasePgServer.class);
 
     public static int getMasterPgPort(Configuration conf) {
@@ -83,10 +83,12 @@ public class HBasePgServer extends PgServer implements Runnable {
         init(regionServer.getConfiguration());
     }
 
+    @Override
     public HMaster getMaster() {
         return master;
     }
 
+    @Override
     public HRegionServer getRegionServer() {
         return regionServer;
     }
@@ -102,14 +104,14 @@ public class HBasePgServer extends PgServer implements Runnable {
         t.setDaemon(isDaemon());
         t.start();
 
-        log.info("Started lealone pg server at port " + pgPort);
+        log.info("Lealone PgServer started, listening port: " + pgPort);
     }
 
     @Override
     public void stop() {
         try {
             super.stop();
-            log.info("Stopped lealone pg server");
+            log.info("Lealone PgServer stopped");
         } finally {
             PgPortTracker.deletePgPortEphemeralNode(serverName, pgPort, master != null);
         }

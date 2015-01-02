@@ -64,7 +64,7 @@ public class HBasePgServerThread extends PgServerThread {
             port = ZooKeeperAdmin.getTcpPort(server.getRegionServer().getServerName());
         }
         String url = Constants.URL_PREFIX + Constants.URL_TCP + "//" + host + ":" + port + "/" + databaseName;
-        ConnectionInfo ci = new HBaseConnectionInfo(url, databaseName);
+        ConnectionInfo ci = new HBaseConnectionInfo(server, url, databaseName);
 
         if (baseDir != null) {
             ci.setBaseDir(baseDir);

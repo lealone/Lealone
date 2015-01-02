@@ -1,6 +1,4 @@
 /*
- * Copyright 2011 The Apache Software Foundation
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,22 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.cassandra.server;
+package org.lealone.hbase.server;
 
-import java.net.Socket;
+import org.apache.hadoop.hbase.master.HMaster;
+import org.apache.hadoop.hbase.regionserver.HRegionServer;
 
-import org.lealone.cassandra.engine.CassandraConnectionInfo;
-import org.lealone.engine.ConnectionInfo;
-import org.lealone.server.TcpServerThread;
+public interface HBaseServer {
+    HMaster getMaster();
 
-public class CassandraTcpServerThread extends TcpServerThread {
-
-    protected CassandraTcpServerThread(Socket socket, CassandraTcpServer server, int threadId) {
-        super(socket, server, threadId);
-    }
-
-    @Override
-    protected ConnectionInfo createConnectionInfo(String dbName, String originalURL) {
-        return new CassandraConnectionInfo(originalURL, dbName);
-    }
+    HRegionServer getRegionServer();
 }

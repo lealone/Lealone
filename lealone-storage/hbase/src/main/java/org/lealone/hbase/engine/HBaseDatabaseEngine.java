@@ -17,7 +17,10 @@
  */
 package org.lealone.hbase.engine;
 
+import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.DatabaseEngine;
+import org.lealone.engine.Session;
+import org.lealone.hbase.server.HBaseServer;
 
 public class HBaseDatabaseEngine extends DatabaseEngine {
     private static final HBaseDatabaseEngine INSTANCE = new HBaseDatabaseEngine();
@@ -34,4 +37,13 @@ public class HBaseDatabaseEngine extends DatabaseEngine {
         return new HBaseDatabase(this);
     }
 
+    @Override
+    public synchronized Session createSession(ConnectionInfo ci) {
+        HBaseSession session = (HBaseSession) super.createSession(ci);
+
+        HBaseServer server = ((HBaseConnectionInfo) ci).getServer();
+        session.setMaster(server.getMaster());
+        session.setRegionServer(server.getRegionServer());
+        return session;
+    }
 }

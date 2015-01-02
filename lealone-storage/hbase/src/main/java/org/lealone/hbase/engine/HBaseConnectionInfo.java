@@ -19,11 +19,18 @@ package org.lealone.hbase.engine;
 
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.SessionFactory;
+import org.lealone.hbase.server.HBaseServer;
 
 public class HBaseConnectionInfo extends ConnectionInfo {
+    private final HBaseServer server;
 
-    public HBaseConnectionInfo(String url, String dbName) {
+    public HBaseConnectionInfo(HBaseServer server, String url, String dbName) {
         super(url, dbName);
+        this.server = server;
+    }
+
+    public HBaseServer getServer() {
+        return server;
     }
 
     @Override

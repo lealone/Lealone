@@ -148,7 +148,11 @@ public class TcpServerThread implements Runnable {
         }
     }
 
-    protected Session createSession(String dbName, String originalURL, String userName, Transfer transfer) throws IOException {
+    protected ConnectionInfo createConnectionInfo(String dbName, String originalURL) {
+        return new ConnectionInfo(originalURL, dbName);
+    }
+
+    private Session createSession(String dbName, String originalURL, String userName, Transfer transfer) throws IOException {
         byte[] userPasswordHash = transfer.readBytes();
         byte[] filePasswordHash = transfer.readBytes();
 
@@ -164,8 +168,9 @@ public class TcpServerThread implements Runnable {
         }
 
         dbName = server.checkKeyAndGetDatabaseName(dbName);
-        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
+        ConnectionInfo ci = createConnectionInfo(originalURL, dbName);
 
+        // override client's requested properties with server settings
         if (baseDir != null) {
             ci.setBaseDir(baseDir);
         }
@@ -184,26 +189,6 @@ public class TcpServerThread implements Runnable {
         if (filePasswordHash != null)
             originalProperties.put("_filePasswordHash_", filePasswordHash);
 
-        //        String baseDir = server.getBaseDir();
-        //        if (baseDir == null) {
-        //            baseDir = SysProperties.getBaseDir();
-        //        }
-        //        dbName = server.checkKeyAndGetDatabaseName(dbName);
-        //        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
-        //        ci.setUserName(userName);
-        //        ci.setUserPasswordHash(transfer.readBytes());
-        //        ci.setFilePasswordHash(transfer.readBytes());
-        //        int len = transfer.readInt();
-        //        for (int i = 0; i < len; i++) {
-        //            ci.setProperty(transfer.readString(), transfer.readString());
-        //        }
-        //        // override client's requested properties with server settings
-        //        if (baseDir != null) {
-        //            ci.setBaseDir(baseDir);
-        //        }
-        //        if (server.getIfExists()) {
-        //            ci.setProperty("IFEXISTS", "TRUE");
-        //        }
         try {
             //先删除"IS_LOCAL"，否则在createSession过程中会执行 SET IS_LOCAL命令导致错误
             boolean isLocal = ci.removeProperty("IS_LOCAL", false);

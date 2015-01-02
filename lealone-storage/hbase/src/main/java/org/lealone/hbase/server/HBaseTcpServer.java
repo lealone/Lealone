@@ -44,7 +44,7 @@ import org.lealone.message.TraceSystem;
 import org.lealone.server.TcpServer;
 import org.lealone.server.TcpServerThread;
 
-public class HBaseTcpServer extends TcpServer implements Runnable {
+public class HBaseTcpServer extends TcpServer implements Runnable, HBaseServer {
     private static final Log log = LogFactory.getLog(HBaseTcpServer.class);
 
     public static int getMasterTcpPort(Configuration conf) {
@@ -79,10 +79,12 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
         init(regionServer.getConfiguration());
     }
 
+    @Override
     public HMaster getMaster() {
         return master;
     }
 
+    @Override
     public HRegionServer getRegionServer() {
         return regionServer;
     }
@@ -99,7 +101,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
             t.setDaemon(isDaemon());
             t.start();
 
-            log.info("Started lealone tcp server at port " + tcpPort);
+            log.info("Lealone TcpServer started, listening port: " + tcpPort);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -109,7 +111,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable {
     public void stop() {
         try {
             super.stop();
-            log.info("Stopped lealone tcp server");
+            log.info("Lealone TcpServer stoppedr");
         } finally {
             TcpPortTracker.deleteTcpPortEphemeralNode(serverName, tcpPort, master != null);
         }
