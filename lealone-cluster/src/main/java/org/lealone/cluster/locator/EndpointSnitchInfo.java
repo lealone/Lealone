@@ -29,7 +29,7 @@ public class EndpointSnitchInfo implements EndpointSnitchInfoMBean {
     public static void create() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName("org.apache.lealone.db:type=EndpointSnitchInfo"));
+            mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName("org.lealone.db:type=EndpointSnitchInfo"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

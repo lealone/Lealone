@@ -27,12 +27,9 @@
 		<module>lealone-storage/mysql</module>
 		<module>lealone-storage/postgresql</module>
 
-		<module>lealone-test/common</module>
+		<module>lealone-test/rdbms</module>
 		<module>lealone-test/cassandra</module>
-		<module>lealone-test/cbase</module>
 		<module>lealone-test/hbase</module>
-		<module>lealone-test/mysql</module>
-		<module>lealone-test/postgresql</module>
 	</modules>
 
 	<build>
@@ -168,7 +165,7 @@
 
 			<dependency>
 				<groupId>org.lealone</groupId>
-				<artifactId>lealone-test-common</artifactId>
+				<artifactId>lealone-test-rdbms</artifactId>
 				<version>${lealone.version}</version>
 			</dependency>
 

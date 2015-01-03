@@ -205,7 +205,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public StorageService() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            jmxObjectName = new ObjectName("org.apache.lealone.db:type=StorageService");
+            jmxObjectName = new ObjectName("org.lealone.db:type=StorageService");
             mbs.registerMBean(this, jmxObjectName);
             //mbs.registerMBean(StreamManager.instance, new ObjectName(StreamManager.OBJECT_NAME));
         } catch (Exception e) {
@@ -446,15 +446,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         //                ClientState.DEFAULT_CQL_VERSION);
 
         initialized = true;
-
-        //        try {
-        //            // Ensure StorageProxy is initialized on start-up; see lealone-3797.
-        //            Class.forName("org.apache.lealone.service.StorageProxy");
-        //            // also IndexSummaryManager, which is otherwise unreferenced
-        //            Class.forName("org.apache.lealone.io.sstable.IndexSummaryManager");
-        //        } catch (ClassNotFoundException e) {
-        //            throw new AssertionError(e);
-        //        }
 
         if (Boolean.parseBoolean(System.getProperty("lealone.load_ring_state", "true"))) {
             logger.info("Loading persisted ring state");

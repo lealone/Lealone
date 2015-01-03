@@ -105,6 +105,7 @@ public class DatabaseDescriptor {
         try {
             applyConfig(loadConfig());
         } catch (Exception e) {
+            logger.error("", e);
             JVMStabilityInspector.inspectThrowable(e);
             throw new ExceptionInInitializerError(e.getMessage()
                     + "\nFatal configuration error; unable to start. See log for stacktrace.");
@@ -496,7 +497,7 @@ public class DatabaseDescriptor {
 
     private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException {
         if (!snitchClassName.contains("."))
-            snitchClassName = "org.apache.lealone.locator." + snitchClassName;
+            snitchClassName = "org.lealone.cluster.locator." + snitchClassName;
         IEndpointSnitch snitch = FBUtilities.construct(snitchClassName, "snitch");
         return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
     }

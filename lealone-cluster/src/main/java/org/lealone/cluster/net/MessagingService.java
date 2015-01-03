@@ -84,7 +84,7 @@ import com.google.common.collect.Lists;
 
 @SuppressWarnings({ "rawtypes", "deprecation" })
 public final class MessagingService implements MessagingServiceMBean {
-    public static final String MBEAN_NAME = "org.apache.lealone.net:type=MessagingService";
+    public static final String MBEAN_NAME = "org.lealone.net:type=MessagingService";
 
     // 8 bits version, so don't waste versions
     public static final int VERSION_12 = 6;

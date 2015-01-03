@@ -17,7 +17,7 @@ package org.lealone.cluster.tracing;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.lealone.tracing;
+//package org.lealone.tracing;
 //
 //import java.nio.ByteBuffer;
 //import java.util.Arrays;
@@ -26,9 +26,9 @@ package org.lealone.cluster.tracing;
 //import java.util.Map;
 //import java.util.concurrent.TimeUnit;
 //
-//import org.apache.lealone.locator.SimpleStrategy;
-//import org.apache.lealone.utils.FBUtilities;
-//import org.apache.lealone.utils.UUIDGen;
+//import org.lealone.locator.SimpleStrategy;
+//import org.lealone.utils.FBUtilities;
+//import org.lealone.utils.UUIDGen;
 //
 //import com.google.common.collect.ImmutableMap;
 //

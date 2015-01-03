@@ -17,14 +17,14 @@ package org.lealone.cluster.io.util;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.lealone.io.util;
+//package org.lealone.io.util;
 //
 //import java.nio.ByteBuffer;
 //import java.nio.ByteOrder;
 //
-//import org.apache.lealone.config.DatabaseDescriptor;
-//import org.apache.lealone.utils.FastByteOperations;
-//import org.apache.lealone.utils.memory.MemoryUtil;
+//import org.lealone.config.DatabaseDescriptor;
+//import org.lealone.utils.FastByteOperations;
+//import org.lealone.utils.memory.MemoryUtil;
 //import sun.misc.Unsafe;
 //import sun.nio.ch.DirectBuffer;
 //

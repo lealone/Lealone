@@ -17,7 +17,7 @@ package org.lealone.cluster.dht;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.lealone.dht;
+//package org.lealone.dht;
 //
 //import java.net.InetAddress;
 //import java.util.*;
@@ -26,23 +26,23 @@ package org.lealone.cluster.dht;
 //import com.google.common.collect.HashMultimap;
 //import com.google.common.collect.Multimap;
 //import com.google.common.collect.Sets;
-//import org.apache.lealone.gms.EndpointState;
+//import org.lealone.gms.EndpointState;
 //import org.apache.commons.lang3.StringUtils;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 //
-//import org.apache.lealone.config.DatabaseDescriptor;
-//import org.apache.lealone.db.Keyspace;
-//import org.apache.lealone.db.SystemKeyspace;
-//import org.apache.lealone.gms.FailureDetector;
-//import org.apache.lealone.gms.Gossiper;
-//import org.apache.lealone.gms.IFailureDetector;
-//import org.apache.lealone.locator.AbstractReplicationStrategy;
-//import org.apache.lealone.locator.IEndpointSnitch;
-//import org.apache.lealone.locator.TokenMetadata;
-//import org.apache.lealone.streaming.StreamPlan;
-//import org.apache.lealone.streaming.StreamResultFuture;
-//import org.apache.lealone.utils.FBUtilities;
+//import org.lealone.config.DatabaseDescriptor;
+//import org.lealone.db.Keyspace;
+//import org.lealone.db.SystemKeyspace;
+//import org.lealone.gms.FailureDetector;
+//import org.lealone.gms.Gossiper;
+//import org.lealone.gms.IFailureDetector;
+//import org.lealone.locator.AbstractReplicationStrategy;
+//import org.lealone.locator.IEndpointSnitch;
+//import org.lealone.locator.TokenMetadata;
+//import org.lealone.streaming.StreamPlan;
+//import org.lealone.streaming.StreamResultFuture;
+//import org.lealone.utils.FBUtilities;
 //
 ///**
 // * Assists in streaming ranges to a node.

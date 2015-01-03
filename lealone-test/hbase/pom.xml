@@ -11,10 +11,11 @@
 	<artifactId>lealone-test-hbase</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-test-common</artifactId>
+			<artifactId>lealone-test-rdbms</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.lealone</groupId>

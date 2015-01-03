@@ -17,7 +17,7 @@ package org.lealone.cluster.utils;
 // * See the License for the specific language governing permissions and
 // * limitations under the License.
 // */
-//package org.apache.lealone.utils;
+//package org.lealone.utils;
 //
 //import java.lang.management.ManagementFactory;
 //import java.util.Set;
@@ -28,18 +28,18 @@ package org.lealone.cluster.utils;
 //
 //import com.google.common.collect.Iterables;
 //
-//import org.apache.lealone.cache.*;
+//import org.lealone.cache.*;
 //
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 //
-//import org.apache.lealone.concurrent.JMXEnabledThreadPoolExecutorMBean;
-//import org.apache.lealone.config.DatabaseDescriptor;
-//import org.apache.lealone.db.ColumnFamilyStore;
-//import org.apache.lealone.db.RowIndexEntry;
-//import org.apache.lealone.db.compaction.CompactionManager;
-//import org.apache.lealone.net.MessagingService;
-//import org.apache.lealone.service.CacheService;
+//import org.lealone.concurrent.JMXEnabledThreadPoolExecutorMBean;
+//import org.lealone.config.DatabaseDescriptor;
+//import org.lealone.db.ColumnFamilyStore;
+//import org.lealone.db.RowIndexEntry;
+//import org.lealone.db.compaction.CompactionManager;
+//import org.lealone.net.MessagingService;
+//import org.lealone.service.CacheService;
 //
 //public class StatusLogger
 //{
@@ -54,8 +54,8 @@ package org.lealone.cluster.utils;
 //        Set<ObjectName> request, internal;
 //        try
 //        {
-//            request = server.queryNames(new ObjectName("org.apache.lealone.request:type=*"), null);
-//            internal = server.queryNames(new ObjectName("org.apache.lealone.internal:type=*"), null);
+//            request = server.queryNames(new ObjectName("org.lealone.request:type=*"), null);
+//            internal = server.queryNames(new ObjectName("org.lealone.internal:type=*"), null);
 //        }
 //        catch (MalformedObjectNameException e)
 //        {

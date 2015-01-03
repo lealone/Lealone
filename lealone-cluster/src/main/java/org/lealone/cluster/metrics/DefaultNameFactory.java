@@ -23,7 +23,7 @@ import com.yammer.metrics.core.MetricName;
  * MetricNameFactory that generates default MetricName of metrics.
  */
 public class DefaultNameFactory implements MetricNameFactory {
-    public static final String GROUP_NAME = "org.apache.lealone.metrics";
+    public static final String GROUP_NAME = "org.lealone.metrics";
 
     private final String type;
     private final String scope;
