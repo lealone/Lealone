@@ -56,4 +56,9 @@ public abstract class DefineCommand extends Prepared implements Callable<Integer
     public Integer call() {
         return Integer.valueOf(update());
     }
+
+    @Override
+    public boolean isDDL() {
+        return true;
+    }
 }

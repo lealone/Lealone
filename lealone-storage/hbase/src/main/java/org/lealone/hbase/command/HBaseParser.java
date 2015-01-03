@@ -322,7 +322,7 @@ public class HBaseParser extends Parser {
         //            throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
         //        }
 
-        if (p instanceof DefineCommand) {
+        if (p.isDDL()) {
             p = new DefineCommandWrapper(session, (DefineCommand) p, sql);
         }
         return p;

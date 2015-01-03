@@ -464,4 +464,8 @@ public abstract class Prepared {
     public Session getSession() {
         return session;
     }
+
+    public boolean isDDL() {
+        return false;
+    }
 }

@@ -30,7 +30,7 @@ import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 
 //只重写了update、query两个方法
-public class DefineCommandWrapper extends org.lealone.command.router.DefineCommandWrapper {
+public class DefineCommandWrapper extends org.lealone.command.ddl.DefineCommandWrapper {
     private final HBaseSession session;
     private final String sql;
 

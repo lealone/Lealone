@@ -15,12 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.command.router;
+package org.lealone.command.ddl;
 
 import java.util.ArrayList;
 
 import org.lealone.command.Command;
-import org.lealone.command.ddl.DefineCommand;
 import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;
 import org.lealone.result.ResultInterface;
@@ -36,12 +35,6 @@ public class DefineCommandWrapper extends DefineCommand {
 
     @Override
     public int update() {
-        //        if (isLocal()) {
-        //            return dc.update();
-        //        } else {
-        //            return Session.getRouter().executeDefineCommand(dc);
-        //        }
-
         return Session.getRouter().executeDefineCommand(dc);
     }
 

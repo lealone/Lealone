@@ -98,12 +98,12 @@ public class Merge extends Prepared implements InsertOrMerge {
     @Override
     public int update() {
         createRows();
+        return Session.getRouter().executeMerge(this);
+    }
 
-        if (isLocal()) {
-            return mergeRows();
-        } else {
-            return Session.getRouter().executeMerge(this);
-        }
+    @Override
+    public int updateLocal() {
+        return mergeRows();
     }
 
     @Override

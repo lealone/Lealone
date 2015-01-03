@@ -1468,9 +1468,6 @@ public class Select extends Query implements Callable<ResultInterface> {
     public ResultInterface query(int limit, ResultTarget target) {
         queryLimit = limit;
         resultTarget = target;
-        //        if (isLocal())
-        //            return super.query(limit, target);
-        //        else
         return Session.getRouter().executeSelect(this, limit, false);
     }
 

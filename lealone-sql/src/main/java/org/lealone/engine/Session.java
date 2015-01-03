@@ -21,6 +21,7 @@ import org.lealone.command.Prepared;
 import org.lealone.command.dml.Insert;
 import org.lealone.command.dml.Query;
 import org.lealone.command.router.FrontendSessionPool;
+import org.lealone.command.router.LocalRouter;
 import org.lealone.command.router.Router;
 import org.lealone.dbobject.Procedure;
 import org.lealone.dbobject.Schema;
@@ -1364,15 +1365,17 @@ public class Session extends SessionWithState {
         transaction = t;
     }
 
-    private static Router router;
+    private static Router router = LocalRouter.getInstance();
 
     public static Router getRouter() {
         return router;
     }
 
     public static void setRouter(Router r) {
+        if (r == null)
+            throw new NullPointerException("router is null");
         router = r;
-        setClusterMode(r != null);
+        setClusterMode(!(r instanceof LocalRouter));
     }
 
     private static boolean isClusterMode;

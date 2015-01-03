@@ -17,9 +17,9 @@
  */
 package org.lealone.cbase.cluster.onedc;
 
-import org.lealone.cbase.cluster.standalone.LealoneStandalone;
+import org.lealone.cbase.cluster.NodeBase;
 
-public class OneDCNode3 extends LealoneStandalone {
+public class OneDCNode3 extends NodeBase {
     public static void main(String[] args) {
         setConfigLoader(OneDCNode3.class);
         System.setProperty("mx4jaddress", "127.0.0.3");

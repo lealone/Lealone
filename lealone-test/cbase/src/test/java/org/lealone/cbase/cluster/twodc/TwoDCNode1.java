@@ -17,10 +17,10 @@
  */
 package org.lealone.cbase.cluster.twodc;
 
-import org.lealone.cbase.cluster.standalone.LealoneStandalone;
+import org.lealone.cbase.cluster.NodeBase;
 import org.lealone.cluster.locator.SnitchProperties;
 
-public class TwoDCNode1 extends LealoneStandalone {
+public class TwoDCNode1 extends NodeBase {
     public static void main(String[] args) {
         System.setProperty(SnitchProperties.RACKDC_PROPERTY_FILENAME, "lealone-rackdc1.properties");
         setConfigLoader(TwoDCNode1.class);

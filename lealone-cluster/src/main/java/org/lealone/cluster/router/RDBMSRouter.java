@@ -99,7 +99,7 @@ public class RDBMSRouter implements Router {
             updateCount = p2pRouter.executeMerge((Merge) p);
             break;
         default:
-            if (p instanceof DefineCommand)
+            if (p.isDDL())
                 updateCount = p2pRouter.executeDefineCommand((DefineCommand) p);
             break;
         }
