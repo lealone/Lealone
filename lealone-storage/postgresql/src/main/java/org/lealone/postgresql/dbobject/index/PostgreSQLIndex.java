@@ -51,7 +51,7 @@ public class PostgreSQLIndex extends BaseIndex {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        return new MySQLCursor();
+        return new PostgreSQLCursor();
     }
 
     @Override
@@ -88,7 +88,7 @@ public class PostgreSQLIndex extends BaseIndex {
 
     @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
-        return new MySQLCursor();
+        return new PostgreSQLCursor();
     }
 
     @Override
@@ -106,7 +106,7 @@ public class PostgreSQLIndex extends BaseIndex {
         return 0;
     }
 
-    private static class MySQLCursor implements Cursor {
+    private static class PostgreSQLCursor implements Cursor {
 
         @Override
         public Row get() {
