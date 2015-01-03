@@ -15,28 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mysql.dbobject.table;
+package org.lealone.postgresql.cluster.twodc;
 
-import org.lealone.api.TableEngine;
-import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.TableBase;
-import org.lealone.dbobject.table.TableEngineManager;
+import org.lealone.cluster.locator.SnitchProperties;
+import org.lealone.postgresql.cluster.NodeBase;
 
-public class MySQLTableEngine implements TableEngine {
-    public static final String NAME = "MYSQL";
-
-    //见TableEngineManager.TableEngineService中的注释
-    public MySQLTableEngine() {
-        TableEngineManager.registerTableEngine(this);
+public class TwoDCNode4 extends NodeBase {
+    public static void main(String[] args) {
+        System.setProperty(SnitchProperties.RACKDC_PROPERTY_FILENAME, "lealone-rackdc2.properties");
+        setConfigLoader(TwoDCNode4.class);
+        run(args, "lealone-twodc.yaml");
     }
 
-    @Override
-    public String getName() {
-        return NAME;
-    }
-
-    @Override
-    public TableBase createTable(CreateTableData data) {
-        return new MySQLTable(data);
+    public TwoDCNode4() {
+        this.listen_address = "127.0.0.4";
+        this.dir = "twodc/node4";
+        this.url = "jdbc:postgresql://localhost:5434/lealone";
     }
 }

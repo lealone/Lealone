@@ -25,6 +25,7 @@ import java.sql.Statement;
 public class JDBCExample {
     static Connection getConnection() throws Exception {
         String url = "jdbc:lealone:tcp://localhost:5210/mydb?default_table_engine=PostgreSQL";
+        url = "jdbc:lealone:tcp://localhost:5210/mydb";
         //url = "jdbc:lealone:embed:mydb?default_table_engine=PostgreSQL";
         Connection conn = DriverManager.getConnection(url, "sa", "");
         return conn;
@@ -38,11 +39,14 @@ public class JDBCExample {
         Connection conn = getConnection();
         Statement stmt = conn.createStatement();
         ResultSet rs;
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine PostgreSQL"); //");
-        stmt.executeUpdate("CREATE memory TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long)");
+        stmt.executeUpdate("DROP TABLE IF EXISTS test");
+
+        //stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine PostgreSQL"); 
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+        //stmt.executeUpdate("CREATE memory TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test3 (f1 int primary key, f2 long)"); //PostgreSQL
 
-        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS test_f2 ON test(f2)");
+        //stmt.executeUpdate("CREATE INDEX IF NOT EXISTS test_f2 ON test(f2)");
 
         stmt.executeUpdate("DELETE FROM test");
 
@@ -80,7 +84,6 @@ public class JDBCExample {
             System.out.println("count=" + rs.getInt(1));
         }
 
-        //stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt2.close();
         conn2.close();
 
