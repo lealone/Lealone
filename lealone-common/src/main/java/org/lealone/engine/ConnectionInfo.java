@@ -128,12 +128,11 @@ public class ConnectionInfo implements Cloneable {
     }
 
     private void parseName() {
+        boolean mem = false;
         remote = true;
         if (dbName.startsWith(Constants.URL_MEM)) {
             dbName = dbName.substring(Constants.URL_MEM.length());
-            persistent = false;
-        } else {
-            persistent = true;
+            mem = true;
         }
 
         if (dbName.startsWith(Constants.URL_TCP)) {
@@ -145,6 +144,8 @@ public class ConnectionInfo implements Cloneable {
             remote = false;
             embedded = true;
             dbName = dbName.substring(Constants.URL_EMBED.length());
+            if (!mem)
+                persistent = true;
         } else if (dbName.startsWith(Constants.URL_DYNAMIC)) {
             dynamic = true;
             dbName = dbName.substring(Constants.URL_DYNAMIC.length());
