@@ -39,17 +39,17 @@ public class MasterSlaveRouter implements Router {
 
     @Override
     public int executeDefineCommand(DefineCommand defineCommand) {
-        return 0;
+        return defineCommand.updateLocal();
     }
 
     @Override
     public int executeInsert(Insert insert) {
-        return 0;
+        return insert.updateLocal();
     }
 
     @Override
     public int executeMerge(Merge merge) {
-        return 0;
+        return merge.updateLocal();
     }
 
     @Override
@@ -64,7 +64,7 @@ public class MasterSlaveRouter implements Router {
 
     @Override
     public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
-        return null;
+        return select.queryLocal(maxRows);
     }
 
 }
