@@ -39,7 +39,6 @@ import org.lealone.engine.Constants;
 import org.lealone.hbase.dbobject.table.HBaseTableEngine;
 import org.lealone.hbase.zookeeper.PgPortTracker;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
-import org.lealone.message.TraceSystem;
 import org.lealone.server.PgServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,12 +98,7 @@ public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
         PgPortTracker.createPgPortEphemeralNode(serverName, pgPort, master != null);
         ZooKeeperAdmin.getPgPortTracker(); //初始化PgPortTracker
 
-        String name = getName() + " (" + getURL() + ")";
-        Thread t = new Thread(this, name);
-        t.setDaemon(isDaemon());
-        t.start();
-
-        logger.info("Lealone PgServer started, listening port: {}", pgPort);
+        logger.info("Lealone PgServer started, listening address: {}, port: {}", getListenAddress(), getPort());
     }
 
     @Override
@@ -148,14 +142,5 @@ public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
         }
         key = DEFAULT_TABLE_ENGINE;
         System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
-    }
-
-    @Override
-    public void run() {
-        try {
-            listen();
-        } catch (Exception e) {
-            TraceSystem.traceThrowable(e);
-        }
     }
 }

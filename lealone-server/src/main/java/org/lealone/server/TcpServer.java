@@ -214,6 +214,11 @@ public class TcpServer implements Server {
         return port;
     }
 
+    @Override
+    public String getListenAddress() {
+        return listenAddress;
+    }
+
     /**
      * Check if this socket may connect to this server. Remote connections are
      * not allowed if the flag allowOthers is set.
@@ -247,10 +252,14 @@ public class TcpServer implements Server {
         }
         port = serverSocket.getLocalPort();
         initManagementDb();
+
+        String name = getName() + " (" + getURL() + ")";
+        Thread t = new Thread(this, name);
+        t.setDaemon(isDaemon());
+        t.start();
     }
 
-    @Override
-    public void listen() {
+    private void listen() {
         listenerThread = Thread.currentThread();
         String threadName = listenerThread.getName();
         try {
@@ -525,4 +534,12 @@ public class TcpServer implements Server {
         return isDaemon;
     }
 
+    @Override
+    public void run() {
+        try {
+            listen();
+        } catch (Exception e) {
+            TraceSystem.traceThrowable(e);
+        }
+    }
 }

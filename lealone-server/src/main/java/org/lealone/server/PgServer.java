@@ -22,6 +22,7 @@ import java.util.Set;
 
 import org.lealone.engine.Constants;
 import org.lealone.message.DbException;
+import org.lealone.message.TraceSystem;
 import org.lealone.util.NetUtils;
 import org.lealone.util.New;
 
@@ -71,6 +72,7 @@ public class PgServer implements Server {
 
     private final HashSet<Integer> typeSet = New.hashSet();
 
+    private String listenAddress;
     private int port = PgServer.DEFAULT_PORT;
     private boolean portIsSet;
     private boolean stop;
@@ -85,9 +87,12 @@ public class PgServer implements Server {
     @Override
     public void init(String... args) {
         port = DEFAULT_PORT;
+        listenAddress = "localhost";
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
-            if (TcpServer.isOption(a, "-trace")) {
+            if (TcpServer.isOption(a, "-pgListenAddress")) {
+                listenAddress = args[++i];
+            } else if (TcpServer.isOption(a, "-trace")) {
                 trace = true;
             } else if (TcpServer.isOption(a, "-pgPort")) {
                 port = Integer.decode(args[++i]);
@@ -152,6 +157,11 @@ public class PgServer implements Server {
         return port;
     }
 
+    @Override
+    public String getListenAddress() {
+        return listenAddress;
+    }
+
     private boolean allow(Socket socket) {
         if (allowOthers) {
             return true;
@@ -176,10 +186,14 @@ public class PgServer implements Server {
             }
         }
         port = serverSocket.getLocalPort();
+
+        String name = getName() + " (" + getURL() + ")";
+        Thread t = new Thread(this, name);
+        t.setDaemon(isDaemon());
+        t.start();
     }
 
-    @Override
-    public void listen() {
+    private void listen() {
         String threadName = Thread.currentThread().getName();
         try {
             while (!stop) {
@@ -511,4 +525,12 @@ public class PgServer implements Server {
         return isDaemon;
     }
 
+    @Override
+    public void run() {
+        try {
+            listen();
+        } catch (Exception e) {
+            TraceSystem.traceThrowable(e);
+        }
+    }
 }

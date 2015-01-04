@@ -64,7 +64,6 @@ public class LealoneDaemon {
         server.init(list.toArray(new String[list.size()]));
         server.start();
         logger.info("Lealone TcpServer started, listening address: {}, port: {}", config.listen_address, server.getPort());
-        server.listen();
     }
 
 }

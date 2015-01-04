@@ -38,13 +38,12 @@ import org.lealone.engine.Constants;
 import org.lealone.hbase.dbobject.table.HBaseTableEngine;
 import org.lealone.hbase.zookeeper.TcpPortTracker;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
-import org.lealone.message.TraceSystem;
 import org.lealone.server.TcpServer;
 import org.lealone.server.TcpServerThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HBaseTcpServer extends TcpServer implements Runnable, HBaseServer {
+public class HBaseTcpServer extends TcpServer implements HBaseServer {
     private static final Logger logger = LoggerFactory.getLogger(HBaseTcpServer.class);
 
     public static int getMasterTcpPort(Configuration conf) {
@@ -96,12 +95,7 @@ public class HBaseTcpServer extends TcpServer implements Runnable, HBaseServer {
             TcpPortTracker.createTcpPortEphemeralNode(serverName, tcpPort, master != null);
             ZooKeeperAdmin.getTcpPortTracker(); //初始化TcpPortTracker
 
-            String name = getName() + " (" + getURL() + ")";
-            Thread t = new Thread(this, name);
-            t.setDaemon(isDaemon());
-            t.start();
-
-            logger.info("Lealone TcpServer started, listening port: {}", tcpPort);
+            logger.info("Lealone TcpServer started, listening address: {}, port: {}", getListenAddress(), getPort());
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -148,14 +142,5 @@ public class HBaseTcpServer extends TcpServer implements Runnable, HBaseServer {
         }
         key = DEFAULT_TABLE_ENGINE;
         System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
-    }
-
-    @Override
-    public void run() {
-        try {
-            listen();
-        } catch (Exception e) {
-            TraceSystem.traceThrowable(e);
-        }
     }
 }

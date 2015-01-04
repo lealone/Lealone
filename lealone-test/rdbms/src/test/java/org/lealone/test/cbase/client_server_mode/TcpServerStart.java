@@ -70,8 +70,8 @@ public class TcpServerStart {
         try {
             server.init(args);
             server.start();
-            System.out.println("Lealone " + server.getName() + " started, listening tcp port: " + server.getPort());
-            server.listen();
+            System.out.println("Lealone " + server.getName() + " started, listening address: " + server.getListenAddress()
+                    + ", port: " + server.getPort());
         } catch (Exception e) {
             e.printStackTrace();
         }

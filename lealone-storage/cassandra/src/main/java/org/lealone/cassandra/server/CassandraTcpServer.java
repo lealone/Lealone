@@ -24,13 +24,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import org.lealone.cassandra.config.CassandraConfig;
-import org.lealone.message.TraceSystem;
 import org.lealone.server.TcpServer;
 import org.lealone.server.TcpServerThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CassandraTcpServer extends TcpServer implements Runnable {
+public class CassandraTcpServer extends TcpServer {
     private static final Logger logger = LoggerFactory.getLogger(CassandraTcpServer.class);
 
     private final CassandraConfig config;
@@ -44,11 +43,7 @@ public class CassandraTcpServer extends TcpServer implements Runnable {
     public void start() {
         try {
             super.start();
-            String name = getName() + " (" + getURL() + ")";
-            Thread t = new Thread(this, name);
-            t.setDaemon(isDaemon());
-            t.start();
-            logger.info("Lealone TcpServer started, listening address: {}, port: {}", config.listen_address, getPort());
+            logger.info("Lealone TcpServer started, listening address: {}, port: {}", getListenAddress(), getPort());
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -67,17 +62,10 @@ public class CassandraTcpServer extends TcpServer implements Runnable {
 
     private void init() {
         ArrayList<String> args = new ArrayList<String>();
+        args.add("-tcpListenAddress");
+        args.add("" + config.listen_address);
         args.add("-tcpPort");
         args.add("" + config.lealone_tcp_port);
         super.init(args.toArray(new String[0]));
-    }
-
-    @Override
-    public void run() {
-        try {
-            listen();
-        } catch (Exception e) {
-            TraceSystem.traceThrowable(e);
-        }
     }
 }

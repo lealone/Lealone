@@ -14,14 +14,14 @@ import java.sql.SQLException;
  * The can be started and stopped, and may or may not
  * allow remote connections.
  */
-public interface Server {
+public interface Server extends Runnable {
 
     /**
      * Initialize the server from command line options.
      *
      * @param args the command line options
      */
-    void init(String... args) throws Exception;
+    void init(String... args);
 
     /**
      * Get the URL of this server in a human readable form
@@ -31,16 +31,9 @@ public interface Server {
     String getURL();
 
     /**
-     * Start the server. This usually means create the server socket.
-     * This method must not block.
+     * Start the server. 
      */
     void start() throws SQLException;
-
-    /**
-     * Listen for incoming connections.
-     * This method blocks.
-     */
-    void listen();
 
     /**
      * Stop the server.
@@ -82,6 +75,13 @@ public interface Server {
      * @return the port
      */
     int getPort();
+
+    /**
+     * Gets the address this server is listening on.
+     *
+     * @return the address
+     */
+    String getListenAddress();
 
     /**
      * Check if a daemon thread should be used.
