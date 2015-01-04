@@ -76,6 +76,8 @@ public class ConnectionInfo implements Cloneable {
      * @param dbName
      */
     public ConnectionInfo(String url, String dbName) { //用于server端, 不需要再解析url了
+        checkURL(url);
+
         this.url = url;
         this.dbName = dbName;
 
@@ -97,9 +99,9 @@ public class ConnectionInfo implements Cloneable {
     public ConnectionInfo(String url, Properties info) { //用于client端，需要解析url
         this.url = url;
         url = remapURL(url);
-        if (!url.startsWith(Constants.URL_PREFIX)) {
-            throw getFormatException();
-        }
+
+        checkURL(url);
+
         readProperties(info);
         readSettingsFromURL();
         setUserName(removeProperty("USER", ""));
@@ -108,6 +110,12 @@ public class ConnectionInfo implements Cloneable {
         //所以这里用this.url
         this.dbName = this.url.substring(Constants.URL_PREFIX.length());
         parseName();
+    }
+
+    private void checkURL(String url) {
+        if (url == null || !url.startsWith(Constants.URL_PREFIX)) {
+            throw getFormatException();
+        }
     }
 
     @Override

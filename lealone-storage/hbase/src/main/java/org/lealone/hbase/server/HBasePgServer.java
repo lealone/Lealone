@@ -118,11 +118,6 @@ public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
     }
 
     @Override
-    public String getName() {
-        return "Lealone pg server";
-    }
-
-    @Override
     protected HBasePgServerThread createPgServerThread(Socket socket) {
         return new HBasePgServerThread(socket, this);
     }

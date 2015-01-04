@@ -21,10 +21,10 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import org.lealone.server.PgServer;
-import org.lealone.server.Service;
+import org.lealone.server.Server;
 import org.lealone.server.TcpServer;
 
-public class TcpServerStarter {
+public class TcpServerStart {
     public static void main(String[] args) throws SQLException {
 
         // System.setProperty("DATABASE_TO_UPPER", "false");
@@ -33,7 +33,7 @@ public class TcpServerStarter {
         System.setProperty("java.io.tmpdir", "./target/test/tmp");
         System.setProperty("lealone.base.dir", "./lealone-test-data/cbase/cs");
         //System.setProperty("lealone.check2", "true");
-        ArrayList<String> list = new ArrayList<String>();
+        ArrayList<String> list = new ArrayList<>();
 
         list.add("-tcpPort");
         list.add("5210");
@@ -45,7 +45,7 @@ public class TcpServerStarter {
     }
 
     public static void start(String[] args) {
-        Service server = null;
+        Server server = null;
         String arg;
         for (int i = 0; args != null && i < args.length; i++) {
             arg = args[i];
@@ -70,7 +70,7 @@ public class TcpServerStarter {
         try {
             server.init(args);
             server.start();
-            System.out.println("Lealone daemon started, listening tcp port: " + server.getPort());
+            System.out.println("Lealone " + server.getName() + " started, listening tcp port: " + server.getPort());
             server.listen();
         } catch (Exception e) {
             e.printStackTrace();

@@ -34,7 +34,7 @@ import org.lealone.util.New;
  * @author Thomas Mueller
  * @author Sergi Vladykin 2009-07-03 (convertType)
  */
-public class PgServer implements Service {
+public class PgServer implements Server {
 
     /**
      * The default port to use for the PG server.

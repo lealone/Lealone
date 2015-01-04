@@ -30,7 +30,6 @@ import org.lealone.message.TraceSystem;
 import org.lealone.util.JdbcUtils;
 import org.lealone.util.NetUtils;
 import org.lealone.util.New;
-import org.lealone.util.StringUtils;
 
 /**
  * The TCP server implements the native H2 database server protocol.
@@ -40,7 +39,7 @@ import org.lealone.util.StringUtils;
  * and at the same time start a TCP server to allow clients to connect to
  * the same database over the network.
  */
-public class TcpServer implements Service {
+public class TcpServer implements Server {
 
     private static final int SHUTDOWN_NORMAL = 0;
     private static final int SHUTDOWN_FORCE = 1;
@@ -51,7 +50,7 @@ public class TcpServer implements Service {
      */
     private static final String MANAGEMENT_DB_PREFIX = "management_db_";
 
-    protected static final Map<Integer, TcpServer> SERVERS = Collections.synchronizedMap(new HashMap<Integer, TcpServer>());
+    private static final Map<Integer, TcpServer> SERVERS = Collections.synchronizedMap(new HashMap<Integer, TcpServer>());
 
     private String listenAddress;
     private int port;
@@ -71,18 +70,8 @@ public class TcpServer implements Service {
     private String managementPassword = "";
     private Thread listenerThread;
     private int nextThreadId;
-    private String key, keyDatabase;
-
-    /**
-     * Get the database name of the management database.
-     * The management database contains a table with active sessions (SESSIONS).
-     *
-     * @param port the TCP server port
-     * @return the database name (usually starting with mem:)
-     */
-    public static String getManagementDbName(int port) {
-        return Constants.URL_MEM + Constants.URL_EMBED + MANAGEMENT_DB_PREFIX + port;
-    }
+    private String key;
+    private String keyDatabase;
 
     /**
      * Check if the argument matches the option.
@@ -102,12 +91,28 @@ public class TcpServer implements Service {
         return false;
     }
 
+    private static String getManagementDbEmbeddedURL(int port) {
+        StringBuilder buff = new StringBuilder();
+        buff.append(Constants.URL_PREFIX).append(Constants.URL_MEM);
+        buff.append(Constants.URL_EMBED);
+        buff.append(MANAGEMENT_DB_PREFIX).append(port);
+        return buff.toString();
+    }
+
+    private static String getManagementDbTcpURL(String hostname, int port) {
+        StringBuilder buff = new StringBuilder();
+        buff.append(Constants.URL_PREFIX).append(Constants.URL_MEM);
+        buff.append(Constants.URL_TCP).append("//").append(hostname).append(":").append(port).append('/');
+        buff.append(MANAGEMENT_DB_PREFIX).append(port);
+        return buff.toString();
+    }
+
     protected void initManagementDb() throws SQLException {
         Properties prop = new Properties();
         prop.setProperty("user", "");
         prop.setProperty("password", managementPassword);
         // avoid using the driver manager
-        Connection conn = Driver.load().connect(Constants.URL_PREFIX + getManagementDbName(port), prop);
+        Connection conn = Driver.load().connect(getManagementDbEmbeddedURL(port), prop);
         managementDb = conn;
         Statement stat = null;
         try {
@@ -196,7 +201,7 @@ public class TcpServer implements Service {
                 ifExists = true;
             }
         }
-        org.lealone.jdbc.Driver.load();
+        Driver.load();
     }
 
     @Override
@@ -432,25 +437,18 @@ public class TcpServer implements Service {
     /**
      * Stop the TCP server with the given URL.
      *
-     * @param url the database URL
+     * @param hostname the database hostname
+     * @param port the database port
      * @param password the password
      * @param force if the server should be stopped immediately
      * @param all whether all TCP servers that are running in the JVM should be
      *            stopped
      */
-    public static synchronized void shutdown(String url, String password, boolean force, boolean all) throws SQLException {
+    public static synchronized void shutdown(String hostname, int port, String password, boolean force, boolean all)
+            throws SQLException {
         try {
-            int port = Constants.DEFAULT_TCP_PORT;
-            int idx = url.lastIndexOf(':');
-            if (idx >= 0) {
-                String p = url.substring(idx + 1);
-                if (StringUtils.isNumber(p)) {
-                    port = Integer.decode(p);
-                }
-            }
-            String db = getManagementDbName(port);
             try {
-                org.lealone.jdbc.Driver.load();
+                Driver.load();
             } catch (Throwable e) {
                 throw DbException.convert(e);
             }
@@ -458,7 +456,7 @@ public class TcpServer implements Service {
                 Connection conn = null;
                 PreparedStatement prep = null;
                 try {
-                    conn = DriverManager.getConnection(Constants.URL_PREFIX + url + "/" + db, "", password);
+                    conn = DriverManager.getConnection(getManagementDbTcpURL(hostname, port), "", password);
                     prep = conn.prepareStatement("CALL STOP_SERVER(?, ?, ?)");
                     prep.setInt(1, all ? 0 : port);
                     prep.setString(2, password);

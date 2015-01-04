@@ -14,24 +14,24 @@ import java.sql.SQLException;
  * The can be started and stopped, and may or may not
  * allow remote connections.
  */
-public interface Service {
+public interface Server {
 
     /**
-     * Initialize the service from command line options.
+     * Initialize the server from command line options.
      *
      * @param args the command line options
      */
     void init(String... args) throws Exception;
 
     /**
-     * Get the URL of this service in a human readable form
+     * Get the URL of this server in a human readable form
      *
      * @return the url
      */
     String getURL();
 
     /**
-     * Start the service. This usually means create the server socket.
+     * Start the server. This usually means create the server socket.
      * This method must not block.
      */
     void start() throws SQLException;
@@ -43,12 +43,12 @@ public interface Service {
     void listen();
 
     /**
-     * Stop the service.
+     * Stop the server.
      */
     void stop();
 
     /**
-     * Check if the service is running.
+     * Check if the server is running.
      *
      * @param traceError if errors should be written
      * @return if the server is running
@@ -63,21 +63,21 @@ public interface Service {
     boolean getAllowOthers();
 
     /**
-     * Get the human readable name of the service.
+     * Get the human readable name of the server.
      *
      * @return the name
      */
     String getName();
 
     /**
-     * Get the human readable short name of the service.
+     * Get the human readable short name of the server.
      *
      * @return the type
      */
     String getType();
 
     /**
-     * Gets the port this service is listening on.
+     * Gets the port this server is listening on.
      *
      * @return the port
      */
