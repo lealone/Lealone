@@ -20,7 +20,6 @@ import org.lealone.store.fs.FileUtils;
 import org.lealone.util.New;
 import org.lealone.util.SortedProperties;
 import org.lealone.util.StringUtils;
-import org.lealone.util.Utils;
 
 /**
  * Encapsulates the connection settings, including user name and password.
@@ -33,9 +32,8 @@ public class ConnectionInfo implements Cloneable {
         HashSet<String> set = KNOWN_SETTINGS;
         set.addAll(list);
         String[] connectionSettings = { "ACCESS_MODE_DATA", "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "FILE_LOCK",
-                "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "AUTO_SERVER",
-                "AUTO_SERVER_PORT", "NO_UPGRADE", "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX",
-                "ZOOKEEPER_SESSION_TIMEOUT", "IS_LOCAL" };
+                "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "AUTO_RECONNECT",
+                "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX", "ZOOKEEPER_SESSION_TIMEOUT", "IS_LOCAL" };
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && set.contains(key)) {
                 DbException.throwInternalError(key);
@@ -48,7 +46,7 @@ public class ConnectionInfo implements Cloneable {
         return KNOWN_SETTINGS.contains(s);
     }
 
-    private Properties prop = new Properties();
+    private final Properties prop = new Properties();
     private String url; //不包含后面的参数
     private String user;
     private byte[] filePasswordHash;
@@ -116,15 +114,6 @@ public class ConnectionInfo implements Cloneable {
         if (url == null || !url.startsWith(Constants.URL_PREFIX)) {
             throw getFormatException();
         }
-    }
-
-    @Override
-    public Object clone() throws CloneNotSupportedException {
-        ConnectionInfo clone = (ConnectionInfo) super.clone();
-        clone.prop = (Properties) prop.clone();
-        clone.filePasswordHash = Utils.cloneByteArray(filePasswordHash);
-        clone.userPasswordHash = Utils.cloneByteArray(userPasswordHash);
-        return clone;
     }
 
     private void parseName() {
@@ -393,14 +382,8 @@ public class ConnectionInfo implements Cloneable {
                 //                        }
                 //                    }
                 //                }
-                String suffix = Constants.SUFFIX_PAGE_FILE;
-                String n;
-                if (FileUtils.exists(name + suffix)) {
-                    n = FileUtils.toRealPath(name + suffix);
-                } else {
-                    suffix = Constants.SUFFIX_MV_FILE;
-                    n = FileUtils.toRealPath(name + suffix);
-                }
+                String suffix = Constants.SUFFIX_MV_FILE;
+                String n = FileUtils.toRealPath(name + suffix);
                 String fileName = FileUtils.getName(n);
                 if (fileName.length() < suffix.length() + 1) {
                     throw DbException.get(ErrorCode.INVALID_DATABASE_NAME_1, name);

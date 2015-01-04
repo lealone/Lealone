@@ -145,7 +145,6 @@ public class DatabaseEngine implements SessionFactory {
     protected Session openSession(ConnectionInfo ci, boolean ifExists, String cipher) {
         String name = ci.getDatabaseName();
         Database database;
-        ci.removeProperty("NO_UPGRADE", false);
         boolean openNew = ci.getProperty("OPEN_NEW", false);
         if (openNew) {
             database = null;

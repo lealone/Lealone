@@ -398,11 +398,6 @@ public class Constants {
     public static final String SUFFIX_LOCK_FILE = ".lock.db";
 
     /**
-     * The file name suffix of page files.
-     */
-    public static final String SUFFIX_PAGE_FILE = ".lealone.db";
-
-    /**
      * The file name suffix of a MVStore file.
      */
     public static final String SUFFIX_MV_FILE = ".mv.db";

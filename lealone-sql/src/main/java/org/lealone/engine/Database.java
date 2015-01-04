@@ -155,8 +155,6 @@ public class Database implements DataHandler {
     private boolean multiThreaded = true; //如果是false，整个数据库是串行的
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
     private SmallLRUCache<String, String[]> lobFileListCache;
-    protected boolean autoServerMode;
-    protected int autoServerPort;
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
     protected Properties reconnectLastLock;
     protected volatile long reconnectCheckNext;
@@ -198,8 +196,6 @@ public class Database implements DataHandler {
                 : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
         this.cipher = cipher;
         this.accessModeData = StringUtils.toLowerEnglish(ci.getProperty("ACCESS_MODE_DATA", "rw"));
-        this.autoServerMode = ci.getProperty("AUTO_SERVER", false);
-        this.autoServerPort = ci.getProperty("AUTO_SERVER_PORT", 0);
         this.cacheSize = ci.getProperty("CACHE_SIZE", Constants.CACHE_SIZE_DEFAULT);
         if ("r".equals(accessModeData)) {
             readOnly = true;
@@ -366,7 +362,7 @@ public class Database implements DataHandler {
      * @return true if one exists
      */
     static boolean exists(String name) {
-        return FileUtils.exists(name + Constants.SUFFIX_PAGE_FILE);
+        return FileUtils.exists(name + Constants.SUFFIX_MV_FILE);
     }
 
     /**
@@ -492,21 +488,13 @@ public class Database implements DataHandler {
                 traceSystem = new TraceSystem(null);
             }
         } else {
-            //E:/H2/baseDir/mydb.trace.db
             traceSystem = new TraceSystem(databaseName + Constants.SUFFIX_TRACE_FILE);
         }
         traceSystem.setLevelFile(traceLevelFile);
         traceSystem.setLevelSystemOut(traceLevelSystemOut);
         trace = traceSystem.getTrace(Trace.DATABASE);
         trace.info("opening {0} (build {1})", databaseName, Constants.BUILD_ID);
-        //        if (autoServerMode) {
-        //            if (readOnly || fileLockMethod == FileLock.LOCK_NO || fileLockMethod == FileLock.LOCK_SERIALIZED
-        //                    || fileLockMethod == FileLock.LOCK_FS || !persistent) {
-        //                throw DbException.getUnsupportedException("autoServerMode && (readOnly || fileLockMethod == NO"
-        //                        + " || fileLockMethod == SERIALIZED || inMemory)");
-        //            }
-        //        }
-        //E:/H2/baseDir/mydb.lock.db
+
         String lockFileName = databaseName + Constants.SUFFIX_LOCK_FILE;
         if (readOnly) {
             if (FileUtils.exists(lockFileName)) {
@@ -517,9 +505,6 @@ public class Database implements DataHandler {
         //            if (fileLockMethod != FileLock.LOCK_FS) {
         //                lock = new FileLock(traceSystem, lockFileName, Constants.LOCK_SLEEP);
         //                lock.lock(fileLockMethod);
-        //                if (autoServerMode) {
-        //                    startServer(lock.getUniqueId());
-        //                }
         //            }
         //        }
         if (SysProperties.MODIFY_ON_WRITE) {
@@ -546,9 +531,6 @@ public class Database implements DataHandler {
         if (persistent) {
             preOpen(traceLevelFile, traceLevelSystemOut);
         } else {
-            if (autoServerMode) {
-                throw DbException.getUnsupportedException("autoServerMode && inMemory");
-            }
             traceSystem = new TraceSystem(null);
             trace = traceSystem.getTrace(Trace.DATABASE);
         }
@@ -582,14 +564,6 @@ public class Database implements DataHandler {
         if (checkpointAllowed > 0) {
             afterWriting();
         }
-    }
-
-    protected void startServer(String key) {
-
-    }
-
-    protected void stopServer() {
-
     }
 
     protected void recompileInvalidViews(Session session) {
@@ -963,7 +937,6 @@ public class Database implements DataHandler {
         }
 
         closing = true;
-        stopServer();
         if (userSessions.size() > 0) {
             if (!fromShutdownHook) {
                 return;

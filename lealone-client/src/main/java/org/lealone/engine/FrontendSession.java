@@ -88,7 +88,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     private Transfer transfer;
     private int nextId;
     private boolean autoCommit = true;
-    private ConnectionInfo connectionInfo;
+    private final ConnectionInfo connectionInfo;
     private String databaseName;
     private String cipher;
     private byte[] fileEncryptionKey;
@@ -243,13 +243,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         }
         // create the session using reflection,
         // so that the JDBC layer can be compiled without it
-        boolean autoServerMode = Boolean.valueOf(ci.getProperty("AUTO_SERVER", "false")).booleanValue();
-        ConnectionInfo backup = null;
         try {
-            if (autoServerMode) {
-                backup = (ConnectionInfo) ci.clone();
-                connectionInfo = (ConnectionInfo) ci.clone();
-            }
             if (openNew) {
                 ci.setProperty("OPEN_NEW", "true");
             }
@@ -257,23 +251,8 @@ public class FrontendSession extends SessionWithState implements DataHandler {
                 sessionFactory = ci.getSessionFactory();
             }
             return sessionFactory.createSession(ci);
-        } catch (Exception re) {
-            DbException e = DbException.convert(re);
-            if (e.getErrorCode() == ErrorCode.DATABASE_ALREADY_OPEN_1) {
-                if (autoServerMode) {
-                    String serverKey = ((JdbcSQLException) e.getSQLException()).getSQL();
-                    if (serverKey != null) {
-                        backup.setServerKey(serverKey);
-                        // OPEN_NEW must be removed now, otherwise
-                        // opening a session with AUTO_SERVER fails
-                        // if another connection is already open
-                        backup.removeProperty("OPEN_NEW", null);
-                        connectServer(backup);
-                        return this;
-                    }
-                }
-            }
-            throw e;
+        } catch (Exception e) {
+            throw DbException.convert(e);
         }
     }
 
@@ -309,17 +288,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
             traceSystem.setLevelSystemOut(level);
         }
         trace = traceSystem.getTrace(Trace.JDBC);
-        String serverList = null;
-        if (server.indexOf(',') >= 0) {
-            serverList = StringUtils.quoteStringSQL(server);
-        }
         //autoReconnect = Boolean.valueOf(ci.getProperty("AUTO_RECONNECT", "false")).booleanValue();
-        // AUTO_SERVER implies AUTO_RECONNECT
-        boolean autoServer = Boolean.valueOf(ci.getProperty("AUTO_SERVER", "false")).booleanValue();
-        if (autoServer && serverList != null) {
-            throw DbException.getUnsupportedException("autoServer && serverList != null");
-        }
-        //autoReconnect |= autoServer;
         //        if (autoReconnect) {
         //            String className = ci.getProperty("DATABASE_EVENT_LISTENER");
         //            if (className != null) {
