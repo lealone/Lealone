@@ -40,7 +40,6 @@
 
 * PostgreSQL用户文档
 
-
 ## Lealone开发者文档
 
 * [Lealone开发者文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)
