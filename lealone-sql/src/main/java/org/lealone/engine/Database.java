@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Properties;
 import java.util.Set;
 import java.util.StringTokenizer;
 
@@ -146,8 +145,6 @@ public class Database implements DataHandler {
     protected boolean deleteFilesOnDisconnect;
     private String lobCompressionAlgorithm;
     private boolean optimizeReuseResults = true;
-    private String cacheType;
-    protected String accessModeData;
     private boolean referentialIntegrity = true;
     private boolean multiVersion;
     private DatabaseCloser closeOnExit;
@@ -156,19 +153,15 @@ public class Database implements DataHandler {
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
     private SmallLRUCache<String, String[]> lobFileListCache;
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
-    protected Properties reconnectLastLock;
-    protected volatile long reconnectCheckNext;
-    protected volatile boolean reconnectChangePending;
     private volatile int checkpointAllowed;
-    protected int cacheSize;
-    protected int compactMode;
+    private int cacheSize;
+    private int compactMode;
     private SourceCompiler compiler;
     private volatile boolean metaTablesInitialized;
-    protected boolean flushOnEachCommit;
     private LobStorage lobStorage;
     private int defaultTableType = Table.TYPE_CACHED;
     private DbSettings dbSettings;
-    protected int logMode;
+    private int logMode;
 
     protected final DatabaseEngine dbEngine;
 
@@ -190,18 +183,13 @@ public class Database implements DataHandler {
             return;
         this.dbSettings = ci.getDbSettings();
         this.compareMode = CompareMode.getInstance(null, 0, false);
-        //this.persistent = ci.isPersistent();
         this.filePasswordHash = ci.getFilePasswordHash();
         this.databaseName = ci.getDatabaseName();
         this.databaseShortName = databaseShortName;
         this.maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
                 : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
         this.cipher = cipher;
-        this.accessModeData = StringUtils.toLowerEnglish(ci.getProperty("ACCESS_MODE_DATA", "rw"));
         this.cacheSize = ci.getProperty("CACHE_SIZE", Constants.CACHE_SIZE_DEFAULT);
-        if ("r".equals(accessModeData)) {
-            readOnly = true;
-        }
         this.databaseURL = ci.getURL();
         String listener = ci.removeProperty("DATABASE_EVENT_LISTENER", null);
         if (listener != null) {
@@ -218,7 +206,6 @@ public class Database implements DataHandler {
         int traceLevelFile = ci.getIntProperty(SetTypes.TRACE_LEVEL_FILE, TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
         int traceLevelSystemOut = ci.getIntProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT, //
                 TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
-        this.cacheType = StringUtils.toUpperEnglish(ci.removeProperty("CACHE_TYPE", Constants.CACHE_TYPE_DEFAULT));
         openDatabase(traceLevelFile, traceLevelSystemOut, closeAtVmShutdown);
     }
 
@@ -1152,10 +1139,6 @@ public class Database implements DataHandler {
         return New.arrayList(users.values());
     }
 
-    public String getCacheType() {
-        return cacheType;
-    }
-
     public CompareMode getCompareMode() {
         return compareMode;
     }
@@ -1455,6 +1438,10 @@ public class Database implements DataHandler {
         cacheSize = kb;
     }
 
+    public int getCacheSize() {
+        return cacheSize;
+    }
+
     public synchronized void setMasterUser(User user) {
         lockMeta(systemSession);
         addDatabaseObject(systemSession, user);
@@ -1497,15 +1484,6 @@ public class Database implements DataHandler {
 
     public void setWriteDelay(int value) {
         writeDelay = value;
-    }
-
-    /**
-     * Check if flush-on-each-commit is enabled.
-     *
-     * @return true if it is
-     */
-    public boolean getFlushOnEachCommit() {
-        return flushOnEachCommit;
     }
 
     /**
@@ -1938,6 +1916,10 @@ public class Database implements DataHandler {
         this.compactMode = compactMode;
     }
 
+    public int getCompactMode() {
+        return compactMode;
+    }
+
     public SourceCompiler getCompiler() {
         if (compiler == null) {
             compiler = new SourceCompiler();
@@ -2048,10 +2030,6 @@ public class Database implements DataHandler {
     }
 
     public void setCacheSizeMax(int kb) {
-    }
-
-    public int getCacheSize() {
-        return 0;
     }
 
     public void backupTo(String fileName) {

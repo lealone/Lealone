@@ -127,11 +127,6 @@ public class Constants {
     public static final int CACHE_SIZE_DEFAULT = 16 * 1024;
 
     /**
-     * The default cache type.
-     */
-    public static final String CACHE_TYPE_DEFAULT = "LRU";
-
-    /**
      * The database URL used when calling a function if only the column list
      * should be returned.
      */
