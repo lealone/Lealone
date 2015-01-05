@@ -44,7 +44,7 @@ public class StorageEngineManager {
             initialize();
         }
         if (name == null) {
-            name = DbSettings.getInstance().defaultStorageEngine;
+            name = DbSettings.getDefaultSettings().defaultStorageEngine;
         }
         StorageEngine te = storageEngines.get(name.toUpperCase());
         return te;

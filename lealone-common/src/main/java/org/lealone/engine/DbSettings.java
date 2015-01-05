@@ -8,6 +8,10 @@ package org.lealone.engine;
 
 import java.util.HashMap;
 
+import org.lealone.api.ErrorCode;
+import org.lealone.message.DbException;
+import org.lealone.util.Utils;
+
 /**
  * This class contains various database-level settings. To override the
  * documented default value for a database, append the setting in the database
@@ -20,9 +24,43 @@ import java.util.HashMap;
  * backward compatible.
  * </p>
  */
-public class DbSettings extends SettingsBase {
+//可以通过系统属性的方式来设定每个数据库的默认值，比如lealone.x.y.z = 10，
+//还可以通过在URL中指定参数来覆盖默认值，在URL中的参数格式是x_y_z = 10(没有lealone前缀，用下划线替换点号)
 
-    private static DbSettings defaultSettings;
+class SettingsBase {
+    //这个字段需要放在这，在DbSettings的构造函数中可以提前初始化它，
+    //如果放在子类中，DbSettings类的其他字段会在执行构造函数中的代码之前执行，此时settings还是null。
+    protected final HashMap<String, String> settings;
+
+    protected SettingsBase(HashMap<String, String> s) {
+        this.settings = s;
+    }
+}
+
+public class DbSettings extends SettingsBase {
+    private static final DbSettings defaultSettings = new DbSettings(new HashMap<String, String>());
+
+    public static DbSettings getDefaultSettings() {
+        return defaultSettings;
+    }
+
+    /**
+     * INTERNAL.
+     * Get the settings for the given properties (may be null).
+     *
+     * @param s the settings
+     * @return the settings
+     */
+    public static DbSettings getInstance(HashMap<String, String> s) {
+        if (s == null || s.isEmpty()) {
+            return defaultSettings;
+        }
+        return new DbSettings(s);
+    }
+
+    private DbSettings(HashMap<String, String> s) {
+        super(s);
+    }
 
     /**
      * Database setting <code>ALIAS_COLUMN_NAME</code> (default: false).<br />
@@ -324,10 +362,6 @@ public class DbSettings extends SettingsBase {
      */
     public final String defaultStorageEngine = get("DEFAULT_STORAGE_ENGINE", Constants.DEFAULT_STORAGE_ENGINE_NAME);
 
-    private DbSettings(HashMap<String, String> s) {
-        super(s);
-    }
-
     /**
      * Database setting <code>COMPRESS</code>
      * (default: false).<br />
@@ -336,23 +370,79 @@ public class DbSettings extends SettingsBase {
     public final boolean compressData = get("COMPRESS", false);
 
     /**
-     * INTERNAL.
-     * Get the settings for the given properties (may be null).
+     * Get the setting for the given key.
      *
-     * @param s the settings
-     * @return the settings
+     * @param key the key
+     * @param defaultValue the default value
+     * @return the setting
      */
-    public static DbSettings getInstance(HashMap<String, String> s) {
-        if (s == null || s.isEmpty()) {
-            if (defaultSettings == null) {
-                defaultSettings = new DbSettings(new HashMap<String, String>());
-            }
-            return defaultSettings;
+    private boolean get(String key, boolean defaultValue) {
+        String s = get(key, defaultValue ? "true" : "false");
+        try {
+            return Boolean.parseBoolean(s);
+        } catch (NumberFormatException e) {
+            throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, e, "key:" + key + " value:" + s);
         }
-        return new DbSettings(s);
     }
 
-    public static DbSettings getInstance() {
-        return getInstance(null);
+    /**
+     * Get the setting for the given key.
+     *
+     * @param key the key
+     * @param defaultValue the default value
+     * @return the setting
+     */
+    private int get(String key, int defaultValue) {
+        String s = get(key, Integer.toString(defaultValue));
+        try {
+            return Integer.decode(s);
+        } catch (NumberFormatException e) {
+            throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, e, "key:" + key + " value:" + s);
+        }
+    }
+
+    /**
+     * Get the setting for the given key.
+     *
+     * @param key the key
+     * @param defaultValue the default value
+     * @return the setting
+     */
+    protected String get(String key, String defaultValue) {
+        StringBuilder buff = new StringBuilder(Constants.PROJECT_NAME_PREFIX);
+        for (char c : key.toCharArray()) {
+            if (c == '_') {
+                buff.append('.');
+            } else {
+                // Character.toUpperCase / toLowerCase ignores the locale
+                buff.append(Character.toLowerCase(c));
+            }
+        }
+        String sysProperty = buff.toString();
+        String v = settings.get(key);
+        if (v == null) {
+            v = Utils.getProperty(sysProperty, defaultValue);
+            settings.put(key, v);
+        }
+        return v;
+    }
+
+    /**
+     * Check if the settings contains the given key.
+     *
+     * @param k the key
+     * @return true if they do
+     */
+    public boolean containsKey(String k) {
+        return settings.containsKey(k);
+    }
+
+    /**
+     * Get all settings.
+     *
+     * @return the settings
+     */
+    public HashMap<String, String> getSettings() {
+        return settings;
     }
 }

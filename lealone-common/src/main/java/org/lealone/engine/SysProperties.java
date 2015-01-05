@@ -44,11 +44,6 @@ public class SysProperties {
     private static final String SCRIPT_DIRECTORY = "script.directory";
 
     /**
-     * INTERNAL
-     */
-    public static final String LEALONE_BROWSER = Constants.PROJECT_NAME_PREFIX + "browser";
-
-    /**
      * System property <code>file.encoding</code> (default: Cp1252).<br />
      * It is usually set by the system and is the default encoding used for the
      * RunScript and CSV tool.
@@ -85,15 +80,6 @@ public class SysProperties {
      * Comma separated list of class names or prefixes.
      */
     public static final String ALLOWED_CLASSES = getProperty("allowed.classes", "*");
-
-    /**
-     * System property <code>browser</code> (default: null).<br />
-     * The preferred browser to use. If not set, the default browser is used.
-     * For Windows, to use the Internet Explorer, set this property to 'explorer'.
-     * For Mac OS, if the default browser is not Safari and you want to use Safari,
-     * use: <code>java -Dh2.browser="open,-a,Safari,%url" ...</code>.
-     */
-    public static final String BROWSER = getProperty(LEALONE_BROWSER, null);
 
     /**
      * System property <code>enable.anonymous.ssl</code> (default: true).<br />
@@ -333,14 +319,14 @@ public class SysProperties {
      * System property <code>split.file.size.shift</code> (default: 30).<br />
      * The maximum file size of a split file is 1L &lt;&lt; x.
      */
-    public static final long SPLIT_FILE_SIZE_SHIFT = Utils.getProperty("split.file.size.shift", 30);
+    public static final long SPLIT_FILE_SIZE_SHIFT = getProperty("split.file.size.shift", 30);
 
     /**
      * System property <code>store.local.time</code> (default: false).<br />
      * Store the local time. If disabled, the daylight saving offset is not
      * taken into account.
      */
-    public static final boolean STORE_LOCAL_TIME = Utils.getProperty("store.local.time", false);
+    public static final boolean STORE_LOCAL_TIME = getProperty("store.local.time", false);
 
     /**
      * System property <code>sync.method</code> (default: sync).<br />
@@ -352,13 +338,13 @@ public class SysProperties {
      * "": do not call a method (fast but there is a risk of data loss
      * on power failure).
      */
-    public static final String SYNC_METHOD = Utils.getProperty("sync.method", "sync");
+    public static final String SYNC_METHOD = getProperty("sync.method", "sync");
 
     /**
      * System property <code>trace.io</code> (default: false).<br />
      * Trace all I/O operations.
      */
-    public static final boolean TRACE_IO = Utils.getProperty("trace.io", false);
+    public static final boolean TRACE_IO = getProperty("trace.io", false);
 
     /**
      * System property <code>url.map</code> (default: null).<br />
@@ -366,15 +352,15 @@ public class SysProperties {
      * connections are written into the file. An empty value in the map means no
      * redirection is used for the given URL.
      */
-    public static final String URL_MAP = Utils.getProperty("url.map", null);
+    public static final String URL_MAP = getProperty("url.map", null);
 
     /**
-     * System property <code>implicitRelativePath</code>
+     * System property <code>implicit.relative.path</code>
      * (default: true for version 1.3, false for version 1.4).<br />
      * If disabled, relative paths in database URLs need to be written as
      * jdbc:h2:./test instead of jdbc:h2:test.
      */
-    //    public static final boolean IMPLICIT_RELATIVE_PATH = Utils.getProperty("implicitRelativePath",
+    //    public static final boolean IMPLICIT_RELATIVE_PATH = getProperty("implicit.relative.path",
     //            Constants.VERSION_MINOR >= 4 ? false : true);
     /**
      * System property <code>use.thread.context.classloader</code>
@@ -382,7 +368,7 @@ public class SysProperties {
      * Instead of using the default class loader when deserializing objects, the
      * current thread-context class loader will be used.
      */
-    public static final boolean USE_THREAD_CONTEXT_CLASS_LOADER = Utils.getProperty("use.thread.context.classloader", false);
+    public static final boolean USE_THREAD_CONTEXT_CLASS_LOADER = getProperty("use.thread.context.classloader", false);
 
     /**
      * System property <code>serialize.java.object</code> (default: true).<br />
@@ -413,7 +399,7 @@ public class SysProperties {
      * defensive copy himself before storing, or ensure that the value object is
      * immutable.
      */
-    public static boolean serializeJavaObject = Utils.getProperty("serialize.java.object", true);
+    public static boolean serializeJavaObject = getProperty("serialize.java.object", true);
 
     /**
      * System property <code>java.object.serializer</code> (default: null).<br />
@@ -421,22 +407,12 @@ public class SysProperties {
      * column of type OTHER. It must be the same on client and server to work
      * correctly.
      */
-    public static final String JAVA_OBJECT_SERIALIZER = Utils.getProperty("java.object.serializer", null);
+    public static final String JAVA_OBJECT_SERIALIZER = getProperty("java.object.serializer", null);
 
     private static final String BASE_DIR = "base.dir";
 
     private SysProperties() {
         // utility class
-    }
-
-    /**
-     * INTERNAL
-     */
-    public static void setBaseDir(String dir) {
-        if (!dir.endsWith("/")) {
-            dir += "/";
-        }
-        setProperty(BASE_DIR, dir);
     }
 
     /**
@@ -468,9 +444,5 @@ public class SysProperties {
 
     private static boolean getProperty(String key, boolean defaultValue) {
         return Utils.getProperty(Constants.PROJECT_NAME_PREFIX + key, defaultValue);
-    }
-
-    private static String setProperty(String key, String value) {
-        return System.setProperty(Constants.PROJECT_NAME_PREFIX + key, value);
     }
 }

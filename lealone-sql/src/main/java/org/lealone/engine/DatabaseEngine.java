@@ -116,7 +116,7 @@ public class DatabaseEngine implements SessionFactory {
 
         ci.removeProperty("SERVER_TYPE", false);
         session.setAllowLiterals(true);
-        DbSettings defaultSettings = DbSettings.getInstance();
+        DbSettings defaultSettings = DbSettings.getDefaultSettings();
         for (String setting : ci.getKeys()) {
             if (defaultSettings.containsKey(setting)) {
                 // database setting are only used when opening the database
@@ -181,7 +181,8 @@ public class DatabaseEngine implements SessionFactory {
             if (database.isPersistent())
                 SystemDatabase.addDatabase(database.getShortName(), database.getStorageEngineName());
         } else {
-            database.init(ci, name, cipher);
+            if (!database.isInitialized())
+                database.init(ci, name, cipher);
         }
 
         synchronized (database) {

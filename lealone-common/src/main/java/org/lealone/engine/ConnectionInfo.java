@@ -67,6 +67,8 @@ public class ConnectionInfo implements Cloneable {
     private SessionFactory sessionFactory;
     private SessionInterface session;
 
+    private DbSettings dbSettings;
+
     /**
      * Create a server connection info object.
      *  
@@ -217,7 +219,7 @@ public class ConnectionInfo implements Cloneable {
                 prop.put(key, value);
             } else {
                 if (s == null) {
-                    s = getDbSettings();
+                    s = DbSettings.getDefaultSettings();
                 }
                 if (s.containsKey(key)) {
                     prop.put(key, value);
@@ -227,7 +229,7 @@ public class ConnectionInfo implements Cloneable {
     }
 
     private void readSettingsFromURL() {
-        DbSettings dbSettings = DbSettings.getInstance();
+        DbSettings dbSettings = DbSettings.getDefaultSettings();
         //Lealone的JDBC URL语法:
         //jdbc:lealone:tcp://[host:port],[host:port].../[database][;propertyName1][=propertyValue1][;propertyName2][=propertyValue2]
         //数据库名与参数之间用';'号分隔，不同参数之间也用';'号分隔
@@ -586,18 +588,21 @@ public class ConnectionInfo implements Cloneable {
     }
 
     public DbSettings getDbSettings() {
-        DbSettings defaultSettings = DbSettings.getInstance();
-        HashMap<String, String> s = null;
-        for (Object k : prop.keySet()) {
-            String key = k.toString();
-            if (!isKnownSetting(key) && defaultSettings.containsKey(key)) {
-                if (s == null) {
-                    s = New.hashMap();
+        if (dbSettings == null) {
+            DbSettings defaultSettings = DbSettings.getDefaultSettings();
+            HashMap<String, String> s = null;
+            for (Object k : prop.keySet()) {
+                String key = k.toString();
+                if (!isKnownSetting(key) && defaultSettings.containsKey(key)) {
+                    if (s == null) {
+                        s = New.hashMap();
+                    }
+                    s.put(key, prop.getProperty(key));
                 }
-                s.put(key, prop.getProperty(key));
             }
+            dbSettings = DbSettings.getInstance(s);
         }
-        return DbSettings.getInstance(s);
+        return dbSettings;
     }
 
     private static String remapURL(String url) {

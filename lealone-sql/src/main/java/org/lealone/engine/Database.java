@@ -162,6 +162,7 @@ public class Database implements DataHandler {
     private int defaultTableType = Table.TYPE_CACHED;
     private DbSettings dbSettings;
     private int logMode;
+    private boolean initialized = false;
 
     protected final DatabaseEngine dbEngine;
 
@@ -178,8 +179,12 @@ public class Database implements DataHandler {
         return dbSettings.defaultStorageEngine;
     }
 
+    public boolean isInitialized() {
+        return initialized;
+    }
+
     public synchronized void init(ConnectionInfo ci, String databaseShortName, String cipher) {
-        if (dbSettings != null)
+        if (initialized)
             return;
         this.dbSettings = ci.getDbSettings();
         this.compareMode = CompareMode.getInstance(null, 0, false);
@@ -207,6 +212,8 @@ public class Database implements DataHandler {
         int traceLevelSystemOut = ci.getIntProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT, //
                 TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
         openDatabase(traceLevelFile, traceLevelSystemOut, closeAtVmShutdown);
+
+        initialized = true;
     }
 
     private void openDatabase(int traceLevelFile, int traceLevelSystemOut, boolean closeAtVmShutdown) {
