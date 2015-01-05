@@ -53,7 +53,7 @@ public abstract class TableBase extends Table {
 
     public TableBase(CreateTableData data) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
-        this.tableEngine = data.tableEngine;
+        this.storageEngine = data.storageEngine;
         this.globalTemporary = data.globalTemporary;
 
         setTemporary(data.temporary);
@@ -121,11 +121,11 @@ public abstract class TableBase extends Table {
             buff.append(column.getCreateSQL());
         }
         buff.append("\n)");
-        if (tableEngine != null) {
-            String d = getDatabase().getSettings().defaultTableEngine;
-            if (d == null || !tableEngine.endsWith(d)) {
+        if (storageEngine != null) {
+            String d = getDatabase().getSettings().defaultStorageEngine;
+            if (d == null || !storageEngine.endsWith(d)) {
                 buff.append("\nENGINE \"");
-                buff.append(tableEngine);
+                buff.append(storageEngine);
                 buff.append('\"');
             }
         }

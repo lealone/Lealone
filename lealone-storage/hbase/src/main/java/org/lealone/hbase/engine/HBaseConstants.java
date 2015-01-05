@@ -24,7 +24,7 @@ import org.lealone.server.PgServer;
 
 public class HBaseConstants {
     public static final String HBASE_DB_NAME = "hbasedb";
-    public static final String DEFAULT_TABLE_ENGINE = Constants.PROJECT_NAME_PREFIX + "default.table.engine";
+    public static final String DEFAULT_STORAGE_ENGINE = Constants.PROJECT_NAME_PREFIX + "default.storage.engine";
 
     /**
      * 作为每张表的默认列族中的一个字段，用于记录事务的元数据，格式是: host:port,transactionId,Tag

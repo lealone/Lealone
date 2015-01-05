@@ -20,7 +20,8 @@ import org.lealone.cbase.dbobject.index.CBasePrimaryIndex;
 import org.lealone.cbase.dbobject.index.CBaseSecondaryIndex;
 import org.lealone.cbase.dbobject.index.HashIndex;
 import org.lealone.cbase.dbobject.index.NonUniqueHashIndex;
-import org.lealone.cbase.dbobject.table.CBaseTableEngine.Store;
+import org.lealone.cbase.engine.CBaseStorageEngine;
+import org.lealone.cbase.engine.CBaseStorageEngine.Store;
 import org.lealone.cbase.transaction.CBaseTransaction;
 import org.lealone.cbase.transaction.TransactionStore;
 import org.lealone.command.ddl.Analyze;
@@ -74,7 +75,7 @@ public class CBaseTable extends TableBase {
 
     private final TransactionStore store;
 
-    public CBaseTable(CreateTableData data, CBaseTableEngine.Store store) {
+    public CBaseTable(CreateTableData data, CBaseStorageEngine.Store store) {
         super(data);
         nextAnalyze = database.getSettings().analyzeAuto;
         this.store = store.getTransactionStore();
@@ -92,7 +93,7 @@ public class CBaseTable extends TableBase {
      *
      * @param session the session
      */
-    void init(Session session) {
+    public void init(Session session) {
         primaryIndex = new CBasePrimaryIndex(session.getDatabase(), this, getId(), IndexColumn.wrap(getColumns()),
                 IndexType.createScan(true));
         indexes.add(primaryIndex);
@@ -451,7 +452,7 @@ public class CBaseTable extends TableBase {
     private void rebuildIndex(Session session, CBaseIndex index, String indexName) {
         try {
             //if (session.getDatabase().getMvStore() == null || index instanceof MVSpatialIndex) {
-            if (CBaseTableEngine.getStore(session) == null) {
+            if (CBaseStorageEngine.getStore(session) == null) {
                 // in-memory
                 rebuildIndexBuffered(session, index);
             } else {
@@ -489,7 +490,7 @@ public class CBaseTable extends TableBase {
         long total = remaining;
         Cursor cursor = scan.find(session, null, null);
         long i = 0;
-        Store store = CBaseTableEngine.getStore(session);
+        Store store = CBaseStorageEngine.getStore(session);
 
         int bufferSize = database.getMaxMemoryRows() / 2;
         ArrayList<Row> buffer = New.arrayList(bufferSize);
@@ -718,7 +719,7 @@ public class CBaseTable extends TableBase {
             database.lockMeta(session);
         }
         //database.getMvStore().removeTable(this);
-        CBaseTableEngine.getStore(session).removeTable(this);
+        CBaseStorageEngine.getStore(session).removeTable(this);
         super.removeChildrenAndResources(session);
         // go backwards because database.removeIndex will
         // call table.removeIndex

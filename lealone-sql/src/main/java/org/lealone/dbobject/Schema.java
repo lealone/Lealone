@@ -11,15 +11,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.api.TableEngine;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.constraint.Constraint;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Table;
-import org.lealone.dbobject.table.TableEngineManager;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
+import org.lealone.engine.StorageEngine;
 import org.lealone.engine.SysProperties;
+import org.lealone.engine.StorageEngineManager;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.util.New;
@@ -545,19 +545,19 @@ public class Schema extends DbObjectBase {
             data.schema = this;
 
             //先看看是否在连接参数中指定了
-            if (data.tableEngine == null && data.session.getConnectionInfo() != null) {
-                data.tableEngine = data.session.getConnectionInfo().getDbSettings().defaultTableEngine;
+            if (data.storageEngine == null && data.session.getConnectionInfo() != null) {
+                data.storageEngine = data.session.getConnectionInfo().getDbSettings().defaultStorageEngine;
             }
             //再用默认的数据库参数
-            if (data.tableEngine == null) {
-                data.tableEngine = database.getTableEngineName();
+            if (data.storageEngine == null) {
+                data.storageEngine = database.getStorageEngineName();
             }
-            if (data.tableEngine != null) {
-                TableEngine engine = TableEngineManager.getTableEngine(data.tableEngine);
+            if (data.storageEngine != null) {
+                StorageEngine engine = StorageEngineManager.getStorageEngine(data.storageEngine);
                 if (engine == null) {
                     try {
-                        engine = (TableEngine) Utils.loadUserClass(data.tableEngine).newInstance();
-                        TableEngineManager.registerTableEngine(engine);
+                        engine = (StorageEngine) Utils.loadUserClass(data.storageEngine).newInstance();
+                        StorageEngineManager.registerStorageEngine(engine);
                     } catch (Exception e) {
                         throw DbException.convert(e);
                     }

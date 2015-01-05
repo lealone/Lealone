@@ -14,7 +14,7 @@ import java.util.TreeSet;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.cbase.dbobject.table.CBaseTable;
-import org.lealone.cbase.dbobject.table.CBaseTableEngine;
+import org.lealone.cbase.engine.CBaseStorageEngine;
 import org.lealone.cbase.mvstore.MVMap;
 import org.lealone.cbase.transaction.CBaseTransaction;
 import org.lealone.cbase.transaction.TransactionMap;
@@ -170,7 +170,7 @@ public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
         ValueDataType keyType = new ValueDataType(database.getCompareMode(), database, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
         MVMap.Builder<Value, Value> builder = new MVMap.Builder<Value, Value>().keyType(keyType).valueType(valueType);
-        MVMap<Value, Value> map = CBaseTableEngine.getStore(database).getStore().openMap(mapName, builder);
+        MVMap<Value, Value> map = CBaseStorageEngine.getStore(database).getStore().openMap(mapName, builder);
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }

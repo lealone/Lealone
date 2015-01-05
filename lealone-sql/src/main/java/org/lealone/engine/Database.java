@@ -139,7 +139,7 @@ public class Database implements DataHandler {
     private int allowLiterals = Constants.ALLOW_LITERALS_ALL;
 
     private int powerOffCount = initialPowerOffCount;
-    private int closeDelay;
+    private int closeDelay = -1; //不关闭
     protected DatabaseCloser delayedCloser;
     protected volatile boolean closing;
     private boolean ignoreCase;
@@ -181,17 +181,19 @@ public class Database implements DataHandler {
         return dbEngine;
     }
 
-    public String getTableEngineName() {
-        return dbSettings.defaultTableEngine;
+    public String getStorageEngineName() {
+        return dbSettings.defaultStorageEngine;
     }
 
-    public void init(ConnectionInfo ci, String cipher) {
+    public synchronized void init(ConnectionInfo ci, String databaseShortName, String cipher) {
+        if (dbSettings != null)
+            return;
         this.dbSettings = ci.getDbSettings();
         this.compareMode = CompareMode.getInstance(null, 0, false);
-        this.persistent = ci.isPersistent();
+        //this.persistent = ci.isPersistent();
         this.filePasswordHash = ci.getFilePasswordHash();
         this.databaseName = ci.getDatabaseName();
-        this.databaseShortName = parseDatabaseShortName();
+        this.databaseShortName = databaseShortName;
         this.maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
                 : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
         this.cipher = cipher;
@@ -214,14 +216,15 @@ public class Database implements DataHandler {
         this.logMode = ci.getProperty("LOG", LOG_MODE_SYNC);
         boolean closeAtVmShutdown = dbSettings.dbCloseOnExit;
         int traceLevelFile = ci.getIntProperty(SetTypes.TRACE_LEVEL_FILE, TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
-        int traceLevelSystemOut = ci.getIntProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT, TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
+        int traceLevelSystemOut = ci.getIntProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT, //
+                TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
         this.cacheType = StringUtils.toUpperEnglish(ci.removeProperty("CACHE_TYPE", Constants.CACHE_TYPE_DEFAULT));
         openDatabase(traceLevelFile, traceLevelSystemOut, closeAtVmShutdown);
     }
 
     private void openDatabase(int traceLevelFile, int traceLevelSystemOut, boolean closeAtVmShutdown) {
         try {
-            open(traceLevelFile, traceLevelSystemOut);
+            openDatabase(traceLevelFile, traceLevelSystemOut);
             if (closeAtVmShutdown) {
                 try {
                     closeOnExit = new DatabaseCloser(this, 0, true);
@@ -252,6 +255,177 @@ public class Database implements DataHandler {
             }
             closeOpenFilesAndUnlock(false);
             throw DbException.convert(e);
+        }
+    }
+
+    private void openDatabase(int traceLevelFile, int traceLevelSystemOut) {
+        if (persistent) {
+            openPersistentDatabase(traceLevelFile, traceLevelSystemOut);
+        } else {
+            traceSystem = new TraceSystem(null);
+            trace = traceSystem.getTrace(Trace.DATABASE);
+        }
+        systemUser = new User(this, 0, SYSTEM_USER_NAME, true);
+        mainSchema = new Schema(this, 0, Constants.SCHEMA_MAIN, systemUser, true);
+        infoSchema = new Schema(this, -1, "INFORMATION_SCHEMA", systemUser, true);
+        schemas.put(mainSchema.getName(), mainSchema);
+        schemas.put(infoSchema.getName(), infoSchema);
+        publicRole = new Role(this, 0, Constants.PUBLIC_ROLE_NAME, true);
+        roles.put(Constants.PUBLIC_ROLE_NAME, publicRole);
+        systemUser.setAdmin(true);
+        systemSession = createSystemSession(systemUser, ++nextSessionId);
+
+        openMetaTable(true);
+
+        if (!readOnly) {
+            // set CREATE_BUILD in a new database
+            String name = SetTypes.getTypeName(SetTypes.CREATE_BUILD);
+            if (settings.get(name) == null) {
+                Setting setting = new Setting(this, allocateObjectId(), name);
+                setting.setIntValue(Constants.BUILD_ID);
+                lockMeta(systemSession);
+                addDatabaseObject(systemSession, setting);
+            }
+        }
+        //getLobStorage().init();
+        systemSession.commit(true);
+
+        trace.info("opened {0}", databaseName);
+        if (checkpointAllowed > 0) {
+            afterWriting();
+        }
+    }
+
+    private void openPersistentDatabase(int traceLevelFile, int traceLevelSystemOut) {
+        //        String mvFileName = databaseName + Constants.SUFFIX_MV_FILE;
+        //        boolean existsMv = FileUtils.exists(mvFileName);
+        //
+        //        if (existsMv && !FileUtils.canWrite(mvFileName)) {
+        //            readOnly = true;
+        //        }
+        //        if (existsPage && !existsMv) {
+        //            dbSettings.mvStore = false;
+        //        }
+        //        if (readOnly) {
+        //            if (traceLevelFile >= TraceSystem.DEBUG) {
+        //                String traceFile = Utils.getProperty("java.io.tmpdir", ".") + "/" 
+        //+ "h2_" + System.currentTimeMillis();
+        //                traceSystem = new TraceSystem(traceFile + Constants.SUFFIX_TRACE_FILE);
+        //            } else {
+        //                traceSystem = new TraceSystem(null);
+        //            }
+        //        } else {
+        //            traceSystem = new TraceSystem(databaseName + Constants.SUFFIX_TRACE_FILE);
+        //        }
+
+        traceSystem = new TraceSystem(databaseName + Constants.SUFFIX_TRACE_FILE);
+
+        traceSystem.setLevelFile(traceLevelFile);
+        traceSystem.setLevelSystemOut(traceLevelSystemOut);
+        trace = traceSystem.getTrace(Trace.DATABASE);
+        trace.info("opening {0} (build {1})", databaseName, Constants.BUILD_ID);
+
+        //        String lockFileName = databaseName + Constants.SUFFIX_LOCK_FILE;
+        //        if (readOnly) {
+        //            if (FileUtils.exists(lockFileName)) {
+        //                throw DbException.get(ErrorCode.DATABASE_ALREADY_OPEN_1, "Lock file exists: " + lockFileName);
+        //            }
+        //        }
+        //        if (!readOnly && fileLockMethod != FileLock.LOCK_NO) {
+        //            if (fileLockMethod != FileLock.LOCK_FS) {
+        //                lock = new FileLock(traceSystem, lockFileName, Constants.LOCK_SLEEP);
+        //                lock.lock(fileLockMethod);
+        //            }
+        //        }
+        //        if (SysProperties.MODIFY_ON_WRITE) {
+        //            while (isReconnectNeeded()) {
+        //                // wait until others stopped writing
+        //            }
+        //        } else {
+        //            while (isReconnectNeeded() && !beforeWriting()) {
+        //                // wait until others stopped writing and
+        //                // until we can write (the file is not yet open -
+        //                // no need to re-connect)
+        //            }
+        //        }
+        //        deleteOldTempFiles();
+        //
+        //        setWriteDelay(writeDelay);
+    }
+
+    protected Session createSystemSession(User user, int id) {
+        return new Session(this, user, id);
+    }
+
+    protected void openMetaTable(boolean create) {
+        CreateTableData data = new CreateTableData();
+        ArrayList<Column> cols = data.columns;
+        Column columnId = new Column("ID", Value.INT);
+        columnId.setNullable(false);
+        cols.add(columnId);
+        cols.add(new Column("HEAD", Value.INT));
+        cols.add(new Column("TYPE", Value.INT));
+        cols.add(new Column("SQL", Value.STRING));
+        data.tableName = "SYS";
+        data.id = 0;
+        data.temporary = false;
+        data.persistData = persistent;
+        data.persistIndexes = persistent;
+        data.create = create;
+        data.isHidden = true;
+        data.session = systemSession;
+        meta = mainSchema.createTable(data);
+        IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
+        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, IndexType.createPrimaryKey(false, false), true, null);
+
+        Cursor cursor = metaIdIndex.find(systemSession, null, null);
+
+        ArrayList<MetaRecord> records = New.arrayList();
+        while (cursor.next()) {
+            MetaRecord rec = new MetaRecord(cursor.get());
+            objectIds.set(rec.getId());
+            records.add(rec);
+        }
+
+        objectIds.set(0);
+        starting = true;
+
+        Collections.sort(records);
+        for (MetaRecord rec : records) {
+            objectIds.set(rec.getId());
+            rec.execute(this, systemSession, eventListener);
+        }
+
+        recompileInvalidViews(systemSession);
+        starting = false;
+    }
+
+    protected void recompileInvalidViews(Session session) {
+        boolean recompileSuccessful;
+        do {
+            recompileSuccessful = false;
+            for (Table obj : getAllTablesAndViews(false)) {
+                if (obj instanceof TableView) {
+                    TableView view = (TableView) obj;
+                    if (view.isInvalid()) {
+                        view.recompile(session, true);
+                        if (!view.isInvalid()) {
+                            recompileSuccessful = true;
+                        }
+                    }
+                }
+            }
+        } while (recompileSuccessful);
+        // when opening a database, views are initialized before indexes,
+        // so they may not have the optimal plan yet
+        // this is not a problem, it is just nice to see the newest plan
+        for (Table obj : getAllTablesAndViews(false)) {
+            if (obj instanceof TableView) {
+                TableView view = (TableView) obj;
+                if (!view.isInvalid()) {
+                    view.recompile(systemSession, true);
+                }
+            }
         }
     }
 
@@ -404,7 +578,7 @@ public class Database implements DataHandler {
         return Utils.compareSecure(testHash, filePasswordHash);
     }
 
-    private String parseDatabaseShortName() {
+    public static String parseDatabaseShortName(DbSettings dbSettings, String databaseName) {
         String n = databaseName;
         if (n.endsWith(":")) {
             n = null;
@@ -419,180 +593,6 @@ public class Database implements DataHandler {
             n = "unnamed";
         }
         return dbSettings.databaseToUpper ? StringUtils.toUpperEnglish(n) : n;
-    }
-
-    protected Session createSystemSession(User user, int id) {
-        return new Session(this, user, id);
-    }
-
-    protected void openMetaTable(boolean create) {
-        CreateTableData data = new CreateTableData();
-        ArrayList<Column> cols = data.columns;
-        Column columnId = new Column("ID", Value.INT);
-        columnId.setNullable(false);
-        cols.add(columnId);
-        cols.add(new Column("HEAD", Value.INT));
-        cols.add(new Column("TYPE", Value.INT));
-        cols.add(new Column("SQL", Value.STRING));
-        data.tableName = "SYS";
-        data.id = 0;
-        data.temporary = false;
-        data.persistData = persistent;
-        data.persistIndexes = persistent;
-        data.create = create;
-        data.isHidden = true;
-        data.session = systemSession;
-        meta = mainSchema.createTable(data);
-        IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
-        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, IndexType.createPrimaryKey(false, false), true, null);
-
-        Cursor cursor = metaIdIndex.find(systemSession, null, null);
-
-        ArrayList<MetaRecord> records = New.arrayList();
-        while (cursor.next()) {
-            MetaRecord rec = new MetaRecord(cursor.get());
-            objectIds.set(rec.getId());
-            records.add(rec);
-        }
-
-        objectIds.set(0);
-        starting = true;
-
-        Collections.sort(records);
-        for (MetaRecord rec : records) {
-            objectIds.set(rec.getId());
-            rec.execute(this, systemSession, eventListener);
-        }
-
-        recompileInvalidViews(systemSession);
-        starting = false;
-    }
-
-    //private final int fileLockMethod;
-
-    protected void preOpen(int traceLevelFile, int traceLevelSystemOut) {
-        String mvFileName = databaseName + Constants.SUFFIX_MV_FILE;
-        boolean existsMv = FileUtils.exists(mvFileName);
-
-        if (existsMv && !FileUtils.canWrite(mvFileName)) {
-            readOnly = true;
-        }
-        //        if (existsPage && !existsMv) {
-        //            dbSettings.mvStore = false;
-        //        }
-        if (readOnly) {
-            if (traceLevelFile >= TraceSystem.DEBUG) {
-                String traceFile = Utils.getProperty("java.io.tmpdir", ".") + "/" + "h2_" + System.currentTimeMillis();
-                traceSystem = new TraceSystem(traceFile + Constants.SUFFIX_TRACE_FILE);
-            } else {
-                traceSystem = new TraceSystem(null);
-            }
-        } else {
-            traceSystem = new TraceSystem(databaseName + Constants.SUFFIX_TRACE_FILE);
-        }
-        traceSystem.setLevelFile(traceLevelFile);
-        traceSystem.setLevelSystemOut(traceLevelSystemOut);
-        trace = traceSystem.getTrace(Trace.DATABASE);
-        trace.info("opening {0} (build {1})", databaseName, Constants.BUILD_ID);
-
-        String lockFileName = databaseName + Constants.SUFFIX_LOCK_FILE;
-        if (readOnly) {
-            if (FileUtils.exists(lockFileName)) {
-                throw DbException.get(ErrorCode.DATABASE_ALREADY_OPEN_1, "Lock file exists: " + lockFileName);
-            }
-        }
-        //        if (!readOnly && fileLockMethod != FileLock.LOCK_NO) {
-        //            if (fileLockMethod != FileLock.LOCK_FS) {
-        //                lock = new FileLock(traceSystem, lockFileName, Constants.LOCK_SLEEP);
-        //                lock.lock(fileLockMethod);
-        //            }
-        //        }
-        if (SysProperties.MODIFY_ON_WRITE) {
-            while (isReconnectNeeded()) {
-                // wait until others stopped writing
-            }
-        } else {
-            while (isReconnectNeeded() && !beforeWriting()) {
-                // wait until others stopped writing and
-                // until we can write (the file is not yet open -
-                // no need to re-connect)
-            }
-        }
-        deleteOldTempFiles();
-
-        setWriteDelay(writeDelay);
-    }
-
-    protected void postOpen() {
-
-    }
-
-    private synchronized void open(int traceLevelFile, int traceLevelSystemOut) {
-        if (persistent) {
-            preOpen(traceLevelFile, traceLevelSystemOut);
-        } else {
-            traceSystem = new TraceSystem(null);
-            trace = traceSystem.getTrace(Trace.DATABASE);
-        }
-        systemUser = new User(this, 0, SYSTEM_USER_NAME, true);
-        mainSchema = new Schema(this, 0, Constants.SCHEMA_MAIN, systemUser, true);
-        infoSchema = new Schema(this, -1, "INFORMATION_SCHEMA", systemUser, true);
-        schemas.put(mainSchema.getName(), mainSchema);
-        schemas.put(infoSchema.getName(), infoSchema);
-        publicRole = new Role(this, 0, Constants.PUBLIC_ROLE_NAME, true);
-        roles.put(Constants.PUBLIC_ROLE_NAME, publicRole);
-        systemUser.setAdmin(true);
-        systemSession = createSystemSession(systemUser, ++nextSessionId);
-
-        openMetaTable(true);
-
-        if (!readOnly) {
-            // set CREATE_BUILD in a new database
-            String name = SetTypes.getTypeName(SetTypes.CREATE_BUILD);
-            if (settings.get(name) == null) {
-                Setting setting = new Setting(this, allocateObjectId(), name);
-                setting.setIntValue(Constants.BUILD_ID);
-                lockMeta(systemSession);
-                addDatabaseObject(systemSession, setting);
-            }
-            postOpen();
-        }
-        getLobStorage().init();
-        systemSession.commit(true);
-
-        trace.info("opened {0}", databaseName);
-        if (checkpointAllowed > 0) {
-            afterWriting();
-        }
-    }
-
-    protected void recompileInvalidViews(Session session) {
-        boolean recompileSuccessful;
-        do {
-            recompileSuccessful = false;
-            for (Table obj : getAllTablesAndViews(false)) {
-                if (obj instanceof TableView) {
-                    TableView view = (TableView) obj;
-                    if (view.isInvalid()) {
-                        view.recompile(session, true);
-                        if (!view.isInvalid()) {
-                            recompileSuccessful = true;
-                        }
-                    }
-                }
-            }
-        } while (recompileSuccessful);
-        // when opening a database, views are initialized before indexes,
-        // so they may not have the optimal plan yet
-        // this is not a problem, it is just nice to see the newest plan
-        for (Table obj : getAllTablesAndViews(false)) {
-            if (obj instanceof TableView) {
-                TableView view = (TableView) obj;
-                if (!view.isInvalid()) {
-                    view.recompile(systemSession, true);
-                }
-            }
-        }
     }
 
     private void initMetaTables() {

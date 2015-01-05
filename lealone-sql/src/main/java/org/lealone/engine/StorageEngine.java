@@ -4,10 +4,10 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.api;
+package org.lealone.engine;
 
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.TableBase;
+import org.lealone.dbobject.table.Table;
 
 /**
  * A class that implements this interface can create custom table
@@ -15,7 +15,7 @@ import org.lealone.dbobject.table.TableBase;
  *
  * @author Sergi Vladykin
  */
-public interface TableEngine {
+public interface StorageEngine {
 
     /**
      * Create new table.
@@ -23,7 +23,9 @@ public interface TableEngine {
      * @param data the data to construct the table
      * @return the created table
      */
-    TableBase createTable(CreateTableData data);
+    Table createTable(CreateTableData data);
 
     String getName();
+
+    //void init();
 }

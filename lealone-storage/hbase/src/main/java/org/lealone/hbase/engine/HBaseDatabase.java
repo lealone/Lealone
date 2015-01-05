@@ -30,7 +30,6 @@ import org.lealone.engine.Database;
 import org.lealone.engine.DatabaseEngine;
 import org.lealone.engine.MetaRecord;
 import org.lealone.engine.Session;
-import org.lealone.hbase.dbobject.table.HBaseTableEngine;
 import org.lealone.hbase.metadata.DDLRedoTable;
 import org.lealone.hbase.metadata.MetaDataTable;
 import org.lealone.message.DbException;
@@ -44,21 +43,21 @@ public class HBaseDatabase extends Database {
     private DDLRedoTable ddlRedoTable;
     private boolean fromZookeeper;
 
-    public HBaseDatabase(DatabaseEngine dbEngine) {
-        super(dbEngine, false);
+    public HBaseDatabase(DatabaseEngine dbEngine, boolean persistent) {
+        super(dbEngine, persistent);
     }
 
     @Override
-    public String getTableEngineName() {
-        return HBaseTableEngine.NAME;
+    public String getStorageEngineName() {
+        return HBaseStorageEngine.NAME;
     }
 
     @Override
-    public void init(ConnectionInfo ci, String cipher) {
+    public void init(ConnectionInfo ci, String databaseShortName, String cipher) {
         this.isMaster = "M".equalsIgnoreCase(ci.getProperty("SERVER_TYPE"));
         this.isRegionServer = "RS".equalsIgnoreCase(ci.getProperty("SERVER_TYPE"));
         setCloseDelay(-1); //session关闭时不马上关闭数据库
-        super.init(ci, cipher);
+        super.init(ci, databaseShortName, cipher);
     }
 
     public boolean isFromZookeeper() {

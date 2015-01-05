@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.dbobject.table;
+package org.lealone.cbase.engine;
 
 import java.io.InputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
@@ -15,8 +15,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.api.TableEngine;
 import org.lealone.cbase.dbobject.index.ValueDataType;
+import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.cbase.mvstore.MVMap;
 import org.lealone.cbase.mvstore.MVStore;
 import org.lealone.cbase.mvstore.MVStoreTool;
@@ -24,12 +24,13 @@ import org.lealone.cbase.transaction.CBaseTransaction;
 import org.lealone.cbase.transaction.TransactionMap;
 import org.lealone.cbase.transaction.TransactionStore;
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.TableBase;
-import org.lealone.dbobject.table.TableEngineManager;
+import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.InDoubtTransaction;
 import org.lealone.engine.Session;
+import org.lealone.engine.StorageEngine;
+import org.lealone.engine.StorageEngineManager;
 import org.lealone.message.DbException;
 import org.lealone.store.fs.FileChannelInputStream;
 import org.lealone.store.fs.FileUtils;
@@ -38,19 +39,38 @@ import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 
 /**
- * A table engine that internally uses the MVStore.
+ * A storage engine that internally uses the MVStore.
  */
-public class CBaseTableEngine implements TableEngine {
-    public static final String NAME = Constants.DEFAULT_TABLE_ENGINE_NAME;
+public class CBaseStorageEngine implements StorageEngine {
+    public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
 
-    //见TableEngineManager.TableEngineService中的注释
-    public CBaseTableEngine() {
-        TableEngineManager.registerTableEngine(this);
+    //见StorageEngineManager.StorageEngineService中的注释
+    public CBaseStorageEngine() {
+        StorageEngineManager.registerStorageEngine(this);
     }
 
     @Override
     public String getName() {
         return NAME;
+    }
+
+    @Override
+    public Table createTable(CreateTableData data) {
+        Database db = data.session.getDatabase();
+        Store store = stores.get(db.getName());
+        if (store == null) {
+            synchronized (stores) {
+                if (stores.get(db.getName()) == null) {
+                    store = init(db);
+                    stores.put(db.getName(), store);
+                }
+            }
+        }
+
+        CBaseTable table = new CBaseTable(data, store);
+        table.init(data.session);
+        store.tableMap.put(table.getMapName(), table);
+        return table;
     }
 
     private static HashMap<String, Store> stores = new HashMap<String, Store>(1);
@@ -129,25 +149,6 @@ public class CBaseTableEngine implements TableEngine {
             }
         }
         return store;
-    }
-
-    @Override
-    public TableBase createTable(CreateTableData data) {
-        Database db = data.session.getDatabase();
-        Store store = stores.get(db.getName());
-        if (store == null) {
-            synchronized (stores) {
-                if (stores.get(db.getName()) == null) {
-                    store = init(db);
-                    stores.put(db.getName(), store);
-                }
-            }
-        }
-
-        CBaseTable table = new CBaseTable(data, store);
-        table.init(data.session);
-        store.tableMap.put(table.getMapName(), table);
-        return table;
     }
 
     /**

@@ -318,11 +318,11 @@ public class DbSettings extends SettingsBase {
     public final boolean shareLinkedConnections = get("SHARE_LINKED_CONNECTIONS", true);
 
     /**
-     * Database setting <code>DEFAULT_TABLE_ENGINE</code>
+     * Database setting <code>DEFAULT_STORAGE_ENGINE</code>
      * (default: CBASE).<br />
-     * The default table engine to use for new tables.
+     * The default storage engine to use for new tables.
      */
-    public final String defaultTableEngine = get("DEFAULT_TABLE_ENGINE", Constants.DEFAULT_TABLE_ENGINE_NAME);
+    public final String defaultStorageEngine = get("DEFAULT_STORAGE_ENGINE", Constants.DEFAULT_STORAGE_ENGINE_NAME);
 
     private DbSettings(HashMap<String, String> s) {
         super(s);

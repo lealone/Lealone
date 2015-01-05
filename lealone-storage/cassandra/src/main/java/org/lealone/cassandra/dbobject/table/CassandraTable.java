@@ -21,6 +21,7 @@ package org.lealone.cassandra.dbobject.table;
 
 import java.util.ArrayList;
 
+import org.lealone.cassandra.engine.CassandraStorageEngine;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
@@ -56,7 +57,7 @@ public class CassandraTable extends TableBase {
 
     @Override
     public String getTableType() {
-        return CassandraTableEngine.NAME + "_" + super.getTableType();
+        return CassandraStorageEngine.NAME + "_" + super.getTableType();
     }
 
     @Override

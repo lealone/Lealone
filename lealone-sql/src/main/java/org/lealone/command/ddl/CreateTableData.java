@@ -69,9 +69,9 @@ public class CreateTableData {
     public Session session;
 
     /**
-     * The table engine to use for creating the table.
+     * The storage engine to use for creating the table.
      */
-    public String tableEngine;
+    public String storageEngine;
 
     /**
      * The table is hidden.

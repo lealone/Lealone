@@ -24,6 +24,7 @@ import java.util.Set;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.engine.Constants;
+import org.lealone.engine.DatabaseEngine;
 import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
@@ -240,6 +241,8 @@ public class TcpServer implements Server {
 
     @Override
     public synchronized void start() throws SQLException {
+        DatabaseEngine.init(getBaseDir());
+
         stop = false;
         try {
             serverSocket = NetUtils.createServerSocket(listenAddress, port, ssl);

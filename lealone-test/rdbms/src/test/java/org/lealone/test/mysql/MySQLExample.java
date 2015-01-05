@@ -26,9 +26,9 @@ import org.lealone.test.TestBase;
 
 public class MySQLExample {
     static Connection getConnection() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db + "?default_table_engine=MySQL";
+        String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db + "?default_storage_engine=MySQL";
         url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db;
-        //url = "jdbc:lealone:embed:" + TestBase.db + "?default_table_engine=MySQL";
+        //url = "jdbc:lealone:embed:" + TestBase.db + "?default_storage_engine=MySQL";
         Connection conn = DriverManager.getConnection(url, "sa", "");
         return conn;
     }

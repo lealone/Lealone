@@ -35,7 +35,6 @@ import org.lealone.util.New;
  * This is a singleton class.
  */
 public class DatabaseEngine implements SessionFactory {
-
     private static final HashMap<String, Database> DATABASES = New.hashMap();
     private static final DatabaseEngine INSTANCE = new DatabaseEngine();
 
@@ -43,13 +42,21 @@ public class DatabaseEngine implements SessionFactory {
         return INSTANCE;
     }
 
+    public static synchronized void init(String baseDir) {
+        StorageEngineManager.initStorageEngines();
+        SystemDatabase.init(baseDir);
+
+        for (String dbName : SystemDatabase.findAll())
+            DATABASES.put(dbName, new Database(INSTANCE, true));
+    }
+
     protected DatabaseEngine() {
     }
 
     private volatile long wrongPasswordDelay = SysProperties.DELAY_WRONG_PASSWORD_MIN;
 
-    public Database createDatabase() {
-        return new Database(this, false);
+    public Database createDatabase(boolean persistent) {
+        return new Database(this, persistent);
     }
 
     /**
@@ -144,6 +151,7 @@ public class DatabaseEngine implements SessionFactory {
 
     protected Session openSession(ConnectionInfo ci, boolean ifExists, String cipher) {
         String name = ci.getDatabaseName();
+        name = Database.parseDatabaseShortName(ci.getDbSettings(), name);
         Database database;
         boolean openNew = ci.getProperty("OPEN_NEW", false);
         if (openNew) {
@@ -154,11 +162,11 @@ public class DatabaseEngine implements SessionFactory {
         User user = null;
         boolean opened = false;
         if (database == null) {
-            if (ifExists && !Database.exists(name)) {
+            if (ifExists && !SystemDatabase.exists(name)) {
                 throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, name);
             }
-            database = createDatabase();
-            database.init(ci, cipher);
+            database = createDatabase(ci.isPersistent());
+            database.init(ci, name, cipher);
             opened = true;
             if (database.getAllUsers().size() == 0) {
                 // users is the last thing we add, so if no user is around,
@@ -169,7 +177,13 @@ public class DatabaseEngine implements SessionFactory {
                 database.setMasterUser(user);
             }
             DATABASES.put(name, database);
+
+            if (database.isPersistent())
+                SystemDatabase.addDatabase(database.getShortName(), database.getStorageEngineName());
+        } else {
+            database.init(ci, name, cipher);
         }
+
         synchronized (database) {
             if (opened) {
                 // start the thread when already synchronizing on the database

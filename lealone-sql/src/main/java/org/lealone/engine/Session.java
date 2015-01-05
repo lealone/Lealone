@@ -634,7 +634,7 @@ public class Session extends SessionWithState {
         //                if (lockMode != Constants.LOCK_MODE_OFF && !database.isMultiVersion()) {
         //                    String tableType = log.getTable().getTableType();
         //                    if (locks.indexOf(log.getTable()) < 0 && !Table.TABLE_LINK.equals(tableType)
-        //                            && !Table.EXTERNAL_TABLE_ENGINE.equals(tableType)) {
+        //                            && !Table.EXTERNAL_STORAGE_ENGINE.equals(tableType)) {
         //                        DbException.throwInternalError();
         //                    }
         //                }

@@ -15,19 +15,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mysql.dbobject.table;
+package org.lealone.hbase.engine;
 
-import org.lealone.api.TableEngine;
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.TableBase;
-import org.lealone.dbobject.table.TableEngineManager;
+import org.lealone.dbobject.table.Table;
+import org.lealone.engine.Constants;
+import org.lealone.engine.StorageEngine;
+import org.lealone.engine.StorageEngineManager;
+import org.lealone.hbase.dbobject.table.HBaseTable;
 
-public class MySQLTableEngine implements TableEngine {
-    public static final String NAME = "MYSQL";
+public class HBaseStorageEngine implements StorageEngine {
+    public static final String NAME = "HBase";
 
-    //见TableEngineManager.TableEngineService中的注释
-    public MySQLTableEngine() {
-        TableEngineManager.registerTableEngine(this);
+    //见StorageEngineManager.StorageEngineService中的注释
+    public HBaseStorageEngine() {
+        StorageEngineManager.registerStorageEngine(this);
+    }
+
+    @Override
+    public Table createTable(CreateTableData data) {
+        if (data.isMemoryTable()) {
+            data.persistData = false;
+            return StorageEngineManager.getStorageEngine(Constants.DEFAULT_STORAGE_ENGINE_NAME).createTable(data);
+        } else
+            return new HBaseTable(data);
     }
 
     @Override
@@ -35,8 +46,4 @@ public class MySQLTableEngine implements TableEngine {
         return NAME;
     }
 
-    @Override
-    public TableBase createTable(CreateTableData data) {
-        return new MySQLTable(data);
-    }
 }

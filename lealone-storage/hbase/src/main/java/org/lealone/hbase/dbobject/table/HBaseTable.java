@@ -48,6 +48,7 @@ import org.lealone.hbase.dbobject.index.HBasePrimaryIndex;
 import org.lealone.hbase.dbobject.index.HBaseSecondaryIndex;
 import org.lealone.hbase.engine.HBaseDatabase;
 import org.lealone.hbase.engine.HBaseSession;
+import org.lealone.hbase.engine.HBaseStorageEngine;
 import org.lealone.hbase.metadata.MetaDataAdmin;
 import org.lealone.hbase.result.HBaseRow;
 import org.lealone.hbase.util.HBaseUtils;
@@ -491,7 +492,7 @@ public class HBaseTable extends TableBase {
 
     @Override
     public String getTableType() {
-        return HBaseTableEngine.NAME + "_" + super.getTableType();
+        return HBaseStorageEngine.NAME + "_" + super.getTableType();
     }
 
     @Override

@@ -33,8 +33,8 @@ public class HBaseDatabaseEngine extends DatabaseEngine {
     }
 
     @Override
-    public HBaseDatabase createDatabase() {
-        return new HBaseDatabase(this);
+    public HBaseDatabase createDatabase(boolean persistent) {
+        return new HBaseDatabase(this, persistent);
     }
 
     @Override

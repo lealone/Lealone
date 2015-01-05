@@ -75,7 +75,7 @@ public class SkipListTable extends TableBase {
 
     @Override
     public String getTableType() {
-        return Table.EXTERNAL_TABLE_ENGINE; //CBaseTableEngine.NAME + "_" + super.getTableType();
+        return Table.EXTERNAL_STORAGE_ENGINE; //CBaseStorageEngine.NAME + "_" + super.getTableType();
     }
 
     @Override

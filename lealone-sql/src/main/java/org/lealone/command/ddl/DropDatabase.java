@@ -70,7 +70,7 @@ public class DropDatabase extends DefineCommand {
             }
         }
         for (Table t : tables) {
-            if (t.getName() != null && Table.EXTERNAL_TABLE_ENGINE.equals(t.getTableType()) && !t.isHidden()) {
+            if (t.getName() != null && Table.EXTERNAL_STORAGE_ENGINE.equals(t.getTableType()) && !t.isHidden()) {
                 db.removeSchemaObject(session, t);
             }
         }

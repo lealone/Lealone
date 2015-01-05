@@ -297,8 +297,8 @@ public class CreateTable extends SchemaCommand {
         this.sortedInsertMode = sortedInsertMode;
     }
 
-    public void setTableEngine(String tableEngine) {
-        data.tableEngine = tableEngine;
+    public void setStorageEngine(String storageEngine) {
+        data.storageEngine = storageEngine;
     }
 
     public void setHidden(boolean isHidden) {

@@ -15,19 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.postgresql.dbobject.table;
+package org.lealone.postgresql.engine;
 
-import org.lealone.api.TableEngine;
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.table.TableBase;
-import org.lealone.dbobject.table.TableEngineManager;
+import org.lealone.dbobject.table.Table;
+import org.lealone.engine.StorageEngine;
+import org.lealone.engine.StorageEngineManager;
+import org.lealone.postgresql.dbobject.table.PostgreSQLTable;
 
-public class PostgreSQLTableEngine implements TableEngine {
+public class PostgreSQLStorageEngine implements StorageEngine {
     public static final String NAME = "PostgreSQL";
 
-    //见TableEngineManager.TableEngineService中的注释
-    public PostgreSQLTableEngine() {
-        TableEngineManager.registerTableEngine(this);
+    //见StorageEngineManager.StorageEngineService中的注释
+    public PostgreSQLStorageEngine() {
+        StorageEngineManager.registerStorageEngine(this);
     }
 
     @Override
@@ -36,7 +37,7 @@ public class PostgreSQLTableEngine implements TableEngine {
     }
 
     @Override
-    public TableBase createTable(CreateTableData data) {
+    public Table createTable(CreateTableData data) {
         return new PostgreSQLTable(data);
     }
 }

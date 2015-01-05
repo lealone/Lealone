@@ -19,7 +19,7 @@ package org.lealone.hbase.server;
 
 import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_MASTER_TCP_PORT;
 import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_REGIONSERVER_TCP_PORT;
-import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_TABLE_ENGINE;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_STORAGE_ENGINE;
 import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_TCP_SERVER_START_ARGS;
 import static org.lealone.hbase.engine.HBaseConstants.MASTER_TCP_PORT;
 import static org.lealone.hbase.engine.HBaseConstants.REGIONSERVER_TCP_PORT;
@@ -35,7 +35,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.lealone.engine.Constants;
-import org.lealone.hbase.dbobject.table.HBaseTableEngine;
+import org.lealone.hbase.engine.HBaseStorageEngine;
 import org.lealone.hbase.zookeeper.TcpPortTracker;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import org.lealone.server.TcpServer;
@@ -140,7 +140,7 @@ public class HBaseTcpServer extends TcpServer implements HBaseServer {
                 System.setProperty(key, e.getValue());
             }
         }
-        key = DEFAULT_TABLE_ENGINE;
-        System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
+        key = DEFAULT_STORAGE_ENGINE;
+        System.setProperty(key, conf.get(key, HBaseStorageEngine.NAME));
     }
 }

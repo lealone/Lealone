@@ -78,7 +78,7 @@ public abstract class Table extends SchemaObjectBase {
     /**
      * The table type name for external table engines.
      */
-    public static final String EXTERNAL_TABLE_ENGINE = "EXTERNAL";
+    public static final String EXTERNAL_STORAGE_ENGINE = "EXTERNAL";
 
     /**
      * The columns of this table.
@@ -99,7 +99,7 @@ public abstract class Table extends SchemaObjectBase {
     /**
      * The table engine used (null for regular tables).
      */
-    protected String tableEngine;
+    protected String storageEngine;
 
     private final HashMap<String, Column> columnMap;
     private final boolean persistIndexes;
@@ -1151,8 +1151,8 @@ public abstract class Table extends SchemaObjectBase {
         return getColumn(columnName);
     }
 
-    public String getTableEngine() {
-        return tableEngine;
+    public String getStorageEngine() {
+        return storageEngine;
     }
 
     public void addColumn(Column column) {

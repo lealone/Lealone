@@ -32,7 +32,7 @@ import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
 import org.lealone.hbase.dbobject.table.HBaseTable;
-import org.lealone.hbase.dbobject.table.HBaseTableEngine;
+import org.lealone.hbase.engine.HBaseStorageEngine;
 import org.lealone.util.New;
 
 public class CreateHBaseTable extends CreateTable {
@@ -150,7 +150,7 @@ public class CreateHBaseTable extends CreateTable {
         }
 
         data.schema = getSchema();
-        data.tableEngine = HBaseTableEngine.class.getName();
+        data.storageEngine = HBaseStorageEngine.class.getName();
         data.isHidden = false;
         Column rowKeyColumn = null;
         if (pkColumns != null && pkColumns.length > 0) {

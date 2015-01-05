@@ -28,8 +28,8 @@ import org.lealone.test.TestBase;
 
 public class CBaseExample {
     static Connection getConnection() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db + "?default_table_engine=cbase";
-        //url = "jdbc:lealone:embed:" + TestBase.db + "?default_table_engine=cbase";
+        String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db + "?default_storage_engine=cbase";
+        //url = "jdbc:lealone:embed:" + TestBase.db + "?default_storage_engine=cbase";
         Connection conn = DriverManager.getConnection(url, "sa", "");
         return conn;
     }

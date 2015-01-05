@@ -5350,17 +5350,17 @@ public class Parser {
         if (readIf("ENGINE")) {
             if (readIf("=")) {
                 // map MySQL engine types onto H2 behavior
-                String tableEngine = readUniqueIdentifier();
-                if ("InnoDb".equalsIgnoreCase(tableEngine)) {
+                String storageEngine = readUniqueIdentifier();
+                if ("InnoDb".equalsIgnoreCase(storageEngine)) {
                     // ok
-                } else if (!"MyISAM".equalsIgnoreCase(tableEngine)) {
-                    throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, tableEngine);
+                } else if (!"MyISAM".equalsIgnoreCase(storageEngine)) {
+                    throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, storageEngine);
                 }
             } else {
-                command.setTableEngine(readUniqueIdentifier());
+                command.setStorageEngine(readUniqueIdentifier());
             }
-        } else if (database.getSettings().defaultTableEngine != null) {
-            command.setTableEngine(database.getSettings().defaultTableEngine);
+        } else if (database.getSettings().defaultStorageEngine != null) {
+            command.setStorageEngine(database.getSettings().defaultStorageEngine);
         }
         if (readIf("CHARSET")) {
             read("=");

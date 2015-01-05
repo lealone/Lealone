@@ -22,7 +22,6 @@ package org.lealone.cassandra.engine;
 import java.sql.Connection;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.cassandra.dbobject.table.CassandraTableEngine;
 import org.lealone.dbobject.User;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Database;
@@ -36,14 +35,14 @@ public class CassandraDatabase extends Database {
     }
 
     @Override
-    public String getTableEngineName() {
-        return CassandraTableEngine.NAME;
+    public String getStorageEngineName() {
+        return CassandraStorageEngine.NAME;
     }
 
     @Override
-    public void init(ConnectionInfo ci, String cipher) {
+    public void init(ConnectionInfo ci, String databaseShortName, String cipher) {
         setCloseDelay(-1); //session关闭时不马上关闭数据库
-        super.init(ci, cipher);
+        super.init(ci, databaseShortName, cipher);
     }
 
     @Override

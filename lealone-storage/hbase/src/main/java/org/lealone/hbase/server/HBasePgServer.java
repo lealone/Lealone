@@ -21,7 +21,7 @@ import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_MASTER_PG_PORT;
 import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_PG_SERVER_ENABLED;
 import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_PG_SERVER_START_ARGS;
 import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_REGIONSERVER_PG_PORT;
-import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_TABLE_ENGINE;
+import static org.lealone.hbase.engine.HBaseConstants.DEFAULT_STORAGE_ENGINE;
 import static org.lealone.hbase.engine.HBaseConstants.MASTER_PG_PORT;
 import static org.lealone.hbase.engine.HBaseConstants.PG_SERVER_ENABLED;
 import static org.lealone.hbase.engine.HBaseConstants.PG_SERVER_START_ARGS;
@@ -36,7 +36,7 @@ import org.apache.hadoop.hbase.ServerName;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.lealone.engine.Constants;
-import org.lealone.hbase.dbobject.table.HBaseTableEngine;
+import org.lealone.hbase.engine.HBaseStorageEngine;
 import org.lealone.hbase.zookeeper.PgPortTracker;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import org.lealone.server.PgServer;
@@ -140,7 +140,7 @@ public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
                 System.setProperty(key, e.getValue());
             }
         }
-        key = DEFAULT_TABLE_ENGINE;
-        System.setProperty(key, conf.get(key, HBaseTableEngine.NAME));
+        key = DEFAULT_STORAGE_ENGINE;
+        System.setProperty(key, conf.get(key, HBaseStorageEngine.NAME));
     }
 }
