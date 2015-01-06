@@ -26,9 +26,9 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.lealone.hbase.transaction.Transaction;
-import org.lealone.hbase.transaction.TransactionStatusCache;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
+import org.lealone.transaction.TransactionStatusCache;
 import org.lealone.util.New;
 
 public class TransactionStatusTable {

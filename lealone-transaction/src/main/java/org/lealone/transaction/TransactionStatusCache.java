@@ -19,6 +19,8 @@ package org.lealone.transaction;
 
 import java.util.Arrays;
 
+import org.lealone.engine.Constants;
+
 /**
  * 
  * 事务状态缓存，用于提高查询性能，有三种事务状态: 
@@ -28,14 +30,13 @@ import java.util.Arrays;
  *
  */
 public class TransactionStatusCache {
-    public static final int DEFAULT_TRANSACTION_STATUS_CACHE_BUCKET_NUMBER = 1 << 15;
-
-    public static final int DEFAULT_TRANSACTION_STATUS_CACHE_BUCKET_SIZE = 1 << 14;
     //桶个数
-    private static final int BUCKET_NUMBER = DEFAULT_TRANSACTION_STATUS_CACHE_BUCKET_NUMBER;
+    private static final int BUCKET_NUMBER = Integer.valueOf(System.getProperty(Constants.PROJECT_NAME_PREFIX
+            + "transaction.status.cache.bucket.number", Integer.toString(1 << 15)));
 
     //每个桶的容量大小
-    private static final int BUCKET_SIZE = DEFAULT_TRANSACTION_STATUS_CACHE_BUCKET_SIZE;
+    private static final int BUCKET_SIZE = Integer.valueOf(System.getProperty(Constants.PROJECT_NAME_PREFIX
+            + "transaction.status.cache.bucket.size", Integer.toString(1 << 14)));
 
     private final Bucket buckets[] = new Bucket[BUCKET_NUMBER];
 

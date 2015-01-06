@@ -103,12 +103,4 @@ public class HBaseConstants {
 
     public static final String TRANSACTION_TIMESTAMP_BATCH = Constants.PROJECT_NAME_PREFIX + "transaction.timestamp.batch";
     public static final int DEFAULT_TRANSACTION_TIMESTAMP_BATCH = 100000;
-
-    public static final String TRANSACTION_STATUS_CACHE_BUCKET_NUMBER = Constants.PROJECT_NAME_PREFIX
-            + "transaction.status.cache.bucket.number";
-    public static final int DEFAULT_TRANSACTION_STATUS_CACHE_BUCKET_NUMBER = 1 << 15;
-
-    public static final String TRANSACTION_STATUS_CACHE_BUCKET_SIZE = Constants.PROJECT_NAME_PREFIX
-            + "transaction.status.cache.bucket.size";
-    public static final int DEFAULT_TRANSACTION_STATUS_CACHE_BUCKET_SIZE = 1 << 14;
 }

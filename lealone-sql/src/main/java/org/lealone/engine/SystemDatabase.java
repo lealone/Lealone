@@ -17,6 +17,7 @@
  */
 package org.lealone.engine;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -73,6 +74,10 @@ public class SystemDatabase {
                 JdbcUtils.closeSilently(stmt);
             }
         }
+    }
+
+    public static Connection getConnection() {
+        return conn;
     }
 
     public static List<String> findAll() {

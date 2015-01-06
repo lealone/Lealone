@@ -17,18 +17,55 @@
  */
 package org.lealone.transaction;
 
-public class TransactionStatusTable {
-    private final static TransactionStatusTable INSTANCE = new TransactionStatusTable();
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 
-    public static TransactionStatusTable getInstance() {
-        return INSTANCE;
+import org.lealone.engine.SystemDatabase;
+import org.lealone.message.DbException;
+import org.lealone.util.JdbcUtils;
+
+class TransactionStatusTable {
+    private TransactionStatusTable() {
     }
 
-    public synchronized void addRecord(Transaction localTransaction, byte[] allLocalTransactionNames) {
+    private static PreparedStatement commit;
 
+    synchronized static void init() {
+        if (commit != null)
+            return;
+        createTableIfNotExists();
     }
 
-    public boolean isFullSuccessful(String hostAndPort, long tid) {
+    private static void createTableIfNotExists() {
+        Statement stmt = null;
+        Connection conn = SystemDatabase.getConnection();
+        try {
+            stmt = conn.createStatement();
+            stmt.execute("CREATE TABLE IF NOT EXISTS transaction_status_table" //
+                    + "(transaction_name VARCHAR PRIMARY KEY, all_local_transaction_names VARCHAR, commit_timestamp BIGINT)");
+
+            commit = conn.prepareStatement("INSERT INTO transaction_status_table VALUES(?, ?, ?)");
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        } finally {
+            JdbcUtils.closeSilently(stmt);
+        }
+    }
+
+    synchronized static void commit(DefaultTransaction localTransaction, String allLocalTransactionNames) {
+        try {
+            commit.setString(1, localTransaction.getTransactionName());
+            commit.setString(2, allLocalTransactionNames);
+            commit.setLong(3, localTransaction.getCommitTimestamp());
+            commit.executeUpdate();
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    synchronized static boolean isFullSuccessful(String hostAndPort, long tid) {
         return true;
     }
 }

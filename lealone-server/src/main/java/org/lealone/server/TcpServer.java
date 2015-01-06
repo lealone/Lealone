@@ -28,6 +28,7 @@ import org.lealone.engine.DatabaseEngine;
 import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
+import org.lealone.transaction.TransactionManager;
 import org.lealone.util.JdbcUtils;
 import org.lealone.util.NetUtils;
 import org.lealone.util.New;
@@ -203,6 +204,9 @@ public class TcpServer implements Server {
             }
         }
         Driver.load();
+
+        DatabaseEngine.init(baseDir);
+        TransactionManager.init();
     }
 
     @Override
@@ -241,8 +245,6 @@ public class TcpServer implements Server {
 
     @Override
     public synchronized void start() throws SQLException {
-        DatabaseEngine.init(getBaseDir());
-
         stop = false;
         try {
             serverSocket = NetUtils.createServerSocket(listenAddress, port, ssl);

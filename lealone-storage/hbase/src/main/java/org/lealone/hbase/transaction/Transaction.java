@@ -35,6 +35,7 @@ import org.lealone.hbase.metadata.TransactionStatusTable;
 import org.lealone.hbase.result.HBaseRow;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
+import org.lealone.transaction.CommitHashMap;
 import org.lealone.value.Value;
 
 public class Transaction implements org.lealone.transaction.Transaction {
@@ -151,6 +152,7 @@ public class Transaction implements org.lealone.transaction.Transaction {
     }
 
     //只从最顶层的事务提交
+    @Override
     public void commit(String allLocalTransactionNames) {
         if (!autoCommit && session.isRegionServer()) {
             try {
@@ -221,6 +223,7 @@ public class Transaction implements org.lealone.transaction.Transaction {
         }
     }
 
+    @Override
     public void rollback() {
         if (!autoCommit) {
             try {
@@ -261,6 +264,7 @@ public class Transaction implements org.lealone.transaction.Transaction {
         savepoints.put(name, undoRows.size());
     }
 
+    @Override
     public void rollbackToSavepoint(String name) {
         if (savepoints == null) {
             throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);

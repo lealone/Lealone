@@ -32,23 +32,20 @@ import org.lealone.engine.FrontendSession;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
-import org.lealone.util.Bytes;
 import org.lealone.util.New;
 
 public class DefaultTransaction implements Transaction {
     private static final CommitHashMap commitHashMap = new CommitHashMap(1000, 32);
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
-    private static final TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
 
     private final Session session;
 
     //参与本次事务的其他FrontendSession
     private final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
 
-    private TimestampService timestampService;
-    private String transactionName;
-    private long transactionId;
-    private boolean autoCommit;
+    private final String transactionName;
+    private final long transactionId;
+    private final boolean autoCommit;
     private long commitTimestamp;
 
     //协调者或参与者自身的本地事务名
@@ -61,10 +58,16 @@ public class DefaultTransaction implements Transaction {
     private final ConcurrentSkipListSet<Long> halfSuccessfulTransactions = new ConcurrentSkipListSet<Long>();
 
     public DefaultTransaction(Session session) {
+        session.setTransaction(this);
         this.session = session;
         undoRows = new CopyOnWriteArrayList<>();
+        autoCommit = session.getAutoCommit();
 
-        session.setTransaction(this);
+        transactionId = getNewTimestamp();
+        String hostAndPort = session.getHostAndPort();
+        if (hostAndPort == null)
+            hostAndPort = "localhost:0";
+        transactionName = getTransactionName(hostAndPort, transactionId);
     }
 
     void addFrontendSession(String url, FrontendSession frontendSession) {
@@ -77,9 +80,9 @@ public class DefaultTransaction implements Transaction {
 
     public long getNewTimestamp() {
         if (autoCommit)
-            return timestampService.nextEven();
+            return TimestampServiceTable.nextEven();
         else
-            return timestampService.nextOdd();
+            return TimestampServiceTable.nextOdd();
     }
 
     @Override
@@ -171,13 +174,13 @@ public class DefaultTransaction implements Transaction {
         if (!autoCommit) {
             try {
                 //1. 获得提交时间戳
-                commitTimestamp = timestampService.nextOdd();
+                commitTimestamp = TimestampServiceTable.nextOdd();
 
                 //2. 检测写写冲突
                 checkConflict();
 
                 //3. 更新事务状态表
-                transactionStatusTable.addRecord(this, Bytes.toBytes(allLocalTransactionNames));
+                TransactionStatusTable.commit(this, allLocalTransactionNames);
 
                 //4.缓存本次事务已提交的行，用于下一个事务的写写冲突检测
                 cacheCommittedRows();
@@ -194,10 +197,10 @@ public class DefaultTransaction implements Transaction {
 
     private void checkConflict() {
         synchronized (commitHashMap) {
-            if (transactionId < timestampService.first()) {
+            if (transactionId < TimestampServiceTable.first()) {
                 //1. transactionId不可能小于region server启动时从TimestampServiceTable中获得的上一次的最大时间戳
                 throw DbException.throwInternalError("transactionId(" + transactionId + ") < firstTimestampService("
-                        + timestampService.first() + ")");
+                        + TimestampServiceTable.first() + ")");
             } else if (!undoRows.isEmpty() && transactionId < commitHashMap.getLargestDeletedTimestamp()) {
                 //2. Too old and not read only
                 throw new RuntimeException("Too old startTimestamp: ST " + transactionId + " MAX "
@@ -216,7 +219,7 @@ public class DefaultTransaction implements Transaction {
                 if (!halfSuccessfulTransactions.isEmpty()) {
                     String hostAndPort = session.getHostAndPort();
                     for (Long tid : halfSuccessfulTransactions) {
-                        if (!transactionStatusTable.isFullSuccessful(hostAndPort, tid)) {
+                        if (!TransactionStatusTable.isFullSuccessful(hostAndPort, tid)) {
                             throw new RuntimeException("Write-write conflict: transaction "
                                     + getTransactionName(hostAndPort, tid) + " is not full successful, current transaction: "
                                     + transactionName);

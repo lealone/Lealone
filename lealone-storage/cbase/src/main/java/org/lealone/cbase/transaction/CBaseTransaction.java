@@ -48,7 +48,9 @@ public class CBaseTransaction implements Transaction {
     /**
      * The transaction id.
      */
-    final int transactionId;
+    //final int transactionId;
+
+    int transactionId;
 
     /**
      * The log id of the last entry in the undo log map.
@@ -59,12 +61,19 @@ public class CBaseTransaction implements Transaction {
 
     private String name;
 
+    private Transaction t;
+
     CBaseTransaction(TransactionStore store, int transactionId, int status, String name, long logId) {
         this.store = store;
         this.transactionId = transactionId;
         this.status = status;
         this.name = name;
         this.logId = logId;
+    }
+
+    public void setTransaction(Transaction t) {
+        transactionId = (int) t.getTransactionId();
+        this.t = t;
     }
 
     public int getId() {
@@ -178,6 +187,8 @@ public class CBaseTransaction implements Transaction {
     public void commit() {
         checkNotClosed();
         store.commit(this, logId);
+        if (t != null)
+            t.commit();
     }
 
     /**
