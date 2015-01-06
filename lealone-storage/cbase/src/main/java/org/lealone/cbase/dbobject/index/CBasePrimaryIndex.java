@@ -59,7 +59,8 @@ public class CBasePrimaryIndex extends BaseIndex {
     private long lastKey;
     private int mainIndexColumn = -1;
 
-    public CBasePrimaryIndex(Database db, CBaseTable table, int id, IndexColumn[] columns, IndexType indexType) {
+    public CBasePrimaryIndex(Session session, CBaseTable table, int id, IndexColumn[] columns, IndexType indexType) {
+        Database db = session.getDatabase();
         this.mvTable = table;
         initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
         int[] sortTypes = new int[columns.length];
@@ -69,7 +70,7 @@ public class CBasePrimaryIndex extends BaseIndex {
         ValueDataType keyType = new ValueDataType(null, null, null);
         ValueDataType valueType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         mapName = "table." + getId();
-        dataMap = mvTable.getTransaction(null).openMap(mapName, keyType, valueType);
+        dataMap = mvTable.getTransaction(session).openMap(mapName, keyType, valueType);
         if (!table.isPersistData()) {
             dataMap.map.setVolatile(true);
         }

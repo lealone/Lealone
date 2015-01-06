@@ -50,7 +50,9 @@ public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
     private final String mapName;
     private final TransactionMap<Value, Value> dataMap;
 
-    public CBaseSecondaryIndex(Database db, CBaseTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+    public CBaseSecondaryIndex(Session session, CBaseTable table, int id, String indexName, IndexColumn[] columns,
+            IndexType indexType) {
+        Database db = session.getDatabase();
         this.mvTable = table;
         initBaseIndex(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {
@@ -67,7 +69,7 @@ public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
         sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
         ValueDataType keyType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
-        dataMap = mvTable.getTransaction(null).openMap(mapName, keyType, valueType);
+        dataMap = mvTable.getTransaction(session).openMap(mapName, keyType, valueType);
         if (!keyType.equals(dataMap.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }

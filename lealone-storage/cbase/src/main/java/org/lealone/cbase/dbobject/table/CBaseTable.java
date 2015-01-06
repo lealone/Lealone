@@ -94,8 +94,7 @@ public class CBaseTable extends TableBase {
      * @param session the session
      */
     public void init(Session session) {
-        primaryIndex = new CBasePrimaryIndex(session.getDatabase(), this, getId(), IndexColumn.wrap(getColumns()),
-                IndexType.createScan(true));
+        primaryIndex = new CBasePrimaryIndex(session, this, getId(), IndexColumn.wrap(getColumns()), IndexType.createScan(true));
         indexes.add(primaryIndex);
     }
 
@@ -430,7 +429,7 @@ public class CBaseTable extends TableBase {
                 index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
             }
         } else {
-            index = new CBaseSecondaryIndex(session.getDatabase(), this, indexId, indexName, cols, indexType);
+            index = new CBaseSecondaryIndex(session, this, indexId, indexName, cols, indexType);
         }
         if (index instanceof CBaseIndex && index.needRebuild()) {
             rebuildIndex(session, (CBaseIndex) index, indexName);
@@ -772,10 +771,7 @@ public class CBaseTable extends TableBase {
      * @return the transaction
      */
     public CBaseTransaction getTransaction(Session session) {
-        if (session == null) {
-            // TODO need to commit/rollback the transaction
-            return store.begin();
-        } else if (session.getTransaction() == null) {
+        if (session.getTransaction() == null) {
             CBaseTransaction t = store.begin();
             session.setTransaction(t);
             return t;

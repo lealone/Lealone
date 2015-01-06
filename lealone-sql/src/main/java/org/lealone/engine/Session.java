@@ -543,6 +543,8 @@ public class Session extends SessionWithState {
         checkCommitRollback();
         currentTransactionName = null;
         if (transaction != null) {
+            Transaction transaction = this.transaction;
+            this.transaction = null;
             transaction.rollback();
         }
         if (locks.size() > 0) {
