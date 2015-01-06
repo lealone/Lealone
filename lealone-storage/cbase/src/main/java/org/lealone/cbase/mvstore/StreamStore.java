@@ -40,8 +40,7 @@ public class StreamStore {
     private int minBlockSize = 256;
     private int maxBlockSize = 256 * 1024;
     private final AtomicLong nextKey = new AtomicLong();
-    private final AtomicReference<byte[]> nextBuffer =
-            new AtomicReference<byte[]>();
+    private final AtomicReference<byte[]> nextBuffer = new AtomicReference<byte[]>();
 
     /**
      * Create a stream store instance.
@@ -119,8 +118,7 @@ public class StreamStore {
         return id.toByteArray();
     }
 
-    private boolean put(ByteArrayOutputStream id, InputStream in, int level)
-            throws IOException {
+    private boolean put(ByteArrayOutputStream id, InputStream in, int level) throws IOException {
         if (level > 0) {
             ByteArrayOutputStream id2 = new ByteArrayOutputStream();
             while (true) {
@@ -163,8 +161,7 @@ public class StreamStore {
         return eof;
     }
 
-    private static byte[] read(InputStream in, byte[] target)
-            throws IOException {
+    private static byte[] read(InputStream in, byte[] target) throws IOException {
         int copied = 0;
         int remaining = target.length;
         while (remaining > 0) {
@@ -182,8 +179,7 @@ public class StreamStore {
         return target;
     }
 
-    private ByteArrayOutputStream putIndirectId(ByteArrayOutputStream id)
-            throws IOException {
+    private ByteArrayOutputStream putIndirectId(ByteArrayOutputStream id) throws IOException {
         byte[] data = id.toByteArray();
         id = new ByteArrayOutputStream();
         // indirect: 2, total len (long), blockId (long)
@@ -266,8 +262,7 @@ public class StreamStore {
                 map.remove(k2);
                 break;
             default:
-                throw DataUtils.newIllegalArgumentException(
-                        "Unsupported id {0}", Arrays.toString(id));
+                throw DataUtils.newIllegalArgumentException("Unsupported id {0}", Arrays.toString(id));
             }
         }
     }
@@ -301,8 +296,7 @@ public class StreamStore {
                 DataUtils.readVarLong(idBuffer);
                 break;
             default:
-                throw DataUtils.newIllegalArgumentException(
-                        "Unsupported id {0}", Arrays.toString(id));
+                throw DataUtils.newIllegalArgumentException("Unsupported id {0}", Arrays.toString(id));
             }
         }
         return length;
@@ -344,7 +338,11 @@ public class StreamStore {
      * @return the block
      */
     byte[] getBlock(long key) {
-        return map.get(key);
+        byte[] data = map.get(key);
+        if (data == null) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_BLOCK_NOT_FOUND, "Block {0} not found", key);
+        }
+        return data;
     }
 
     /**
@@ -367,7 +365,7 @@ public class StreamStore {
         }
 
         @Override
-        public int read() {
+        public int read() throws IOException {
             byte[] buffer = oneByteBuffer;
             if (buffer == null) {
                 buffer = oneByteBuffer = new byte[1];
@@ -405,13 +403,19 @@ public class StreamStore {
         }
 
         @Override
-        public int read(byte[] b, int off, int len) {
+        public int read(byte[] b, int off, int len) throws IOException {
             if (len <= 0) {
                 return 0;
             }
             while (true) {
                 if (buffer == null) {
-                    buffer = nextBuffer();
+                    try {
+                        buffer = nextBuffer();
+                    } catch (IllegalStateException e) {
+                        String msg = DataUtils.formatMessage(DataUtils.ERROR_BLOCK_NOT_FOUND, "Block not found in id {0}",
+                                Arrays.toString(idBuffer.array()));
+                        throw new IOException(msg, e);
+                    }
                     if (buffer == null) {
                         return -1;
                     }
@@ -460,8 +464,7 @@ public class StreamStore {
                         continue;
                     }
                     byte[] k = store.getBlock(key);
-                    ByteBuffer newBuffer = ByteBuffer.allocate(k.length
-                            + idBuffer.limit() - idBuffer.position());
+                    ByteBuffer newBuffer = ByteBuffer.allocate(k.length + idBuffer.limit() - idBuffer.position());
                     newBuffer.put(k);
                     newBuffer.put(idBuffer);
                     newBuffer.flip();
@@ -469,9 +472,7 @@ public class StreamStore {
                     return nextBuffer();
                 }
                 default:
-                    throw DataUtils.newIllegalArgumentException(
-                            "Unsupported id {0}",
-                            Arrays.toString(idBuffer.array()));
+                    throw DataUtils.newIllegalArgumentException("Unsupported id {0}", Arrays.toString(idBuffer.array()));
                 }
             }
             return null;

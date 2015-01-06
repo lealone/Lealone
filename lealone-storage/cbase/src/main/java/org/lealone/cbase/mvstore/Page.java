@@ -160,13 +160,13 @@ public class Page {
      * Read a page.
      *
      * @param fileStore the file store
+     * @param pos the position
      * @param map the map
-     * @param pos the page position
      * @param filePos the position in the file
-     * @param fileSize the file size (to avoid reading past EOF)
+     * @param maxPos the maximum position (the end of the chunk)
      * @return the page
      */
-    static Page read(FileStore fileStore, MVMap<?, ?> map, long pos, long filePos, long fileSize) {
+    static Page read(FileStore fileStore, long pos, MVMap<?, ?> map, long filePos, long maxPos) {
         ByteBuffer buff;
         int maxLength = DataUtils.getPageMaxLength(pos);
         if (maxLength == DataUtils.PAGE_LARGE) {
@@ -174,11 +174,11 @@ public class Page {
             maxLength = buff.getInt();
             // read the first bytes again
         }
-        maxLength = (int) Math.min(fileSize - filePos, maxLength);
+        maxLength = (int) Math.min(maxPos - filePos, maxLength);
         int length = maxLength;
         if (length < 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "Illegal page length {0} reading at {1}; file size {2} ", length, filePos, fileSize);
+                    "Illegal page length {0} reading at {1}; max pos {2} ", length, filePos, maxPos);
         }
         buff = fileStore.readFully(filePos, length);
         Page p = new Page(map, 0);
@@ -450,7 +450,13 @@ public class Page {
      * @param c the new child page
      */
     public void setChild(int index, Page c) {
-        if (c != children[index].page || c.getPos() != children[index].pos) {
+        if (c == null) {
+            long oldCount = children[index].count;
+            children = Arrays.copyOf(children, children.length);
+            PageReference ref = new PageReference(null, 0, 0);
+            children[index] = ref;
+            totalCount -= oldCount;
+        } else if (c != children[index].page || c.getPos() != children[index].pos) {
             long oldCount = children[index].count;
             children = Arrays.copyOf(children, children.length);
             PageReference ref = new PageReference(c, c.pos, c.totalCount);
@@ -948,16 +954,17 @@ public class Page {
         }
 
         /**
-         * Read the page from the buffer.
+         * Read an inner node page from the buffer, but ignore the keys and
+         * values.
          *
+         * @param fileStore the file store
          * @param pos the position
-         * @param buff the buffer
-         * @param chunkId the chunk id
          * @param mapId the map id
-         * @param offset the offset within the chunk
-         * @param maxLength the maximum length
+         * @param filePos the position in the file
+         * @param maxPos the maximum position (the end of the chunk)
+         * @return the page children object
          */
-        static PageChildren read(FileStore fileStore, long filePos, int mapId, long pos) {
+        static PageChildren read(FileStore fileStore, long pos, int mapId, long filePos, long maxPos) {
             ByteBuffer buff;
             int maxLength = DataUtils.getPageMaxLength(pos);
             if (maxLength == DataUtils.PAGE_LARGE) {
@@ -965,12 +972,11 @@ public class Page {
                 maxLength = buff.getInt();
                 // read the first bytes again
             }
-            long fileSize = fileStore.fileSize;
-            maxLength = (int) Math.min(fileSize - filePos, maxLength);
+            maxLength = (int) Math.min(maxPos - filePos, maxLength);
             int length = maxLength;
             if (length < 0) {
                 throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                        "Illegal page length {0} reading at {1}; file size {2} ", length, filePos, fileSize);
+                        "Illegal page length {0} reading at {1}; max pos {2} ", length, filePos, maxPos);
             }
             buff = fileStore.readFully(filePos, length);
             int chunkId = DataUtils.getPageChunkId(pos);
@@ -1007,10 +1013,19 @@ public class Page {
             return new PageChildren(pos, children);
         }
 
+        /**
+         * Only keep one reference to the same chunk. Only leaf references are
+         * removed (references to inner nodes are not removed, as they could
+         * indirectly point to other chunks).
+         */
         void removeDuplicateChunkReferences() {
             HashSet<Integer> chunks = New.hashSet();
             // we don't need references to leaves in the same chunk
             chunks.add(DataUtils.getPageChunkId(pos));
+            // possible space optimization:
+            // we could remove more children, for example
+            // we could remove all leaf references to the same chunk
+            // if there is also a inner node reference to that chunk
             for (int i = 0; i < children.length; i++) {
                 long p = children[i];
                 if (DataUtils.getPageType(p) == DataUtils.PAGE_TYPE_NODE) {

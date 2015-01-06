@@ -98,6 +98,7 @@ public class CBaseStorageEngine implements StorageEngine {
             store = new Store(db, builder);
         } else {
             String fileName = dbPath + Constants.SUFFIX_MV_FILE;
+            builder.pageSplitSize(db.getPageSize());
             MVStoreTool.compactCleanUp(fileName);
             builder.fileName(fileName);
             if (db.isReadOnly()) {
@@ -179,6 +180,7 @@ public class CBaseStorageEngine implements StorageEngine {
         public Store(Database db, MVStore.Builder builder) {
             this.store = builder.open();
             this.transactionStore = new TransactionStore(store, new ValueDataType(null, db, null));
+            transactionStore.init();
         }
 
         public MVStore getStore() {

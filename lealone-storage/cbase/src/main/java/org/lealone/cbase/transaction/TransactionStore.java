@@ -52,6 +52,8 @@ public class TransactionStore {
 
     private final DataType dataType;
 
+    private boolean init;
+
     private int lastTransactionId;
 
     private int maxTransactionId = 0xffff;
@@ -99,6 +101,28 @@ public class TransactionStore {
     }
 
     /**
+     * Initialize the store. This is needed before a transaction can be opened.
+     * If the transaction store is corrupt, this method can throw an exception,
+     * in which case the store can only be used for reading.
+     */
+    public synchronized void init() {
+        init = true;
+        // remove all temporary maps
+        for (String mapName : store.getMapNames()) {
+            if (mapName.startsWith("temp.")) {
+                MVMap<Object, Integer> temp = openTempMap(mapName);
+                store.removeMap(temp);
+            }
+        }
+        synchronized (undoLog) {
+            if (undoLog.size() > 0) {
+                Long key = undoLog.firstKey();
+                lastTransactionId = getTransactionId(key);
+            }
+        }
+    }
+
+    /**
      * Set the maximum transaction id, after which ids are re-used. If the old
      * transaction is still in use when re-using an old id, the new transaction
      * fails.
@@ -141,15 +165,6 @@ public class TransactionStore {
      */
     static long getLogId(long operationId) {
         return operationId & ((1L << 40) - 1);
-    }
-
-    private synchronized void init() {
-        synchronized (undoLog) {
-            if (undoLog.size() > 0) {
-                Long key = undoLog.firstKey();
-                lastTransactionId = getTransactionId(key);
-            }
-        }
     }
 
     /**
@@ -200,6 +215,9 @@ public class TransactionStore {
      * @return the transaction
      */
     public synchronized CBaseTransaction begin() {
+        if (!init) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
+        }
         int transactionId = ++lastTransactionId;
         if (lastTransactionId >= maxTransactionId) {
             lastTransactionId = 0;

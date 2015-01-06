@@ -159,6 +159,7 @@ public class Database implements DataHandler {
     private SourceCompiler compiler;
     private volatile boolean metaTablesInitialized;
     private LobStorage lobStorage;
+    private int pageSize;
     private int defaultTableType = Table.TYPE_CACHED;
     private DbSettings dbSettings;
     private int logMode;
@@ -195,6 +196,7 @@ public class Database implements DataHandler {
                 : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
         this.cipher = cipher;
         this.cacheSize = ci.getProperty("CACHE_SIZE", Constants.CACHE_SIZE_DEFAULT);
+        this.pageSize = ci.getProperty("PAGE_SIZE", Constants.DEFAULT_PAGE_SIZE);
         this.databaseURL = ci.getURL();
         String listener = ci.removeProperty("DATABASE_EVENT_LISTENER", null);
         if (listener != null) {
@@ -1447,6 +1449,10 @@ public class Database implements DataHandler {
 
     public int getCacheSize() {
         return cacheSize;
+    }
+
+    public int getPageSize() {
+        return pageSize;
     }
 
     public synchronized void setMasterUser(User user) {

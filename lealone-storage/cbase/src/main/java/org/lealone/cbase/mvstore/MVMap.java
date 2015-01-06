@@ -123,7 +123,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
 
     /**
      * Add or replace a key-value pair in a branch.
-     * 
+     *
      * @param root the root page
      * @param key the key (may not be null)
      * @param value the value (may not be null)
@@ -795,10 +795,6 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
                 K key = (K) p.getKey(0);
                 V value = get(key);
                 if (value != null) {
-                    // this is to avoid storing while replacing, to avoid a
-                    // deadlock when rewriting the meta map
-                    // TODO there should be no deadlocks possible
-                    store.beforeWrite();
                     replace(key, value, value);
                 }
             }
@@ -1036,7 +1032,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
         if (readOnly) {
             throw DataUtils.newUnsupportedOperationException("This map is read-only");
         }
-        store.beforeWrite();
+        store.beforeWrite(this);
     }
 
     @Override
@@ -1208,7 +1204,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
 
     private Page copy(Page source, CursorPos parent) {
         Page target = Page.create(this, writeVersion, source);
-        if (target.isLeaf()) {
+        if (source.isLeaf()) {
             Page child = target;
             for (CursorPos p = parent; p != null; p = p.parent) {
                 p.page.setChild(p.index, child);
@@ -1220,6 +1216,11 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
                 }
             }
         } else {
+            // temporarily, replace child pages with empty pages,
+            // to ensure there are no links to the old store
+            for (int i = 0; i < getChildPageCount(target); i++) {
+                target.setChild(i, null);
+            }
             CursorPos pos = new CursorPos(target, 0, parent);
             for (int i = 0; i < getChildPageCount(target); i++) {
                 pos.index = i;
