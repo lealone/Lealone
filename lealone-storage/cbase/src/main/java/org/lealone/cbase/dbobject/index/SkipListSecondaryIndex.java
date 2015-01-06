@@ -93,7 +93,7 @@ public class SkipListSecondaryIndex extends BaseIndex {
         if (lastArray != null) {
             lastArray.getList()[keyColumns - 1] = SkipListPrimaryIndex.MAX;
         }
-        return new CBaseSecondaryIndexCursor(rows.tailMap(getKey(firstArray)).entrySet().iterator(), lastArray, session
+        return new SkipListSecondaryIndexCursor(rows.tailMap(getKey(firstArray)).entrySet().iterator(), lastArray, session
                 .getTransaction().getTransactionId());
     }
 
@@ -125,14 +125,14 @@ public class SkipListSecondaryIndex extends BaseIndex {
     public Cursor findFirstOrLast(Session session, boolean first) {
         Row row = (first ? rows.firstEntry().getValue() : rows.lastEntry().getValue());
         if (row == null) {
-            return new CBaseSecondaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
+            return new SkipListSecondaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
                     .getTransaction().getTransactionId());
         }
         ValueArray array = convertToKey(row);
         HashMap<Value, Row> e = new HashMap<>(1);
         Value key = getKey(array);
         e.put(key, row);
-        CBaseSecondaryIndexCursor c = new CBaseSecondaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
+        SkipListSecondaryIndexCursor c = new SkipListSecondaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
                 .getTransactionId());
         c.next();
         return c;
@@ -180,7 +180,7 @@ public class SkipListSecondaryIndex extends BaseIndex {
         return ValueArray.get(array);
     }
 
-    class CBaseSecondaryIndexCursor implements Cursor {
+    private static class SkipListSecondaryIndexCursor implements Cursor {
 
         private final Iterator<Entry<Value, Row>> it;
         private final Value last;
@@ -189,7 +189,7 @@ public class SkipListSecondaryIndex extends BaseIndex {
 
         private final long transactionId;
 
-        public CBaseSecondaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
+        public SkipListSecondaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
             this.it = it;
             this.last = last;
             this.transactionId = transactionId;

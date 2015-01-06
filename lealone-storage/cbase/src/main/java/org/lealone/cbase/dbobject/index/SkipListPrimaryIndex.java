@@ -257,13 +257,13 @@ public class SkipListPrimaryIndex extends BaseIndex {
     public Cursor findFirstOrLast(Session session, boolean first) {
         Row row = (first ? rows.firstEntry().getValue() : rows.lastEntry().getValue());
         if (row == null) {
-            return new CBasePrimaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
+            return new SkipListPrimaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
                     .getTransaction().getTransactionId());
         }
         ValueLong key = ValueLong.get(row.getKey());
         HashMap<Value, Row> e = new HashMap<>(1);
         e.put(getKey(key), row);
-        CBasePrimaryIndexCursor c = new CBasePrimaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
+        SkipListPrimaryIndexCursor c = new SkipListPrimaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
                 .getTransactionId());
         c.next();
         return c;
@@ -337,7 +337,7 @@ public class SkipListPrimaryIndex extends BaseIndex {
      * @return the cursor
      */
     Cursor find(Session session, Value first, Value last) {
-        return new CBasePrimaryIndexCursor(rows.tailMap(getKey(first)).entrySet().iterator(), last, session.getTransaction()
+        return new SkipListPrimaryIndexCursor(rows.tailMap(getKey(first)).entrySet().iterator(), last, session.getTransaction()
                 .getTransactionId());
     }
 
@@ -349,7 +349,7 @@ public class SkipListPrimaryIndex extends BaseIndex {
     /**
      * A cursor.
      */
-    class CBasePrimaryIndexCursor implements Cursor {
+    private static class SkipListPrimaryIndexCursor implements Cursor {
 
         private final Iterator<Entry<Value, Row>> it;
         private final Value last;
@@ -358,7 +358,7 @@ public class SkipListPrimaryIndex extends BaseIndex {
 
         private final long transactionId;
 
-        public CBasePrimaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
+        public SkipListPrimaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
             this.it = it;
             this.last = last;
             this.transactionId = transactionId;

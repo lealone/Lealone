@@ -194,7 +194,7 @@ public class CBasePrimaryIndex extends BaseIndex {
             }
         }
         TransactionMap<Value, Value> map = getMap(session);
-        return new MVStoreCursor(map.entryIterator(min), max);
+        return new CBasePrimaryIndexCursor(map.entryIterator(min), max);
     }
 
     @Override
@@ -266,12 +266,12 @@ public class CBasePrimaryIndex extends BaseIndex {
         TransactionMap<Value, Value> map = getMap(session);
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
         if (v == null) {
-            return new MVStoreCursor(Collections.<Entry<Value, Value>> emptyList().iterator(), null);
+            return new CBasePrimaryIndexCursor(Collections.<Entry<Value, Value>> emptyList().iterator(), null);
         }
         Value value = map.get(v);
         Entry<Value, Value> e = new DataUtils.MapEntry<Value, Value>(v, value);
         List<Entry<Value, Value>> list = Arrays.asList(e);
-        MVStoreCursor c = new MVStoreCursor(list.iterator(), v);
+        CBasePrimaryIndexCursor c = new CBasePrimaryIndexCursor(list.iterator(), v);
         c.next();
         return c;
     }
@@ -351,7 +351,7 @@ public class CBasePrimaryIndex extends BaseIndex {
      */
     Cursor find(Session session, ValueLong first, ValueLong last) {
         TransactionMap<Value, Value> map = getMap(session);
-        return new MVStoreCursor(map.entryIterator(first), last);
+        return new CBasePrimaryIndexCursor(map.entryIterator(first), last);
     }
 
     @Override
@@ -376,14 +376,14 @@ public class CBasePrimaryIndex extends BaseIndex {
     /**
      * A cursor.
      */
-    class MVStoreCursor implements Cursor {
+    private static class CBasePrimaryIndexCursor implements Cursor {
 
         private final Iterator<Entry<Value, Value>> it;
         private final ValueLong last;
         private Entry<Value, Value> current;
         private Row row;
 
-        public MVStoreCursor(Iterator<Entry<Value, Value>> it, ValueLong last) {
+        public CBasePrimaryIndexCursor(Iterator<Entry<Value, Value>> it, ValueLong last) {
             this.it = it;
             this.last = last;
         }

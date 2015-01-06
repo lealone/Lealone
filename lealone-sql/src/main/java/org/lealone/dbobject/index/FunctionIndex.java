@@ -6,13 +6,20 @@
  */
 package org.lealone.dbobject.index;
 
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+
 import org.lealone.dbobject.table.FunctionTable;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
+import org.lealone.result.ResultInterface;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
+import org.lealone.value.DataType;
+import org.lealone.value.Value;
 
 /**
  * An index for a function that returns a result set. This index can only scan
@@ -27,18 +34,22 @@ public class FunctionIndex extends BaseIndex {
         this.functionTable = functionTable;
     }
 
+    @Override
     public void close(Session session) {
         // nothing to do
     }
 
+    @Override
     public void add(Session session, Row row) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
+    @Override
     public void remove(Session session, Row row) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
+    @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         if (functionTable.isFast()) {
             return new FunctionCursorResultSet(session, functionTable.getResultSet(session));
@@ -46,6 +57,7 @@ public class FunctionIndex extends BaseIndex {
         return new FunctionCursor(functionTable.getResult(session));
     }
 
+    @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         if (masks != null) {
             throw DbException.getUnsupportedException("ALIAS");
@@ -59,48 +71,167 @@ public class FunctionIndex extends BaseIndex {
         return expectedRows * 10;
     }
 
+    @Override
     public void remove(Session session) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
+    @Override
     public void truncate(Session session) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
+    @Override
     public boolean needRebuild() {
         return false;
     }
 
+    @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
+    @Override
     public boolean canGetFirstOrLast() {
         return false;
     }
 
+    @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
+    @Override
     public long getRowCount(Session session) {
         return functionTable.getRowCount(session);
     }
 
+    @Override
     public long getRowCountApproximation() {
         return functionTable.getRowCountApproximation();
     }
 
+    @Override
     public long getDiskSpaceUsed() {
         return 0;
     }
 
+    @Override
     public String getPlanSQL() {
         return "function";
     }
 
+    @Override
     public boolean canScan() {
         return false;
     }
 
+    /**
+     * A cursor for a function that returns a result.
+     */
+    private static class FunctionCursor implements Cursor {
+
+        private final ResultInterface result;
+        private Value[] values;
+        private Row row;
+
+        FunctionCursor(ResultInterface result) {
+            this.result = result;
+        }
+
+        @Override
+        public Row get() {
+            if (values == null) {
+                return null;
+            }
+            if (row == null) {
+                row = new Row(values, 1);
+            }
+            return row;
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            return get();
+        }
+
+        @Override
+        public boolean next() {
+            row = null;
+            if (result != null && result.next()) {
+                values = result.currentRow();
+            } else {
+                values = null;
+            }
+            return values != null;
+        }
+
+        @Override
+        public boolean previous() {
+            throw DbException.throwInternalError();
+        }
+    }
+
+    /**
+     * A cursor for a function that returns a JDBC result set.
+     */
+    private static class FunctionCursorResultSet implements Cursor {
+
+        private final Session session;
+        private final ResultSet result;
+        private final ResultSetMetaData meta;
+        private Value[] values;
+        private Row row;
+
+        FunctionCursorResultSet(Session session, ResultSet result) {
+            this.session = session;
+            this.result = result;
+            try {
+                this.meta = result.getMetaData();
+            } catch (SQLException e) {
+                throw DbException.convert(e);
+            }
+        }
+
+        @Override
+        public Row get() {
+            if (values == null) {
+                return null;
+            }
+            if (row == null) {
+                row = new Row(values, 1);
+            }
+            return row;
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            return get();
+        }
+
+        @Override
+        public boolean next() {
+            row = null;
+            try {
+                if (result != null && result.next()) {
+                    int columnCount = meta.getColumnCount();
+                    values = new Value[columnCount];
+                    for (int i = 0; i < columnCount; i++) {
+                        int type = DataType.convertSQLTypeToValueType(meta.getColumnType(i + 1));
+                        values[i] = DataType.readValue(session, result, i + 1, type);
+                    }
+                } else {
+                    values = null;
+                }
+            } catch (SQLException e) {
+                throw DbException.convert(e);
+            }
+            return values != null;
+        }
+
+        @Override
+        public boolean previous() {
+            throw DbException.throwInternalError();
+        }
+    }
 }

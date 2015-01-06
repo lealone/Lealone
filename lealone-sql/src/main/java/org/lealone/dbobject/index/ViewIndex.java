@@ -13,6 +13,7 @@ import org.lealone.command.dml.Query;
 import org.lealone.command.dml.SelectUnion;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
+import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.dbobject.table.TableView;
 import org.lealone.engine.Constants;
@@ -31,6 +32,7 @@ import org.lealone.util.SmallLRUCache;
 import org.lealone.util.SynchronizedVerifier;
 import org.lealone.util.Utils;
 import org.lealone.value.Value;
+import org.lealone.value.ValueNull;
 
 /**
  * This object represents a virtual index for a query.
@@ -78,18 +80,22 @@ public class ViewIndex extends BaseIndex {
         return createSession;
     }
 
+    @Override
     public String getPlanSQL() {
         return planSQL;
     }
 
+    @Override
     public void close(Session session) {
         // nothing to do
     }
 
+    @Override
     public void add(Session session, Row row) {
         throw DbException.getUnsupportedException("VIEW");
     }
 
+    @Override
     public void remove(Session session, Row row) {
         throw DbException.getUnsupportedException("VIEW");
     }
@@ -110,6 +116,7 @@ public class ViewIndex extends BaseIndex {
         double cost;
     }
 
+    @Override
     public synchronized double getCost(Session session, int[] masks, SortOrder sortOrder) {
         if (recursive) {
             return 1000;
@@ -351,26 +358,32 @@ public class ViewIndex extends BaseIndex {
         return q;
     }
 
+    @Override
     public void remove(Session session) {
         throw DbException.getUnsupportedException("VIEW");
     }
 
+    @Override
     public void truncate(Session session) {
         throw DbException.getUnsupportedException("VIEW");
     }
 
+    @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("VIEW");
     }
 
+    @Override
     public boolean needRebuild() {
         return false;
     }
 
+    @Override
     public boolean canGetFirstOrLast() {
         return false;
     }
 
+    @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
         throw DbException.getUnsupportedException("VIEW");
     }
@@ -379,14 +392,17 @@ public class ViewIndex extends BaseIndex {
         this.recursive = value;
     }
 
+    @Override
     public long getRowCount(Session session) {
         return 0;
     }
 
+    @Override
     public long getRowCountApproximation() {
         return 0;
     }
 
+    @Override
     public long getDiskSpaceUsed() {
         return 0;
     }
@@ -395,4 +411,70 @@ public class ViewIndex extends BaseIndex {
         return recursive;
     }
 
+    /**
+     * The cursor implementation of a view index.
+     */
+    private static class ViewCursor implements Cursor {
+
+        private final Table table;
+        private final Index index;
+        private final ResultInterface result;
+        private final SearchRow first, last;
+        private Row current;
+
+        ViewCursor(Index index, ResultInterface result, SearchRow first, SearchRow last) {
+            this.table = index.getTable();
+            this.index = index;
+            this.result = result;
+            this.first = first;
+            this.last = last;
+        }
+
+        @Override
+        public Row get() {
+            return current;
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            return current;
+        }
+
+        @Override
+        public boolean next() {
+            while (true) {
+                boolean res = result.next();
+                if (!res) {
+                    result.close();
+                    current = null;
+                    return false;
+                }
+                current = table.getTemplateRow();
+                Value[] values = result.currentRow();
+                for (int i = 0, len = current.getColumnCount(); i < len; i++) {
+                    Value v = i < values.length ? values[i] : ValueNull.INSTANCE;
+                    current.setValue(i, v);
+                }
+                int comp;
+                if (first != null) {
+                    comp = index.compareRows(current, first);
+                    if (comp < 0) {
+                        continue;
+                    }
+                }
+                if (last != null) {
+                    comp = index.compareRows(current, last);
+                    if (comp > 0) {
+                        continue;
+                    }
+                }
+                return true;
+            }
+        }
+
+        @Override
+        public boolean previous() {
+            throw DbException.throwInternalError();
+        }
+    }
 }

@@ -124,4 +124,33 @@ public class MergedIndex extends BaseIndex {
         // TODO Auto-generated method stub
 
     }
+
+    private static class MergedCursor implements Cursor {
+        private final ResultInterface result;
+
+        MergedCursor(ResultInterface result) {
+            this.result = result;
+        }
+
+        @Override
+        public Row get() {
+            return new Row(result.currentRow(), -1);
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            return get();
+        }
+
+        @Override
+        public boolean next() {
+            return result.next();
+        }
+
+        @Override
+        public boolean previous() {
+            return false;
+        }
+
+    }
 }

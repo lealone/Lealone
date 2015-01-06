@@ -31,23 +31,28 @@ public class MetaIndex extends BaseIndex {
         this.scan = scan;
     }
 
+    @Override
     public void close(Session session) {
         // nothing to do
     }
 
+    @Override
     public void add(Session session, Row row) {
         throw DbException.getUnsupportedException("META");
     }
 
+    @Override
     public void remove(Session session, Row row) {
         throw DbException.getUnsupportedException("META");
     }
 
+    @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         ArrayList<Row> rows = meta.generateRows(session, first, last);
         return new MetaCursor(rows);
     }
 
+    @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         if (scan) {
             return 10 * MetaTable.ROW_COUNT_APPROXIMATION;
@@ -55,14 +60,17 @@ public class MetaIndex extends BaseIndex {
         return getCostRangeIndex(masks, MetaTable.ROW_COUNT_APPROXIMATION, sortOrder);
     }
 
+    @Override
     public void truncate(Session session) {
         throw DbException.getUnsupportedException("META");
     }
 
+    @Override
     public void remove(Session session) {
         throw DbException.getUnsupportedException("META");
     }
 
+    @Override
     public int getColumnIndex(Column col) {
         if (scan) {
             // the scan index cannot use any columns
@@ -71,40 +79,85 @@ public class MetaIndex extends BaseIndex {
         return super.getColumnIndex(col);
     }
 
+    @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("META");
     }
 
+    @Override
     public boolean needRebuild() {
         return false;
     }
 
+    @Override
     public String getCreateSQL() {
         return null;
     }
 
+    @Override
     public boolean canGetFirstOrLast() {
         return false;
     }
 
+    @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
         throw DbException.getUnsupportedException("META");
     }
 
+    @Override
     public long getRowCount(Session session) {
         return MetaTable.ROW_COUNT_APPROXIMATION;
     }
 
+    @Override
     public long getRowCountApproximation() {
         return MetaTable.ROW_COUNT_APPROXIMATION;
     }
 
+    @Override
     public long getDiskSpaceUsed() {
         return meta.getDiskSpaceUsed();
     }
 
+    @Override
     public String getPlanSQL() {
         return "meta";
     }
 
+    /**
+     * An index for a meta data table.
+     * This index can only scan through all rows, search is not supported.
+     */
+    private static class MetaCursor implements Cursor {
+
+        private Row current;
+        private final ArrayList<Row> rows;
+        private int index;
+
+        MetaCursor(ArrayList<Row> rows) {
+            this.rows = rows;
+        }
+
+        @Override
+        public Row get() {
+            return current;
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            return current;
+        }
+
+        @Override
+        public boolean next() {
+            current = index >= rows.size() ? null : rows.get(index++);
+            return current != null;
+        }
+
+        @Override
+        public boolean previous() {
+            throw DbException.throwInternalError();
+        }
+
+    }
 }
