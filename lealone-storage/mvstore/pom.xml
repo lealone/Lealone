@@ -5,21 +5,17 @@
 		<groupId>org.lealone</groupId>
 		<artifactId>lealone</artifactId>
 		<version>1.0.0</version>
+		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>lealone-transaction</artifactId>
+	<artifactId>lealone-storage-mvstore</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-sql</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.lealone</groupId>
-			<artifactId>lealone-storage-mvstore</artifactId>
-			<version>${lealone.version}</version>
+			<artifactId>lealone-common</artifactId>
 		</dependency>
 	</dependencies>
 </project>

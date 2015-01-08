@@ -24,6 +24,8 @@
 		<module>lealone-storage/cassandra</module>
 		<module>lealone-storage/cbase</module>
 		<module>lealone-storage/hbase</module>
+		<module>lealone-storage/memory</module>
+		<module>lealone-storage/mvstore</module>
 		<module>lealone-storage/mysql</module>
 		<module>lealone-storage/postgresql</module>
 

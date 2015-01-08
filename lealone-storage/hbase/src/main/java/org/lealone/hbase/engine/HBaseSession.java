@@ -38,7 +38,7 @@ import org.lealone.hbase.command.dml.HBaseInsert;
 import org.lealone.hbase.dbobject.HBaseSequence;
 import org.lealone.hbase.result.HBaseRow;
 import org.lealone.hbase.transaction.TimestampService;
-import org.lealone.hbase.transaction.Transaction;
+import org.lealone.hbase.transaction.HBaseTransaction;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.util.New;
@@ -57,7 +57,7 @@ public class HBaseSession extends Session {
     private HRegionServer regionServer;
 
     private TimestampService timestampService;
-    private volatile Transaction transaction;
+    private volatile HBaseTransaction transaction;
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
@@ -135,14 +135,14 @@ public class HBaseSession extends Session {
     }
 
     @Override
-    public Transaction getTransaction() {
+    public HBaseTransaction getTransaction() {
         if (transaction == null)
             beginTransaction();
         return transaction;
     }
 
     private void beginTransaction() {
-        transaction = new Transaction(this);
+        transaction = new HBaseTransaction(this);
     }
 
     private void endTransaction() {
@@ -169,7 +169,7 @@ public class HBaseSession extends Session {
         if (this.transaction != null) {
             try {
                 //避免重复commit
-                Transaction transaction = this.transaction;
+                HBaseTransaction transaction = this.transaction;
                 this.transaction = null;
                 if (allLocalTransactionNames == null)
                     allLocalTransactionNames = transaction.getAllLocalTransactionNames();
@@ -192,7 +192,7 @@ public class HBaseSession extends Session {
     public void rollback() {
         if (this.transaction != null) {
             try {
-                Transaction transaction = this.transaction;
+                HBaseTransaction transaction = this.transaction;
                 this.transaction = null;
                 List<Future<Void>> futures = null;
                 if (!getAutoCommit() && frontendSessionCache.size() > 0)

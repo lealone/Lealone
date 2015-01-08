@@ -54,7 +54,7 @@ class TransactionStatusTable {
         }
     }
 
-    synchronized static void commit(DefaultTransaction localTransaction, String allLocalTransactionNames) {
+    synchronized static void commit(GlobalTransaction localTransaction, String allLocalTransactionNames) {
         try {
             commit.setString(1, localTransaction.getTransactionName());
             commit.setString(2, allLocalTransactionNames);

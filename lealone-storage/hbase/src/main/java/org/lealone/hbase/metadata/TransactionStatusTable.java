@@ -25,7 +25,7 @@ import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.lealone.hbase.transaction.Transaction;
+import org.lealone.hbase.transaction.HBaseTransaction;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
 import org.lealone.transaction.TransactionStatusCache;
@@ -63,7 +63,7 @@ public class TransactionStatusTable {
      * @param localTransaction 参与者自己的本地事务
      * @param allLocalTransactionNames 所有参与者的本地事务名列表
      */
-    public synchronized void addRecord(Transaction localTransaction, byte[] allLocalTransactionNames) {
+    public synchronized void addRecord(HBaseTransaction localTransaction, byte[] allLocalTransactionNames) {
         Put put = new Put(Bytes.toBytes(localTransaction.getTransactionName()));
         put.add(MetaDataAdmin.DEFAULT_COLUMN_FAMILY, COMMIT_TIMESTAMP, localTransaction.getTransactionId(),
                 Bytes.toBytes(localTransaction.getCommitTimestamp()));
@@ -96,7 +96,7 @@ public class TransactionStatusTable {
      * @param currentTransaction 当前事务
      * @return true 有效 
      */
-    public boolean isValid(String hostAndPort, long oldTid, Transaction currentTransaction) {
+    public boolean isValid(String hostAndPort, long oldTid, HBaseTransaction currentTransaction) {
         TransactionStatusCache cache = hostAndPortMap.get(hostAndPort);
         if (cache == null) {
             cache = newCache(hostAndPort);
@@ -109,7 +109,7 @@ public class TransactionStatusTable {
         if (commitTimestamp != -1)
             return commitTimestamp <= currentTransaction.getTransactionId();
 
-        String oldTransactionName = Transaction.getTransactionName(hostAndPort, oldTid);
+        String oldTransactionName = HBaseTransaction.getTransactionName(hostAndPort, oldTid);
         Get get = new Get(Bytes.toBytes(oldTransactionName));
         try {
             Result r = table.get(get);
@@ -156,7 +156,7 @@ public class TransactionStatusTable {
         if (cache.get(tid) > 0)
             return true;
 
-        String transactionName = Transaction.getTransactionName(hostAndPort, tid);
+        String transactionName = HBaseTransaction.getTransactionName(hostAndPort, tid);
         Get get = new Get(Bytes.toBytes(transactionName));
         try {
             Result r = table.get(get);

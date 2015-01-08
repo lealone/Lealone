@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.cbase.dbobject.index.ValueDataType;
-import org.lealone.cbase.dbobject.table.CBaseTable;
+import org.lealone.cbase.dbobject.table.MVTable;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Constants;
@@ -41,11 +41,11 @@ import org.lealone.util.New;
 /**
  * A storage engine that internally uses the MVStore.
  */
-public class CBaseStorageEngine implements StorageEngine {
-    public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
+public class MVStorageEngine implements StorageEngine {
+    public static final String NAME = "MVStore";
 
     //见StorageEngineManager.StorageEngineService中的注释
-    public CBaseStorageEngine() {
+    public MVStorageEngine() {
         StorageEngineManager.registerStorageEngine(this);
     }
 
@@ -67,7 +67,7 @@ public class CBaseStorageEngine implements StorageEngine {
             }
         }
 
-        CBaseTable table = new CBaseTable(data, store);
+        MVTable table = new MVTable(data, store);
         table.init(data.session);
         store.tableMap.put(table.getMapName(), table);
         return table;
@@ -161,7 +161,7 @@ public class CBaseStorageEngine implements StorageEngine {
          * The map of open tables.
          * Key: the map name, value: the table.
          */
-        final ConcurrentHashMap<String, CBaseTable> tableMap = new ConcurrentHashMap<String, CBaseTable>();
+        final ConcurrentHashMap<String, MVTable> tableMap = new ConcurrentHashMap<String, MVTable>();
 
         /**
          * The store.
@@ -191,8 +191,8 @@ public class CBaseStorageEngine implements StorageEngine {
             return transactionStore;
         }
 
-        public HashMap<String, CBaseTable> getTables() {
-            return new HashMap<String, CBaseTable>(tableMap);
+        public HashMap<String, MVTable> getTables() {
+            return new HashMap<String, MVTable>(tableMap);
         }
 
         /**
@@ -200,7 +200,7 @@ public class CBaseStorageEngine implements StorageEngine {
          *
          * @param table the table
          */
-        public void removeTable(CBaseTable table) {
+        public void removeTable(MVTable table) {
             tableMap.remove(table.getMapName());
         }
 

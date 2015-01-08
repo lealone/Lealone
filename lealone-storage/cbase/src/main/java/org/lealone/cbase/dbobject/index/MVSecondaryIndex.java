@@ -13,8 +13,8 @@ import java.util.List;
 import java.util.TreeSet;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.dbobject.table.CBaseTable;
-import org.lealone.cbase.engine.CBaseStorageEngine;
+import org.lealone.cbase.dbobject.table.MVTable;
+import org.lealone.cbase.engine.MVStorageEngine;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
@@ -39,19 +39,18 @@ import org.lealone.value.ValueNull;
 /**
  * A table stored in a MVStore.
  */
-public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
+public class MVSecondaryIndex extends BaseIndex implements CBaseIndex {
 
     /**
      * The multi-value table.
      */
-    final CBaseTable mvTable;
+    final MVTable mvTable;
 
     private final int keyColumns;
     private final String mapName;
     private final TransactionMap<Value, Value> dataMap;
 
-    public CBaseSecondaryIndex(Session session, CBaseTable table, int id, String indexName, IndexColumn[] columns,
-            IndexType indexType) {
+    public MVSecondaryIndex(Session session, MVTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
         Database db = session.getDatabase();
         this.mvTable = table;
         initBaseIndex(table, id, indexName, columns, indexType);
@@ -172,7 +171,7 @@ public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
         ValueDataType keyType = new ValueDataType(database.getCompareMode(), database, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
         MVMap.Builder<Value, Value> builder = new MVMap.Builder<Value, Value>().keyType(keyType).valueType(valueType);
-        MVMap<Value, Value> map = CBaseStorageEngine.getStore(database).getStore().openMap(mapName, builder);
+        MVMap<Value, Value> map = MVStorageEngine.getStore(database).getStore().openMap(mapName, builder);
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }
@@ -343,7 +342,7 @@ public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
     }
 
     @Override
-    public CBaseTable getTable() {
+    public MVTable getTable() {
         return mvTable;
     }
 

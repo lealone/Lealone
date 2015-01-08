@@ -74,7 +74,7 @@ public class TransactionalRouter implements Router {
         Session session = p.getSession();
 
         if (session.getTransaction() == null)
-            session.setTransaction(new DefaultTransaction(session));
+            session.setTransaction(new GlobalTransaction(session));
         try {
             if (isBatch) {
                 if (session.getAutoCommit()) {

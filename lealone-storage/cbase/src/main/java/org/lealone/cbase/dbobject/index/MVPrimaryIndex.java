@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.dbobject.table.CBaseTable;
+import org.lealone.cbase.dbobject.table.MVTable;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
@@ -36,7 +36,7 @@ import org.lealone.value.ValueNull;
 /**
  * A table stored in a MVStore.
  */
-public class CBasePrimaryIndex extends BaseIndex {
+public class MVPrimaryIndex extends BaseIndex {
 
     /**
      * The minimum long value.
@@ -53,13 +53,13 @@ public class CBasePrimaryIndex extends BaseIndex {
      */
     static final ValueLong ZERO = ValueLong.get(0);
 
-    private final CBaseTable mvTable;
+    private final MVTable mvTable;
     private final String mapName;
     private final TransactionMap<Value, Value> dataMap;
     private long lastKey;
     private int mainIndexColumn = -1;
 
-    public CBasePrimaryIndex(Session session, CBaseTable table, int id, IndexColumn[] columns, IndexType indexType) {
+    public MVPrimaryIndex(Session session, MVTable table, int id, IndexColumn[] columns, IndexType indexType) {
         Database db = session.getDatabase();
         this.mvTable = table;
         initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
@@ -198,7 +198,7 @@ public class CBasePrimaryIndex extends BaseIndex {
     }
 
     @Override
-    public CBaseTable getTable() {
+    public MVTable getTable() {
         return mvTable;
     }
 

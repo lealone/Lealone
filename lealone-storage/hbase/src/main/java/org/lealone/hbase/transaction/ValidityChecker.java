@@ -41,7 +41,7 @@ public class ValidityChecker {
     private final static TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
 
     public static Result checkResult(byte[] defaultColumnFamilyName, HBaseSession session, HRegionServer regionServer,
-            byte[] regionName, Transaction t, Result r) throws IOException {
+            byte[] regionName, HBaseTransaction t, Result r) throws IOException {
         if (r == null || r.isEmpty())
             return null;
         byte[] bytes;
@@ -81,7 +81,7 @@ public class ValidityChecker {
 
     public static Result[] fetchResults(byte[] defaultColumnFamilyName, HBaseSession session, //
             byte[] regionName, long scannerId, int fetchSize) throws IOException {
-        Transaction t = session.getTransaction();
+        HBaseTransaction t = session.getTransaction();
         Result r;
         Result[] result = session.getRegionServer().next(scannerId, fetchSize);
         ArrayList<Result> list = new ArrayList<Result>(result.length);
@@ -96,7 +96,7 @@ public class ValidityChecker {
 
     public static boolean fetchResults(byte[] defaultColumnFamilyName, HBaseSession session, //
             byte[] regionName, InternalScanner scanner, int fetchSize, ArrayList<Result> list) throws IOException {
-        Transaction t = session.getTransaction();
+        HBaseTransaction t = session.getTransaction();
         Result r;
         List<KeyValue> kvs = new ArrayList<KeyValue>();
 

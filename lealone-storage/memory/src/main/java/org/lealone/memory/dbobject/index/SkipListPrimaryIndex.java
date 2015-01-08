@@ -1,18 +1,30 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-package org.lealone.cbase.dbobject.index;
+package org.lealone.memory.dbobject.index;
 
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
@@ -21,22 +33,16 @@ import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
+import org.lealone.memory.dbobject.table.SkipListTable;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
-import org.lealone.transaction.local.LocalTransaction;
-import org.lealone.transaction.local.TransactionMap;
-import org.lealone.util.DataUtils;
 import org.lealone.value.Value;
-import org.lealone.value.ValueArray;
 import org.lealone.value.ValueLong;
 import org.lealone.value.ValueNull;
 
-/**
- * A table stored in a MVStore.
- */
-public class CBasePrimaryIndex extends BaseIndex {
+public class SkipListPrimaryIndex extends BaseIndex {
 
     /**
      * The minimum long value.
@@ -53,29 +59,18 @@ public class CBasePrimaryIndex extends BaseIndex {
      */
     static final ValueLong ZERO = ValueLong.get(0);
 
-    private final CBaseTable mvTable;
-    private final String mapName;
-    private final TransactionMap<Value, Value> dataMap;
+    private final ConcurrentNavigableMap<Value, Row> rows = new ConcurrentSkipListMap<Value, Row>();
+    private final SkipListTable table;
     private long lastKey;
     private int mainIndexColumn = -1;
 
-    public CBasePrimaryIndex(Session session, CBaseTable table, int id, IndexColumn[] columns, IndexType indexType) {
-        Database db = session.getDatabase();
-        this.mvTable = table;
+    public SkipListPrimaryIndex(Database db, SkipListTable table, int id, IndexColumn[] columns, IndexType indexType) {
+        this.table = table;
         initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
         int[] sortTypes = new int[columns.length];
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = SortOrder.ASCENDING;
         }
-        ValueDataType keyType = new ValueDataType(null, null, null);
-        ValueDataType valueType = new ValueDataType(db.getCompareMode(), db, sortTypes);
-        mapName = "table." + getId();
-        dataMap = mvTable.getTransaction(session).openMap(mapName, keyType, valueType);
-        if (!table.isPersistData()) {
-            dataMap.map.setVolatile(true);
-        }
-        Value k = dataMap.lastKey();
-        lastKey = k == null ? 0 : k.getLong();
     }
 
     @Override
@@ -101,6 +96,17 @@ public class CBasePrimaryIndex extends BaseIndex {
         // ok
     }
 
+    private Value getKey(Row row) {
+        Value key = ValueLong.get(row.getKey());
+        key.compareMode = table.getCompareMode();
+        return key;
+    }
+
+    private Value getKey(Value v) {
+        v.compareMode = table.getCompareMode();
+        return v;
+    }
+
     @Override
     public void add(Session session, Row row) {
         if (mainIndexColumn == -1) {
@@ -112,7 +118,7 @@ public class CBasePrimaryIndex extends BaseIndex {
             row.setKey(c);
         }
 
-        if (mvTable.getContainsLargeObject()) {
+        if (table.getContainsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
                 Value v = row.getValue(i);
                 Value v2 = v.link(database, getId());
@@ -125,29 +131,32 @@ public class CBasePrimaryIndex extends BaseIndex {
             }
         }
 
-        TransactionMap<Value, Value> map = getMap(session);
-        Value key = ValueLong.get(row.getKey());
-        Value old = map.getLatest(key);
-        if (old != null) {
-            String sql = "PRIMARY KEY ON " + table.getSQL();
-            if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
-                sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+        Value key = getKey(row);
+        Row old = rows.get(key);
+        if (row.isUpdate()) {
+            old.merge(row);
+        } else {
+            if (old != null) {
+                String sql = "PRIMARY KEY ON " + table.getSQL();
+                if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
+                    sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+                }
+                DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
+                e.setSource(this);
+                throw e;
             }
-            DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-            e.setSource(this);
-            throw e;
+            try {
+                rows.put(key, row);
+            } catch (IllegalStateException e) {
+                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+            }
+            lastKey = Math.max(lastKey, row.getKey());
         }
-        try {
-            map.put(key, ValueArray.get(row.getValueList()));
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
-        lastKey = Math.max(lastKey, row.getKey());
     }
 
     @Override
     public void remove(Session session, Row row) {
-        if (mvTable.getContainsLargeObject()) {
+        if (table.getContainsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
                 Value v = row.getValue(i);
                 if (v.isLinked()) {
@@ -155,12 +164,17 @@ public class CBasePrimaryIndex extends BaseIndex {
                 }
             }
         }
-        TransactionMap<Value, Value> map = getMap(session);
+        Value key = getKey(row);
+        Row old = rows.get(key);
         try {
-            Value old = map.remove(ValueLong.get(row.getKey()));
             if (old == null) {
                 throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
             }
+            if (row.isUpdate())
+                row.cleanUpdateFlag(); //由update语句触发，什么都不做
+            else
+                //不删除行，只设个删除标记
+                old.setDeleted(true); //rows.remove(key);
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
         }
@@ -168,13 +182,13 @@ public class CBasePrimaryIndex extends BaseIndex {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        ValueLong min, max;
+        Value min, max;
         if (first == null) {
             min = MIN;
         } else if (mainIndexColumn < 0) {
             min = ValueLong.get(first.getKey());
         } else {
-            ValueLong v = (ValueLong) first.getValue(mainIndexColumn);
+            Value v = first.getValue(mainIndexColumn);
             if (v == null) {
                 min = ValueLong.get(first.getKey());
             } else {
@@ -186,46 +200,30 @@ public class CBasePrimaryIndex extends BaseIndex {
         } else if (mainIndexColumn < 0) {
             max = ValueLong.get(last.getKey());
         } else {
-            ValueLong v = (ValueLong) last.getValue(mainIndexColumn);
+            Value v = last.getValue(mainIndexColumn);
             if (v == null) {
                 max = ValueLong.get(last.getKey());
             } else {
                 max = v;
             }
         }
-        TransactionMap<Value, Value> map = getMap(session);
-        return new CBasePrimaryIndexCursor(map.entryIterator(min), max);
+        return find(session, min, max);
     }
 
     @Override
-    public CBaseTable getTable() {
-        return mvTable;
+    public SkipListTable getTable() {
+        return table;
     }
 
     @Override
     public Row getRow(Session session, long key) {
-        TransactionMap<Value, Value> map = getMap(session);
-        Value v = map.get(ValueLong.get(key));
-        ValueArray array = (ValueArray) v;
-        Row row = new Row(array.getList(), 0);
-        row.setKey(key);
-        return row;
+        return rows.get(ValueLong.get(key));
     }
-
-    //    @Override
-    //    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
-    //        try {
-    //            long cost = 10 * (dataMap.sizeAsLongMax() + Constants.COST_ROW_OFFSET);
-    //            return cost;
-    //        } catch (IllegalStateException e) {
-    //            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
-    //        }
-    //    }
 
     @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         try {
-            long cost = 10 * (dataMap.sizeAsLongMax() + Constants.COST_ROW_OFFSET);
+            long cost = 10 * (table.getRowCountApproximation() + Constants.COST_ROW_OFFSET);
             return cost;
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
@@ -240,20 +238,14 @@ public class CBasePrimaryIndex extends BaseIndex {
 
     @Override
     public void remove(Session session) {
-        TransactionMap<Value, Value> map = getMap(session);
-        if (!map.isClosed()) {
-            LocalTransaction t = mvTable.getTransaction(session);
-            t.removeMap(map);
-        }
+        //TODO
     }
 
     @Override
     public void truncate(Session session) {
-        TransactionMap<Value, Value> map = getMap(session);
-        if (mvTable.getContainsLargeObject()) {
+        if (table.getContainsLargeObject()) {
             database.getLobStorage().removeAllForTable(table.getId());
         }
-        map.clear();
     }
 
     @Override
@@ -263,15 +255,16 @@ public class CBasePrimaryIndex extends BaseIndex {
 
     @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
-        TransactionMap<Value, Value> map = getMap(session);
-        ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
-        if (v == null) {
-            return new CBasePrimaryIndexCursor(Collections.<Entry<Value, Value>> emptyList().iterator(), null);
+        Row row = (first ? rows.firstEntry().getValue() : rows.lastEntry().getValue());
+        if (row == null) {
+            return new SkipListPrimaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
+                    .getTransaction().getTransactionId());
         }
-        Value value = map.get(v);
-        Entry<Value, Value> e = new DataUtils.MapEntry<Value, Value>(v, value);
-        List<Entry<Value, Value>> list = Arrays.asList(e);
-        CBasePrimaryIndexCursor c = new CBasePrimaryIndexCursor(list.iterator(), v);
+        ValueLong key = ValueLong.get(row.getKey());
+        HashMap<Value, Row> e = new HashMap<>(1);
+        e.put(getKey(key), row);
+        SkipListPrimaryIndexCursor c = new SkipListPrimaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
+                .getTransactionId());
         c.next();
         return c;
     }
@@ -283,8 +276,7 @@ public class CBasePrimaryIndex extends BaseIndex {
 
     @Override
     public long getRowCount(Session session) {
-        TransactionMap<Value, Value> map = getMap(session);
-        return map.sizeAsLong();
+        return rows.size();
     }
 
     /**
@@ -294,7 +286,7 @@ public class CBasePrimaryIndex extends BaseIndex {
      */
     public long getRowCountMax() {
         try {
-            return dataMap.sizeAsLongMax();
+            return rows.size();
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }
@@ -307,12 +299,7 @@ public class CBasePrimaryIndex extends BaseIndex {
 
     @Override
     public long getDiskSpaceUsed() {
-        // TODO estimate disk space usage
         return 0;
-    }
-
-    public String getMapName() {
-        return mapName;
     }
 
     @Override
@@ -349,9 +336,9 @@ public class CBasePrimaryIndex extends BaseIndex {
      * @param last the key of the last row
      * @return the cursor
      */
-    Cursor find(Session session, ValueLong first, ValueLong last) {
-        TransactionMap<Value, Value> map = getMap(session);
-        return new CBasePrimaryIndexCursor(map.entryIterator(first), last);
+    Cursor find(Session session, Value first, Value last) {
+        return new SkipListPrimaryIndexCursor(rows.tailMap(getKey(first)).entrySet().iterator(), last, session.getTransaction()
+                .getTransactionId());
     }
 
     @Override
@@ -360,43 +347,32 @@ public class CBasePrimaryIndex extends BaseIndex {
     }
 
     /**
-     * Get the map to store the data.
-     *
-     * @param session the session
-     * @return the map
-     */
-    TransactionMap<Value, Value> getMap(Session session) {
-        if (session == null) {
-            return dataMap;
-        }
-        LocalTransaction t = mvTable.getTransaction(session);
-        return dataMap.getInstance(t, Long.MAX_VALUE);
-    }
-
-    /**
      * A cursor.
      */
-    private static class CBasePrimaryIndexCursor implements Cursor {
+    private static class SkipListPrimaryIndexCursor implements Cursor {
 
-        private final Iterator<Entry<Value, Value>> it;
-        private final ValueLong last;
-        private Entry<Value, Value> current;
+        private final Iterator<Entry<Value, Row>> it;
+        private final Value last;
+        private Entry<Value, Row> current;
         private Row row;
 
-        public CBasePrimaryIndexCursor(Iterator<Entry<Value, Value>> it, ValueLong last) {
+        private final long transactionId;
+
+        public SkipListPrimaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
             this.it = it;
             this.last = last;
+            this.transactionId = transactionId;
         }
 
         @Override
         public Row get() {
             if (row == null) {
                 if (current != null) {
-                    ValueArray array = (ValueArray) current.getValue();
-                    row = new Row(array.getList(), 0);
-                    row.setKey(current.getKey().getLong());
+                    row = current.getValue();
                 }
             }
+            if (row != null)
+                row.setTransactionId(transactionId);
             return row;
         }
 
@@ -411,6 +387,9 @@ public class CBasePrimaryIndex extends BaseIndex {
             if (current != null && current.getKey().getLong() > last.getLong()) {
                 current = null;
             }
+            if (current != null && current.getValue().isDeleted()) //过滤掉已删除的行
+                return next();
+
             row = null;
             return current != null;
         }

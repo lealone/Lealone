@@ -14,14 +14,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.dbobject.index.CBaseDelegateIndex;
-import org.lealone.cbase.dbobject.index.CBaseIndex;
-import org.lealone.cbase.dbobject.index.CBasePrimaryIndex;
-import org.lealone.cbase.dbobject.index.CBaseSecondaryIndex;
 import org.lealone.cbase.dbobject.index.HashIndex;
+import org.lealone.cbase.dbobject.index.MVDelegateIndex;
+import org.lealone.cbase.dbobject.index.CBaseIndex;
+import org.lealone.cbase.dbobject.index.MVPrimaryIndex;
+import org.lealone.cbase.dbobject.index.MVSecondaryIndex;
 import org.lealone.cbase.dbobject.index.NonUniqueHashIndex;
-import org.lealone.cbase.engine.CBaseStorageEngine;
-import org.lealone.cbase.engine.CBaseStorageEngine.Store;
+import org.lealone.cbase.engine.MVStorageEngine;
+import org.lealone.cbase.engine.MVStorageEngine.Store;
 import org.lealone.command.ddl.Analyze;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.DbObject;
@@ -52,9 +52,9 @@ import org.lealone.value.Value;
 /**
  * A table stored in a MVStore.
  */
-public class CBaseTable extends TableBase {
+public class MVTable extends TableBase {
 
-    private CBasePrimaryIndex primaryIndex;
+    private MVPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = New.arrayList();
     private long lastModificationId;
     private volatile Session lockExclusiveSession;
@@ -75,7 +75,7 @@ public class CBaseTable extends TableBase {
 
     private final TransactionStore store;
 
-    public CBaseTable(CreateTableData data, CBaseStorageEngine.Store store) {
+    public MVTable(CreateTableData data, MVStorageEngine.Store store) {
         super(data);
         nextAnalyze = database.getSettings().analyzeAuto;
         this.store = store.getTransactionStore();
@@ -94,7 +94,7 @@ public class CBaseTable extends TableBase {
      * @param session the session
      */
     public void init(Session session) {
-        primaryIndex = new CBasePrimaryIndex(session, this, getId(), IndexColumn.wrap(getColumns()), IndexType.createScan(true));
+        primaryIndex = new MVPrimaryIndex(session, this, getId(), IndexColumn.wrap(getColumns()), IndexType.createScan(true));
         indexes.add(primaryIndex);
     }
 
@@ -265,8 +265,8 @@ public class CBaseTable extends TableBase {
                     buff.append(", ");
                 }
                 buff.append(t.toString());
-                if (t instanceof CBaseTable) {
-                    if (((CBaseTable) t).lockExclusiveSession == s) {
+                if (t instanceof MVTable) {
+                    if (((MVTable) t).lockExclusiveSession == s) {
                         buff.append(" (exclusive)");
                     } else {
                         buff.append(" (shared)");
@@ -281,7 +281,7 @@ public class CBaseTable extends TableBase {
     @Override
     public ArrayList<Session> checkDeadlock(Session session, Session clash, Set<Session> visited) {
         // only one deadlock check at any given time
-        synchronized (CBaseTable.class) {
+        synchronized (MVTable.class) {
             if (clash == null) {
                 // verification is started
                 clash = session;
@@ -419,7 +419,7 @@ public class CBaseTable extends TableBase {
         }
         if (mainIndexColumn != -1) {
             primaryIndex.setMainIndexColumn(mainIndexColumn);
-            index = new CBaseDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
+            index = new MVDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
             //        } else if (indexType.isSpatial()) {
             //            index = new MVSpatialIndex(session.getDatabase(), this, indexId, indexName, cols, indexType);
         } else if (indexType.isHash() && cols.length <= 1) { //TODO 是否要支持多版本
@@ -429,7 +429,7 @@ public class CBaseTable extends TableBase {
                 index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
             }
         } else {
-            index = new CBaseSecondaryIndex(session, this, indexId, indexName, cols, indexType);
+            index = new MVSecondaryIndex(session, this, indexId, indexName, cols, indexType);
         }
         if (index instanceof CBaseIndex && index.needRebuild()) {
             rebuildIndex(session, (CBaseIndex) index, indexName);
@@ -451,7 +451,7 @@ public class CBaseTable extends TableBase {
     private void rebuildIndex(Session session, CBaseIndex index, String indexName) {
         try {
             //if (session.getDatabase().getMvStore() == null || index instanceof MVSpatialIndex) {
-            if (CBaseStorageEngine.getStore(session) == null) {
+            if (MVStorageEngine.getStore(session) == null) {
                 // in-memory
                 rebuildIndexBuffered(session, index);
             } else {
@@ -489,7 +489,7 @@ public class CBaseTable extends TableBase {
         long total = remaining;
         Cursor cursor = scan.find(session, null, null);
         long i = 0;
-        Store store = CBaseStorageEngine.getStore(session);
+        Store store = MVStorageEngine.getStore(session);
 
         int bufferSize = database.getMaxMemoryRows() / 2;
         ArrayList<Row> buffer = New.arrayList(bufferSize);
@@ -718,7 +718,7 @@ public class CBaseTable extends TableBase {
             database.lockMeta(session);
         }
         //database.getMvStore().removeTable(this);
-        CBaseStorageEngine.getStore(session).removeTable(this);
+        MVStorageEngine.getStore(session).removeTable(this);
         super.removeChildrenAndResources(session);
         // go backwards because database.removeIndex will
         // call table.removeIndex

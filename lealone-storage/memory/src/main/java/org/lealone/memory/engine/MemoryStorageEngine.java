@@ -15,19 +15,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction;
+package org.lealone.memory.engine;
 
-import org.lealone.engine.Session;
+import org.lealone.command.ddl.CreateTableData;
+import org.lealone.dbobject.table.Table;
+import org.lealone.engine.StorageEngine;
+import org.lealone.engine.StorageEngineManager;
+import org.lealone.memory.dbobject.table.SkipListTable;
 
-public class TransactionManager {
-    public static synchronized void init() {
-        TransactionStatusTable.init();
-        TimestampServiceTable.init();
+public class MemoryStorageEngine implements StorageEngine {
+    public static final String NAME = "Memory";
+
+    //见StorageEngineManager.StorageEngineService中的注释
+    public MemoryStorageEngine() {
+        StorageEngineManager.registerStorageEngine(this);
     }
 
-    public static Transaction beginTransaction(Session session) {
-        //if(session.isLocal())
-        //new LocalTransaction(session);
-        return new GlobalTransaction(session);
+    @Override
+    public String getName() {
+        return NAME;
     }
+
+    @Override
+    public Table createTable(CreateTableData data) {
+        return new SkipListTable(data);
+    }
+
 }
