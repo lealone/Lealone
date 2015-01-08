@@ -118,6 +118,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         trans.writeString(ci.getUserName());
         trans.writeBytes(ci.getUserPasswordHash());
         trans.writeBytes(ci.getFilePasswordHash());
+        trans.writeBytes(ci.getFileEncryptionKey());
         String[] keys = ci.getKeys();
         trans.writeInt(keys.length);
         for (String key : keys) {

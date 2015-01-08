@@ -157,6 +157,7 @@ public class TcpServerThread implements Runnable {
     private Session createSession(String dbName, String originalURL, String userName, Transfer transfer) throws IOException {
         byte[] userPasswordHash = transfer.readBytes();
         byte[] filePasswordHash = transfer.readBytes();
+        byte[] fileEncryptionKey = transfer.readBytes();
 
         Properties originalProperties = new Properties();
 
@@ -183,6 +184,7 @@ public class TcpServerThread implements Runnable {
 
         ci.setUserPasswordHash(userPasswordHash);
         ci.setFilePasswordHash(filePasswordHash);
+        ci.setFileEncryptionKey(fileEncryptionKey);
         ci.readProperties(originalProperties);
 
         originalProperties.setProperty("user", userName);

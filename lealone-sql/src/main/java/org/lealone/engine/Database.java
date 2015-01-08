@@ -98,6 +98,7 @@ public class Database implements DataHandler {
     private String databaseURL;
     private String cipher;
     private byte[] filePasswordHash;
+    private byte[] fileEncryptionKey;
 
     private final HashMap<String, Role> roles = New.hashMap();
     private final HashMap<String, User> users = New.hashMap();
@@ -190,6 +191,7 @@ public class Database implements DataHandler {
         this.dbSettings = ci.getDbSettings();
         this.compareMode = CompareMode.getInstance(null, 0, false);
         this.filePasswordHash = ci.getFilePasswordHash();
+        this.fileEncryptionKey = ci.getFileEncryptionKey();
         this.databaseName = ci.getDatabaseName();
         this.databaseShortName = databaseShortName;
         this.maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
@@ -1453,6 +1455,10 @@ public class Database implements DataHandler {
 
     public int getPageSize() {
         return pageSize;
+    }
+
+    public byte[] getFileEncryptionKey() {
+        return fileEncryptionKey;
     }
 
     public synchronized void setMasterUser(User user) {
