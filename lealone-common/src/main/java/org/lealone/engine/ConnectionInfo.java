@@ -16,6 +16,7 @@ import java.util.Properties;
 import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.security.SHA256;
+import org.lealone.store.fs.FilePathEncrypt;
 import org.lealone.store.fs.FileUtils;
 import org.lealone.util.New;
 import org.lealone.util.SortedProperties;
@@ -50,6 +51,7 @@ public class ConnectionInfo implements Cloneable {
     private String url; //不包含后面的参数
     private String user;
     private byte[] filePasswordHash;
+    private byte[] fileEncryptionKey;
     private byte[] userPasswordHash;
 
     /**
@@ -306,6 +308,7 @@ public class ConnectionInfo implements Cloneable {
             System.arraycopy(password, 0, filePassword, 0, space);
             Arrays.fill(password, (char) 0);
             password = np;
+            fileEncryptionKey = FilePathEncrypt.getPasswordBytes(filePassword);
             filePasswordHash = hashPassword(passwordHash, "file", filePassword);
         }
         userPasswordHash = hashPassword(passwordHash, user, password);
@@ -404,6 +407,10 @@ public class ConnectionInfo implements Cloneable {
      */
     byte[] getFilePasswordHash() {
         return filePasswordHash;
+    }
+
+    byte[] getFileEncryptionKey() {
+        return fileEncryptionKey;
     }
 
     /**
@@ -544,6 +551,10 @@ public class ConnectionInfo implements Cloneable {
      */
     public void setFilePasswordHash(byte[] hash) {
         this.filePasswordHash = hash;
+    }
+
+    public void setFileEncryptionKey(byte[] key) {
+        this.fileEncryptionKey = key;
     }
 
     /**

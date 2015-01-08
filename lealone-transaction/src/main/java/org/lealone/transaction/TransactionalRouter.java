@@ -73,8 +73,8 @@ public class TransactionalRouter implements Router {
         boolean isNestedTransaction = false;
         Session session = p.getSession();
 
-        if (session.getTransaction() == null)
-            session.setTransaction(new GlobalTransaction(session));
+        if (!session.isLocal() && session.getTransaction() == null)
+            session.setTransaction(TransactionManager.beginTransaction(session));
         try {
             if (isBatch) {
                 if (session.getAutoCommit()) {

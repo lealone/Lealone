@@ -14,7 +14,7 @@ import org.lealone.mvstore.type.DataType;
 /**
  * The value type for a versioned value.
  */
-public class VersionedValueType implements DataType {
+class VersionedValueType implements DataType {
 
     private final DataType valueType;
 

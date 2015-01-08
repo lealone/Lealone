@@ -91,7 +91,7 @@ public class MVStorageEngine implements StorageEngine {
      */
     private static Store init(final Database db) {
         Store store = null;
-        //byte[] key = db.getFileEncryptionKey();
+        byte[] key = db.getFileEncryptionKey();
         String dbPath = db.getDatabasePath();
         MVStore.Builder builder = new MVStore.Builder();
         if (dbPath == null) {
@@ -113,13 +113,13 @@ public class MVStorageEngine implements StorageEngine {
                     FileUtils.createDirectories(dir);
                 }
             }
-            //            if (key != null) {
-            //                char[] password = new char[key.length / 2];
-            //                for (int i = 0; i < password.length; i++) {
-            //                    password[i] = (char) (((key[i + i] & 255) << 16) | ((key[i + i + 1]) & 255));
-            //                }
-            //                builder.encryptionKey(password);
-            //            }
+            if (key != null) {
+                char[] password = new char[key.length / 2];
+                for (int i = 0; i < password.length; i++) {
+                    password[i] = (char) (((key[i + i] & 255) << 16) | ((key[i + i + 1]) & 255));
+                }
+                builder.encryptionKey(password);
+            }
             if (db.getSettings().compressData) {
                 builder.compress();
                 // use a larger page split size to improve the compression ratio
@@ -138,9 +138,9 @@ public class MVStorageEngine implements StorageEngine {
             } catch (IllegalStateException e) {
                 int errorCode = DataUtils.getErrorCode(e.getMessage());
                 if (errorCode == DataUtils.ERROR_FILE_CORRUPT) {
-                    //                    if (key != null) {
-                    //                        throw DbException.get(ErrorCode.FILE_ENCRYPTION_ERROR_1, e, fileName);
-                    //                    }
+                    if (key != null) {
+                        throw DbException.get(ErrorCode.FILE_ENCRYPTION_ERROR_1, e, fileName);
+                    }
                 } else if (errorCode == DataUtils.ERROR_FILE_LOCKED) {
                     throw DbException.get(ErrorCode.DATABASE_ALREADY_OPEN_1, e, fileName);
                 } else if (errorCode == DataUtils.ERROR_READING_FAILED) {

@@ -9,7 +9,7 @@ package org.lealone.transaction.local;
  * A versioned value (possibly null). It contains a pointer to the old
  * value, and the value itself.
  */
-public class VersionedValue {
+class VersionedValue {
 
     /**
      * The operation id.
