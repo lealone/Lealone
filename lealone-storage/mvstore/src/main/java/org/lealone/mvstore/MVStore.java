@@ -382,7 +382,11 @@ public class MVStore {
     public static MVStore open(String fileName) {
         HashMap<String, Object> config = New.hashMap();
         config.put("fileName", fileName);
-        return new MVStore(config);
+
+        MVStore store = new MVStore(config);
+        if (fileName != null)
+            MVStoreCache.putMVStore(fileName, store);
+        return store;
     }
 
     /**
@@ -2697,7 +2701,10 @@ public class MVStore {
          * @return the opened store
          */
         public MVStore open() {
-            return new MVStore(config);
+            MVStore store = new MVStore(config);
+            if (config.get("fileName") != null)
+                MVStoreCache.putMVStore((String) config.get("fileName"), store);
+            return store;
         }
 
         @Override
