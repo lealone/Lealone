@@ -281,5 +281,7 @@ public class LocalTransaction implements Transaction {
     @Override
     public void commit(String allLocalTransactionNames) {
         commit();
+
+        store.commitTransactionStatusTable(this, allLocalTransactionNames);
     }
 }

@@ -40,6 +40,7 @@ public class TransactionalRouter implements Router {
 
     @Override
     public int executeDefineCommand(DefineCommand defineCommand) {
+        beginTransaction(defineCommand);
         return nestedRouter.executeDefineCommand(defineCommand);
     }
 
@@ -65,16 +66,22 @@ public class TransactionalRouter implements Router {
 
     @Override
     public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
+        beginTransaction(select);
         return nestedRouter.executeSelect(select, maxRows, scrollable);
     }
 
+    private void beginTransaction(Prepared p) {
+        if (p.getSession().getTransaction() == null)
+            TransactionManager.beginTransaction(p.getSession());
+    }
+
     private int execute(boolean isBatch, Prepared p) {
+        beginTransaction(p);
+
         boolean isTopTransaction = false;
         boolean isNestedTransaction = false;
         Session session = p.getSession();
 
-        if (!session.isLocal() && session.getTransaction() == null)
-            session.setTransaction(TransactionManager.beginTransaction(session));
         try {
             if (isBatch) {
                 if (session.getAutoCommit()) {

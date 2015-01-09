@@ -206,7 +206,7 @@ public class TcpServer implements Server {
         Driver.load();
 
         DatabaseEngine.init(baseDir);
-        TransactionManager.init();
+        TransactionManager.init(baseDir);
     }
 
     @Override

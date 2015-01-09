@@ -28,7 +28,7 @@ public class TransactionTest extends TestBase {
 
     @Test
     public void run() throws Exception {
-        //create();
+        create();
         //        insert();
         //        select();
 
