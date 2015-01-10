@@ -200,16 +200,6 @@ public abstract class Table extends SchemaObjectBase {
     public abstract void addRow(Session session, Row row);
 
     /**
-     * Commit an operation (when using multi-version concurrency).
-     *
-     * @param operation the operation
-     * @param row the row
-     */
-    public void commit(short operation, Row row) {
-        // nothing to do
-    }
-
-    /**
      * Check if this table supports ALTER TABLE.
      *
      * @throws DbException if it is not supported

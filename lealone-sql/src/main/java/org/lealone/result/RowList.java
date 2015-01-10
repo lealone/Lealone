@@ -57,7 +57,6 @@ public class RowList {
         buff.writeLong(r.getKey());
         buff.writeInt(r.getVersion());
         buff.writeInt(r.isDeleted() ? 1 : 0);
-        buff.writeInt(r.getSessionId());
         for (int i = 0; i < columnCount; i++) {
             Value v = r.getValue(i);
             buff.checkCapacity(1);
@@ -175,7 +174,6 @@ public class RowList {
             key = 0;
         }
         boolean deleted = buff.readInt() == 1;
-        int sessionId = buff.readInt();
         Value[] values = new Value[columnCount];
         for (int i = 0; i < columnCount; i++) {
             Value v;
@@ -197,7 +195,6 @@ public class RowList {
         row.setKey(key);
         row.setVersion(version);
         row.setDeleted(deleted);
-        row.setSessionId(sessionId);
         return row;
     }
 

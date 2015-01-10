@@ -376,11 +376,6 @@ public abstract class BaseIndex extends SchemaObjectBase implements Index {
         return table;
     }
 
-    @Override
-    public void commit(int operation, Row row) {
-        // nothing to do
-    }
-
     void setMultiVersion(boolean multiVersion) {
         this.isMultiVersion = multiVersion;
     }

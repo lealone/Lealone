@@ -7,24 +7,15 @@
 package org.lealone.dbobject.table;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 
-import org.lealone.api.DatabaseEventListener;
-import org.lealone.api.ErrorCode;
 import org.lealone.command.ddl.Analyze;
 import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.constraint.Constraint;
-import org.lealone.dbobject.constraint.ConstraintReferential;
-import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
-import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
-import org.lealone.util.MathUtils;
 import org.lealone.util.New;
 import org.lealone.util.StatementBuilder;
 import org.lealone.util.StringUtils;
@@ -163,56 +154,6 @@ public abstract class TableBase extends Table {
 
     @Override
     public void addRow(Session session, Row row) {
-        lastModificationId = database.getNextModificationDataId();
-        if (database.isMultiVersion()) {
-            row.setSessionId(session.getId());
-        }
-        int i = 0;
-        try {
-            for (int size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                index.add(session, row);
-                checkRowCount(session, index, 1);
-            }
-            rowCount++;
-        } catch (Throwable e) {
-            try {
-                while (--i >= 0) {
-                    Index index = indexes.get(i);
-                    index.remove(session, row);
-                    checkRowCount(session, index, 0);
-                }
-            } catch (DbException e2) {
-                // this could happen, for example on failure in the storage
-                // but if that is not the case it means there is something wrong
-                // with the database
-                trace.error(e2, "could not undo operation");
-                throw e2;
-            }
-            DbException de = DbException.convert(e);
-            //            if (de.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
-            //                for (int j = 0; j < indexes.size(); j++) {
-            //                    Index index = indexes.get(j);
-            //                    if (index.getIndexType().isUnique() && index instanceof MultiVersionIndex) {
-            //                        MultiVersionIndex mv = (MultiVersionIndex) index;
-            //                        if (mv.isUncommittedFromOtherSession(session, row)) {
-            //                            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, index.getName());
-            //                        }
-            //                    }
-            //                }
-            //            }
-            throw de;
-        }
-        analyzeIfRequired(session);
-    }
-
-    @Override
-    public void commit(short operation, Row row) {
-        lastModificationId = database.getNextModificationDataId();
-        for (int i = 0, size = indexes.size(); i < size; i++) {
-            Index index = indexes.get(i);
-            index.commit(operation, row);
-        }
     }
 
     public void checkRowCount(Session session, Index index, int offset) {
@@ -269,44 +210,6 @@ public abstract class TableBase extends Table {
 
     @Override
     public void removeRow(Session session, Row row) {
-        if (database.isMultiVersion()) {
-            if (row.isDeleted()) {
-                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, getName());
-            }
-            int old = row.getSessionId();
-            int newId = session.getId();
-            if (old == 0) {
-                row.setSessionId(newId);
-            } else if (old != newId) {
-                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, getName());
-            }
-        }
-        lastModificationId = database.getNextModificationDataId();
-        int i = indexes.size() - 1;
-        try {
-            for (; i >= 0; i--) {
-                Index index = indexes.get(i);
-                index.remove(session, row);
-                checkRowCount(session, index, -1);
-            }
-            rowCount--;
-        } catch (Throwable e) {
-            try {
-                while (++i < indexes.size()) {
-                    Index index = indexes.get(i);
-                    index.add(session, row);
-                    checkRowCount(session, index, 0);
-                }
-            } catch (DbException e2) {
-                // this could happen, for example on failure in the storage
-                // but if that is not the case it means there is something wrong
-                // with the database
-                trace.error(e2, "could not undo operation");
-                throw e2;
-            }
-            throw DbException.convert(e);
-        }
-        analyzeIfRequired(session);
     }
 
     @Override
@@ -374,26 +277,6 @@ public abstract class TableBase extends Table {
     }
 
     @Override
-    public boolean canTruncate() {
-        if (getCheckForeignKeyConstraints() && database.getReferentialIntegrity()) {
-            ArrayList<Constraint> constraints = getConstraints();
-            if (constraints != null) {
-                for (int i = 0, size = constraints.size(); i < size; i++) {
-                    Constraint c = constraints.get(i);
-                    if (!(c.getConstraintType().equals(Constraint.REFERENTIAL))) {
-                        continue;
-                    }
-                    ConstraintReferential ref = (ConstraintReferential) c;
-                    if (ref.getRefTable() == this) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
-    }
-
-    @Override
     public String getTableType() {
         return Table.TABLE;
     }
@@ -429,61 +312,6 @@ public abstract class TableBase extends Table {
             rowIdColumn.setTable(this, -1);
         }
         return rowIdColumn;
-    }
-
-    protected void rebuildIfNeed(Session session, Index index, String indexName) {
-        if (index.needRebuild() && rowCount > 0) {
-            try {
-                Index scan = getScanIndex(session);
-                long remaining = scan.getRowCount(session);
-                long total = remaining;
-                Cursor cursor = scan.find(session, null, null);
-                long i = 0;
-                int bufferSize = (int) Math.min(rowCount, Constants.DEFAULT_MAX_MEMORY_ROWS);
-                ArrayList<Row> buffer = New.arrayList(bufferSize);
-                String n = getName() + ":" + index.getName();
-                int t = MathUtils.convertLongToInt(total);
-                while (cursor.next()) {
-                    database.setProgress(DatabaseEventListener.STATE_CREATE_INDEX, n, MathUtils.convertLongToInt(i++), t);
-                    Row row = cursor.get();
-                    buffer.add(row);
-                    if (buffer.size() >= bufferSize) {
-                        addRowsToIndex(session, buffer, index);
-                    }
-                    remaining--;
-                }
-                addRowsToIndex(session, buffer, index);
-                if (SysProperties.CHECK && remaining != 0) {
-                    DbException.throwInternalError("rowcount remaining=" + remaining + " " + getName());
-                }
-            } catch (DbException e) {
-                getSchema().freeUniqueName(indexName);
-                try {
-                    index.remove(session);
-                } catch (DbException e2) {
-                    // this could happen, for example on failure in the storage
-                    // but if that is not the case it means
-                    // there is something wrong with the database
-                    trace.error(e2, "could not remove index");
-                    throw e2;
-                }
-                throw e;
-            }
-        }
-    }
-
-    private static void addRowsToIndex(Session session, ArrayList<Row> list, Index index) {
-        final Index idx = index;
-        Collections.sort(list, new Comparator<Row>() {
-            @Override
-            public int compare(Row r1, Row r2) {
-                return idx.compareRows(r1, r2);
-            }
-        });
-        for (Row row : list) {
-            index.add(session, row);
-        }
-        list.clear();
     }
 
 }

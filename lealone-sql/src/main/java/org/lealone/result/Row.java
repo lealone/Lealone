@@ -27,7 +27,6 @@ public class Row implements SearchRow {
     private int memory;
     private int version;
     private boolean deleted;
-    private int sessionId;
     private Value rowKey;
     private Table table;
 
@@ -48,8 +47,9 @@ public class Row implements SearchRow {
         return transactionId;
     }
 
-    public void setTransactionId(long transactionId) {
+    public Row setTransactionId(long transactionId) {
         this.transactionId = transactionId;
+        return this;
     }
 
     public Row(Value[] data, int memory) {
@@ -75,7 +75,6 @@ public class Row implements SearchRow {
         Row r2 = new Row(d2, memory);
         r2.key = key;
         r2.version = version + 1;
-        r2.sessionId = sessionId;
         return r2;
     }
 
@@ -208,21 +207,6 @@ public class Row implements SearchRow {
         this.deleted = deleted;
     }
 
-    public void setSessionId(int sessionId) {
-        this.sessionId = sessionId;
-    }
-
-    public int getSessionId() {
-        return sessionId;
-    }
-
-    /**
-     * This record has been committed. The session id is reset.
-     */
-    public void commit() {
-        this.sessionId = 0;
-    }
-
     public boolean isDeleted() {
         return deleted;
     }
@@ -253,8 +237,12 @@ public class Row implements SearchRow {
         }
     }
 
-    //TODO
     public Table getTable() {
         return table;
+    }
+
+    public Row setTable(Table table) {
+        this.table = table;
+        return this;
     }
 }
