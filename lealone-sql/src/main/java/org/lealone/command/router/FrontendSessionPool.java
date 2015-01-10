@@ -106,6 +106,8 @@ public class FrontendSessionPool {
         if (fs.getTransaction() == null)
             fs.setTransaction(originalSession.getTransaction());
 
+        //fs.setDistributed(!originalSession.getAutoCommit());
+
         if (isNew)
             originalSession.addFrontendSession(url, fs);
 

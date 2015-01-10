@@ -19,9 +19,11 @@ package org.lealone.transaction;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 
+import org.lealone.command.router.Router;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
+import org.lealone.engine.SystemDatabase;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.MVStoreCache;
 import org.lealone.mvstore.MVStoreTool;
@@ -29,10 +31,23 @@ import org.lealone.store.fs.FileUtils;
 
 public class TransactionManager {
     private static MVStore store;
+    private static String hostAndPort;
 
-    public static synchronized void init(String baseDir) {
+    public static String getHostAndPort() {
+        return hostAndPort;
+    }
+
+    public static synchronized void init(String baseDir, String host, int port) {
         if (store != null)
             return;
+
+        hostAndPort = host + ":" + port;
+
+        Router r = Session.getRouter();
+        if (!(r instanceof TransactionalRouter)) {
+            Session.setRouter(new TransactionalRouter(r));
+        }
+
         initStore(baseDir);
 
         TransactionStatusTable.init(store);
@@ -44,7 +59,7 @@ public class TransactionManager {
             baseDir = SysProperties.getBaseDir();
         }
 
-        String fileName = FileUtils.toRealPath(baseDir + "/system") + Constants.SUFFIX_MV_FILE;
+        String fileName = FileUtils.toRealPath(baseDir + "/" + SystemDatabase.NAME) + Constants.SUFFIX_MV_FILE;
 
         if (MVStoreCache.getMVStore(fileName) != null) {
             store = MVStoreCache.getMVStore(fileName);

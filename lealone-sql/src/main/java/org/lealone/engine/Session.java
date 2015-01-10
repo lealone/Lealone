@@ -501,7 +501,10 @@ public class Session extends SessionWithState {
             //避免重复commit
             Transaction transaction = this.transaction;
             this.transaction = null;
-            transaction.commit(allLocalTransactionNames);
+            if (allLocalTransactionNames == null)
+                transaction.commit();
+            else
+                transaction.commit(allLocalTransactionNames);
         }
         if (containsUncommitted()) {
             // need to commit even if rollback is not possible
@@ -1365,6 +1368,7 @@ public class Session extends SessionWithState {
 
     public void setTransaction(Transaction t) {
         transaction = t;
+        transaction.setAutoCommit(autoCommit);
     }
 
     private static Router router = LocalRouter.getInstance();
@@ -1412,5 +1416,9 @@ public class Session extends SessionWithState {
 
     public void setOriginalProperties(Properties originalProperties) {
         this.originalProperties = originalProperties;
+    }
+
+    public Map<String, FrontendSession> getFrontendSessionCache() {
+        return frontendSessionCache;
     }
 }

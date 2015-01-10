@@ -34,6 +34,12 @@ public class TransactionStore {
     final MVMap<Integer, Object[]> preparedTransactions;
 
     /**
+     * The persisted map of transactionStatusTable.
+     * Key: transactionId, value: [ all_local_transaction_names, commit_timestamp ].
+     */
+    final MVMap<Integer, Object[]> transactionStatusTable;
+
+    /**
      * The undo log.
      * <p>
      * If the first entry for a transaction doesn't have a logId
@@ -63,6 +69,8 @@ public class TransactionStore {
      */
     private int nextTempMapId;
 
+    private final TimestampService timestampService;
+
     /**
      * Create a new transaction store.
      *
@@ -82,6 +90,7 @@ public class TransactionStore {
         this.store = store;
         this.dataType = dataType;
         preparedTransactions = store.openMap("openTransactions", new MVMap.Builder<Integer, Object[]>());
+        transactionStatusTable = store.openMap("transactionStatusTable", new MVMap.Builder<Integer, Object[]>());
         VersionedValueType oldValueType = new VersionedValueType(dataType);
         ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), dataType, oldValueType });
         MVMap.Builder<Long, Object[]> builder = new MVMap.Builder<Long, Object[]>().valueType(undoLogValueType);
@@ -98,6 +107,8 @@ public class TransactionStore {
             }
         }
         init();
+
+        timestampService = new TimestampService(lastTransactionId);
     }
 
     /**
@@ -219,6 +230,22 @@ public class TransactionStore {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
         int transactionId = ++lastTransactionId;
+        if (lastTransactionId >= maxTransactionId) {
+            lastTransactionId = 0;
+        }
+        int status = LocalTransaction.STATUS_OPEN;
+        return new LocalTransaction(this, transactionId, status, null, 0);
+    }
+
+    public synchronized LocalTransaction begin(boolean isLocal) {
+        if (!init) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
+        }
+        int transactionId = ++lastTransactionId;
+        if (isLocal)
+            transactionId = timestampService.nextEven();
+        else
+            transactionId = timestampService.nextOdd();
         if (lastTransactionId >= maxTransactionId) {
             lastTransactionId = 0;
         }
@@ -547,4 +574,8 @@ public class TransactionStore {
         };
     }
 
+    synchronized void commitTransactionStatusTable(LocalTransaction t, String allLocalTransactionNames) {
+        Object[] v = { allLocalTransactionNames, ++lastTransactionId };
+        transactionStatusTable.put(t.getId(), v);
+    }
 }

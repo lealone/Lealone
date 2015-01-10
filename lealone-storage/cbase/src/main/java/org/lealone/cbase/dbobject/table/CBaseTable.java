@@ -770,15 +770,18 @@ public class CBaseTable extends TableBase {
      * @param session the session
      * @return the transaction
      */
+    @Override
     public LocalTransaction getTransaction(Session session) {
         if (session.getTransaction() == null) {
             LocalTransaction t = store.begin();
             session.setTransaction(t);
+            t.setSession(session);
             return t;
         } else if (!(session.getTransaction() instanceof LocalTransaction)) {
             LocalTransaction t = store.begin();
             t.setTransaction(session.getTransaction());
             session.setTransaction(t);
+            t.setSession(session);
         }
 
         return (LocalTransaction) session.getTransaction();

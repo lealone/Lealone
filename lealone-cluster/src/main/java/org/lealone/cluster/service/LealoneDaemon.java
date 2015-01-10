@@ -29,15 +29,15 @@ public class LealoneDaemon {
             logger.info("32bit JVM detected.  It is recommended to run lealone on a 64bit JVM for better performance.");
 
         try {
+            startTcpServer();
+
             if (DatabaseDescriptor.loadConfig().isClusterMode()) {
                 Session.setRouter(new TransactionalRouter(createRouter()));
                 StorageService.instance.initServer();
             }
-
-            startTcpServer();
         } catch (Exception e) {
-            System.err.println(e.getMessage() + //
-                    "\nFatal configuration error; unable to start server.  See log for stacktrace.");
+            logger.error("Fatal configuration error; unable to start server.  See log for stacktrace.", e);
+            System.exit(1);
         }
     }
 

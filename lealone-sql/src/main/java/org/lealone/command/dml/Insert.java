@@ -294,12 +294,13 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
                 }
                 buff.append('(');
                 buff.resetCount();
-                for (Value v : row.getValueList()) {
+                for (Column c : columns) {
+                    Value v = row.getValue(c.getColumnId());
                     buff.appendExceptFirst(", ");
                     if (v == null) {
                         buff.append("DEFAULT");
                     } else {
-                        buff.append(v.getString());
+                        buff.append(v.getSQL());
                     }
                 }
                 buff.append(')');

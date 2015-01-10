@@ -17,12 +17,10 @@
  */
 package org.lealone.transaction;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -34,36 +32,31 @@ import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.util.New;
 
-public class GlobalTransaction implements Transaction {
+public class GlobalTransaction extends TransactionBase {
     private static final CommitHashMap commitHashMap = new CommitHashMap(1000, 32);
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
-    private final Session session;
+    //private final Session session;
 
     //参与本次事务的其他FrontendSession
     private final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
 
     private final String transactionName;
-    private final long transactionId;
-    private final boolean autoCommit;
-    private long commitTimestamp;
+    //    private final long transactionId;
+    //    private final boolean autoCommit;
+    //    private long commitTimestamp;
 
     //协调者或参与者自身的本地事务名
     private StringBuilder localTransactionNamesBuilder;
     //如果本事务是协调者中的事务，那么在此字段中存放其他参与者的本地事务名
     private final ConcurrentSkipListSet<String> participantLocalTransactionNames = new ConcurrentSkipListSet<String>();
-
-    private CopyOnWriteArrayList<Row> undoRows;
-    private HashMap<String, Integer> savepoints;
+    //
+    //    private CopyOnWriteArrayList<Row> undoRows;
+    //    private HashMap<String, Integer> savepoints;
     private final ConcurrentSkipListSet<Long> halfSuccessfulTransactions = new ConcurrentSkipListSet<Long>();
 
     public GlobalTransaction(Session session) {
-        session.setTransaction(this);
-        this.session = session;
-        undoRows = new CopyOnWriteArrayList<>();
-        autoCommit = session.getAutoCommit();
-
-        transactionId = getNewTimestamp();
+        super(session);
         String hostAndPort = session.getHostAndPort();
         if (hostAndPort == null)
             hostAndPort = "localhost:0";

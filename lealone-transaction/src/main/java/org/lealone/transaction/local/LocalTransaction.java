@@ -6,17 +6,30 @@
 package org.lealone.transaction.local;
 
 import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
+import org.lealone.command.router.FrontendSessionPool;
+import org.lealone.engine.FrontendSession;
+import org.lealone.engine.Session;
+import org.lealone.message.DbException;
 import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionManager;
+import org.lealone.util.New;
 
 /**
  * A transaction.
  */
 public class LocalTransaction implements Transaction {
 
+    private static final ExecutorService executorService = Executors.newCachedThreadPool();
     /**
      * The status of a closed transaction (committed or rolled back).
      */
@@ -185,6 +198,13 @@ public class LocalTransaction implements Transaction {
      */
     @Override
     public void commit() {
+        if (session.isLocal())
+            commit0();
+        else
+            commit(null);
+    }
+
+    private void commit0() {
         checkNotClosed();
         store.commit(this, logId);
         if (t != null)
@@ -208,9 +228,13 @@ public class LocalTransaction implements Transaction {
      */
     @Override
     public void rollback() {
-        checkNotClosed();
-        store.rollbackTo(this, logId, 0);
-        store.endTransaction(this);
+        try {
+            checkNotClosed();
+            store.rollbackTo(this, logId, 0);
+            store.endTransaction(this);
+        } finally {
+            endTransaction();
+        }
     }
 
     /**
@@ -259,29 +283,136 @@ public class LocalTransaction implements Transaction {
         return transactionId;
     }
 
+    private boolean autoCommit;
+
     @Override
     public boolean isAutoCommit() {
-        //return Session.this.getAutoCommit();
-        return false;
+        return autoCommit;
     }
 
     @Override
+    public void setAutoCommit(boolean autoCommit) {
+        this.autoCommit = autoCommit;
+    }
+
+    private String transactionName;
+
+    //协调者或参与者自身的本地事务名
+    private StringBuilder localTransactionNamesBuilder;
+    //如果本事务是协调者中的事务，那么在此字段中存放其他参与者的本地事务名
+    private final ConcurrentSkipListSet<String> participantLocalTransactionNames = new ConcurrentSkipListSet<String>();
+
+    /**
+     * 假设有RS1、RS2、RS3，Client启动的一个事务涉及这三个RS, 
+     * 第一个接收到Client读写请求的RS即是协调者也是参与者，之后Client的任何读写请求都只会跟协调者打交道，
+     * 假设这里的协调者是RS1，当读写由RS1转发到RS2时，RS2在完成读写请求后会把它的本地事务名(可能有多个(嵌套事务)发回来，
+     * 此时协调者必须记下所有其他参与者的本地事务名。<p>
+     * 
+     * 如果本地事务名是null，代表参与者执行完读写请求后发现跟上次的本地事务名一样，为了减少网络传输就不再重发。
+     */
+    @Override
     public void addLocalTransactionNames(String localTransactionNames) {
+        if (localTransactionNames != null) {
+            for (String name : localTransactionNames.split(","))
+                participantLocalTransactionNames.add(name.trim());
+        }
     }
 
     @Override
     public String getLocalTransactionNames() {
-        return null;
+        if (transactionName == null)
+            transactionName = TransactionManager.getHostAndPort() + ":" + transactionId;
+        StringBuilder buff = new StringBuilder(transactionName);
+
+        if (!participantLocalTransactionNames.isEmpty()) {
+            for (String name : participantLocalTransactionNames) {
+                buff.append(',');
+                buff.append(name);
+            }
+        }
+
+        if (localTransactionNamesBuilder != null && localTransactionNamesBuilder.equals(buff))
+            return null;
+        localTransactionNamesBuilder = buff;
+        return buff.toString();
     }
 
     @Override
     public void rollbackToSavepoint(String name) {
     }
 
+    public String getAllLocalTransactionNames() {
+        getLocalTransactionNames();
+        return localTransactionNamesBuilder.toString();
+    }
+
     @Override
     public void commit(String allLocalTransactionNames) {
-        commit();
+        try {
+            if (allLocalTransactionNames == null)
+                allLocalTransactionNames = getAllLocalTransactionNames();
+            List<Future<Void>> futures = null;
+            if (!isAutoCommit() && session.getFrontendSessionCache().size() > 0)
+                futures = parallelCommitOrRollback(allLocalTransactionNames);
 
-        store.commitTransactionStatusTable(this, allLocalTransactionNames);
+            commit0();
+            store.commitTransactionStatusTable(this, allLocalTransactionNames);
+            if (futures != null)
+                waitFutures(futures);
+        } finally {
+            endTransaction();
+        }
+    }
+
+    private void endTransaction() {
+        if (!session.getFrontendSessionCache().isEmpty()) {
+            for (FrontendSession fs : session.getFrontendSessionCache().values()) {
+                fs.setTransaction(null);
+                FrontendSessionPool.release(fs);
+            }
+
+            session.getFrontendSessionCache().clear();
+        }
+
+        if (!session.isRoot())
+            session.setAutoCommit(true);
+    }
+
+    @Override
+    public void log(Object obj) {
+    }
+
+    Session session;
+
+    public void setSession(Session session) {
+        this.session = session;
+    }
+
+    private List<Future<Void>> parallelCommitOrRollback(final String allLocalTransactionNames) {
+        int size = session.getFrontendSessionCache().size();
+        List<Future<Void>> futures = New.arrayList(size);
+        for (final FrontendSession fs : session.getFrontendSessionCache().values()) {
+            futures.add(executorService.submit(new Callable<Void>() {
+                @Override
+                public Void call() throws Exception {
+                    if (allLocalTransactionNames != null)
+                        fs.commitTransaction(allLocalTransactionNames);
+                    else
+                        fs.rollbackTransaction();
+                    return null;
+                }
+            }));
+        }
+        return futures;
+    }
+
+    private void waitFutures(List<Future<Void>> futures) {
+        try {
+            for (int i = 0, size = futures.size(); i < size; i++) {
+                futures.get(i).get();
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 }

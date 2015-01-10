@@ -245,4 +245,19 @@ public class Row implements SearchRow {
         this.table = table;
         return this;
     }
+
+    private Tag tag;
+
+    public Tag getTag() {
+        return tag;
+    }
+
+    public Row setTag(Tag tag) {
+        this.tag = tag;
+        return this;
+    }
+
+    public static enum Tag {
+        INSERT, UPDATE, DELETE;
+    }
 }

@@ -383,9 +383,15 @@ public class MVStore {
         HashMap<String, Object> config = New.hashMap();
         config.put("fileName", fileName);
 
-        MVStore store = new MVStore(config);
+        MVStore store = null;
         if (fileName != null)
-            MVStoreCache.putMVStore(fileName, store);
+            store = MVStoreCache.getMVStore(fileName);
+
+        if (store == null) {
+            store = new MVStore(config);
+            if (fileName != null)
+                MVStoreCache.putMVStore(fileName, store);
+        }
         return store;
     }
 
@@ -2701,9 +2707,16 @@ public class MVStore {
          * @return the opened store
          */
         public MVStore open() {
-            MVStore store = new MVStore(config);
-            if (config.get("fileName") != null)
-                MVStoreCache.putMVStore((String) config.get("fileName"), store);
+            MVStore store = null;
+            String fileName = (String) config.get("fileName");
+            if (fileName != null)
+                store = MVStoreCache.getMVStore(fileName);
+
+            if (store == null) {
+                store = new MVStore(config);
+                if (fileName != null)
+                    MVStoreCache.putMVStore(fileName, store);
+            }
             return store;
         }
 

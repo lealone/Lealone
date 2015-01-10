@@ -729,4 +729,14 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         return zkAdmin.getOnlineServer();
     }
 
+    //    private boolean distributed;
+    //
+    //    public void setDistributed(boolean distributed) {
+    //        this.distributed = distributed;
+    //    }
+    //
+    //    public boolean isDistributed() {
+    //        return distributed;
+    //    }
+
 }

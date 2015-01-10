@@ -32,7 +32,7 @@ import org.lealone.util.New;
 public class SystemDatabase {
 
     //private static Database systemDatabase;
-    private static final String SYSTEM_DATABASE_NAME = "system";
+    public static final String NAME = "system";
     //private static final String URL = Constants.URL_PREFIX + Constants.URL_EMBED + SYSTEM_DATABASE_NAME;
 
     private static JdbcConnection conn;
@@ -48,11 +48,11 @@ public class SystemDatabase {
             }
 
             //systemDatabase = new Database(DatabaseEngine.getInstance());
-            String url = Constants.URL_PREFIX + Constants.URL_EMBED + SYSTEM_DATABASE_NAME;
-            ConnectionInfo ci = new ConnectionInfo(url, SYSTEM_DATABASE_NAME);
+            String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
+            ConnectionInfo ci = new ConnectionInfo(url, NAME);
             if (baseDir != null)
                 ci.setBaseDir(baseDir);
-            ci.setUserName("");
+            ci.setUserName("DBA");
             ci.setUserPasswordHash(new byte[0]);
             //systemDatabase.init(ci, null);
 

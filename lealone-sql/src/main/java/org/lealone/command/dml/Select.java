@@ -1480,4 +1480,8 @@ public class Select extends Query implements Callable<ResultInterface> {
     public ResultInterface call() {
         return super.query(queryLimit, resultTarget);
     }
+
+    public Table getTable() {
+        return topTableFilter.getTable();
+    }
 }

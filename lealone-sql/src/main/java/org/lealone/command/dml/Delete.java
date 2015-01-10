@@ -175,4 +175,7 @@ public class Delete extends Prepared implements Callable<Integer> {
         return true;
     }
 
+    public Table getTable() {
+        return tableFilter.getTable();
+    }
 }

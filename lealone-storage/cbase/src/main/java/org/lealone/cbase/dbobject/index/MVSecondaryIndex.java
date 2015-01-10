@@ -298,10 +298,10 @@ public class MVSecondaryIndex extends BaseIndex implements CBaseIndex {
                 break;
             }
             if (min == null) {
-                return new CBaseSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
+                return new MVSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
             }
         }
-        return new CBaseSecondaryIndexCursor(session, map.keyIterator(min), last);
+        return new MVSecondaryIndexCursor(session, map.keyIterator(min), last);
     }
 
     private ValueArray convertToKey(SearchRow r) {
@@ -390,7 +390,7 @@ public class MVSecondaryIndex extends BaseIndex implements CBaseIndex {
         Value key = first ? map.firstKey() : map.lastKey();
         while (true) {
             if (key == null) {
-                return new CBaseSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
+                return new MVSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
             }
             if (((ValueArray) key).getList()[0] != ValueNull.INSTANCE) {
                 break;
@@ -399,7 +399,7 @@ public class MVSecondaryIndex extends BaseIndex implements CBaseIndex {
         }
         ArrayList<Value> list = New.arrayList();
         list.add(key);
-        CBaseSecondaryIndexCursor cursor = new CBaseSecondaryIndexCursor(session, list.iterator(), null);
+        MVSecondaryIndexCursor cursor = new MVSecondaryIndexCursor(session, list.iterator(), null);
         cursor.next();
         return cursor;
     }
@@ -466,7 +466,7 @@ public class MVSecondaryIndex extends BaseIndex implements CBaseIndex {
     /**
      * A cursor.
      */
-    private class CBaseSecondaryIndexCursor implements Cursor {
+    private class MVSecondaryIndexCursor implements Cursor {
 
         private final Session session;
         private final Iterator<Value> it;
@@ -475,7 +475,7 @@ public class MVSecondaryIndex extends BaseIndex implements CBaseIndex {
         private SearchRow searchRow;
         private Row row;
 
-        public CBaseSecondaryIndexCursor(Session session, Iterator<Value> it, SearchRow last) {
+        public MVSecondaryIndexCursor(Session session, Iterator<Value> it, SearchRow last) {
             this.session = session;
             this.it = it;
             this.last = last;

@@ -53,7 +53,7 @@ public class HBaseTransaction implements Transaction {
 
     private final String transactionName;
     private final long transactionId;
-    private final boolean autoCommit;
+    private boolean autoCommit;
     private long commitTimestamp;
 
     //协调者或参与者自身的本地事务名
@@ -320,5 +320,15 @@ public class HBaseTransaction implements Transaction {
     @Override
     public void commit() {
         //do nothing
+    }
+
+    @Override
+    public void log(Object obj) {
+        log((HBaseRow) obj);
+    }
+
+    @Override
+    public void setAutoCommit(boolean autoCommit) {
+        this.autoCommit = autoCommit;
     }
 }

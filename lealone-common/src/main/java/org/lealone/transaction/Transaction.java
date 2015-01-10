@@ -1,6 +1,4 @@
 /*
- * Copyright 2011 The Apache Software Foundation
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,6 +24,8 @@ public interface Transaction {
 
     boolean isAutoCommit();
 
+    void setAutoCommit(boolean autoCommit);
+
     void addLocalTransactionNames(String localTransactionNames);
 
     String getLocalTransactionNames();
@@ -37,4 +37,6 @@ public interface Transaction {
     void rollback();
 
     void rollbackToSavepoint(String name);
+
+    void log(Object obj);
 }

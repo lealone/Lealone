@@ -1,8 +1,6 @@
 package org.lealone.cluster.db;
 
 import java.net.InetAddress;
-import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -20,6 +18,7 @@ import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.service.StorageService;
+import org.lealone.engine.SystemDatabase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,9 +28,9 @@ import com.google.common.collect.SetMultimap;
 public class SystemKeyspace {
     private static final Logger logger = LoggerFactory.getLogger(SystemKeyspace.class);
 
-    private static Connection conn;
+    //private static Connection conn;
     private static Statement stmt;
-    public static final String NAME = "system";
+    public static final String NAME = SystemDatabase.NAME;
 
     public static final String LOCAL_TABLE = "local";
     public static final String PEERS_TABLE = "peers";
@@ -40,8 +39,8 @@ public class SystemKeyspace {
 
     static {
         try {
-            conn = DriverManager.getConnection("jdbc:lealone:embed:" + NAME, "sa", "");
-            stmt = conn.createStatement();
+            //conn = DriverManager.getConnection("jdbc:lealone:embed:" + NAME, "sa", "");
+            stmt = SystemDatabase.getConnection().createStatement();
             stmt.execute("CREATE TABLE IF NOT EXISTS " + PEERS_TABLE + "(" //
                     + "peer varchar,"//
                     + "data_center varchar,"//

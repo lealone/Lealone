@@ -21,7 +21,6 @@ import org.lealone.api.ErrorCode;
 import org.lealone.api.ParameterInterface;
 import org.lealone.command.BackendBatchCommand;
 import org.lealone.command.Command;
-import org.lealone.command.router.LocalRouter;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Constants;
 import org.lealone.engine.FrontendSession;
@@ -33,7 +32,6 @@ import org.lealone.message.JdbcSQLException;
 import org.lealone.result.ResultColumn;
 import org.lealone.result.ResultInterface;
 import org.lealone.store.LobStorage;
-import org.lealone.transaction.TransactionalRouter;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;
 import org.lealone.util.SmallLRUCache;
@@ -138,6 +136,8 @@ public class TcpServerThread implements Runnable {
                 try {
                     process();
                 } catch (Throwable e) {
+                    if (server.isTraceEnabled())
+                        server.traceError(e);
                     sendError(e);
                 }
             }
@@ -200,9 +200,6 @@ public class TcpServerThread implements Runnable {
             session.setOriginalProperties(originalProperties);
             session.setLocal(isLocal);
             session.setHostAndPort(server.getListenAddress(), server.getPort());
-            if (!Session.isClusterMode()) {
-                Session.setRouter(new TransactionalRouter(LocalRouter.getInstance()));
-            }
             return session;
         } catch (SQLException e) {
             throw DbException.convert(e);

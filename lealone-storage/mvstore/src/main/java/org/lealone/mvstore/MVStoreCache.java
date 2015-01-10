@@ -17,10 +17,10 @@
  */
 package org.lealone.mvstore;
 
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MVStoreCache {
-    private static HashMap<String, MVStore> stores = new HashMap<String, MVStore>(2);
+    private static ConcurrentHashMap<String, MVStore> stores = new ConcurrentHashMap<>(2);
 
     public static MVStore getMVStore(String name) {
         return stores.get(name);

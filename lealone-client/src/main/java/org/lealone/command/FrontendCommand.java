@@ -136,6 +136,7 @@ public class FrontendCommand implements CommandInterface {
             prepareIfRequired();
             try {
                 boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+                //boolean isDistributedQuery = session.isDistributed();
                 if (isDistributedQuery) {
                     session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
                     transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
@@ -168,6 +169,8 @@ public class FrontendCommand implements CommandInterface {
 
             } catch (IOException e) {
                 session.handleException(e);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
             session.readSessionState();
             return result;
@@ -183,6 +186,7 @@ public class FrontendCommand implements CommandInterface {
             prepareIfRequired();
             try {
                 boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+                //boolean isDistributedUpdate = session.isDistributed();
                 if (isDistributedUpdate) {
                     session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
                     transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
@@ -201,6 +205,8 @@ public class FrontendCommand implements CommandInterface {
                 //autoCommit = transfer.readBoolean();
             } catch (IOException e) {
                 session.handleException(e);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
             session.readSessionState();
             return updateCount;

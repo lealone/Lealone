@@ -84,6 +84,10 @@ public class ConnectionInfo implements Cloneable {
         this.dbName = dbName;
 
         url = url.substring(Constants.URL_PREFIX.length());
+
+        if (url.startsWith(Constants.URL_EMBED)) {
+            embedded = true;
+        }
         if (url.startsWith(Constants.URL_MEM)) {
             persistent = false;
             embedded = true;
