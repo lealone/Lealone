@@ -46,7 +46,7 @@ public class DefineCommandWrapper extends org.lealone.command.ddl.DefineCommandW
             int updateCount = dc.update();
             session.getDatabase().addDDLRedoRecord(session, sql);
             return updateCount;
-        } else if (isLocal()) {
+        } else if (dc.isLocal()) {
             return dc.update();
         } else {
             FrontendSession fs = null;

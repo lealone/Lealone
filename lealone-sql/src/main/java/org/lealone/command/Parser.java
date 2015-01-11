@@ -262,7 +262,7 @@ public class Parser {
         p.setParameterList(parameters);
 
         if (p.isDDL()) {
-            p = new DefineCommandWrapper(session, (DefineCommand) p);
+            p = createDefineCommandWrapper(session, (DefineCommand) p);
         }
         return p;
     }
@@ -5503,5 +5503,9 @@ public class Parser {
 
     public CreateTable createTable(Session session, Schema schema) {
         return new CreateTable(session, schema);
+    }
+
+    public DefineCommandWrapper createDefineCommandWrapper(Session session, DefineCommand defineCommand) {
+        return new DefineCommandWrapper(session, defineCommand);
     }
 }

@@ -321,10 +321,6 @@ public class HBaseParser extends Parser {
         //        if (session.isMaster() && !(p instanceof DefineCommand) && !(p instanceof TransactionCommand)) {
         //            throw new RuntimeException("Only DDL SQL allowed in master: " + sql);
         //        }
-
-        if (p.isDDL()) {
-            p = new DefineCommandWrapper(session, (DefineCommand) p, sql);
-        }
         return p;
     }
 
@@ -365,5 +361,10 @@ public class HBaseParser extends Parser {
     @Override
     public CreateHBaseTable createTable(Session session, Schema schema) {
         return new CreateHBaseTable(session, schema);
+    }
+
+    @Override
+    public DefineCommandWrapper createDefineCommandWrapper(Session session, DefineCommand defineCommand) {
+        return new DefineCommandWrapper(session, defineCommand, defineCommand.getSQL());
     }
 }
