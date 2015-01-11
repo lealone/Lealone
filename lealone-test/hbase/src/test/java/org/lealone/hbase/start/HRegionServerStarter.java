@@ -18,10 +18,12 @@
 package org.lealone.hbase.start;
 
 import org.apache.hadoop.hbase.regionserver.HRegionServer;
+import org.lealone.hbase.util.HBaseUtils;
 
 public class HRegionServerStarter {
 
     public static void main(String[] args) throws Exception {
+        System.setProperty("lealone.base.dir", HBaseUtils.getConfiguration().get("lealone.test.dir") + "/rs1");
         HRegionServer.main(new String[] { "start" });
     }
 

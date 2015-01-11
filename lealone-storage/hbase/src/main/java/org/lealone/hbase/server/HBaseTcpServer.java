@@ -137,7 +137,7 @@ public class HBaseTcpServer extends TcpServer implements HBaseServer {
         for (Entry<String, String> e : conf) {
             key = e.getKey().toLowerCase();
             if (key.startsWith(Constants.PROJECT_NAME_PREFIX)) {
-                System.setProperty(key, e.getValue());
+                System.setProperty(key, conf.get(key));
             }
         }
         key = DEFAULT_STORAGE_ENGINE;

@@ -24,11 +24,14 @@ import org.apache.hadoop.hbase.regionserver.HRegionServer;
 import org.apache.hadoop.hbase.regionserver.HRegionServerCommandLine;
 import org.apache.hadoop.hbase.util.VersionInfo;
 import org.apache.hadoop.util.ToolRunner;
+import org.lealone.hbase.util.HBaseUtils;
 
 //共用同一个hbase-site文件，但是使用三个不同的端口号
 public class AnotherHRegionServerStarter {
 
     public static void main(String[] args) throws Exception {
+        System.setProperty("lealone.base.dir", HBaseUtils.getConfiguration().get("lealone.test.dir") + "/rs2");
+
         if (args.length == 0)
             args = new String[] { "start" };
 

@@ -65,7 +65,12 @@
 		<name>lealone.pg.server.enabled</name>
 		<value>true</value>
 	</property>
-
+<!-- 
+	<property>
+		<name>lealone.base.dir</name>
+		<value>${lealone.test.dir}</value>
+	</property>
+ -->
 	<!-- zookeeper properties -->
 	<!-- ************************************************* -->
 	<property>

@@ -33,12 +33,15 @@ public class HMasterStarter {
         //删除临时测试目录
         FileUtils.deleteRecursive(conf.get("lealone.test.dir"), true);
 
+        System.setProperty("lealone.base.dir", conf.get("lealone.test.dir") + "/master");
+
         new ZookeeperThread().start();
         Thread.sleep(1000);
         HMaster.main(new String[] { "start" });
     }
 
     static class ZookeeperThread extends Thread {
+        @Override
         public void run() {
             MiniZooKeeperCluster zooKeeperCluster = new MiniZooKeeperCluster();
 

@@ -57,6 +57,9 @@ public class TransactionManager {
     private static void initStore(String baseDir) {
         if (baseDir == null) {
             baseDir = SysProperties.getBaseDir();
+
+            if (baseDir == null)
+                baseDir = ".";
         }
 
         String fileName = FileUtils.toRealPath(baseDir + "/" + SystemDatabase.NAME) + Constants.SUFFIX_MV_FILE;

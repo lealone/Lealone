@@ -31,9 +31,7 @@ import org.lealone.util.New;
 
 public class SystemDatabase {
 
-    //private static Database systemDatabase;
     public static final String NAME = "system";
-    //private static final String URL = Constants.URL_PREFIX + Constants.URL_EMBED + SYSTEM_DATABASE_NAME;
 
     private static JdbcConnection conn;
     private static PreparedStatement addDatabase;
@@ -47,16 +45,14 @@ public class SystemDatabase {
                 baseDir = SysProperties.getBaseDir();
             }
 
-            //systemDatabase = new Database(DatabaseEngine.getInstance());
             String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
             ConnectionInfo ci = new ConnectionInfo(url, NAME);
             if (baseDir != null)
                 ci.setBaseDir(baseDir);
             ci.setUserName("DBA");
             ci.setUserPasswordHash(new byte[0]);
-            //systemDatabase.init(ci, null);
+            ci.setProperty("DEFAULT_STORAGE_ENGINE", Constants.DEFAULT_STORAGE_ENGINE_NAME);
 
-            //openDatabaseTable();
             Statement stmt = null;
             try {
                 conn = new JdbcConnection(ci, false);
@@ -143,40 +139,4 @@ public class SystemDatabase {
         }
 
     }
-
-    //    private static String getURL() {
-    //        return URL;
-    //    }
-
-    //    private static void openDatabaseTable() {
-    //        CreateTableData data = new CreateTableData();
-    //        ArrayList<Column> cols = data.columns;
-    //        Column dbName = new Column("db_name", Value.STRING);
-    //        dbName.setNullable(false);
-    //        Column storageEngineName = new Column("storage_engine_name", Value.STRING);
-    //        storageEngineName.setNullable(false);
-    //        cols.add(dbName);
-    //        cols.add(storageEngineName);
-    //
-    //        data.tableName = "databases";
-    //        data.id = 0;
-    //        data.temporary = false;
-    //        data.persistData = true;
-    //        data.persistIndexes = true;
-    //        data.create = true;
-    //        data.isHidden = true;
-    //        data.session = systemDatabase.createSystemSession(user, id);
-    //        Table meta = mainSchema.createTable(data);
-    //        IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { dbName, storageEngineName });
-    //        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, IndexType.createPrimaryKey(false, false), true, null);
-    //
-    //        Cursor cursor = metaIdIndex.find(systemSession, null, null);
-    //
-    //        ArrayList<MetaRecord> records = New.arrayList();
-    //        while (cursor.next()) {
-    //            MetaRecord rec = new MetaRecord(cursor.get());
-    //            objectIds.set(rec.getId());
-    //            records.add(rec);
-    //        }
-    //    }
 }
