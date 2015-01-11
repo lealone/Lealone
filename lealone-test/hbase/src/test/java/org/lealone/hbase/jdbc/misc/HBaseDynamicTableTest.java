@@ -62,7 +62,7 @@ public class HBaseDynamicTableTest extends TestBase {
             assertTrue(e.getMessage().contains("invalid time"));
         }
 
-        String db = org.lealone.hbase.engine.HBaseConstants.HBASE_DB_NAME;
+        String db = TestBase.db;
         sql = "SELECT " + db + ".public.HBaseDynamicTableTest.cf1.f1 FROM HBaseDynamicTableTest";
         sql = "SELECT public.HBaseDynamicTableTest.cf1.f1 FROM HBaseDynamicTableTest";
         sql = "SELECT HBaseDynamicTableTest.cf1.f1 FROM HBaseDynamicTableTest";

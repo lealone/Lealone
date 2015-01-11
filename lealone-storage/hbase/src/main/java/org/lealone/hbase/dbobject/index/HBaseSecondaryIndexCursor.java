@@ -150,7 +150,8 @@ public class HBaseSecondaryIndexCursor implements Cursor {
                     initSelectPrepared();
 
                 byte[] rowKey = HBaseUtils.toBytes(searchRow.getRowKey());
-                HBaseRegionInfo regionInfo = HBaseUtils.getHBaseRegionInfo(dataTableName, rowKey);
+                HBaseRegionInfo regionInfo = HBaseUtils.getHBaseRegionInfo(session.getDatabase().getShortName(), dataTableName,
+                        rowKey);
                 selectParameter.setValue(ValueString.get(Bytes.toString(rowKey)));
                 ResultInterface r = selectPrepared.query(1);
                 if (r.next()) {

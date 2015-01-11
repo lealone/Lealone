@@ -118,7 +118,7 @@ public class InsertOrMergeSupport {
             if (table.isColumnsModified()) {
                 table.setColumnsModified(false);
                 SessionInterface si = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(),
-                        HBaseUtils.getMasterURL());
+                        HBaseUtils.getMasterURL(session.getDatabase().getShortName()));
                 for (Column c : alterColumns) {
                     CommandInterface ci = si.prepareCommand(alterTable + c.getCreateSQL(true), 1);
                     ci.executeUpdate();
@@ -224,7 +224,8 @@ public class InsertOrMergeSupport {
         rowKey = ValueString.get(rowKey.getString());
         byte[] rowKeyAsBytes = HBaseUtils.toBytes(rowKey);
 
-        HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(getTableNameAsBytes(), rowKeyAsBytes);
+        HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(session.getDatabase().getShortName(), getTableNameAsBytes(),
+                rowKeyAsBytes);
         if (!HBaseUtils.isLocal(session, hri)) {
             Map<String, List<String>> regions = servers.get(hri.getRegionServerURL());
             if (regions == null) {

@@ -19,6 +19,7 @@ package org.lealone.hbase.util;
 
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.ServerName;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 
 public class HBaseRegionInfo {
@@ -28,12 +29,12 @@ public class HBaseRegionInfo {
     private final byte[] regionNameAsBytes;
     private final String regionServerURL;
 
-    public HBaseRegionInfo(HRegionLocation regionLocation) {
+    public HBaseRegionInfo(HRegionLocation regionLocation, String dbName) {
         this.regionLocation = regionLocation;
         this.regionInfo = regionLocation.getRegionInfo();
         this.regionName = regionLocation.getRegionInfo().getRegionNameAsString();
         this.regionNameAsBytes = regionLocation.getRegionInfo().getRegionName();
-        this.regionServerURL = HBaseUtils.createURL(regionLocation);
+        this.regionServerURL = HBaseUtils.createURL(new ServerName(regionLocation.getHostnamePort(), 0), dbName);
     }
 
     public HRegionInfo getHRegionInfo() {

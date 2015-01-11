@@ -26,7 +26,7 @@ import org.junit.Test;
 import org.lealone.hbase.jdbc.TestBase;
 
 public class ShortColumnNameTest extends TestBase {
-    private String db = org.lealone.hbase.engine.HBaseConstants.HBASE_DB_NAME;
+    private final String db = TestBase.db;;
 
     @Test
     public void run() throws Exception {

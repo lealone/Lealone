@@ -53,7 +53,8 @@ public class HBaseDefineCommandWrapper extends DefineCommandWrapper {
             FrontendSession fs = null;
             FrontendCommand fc = null;
             try {
-                fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(), HBaseUtils.getMasterURL());
+                fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(),
+                        HBaseUtils.getMasterURL(session.getDatabase().getShortName()));
                 fc = FrontendSessionPool.getFrontendCommand(fs, sql, getParameters(), dc.getFetchSize());
                 int updateCount = fc.executeUpdate();
                 refreshMetaTable();
@@ -76,7 +77,8 @@ public class HBaseDefineCommandWrapper extends DefineCommandWrapper {
             FrontendSession fs = null;
             FrontendCommand fc = null;
             try {
-                fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(), HBaseUtils.getMasterURL());
+                fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(),
+                        HBaseUtils.getMasterURL(session.getDatabase().getShortName()));
                 fc = FrontendSessionPool.getFrontendCommand(fs, sql, getParameters(), dc.getFetchSize());
                 ResultInterface ri = fc.executeQuery(maxRows, false);
                 refreshMetaTable();

@@ -23,7 +23,6 @@ import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.server.PgServer;
 
 public class HBaseConstants {
-    public static final String HBASE_DB_NAME = "hbasedb";
     public static final String DEFAULT_STORAGE_ENGINE = Constants.PROJECT_NAME_PREFIX + "default.storage.engine";
 
     /**

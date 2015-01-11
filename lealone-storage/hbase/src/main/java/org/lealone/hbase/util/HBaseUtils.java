@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.Random;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -43,9 +42,9 @@ import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
 import org.lealone.command.dml.Select;
 import org.lealone.command.router.FrontendSessionPool;
+import org.lealone.engine.Constants;
 import org.lealone.hbase.command.dml.SQLRoutingInfo;
 import org.lealone.hbase.command.dml.WhereClauseSupport;
-import org.lealone.hbase.engine.HBaseConstants;
 import org.lealone.hbase.engine.HBaseSession;
 import org.lealone.hbase.zookeeper.ZooKeeperAdmin;
 import org.lealone.message.DbException;
@@ -73,7 +72,6 @@ import org.lealone.value.ValueUuid;
 
 public class HBaseUtils {
     private static final Configuration conf = HBaseConfiguration.create();
-    private static final Random random = new Random(System.currentTimeMillis());
     private static HConnection hConnection;
     private static HBaseAdmin admin;
 
@@ -198,18 +196,11 @@ public class HBaseUtils {
         }
     }
 
-    public static String createURL(HRegionLocation regionLocation) {
-        return createURL(regionLocation.getHostname(), ZooKeeperAdmin.getTcpPort(regionLocation));
-    }
-
-    public static String createURL(ServerName sn) {
-        return createURL(ZooKeeperAdmin.getTcpListenAddress(sn), ZooKeeperAdmin.getTcpPort(sn));
-    }
-
-    public static String createURL(String hostname, int port) {
+    public static String createURL(ServerName sn, String dbName) {
         StringBuilder url = new StringBuilder(100);
-        url.append("jdbc:lealone:tcp://").append(hostname).append(":").append(port).append("/")
-                .append(HBaseConstants.HBASE_DB_NAME);
+        url.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//");
+        url.append(ZooKeeperAdmin.getTcpListenAddress(sn)).append(":").append(ZooKeeperAdmin.getTcpPort(sn));
+        url.append("/").append(dbName);
         return url.toString();
     }
 
@@ -245,43 +236,18 @@ public class HBaseUtils {
         }
     }
 
-    public static String getMasterURL() {
-        return createURL(ZooKeeperAdmin.getMasterAddress());
+    public static String getMasterURL(String dbName) {
+        return createURL(ZooKeeperAdmin.getMasterAddress(), dbName);
     }
 
     public static ServerName getMasterServerName() {
         return ZooKeeperAdmin.getMasterAddress();
     }
 
-    /**
-     * 随机获取一个可用的RegionServer URL
-     * 
-     * @return
-     * @throws IOException
-     */
-    public static String getRegionServerURL() throws IOException {
-        List<ServerName> servers = ZooKeeperAdmin.getOnlineServers();
-        ServerName sn = servers.get(random.nextInt(servers.size()));
-        return createURL(sn);
-    }
-
-    public static String getRegionServerURL(String tableName, String rowKey) throws IOException {
-        return getRegionServerURL(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
-    }
-
-    public static String getRegionServerURL(byte[] tableName, byte[] rowKey) throws IOException {
-        HRegionLocation regionLocation = getConnection().locateRegion(tableName, rowKey);
-        return createURL(regionLocation);
-    }
-
-    public static HBaseRegionInfo getHBaseRegionInfo(String tableName, String rowKey) {
-        return getHBaseRegionInfo(Bytes.toBytes(tableName), Bytes.toBytes(rowKey));
-    }
-
-    public static HBaseRegionInfo getHBaseRegionInfo(byte[] tableName, byte[] rowKey) {
+    public static HBaseRegionInfo getHBaseRegionInfo(String dbName, byte[] tableName, byte[] rowKey) {
         try {
             HRegionLocation regionLocation = getConnection().locateRegion(tableName, rowKey);
-            return new HBaseRegionInfo(regionLocation);
+            return new HBaseRegionInfo(regionLocation, dbName);
         } catch (IOException e) {
             throw DbException.convert(e);
         }
@@ -414,7 +380,7 @@ public class HBaseUtils {
         SQLRoutingInfo sqlRoutingInfo = new SQLRoutingInfo();
 
         if (oneRegion) {
-            HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, start);
+            HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(session.getDatabase().getShortName(), tableName, start);
             if (isLocal(session, hri)) {
                 sqlRoutingInfo.localRegion = hri.getRegionName();
             } else {
@@ -426,7 +392,8 @@ public class HBaseUtils {
                 Map<String, List<HBaseRegionInfo>> servers = New.hashMap();
                 List<HBaseRegionInfo> list;
                 for (byte[] startKey : startKeys) {
-                    HBaseRegionInfo hri = HBaseUtils.getHBaseRegionInfo(tableName, startKey);
+                    HBaseRegionInfo hri = HBaseUtils
+                            .getHBaseRegionInfo(session.getDatabase().getShortName(), tableName, startKey);
                     if (HBaseUtils.isLocal(session, hri)) {
                         if (sqlRoutingInfo.localRegions == null)
                             sqlRoutingInfo.localRegions = New.arrayList();
