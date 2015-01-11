@@ -95,7 +95,7 @@ public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
     @Override
     public void start() {
         super.start();
-        PgPortTracker.createPgPortEphemeralNode(serverName, pgPort, master != null);
+        PgPortTracker.createPgPortEphemeralNode(serverName, getListenAddress(), pgPort, master != null);
         ZooKeeperAdmin.getPgPortTracker(); //初始化PgPortTracker
 
         logger.info("Lealone PgServer started, listening address: {}, port: {}", getListenAddress(), getPort());
@@ -107,7 +107,7 @@ public class HBasePgServer extends PgServer implements Runnable, HBaseServer {
             super.stop();
             logger.info("Lealone PgServer stopped");
         } finally {
-            PgPortTracker.deletePgPortEphemeralNode(serverName, pgPort, master != null);
+            PgPortTracker.deletePgPortEphemeralNode(serverName, getListenAddress(), pgPort, master != null);
         }
     }
 

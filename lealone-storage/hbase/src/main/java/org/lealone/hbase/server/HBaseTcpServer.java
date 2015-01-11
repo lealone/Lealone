@@ -92,7 +92,7 @@ public class HBaseTcpServer extends TcpServer implements HBaseServer {
     public void start() {
         try {
             super.start();
-            TcpPortTracker.createTcpPortEphemeralNode(serverName, tcpPort, master != null);
+            TcpPortTracker.createTcpPortEphemeralNode(serverName, getListenAddress(), tcpPort, master != null);
             ZooKeeperAdmin.getTcpPortTracker(); //初始化TcpPortTracker
 
             logger.info("Lealone TcpServer started, listening address: {}, port: {}", getListenAddress(), getPort());
@@ -107,7 +107,7 @@ public class HBaseTcpServer extends TcpServer implements HBaseServer {
             super.stop();
             logger.info("Lealone TcpServer stopped");
         } finally {
-            TcpPortTracker.deleteTcpPortEphemeralNode(serverName, tcpPort, master != null);
+            TcpPortTracker.deleteTcpPortEphemeralNode(serverName, getListenAddress(), tcpPort, master != null);
         }
     }
 

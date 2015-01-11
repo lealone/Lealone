@@ -25,7 +25,6 @@ import org.apache.hadoop.hbase.Abortable;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.ServerName;
-import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -39,25 +38,27 @@ public class PgPortTracker extends ZooKeeperListener {
      * key是ServerName.getHostAndPort()
      */
     private ConcurrentHashMap<String, Integer> pgPortMap = new ConcurrentHashMap<String, Integer>();
-    private Abortable abortable;
+    private ConcurrentHashMap<String, String> pgListenAddressMap = new ConcurrentHashMap<String, String>();
+    private final Abortable abortable;
 
-    private static String getPgPortEphemeralNodePath(ServerName sn, int port, boolean isMaster) {
-        String znode = (isMaster ? "M" : "S") + ":" + sn.getHostAndPort() + Addressing.HOSTNAME_PORT_SEPARATOR + port;
+    private static String getPgPortEphemeralNodePath(ServerName sn, String listenAddress, int port, boolean isMaster) {
+        String znode = (isMaster ? "M" : "S") + ":" + sn.getHostAndPort() + ":" + listenAddress + ":" + port;
         return ZKUtil.joinZNode(ZooKeeperAdmin.PG_SERVER_NODE, znode);
     }
 
-    public static void createPgPortEphemeralNode(ServerName sn, int port, boolean isMaster) {
+    public static void createPgPortEphemeralNode(ServerName sn, String listenAddress, int port, boolean isMaster) {
         try {
             ZKUtil.createEphemeralNodeAndWatch(ZooKeeperAdmin.getZooKeeperWatcher(),
-                    getPgPortEphemeralNodePath(sn, port, isMaster), HConstants.EMPTY_BYTE_ARRAY);
+                    getPgPortEphemeralNodePath(sn, listenAddress, port, isMaster), HConstants.EMPTY_BYTE_ARRAY);
         } catch (KeeperException e) {
             throw DbException.convert(e);
         }
     }
 
-    public static void deletePgPortEphemeralNode(ServerName sn, int port, boolean isMaster) {
+    public static void deletePgPortEphemeralNode(ServerName sn, String listenAddress, int port, boolean isMaster) {
         try {
-            ZKUtil.deleteNode(ZooKeeperAdmin.getZooKeeperWatcher(), getPgPortEphemeralNodePath(sn, port, isMaster));
+            ZKUtil.deleteNode(ZooKeeperAdmin.getZooKeeperWatcher(), //
+                    getPgPortEphemeralNodePath(sn, listenAddress, port, isMaster));
         } catch (KeeperException e) {
             throw DbException.convert(e);
         }
@@ -76,22 +77,29 @@ public class PgPortTracker extends ZooKeeperListener {
 
     private void add(final List<String> servers) throws IOException {
         ConcurrentHashMap<String, Integer> pgPortMap = new ConcurrentHashMap<String, Integer>();
+        ConcurrentHashMap<String, String> pgListenAddressMap = new ConcurrentHashMap<String, String>();
+        String serverName;
+        String[] a;
         for (String n : servers) {
-            n = ZKUtil.getNodeName(n);
-            n = n.substring(2);
-            int pos = n.lastIndexOf(Addressing.HOSTNAME_PORT_SEPARATOR);
-            pgPortMap.put(n.substring(0, pos), Integer.parseInt(n.substring(pos + 1)));
+            a = n.split(":");
+            serverName = a[1] + ":" + a[2];
+
+            pgPortMap.put(serverName, Integer.parseInt(a[4]));
+            pgListenAddressMap.put(serverName, a[3]);
         }
 
         this.pgPortMap = pgPortMap;
+        this.pgListenAddressMap = pgListenAddressMap;
     }
 
     @Override
     public void nodeDeleted(String path) {
         if (path.startsWith(ZooKeeperAdmin.PG_SERVER_NODE)) {
             String serverName = ZKUtil.getNodeName(path);
-            serverName = serverName.substring(2);
-            pgPortMap.remove(serverName.substring(0, serverName.lastIndexOf(Addressing.HOSTNAME_PORT_SEPARATOR)));
+            String[] a = serverName.split(":");
+            serverName = a[1] + ":" + a[2];
+            pgPortMap.remove(serverName);
+            pgListenAddressMap.remove(serverName);
         }
     }
 
@@ -129,5 +137,9 @@ public class PgPortTracker extends ZooKeeperListener {
 
     public int getPgPort(String hostAndPort) {
         return pgPortMap.get(hostAndPort);
+    }
+
+    public String getPgListenAddress(ServerName sn) {
+        return pgListenAddressMap.get(sn.getHostAndPort());
     }
 }

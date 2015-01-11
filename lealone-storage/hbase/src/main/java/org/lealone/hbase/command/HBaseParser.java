@@ -40,7 +40,7 @@ import org.lealone.engine.Session;
 import org.lealone.hbase.command.ddl.AlterSequenceNextValueMargin;
 import org.lealone.hbase.command.ddl.CreateColumnFamily;
 import org.lealone.hbase.command.ddl.CreateHBaseTable;
-import org.lealone.hbase.command.ddl.DefineCommandWrapper;
+import org.lealone.hbase.command.ddl.HBaseDefineCommandWrapper;
 import org.lealone.hbase.command.ddl.Options;
 import org.lealone.hbase.command.dml.HBaseDelete;
 import org.lealone.hbase.command.dml.HBaseInsert;
@@ -364,7 +364,7 @@ public class HBaseParser extends Parser {
     }
 
     @Override
-    public DefineCommandWrapper createDefineCommandWrapper(Session session, DefineCommand defineCommand) {
-        return new DefineCommandWrapper(session, defineCommand, defineCommand.getSQL());
+    public HBaseDefineCommandWrapper createDefineCommandWrapper(Session session, DefineCommand defineCommand) {
+        return new HBaseDefineCommandWrapper(session, defineCommand, defineCommand.getSQL());
     }
 }

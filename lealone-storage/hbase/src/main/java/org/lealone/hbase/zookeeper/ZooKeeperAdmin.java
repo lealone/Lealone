@@ -140,6 +140,10 @@ public class ZooKeeperAdmin {
         return getTcpPortTracker().getTcpPort(hostAndPort);
     }
 
+    public static String getTcpListenAddress(ServerName sn) {
+        return getTcpPortTracker().getTcpListenAddress(sn);
+    }
+
     public static TcpPortTracker getTcpPortTracker() {
         if (tcpPortTracker == null) {
             synchronized (ZooKeeperAdmin.class) {

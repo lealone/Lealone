@@ -203,7 +203,7 @@ public class HBaseUtils {
     }
 
     public static String createURL(ServerName sn) {
-        return createURL(sn.getHostname(), ZooKeeperAdmin.getTcpPort(sn));
+        return createURL(ZooKeeperAdmin.getTcpListenAddress(sn), ZooKeeperAdmin.getTcpPort(sn));
     }
 
     public static String createURL(String hostname, int port) {

@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.lealone.command.FrontendCommand;
 import org.lealone.command.ddl.DefineCommand;
+import org.lealone.command.ddl.DefineCommandWrapper;
 import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.engine.FrontendSession;
 import org.lealone.engine.Session;
@@ -30,11 +31,11 @@ import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 
 //只重写了update、query两个方法
-public class DefineCommandWrapper extends org.lealone.command.ddl.DefineCommandWrapper {
+public class HBaseDefineCommandWrapper extends DefineCommandWrapper {
     private final HBaseSession session;
     private final String sql;
 
-    public DefineCommandWrapper(Session session, DefineCommand dc, String sql) {
+    public HBaseDefineCommandWrapper(Session session, DefineCommand dc, String sql) {
         super(session, dc);
         this.session = (HBaseSession) session;
         this.sql = sql;
