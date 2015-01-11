@@ -40,7 +40,7 @@ import org.lealone.result.Row;
 import org.lealone.result.SubqueryResult;
 import org.lealone.store.DataHandler;
 import org.lealone.store.LobStorage;
-import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionInterface;
 import org.lealone.util.New;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.value.Value;
@@ -499,7 +499,7 @@ public class Session extends SessionWithState {
             //                }
             //            }
             //避免重复commit
-            Transaction transaction = this.transaction;
+            TransactionInterface transaction = this.transaction;
             this.transaction = null;
             if (allLocalTransactionNames == null)
                 transaction.commit();
@@ -546,7 +546,7 @@ public class Session extends SessionWithState {
         checkCommitRollback();
         currentTransactionName = null;
         if (transaction != null) {
-            Transaction transaction = this.transaction;
+            TransactionInterface transaction = this.transaction;
             this.transaction = null;
             transaction.rollback();
         }
@@ -1360,13 +1360,13 @@ public class Session extends SessionWithState {
         return buff.toString();
     }
 
-    private volatile Transaction transaction;
+    private volatile TransactionInterface transaction;
 
-    public Transaction getTransaction() {
+    public TransactionInterface getTransaction() {
         return transaction;
     }
 
-    public void setTransaction(Transaction t) {
+    public void setTransaction(TransactionInterface t) {
         transaction = t;
         transaction.setAutoCommit(autoCommit);
     }

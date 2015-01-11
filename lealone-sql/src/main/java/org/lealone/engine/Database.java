@@ -2072,4 +2072,13 @@ public class Database implements DataHandler {
         }
     }
 
+    private TransactionEngine transactionEngine;
+
+    public void setTransactionEngine(TransactionEngine transactionEngine) {
+        this.transactionEngine = transactionEngine;
+    }
+
+    public TransactionEngine getTransactionEngine() {
+        return transactionEngine;
+    }
 }

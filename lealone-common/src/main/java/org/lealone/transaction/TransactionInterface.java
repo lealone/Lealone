@@ -17,7 +17,7 @@
  */
 package org.lealone.transaction;
 
-public interface Transaction {
+public interface TransactionInterface {
     long getTransactionId();
 
     long getCommitTimestamp();
@@ -37,6 +37,4 @@ public interface Transaction {
     void rollback();
 
     void rollbackToSavepoint(String name);
-
-    void log(Object obj);
 }

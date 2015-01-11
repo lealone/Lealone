@@ -26,7 +26,6 @@ import org.apache.hadoop.hbase.master.HMaster;
 import org.lealone.engine.Session;
 import org.lealone.hbase.command.router.MasterSlaveRouter;
 import org.lealone.hbase.server.HBaseTcpServer;
-import org.lealone.hbase.transaction.TimestampService;
 import org.lealone.transaction.TransactionalRouter;
 
 /**
@@ -37,16 +36,6 @@ import org.lealone.transaction.TransactionalRouter;
  */
 public class HBaseMasterObserver extends BaseMasterObserver {
     private static HBaseTcpServer server;
-    private static String hostAndPort;
-    private static TimestampService timestampService;
-
-    public static TimestampService getTimestampService() {
-        if (hostAndPort == null)
-            throw new IllegalStateException("TCP server is not started");
-        if (timestampService == null)
-            timestampService = new TimestampService(hostAndPort);
-        return timestampService;
-    }
 
     @Override
     public synchronized void start(CoprocessorEnvironment env) throws IOException {
@@ -54,8 +43,6 @@ public class HBaseMasterObserver extends BaseMasterObserver {
 
         if (server == null) {
             HMaster m = (HMaster) ((MasterCoprocessorEnvironment) env).getMasterServices();
-            hostAndPort = m.getServerName().getHostAndPort();
-            timestampService = null;
             server = new HBaseTcpServer(m);
             server.start();
         }

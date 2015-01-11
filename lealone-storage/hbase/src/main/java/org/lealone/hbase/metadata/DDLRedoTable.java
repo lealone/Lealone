@@ -69,11 +69,11 @@ public class DDLRedoTable {
     //只能由master调用
     public void addRecord(HBaseSession session, String sql) {
         try {
-            int nextRedoPos = (int) session.getTimestampService().nextEven();
+            int nextRedoPos = (int) org.lealone.transaction.TimestampServiceTable.nextEven();
 
             if (nextRedoPos > MAX_DDL_REDO_RECORDS) {
-                session.getTimestampService().reset();
-                nextRedoPos = (int) session.getTimestampService().nextEven();
+                org.lealone.transaction.TimestampServiceTable.reset();
+                nextRedoPos = (int) org.lealone.transaction.TimestampServiceTable.nextEven();
             }
 
             Put put = new Put(Bytes.toBytes(nextRedoPos));

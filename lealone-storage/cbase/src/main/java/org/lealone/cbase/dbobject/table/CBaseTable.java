@@ -777,11 +777,6 @@ public class CBaseTable extends TableBase {
             session.setTransaction(t);
             t.setSession(session);
             return t;
-        } else if (!(session.getTransaction() instanceof LocalTransaction)) {
-            LocalTransaction t = store.begin();
-            t.setTransaction(session.getTransaction());
-            session.setTransaction(t);
-            t.setSession(session);
         }
 
         return (LocalTransaction) session.getTransaction();

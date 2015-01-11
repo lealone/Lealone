@@ -25,7 +25,6 @@ import org.lealone.engine.Session;
 import org.lealone.hbase.command.router.MasterSlaveRouter;
 import org.lealone.hbase.server.HBasePgServer;
 import org.lealone.hbase.server.HBaseTcpServer;
-import org.lealone.hbase.transaction.TimestampService;
 import org.lealone.transaction.TransactionalRouter;
 
 /**
@@ -34,7 +33,6 @@ import org.lealone.transaction.TransactionalRouter;
  *
  */
 public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HRegionServer {
-    private TimestampService timestampService;
 
     public HBaseRegionServer(Configuration conf) throws IOException, InterruptedException {
         super(conf);
@@ -44,17 +42,6 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
         else
             classes += "," + RegionLocationCacheObserver.class.getName();
         conf.set(CoprocessorHost.REGION_COPROCESSOR_CONF_KEY, classes);
-    }
-
-    public TimestampService getTimestampService() {
-        if (timestampService == null) {
-            synchronized (this) {
-                if (timestampService == null)
-                    timestampService = new TimestampService(getServerName().getHostAndPort());
-            }
-        }
-
-        return timestampService;
     }
 
     @Override

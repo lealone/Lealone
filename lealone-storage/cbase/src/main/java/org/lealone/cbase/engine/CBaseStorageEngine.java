@@ -63,6 +63,7 @@ public class CBaseStorageEngine implements StorageEngine {
                 if (stores.get(db.getName()) == null) {
                     store = init(db);
                     stores.put(db.getName(), store);
+                    db.setTransactionEngine(store.getTransactionStore());
                 }
             }
         }

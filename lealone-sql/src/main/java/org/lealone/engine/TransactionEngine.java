@@ -15,12 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction;
+package org.lealone.engine;
 
-import org.lealone.engine.Session;
+import org.lealone.transaction.TransactionInterface;
 
-public class LocalTransaction extends TransactionBase {
-    public LocalTransaction(Session session) {
-        super(session);
-    }
+public interface TransactionEngine {
+    TransactionInterface beginTransaction(Session session);
 }

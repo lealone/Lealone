@@ -24,8 +24,6 @@ class TransactionStatusTable {
     private TransactionStatusTable() {
     }
 
-    //    private static PreparedStatement commit;
-
     /**
      * The persisted map of transactionStatusTable.
      * Key: transaction_name, value: [ all_local_transaction_names, commit_timestamp ].
@@ -37,39 +35,6 @@ class TransactionStatusTable {
             return;
         map = store.openMap("transactionStatusTable", new MVMap.Builder<String, Object[]>());
     }
-
-    //    synchronized static void init() {
-    //        if (commit != null)
-    //            return;
-    //        createTableIfNotExists();
-    //    }
-    //
-    //    private static void createTableIfNotExists() {
-    //        Statement stmt = null;
-    //        Connection conn = SystemDatabase.getConnection();
-    //        try {
-    //            stmt = conn.createStatement();
-    //            stmt.execute("CREATE TABLE IF NOT EXISTS transaction_status_table" //
-    //                    + "(transaction_name VARCHAR PRIMARY KEY, all_local_transaction_names VARCHAR, commit_timestamp BIGINT)");
-    //
-    //            commit = conn.prepareStatement("INSERT INTO transaction_status_table VALUES(?, ?, ?)");
-    //        } catch (SQLException e) {
-    //            throw DbException.convert(e);
-    //        } finally {
-    //            JdbcUtils.closeSilently(stmt);
-    //        }
-    //    }
-    //
-    //    synchronized static void commit0(GlobalTransaction localTransaction, String allLocalTransactionNames) {
-    //        try {
-    //            commit.setString(1, localTransaction.getTransactionName());
-    //            commit.setString(2, allLocalTransactionNames);
-    //            commit.setLong(3, localTransaction.getCommitTimestamp());
-    //            commit.executeUpdate();
-    //        } catch (SQLException e) {
-    //            throw DbException.convert(e);
-    //        }
-    //    }
 
     synchronized static void commit(GlobalTransaction localTransaction, String allLocalTransactionNames) {
         Object[] v = { allLocalTransactionNames, localTransaction.getCommitTimestamp() };

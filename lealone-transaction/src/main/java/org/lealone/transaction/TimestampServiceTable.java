@@ -31,8 +31,7 @@ public class TimestampServiceTable {
     private static final long TIMESTAMP_BATCH = Long.valueOf(System.getProperty(Constants.PROJECT_NAME_PREFIX
             + "transaction.timestamp.batch", "100000"));
 
-    //    private static PreparedStatement updateLastMaxTimestamp;
-    //    private static PreparedStatement getLastMaxTimestamp;
+    private static final String KEY = "k".intern();
 
     private static long first;
     private static final AtomicLong last = new AtomicLong();
@@ -40,65 +39,6 @@ public class TimestampServiceTable {
 
     private static MVMap<String, Long> map;
 
-    //    public static synchronized void init() {
-    //        if (getLastMaxTimestamp != null)
-    //            return;
-    //
-    //        createTableIfNotExists();
-    //
-    //        first = last = maxTimestamp = getLastMaxTimestamp();
-    //        addBatch();
-    //    }
-    //
-    //    private static void createTableIfNotExists() {
-    //        ResultSet rs = null;
-    //        Statement stmt = null;
-    //        Connection conn = SystemDatabase.getConnection();
-    //        try {
-    //            stmt = conn.createStatement();
-    //            stmt.execute("CREATE TABLE IF NOT EXISTS timestamp_service_table" //
-    //                    + "(last_max_timestamp BIGINT PRIMARY KEY)");
-    //
-    //            updateLastMaxTimestamp = conn.prepareStatement("UPDATE timestamp_service_table SET last_max_timestamp = ?");
-    //            getLastMaxTimestamp = conn.prepareStatement("SELECT last_max_timestamp FROM timestamp_service_table");
-    //
-    //            rs = getLastMaxTimestamp.executeQuery();
-    //            if (!rs.next()) {
-    //                stmt.executeUpdate("INSERT INTO timestamp_service_table VALUES(0)");
-    //            }
-    //        } catch (SQLException e) {
-    //            throw DbException.convert(e);
-    //        } finally {
-    //            JdbcUtils.closeSilently(rs);
-    //            JdbcUtils.closeSilently(stmt);
-    //        }
-    //    }
-
-    //    private static void updateLastMaxTimestamp0(long lastMaxTimestamp) {
-    //        try {
-    //            updateLastMaxTimestamp.setLong(1, lastMaxTimestamp);
-    //            updateLastMaxTimestamp.executeUpdate();
-    //        } catch (SQLException e) {
-    //            throw DbException.convert(e);
-    //        }
-    //    }
-
-    //  private static long getLastMaxTimestamp0() {
-    //        long lastMaxTimestamp = 0;
-    //        ResultSet rs = null;
-    //        try {
-    //            rs = getLastMaxTimestamp.executeQuery();
-    //            if (rs.next()) {
-    //                lastMaxTimestamp = rs.getLong(1);
-    //            }
-    //        } catch (SQLException e) {
-    //            throw DbException.convert(e);
-    //        } finally {
-    //            JdbcUtils.closeSilently(rs);
-    //        }
-    //
-    //        return lastMaxTimestamp;
-    //    }
     public static synchronized void init(MVStore store) {
         if (map != null)
             return;
@@ -111,11 +51,11 @@ public class TimestampServiceTable {
     }
 
     private static void updateLastMaxTimestamp(long lastMaxTimestamp) {
-        map.put("1", lastMaxTimestamp);
+        map.put(KEY, lastMaxTimestamp);
     }
 
     private static long getLastMaxTimestamp() {
-        Long lastMaxTimestamp = map.get("1");
+        Long lastMaxTimestamp = map.get(KEY);
         if (lastMaxTimestamp == null)
             return 0;
         return lastMaxTimestamp.longValue();

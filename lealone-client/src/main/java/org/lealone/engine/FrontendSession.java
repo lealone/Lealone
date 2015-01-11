@@ -24,7 +24,7 @@ import org.lealone.store.DataHandler;
 import org.lealone.store.FileStore;
 import org.lealone.store.LobStorage;
 import org.lealone.store.fs.FileUtils;
-import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionInterface;
 import org.lealone.util.MathUtils;
 import org.lealone.util.NetUtils;
 import org.lealone.util.SmallLRUCache;
@@ -100,7 +100,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     private SessionInterface embedded;
     //private DatabaseEventListener eventListener;
     private LobStorage lobStorage;
-    private Transaction transaction;
+    private TransactionInterface transaction;
 
     public FrontendSession(ConnectionInfo ci) {
         this.connectionInfo = ci;
@@ -686,11 +686,11 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         }
     }
 
-    public void setTransaction(Transaction transaction) {
+    public void setTransaction(TransactionInterface transaction) {
         this.transaction = transaction;
     }
 
-    public Transaction getTransaction() {
+    public TransactionInterface getTransaction() {
         return transaction;
     }
 

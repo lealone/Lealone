@@ -10,17 +10,20 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import org.lealone.engine.Session;
+import org.lealone.engine.TransactionEngine;
 import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
+import org.lealone.transaction.TransactionInterface;
 import org.lealone.util.New;
 
 /**
  * A store that supports concurrent MVCC read-committed transactions.
  */
-public class TransactionStore {
+public class TransactionStore implements TransactionEngine {
 
     /**
      * The store.
@@ -69,8 +72,6 @@ public class TransactionStore {
      */
     private int nextTempMapId;
 
-    private final TimestampService timestampService;
-
     /**
      * Create a new transaction store.
      *
@@ -107,8 +108,6 @@ public class TransactionStore {
             }
         }
         init();
-
-        timestampService = new TimestampService(lastTransactionId);
     }
 
     /**
@@ -230,22 +229,6 @@ public class TransactionStore {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
         int transactionId = ++lastTransactionId;
-        if (lastTransactionId >= maxTransactionId) {
-            lastTransactionId = 0;
-        }
-        int status = LocalTransaction.STATUS_OPEN;
-        return new LocalTransaction(this, transactionId, status, null, 0);
-    }
-
-    public synchronized LocalTransaction begin(boolean isLocal) {
-        if (!init) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
-        }
-        int transactionId = ++lastTransactionId;
-        if (isLocal)
-            transactionId = timestampService.nextEven();
-        else
-            transactionId = timestampService.nextOdd();
         if (lastTransactionId >= maxTransactionId) {
             lastTransactionId = 0;
         }
@@ -577,5 +560,18 @@ public class TransactionStore {
     synchronized void commitTransactionStatusTable(LocalTransaction t, String allLocalTransactionNames) {
         Object[] v = { allLocalTransactionNames, ++lastTransactionId };
         transactionStatusTable.put(t.getId(), v);
+    }
+
+    @Override
+    public synchronized TransactionInterface beginTransaction(Session session) {
+        if (!init) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
+        }
+        int transactionId = ++lastTransactionId;
+        if (lastTransactionId >= maxTransactionId) {
+            lastTransactionId = 0;
+        }
+        int status = LocalTransaction.STATUS_OPEN;
+        return new LocalTransaction(session, this, transactionId, status, null, 0);
     }
 }

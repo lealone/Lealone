@@ -87,10 +87,10 @@ public class TransactionManager {
         store = builder.open();
     }
 
-    public static Transaction beginTransaction(Session session) {
-        if (session.isLocal())
-            return new LocalTransaction(session);
-        else
-            return new GlobalTransaction(session);
+    public static TransactionInterface beginTransaction(Session session) {
+        //        if (session.isLocal())
+        //            return new LocalTransaction(session);
+        //        else
+        return new GlobalTransaction(session);
     }
 }
