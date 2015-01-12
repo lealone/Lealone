@@ -23,7 +23,7 @@ import org.lealone.expression.Expression;
 import org.lealone.result.Row;
 import org.lealone.value.Value;
 
-public class HBaseMerge extends Merge {
+public class HBaseMerge extends Merge implements WithRegionNames {
     private final InsertOrMergeSupport insertOrMergeSupport;
 
     public HBaseMerge(Session session) {
@@ -42,10 +42,10 @@ public class HBaseMerge extends Merge {
 
     @Override
     public int update() {
+        createRows();
         if (isLocal())
-            return super.update();
-        else
-            return insertOrMergeSupport.update(false, false, this);
+            return updateLocal();
+        return insertOrMergeSupport.update(false, false, this);
     }
 
     @Override
@@ -56,5 +56,15 @@ public class HBaseMerge extends Merge {
     @Override
     protected Row createRow(Value[] values) {
         return insertOrMergeSupport.createRow(values);
+    }
+
+    @Override
+    public String[] getLocalRegionNames() {
+        return insertOrMergeSupport.getLocalRegionNames();
+    }
+
+    @Override
+    public void setLocalRegionNames(String[] localRegionNames) {
+        insertOrMergeSupport.setLocalRegionNames(localRegionNames);
     }
 }

@@ -111,14 +111,16 @@ public class Merge extends Prepared implements InsertOrMerge {
         return Integer.valueOf(mergeRows());
     }
 
-    private void createRows() {
+    protected void createRows() {
         int listSize = list.size();
         if (listSize > 0) {
             rows = New.arrayList(listSize);
             for (int x = 0; x < listSize; x++) {
                 Expression[] expr = list.get(x);
                 try {
-                    createRow(expr, x);
+                    Row row = createRow(expr, x);
+                    if (row != null)
+                        rows.add(row);
                 } catch (DbException ex) {
                     throw setRow(ex, x + 1, getSQL(expr));
                 }
@@ -130,7 +132,9 @@ public class Merge extends Prepared implements InsertOrMerge {
             while (rows.next()) {
                 Value[] values = rows.currentRow();
                 try {
-                    createRow(values);
+                    Row row = createRow(values);
+                    if (row != null)
+                        this.rows.add(row);
                 } catch (DbException ex) {
                     throw setRow(ex, count + 1, getSQL(values));
                 }

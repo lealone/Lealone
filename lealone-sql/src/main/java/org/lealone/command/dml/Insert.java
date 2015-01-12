@@ -128,17 +128,19 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
 
     @Override
     public Integer call() {
-        return Integer.valueOf(insertRows());
+        return Integer.valueOf(updateLocal());
     }
 
-    private void createRows() {
+    protected void createRows() {
         int listSize = list.size();
         if (listSize > 0) {
             rows = New.arrayList(listSize);
             for (int x = 0; x < listSize; x++) {
                 Expression[] expr = list.get(x);
                 try {
-                    createRow(expr, x);
+                    Row row = createRow(expr, x);
+                    if (row != null)
+                        rows.add(row);
                 } catch (DbException ex) {
                     throw setRow(ex, x + 1, getSQL(expr));
                 }
@@ -186,7 +188,9 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
     public void addRow(Value[] values) {
         ++rowNumber;
         try {
-            createRow(values);
+            Row row = createRow(values);
+            if (row != null)
+                rows.add(row);
         } catch (DbException ex) {
             throw setRow(ex, rowNumber, getSQL(values));
         }
@@ -211,7 +215,6 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
                 row.setValue(index, v, c);
             }
         }
-        rows.add(row);
         return row;
     }
 
@@ -223,7 +226,6 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
             Value v = c.convert(values[j]);
             row.setValue(index, v, c);
         }
-        rows.add(row);
         return row;
     }
 

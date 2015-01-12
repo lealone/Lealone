@@ -65,10 +65,20 @@ public class InsertOrMergeSupport {
     private Column[] columns;
     private Column[] keys;
 
+    private String[] localRegionNames;
+
     public InsertOrMergeSupport(Session session, InsertOrMerge iom, boolean isInsert) {
         this.session = (HBaseSession) session;
         this.iom = iom;
         this.isInsert = isInsert;
+    }
+
+    public String[] getLocalRegionNames() {
+        return localRegionNames;
+    }
+
+    public void setLocalRegionNames(String[] localRegionNames) {
+        this.localRegionNames = localRegionNames;
     }
 
     public void prepare(Table table, Query query, ArrayList<Expression[]> list, Column[] columns, Column[] keys) {
