@@ -38,7 +38,7 @@ public class GlobalTransaction extends TransactionBase {
 
         undoRows = new CopyOnWriteArrayList<>();
 
-        String hostAndPort = session.getHostAndPort();
+        String hostAndPort = TransactionManager.getHostAndPort();
         if (hostAndPort == null)
             hostAndPort = "localhost:0";
 

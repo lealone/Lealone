@@ -28,7 +28,7 @@ public class TransactionTest extends TestBase {
 
     @Test
     public void run() throws Exception {
-        //create();
+        create();
         //        insert();
         //        select();
 
@@ -39,7 +39,8 @@ public class TransactionTest extends TestBase {
 
     void create() throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS TransactionTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
+        //stmt.executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (SPLIT KEYS('200'),f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
         //        stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS TransactionTest_idx1 ON TransactionTest(f1)");
         //        stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS TransactionTest_idx2 ON TransactionTest(f2)");
         //        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS TransactionTest_idx3 ON TransactionTest(f3, f2)");
@@ -50,7 +51,7 @@ public class TransactionTest extends TestBase {
     }
 
     void insert() throws Exception {
-        delete();
+        //delete();
 
         stmt.executeUpdate("INSERT INTO TransactionTest(f3, f2, f1) VALUES('d', 40, 400)");
         stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(100, 10, 'a')");

@@ -67,6 +67,8 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     public static final int COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD = 104;
     public static final int COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK = 105;
 
+    public static final int COMMAND_EXECUTE_TRANSACTION_VALIDATE = 106;
+
     public static final int COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT = 120;
     public static final int COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT = 121;
 
@@ -345,7 +347,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     }
 
     //TODO
-    public void handleException(IOException e) {
+    public void handleException(Exception e) {
         checkClosed();
     }
 
@@ -683,6 +685,18 @@ public class FrontendSession extends SessionWithState implements DataHandler {
             done(transfer);
         } catch (IOException e) {
             handleException(e);
+        }
+    }
+
+    public synchronized boolean validateTransaction(String localTransactionName) {
+        checkClosed();
+        try {
+            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_TRANSACTION_VALIDATE).writeString(localTransactionName);
+            done(transfer);
+            return transfer.readBoolean();
+        } catch (Exception e) {
+            handleException(e);
+            return false;
         }
     }
 

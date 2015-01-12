@@ -29,7 +29,7 @@ import org.apache.hadoop.hbase.regionserver.InternalScanner;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.lealone.hbase.engine.HBaseConstants;
 import org.lealone.hbase.engine.HBaseSession;
-import org.lealone.hbase.metadata.TransactionStatusTable;
+import org.lealone.transaction.TransactionStatusTable;
 import org.lealone.util.StringUtils;
 
 /**
@@ -38,7 +38,6 @@ import org.lealone.util.StringUtils;
  *
  */
 public class ValidityChecker {
-    private final static TransactionStatusTable transactionStatusTable = TransactionStatusTable.getInstance();
 
     public static Result checkResult(byte[] defaultColumnFamilyName, HBaseSession session, HRegionServer regionServer,
             byte[] regionName, HBaseTransaction t, Result r) throws IOException {
@@ -68,7 +67,7 @@ public class ValidityChecker {
             return r;
         }
 
-        if ((oldTid % 2 == 0) || !transactionStatusTable.isValid(hostAndPort, oldTid, t)) {
+        if ((oldTid % 2 == 0) || !TransactionStatusTable.isValid(session, hostAndPort, oldTid, t)) {
             Get get = new Get(r.getRow());
             get.setMaxVersions(1);
             get.setTimeRange(0, oldTid - 1);

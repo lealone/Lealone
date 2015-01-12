@@ -24,6 +24,7 @@ import org.lealone.hbase.engine.HBaseConstants;
 import org.lealone.hbase.result.HBaseRow;
 import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.transaction.GlobalTransaction;
+import org.lealone.transaction.TransactionManager;
 import org.lealone.value.Value;
 
 public class HBaseTransaction extends GlobalTransaction {
@@ -32,7 +33,7 @@ public class HBaseTransaction extends GlobalTransaction {
 
     public HBaseTransaction(Session session) {
         super(session);
-        String hostAndPort = session.getHostAndPort();
+        String hostAndPort = TransactionManager.getHostAndPort();
 
         transactionMetaAdd = Bytes.toBytes(hostAndPort + "," + transactionId + "," + HBaseConstants.Tag.ADD);
         transactionMetaDelete = Bytes.toBytes(hostAndPort + "," + transactionId + "," + HBaseConstants.Tag.DELETE);

@@ -32,6 +32,7 @@ import org.lealone.message.JdbcSQLException;
 import org.lealone.result.ResultColumn;
 import org.lealone.result.ResultInterface;
 import org.lealone.store.LobStorage;
+import org.lealone.transaction.TransactionStatusTable;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;
 import org.lealone.util.SmallLRUCache;
@@ -474,6 +475,20 @@ public class TcpServerThread implements Runnable {
                 status = getState(old);
             }
             transfer.writeInt(status);
+            transfer.flush();
+            break;
+        }
+        case FrontendSession.COMMAND_EXECUTE_TRANSACTION_VALIDATE: {
+            int old = session.getModificationId();
+            boolean isValid = TransactionStatusTable.isValid(transfer.readString());
+            int status;
+            if (session.isClosed()) {
+                status = FrontendSession.STATUS_CLOSED;
+            } else {
+                status = getState(old);
+            }
+            transfer.writeInt(status);
+            transfer.writeBoolean(isValid);
             transfer.flush();
             break;
         }

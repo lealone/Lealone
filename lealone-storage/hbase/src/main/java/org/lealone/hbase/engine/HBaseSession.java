@@ -30,9 +30,7 @@ import org.lealone.hbase.command.dml.HBaseInsert;
 import org.lealone.hbase.dbobject.HBaseSequence;
 import org.lealone.hbase.result.HBaseRow;
 import org.lealone.hbase.transaction.HBaseTransaction;
-import org.lealone.message.DbException;
 import org.lealone.result.Row;
-import org.lealone.transaction.TransactionInterface;
 
 public class HBaseSession extends Session {
 
@@ -45,8 +43,6 @@ public class HBaseSession extends Session {
      * HBase的HRegionServer对象，master和regionServer不可能同时非null
      */
     private HRegionServer regionServer;
-
-    private volatile HBaseTransaction transaction;
 
     public HBaseSession(Database database, User user, int id) {
         super(database, user, id);
@@ -110,23 +106,14 @@ public class HBaseSession extends Session {
     }
 
     public void log(HBaseRow row) {
-        if (transaction == null)
-            throw DbException.throwInternalError();
-        transaction.log(row);
+        this.getTransaction().log(row);
     }
 
     @Override
     public HBaseTransaction getTransaction() {
-        if (transaction == null) {
-            transaction = new HBaseTransaction(this);
-            super.setTransaction(transaction);
+        if (super.getTransaction() == null) {
+            super.setTransaction(new HBaseTransaction(this));
         }
-        return transaction;
-    }
-
-    @Override
-    public void setTransaction(TransactionInterface t) {
-        transaction = (HBaseTransaction) t;
-        super.setTransaction(t);
+        return (HBaseTransaction) super.getTransaction();
     }
 }
