@@ -1,6 +1,4 @@
 /*
- * Copyright 2011 The Apache Software Foundation
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -70,6 +68,7 @@ public class CassandraConfigurationLoader implements ConfigurationLoader {
         return url;
     }
 
+    @Override
     public Config loadConfig() throws ConfigurationException {
         if (config != null)
             return config;
