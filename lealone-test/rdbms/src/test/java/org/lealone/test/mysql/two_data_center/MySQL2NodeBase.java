@@ -17,18 +17,20 @@
  */
 package org.lealone.test.mysql.two_data_center;
 
+import org.lealone.bootstrap.Lealone;
+import org.lealone.cluster.config.Config.RunMode;
 import org.lealone.cluster.locator.SnitchProperties;
-import org.lealone.mysql.service.MySQLDaemon;
 import org.lealone.test.NodeBase;
 
 public class MySQL2NodeBase extends NodeBase {
     public static void run(String rackdcPropertyFileName, Class<?> loader, String[] args) {
         System.setProperty(SnitchProperties.RACKDC_PROPERTY_FILENAME, rackdcPropertyFileName);
         init(loader, "lealone-twodc.yaml");
-        MySQLDaemon.main(args);
+        Lealone.main(args);
     }
 
     public MySQL2NodeBase() {
         nodeBaseDirPrefix = "mysql/twodc-";
+        run_mode = RunMode.mysql_proxy;
     }
 }

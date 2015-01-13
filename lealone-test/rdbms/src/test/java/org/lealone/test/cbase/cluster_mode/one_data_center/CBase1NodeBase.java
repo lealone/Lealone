@@ -17,13 +17,13 @@
  */
 package org.lealone.test.cbase.cluster_mode.one_data_center;
 
-import org.lealone.cluster.service.LealoneDaemon;
+import org.lealone.bootstrap.Lealone;
 import org.lealone.test.NodeBase;
 
 public class CBase1NodeBase extends NodeBase {
     public static void run(Class<?> loader, String[] args) {
         init(loader, "lealone-onedc.yaml");
-        LealoneDaemon.main(args);
+        Lealone.main(args);
     }
 
     public CBase1NodeBase() {

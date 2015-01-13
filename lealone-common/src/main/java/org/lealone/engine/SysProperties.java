@@ -423,6 +423,13 @@ public class SysProperties {
     }
 
     /**
+     * INTERNAL
+     */
+    public static String setBaseDir(String baseDir) {
+        return System.setProperty(Constants.PROJECT_NAME_PREFIX + BASE_DIR, baseDir);
+    }
+
+    /**
      * System property <code>scriptDirectory</code> (default: empty
      * string).<br />
      * Relative or absolute directory where the script files are stored to or

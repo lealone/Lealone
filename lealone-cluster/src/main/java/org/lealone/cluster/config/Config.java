@@ -211,6 +211,11 @@ public class Config {
 
     public RunMode run_mode = RunMode.cluster;
 
+    //当运行模式是mysql_proxy或pg_proxy时，配置后端数据库的三个参数，用于建立JDBC连接
+    public String backend_url;
+    public String backend_user;
+    public String backend_password;
+
     public boolean isClusterMode() {
         return run_mode == RunMode.cluster;
     }
@@ -247,27 +252,43 @@ public class Config {
     }
 
     public static enum CommitLogSync {
-        periodic, batch
+        periodic,
+        batch
     }
 
     public static enum InternodeCompression {
-        all, none, dc
+        all,
+        none,
+        dc
     }
 
     public static enum DiskAccessMode {
-        auto, mmap, mmap_index_only, standard,
+        auto,
+        mmap,
+        mmap_index_only,
+        standard,
     }
 
     public static enum MemtableAllocationType {
-        unslabbed_heap_buffers, heap_buffers, offheap_buffers, offheap_objects
+        unslabbed_heap_buffers,
+        heap_buffers,
+        offheap_buffers,
+        offheap_objects
     }
 
     public static enum DiskFailurePolicy {
-        best_effort, stop, ignore, stop_paranoid, die
+        best_effort,
+        stop,
+        ignore,
+        stop_paranoid,
+        die
     }
 
     public static enum CommitFailurePolicy {
-        stop, stop_commit, ignore, die,
+        stop,
+        stop_commit,
+        ignore,
+        die,
     }
 
     public static enum RequestSchedulerId {
@@ -275,6 +296,11 @@ public class Config {
     }
 
     public static enum RunMode {
-        cluster, client_server, embedded
+        //embedded,
+        client_server,
+        //standalone,
+        cluster,
+        mysql_proxy,
+        pg_proxy
     }
 }

@@ -18,6 +18,7 @@
 package org.lealone.test;
 
 import org.lealone.cluster.config.Config;
+import org.lealone.cluster.config.Config.RunMode;
 import org.lealone.cluster.config.YamlConfigurationLoader;
 import org.lealone.cluster.exceptions.ConfigurationException;
 
@@ -42,6 +43,8 @@ public class NodeBase extends YamlConfigurationLoader {
     protected String user = "test";
     protected String password = "test";
 
+    protected RunMode run_mode = RunMode.cluster;
+
     //在org.lealone.cluster.utils.FBUtilities.construct(String, String)中必须使用无参数的构造函数
     public NodeBase() {
     }
@@ -51,6 +54,8 @@ public class NodeBase extends YamlConfigurationLoader {
         Config config = super.loadConfig();
 
         config.base_dir = config.base_dir + "/" + nodeBaseDirPrefix + dir;
+        config.run_mode = run_mode;
+
         config.listen_address = listen_address;
         config.commitlog_directory = config.base_dir + "/commitlog";
         config.saved_caches_directory = config.base_dir + "/saved_caches";
@@ -60,9 +65,9 @@ public class NodeBase extends YamlConfigurationLoader {
         System.setProperty("lealone.base.dir", "./" + config.base_dir);
 
         if (url != null) {
-            System.setProperty("url", url);
-            System.setProperty("user", user);
-            System.setProperty("password", password);
+            config.backend_url = url;
+            config.backend_user = user;
+            config.backend_password = password;
         }
 
         return config;

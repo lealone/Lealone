@@ -17,17 +17,18 @@
  */
 package org.lealone.test.mysql.one_data_center;
 
-import org.lealone.mysql.service.MySQLDaemon;
+import org.lealone.bootstrap.Lealone;
+import org.lealone.cluster.config.Config.RunMode;
 import org.lealone.test.NodeBase;
 
 public class MySQL1NodeBase extends NodeBase {
     public static void run(Class<?> loader, String[] args) {
         init(loader, "lealone-onedc.yaml");
-        MySQLDaemon.main(args);
+        Lealone.main(args);
     }
 
     public MySQL1NodeBase() {
         nodeBaseDirPrefix = "mysql/onedc-";
+        run_mode = RunMode.mysql_proxy;
     }
-
 }

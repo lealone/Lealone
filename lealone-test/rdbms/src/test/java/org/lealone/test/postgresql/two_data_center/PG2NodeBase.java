@@ -17,18 +17,20 @@
  */
 package org.lealone.test.postgresql.two_data_center;
 
+import org.lealone.bootstrap.Lealone;
+import org.lealone.cluster.config.Config.RunMode;
 import org.lealone.cluster.locator.SnitchProperties;
-import org.lealone.postgresql.service.PostgreSQLDaemon;
 import org.lealone.test.NodeBase;
 
 public class PG2NodeBase extends NodeBase {
     public static void run(String rackdcPropertyFileName, Class<?> loader, String[] args) {
         System.setProperty(SnitchProperties.RACKDC_PROPERTY_FILENAME, rackdcPropertyFileName);
         init(loader, "lealone-twodc.yaml");
-        PostgreSQLDaemon.main(args);
+        Lealone.main(args);
     }
 
     public PG2NodeBase() {
         nodeBaseDirPrefix = "postgresql/twodc-";
+        run_mode = RunMode.pg_proxy;
     }
 }

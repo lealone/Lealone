@@ -17,17 +17,18 @@
  */
 package org.lealone.test.postgresql.one_data_center;
 
-import org.lealone.postgresql.service.PostgreSQLDaemon;
+import org.lealone.bootstrap.Lealone;
+import org.lealone.cluster.config.Config.RunMode;
 import org.lealone.test.NodeBase;
 
 public class PG1NodeBase extends NodeBase {
     public static void run(Class<?> loader, String[] args) {
         init(loader, "lealone-onedc.yaml");
-        PostgreSQLDaemon.main(args);
+        Lealone.main(args);
     }
 
     public PG1NodeBase() {
         nodeBaseDirPrefix = "postgresql/onedc-";
+        run_mode = RunMode.pg_proxy;
     }
-
 }

@@ -17,15 +17,15 @@
  */
 package org.lealone.test.cbase.cluster_mode.two_data_center;
 
+import org.lealone.bootstrap.Lealone;
 import org.lealone.cluster.locator.SnitchProperties;
-import org.lealone.cluster.service.LealoneDaemon;
 import org.lealone.test.NodeBase;
 
 public class CBase2NodeBase extends NodeBase {
     public static void run(String rackdcPropertyFileName, Class<?> loader, String[] args) {
         System.setProperty(SnitchProperties.RACKDC_PROPERTY_FILENAME, rackdcPropertyFileName);
         init(loader, "lealone-twodc.yaml");
-        LealoneDaemon.main(args);
+        Lealone.main(args);
     }
 
     public CBase2NodeBase() {
