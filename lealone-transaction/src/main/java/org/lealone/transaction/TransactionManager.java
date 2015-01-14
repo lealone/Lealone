@@ -52,6 +52,17 @@ public class TransactionManager {
 
         TransactionStatusTable.init(store);
         TimestampServiceTable.init(store);
+
+        store.close();
+    }
+
+    public static synchronized void close() {
+        if (store == null)
+            return;
+
+        store = null;
+        hostAndPort = null;
+        store.close();
     }
 
     private static void initStore(String baseDir) {
@@ -88,12 +99,5 @@ public class TransactionManager {
         });
 
         store = builder.open();
-    }
-
-    public static TransactionInterface beginTransaction(Session session) {
-        //        if (session.isLocal())
-        //            return new LocalTransaction(session);
-        //        else
-        return new GlobalTransaction(session);
     }
 }

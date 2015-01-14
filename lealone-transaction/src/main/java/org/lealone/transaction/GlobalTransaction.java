@@ -18,7 +18,6 @@
 package org.lealone.transaction;
 
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.lealone.api.ErrorCode;
@@ -31,19 +30,13 @@ public class GlobalTransaction extends TransactionBase {
 
     protected CopyOnWriteArrayList<Row> undoRows;
     protected HashMap<String, Integer> savepoints;
-    protected final ConcurrentSkipListSet<Long> halfSuccessfulTransactions = new ConcurrentSkipListSet<Long>();
 
     public GlobalTransaction(Session session) {
         super(session);
 
         undoRows = new CopyOnWriteArrayList<>();
-
-        String hostAndPort = TransactionManager.getHostAndPort();
-        if (hostAndPort == null)
-            hostAndPort = "localhost:0";
-
         transactionId = getNewTimestamp();
-        transactionName = getTransactionName(hostAndPort, transactionId);
+        transactionName = getTransactionName(TransactionManager.getHostAndPort(), transactionId);
     }
 
     public long getNewTimestamp() {
@@ -55,7 +48,7 @@ public class GlobalTransaction extends TransactionBase {
 
     @Override
     public String toString() {
-        return "T-" + transactionId;
+        return transactionName;
     }
 
     @Override
@@ -103,19 +96,6 @@ public class GlobalTransaction extends TransactionBase {
                                 + ", startTimestamp " + transactionId + ", rowKey " + row.getRowKey());
                     }
                 }
-
-                //4.检查此事务关联到的一些半成功事务是否全成功了
-                if (!halfSuccessfulTransactions.isEmpty()) {
-                    String hostAndPort = session.getHostAndPort();
-                    for (Long tid : halfSuccessfulTransactions) {
-                        if (!TransactionStatusTable.isFullSuccessful(hostAndPort, tid)) {
-                            throw new RuntimeException("Write-write conflict: transaction "
-                                    + getTransactionName(hostAndPort, tid) + " is not full successful, current transaction: "
-                                    + transactionName);
-                        }
-                    }
-                }
-
             }
         }
     }
@@ -195,10 +175,6 @@ public class GlobalTransaction extends TransactionBase {
         }
 
         super.endTransaction();
-    }
-
-    public void addHalfSuccessfulTransaction(Long tid) {
-        halfSuccessfulTransactions.add(tid);
     }
 
     public static String getTransactionName(String hostAndPort, long tid) {

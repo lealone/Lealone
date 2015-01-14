@@ -106,7 +106,7 @@ public class HBaseSession extends Session {
     }
 
     public void log(HBaseRow row) {
-        this.getTransaction().log(row);
+        getTransaction().log(row);
     }
 
     @Override

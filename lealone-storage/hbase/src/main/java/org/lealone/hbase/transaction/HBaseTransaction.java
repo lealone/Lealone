@@ -33,15 +33,10 @@ public class HBaseTransaction extends GlobalTransaction {
 
     public HBaseTransaction(Session session) {
         super(session);
-        String hostAndPort = TransactionManager.getHostAndPort();
 
+        String hostAndPort = TransactionManager.getHostAndPort();
         transactionMetaAdd = Bytes.toBytes(hostAndPort + "," + transactionId + "," + HBaseConstants.Tag.ADD);
         transactionMetaDelete = Bytes.toBytes(hostAndPort + "," + transactionId + "," + HBaseConstants.Tag.DELETE);
-    }
-
-    @Override
-    public String toString() {
-        return "T-" + transactionId;
     }
 
     public void log(HBaseRow row) {
@@ -60,17 +55,4 @@ public class HBaseTransaction extends GlobalTransaction {
         put.add(defaultColumnFamilyName, HBaseConstants.TRANSACTION_META, transactionMetaDelete);
         return put;
     }
-
-    @Override
-    public void addHalfSuccessfulTransaction(Long tid) {
-        halfSuccessfulTransactions.add(tid);
-    }
-
-    public static String getTransactionName(String hostAndPort, long tid) {
-        StringBuilder buff = new StringBuilder(hostAndPort);
-        buff.append(':');
-        buff.append(tid);
-        return buff.toString();
-    }
-
 }
