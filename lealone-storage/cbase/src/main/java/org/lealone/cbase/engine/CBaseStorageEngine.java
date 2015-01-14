@@ -248,7 +248,7 @@ public class CBaseStorageEngine implements StorageEngine {
          *
          * @param objectIds the ids of the objects to keep
          */
-        public void removeTemporaryMaps(BitField objectIds) {
+        public void removeTemporaryMaps(Session session, BitField objectIds) {
             for (String mapName : store.getMapNames()) {
                 if (mapName.startsWith("temp.")) {
                     MVMap<?, ?> map = store.openMap(mapName);
@@ -258,7 +258,7 @@ public class CBaseStorageEngine implements StorageEngine {
                     if (!objectIds.get(id)) {
                         ValueDataType keyType = new ValueDataType(null, null, null);
                         ValueDataType valueType = new ValueDataType(null, null, null);
-                        LocalTransaction t = transactionStore.begin();
+                        LocalTransaction t = transactionStore.beginTransaction(session);
                         TransactionMap<?, ?> m = t.openMap(mapName, keyType, valueType);
                         transactionStore.removeMap(m);
                         t.commit();

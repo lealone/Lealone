@@ -773,7 +773,7 @@ public class CBaseTable extends TableBase {
     @Override
     public LocalTransaction getTransaction(Session session) {
         if (session.getTransaction() == null) {
-            LocalTransaction t = store.begin();
+            LocalTransaction t = store.beginTransaction(session);
             session.setTransaction(t);
             t.setSession(session);
             return t;

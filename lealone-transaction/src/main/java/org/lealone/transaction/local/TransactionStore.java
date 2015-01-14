@@ -17,7 +17,6 @@ import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
-import org.lealone.transaction.TransactionInterface;
 import org.lealone.util.New;
 
 /**
@@ -224,7 +223,8 @@ public class TransactionStore implements TransactionEngine {
      *
      * @return the transaction
      */
-    public synchronized LocalTransaction begin() {
+    @Override
+    public synchronized LocalTransaction beginTransaction(Session session) {
         if (!init) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
@@ -233,7 +233,7 @@ public class TransactionStore implements TransactionEngine {
             lastTransactionId = 0;
         }
         int status = LocalTransaction.STATUS_OPEN;
-        return new LocalTransaction(this, transactionId, status, null, 0);
+        return new LocalTransaction(session, this, transactionId, status, null, 0);
     }
 
     /**
@@ -560,18 +560,5 @@ public class TransactionStore implements TransactionEngine {
     synchronized void commitTransactionStatusTable(LocalTransaction t, String allLocalTransactionNames) {
         Object[] v = { allLocalTransactionNames, ++lastTransactionId };
         transactionStatusTable.put(t.getId(), v);
-    }
-
-    @Override
-    public synchronized TransactionInterface beginTransaction(Session session) {
-        if (!init) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
-        }
-        int transactionId = ++lastTransactionId;
-        if (lastTransactionId >= maxTransactionId) {
-            lastTransactionId = 0;
-        }
-        int status = LocalTransaction.STATUS_OPEN;
-        return new LocalTransaction(session, this, transactionId, status, null, 0);
     }
 }

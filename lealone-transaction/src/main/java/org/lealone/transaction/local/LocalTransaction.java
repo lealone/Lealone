@@ -69,11 +69,7 @@ public class LocalTransaction extends TransactionBase {
     }
 
     LocalTransaction(Session session, TransactionStore store, int transactionId, int status, String name, long logId) {
-        this.store = store;
-        this.transactionId = transactionId;
-        this.status = status;
-        this.name = name;
-        this.logId = logId;
+        this(store, transactionId, status, name, logId);
         this.session = session;
     }
 
