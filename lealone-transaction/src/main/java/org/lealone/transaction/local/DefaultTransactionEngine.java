@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.engine.Session;
 import org.lealone.engine.TransactionEngine;
@@ -62,7 +63,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
 
     private boolean init;
 
-    private int lastTransactionId;
+    private final AtomicInteger lastTransactionId = new AtomicInteger();
 
     private int maxTransactionId = 0xffff;
 
@@ -72,7 +73,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
     private int nextTempMapId;
 
     /**
-     * Create a new transaction store.
+     * Create a new transaction engine.
      *
      * @param store the store
      */
@@ -81,7 +82,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
     }
 
     /**
-     * Create a new transaction store.
+     * Create a new transaction engine.
      *
      * @param store the store
      * @param dataType the data type for map keys and values
@@ -91,11 +92,11 @@ public class DefaultTransactionEngine implements TransactionEngine {
         this.dataType = dataType;
         preparedTransactions = store.openMap("openTransactions", new MVMap.Builder<Integer, Object[]>());
         transactionStatusTable = store.openMap("transactionStatusTable", new MVMap.Builder<Integer, Object[]>());
+
         VersionedValueType oldValueType = new VersionedValueType(dataType);
         ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), dataType, oldValueType });
         MVMap.Builder<Long, Object[]> builder = new MVMap.Builder<Long, Object[]>().valueType(undoLogValueType);
         undoLog = store.openMap("undoLog", builder);
-        // remove all temporary maps
         if (undoLog.getValueType() != undoLogValueType) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
                     "Undo map open with a different value type");
@@ -119,7 +120,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
         synchronized (undoLog) {
             if (undoLog.size() > 0) {
                 Long key = undoLog.firstKey();
-                lastTransactionId = getTransactionId(key);
+                lastTransactionId.set(getTransactionId(key));
             }
         }
     }
@@ -211,22 +212,29 @@ public class DefaultTransactionEngine implements TransactionEngine {
         store.commit();
     }
 
+    private int nextTransactionId() {
+        int oldLast;
+        int tid;
+        do {
+            oldLast = lastTransactionId.get();
+            tid = oldLast + 1;
+            if (tid >= maxTransactionId)
+                tid = 0;
+        } while (!lastTransactionId.compareAndSet(oldLast, tid));
+        return tid;
+    }
+
     /**
      * Begin a new transaction.
      *
      * @return the transaction
      */
     @Override
-    public synchronized LocalTransaction beginTransaction(Session session) {
+    public LocalTransaction beginTransaction(Session session) {
         if (!init) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
-        int transactionId = ++lastTransactionId;
-        if (lastTransactionId >= maxTransactionId) {
-            lastTransactionId = 0;
-        }
-        int status = LocalTransaction.STATUS_OPEN;
-        return new LocalTransaction(session, this, transactionId, status, null, 0);
+        return new LocalTransaction(session, this, nextTransactionId(), LocalTransaction.STATUS_OPEN, null, 0);
     }
 
     /**
@@ -550,8 +558,8 @@ public class DefaultTransactionEngine implements TransactionEngine {
         };
     }
 
-    synchronized void commitTransactionStatusTable(LocalTransaction t, String allLocalTransactionNames) {
-        Object[] v = { allLocalTransactionNames, ++lastTransactionId };
+    void commitTransactionStatusTable(LocalTransaction t, String allLocalTransactionNames) {
+        Object[] v = { allLocalTransactionNames, lastTransactionId.incrementAndGet() };
         transactionStatusTable.put(t.getId(), v);
     }
 }
