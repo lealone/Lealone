@@ -53,7 +53,6 @@ public abstract class TransactionBase implements TransactionInterface {
     }
 
     public void setSession(Session session) {
-        session.setTransaction(this);
         this.session = session;
         autoCommit = session.getAutoCommit();
     }

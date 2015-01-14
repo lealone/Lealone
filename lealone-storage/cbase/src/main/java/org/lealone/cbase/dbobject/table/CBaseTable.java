@@ -43,7 +43,7 @@ import org.lealone.message.Trace;
 import org.lealone.result.Row;
 import org.lealone.result.SortOrder;
 import org.lealone.transaction.local.LocalTransaction;
-import org.lealone.transaction.local.TransactionStore;
+import org.lealone.transaction.local.DefaultTransactionEngine;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
 import org.lealone.value.DataType;
@@ -73,12 +73,12 @@ public class CBaseTable extends TableBase {
     private boolean containsLargeObject;
     private Column rowIdColumn;
 
-    private final TransactionStore store;
+    private final DefaultTransactionEngine transactionEngine;
 
     public CBaseTable(CreateTableData data, CBaseStorageEngine.Store store) {
         super(data);
         nextAnalyze = database.getSettings().analyzeAuto;
-        this.store = store.getTransactionStore();
+        this.transactionEngine = store.getTransactionEngine();
         this.isHidden = data.isHidden;
         for (Column col : getColumns()) {
             if (DataType.isLargeObject(col.getType())) {
@@ -411,7 +411,7 @@ public class CBaseTable extends TableBase {
         int mainIndexColumn;
         mainIndexColumn = getMainIndexColumn(indexType, cols);
         if (database.isStarting()) {
-            if (store.store.hasMap("index." + indexId)) {
+            if (transactionEngine.store.hasMap("index." + indexId)) {
                 mainIndexColumn = -1;
             }
         } else if (primaryIndex.getRowCountMax() != 0) {
@@ -770,15 +770,7 @@ public class CBaseTable extends TableBase {
      * @param session the session
      * @return the transaction
      */
-    @Override
     public LocalTransaction getTransaction(Session session) {
-        if (session.getTransaction() == null) {
-            LocalTransaction t = store.beginTransaction(session);
-            session.setTransaction(t);
-            t.setSession(session);
-            return t;
-        }
-
         return (LocalTransaction) session.getTransaction();
     }
 

@@ -2079,6 +2079,8 @@ public class Database implements DataHandler {
     }
 
     public TransactionEngine getTransactionEngine() {
+        if (transactionEngine == null)
+            throw new IllegalStateException("transactionEngine not init");
         return transactionEngine;
     }
 }

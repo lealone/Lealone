@@ -24,7 +24,7 @@ class VersionedValue {
     @Override
     public String toString() {
         return value + (operationId == 0 ? "" : //
-                (" " + TransactionStore.getTransactionId(operationId) + "/" + TransactionStore.getLogId(operationId)));
+                (" " + DefaultTransactionEngine.getTransactionId(operationId) + "/" + DefaultTransactionEngine.getLogId(operationId)));
     }
 
 }

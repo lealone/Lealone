@@ -1363,12 +1363,11 @@ public class Session extends SessionWithState {
     private volatile TransactionInterface transaction;
 
     public TransactionInterface getTransaction() {
+        if (transaction == null) {
+            transaction = database.getTransactionEngine().beginTransaction(this);
+            transaction.setAutoCommit(autoCommit);
+        }
         return transaction;
-    }
-
-    public void setTransaction(TransactionInterface t) {
-        transaction = t;
-        transaction.setAutoCommit(autoCommit);
     }
 
     private static Router router = LocalRouter.getInstance();

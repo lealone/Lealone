@@ -34,7 +34,6 @@ import org.lealone.result.SearchRow;
 import org.lealone.result.SimpleRow;
 import org.lealone.result.SimpleRowValue;
 import org.lealone.result.SortOrder;
-import org.lealone.transaction.TransactionInterface;
 import org.lealone.util.New;
 import org.lealone.value.CompareMode;
 import org.lealone.value.Value;
@@ -1164,9 +1163,5 @@ public abstract class Table extends SchemaObjectBase {
 
     public void setColumnsModified(boolean modified) {
         this.isColumnsModified = modified;
-    }
-
-    public TransactionInterface getTransaction(Session session) {
-        return null;
     }
 }

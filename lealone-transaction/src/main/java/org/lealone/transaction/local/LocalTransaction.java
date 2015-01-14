@@ -42,9 +42,9 @@ public class LocalTransaction extends TransactionBase {
     public static final int STATUS_COMMITTING = 3;
 
     /**
-     * The transaction store.
+     * The transaction engine.
      */
-    final TransactionStore store;
+    final DefaultTransactionEngine transactionEngine;
 
     /**
      * The transaction id.
@@ -60,15 +60,15 @@ public class LocalTransaction extends TransactionBase {
 
     private String name;
 
-    LocalTransaction(TransactionStore store, int transactionId, int status, String name, long logId) {
-        this.store = store;
+    LocalTransaction(DefaultTransactionEngine engine, int transactionId, int status, String name, long logId) {
+        this.transactionEngine = engine;
         this.transactionId = transactionId;
         this.status = status;
         this.name = name;
         this.logId = logId;
     }
 
-    LocalTransaction(Session session, TransactionStore store, int transactionId, int status, String name, long logId) {
+    LocalTransaction(Session session, DefaultTransactionEngine store, int transactionId, int status, String name, long logId) {
         this(store, transactionId, status, name, logId);
         this.session = session;
     }
@@ -88,7 +88,7 @@ public class LocalTransaction extends TransactionBase {
     public void setName(String name) {
         checkNotClosed();
         this.name = name;
-        store.storeTransaction(this);
+        transactionEngine.storeTransaction(this);
     }
 
     public String getName() {
@@ -112,7 +112,7 @@ public class LocalTransaction extends TransactionBase {
      * @param oldValue the old value
      */
     void log(int mapId, Object key, Object oldValue) {
-        store.log(this, logId, mapId, key, oldValue);
+        transactionEngine.log(this, logId, mapId, key, oldValue);
         // only increment the log id if logging was successful
         logId++;
     }
@@ -121,7 +121,7 @@ public class LocalTransaction extends TransactionBase {
      * Remove the last log entry.
      */
     void logUndo() {
-        store.logUndo(this, --logId);
+        transactionEngine.logUndo(this, --logId);
     }
 
     /**
@@ -148,7 +148,7 @@ public class LocalTransaction extends TransactionBase {
      */
     public <K, V> TransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
         checkNotClosed();
-        MVMap<K, VersionedValue> map = store.openMap(name, keyType, valueType);
+        MVMap<K, VersionedValue> map = transactionEngine.openMap(name, keyType, valueType);
         int mapId = map.getId();
         return new TransactionMap<K, V>(this, map, mapId);
     }
@@ -174,7 +174,7 @@ public class LocalTransaction extends TransactionBase {
     public void prepare() {
         checkNotClosed();
         status = STATUS_PREPARED;
-        store.storeTransaction(this);
+        transactionEngine.storeTransaction(this);
     }
 
     /**
@@ -187,7 +187,7 @@ public class LocalTransaction extends TransactionBase {
      * @return the changes
      */
     public Iterator<Change> getChanges(long savepointId) {
-        return store.getChanges(this, logId, savepointId);
+        return transactionEngine.getChanges(this, logId, savepointId);
     }
 
     /**
@@ -205,7 +205,7 @@ public class LocalTransaction extends TransactionBase {
      * @param map the map
      */
     public <K, V> void removeMap(TransactionMap<K, V> map) {
-        store.removeMap(map);
+        transactionEngine.removeMap(map);
     }
 
     @Override
@@ -226,13 +226,13 @@ public class LocalTransaction extends TransactionBase {
 
     private void commit0() {
         checkNotClosed();
-        store.commit(this, logId);
+        transactionEngine.commit(this, logId);
     }
 
     @Override
     protected void commitLocal(String allLocalTransactionNames) {
         commit0();
-        store.commitTransactionStatusTable(this, allLocalTransactionNames);
+        transactionEngine.commitTransactionStatusTable(this, allLocalTransactionNames);
     }
 
     /**
@@ -243,7 +243,7 @@ public class LocalTransaction extends TransactionBase {
      */
     public void rollbackToSavepoint(long savepointId) {
         checkNotClosed();
-        store.rollbackTo(this, logId, savepointId);
+        transactionEngine.rollbackTo(this, logId, savepointId);
         logId = savepointId;
     }
 
@@ -254,8 +254,8 @@ public class LocalTransaction extends TransactionBase {
     public void rollback() {
         try {
             checkNotClosed();
-            store.rollbackTo(this, logId, 0);
-            store.endTransaction(this);
+            transactionEngine.rollbackTo(this, logId, 0);
+            transactionEngine.endTransaction(this);
         } finally {
             endTransaction();
         }

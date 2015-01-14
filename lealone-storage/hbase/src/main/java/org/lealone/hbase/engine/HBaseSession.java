@@ -111,9 +111,6 @@ public class HBaseSession extends Session {
 
     @Override
     public HBaseTransaction getTransaction() {
-        if (super.getTransaction() == null) {
-            super.setTransaction(new HBaseTransaction(this));
-        }
         return (HBaseTransaction) super.getTransaction();
     }
 }

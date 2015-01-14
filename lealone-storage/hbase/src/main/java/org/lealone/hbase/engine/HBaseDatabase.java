@@ -45,6 +45,7 @@ public class HBaseDatabase extends Database {
 
     public HBaseDatabase(DatabaseEngine dbEngine, boolean persistent) {
         super(dbEngine, persistent);
+        setTransactionEngine(HBaseTransactionEngine.getInstance());
     }
 
     @Override

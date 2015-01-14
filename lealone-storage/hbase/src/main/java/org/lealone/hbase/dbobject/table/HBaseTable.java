@@ -55,7 +55,6 @@ import org.lealone.hbase.util.HBaseUtils;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.result.RowList;
-import org.lealone.transaction.TransactionInterface;
 import org.lealone.util.New;
 import org.lealone.util.StatementBuilder;
 import org.lealone.value.Value;
@@ -790,10 +789,5 @@ public class HBaseTable extends TableBase {
         }
 
         return primaryKeyName;
-    }
-
-    @Override
-    public TransactionInterface getTransaction(Session session) {
-        return session.getTransaction();
     }
 }

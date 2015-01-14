@@ -46,38 +46,32 @@ public class TransactionalRouter implements Router {
 
     @Override
     public int executeInsert(Insert insert) {
-        insert.getTable().getTransaction(insert.getSession());
         return execute(insert.isBatch(), insert);
     }
 
     @Override
     public int executeMerge(Merge merge) {
-        merge.getTable().getTransaction(merge.getSession());
         return execute(merge.isBatch(), merge);
     }
 
     @Override
     public int executeDelete(Delete delete) {
-        delete.getTable().getTransaction(delete.getSession());
         return execute(true, delete);
     }
 
     @Override
     public int executeUpdate(Update update) {
-        update.getTable().getTransaction(update.getSession());
         return execute(true, update);
     }
 
     @Override
     public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
-        select.getTable().getTransaction(select.getSession());
         beginTransaction(select);
         return nestedRouter.executeSelect(select, maxRows, scrollable);
     }
 
     private void beginTransaction(Prepared p) {
-        //        if (p.getSession().getTransaction() == null)
-        //            TransactionManager.beginTransaction(p.getSession());
+        p.getSession().getTransaction();
     }
 
     private int execute(boolean isBatch, Prepared p) {

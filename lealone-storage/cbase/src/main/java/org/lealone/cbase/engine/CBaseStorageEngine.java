@@ -31,9 +31,9 @@ import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.MVStoreTool;
 import org.lealone.store.fs.FileChannelInputStream;
 import org.lealone.store.fs.FileUtils;
+import org.lealone.transaction.local.DefaultTransactionEngine;
 import org.lealone.transaction.local.LocalTransaction;
 import org.lealone.transaction.local.TransactionMap;
-import org.lealone.transaction.local.TransactionStore;
 import org.lealone.util.BitField;
 import org.lealone.util.DataUtils;
 import org.lealone.util.New;
@@ -63,7 +63,7 @@ public class CBaseStorageEngine implements StorageEngine {
                 if (stores.get(db.getName()) == null) {
                     store = init(db);
                     stores.put(db.getName(), store);
-                    db.setTransactionEngine(store.getTransactionStore());
+                    db.setTransactionEngine(store.getTransactionEngine());
                 }
             }
         }
@@ -170,9 +170,9 @@ public class CBaseStorageEngine implements StorageEngine {
         private final MVStore store;
 
         /**
-         * The transaction store.
+         * The transaction engine.
          */
-        private final TransactionStore transactionStore;
+        private final DefaultTransactionEngine transactionEngine;
 
         private long statisticsStart;
 
@@ -180,16 +180,16 @@ public class CBaseStorageEngine implements StorageEngine {
 
         public Store(Database db, MVStore.Builder builder) {
             this.store = builder.open();
-            this.transactionStore = new TransactionStore(store, new ValueDataType(null, db, null));
-            transactionStore.init();
+            this.transactionEngine = new DefaultTransactionEngine(store, new ValueDataType(null, db, null));
+            transactionEngine.init();
         }
 
         public MVStore getStore() {
             return store;
         }
 
-        public TransactionStore getTransactionStore() {
-            return transactionStore;
+        public DefaultTransactionEngine getTransactionEngine() {
+            return transactionEngine;
         }
 
         public HashMap<String, CBaseTable> getTables() {
@@ -233,7 +233,7 @@ public class CBaseStorageEngine implements StorageEngine {
          * rollback all open transactions.
          */
         public void initTransactions() {
-            List<LocalTransaction> list = transactionStore.getOpenTransactions();
+            List<LocalTransaction> list = transactionEngine.getOpenTransactions();
             for (LocalTransaction t : list) {
                 if (t.getStatus() == LocalTransaction.STATUS_COMMITTING) {
                     t.commit();
@@ -258,9 +258,9 @@ public class CBaseStorageEngine implements StorageEngine {
                     if (!objectIds.get(id)) {
                         ValueDataType keyType = new ValueDataType(null, null, null);
                         ValueDataType valueType = new ValueDataType(null, null, null);
-                        LocalTransaction t = transactionStore.beginTransaction(session);
+                        LocalTransaction t = transactionEngine.beginTransaction(session);
                         TransactionMap<?, ?> m = t.openMap(mapName, keyType, valueType);
-                        transactionStore.removeMap(m);
+                        transactionEngine.removeMap(m);
                         t.commit();
                     }
                 }
@@ -290,7 +290,7 @@ public class CBaseStorageEngine implements StorageEngine {
         }
 
         public ArrayList<InDoubtTransaction> getInDoubtTransactions() {
-            List<LocalTransaction> list = transactionStore.getOpenTransactions();
+            List<LocalTransaction> list = transactionEngine.getOpenTransactions();
             ArrayList<InDoubtTransaction> result = New.arrayList();
             for (LocalTransaction t : list) {
                 if (t.getStatus() == LocalTransaction.STATUS_PREPARED) {
@@ -353,7 +353,7 @@ public class CBaseStorageEngine implements StorageEngine {
                 if (!store.isClosed() && store.getFileStore() != null) {
                     boolean compactFully = false;
                     if (!store.getFileStore().isReadOnly()) {
-                        transactionStore.close();
+                        transactionEngine.close();
                         if (maxCompactTime == Long.MAX_VALUE) {
                             compactFully = true;
                         }

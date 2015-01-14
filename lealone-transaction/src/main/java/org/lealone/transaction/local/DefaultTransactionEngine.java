@@ -20,9 +20,9 @@ import org.lealone.mvstore.type.ObjectDataType;
 import org.lealone.util.New;
 
 /**
- * A store that supports concurrent MVCC read-committed transactions.
+ * The default transaction engine that supports concurrent MVCC read-committed transactions.
  */
-public class TransactionStore implements TransactionEngine {
+public class DefaultTransactionEngine implements TransactionEngine {
 
     /**
      * The store.
@@ -76,7 +76,7 @@ public class TransactionStore implements TransactionEngine {
      *
      * @param store the store
      */
-    public TransactionStore(MVStore store) {
+    public DefaultTransactionEngine(MVStore store) {
         this(store, new ObjectDataType());
     }
 
@@ -86,7 +86,7 @@ public class TransactionStore implements TransactionEngine {
      * @param store the store
      * @param dataType the data type for map keys and values
      */
-    public TransactionStore(MVStore store, DataType dataType) {
+    public DefaultTransactionEngine(MVStore store, DataType dataType) {
         this.store = store;
         this.dataType = dataType;
         preparedTransactions = store.openMap("openTransactions", new MVMap.Builder<Integer, Object[]>());

@@ -90,7 +90,7 @@ public class TransactionMap<K, V> {
      */
     public long sizeAsLong() {
         long sizeRaw = map.sizeAsLong();
-        MVMap<Long, Object[]> undo = transaction.store.undoLog;
+        MVMap<Long, Object[]> undo = transaction.transactionEngine.undoLog;
         long undoLogSize;
         synchronized (undo) {
             undoLogSize = undo.sizeAsLong();
@@ -118,7 +118,7 @@ public class TransactionMap<K, V> {
         synchronized (undo) {
             // re-fetch in case any transaction was committed now
             long size = map.sizeAsLong();
-            MVMap<Object, Integer> temp = transaction.store.createTempMap();
+            MVMap<Object, Integer> temp = transaction.transactionEngine.createTempMap();
             try {
                 for (Entry<Long, Object[]> e : undo.entrySet()) {
                     Object[] op = e.getValue();
@@ -139,7 +139,7 @@ public class TransactionMap<K, V> {
                     }
                 }
             } finally {
-                transaction.store.store.removeMap(temp);
+                transaction.transactionEngine.store.removeMap(temp);
             }
             return size;
         }
@@ -245,7 +245,7 @@ public class TransactionMap<K, V> {
         if (onlyIfUnchanged) {
             VersionedValue old = getValue(key, readLogId);
             if (!map.areValuesEqual(old, current)) {
-                long tx = TransactionStore.getTransactionId(current.operationId);
+                long tx = DefaultTransactionEngine.getTransactionId(current.operationId);
                 if (tx == transaction.transactionId) {
                     if (value == null) {
                         // ignore removing an entry
@@ -264,7 +264,7 @@ public class TransactionMap<K, V> {
             }
         }
         VersionedValue newValue = new VersionedValue();
-        newValue.operationId = TransactionStore.getOperationId(transaction.transactionId, transaction.logId);
+        newValue.operationId = DefaultTransactionEngine.getOperationId(transaction.transactionId, transaction.logId);
         newValue.value = value;
         if (current == null) {
             // a new value
@@ -289,7 +289,7 @@ public class TransactionMap<K, V> {
             }
             return true;
         }
-        int tx = TransactionStore.getTransactionId(current.operationId);
+        int tx = DefaultTransactionEngine.getTransactionId(current.operationId);
         if (tx == transaction.transactionId) {
             // added or updated by this transaction
             transaction.log(mapId, key, current);
@@ -361,7 +361,7 @@ public class TransactionMap<K, V> {
             // doesn't exist or deleted by a committed transaction
             return false;
         }
-        int tx = TransactionStore.getTransactionId(data.operationId);
+        int tx = DefaultTransactionEngine.getTransactionId(data.operationId);
         return tx == transaction.transactionId;
     }
 
@@ -389,17 +389,17 @@ public class TransactionMap<K, V> {
                 // it is committed
                 return data;
             }
-            int tx = TransactionStore.getTransactionId(id);
+            int tx = DefaultTransactionEngine.getTransactionId(id);
             if (tx == transaction.transactionId) {
                 // added by this transaction
-                if (TransactionStore.getLogId(id) < maxLog) {
+                if (DefaultTransactionEngine.getLogId(id) < maxLog) {
                     return data;
                 }
             }
             // get the value before the uncommitted transaction
             Object[] d;
-            synchronized (transaction.store.undoLog) {
-                d = transaction.store.undoLog.get(id);
+            synchronized (transaction.transactionEngine.undoLog) {
+                d = transaction.transactionEngine.undoLog.get(id);
             }
             if (d == null) {
                 // this entry should be committed or rolled back
@@ -418,10 +418,10 @@ public class TransactionMap<K, V> {
             if (data != null) {
                 long id2 = data.operationId;
                 if (id2 != 0) {
-                    int tx2 = TransactionStore.getTransactionId(id2);
+                    int tx2 = DefaultTransactionEngine.getTransactionId(id2);
                     if (tx2 != tx) {
                         // a different transaction - ok
-                    } else if (TransactionStore.getLogId(id2) > TransactionStore.getLogId(id)) {
+                    } else if (DefaultTransactionEngine.getLogId(id2) > DefaultTransactionEngine.getLogId(id)) {
                         // newer than before
                         break;
                     }
