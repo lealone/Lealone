@@ -100,13 +100,6 @@ public class DefaultTransactionEngine implements TransactionEngine {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
                     "Undo map open with a different value type");
         }
-        for (String mapName : store.getMapNames()) {
-            if (mapName.startsWith("temp.")) {
-                MVMap<Object, Integer> temp = openTempMap(mapName);
-                store.removeMap(temp);
-            }
-        }
-        init();
     }
 
     /**
