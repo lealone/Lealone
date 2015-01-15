@@ -413,7 +413,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 debugCode("setAutoCommit(" + autoCommit + ");");
             }
             checkClosed();
-            if (autoCommit && !session.getAutoCommit()) {
+            if (autoCommit && !session.isAutoCommit()) {
                 commit();
             }
             session.setAutoCommit(autoCommit);
@@ -433,7 +433,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             checkClosed();
             debugCodeCall("getAutoCommit");
-            return session.getAutoCommit();
+            return session.isAutoCommit();
         } catch (Exception e) {
             throw logAndConvert(e);
         }

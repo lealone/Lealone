@@ -152,7 +152,7 @@ public abstract class Command implements CommandInterface {
         session.setCurrentCommand(null);
         if (!isTransactional()) {
             session.commit(true);
-        } else if (session.getAutoCommit()) {
+        } else if (session.isAutoCommit()) {
             session.commit(false);
         } else if (session.getDatabase().isMultiThreaded()) {
             Database db = session.getDatabase();

@@ -50,7 +50,7 @@ public abstract class TransactionBase implements TransactionInterface {
 
     protected TransactionBase(Session session) {
         this.session = session;
-        autoCommit = session.getAutoCommit();
+        autoCommit = session.isAutoCommit();
     }
 
     @Override

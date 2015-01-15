@@ -107,7 +107,7 @@ public interface SessionInterface extends Closeable {
      *
      * @return true if the session is in auto-commit mode
      */
-    boolean getAutoCommit();
+    boolean isAutoCommit();
 
     /**
      * Set the auto-commit mode. This call doesn't commit the current

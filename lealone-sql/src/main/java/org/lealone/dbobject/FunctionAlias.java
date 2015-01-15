@@ -400,7 +400,7 @@ public class FunctionAlias extends SchemaObjectBase {
                     params[p] = o;
                 }
             }
-            boolean old = session.getAutoCommit();
+            boolean old = session.isAutoCommit();
             Value identity = session.getLastScopeIdentity();
             boolean defaultConnection = session.getDatabase().getSettings().defaultConnection;
             try {

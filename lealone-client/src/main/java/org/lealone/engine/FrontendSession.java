@@ -184,7 +184,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     }
 
     @Override
-    public boolean getAutoCommit() {
+    public boolean isAutoCommit() {
         return autoCommit;
     }
 

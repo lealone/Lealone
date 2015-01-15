@@ -756,7 +756,7 @@ public class Function extends Expression implements FunctionCall {
             result = session.getLastScopeIdentity();
             break;
         case AUTOCOMMIT:
-            result = ValueBoolean.get(session.getAutoCommit());
+            result = ValueBoolean.get(session.isAutoCommit());
             break;
         case READONLY:
             result = ValueBoolean.get(database.isReadOnly());

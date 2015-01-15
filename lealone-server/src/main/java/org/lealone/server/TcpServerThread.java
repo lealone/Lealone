@@ -424,7 +424,7 @@ public class TcpServerThread implements Runnable {
             if (operation == FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
-            transfer.writeInt(updateCount).writeBoolean(session.getAutoCommit());
+            transfer.writeInt(updateCount).writeBoolean(session.isAutoCommit());
             transfer.flush();
             break;
         }

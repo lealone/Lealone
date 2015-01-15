@@ -215,7 +215,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
 
     private int nextTransactionId(Session session) {
         //分布式事务使用奇数的事务ID
-        if (!session.getAutoCommit() && Session.isClusterMode()) {
+        if (!session.isAutoCommit() && Session.isClusterMode()) {
             return nextOddTransactionId();
         }
 

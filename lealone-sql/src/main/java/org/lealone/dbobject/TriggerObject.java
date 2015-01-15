@@ -192,7 +192,7 @@ public class TriggerObject extends SchemaObjectBase {
             newListBackup = null;
         }
         Connection c2 = session.createConnection(false);
-        boolean old = session.getAutoCommit();
+        boolean old = session.isAutoCommit();
         boolean oldDisabled = session.setCommitOrRollbackDisabled(true);
         Value identity = session.getLastScopeIdentity();
         try {

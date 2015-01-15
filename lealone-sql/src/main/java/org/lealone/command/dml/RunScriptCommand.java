@@ -78,7 +78,7 @@ public class RunScriptCommand extends ScriptBase {
             } else {
                 command.update();
             }
-            if (session.getAutoCommit()) {
+            if (session.isAutoCommit()) {
                 session.commit(false);
             }
         } catch (DbException e) {

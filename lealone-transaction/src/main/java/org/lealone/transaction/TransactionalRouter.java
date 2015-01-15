@@ -83,7 +83,7 @@ public class TransactionalRouter implements Router {
 
         try {
             if (isBatch) {
-                if (session.getAutoCommit()) {
+                if (session.isAutoCommit()) {
                     session.setAutoCommit(false);
                     isTopTransaction = true;
                 } else {

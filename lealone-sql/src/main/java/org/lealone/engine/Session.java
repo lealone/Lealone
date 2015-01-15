@@ -350,7 +350,7 @@ public class Session extends SessionWithState {
     }
 
     @Override
-    public boolean getAutoCommit() {
+    public boolean isAutoCommit() {
         return autoCommit;
     }
 
