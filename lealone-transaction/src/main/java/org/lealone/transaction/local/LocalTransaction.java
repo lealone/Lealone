@@ -60,16 +60,12 @@ public class LocalTransaction extends TransactionBase {
 
     private String name;
 
-    LocalTransaction(DefaultTransactionEngine engine, int transactionId, int status, String name, long logId) {
+    LocalTransaction(Session session, DefaultTransactionEngine engine, int tid, int status, String name, long logId) {
         this.transactionEngine = engine;
-        this.transactionId = transactionId;
+        this.transactionId = tid;
         this.status = status;
         this.name = name;
         this.logId = logId;
-    }
-
-    LocalTransaction(Session session, DefaultTransactionEngine store, int transactionId, int status, String name, long logId) {
-        this(store, transactionId, status, name, logId);
         this.session = session;
     }
 

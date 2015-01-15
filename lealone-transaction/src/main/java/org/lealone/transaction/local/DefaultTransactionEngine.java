@@ -110,6 +110,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
      */
     public synchronized void init() {
         init = true;
+
         // remove all temporary maps
         for (String mapName : store.getMapNames()) {
             if (mapName.startsWith("temp.")) {
@@ -175,7 +176,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
      *
      * @return the list of transactions (sorted by id)
      */
-    public List<LocalTransaction> getOpenTransactions() {
+    public List<LocalTransaction> getOpenTransactions(Session session) {
         synchronized (undoLog) {
             ArrayList<LocalTransaction> list = New.arrayList();
             Long key = undoLog.firstKey();
@@ -197,7 +198,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
                     status = (Integer) data[0];
                     name = (String) data[1];
                 }
-                LocalTransaction t = new LocalTransaction(this, transactionId, status, name, logId);
+                LocalTransaction t = new LocalTransaction(session, this, transactionId, status, name, logId);
                 list.add(t);
                 key = undoLog.ceilingKey(getOperationId(transactionId + 1, 0));
             }

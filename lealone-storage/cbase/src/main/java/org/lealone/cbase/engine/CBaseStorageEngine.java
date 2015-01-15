@@ -178,10 +178,14 @@ public class CBaseStorageEngine implements StorageEngine {
 
         private int temporaryMapId;
 
+        private final Database db;
+
         public Store(Database db, MVStore.Builder builder) {
+            this.db = db;
             this.store = builder.open();
             this.transactionEngine = new DefaultTransactionEngine(store, new ValueDataType(null, db, null));
             transactionEngine.init();
+            initTransactions();
         }
 
         public MVStore getStore() {
@@ -233,7 +237,7 @@ public class CBaseStorageEngine implements StorageEngine {
          * rollback all open transactions.
          */
         public void initTransactions() {
-            List<LocalTransaction> list = transactionEngine.getOpenTransactions();
+            List<LocalTransaction> list = transactionEngine.getOpenTransactions(db.getSystemSession());
             for (LocalTransaction t : list) {
                 if (t.getStatus() == LocalTransaction.STATUS_COMMITTING) {
                     t.commit();
@@ -248,7 +252,7 @@ public class CBaseStorageEngine implements StorageEngine {
          *
          * @param objectIds the ids of the objects to keep
          */
-        public void removeTemporaryMaps(Session session, BitField objectIds) {
+        public void removeTemporaryMaps(BitField objectIds) {
             for (String mapName : store.getMapNames()) {
                 if (mapName.startsWith("temp.")) {
                     MVMap<?, ?> map = store.openMap(mapName);
@@ -258,7 +262,7 @@ public class CBaseStorageEngine implements StorageEngine {
                     if (!objectIds.get(id)) {
                         ValueDataType keyType = new ValueDataType(null, null, null);
                         ValueDataType valueType = new ValueDataType(null, null, null);
-                        LocalTransaction t = transactionEngine.beginTransaction(session);
+                        LocalTransaction t = transactionEngine.beginTransaction(db.getSystemSession());
                         TransactionMap<?, ?> m = t.openMap(mapName, keyType, valueType);
                         transactionEngine.removeMap(m);
                         t.commit();
@@ -290,7 +294,7 @@ public class CBaseStorageEngine implements StorageEngine {
         }
 
         public ArrayList<InDoubtTransaction> getInDoubtTransactions() {
-            List<LocalTransaction> list = transactionEngine.getOpenTransactions();
+            List<LocalTransaction> list = transactionEngine.getOpenTransactions(db.getSystemSession());
             ArrayList<InDoubtTransaction> result = New.arrayList();
             for (LocalTransaction t : list) {
                 if (t.getStatus() == LocalTransaction.STATUS_PREPARED) {
