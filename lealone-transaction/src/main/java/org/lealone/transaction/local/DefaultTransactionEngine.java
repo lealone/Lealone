@@ -213,16 +213,53 @@ public class DefaultTransactionEngine implements TransactionEngine {
         store.commit();
     }
 
-    private int nextTransactionId() {
+    private int nextTransactionId(Session session) {
+        //分布式事务使用奇数的事务ID
+        if (!session.getAutoCommit() && Session.isClusterMode()) {
+            return nextOddTransactionId();
+        }
+
+        return nextEvenTransactionId();
+    }
+
+    private int nextOddTransactionId() {
         int oldLast;
-        int tid;
+        int last;
+        int delta;
         do {
             oldLast = lastTransactionId.get();
-            tid = oldLast + 1;
-            if (tid >= maxTransactionId)
-                tid = 0;
-        } while (!lastTransactionId.compareAndSet(oldLast, tid));
-        return tid;
+            last = oldLast;
+            if (last % 2 == 0)
+                delta = 1;
+            else
+                delta = 2;
+
+            last += delta;
+
+            if (last >= maxTransactionId)
+                last = 1;
+        } while (!lastTransactionId.compareAndSet(oldLast, last));
+        return last;
+    }
+
+    private int nextEvenTransactionId() {
+        int oldLast;
+        int last;
+        int delta;
+        do {
+            oldLast = lastTransactionId.get();
+            last = oldLast;
+            if (last % 2 == 0)
+                delta = 2;
+            else
+                delta = 1;
+
+            last += delta;
+
+            if (last >= maxTransactionId)
+                last = 2;
+        } while (!lastTransactionId.compareAndSet(oldLast, last));
+        return last;
     }
 
     /**
@@ -235,7 +272,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
         if (!init) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
-        return new LocalTransaction(session, this, nextTransactionId(), LocalTransaction.STATUS_OPEN, null, 0);
+        return new LocalTransaction(session, this, nextTransactionId(session), LocalTransaction.STATUS_OPEN, null, 0);
     }
 
     /**
@@ -560,7 +597,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
     }
 
     void commitTransactionStatusTable(LocalTransaction t, String allLocalTransactionNames) {
-        Object[] v = { allLocalTransactionNames, lastTransactionId.incrementAndGet() };
+        Object[] v = { allLocalTransactionNames, nextOddTransactionId() };
         transactionStatusTable.put(t.getId(), v);
     }
 }

@@ -247,4 +247,11 @@ public abstract class TransactionBase implements TransactionInterface {
     }
 
     protected abstract void commitLocal(String allLocalTransactionNames);
+
+    public static String getTransactionName(String hostAndPort, long tid) {
+        StringBuilder buff = new StringBuilder(hostAndPort);
+        buff.append(':');
+        buff.append(tid);
+        return buff.toString();
+    }
 }

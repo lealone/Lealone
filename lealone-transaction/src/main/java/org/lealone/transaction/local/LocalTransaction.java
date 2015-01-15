@@ -12,6 +12,7 @@ import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.transaction.TransactionBase;
+import org.lealone.transaction.TransactionManager;
 
 /**
  * A transaction.
@@ -67,6 +68,8 @@ public class LocalTransaction extends TransactionBase {
         this.status = status;
         this.name = name;
         this.logId = logId;
+
+        transactionName = getTransactionName(TransactionManager.getHostAndPort(), transactionId);
     }
 
     public int getId() {
