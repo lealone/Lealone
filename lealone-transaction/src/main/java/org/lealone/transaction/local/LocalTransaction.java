@@ -69,6 +69,7 @@ public class LocalTransaction extends TransactionBase {
         this.name = name;
         this.logId = logId;
 
+        super.transactionId = tid;
         transactionName = getTransactionName(TransactionManager.getHostAndPort(), transactionId);
     }
 

@@ -1350,7 +1350,6 @@ public class Session extends SessionWithState {
     public TransactionInterface getTransaction() {
         if (transaction == null) {
             transaction = database.getTransactionEngine().beginTransaction(this);
-            transaction.setAutoCommit(autoCommit);
         }
         return transaction;
     }

@@ -36,10 +36,11 @@ public abstract class TransactionBase implements TransactionInterface {
 
     protected static final ExecutorService executorService = Executors.newCachedThreadPool();
 
-    protected Session session;
+    protected final Session session;
+    protected final boolean autoCommit;
+
     protected long transactionId;
     protected String transactionName;
-    protected boolean autoCommit;
     protected long commitTimestamp;
     protected HashMap<String, Long> savepoints;
 
@@ -173,11 +174,6 @@ public abstract class TransactionBase implements TransactionInterface {
             return null;
         localTransactionNamesBuilder = buff;
         return buff.toString();
-    }
-
-    @Override
-    public void setAutoCommit(boolean autoCommit) {
-        this.autoCommit = autoCommit;
     }
 
     protected void endTransaction() {

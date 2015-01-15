@@ -24,8 +24,6 @@ public interface TransactionInterface {
 
     boolean isAutoCommit();
 
-    void setAutoCommit(boolean autoCommit);
-
     void addLocalTransactionNames(String localTransactionNames);
 
     String getLocalTransactionNames();
