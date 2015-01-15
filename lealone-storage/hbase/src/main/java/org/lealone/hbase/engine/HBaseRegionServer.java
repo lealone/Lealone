@@ -47,6 +47,7 @@ public class HBaseRegionServer extends org.apache.hadoop.hbase.regionserver.HReg
     @Override
     public void run() {
         Session.setRouter(new TransactionalRouter(MasterSlaveRouter.getInstance()));
+        Session.setClusterMode(true);
 
         HBaseTcpServer server = new HBaseTcpServer(this);
         server.start();

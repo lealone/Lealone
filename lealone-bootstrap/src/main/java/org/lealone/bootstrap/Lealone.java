@@ -86,6 +86,7 @@ public class Lealone {
     private static void startServer(Router r) throws Exception {
         startTcpServer();
         Session.setRouter(new TransactionalRouter(r));
+        Session.setClusterMode(true);
         StorageService.instance.initServer();
     }
 

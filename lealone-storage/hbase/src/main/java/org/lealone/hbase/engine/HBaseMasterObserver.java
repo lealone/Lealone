@@ -40,6 +40,7 @@ public class HBaseMasterObserver extends BaseMasterObserver {
     @Override
     public synchronized void start(CoprocessorEnvironment env) throws IOException {
         Session.setRouter(new TransactionalRouter(MasterSlaveRouter.getInstance()));
+        Session.setClusterMode(true);
 
         if (server == null) {
             HMaster m = (HMaster) ((MasterCoprocessorEnvironment) env).getMasterServices();

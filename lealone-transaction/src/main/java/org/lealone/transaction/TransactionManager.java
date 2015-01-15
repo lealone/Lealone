@@ -52,8 +52,6 @@ public class TransactionManager {
 
         TransactionStatusTable.init(store);
         TimestampServiceTable.init(store);
-
-        store.close();
     }
 
     public static synchronized void close() {

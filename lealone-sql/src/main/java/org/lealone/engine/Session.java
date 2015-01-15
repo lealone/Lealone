@@ -1380,10 +1380,9 @@ public class Session extends SessionWithState {
         if (r == null)
             throw new NullPointerException("router is null");
         router = r;
-        setClusterMode(!(r instanceof LocalRouter));
     }
 
-    private static boolean isClusterMode;
+    private static boolean isClusterMode = false;
 
     public static boolean isClusterMode() {
         return isClusterMode;
