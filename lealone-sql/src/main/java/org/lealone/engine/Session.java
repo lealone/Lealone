@@ -81,7 +81,6 @@ public class Session extends SessionWithState {
     private Value lastScopeIdentity = ValueLong.get(0);
     private int firstUncommittedLog = Session.LOG_WRITTEN;
     private int firstUncommittedPos = Session.LOG_WRITTEN;
-    private HashMap<String, Integer> savepoints;
     private HashMap<String, Table> localTempTables;
     private HashMap<String, Index> localTempTableIndexes;
     private HashMap<String, Constraint> localTempTableConstraints;
@@ -568,21 +567,38 @@ public class Session extends SessionWithState {
      * @param trimToSize if the list should be trimmed
      */
     public void rollbackTo(int index, boolean trimToSize) {
-        if (savepoints != null) {
-            String[] names = new String[savepoints.size()];
-            savepoints.keySet().toArray(names);
-            for (String name : names) {
-                Integer savepointIndex = savepoints.get(name);
-                if (savepointIndex.intValue() > index) {
-                    savepoints.remove(name);
-                }
-            }
+        if (transaction != null) {
+            checkCommitRollback();
+            transaction.rollbackToSavepoint(index);
         }
     }
 
     @Override
     public int getUndoLogPos() {
-        return 0; //TODO 删除无用方法
+        if (transaction != null)
+            return (int) transaction.getSavepointId();
+        return 0;
+    }
+
+    /**
+     * Create a savepoint that is linked to the current log position.
+     *
+     * @param name the savepoint name
+     */
+    public void addSavepoint(String name) {
+        getTransaction().addSavepoint(name);
+    }
+
+    /**
+     * Undo all operations back to the log position of the given savepoint.
+     *
+     * @param name the savepoint name
+     */
+    public void rollbackToSavepoint(String name) {
+        if (transaction != null) {
+            checkCommitRollback();
+            transaction.rollbackToSavepoint(name);
+        }
     }
 
     public int getId() {
@@ -699,7 +715,6 @@ public class Session extends SessionWithState {
                 locks.clear();
             }
         }
-        savepoints = null;
         sessionStateChanged = true;
 
         releaseFrontendSessionCache();
@@ -804,36 +819,6 @@ public class Session extends SessionWithState {
 
     private boolean containsUncommitted() {
         return firstUncommittedLog != Session.LOG_WRITTEN;
-    }
-
-    /**
-     * Create a savepoint that is linked to the current log position.
-     *
-     * @param name the savepoint name
-     */
-    public void addSavepoint(String name) {
-        if (savepoints == null) {
-            savepoints = database.newStringMap();
-        }
-        savepoints.put(name, getUndoLogPos());
-    }
-
-    /**
-     * Undo all operations back to the log position of the given savepoint.
-     *
-     * @param name the savepoint name
-     */
-    public void rollbackToSavepoint(String name) {
-        checkCommitRollback();
-        if (savepoints == null) {
-            throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);
-        }
-        Integer savepointIndex = savepoints.get(name);
-        if (savepointIndex == null) {
-            throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);
-        }
-        int i = savepointIndex.intValue();
-        rollbackTo(i, false);
     }
 
     /**

@@ -36,5 +36,11 @@ public interface TransactionInterface {
 
     void rollback();
 
+    void addSavepoint(String name);
+
     void rollbackToSavepoint(String name);
+
+    long getSavepointId();
+
+    void rollbackToSavepoint(long savepointId);
 }

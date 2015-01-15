@@ -17,6 +17,7 @@
  */
 package org.lealone.transaction;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -24,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.engine.FrontendSession;
 import org.lealone.engine.Session;
@@ -39,20 +41,14 @@ public abstract class TransactionBase implements TransactionInterface {
     protected String transactionName;
     protected boolean autoCommit;
     protected long commitTimestamp;
+    protected HashMap<String, Long> savepoints;
 
     //协调者或参与者自身的本地事务名
     protected StringBuilder localTransactionNamesBuilder;
     //如果本事务是协调者中的事务，那么在此字段中存放其他参与者的本地事务名
     protected final ConcurrentSkipListSet<String> participantLocalTransactionNames = new ConcurrentSkipListSet<String>();
 
-    protected TransactionBase() {
-    }
-
     protected TransactionBase(Session session) {
-        setSession(session);
-    }
-
-    public void setSession(Session session) {
         this.session = session;
         autoCommit = session.getAutoCommit();
     }
@@ -70,6 +66,69 @@ public abstract class TransactionBase implements TransactionInterface {
     @Override
     public boolean isAutoCommit() {
         return autoCommit;
+    }
+
+    @Override
+    public void addSavepoint(String name) {
+        if (savepoints == null)
+            savepoints = session.getDatabase().newStringMap();
+
+        savepoints.put(name, getSavepointId());
+
+        if (!isAutoCommit() && session.getFrontendSessionCache().size() > 0)
+            parallelSavepoint(true, name);
+    }
+
+    @Override
+    public void rollbackToSavepoint(String name) {
+        if (savepoints == null) {
+            throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);
+        }
+
+        Long savepointId = savepoints.get(name);
+        if (savepointId == null) {
+            throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);
+        }
+        long i = savepointId.longValue();
+        rollbackToSavepoint(i);
+
+        if (savepoints != null) {
+            String[] names = new String[savepoints.size()];
+            savepoints.keySet().toArray(names);
+            for (String n : names) {
+                savepointId = savepoints.get(n);
+                if (savepointId.longValue() >= i) {
+                    savepoints.remove(n);
+                }
+            }
+        }
+
+        if (!isAutoCommit() && session.getFrontendSessionCache().size() > 0)
+            parallelSavepoint(false, name);
+    }
+
+    private void parallelSavepoint(final boolean add, final String name) {
+        int size = session.getFrontendSessionCache().size();
+        List<Future<Void>> futures = New.arrayList(size);
+        for (final FrontendSession fs : session.getFrontendSessionCache().values()) {
+            futures.add(executorService.submit(new Callable<Void>() {
+                @Override
+                public Void call() throws Exception {
+                    if (add)
+                        fs.addSavepoint(name);
+                    else
+                        fs.rollbackToSavepoint(name);
+                    return null;
+                }
+            }));
+        }
+        try {
+            for (int i = 0; i < size; i++) {
+                futures.get(i).get();
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
     }
 
     public String getTransactionName() {
@@ -122,6 +181,8 @@ public abstract class TransactionBase implements TransactionInterface {
     }
 
     protected void endTransaction() {
+        savepoints = null;
+
         if (!session.getFrontendSessionCache().isEmpty()) {
             for (FrontendSession fs : session.getFrontendSessionCache().values()) {
                 fs.setTransaction(null);

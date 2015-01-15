@@ -17,10 +17,8 @@
  */
 package org.lealone.transaction;
 
-import java.util.HashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
@@ -29,7 +27,6 @@ public class GlobalTransaction extends TransactionBase {
     private static final CommitHashMap commitHashMap = new CommitHashMap(1000, 32);
 
     protected CopyOnWriteArrayList<Row> undoRows;
-    protected HashMap<String, Integer> savepoints;
 
     public GlobalTransaction(Session session) {
         super(session);
@@ -131,39 +128,18 @@ public class GlobalTransaction extends TransactionBase {
         }
     }
 
-    public void addSavepoint(String name) {
-        if (savepoints == null)
-            savepoints = session.getDatabase().newStringMap();
-
-        savepoints.put(name, undoRows.size());
+    @Override
+    public long getSavepointId() {
+        return undoRows.size();
     }
 
     @Override
-    public void rollbackToSavepoint(String name) {
-        if (savepoints == null) {
-            throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);
-        }
-
-        Integer savepointIndex = savepoints.get(name);
-        if (savepointIndex == null) {
-            throw DbException.get(ErrorCode.SAVEPOINT_IS_INVALID_1, name);
-        }
-        int i = savepointIndex.intValue();
+    public void rollbackToSavepoint(long savepointId) {
         int size;
         Row row;
-        while ((size = undoRows.size()) > i) {
+        while ((size = undoRows.size()) > savepointId) {
             row = undoRows.remove(size - 1);
             row.getTable().removeRow(session, row, true);
-        }
-        if (savepoints != null) {
-            String[] names = new String[savepoints.size()];
-            savepoints.keySet().toArray(names);
-            for (String n : names) {
-                savepointIndex = savepoints.get(n);
-                if (savepointIndex.intValue() >= i) {
-                    savepoints.remove(n);
-                }
-            }
         }
     }
 

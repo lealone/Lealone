@@ -61,12 +61,12 @@ public class LocalTransaction extends TransactionBase {
     private String name;
 
     LocalTransaction(Session session, DefaultTransactionEngine engine, int tid, int status, String name, long logId) {
+        super(session);
         this.transactionEngine = engine;
         this.transactionId = tid;
         this.status = status;
         this.name = name;
         this.logId = logId;
-        this.session = session;
     }
 
     public int getId() {
@@ -231,12 +231,18 @@ public class LocalTransaction extends TransactionBase {
         transactionEngine.commitTransactionStatusTable(this, allLocalTransactionNames);
     }
 
+    @Override
+    public long getSavepointId() {
+        return logId;
+    }
+
     /**
      * Roll back to the given savepoint. This is only allowed if the
      * transaction is open.
      *
      * @param savepointId the savepoint id
      */
+    @Override
     public void rollbackToSavepoint(long savepointId) {
         checkNotClosed();
         transactionEngine.rollbackTo(this, logId, savepointId);
@@ -256,9 +262,4 @@ public class LocalTransaction extends TransactionBase {
             endTransaction();
         }
     }
-
-    @Override
-    public void rollbackToSavepoint(String name) {
-    }
-
 }
