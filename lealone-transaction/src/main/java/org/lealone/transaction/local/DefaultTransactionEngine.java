@@ -18,6 +18,8 @@ import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
+import org.lealone.transaction.TransactionManager;
+import org.lealone.transaction.TransactionStatusTable;
 import org.lealone.util.New;
 
 /**
@@ -35,12 +37,6 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * Key: transactionId, value: [ status, name ].
      */
     final MVMap<Integer, Object[]> preparedTransactions;
-
-    /**
-     * The persisted map of transactionStatusTable.
-     * Key: transactionId, value: [ all_local_transaction_names, commit_timestamp ].
-     */
-    final MVMap<Integer, Object[]> transactionStatusTable;
 
     /**
      * The undo log.
@@ -91,7 +87,6 @@ public class DefaultTransactionEngine implements TransactionEngine {
         this.store = store;
         this.dataType = dataType;
         preparedTransactions = store.openMap("openTransactions", new MVMap.Builder<Integer, Object[]>());
-        transactionStatusTable = store.openMap("transactionStatusTable", new MVMap.Builder<Integer, Object[]>());
 
         VersionedValueType oldValueType = new VersionedValueType(dataType);
         ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), dataType, oldValueType });
@@ -345,6 +340,13 @@ public class DefaultTransactionEngine implements TransactionEngine {
         if (store.isClosed()) {
             return;
         }
+
+        //分布式事务推迟删除undoLog
+        if (t.transactionId % 2 != 0) {
+            endTransaction(t);
+            return;
+        }
+
         // TODO could synchronize on blocks (100 at a time or so)
         synchronized (undoLog) {
             t.setStatus(LocalTransaction.STATUS_COMMITTING);
@@ -378,10 +380,57 @@ public class DefaultTransactionEngine implements TransactionEngine {
                         map.put(key, v2);
                     }
                 }
+
                 undoLog.remove(undoKey);
             }
         }
         endTransaction(t);
+    }
+
+    void commitAfterValidate(long operationId) {
+        if (store.isClosed()) {
+            return;
+        }
+
+        int tid = getTransactionId(operationId);
+        long maxLogId = Long.MAX_VALUE;
+
+        // TODO could synchronize on blocks (100 at a time or so)
+        synchronized (undoLog) {
+            for (long logId = 0; logId < maxLogId; logId++) {
+                Long undoKey = getOperationId(tid, logId);
+                Object[] op = undoLog.get(undoKey);
+                if (op == null) {
+                    // partially committed: load next
+                    undoKey = undoLog.ceilingKey(undoKey);
+                    if (undoKey == null || getTransactionId(undoKey) != tid) {
+                        break;
+                    }
+                    logId = getLogId(undoKey) - 1;
+                    continue;
+                }
+                int mapId = (Integer) op[0];
+                MVMap<Object, VersionedValue> map = openMap(mapId);
+                if (map == null) {
+                    // map was later removed
+                } else {
+                    Object key = op[1];
+                    VersionedValue value = map.get(key);
+                    if (value == null) {
+                        // nothing to do
+                    } else if (value.value == null) {
+                        // remove the value
+                        map.remove(key);
+                    } else {
+                        VersionedValue v2 = new VersionedValue();
+                        v2.value = value.value;
+                        map.put(key, v2);
+                    }
+                }
+
+                undoLog.remove(undoKey);
+            }
+        }
     }
 
     /**
@@ -597,7 +646,11 @@ public class DefaultTransactionEngine implements TransactionEngine {
     }
 
     void commitTransactionStatusTable(LocalTransaction t, String allLocalTransactionNames) {
-        Object[] v = { allLocalTransactionNames, nextOddTransactionId() };
-        transactionStatusTable.put(t.getId(), v);
+        t.setCommitTimestamp(nextOddTransactionId());
+        TransactionStatusTable.commit(t, allLocalTransactionNames);
+    }
+
+    boolean validateTransaction(Session session, int tid, LocalTransaction currentTransaction) {
+        return TransactionStatusTable.isValid(session, TransactionManager.getHostAndPort(), tid, currentTransaction);
     }
 }

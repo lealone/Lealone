@@ -301,6 +301,14 @@ public class TransactionMap<K, V> {
             }
             return true;
         }
+
+        if (tx % 2 == 1) {
+            boolean isValid = transaction.transactionEngine.validateTransaction(transaction.getSession(), tx, transaction);
+            if (isValid) {
+                transaction.transactionEngine.commitAfterValidate(id);
+                return trySet(key, value, onlyIfUnchanged);
+            }
+        }
         // the transaction is not yet committed
         return false;
     }
@@ -394,6 +402,14 @@ public class TransactionMap<K, V> {
                 // added by this transaction
                 if (DefaultTransactionEngine.getLogId(id) < maxLog) {
                     return data;
+                }
+            }
+
+            if (tx % 2 == 1) {
+                boolean isValid = transaction.transactionEngine.validateTransaction(transaction.getSession(), tx, transaction);
+                if (isValid) {
+                    transaction.transactionEngine.commitAfterValidate(id);
+                    return getValue(key, maxLog, map.get(key));
                 }
             }
             // get the value before the uncommitted transaction
@@ -746,10 +762,6 @@ public class TransactionMap<K, V> {
                 throw DataUtils.newUnsupportedOperationException("Removing is not supported");
             }
         };
-    }
-
-    public LocalTransaction getTransaction() {
-        return transaction;
     }
 
     public DataType getKeyType() {

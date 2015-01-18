@@ -54,6 +54,10 @@ public abstract class TransactionBase implements TransactionInterface {
         autoCommit = session.isAutoCommit();
     }
 
+    public Session getSession() {
+        return session;
+    }
+
     @Override
     public long getTransactionId() {
         return transactionId;
@@ -62,6 +66,10 @@ public abstract class TransactionBase implements TransactionInterface {
     @Override
     public long getCommitTimestamp() {
         return commitTimestamp;
+    }
+
+    public void setCommitTimestamp(long commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
     }
 
     @Override

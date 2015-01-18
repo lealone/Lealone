@@ -48,9 +48,9 @@ public class TransactionStatusTable {
         map = store.openMap("transactionStatusTable", new MVMap.Builder<String, Object[]>());
     }
 
-    synchronized static void commit(GlobalTransaction localTransaction, String allLocalTransactionNames) {
-        Object[] v = { allLocalTransactionNames, localTransaction.getCommitTimestamp() };
-        map.put(localTransaction.getTransactionName(), v);
+    public static void commit(TransactionBase transaction, String allLocalTransactionNames) {
+        Object[] v = { allLocalTransactionNames, transaction.getCommitTimestamp() };
+        map.put(transaction.getTransactionName(), v);
     }
 
     //TODO
@@ -118,7 +118,7 @@ public class TransactionStatusTable {
         }
     }
 
-    private static boolean validate(Session session, String localTransactionName) {
+    public static boolean validate(Session session, String localTransactionName) {
         String[] a = localTransactionName.split(":");
 
         FrontendSession fs = null;
