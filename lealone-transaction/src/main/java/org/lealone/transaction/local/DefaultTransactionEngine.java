@@ -342,48 +342,10 @@ public class DefaultTransactionEngine implements TransactionEngine {
         }
 
         //分布式事务推迟删除undoLog
-        if (t.transactionId % 2 != 0) {
-            endTransaction(t);
-            return;
+        if (t.transactionId % 2 == 0) {
+            removeUndoLog(t.getId(), maxLogId);
         }
 
-        // TODO could synchronize on blocks (100 at a time or so)
-        synchronized (undoLog) {
-            t.setStatus(LocalTransaction.STATUS_COMMITTING);
-            for (long logId = 0; logId < maxLogId; logId++) {
-                Long undoKey = getOperationId(t.getId(), logId);
-                Object[] op = undoLog.get(undoKey);
-                if (op == null) {
-                    // partially committed: load next
-                    undoKey = undoLog.ceilingKey(undoKey);
-                    if (undoKey == null || getTransactionId(undoKey) != t.getId()) {
-                        break;
-                    }
-                    logId = getLogId(undoKey) - 1;
-                    continue;
-                }
-                int mapId = (Integer) op[0];
-                MVMap<Object, VersionedValue> map = openMap(mapId);
-                if (map == null) {
-                    // map was later removed
-                } else {
-                    Object key = op[1];
-                    VersionedValue value = map.get(key);
-                    if (value == null) {
-                        // nothing to do
-                    } else if (value.value == null) {
-                        // remove the value
-                        map.remove(key);
-                    } else {
-                        VersionedValue v2 = new VersionedValue();
-                        v2.value = value.value;
-                        map.put(key, v2);
-                    }
-                }
-
-                undoLog.remove(undoKey);
-            }
-        }
         endTransaction(t);
     }
 
@@ -395,6 +357,10 @@ public class DefaultTransactionEngine implements TransactionEngine {
         int tid = getTransactionId(operationId);
         long maxLogId = Long.MAX_VALUE;
 
+        removeUndoLog(tid, maxLogId);
+    }
+
+    private void removeUndoLog(int tid, long maxLogId) {
         // TODO could synchronize on blocks (100 at a time or so)
         synchronized (undoLog) {
             for (long logId = 0; logId < maxLogId; logId++) {
