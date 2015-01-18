@@ -53,11 +53,6 @@ public class TransactionStatusTable {
         map.put(transaction.getTransactionName(), v);
     }
 
-    //TODO
-    synchronized static boolean isFullSuccessful(String hostAndPort, long tid) {
-        return true;
-    }
-
     private static TransactionStatusCache newCache(String hostAndPort) {
         synchronized (TransactionStatusTable.class) {
             TransactionStatusCache cache = hostAndPortMap.get(hostAndPort);

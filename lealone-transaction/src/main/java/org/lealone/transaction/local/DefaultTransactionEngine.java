@@ -20,6 +20,7 @@ import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
 import org.lealone.transaction.TransactionManager;
 import org.lealone.transaction.TransactionStatusTable;
+import org.lealone.transaction.TransactionValidator;
 import org.lealone.util.New;
 
 /**
@@ -349,15 +350,12 @@ public class DefaultTransactionEngine implements TransactionEngine {
         endTransaction(t);
     }
 
-    void commitAfterValidate(long operationId) {
+    public void commitAfterValidate(int tid) {
         if (store.isClosed()) {
             return;
         }
 
-        int tid = getTransactionId(operationId);
-        long maxLogId = Long.MAX_VALUE;
-
-        removeUndoLog(tid, maxLogId);
+        removeUndoLog(tid, Long.MAX_VALUE);
     }
 
     private void removeUndoLog(int tid, long maxLogId) {
@@ -614,6 +612,10 @@ public class DefaultTransactionEngine implements TransactionEngine {
     void commitTransactionStatusTable(LocalTransaction t, String allLocalTransactionNames) {
         t.setCommitTimestamp(nextOddTransactionId());
         TransactionStatusTable.commit(t, allLocalTransactionNames);
+
+        Session s = t.getSession();
+        TransactionValidator.getInstance().enqueue(s.getDatabase().getShortName(), this, t.getId(), s.getOriginalProperties(),
+                allLocalTransactionNames);
     }
 
     boolean validateTransaction(Session session, int tid, LocalTransaction currentTransaction) {

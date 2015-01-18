@@ -52,6 +52,10 @@ public class TransactionManager {
 
         TransactionStatusTable.init(store);
         TimestampServiceTable.init(store);
+
+        if (Session.isClusterMode()) {
+            TransactionValidator.getInstance().start();
+        }
     }
 
     public static synchronized void close() {
@@ -60,6 +64,9 @@ public class TransactionManager {
 
         store = null;
         hostAndPort = null;
+        if (Session.isClusterMode()) {
+            TransactionValidator.getInstance().close();
+        }
         store.close();
     }
 
