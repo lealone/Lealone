@@ -56,6 +56,7 @@ import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.util.New;
 import org.lealone.value.Value;
+import org.lealone.value.ValueUuid;
 
 import com.google.common.collect.Iterables;
 
@@ -118,6 +119,9 @@ public class P2PRouter implements Router {
         Value partitionKey;
         for (Row row : iom.getRows()) {
             partitionKey = row.getRowKey();
+            //不存在PRIMARY KEY时，随机生成一个
+            if (partitionKey == null)
+                partitionKey = ValueUuid.getNewRandom();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
             List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
             Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,
