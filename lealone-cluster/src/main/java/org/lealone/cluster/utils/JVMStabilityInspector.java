@@ -20,8 +20,6 @@ package org.lealone.cluster.utils;
 import java.io.FileNotFoundException;
 import java.net.SocketException;
 
-import org.lealone.cluster.config.Config;
-import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,13 +57,6 @@ public final class JVMStabilityInspector {
 
         if (isUnstable)
             killer.killCurrentJVM(t);
-    }
-
-    public static void inspectCommitLogThrowable(Throwable t) {
-        if (DatabaseDescriptor.getCommitFailurePolicy() == Config.CommitFailurePolicy.die)
-            killer.killCurrentJVM(t);
-        else
-            inspectThrowable(t);
     }
 
     @VisibleForTesting

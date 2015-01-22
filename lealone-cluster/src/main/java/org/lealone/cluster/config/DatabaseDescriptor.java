@@ -17,7 +17,6 @@
  */
 package org.lealone.cluster.config;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -35,7 +34,6 @@ import java.util.UUID;
 
 import org.lealone.cluster.auth.AllowAllInternodeAuthenticator;
 import org.lealone.cluster.auth.IInternodeAuthenticator;
-import org.lealone.cluster.config.Config.RequestSchedulerId;
 import org.lealone.cluster.config.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.cluster.db.SystemKeyspace;
@@ -67,7 +65,6 @@ public class DatabaseDescriptor {
     private static IEndpointSnitch snitch;
     private static InetAddress listenAddress; // leave null so we can fall through to getLocalHost
     private static InetAddress broadcastAddress;
-    private static InetAddress rpcAddress;
     private static InetAddress broadcastRpcAddress;
     private static SeedProvider seedProvider;
     private static IInternodeAuthenticator internodeAuthenticator;
@@ -76,20 +73,9 @@ public class DatabaseDescriptor {
     private static IPartitioner partitioner;
     private static String paritionerName;
 
-    private static Config.DiskAccessMode indexAccessMode;
-
     private static Config conf;
 
-    //private static SSTableFormat.Type sstable_format = SSTableFormat.Type.BIG;
-
-    // private static IRequestScheduler requestScheduler;
-    private static RequestSchedulerId requestSchedulerId;
-    private static RequestSchedulerOptions requestSchedulerOptions;
-
     private static long keyCacheSizeInMB;
-    private static long counterCacheSizeInMB;
-    //private static IAllocator memoryAllocator;
-    private static long indexSummaryCapacityInMB;
 
     private static String localDC;
     private static Comparator<InetAddress> localComparator;
@@ -117,56 +103,6 @@ public class DatabaseDescriptor {
 
     private static void applyConfig(Config config) throws ConfigurationException {
         conf = config;
-
-        if (conf.commitlog_sync == null) {
-            throw new ConfigurationException("Missing required directive CommitLogSync");
-        }
-
-        if (conf.commitlog_sync == Config.CommitLogSync.batch) {
-            if (conf.commitlog_sync_batch_window_in_ms == null) {
-                throw new ConfigurationException("Missing value for commitlog_sync_batch_window_in_ms: Double expected.");
-            } else if (conf.commitlog_sync_period_in_ms != null) {
-                throw new ConfigurationException(
-                        "Batch sync specified, but commitlog_sync_period_in_ms found. Only specify commitlog_sync_batch_window_in_ms when using batch sync");
-            }
-            logger.debug("Syncing log with a batch window of {}", conf.commitlog_sync_batch_window_in_ms);
-        } else {
-            if (conf.commitlog_sync_period_in_ms == null) {
-                throw new ConfigurationException("Missing value for commitlog_sync_period_in_ms: Integer expected");
-            } else if (conf.commitlog_sync_batch_window_in_ms != null) {
-                throw new ConfigurationException(
-                        "commitlog_sync_period_in_ms specified, but commitlog_sync_batch_window_in_ms found.  Only specify commitlog_sync_period_in_ms when using periodic sync.");
-            }
-            logger.debug("Syncing log with a period of {}", conf.commitlog_sync_period_in_ms);
-        }
-
-        if (conf.commitlog_total_space_in_mb == null)
-            conf.commitlog_total_space_in_mb = hasLargeAddressSpace() ? 8192 : 32;
-
-        if (FBUtilities.isUnix()) {
-            /* evaluate the DiskAccessMode Config directive, which also affects indexAccessMode selection */
-            if (conf.disk_access_mode == Config.DiskAccessMode.auto) {
-                conf.disk_access_mode = hasLargeAddressSpace() ? Config.DiskAccessMode.mmap : Config.DiskAccessMode.standard;
-                indexAccessMode = conf.disk_access_mode;
-                logger.info("DiskAccessMode 'auto' determined to be {}, indexAccessMode is {}", conf.disk_access_mode,
-                        indexAccessMode);
-            } else if (conf.disk_access_mode == Config.DiskAccessMode.mmap_index_only) {
-                conf.disk_access_mode = Config.DiskAccessMode.standard;
-                indexAccessMode = Config.DiskAccessMode.mmap;
-                logger.info("DiskAccessMode is {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
-            } else {
-                indexAccessMode = conf.disk_access_mode;
-                logger.info("DiskAccessMode is {}, indexAccessMode is {}", conf.disk_access_mode, indexAccessMode);
-            }
-        }
-        // Always force standard mode access on Windows - lealone-6993. Windows won't allow deletion of hard-links to files that
-        // are memory-mapped which causes trouble with snapshots.
-        else {
-            conf.disk_access_mode = Config.DiskAccessMode.standard;
-            indexAccessMode = conf.disk_access_mode;
-            logger.info("Non-unix environment detected.  DiskAccessMode set to {}, indexAccessMode {}", conf.disk_access_mode,
-                    indexAccessMode);
-        }
 
         if (conf.internode_authenticator != null)
             internodeAuthenticator = FBUtilities.construct(conf.internode_authenticator, "internode_authenticator");
@@ -203,27 +139,6 @@ public class DatabaseDescriptor {
         if (conf.concurrent_writes != null && conf.concurrent_writes < 2) {
             throw new ConfigurationException("concurrent_writes must be at least 2");
         }
-
-        if (conf.concurrent_counter_writes != null && conf.concurrent_counter_writes < 2)
-            throw new ConfigurationException("concurrent_counter_writes must be at least 2");
-
-        if (conf.file_cache_size_in_mb == null)
-            conf.file_cache_size_in_mb = Math.min(512, (int) (Runtime.getRuntime().maxMemory() / (4 * 1048576)));
-
-        if (conf.memtable_offheap_space_in_mb == null)
-            conf.memtable_offheap_space_in_mb = (int) (Runtime.getRuntime().maxMemory() / (4 * 1048576));
-        if (conf.memtable_offheap_space_in_mb < 0)
-            throw new ConfigurationException("memtable_offheap_space_in_mb must be positive");
-        // for the moment, we default to twice as much on-heap space as off-heap, as heap overhead is very large
-        if (conf.memtable_heap_space_in_mb == null)
-            conf.memtable_heap_space_in_mb = (int) (Runtime.getRuntime().maxMemory() / (4 * 1048576));
-        if (conf.memtable_heap_space_in_mb <= 0)
-            throw new ConfigurationException("memtable_heap_space_in_mb must be positive");
-        logger.info("Global memtable on-heap threshold is enabled at {}MB", conf.memtable_heap_space_in_mb);
-        if (conf.memtable_offheap_space_in_mb == 0)
-            logger.info("Global memtable off-heap threshold is disabled, HeapAllocator will be used instead");
-        else
-            logger.info("Global memtable off-heap threshold is enabled at {}MB", conf.memtable_offheap_space_in_mb);
 
         /* Local IP, hostname or interface to bind services to */
         if (conf.listen_address != null && conf.listen_interface != null) {
@@ -262,28 +177,6 @@ public class DatabaseDescriptor {
                         + ")!");
         }
 
-        /* Local IP, hostname or interface to bind RPC server to */
-        if (conf.rpc_address != null && conf.rpc_interface != null) {
-            throw new ConfigurationException("Set rpc_address OR rpc_interface, not both");
-        } else if (conf.rpc_address != null) {
-            try {
-                rpcAddress = InetAddress.getByName(conf.rpc_address);
-            } catch (UnknownHostException e) {
-                throw new ConfigurationException("Unknown host in rpc_address " + conf.rpc_address);
-            }
-        } else if (conf.rpc_interface != null) {
-            try {
-                Enumeration<InetAddress> addrs = NetworkInterface.getByName(conf.rpc_interface).getInetAddresses();
-                rpcAddress = addrs.nextElement();
-                if (addrs.hasMoreElements())
-                    throw new ConfigurationException("Interface " + conf.rpc_interface + " can't have more than one address");
-            } catch (SocketException e) {
-                throw new ConfigurationException("Unknown network interface in rpc_interface " + conf.rpc_interface);
-            }
-        } else {
-            rpcAddress = FBUtilities.getLocalAddress();
-        }
-
         /* RPC address to broadcast */
         if (conf.broadcast_rpc_address != null) {
             try {
@@ -296,17 +189,12 @@ public class DatabaseDescriptor {
                 throw new ConfigurationException("broadcast_rpc_address cannot be a wildcard address ("
                         + conf.broadcast_rpc_address + ")!");
         } else {
-            if (rpcAddress.isAnyLocalAddress())
-                throw new ConfigurationException("If rpc_address is set to a wildcard address (" + conf.rpc_address + "), then "
-                        + "you must set broadcast_rpc_address to a value other than " + conf.rpc_address);
-            broadcastRpcAddress = rpcAddress;
+            broadcastRpcAddress = FBUtilities.getLocalAddress();
+
+            if (broadcastRpcAddress.isAnyLocalAddress())
+                throw new ConfigurationException("If rpc_address is set to a wildcard address (" + broadcastRpcAddress
+                        + "), then " + "you must set broadcast_rpc_address to a value other than " + broadcastRpcAddress);
         }
-
-        if (conf.thrift_framed_transport_size_in_mb <= 0)
-            throw new ConfigurationException("thrift_framed_transport_size_in_mb must be positive");
-
-        if (conf.native_transport_max_frame_size_in_mb <= 0)
-            throw new ConfigurationException("native_transport_max_frame_size_in_mb must be positive");
 
         /* end point snitch */
         if (conf.endpoint_snitch == null) {
@@ -329,88 +217,6 @@ public class DatabaseDescriptor {
             }
         };
 
-        /* Request Scheduler setup */
-        requestSchedulerOptions = conf.request_scheduler_options;
-        //        if (conf.request_scheduler != null) {
-        //            try {
-        //                if (requestSchedulerOptions == null) {
-        //                    requestSchedulerOptions = new RequestSchedulerOptions();
-        //                }
-        //                Class<?> cls = Class.forName(conf.request_scheduler);
-        //                requestScheduler = (IRequestScheduler) cls.getConstructor(RequestSchedulerOptions.class).newInstance(
-        //                        requestSchedulerOptions);
-        //            } catch (ClassNotFoundException e) {
-        //                throw new ConfigurationException("Invalid Request Scheduler class " + conf.request_scheduler);
-        //            } catch (Exception e) {
-        //                throw new ConfigurationException("Unable to instantiate request scheduler", e);
-        //            }
-        //        } else {
-        //            requestScheduler = new NoScheduler();
-        //        }
-
-        if (conf.request_scheduler_id == RequestSchedulerId.keyspace) {
-            requestSchedulerId = conf.request_scheduler_id;
-        } else {
-            // Default to Keyspace
-            requestSchedulerId = RequestSchedulerId.keyspace;
-        }
-
-        // if data dirs, commitlog dir, or saved caches dir are set in lealone.yaml, use that.  Otherwise,
-        // use -Dlealone.storagedir (set in lealone-env.sh) as the parent dir for data/, commitlog/, and saved_caches/
-        if (conf.commitlog_directory == null) {
-            conf.commitlog_directory = System.getProperty("lealone.storagedir", null);
-            if (conf.commitlog_directory == null)
-                throw new ConfigurationException("commitlog_directory is missing and -Dlealone.storagedir is not set");
-            conf.commitlog_directory += File.separator + "commitlog";
-        }
-        if (conf.saved_caches_directory == null) {
-            conf.saved_caches_directory = System.getProperty("lealone.storagedir", null);
-            if (conf.saved_caches_directory == null)
-                throw new ConfigurationException("saved_caches_directory is missing and -Dlealone.storagedir is not set");
-            conf.saved_caches_directory += File.separator + "saved_caches";
-        }
-        if (conf.data_file_directories == null) {
-            String defaultDataDir = System.getProperty("lealone.storagedir", null);
-            if (defaultDataDir == null)
-                throw new ConfigurationException("data_file_directories is not missing and -Dlealone.storagedir is not set");
-            conf.data_file_directories = new String[] { defaultDataDir + File.separator + "data" };
-        }
-
-        /* data file and commit log directories. they get created later, when they're needed. */
-        for (String datadir : conf.data_file_directories) {
-            if (datadir.equals(conf.commitlog_directory))
-                throw new ConfigurationException("commitlog_directory must not be the same as any data_file_directories");
-            if (datadir.equals(conf.saved_caches_directory))
-                throw new ConfigurationException("saved_caches_directory must not be the same as any data_file_directories");
-        }
-
-        if (conf.commitlog_directory.equals(conf.saved_caches_directory))
-            throw new ConfigurationException("saved_caches_directory must not be the same as the commitlog_directory");
-
-        if (conf.memtable_flush_writers == null)
-            conf.memtable_flush_writers = Math.min(8,
-                    Math.max(2, Math.min(FBUtilities.getAvailableProcessors(), conf.data_file_directories.length)));
-
-        if (conf.memtable_flush_writers < 1)
-            throw new ConfigurationException("memtable_flush_writers must be at least 1");
-
-        if (conf.memtable_cleanup_threshold == null)
-            conf.memtable_cleanup_threshold = (float) (1.0 / (1 + conf.memtable_flush_writers));
-
-        if (conf.memtable_cleanup_threshold < 0.01f)
-            throw new ConfigurationException("memtable_cleanup_threshold must be >= 0.01");
-        if (conf.memtable_cleanup_threshold > 0.99f)
-            throw new ConfigurationException("memtable_cleanup_threshold must be <= 0.99");
-        if (conf.memtable_cleanup_threshold < 0.1f)
-            logger.warn("memtable_cleanup_threshold is set very low, which may cause performance degradation");
-
-        if (conf.concurrent_compactors == null)
-            conf.concurrent_compactors = Math.min(8,
-                    Math.max(2, Math.min(FBUtilities.getAvailableProcessors(), conf.data_file_directories.length)));
-
-        if (conf.concurrent_compactors <= 0)
-            throw new ConfigurationException("concurrent_compactors should be strictly greater than 0");
-
         if (conf.num_tokens == null)
             conf.num_tokens = 1;
         else if (conf.num_tokens > MAX_NUM_TOKENS)
@@ -428,34 +234,6 @@ public class DatabaseDescriptor {
             throw new ConfigurationException("key_cache_size_in_mb option was set incorrectly to '" + conf.key_cache_size_in_mb
                     + "', supported values are <integer> >= 0.");
         }
-
-        try {
-            // if counter_cache_size_in_mb option was set to "auto" then size of the cache should be "min(2.5% of Heap (in MB), 50MB)
-            counterCacheSizeInMB = (conf.counter_cache_size_in_mb == null) ? Math.min(
-                    Math.max(1, (int) (Runtime.getRuntime().totalMemory() * 0.025 / 1024 / 1024)), 50)
-                    : conf.counter_cache_size_in_mb;
-
-            if (counterCacheSizeInMB < 0)
-                throw new NumberFormatException(); // to escape duplicating error message
-        } catch (NumberFormatException e) {
-            throw new ConfigurationException("counter_cache_size_in_mb option was set incorrectly to '"
-                    + conf.counter_cache_size_in_mb + "', supported values are <integer> >= 0.");
-        }
-
-        // if set to empty/"auto" then use 5% of Heap size
-        indexSummaryCapacityInMB = (conf.index_summary_capacity_in_mb == null) ? Math.max(1, (int) (Runtime.getRuntime()
-                .totalMemory() * 0.05 / 1024 / 1024)) : conf.index_summary_capacity_in_mb;
-
-        if (indexSummaryCapacityInMB < 0)
-            throw new ConfigurationException("index_summary_capacity_in_mb option was set incorrectly to '"
-                    + conf.index_summary_capacity_in_mb + "', it should be a non-negative integer.");
-
-        //        memoryAllocator = FBUtilities.newOffHeapAllocator(conf.memory_allocator);
-
-        //        // hardcoded system keyspace
-        //        Schema.instance.load(SystemKeyspace.definition());
-
-        // load the seeds for node contact points
         if (conf.seed_provider == null) {
             throw new ConfigurationException("seeds configuration is missing; a minimum of one seed is required.");
         }
@@ -471,9 +249,6 @@ public class DatabaseDescriptor {
         if (seedProvider.getSeeds().size() == 0)
             throw new ConfigurationException("The seed provider lists no seeds.");
 
-        if (conf.batch_size_fail_threshold_in_kb == null) {
-            conf.batch_size_fail_threshold_in_kb = conf.batch_size_warn_threshold_in_kb * 10;
-        }
     }
 
     private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException {
@@ -481,85 +256,6 @@ public class DatabaseDescriptor {
             snitchClassName = "org.lealone.cluster.locator." + snitchClassName;
         IEndpointSnitch snitch = FBUtilities.construct(snitchClassName, "snitch");
         return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
-    }
-
-    /** load keyspace (keyspace) definitions, but do not initialize the keyspace instances. */
-    public static void loadSchemas() {
-        //        ColumnFamilyStore schemaCFS = SystemKeyspace.schemaCFS(SystemKeyspace.SCHEMA_KEYSPACES_TABLE);
-        //
-        //        // if keyspace with definitions is empty try loading the old way
-        //        if (schemaCFS.estimateKeys() == 0) {
-        //            logger.info("Couldn't detect any schema definitions in local storage.");
-        //            // peek around the data directories to see if anything is there.
-        //            if (hasExistingNoSystemTables())
-        //                logger.info("Found keyspace data in data directories. Consider using cqlsh to define your schema.");
-        //            else
-        //                logger.info("To create keyspaces and column families, see 'help create' in cqlsh.");
-        //        } else {
-        //            Schema.instance.load(DefsTables.loadFromKeyspace());
-        //        }
-        //
-        //        Schema.instance.updateVersion();
-    }
-
-    //    private static boolean hasExistingNoSystemTables() {
-    //        for (String dataDir : getAllDataFileLocations()) {
-    //            File dataPath = new File(dataDir);
-    //            if (dataPath.exists() && dataPath.isDirectory()) {
-    //                // see if there are other directories present.
-    //                int dirCount = dataPath.listFiles(new FileFilter() {
-    //                    @Override
-    //                    public boolean accept(File pathname) {
-    //                        return pathname.isDirectory() && !pathname.getName().equals(SystemKeyspace.NAME);
-    //                    }
-    //                }).length;
-    //
-    //                if (dirCount > 0)
-    //                    return true;
-    //            }
-    //        }
-    //
-    //        return false;
-    //    }
-
-    public static int getPermissionsValidity() {
-        return conf.permissions_validity_in_ms;
-    }
-
-    public static void setPermissionsValidity(int timeout) {
-        conf.permissions_validity_in_ms = timeout;
-    }
-
-    public static int getThriftFramedTransportSize() {
-        return conf.thrift_framed_transport_size_in_mb * 1024 * 1024;
-    }
-
-    /**
-     * Creates all storage-related directories.
-     */
-    public static void createAllDirectories() {
-        //        try {
-        //            if (conf.data_file_directories.length == 0)
-        //                throw new ConfigurationException("At least one DataFileDirectory must be specified");
-        //
-        //            for (String dataFileDirectory : conf.data_file_directories) {
-        //                FileUtils.createDirectory(dataFileDirectory);
-        //            }
-        //
-        //            if (conf.commitlog_directory == null)
-        //                throw new ConfigurationException("commitlog_directory must be specified");
-        //
-        //            FileUtils.createDirectory(conf.commitlog_directory);
-        //
-        //            if (conf.saved_caches_directory == null)
-        //                throw new ConfigurationException("saved_caches_directory must be specified");
-        //
-        //            FileUtils.createDirectory(conf.saved_caches_directory);
-        //        } catch (ConfigurationException e) {
-        //            throw new IllegalArgumentException("Bad configuration; unable to start server: " + e.getMessage());
-        //        } catch (FSWriteError e) {
-        //            throw new IllegalStateException(e.getCause().getMessage() + "; unable to start server");
-        //        }
     }
 
     public static IPartitioner getPartitioner() {
@@ -581,38 +277,6 @@ public class DatabaseDescriptor {
 
     public static void setEndpointSnitch(IEndpointSnitch eps) {
         snitch = eps;
-    }
-
-    //    public static IRequestScheduler getRequestScheduler() {
-    //        return requestScheduler;
-    //    }
-
-    public static RequestSchedulerOptions getRequestSchedulerOptions() {
-        return requestSchedulerOptions;
-    }
-
-    public static RequestSchedulerId getRequestSchedulerId() {
-        return requestSchedulerId;
-    }
-
-    public static int getColumnIndexSize() {
-        return conf.column_index_size_in_kb * 1024;
-    }
-
-    public static int getBatchSizeWarnThreshold() {
-        return conf.batch_size_warn_threshold_in_kb * 1024;
-    }
-
-    public static long getBatchSizeFailThreshold() {
-        return conf.batch_size_fail_threshold_in_kb * 1024L;
-    }
-
-    public static int getBatchSizeFailThresholdInKB() {
-        return conf.batch_size_fail_threshold_in_kb;
-    }
-
-    public static void setBatchSizeFailThresholdInKB(int threshold) {
-        conf.batch_size_fail_threshold_in_kb = threshold;
     }
 
     public static Collection<String> tokensFromString(String tokenString) {
@@ -675,14 +339,6 @@ public class DatabaseDescriptor {
         return Integer.parseInt(System.getProperty("lealone.ssl_storage_port", conf.ssl_storage_port.toString()));
     }
 
-    public static int getRpcPort() {
-        return Integer.parseInt(System.getProperty("lealone.rpc_port", conf.rpc_port.toString()));
-    }
-
-    public static int getRpcListenBacklog() {
-        return conf.rpc_listen_backlog;
-    }
-
     public static long getRpcTimeout() {
         return conf.request_timeout_in_ms;
     }
@@ -721,14 +377,6 @@ public class DatabaseDescriptor {
 
     public static void setCounterWriteRpcTimeout(Long timeOutInMillis) {
         conf.counter_write_request_timeout_in_ms = timeOutInMillis;
-    }
-
-    public static long getCasContentionTimeout() {
-        return conf.cas_contention_timeout_in_ms;
-    }
-
-    public static void setCasContentionTimeout(Long timeOutInMillis) {
-        conf.cas_contention_timeout_in_ms = timeOutInMillis;
     }
 
     public static long getTruncateRpcTimeout() {
@@ -789,26 +437,6 @@ public class DatabaseDescriptor {
         return conf.concurrent_writes;
     }
 
-    public static int getConcurrentCounterWriters() {
-        return conf.concurrent_counter_writes;
-    }
-
-    public static int getFlushWriters() {
-        return conf.memtable_flush_writers;
-    }
-
-    public static int getConcurrentCompactors() {
-        return conf.concurrent_compactors;
-    }
-
-    public static int getCompactionThroughputMbPerSec() {
-        return conf.compaction_throughput_mb_per_sec;
-    }
-
-    public static void setCompactionThroughputMbPerSec(int value) {
-        conf.compaction_throughput_mb_per_sec = value;
-    }
-
     public static boolean getDisableSTCSInL0() {
         return Boolean.getBoolean("lealone.disable_stcs_in_l0");
     }
@@ -827,41 +455,6 @@ public class DatabaseDescriptor {
 
     public static void setInterDCStreamThroughputOutboundMegabitsPerSec(int value) {
         conf.inter_dc_stream_throughput_outbound_megabits_per_sec = value;
-    }
-
-    public static String[] getAllDataFileLocations() {
-        return conf.data_file_directories;
-    }
-
-    public static String getCommitLogLocation() {
-        return conf.commitlog_directory;
-    }
-
-    public static int getTombstoneWarnThreshold() {
-        return conf.tombstone_warn_threshold;
-    }
-
-    public static void setTombstoneWarnThreshold(int threshold) {
-        conf.tombstone_warn_threshold = threshold;
-    }
-
-    public static int getTombstoneFailureThreshold() {
-        return conf.tombstone_failure_threshold;
-    }
-
-    public static void setTombstoneFailureThreshold(int threshold) {
-        conf.tombstone_failure_threshold = threshold;
-    }
-
-    /**
-     * size of commitlog segments to allocate
-     */
-    public static int getCommitLogSegmentSize() {
-        return conf.commitlog_segment_size_in_mb * 1024 * 1024;
-    }
-
-    public static String getSavedCachesLocation() {
-        return conf.saved_caches_directory;
     }
 
     public static Set<InetAddress> getSeeds() {
@@ -884,14 +477,6 @@ public class DatabaseDescriptor {
         broadcastAddress = broadcastAdd;
     }
 
-    public static boolean startRpc() {
-        return conf.start_rpc;
-    }
-
-    public static InetAddress getRpcAddress() {
-        return rpcAddress;
-    }
-
     public static void setBroadcastRpcAddress(InetAddress broadcastRPCAddr) {
         broadcastRpcAddress = broadcastRPCAddr;
     }
@@ -900,105 +485,12 @@ public class DatabaseDescriptor {
         return broadcastRpcAddress;
     }
 
-    public static String getRpcServerType() {
-        return conf.rpc_server_type;
-    }
-
-    public static boolean getRpcKeepAlive() {
-        return conf.rpc_keepalive;
-    }
-
-    public static Integer getRpcMinThreads() {
-        return conf.rpc_min_threads;
-    }
-
-    public static Integer getRpcMaxThreads() {
-        return conf.rpc_max_threads;
-    }
-
-    public static Integer getRpcSendBufferSize() {
-        return conf.rpc_send_buff_size_in_bytes;
-    }
-
-    public static Integer getRpcRecvBufferSize() {
-        return conf.rpc_recv_buff_size_in_bytes;
-    }
-
     public static Integer getInternodeSendBufferSize() {
         return conf.internode_send_buff_size_in_bytes;
     }
 
     public static Integer getInternodeRecvBufferSize() {
         return conf.internode_recv_buff_size_in_bytes;
-    }
-
-    public static boolean startNativeTransport() {
-        return conf.start_native_transport;
-    }
-
-    public static int getNativeTransportPort() {
-        return Integer.parseInt(System.getProperty("lealone.native_transport_port", conf.native_transport_port.toString()));
-    }
-
-    public static Integer getNativeTransportMaxThreads() {
-        return conf.native_transport_max_threads;
-    }
-
-    public static int getNativeTransportMaxFrameSize() {
-        return conf.native_transport_max_frame_size_in_mb * 1024 * 1024;
-    }
-
-    public static double getCommitLogSyncBatchWindow() {
-        return conf.commitlog_sync_batch_window_in_ms;
-    }
-
-    public static int getCommitLogSyncPeriod() {
-        return conf.commitlog_sync_period_in_ms;
-    }
-
-    public static int getCommitLogPeriodicQueueSize() {
-        return conf.commitlog_periodic_queue_size;
-    }
-
-    public static Config.CommitLogSync getCommitLogSync() {
-        return conf.commitlog_sync;
-    }
-
-    public static Config.DiskAccessMode getDiskAccessMode() {
-        return conf.disk_access_mode;
-    }
-
-    public static Config.DiskAccessMode getIndexAccessMode() {
-        return indexAccessMode;
-    }
-
-    public static void setDiskFailurePolicy(Config.DiskFailurePolicy policy) {
-        conf.disk_failure_policy = policy;
-    }
-
-    public static Config.DiskFailurePolicy getDiskFailurePolicy() {
-        return conf.disk_failure_policy;
-    }
-
-    public static void setCommitFailurePolicy(Config.CommitFailurePolicy policy) {
-        conf.commit_failure_policy = policy;
-    }
-
-    public static Config.CommitFailurePolicy getCommitFailurePolicy() {
-        return conf.commit_failure_policy;
-    }
-
-    public static boolean isSnapshotBeforeCompaction() {
-        return conf.snapshot_before_compaction;
-    }
-
-    public static boolean isAutoSnapshot() {
-        return conf.auto_snapshot;
-    }
-
-    @VisibleForTesting
-    public static void setAutoSnapshot(boolean autoSnapshot) {
-        conf.auto_snapshot = autoSnapshot;
     }
 
     public static boolean isAutoBootstrap() {
@@ -1048,17 +540,6 @@ public class DatabaseDescriptor {
     public static int getMaxHintWindow() {
         return conf.max_hint_window_in_ms;
     }
-
-    //    public static File getSerializedCachePath(String ksName, String cfName, UUID cfId, CacheService.CacheType cacheType,
-    //            String version) {
-    //        StringBuilder builder = new StringBuilder();
-    //        builder.append(ksName).append('-');
-    //        builder.append(cfName).append('-');
-    //        builder.append(ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(cfId))).append('-');
-    //        builder.append(cacheType);
-    //        builder.append((version == null ? "" : "-" + version + ".db"));
-    //        return new File(conf.saved_caches_directory, builder.toString());
-    //    }
 
     public static int getDynamicUpdateInterval() {
         return conf.dynamic_snitch_update_interval_in_ms;
@@ -1116,32 +597,8 @@ public class DatabaseDescriptor {
         conf.incremental_backups = value;
     }
 
-    public static int getFileCacheSizeInMB() {
-        return conf.file_cache_size_in_mb;
-    }
-
-    public static long getTotalCommitlogSpaceInMB() {
-        return conf.commitlog_total_space_in_mb;
-    }
-
-    public static int getSSTablePreempiveOpenIntervalInMB() {
-        return conf.sstable_preemptive_open_interval_in_mb;
-    }
-
-    public static boolean getTrickleFsync() {
-        return conf.trickle_fsync;
-    }
-
-    public static int getTrickleFsyncIntervalInKb() {
-        return conf.trickle_fsync_interval_in_kb;
-    }
-
     public static long getKeyCacheSizeInMB() {
         return keyCacheSizeInMB;
-    }
-
-    public static long getIndexSummaryCapacityInMB() {
-        return indexSummaryCapacityInMB;
     }
 
     public static int getKeyCacheSavePeriod() {
@@ -1176,30 +633,6 @@ public class DatabaseDescriptor {
         return conf.row_cache_keys_to_save;
     }
 
-    public static long getCounterCacheSizeInMB() {
-        return counterCacheSizeInMB;
-    }
-
-    public static int getCounterCacheSavePeriod() {
-        return conf.counter_cache_save_period;
-    }
-
-    public static void setCounterCacheSavePeriod(int counterCacheSavePeriod) {
-        conf.counter_cache_save_period = counterCacheSavePeriod;
-    }
-
-    public static int getCounterCacheKeysToSave() {
-        return conf.counter_cache_keys_to_save;
-    }
-
-    public static void setCounterCacheKeysToSave(int counterCacheKeysToSave) {
-        conf.counter_cache_keys_to_save = counterCacheKeysToSave;
-    }
-
-    //    public static IAllocator getoffHeapMemoryAllocator() {
-    //        return memoryAllocator;
-    //    }
-
     public static void setRowCacheKeysToSave(int rowCacheKeysToSave) {
         conf.row_cache_keys_to_save = rowCacheKeysToSave;
     }
@@ -1222,38 +655,6 @@ public class DatabaseDescriptor {
 
     public static boolean getInterDCTcpNoDelay() {
         return conf.inter_dc_tcp_nodelay;
-    }
-
-    //
-    //    public static SSTableFormat.Type getSSTableFormat() {
-    //        return sstable_format;
-    //    }
-    //
-    //    public static MemtablePool getMemtableAllocatorPool() {
-    //        long heapLimit = ((long) conf.memtable_heap_space_in_mb) << 20;
-    //        long offHeapLimit = ((long) conf.memtable_offheap_space_in_mb) << 20;
-    //        switch (conf.memtable_allocation_type) {
-    //        case unslabbed_heap_buffers:
-    //            return new HeapPool(heapLimit, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily());
-    //        case heap_buffers:
-    //            return new SlabPool(heapLimit, 0, conf.memtable_cleanup_threshold, new ColumnFamilyStore.FlushLargestColumnFamily());
-    //        case offheap_buffers:
-    //            if (!FileUtils.isCleanerAvailable()) {
-    //                throw new IllegalStateException(
-    //                        "Could not free direct byte buffer: offheap_buffers is not a safe memtable_allocation_type without this ability, please adjust your config. This feature is only guaranteed to work on an Oracle JVM. Refusing to start.");
-    //            }
-    //            return new SlabPool(heapLimit, offHeapLimit, conf.memtable_cleanup_threshold,
-    //                    new ColumnFamilyStore.FlushLargestColumnFamily());
-    //        case offheap_objects:
-    //            return new NativePool(heapLimit, offHeapLimit, conf.memtable_cleanup_threshold,
-    //                    new ColumnFamilyStore.FlushLargestColumnFamily());
-    //        default:
-    //            throw new AssertionError();
-    //        }
-    //    }
-
-    public static int getIndexSummaryResizeIntervalInMinutes() {
-        return conf.index_summary_resize_interval_in_minutes;
     }
 
     public static boolean hasLargeAddressSpace() {

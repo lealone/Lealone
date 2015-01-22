@@ -448,10 +448,6 @@ public interface StorageServiceMBean extends NotificationEmitter {
 
     public int getStreamThroughputMbPerSec();
 
-    public int getCompactionThroughputMbPerSec();
-
-    public void setCompactionThroughputMbPerSec(int value);
-
     public boolean isIncrementalBackupsEnabled();
 
     public void setIncrementalBackupsEnabled(boolean value);
@@ -527,23 +523,23 @@ public interface StorageServiceMBean extends NotificationEmitter {
     /** Returns the cluster partitioner */
     public String getPartitionerName();
 
-    /** Returns the threshold for warning of queries with many tombstones */
-    public int getTombstoneWarnThreshold();
+    //    /** Returns the threshold for warning of queries with many tombstones */
+    //    public int getTombstoneWarnThreshold();
+    //
+    //    /** Sets the threshold for warning queries with many tombstones */
+    //    public void setTombstoneWarnThreshold(int tombstoneDebugThreshold);
+    //
+    //    /** Returns the threshold for abandoning queries with many tombstones */
+    //    public int getTombstoneFailureThreshold();
+    //
+    //    /** Sets the threshold for abandoning queries with many tombstones */
+    //    public void setTombstoneFailureThreshold(int tombstoneDebugThreshold);
 
-    /** Sets the threshold for warning queries with many tombstones */
-    public void setTombstoneWarnThreshold(int tombstoneDebugThreshold);
-
-    /** Returns the threshold for abandoning queries with many tombstones */
-    public int getTombstoneFailureThreshold();
-
-    /** Sets the threshold for abandoning queries with many tombstones */
-    public void setTombstoneFailureThreshold(int tombstoneDebugThreshold);
-
-    /** Returns the threshold for rejecting queries due to a large batch size */
-    public int getBatchSizeFailureThreshold();
-
-    /** Sets the threshold for rejecting queries due to a large batch size */
-    public void setBatchSizeFailureThreshold(int batchSizeDebugThreshold);
+    //    /** Returns the threshold for rejecting queries due to a large batch size */
+    //    public int getBatchSizeFailureThreshold();
+    //
+    //    /** Sets the threshold for rejecting queries due to a large batch size */
+    //    public void setBatchSizeFailureThreshold(int batchSizeDebugThreshold);
 
     /** Sets the hinted handoff throttle in kb per second, per delivery thread. */
     public void setHintedHandoffThrottleInKB(int throttleInKB);

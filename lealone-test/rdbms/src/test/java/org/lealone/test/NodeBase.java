@@ -57,9 +57,6 @@ public class NodeBase extends YamlConfigurationLoader {
         config.run_mode = run_mode;
 
         config.listen_address = listen_address;
-        config.commitlog_directory = config.base_dir + "/commitlog";
-        config.saved_caches_directory = config.base_dir + "/saved_caches";
-        config.data_file_directories = new String[] { config.base_dir + "/data" };
 
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.base_dir);

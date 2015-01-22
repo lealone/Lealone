@@ -21,14 +21,12 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -166,7 +164,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private double traceProbability = 0.0;
 
     private static enum Mode {
-        STARTING, NORMAL, JOINING, LEAVING, DECOMMISSIONED, MOVING, DRAINING, DRAINED
+        STARTING,
+        NORMAL,
+        JOINING,
+        LEAVING,
+        DECOMMISSIONED,
+        MOVING,
+        DRAINING,
+        DRAINED
     }
 
     private Mode operationMode = Mode.STARTING;
@@ -797,16 +802,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @Override
     public int getStreamThroughputMbPerSec() {
         return DatabaseDescriptor.getStreamThroughputOutboundMegabitsPerSec();
-    }
-
-    @Override
-    public int getCompactionThroughputMbPerSec() {
-        return DatabaseDescriptor.getCompactionThroughputMbPerSec();
-    }
-
-    @Override
-    public void setCompactionThroughputMbPerSec(int value) {
-        DatabaseDescriptor.setCompactionThroughputMbPerSec(value);
     }
 
     @Override
@@ -2004,14 +1999,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             tag = "";
 
         Set<String> keyspaces = new HashSet<>();
-        for (String dataDir : DatabaseDescriptor.getAllDataFileLocations()) {
-            for (String keyspaceDir : new File(dataDir).list()) {
-                // Only add a ks if it has been specified as a param, assuming params were actually provided.
-                if (keyspaceNames.length > 0 && !Arrays.asList(keyspaceNames).contains(keyspaceDir))
-                    continue;
-                keyspaces.add(keyspaceDir);
-            }
-        }
+        //        for (String dataDir : DatabaseDescriptor.getAllDataFileLocations()) {
+        //            for (String keyspaceDir : new File(dataDir).list()) {
+        //                // Only add a ks if it has been specified as a param, assuming params were actually provided.
+        //                if (keyspaceNames.length > 0 && !Arrays.asList(keyspaceNames).contains(keyspaceDir))
+        //                    continue;
+        //                keyspaces.add(keyspaceDir);
+        //            }
+        //        }
 
         for (String keyspace : keyspaces)
             Keyspace.clearSnapshot(tag, keyspace);
@@ -3695,36 +3690,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @Override
     public String getPartitionerName() {
         return DatabaseDescriptor.getPartitionerName();
-    }
-
-    @Override
-    public int getTombstoneWarnThreshold() {
-        return DatabaseDescriptor.getTombstoneWarnThreshold();
-    }
-
-    @Override
-    public void setTombstoneWarnThreshold(int threshold) {
-        DatabaseDescriptor.setTombstoneWarnThreshold(threshold);
-    }
-
-    @Override
-    public int getTombstoneFailureThreshold() {
-        return DatabaseDescriptor.getTombstoneFailureThreshold();
-    }
-
-    @Override
-    public void setTombstoneFailureThreshold(int threshold) {
-        DatabaseDescriptor.setTombstoneFailureThreshold(threshold);
-    }
-
-    @Override
-    public int getBatchSizeFailureThreshold() {
-        return DatabaseDescriptor.getBatchSizeFailThresholdInKB();
-    }
-
-    @Override
-    public void setBatchSizeFailureThreshold(int threshold) {
-        DatabaseDescriptor.setBatchSizeFailThresholdInKB(threshold);
     }
 
     @Override
