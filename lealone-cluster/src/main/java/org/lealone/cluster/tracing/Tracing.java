@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.db.marshal.TimeUUIDType;
 import org.lealone.cluster.net.MessageIn;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.utils.FBUtilities;
@@ -45,7 +44,9 @@ public class Tracing {
     public static final String TRACE_TTL = "TraceTTL";
 
     public enum TraceType {
-        NONE, QUERY, REPAIR;
+        NONE,
+        QUERY,
+        REPAIR;
 
         private static final TraceType[] ALL_VALUES = values();
 
@@ -99,13 +100,13 @@ public class Tracing {
         return instance.state.get() != null;
     }
 
-    public UUID newSession() {
-        return newSession(TraceType.QUERY);
-    }
-
-    public UUID newSession(TraceType traceType) {
-        return newSession(TimeUUIDType.instance.compose(ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes())), traceType);
-    }
+    //    public UUID newSession() {
+    //        return newSession(TraceType.QUERY);
+    //    }
+    //
+    //    public UUID newSession(TraceType traceType) {
+    //        return newSession(TimeUUIDType.instance.compose(ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes())), traceType);
+    //    }
 
     public UUID newSession(UUID sessionId) {
         return newSession(sessionId, TraceType.QUERY);
