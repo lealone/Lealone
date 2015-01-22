@@ -51,8 +51,6 @@ import java.util.concurrent.Future;
 import java.util.zip.Checksum;
 
 import org.apache.commons.lang3.StringUtils;
-import org.lealone.cluster.auth.IAuthenticator;
-import org.lealone.cluster.auth.IAuthorizer;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.DecoratedKey;
 import org.lealone.cluster.dht.IPartitioner;
@@ -363,18 +361,6 @@ public class FBUtilities {
     //            offheap_allocator = "org.lealone.cluster.io.util." + offheap_allocator;
     //        return FBUtilities.construct(offheap_allocator, "off-heap allocator");
     //    }
-
-    public static IAuthorizer newAuthorizer(String className) throws ConfigurationException {
-        if (!className.contains("."))
-            className = "org.lealone.cluster.auth." + className;
-        return FBUtilities.construct(className, "authorizer");
-    }
-
-    public static IAuthenticator newAuthenticator(String className) throws ConfigurationException {
-        if (!className.contains("."))
-            className = "org.lealone.cluster.auth." + className;
-        return FBUtilities.construct(className, "authenticator");
-    }
 
     /**
      * @return The Class for the given name.

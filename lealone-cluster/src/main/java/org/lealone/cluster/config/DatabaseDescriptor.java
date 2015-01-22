@@ -33,11 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import org.lealone.cluster.auth.AllowAllAuthenticator;
-import org.lealone.cluster.auth.AllowAllAuthorizer;
 import org.lealone.cluster.auth.AllowAllInternodeAuthenticator;
-import org.lealone.cluster.auth.IAuthenticator;
-import org.lealone.cluster.auth.IAuthorizer;
 import org.lealone.cluster.auth.IInternodeAuthenticator;
 import org.lealone.cluster.config.Config.RequestSchedulerId;
 import org.lealone.cluster.config.EncryptionOptions.ClientEncryptionOptions;
@@ -85,9 +81,6 @@ public class DatabaseDescriptor {
     private static Config conf;
 
     //private static SSTableFormat.Type sstable_format = SSTableFormat.Type.BIG;
-
-    private static IAuthenticator authenticator = new AllowAllAuthenticator();
-    private static IAuthorizer authorizer = new AllowAllAuthorizer();
 
     // private static IRequestScheduler requestScheduler;
     private static RequestSchedulerId requestSchedulerId;
@@ -175,23 +168,11 @@ public class DatabaseDescriptor {
                     indexAccessMode);
         }
 
-        /* Authentication and authorization backend, implementing IAuthenticator and IAuthorizer */
-        if (conf.authenticator != null)
-            authenticator = FBUtilities.newAuthenticator(conf.authenticator);
-
-        if (conf.authorizer != null)
-            authorizer = FBUtilities.newAuthorizer(conf.authorizer);
-
-        if (authenticator instanceof AllowAllAuthenticator && !(authorizer instanceof AllowAllAuthorizer))
-            throw new ConfigurationException("AllowAllAuthenticator can't be used with " + conf.authorizer);
-
         if (conf.internode_authenticator != null)
             internodeAuthenticator = FBUtilities.construct(conf.internode_authenticator, "internode_authenticator");
         else
             internodeAuthenticator = new AllowAllInternodeAuthenticator();
 
-        authenticator.validateConfiguration();
-        authorizer.validateConfiguration();
         internodeAuthenticator.validateConfiguration();
 
         /* Hashing strategy */
@@ -540,14 +521,6 @@ public class DatabaseDescriptor {
     //
     //        return false;
     //    }
-
-    public static IAuthenticator getAuthenticator() {
-        return authenticator;
-    }
-
-    public static IAuthorizer getAuthorizer() {
-        return authorizer;
-    }
 
     public static int getPermissionsValidity() {
         return conf.permissions_validity_in_ms;
