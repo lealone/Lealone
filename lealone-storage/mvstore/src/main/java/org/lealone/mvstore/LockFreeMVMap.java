@@ -156,11 +156,12 @@ public class LockFreeMVMap<K, V> extends MVMap<K, V> implements Callable<Void> {
     }
 
     private void beginMerge() {
+        if (current.isEmpty())
+            return;
+
         snapshot = current;
         current = new ConcurrentSkipListMap<K, ValueHolder<V>>();
-
         merge();
-
         snapshot = null;
     }
 
@@ -168,16 +169,13 @@ public class LockFreeMVMap<K, V> extends MVMap<K, V> implements Callable<Void> {
         beforeWrite();
 
         long v = writeVersion;
-        Page p;
+        Page p = root.copy(v);
         Object key;
         Object value;
 
         for (Entry<K, ValueHolder<V>> e : snapshot.entrySet()) {
             key = e.getKey();
             value = e.getValue().value;
-
-            p = root.copy(v);
-
             if (value != null) {
                 p = splitRootIfNeeded(p, v);
                 put(p, v, key, value);
@@ -188,9 +186,9 @@ public class LockFreeMVMap<K, V> extends MVMap<K, V> implements Callable<Void> {
                     p = Page.createEmpty(this, p.getVersion());
                 }
             }
-
-            newRoot(p);
         }
+        newRoot(p);
+        store.commit();
     }
 
     public static class Merger extends Thread {
