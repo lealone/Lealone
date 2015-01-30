@@ -377,7 +377,6 @@ public class Page {
         totalCount = a;
         Page newPage = create(map, version, bKeys, bValues, null, bKeys.length, 0);
         recalculateMemory();
-        newPage.recalculateMemory();
         return newPage;
     }
 
@@ -407,7 +406,6 @@ public class Page {
         }
         Page newPage = create(map, version, bKeys, null, bChildren, t, 0);
         recalculateMemory();
-        newPage.recalculateMemory();
         return newPage;
     }
 
