@@ -21,10 +21,10 @@ import org.lealone.cassandra.dbobject.table.CassandraTable;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Constants;
-import org.lealone.engine.StorageEngine;
+import org.lealone.engine.StorageEngineBase;
 import org.lealone.engine.StorageEngineManager;
 
-public class CassandraStorageEngine implements StorageEngine {
+public class CassandraStorageEngine extends StorageEngineBase {
     public static final String NAME = "Cassandra";
 
     //见StorageEngineManager.StorageEngineService中的注释

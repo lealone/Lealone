@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.store;
+package org.lealone.fs;
 
 import java.io.IOException;
 import java.lang.ref.Reference;
@@ -14,10 +14,10 @@ import java.util.Arrays;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.engine.Constants;
+import org.lealone.engine.DataHandler;
 import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.security.SecureFileStore;
-import org.lealone.store.fs.FileUtils;
 import org.lealone.util.TempFileDeleter;
 
 /**

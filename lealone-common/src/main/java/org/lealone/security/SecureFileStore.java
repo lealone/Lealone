@@ -7,8 +7,8 @@
 package org.lealone.security;
 
 import org.lealone.engine.Constants;
-import org.lealone.store.DataHandler;
-import org.lealone.store.FileStore;
+import org.lealone.engine.DataHandler;
+import org.lealone.fs.FileStore;
 import org.lealone.util.MathUtils;
 
 /**

@@ -7,7 +7,7 @@
  * The variable size number format code is a port from SQLite,
  * but stored in reverse order (least significant bits in the first byte).
  */
-package org.lealone.store;
+package org.lealone.engine;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -22,8 +22,6 @@ import java.sql.Time;
 import java.sql.Timestamp;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.engine.Constants;
-import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.util.DataUtils;
@@ -610,7 +608,7 @@ public class Data {
                     writeVarInt(lob.getTableId());
                     writeVarInt(lob.getObjectId());
                     writeVarLong(lob.getPrecision());
-                    writeByte((byte) (lob.useCompression() ? 1 : 0));
+                    writeByte((byte) (lob.isCompressed() ? 1 : 0));
                     if (t == -2) {
                         writeString(lob.getFileName());
                     }
@@ -788,30 +786,29 @@ public class Data {
             if (smallLen >= 0) {
                 byte[] small = DataUtils.newBytes(smallLen);
                 read(small, 0, smallLen);
-                return LobStorage.createSmallLob(type, small);
+                return ValueLobDb.createSmallLob(type, small);
             } else if (smallLen == -3) {
                 int tableId = readVarInt();
                 long lobId = readVarLong();
                 long precision = readVarLong();
-                LobStorage lobStorage = handler.getLobStorage();
-                ValueLobDb lob = ValueLobDb.create(type, lobStorage, tableId, lobId, null, precision);
+                ValueLobDb lob = ValueLobDb.create(type, handler, tableId, lobId, null, precision);
                 return lob;
             } else {
                 int tableId = readVarInt();
                 int objectId = readVarInt();
                 long precision = 0;
                 boolean compression = false;
-                // -1: regular
-                // -2: regular, but not linked (in this case: including file name)
+                // -1: regular; -2: regular, but not linked (in this case:
+                // including file name)
                 if (smallLen == -1 || smallLen == -2) {
                     precision = readVarLong();
                     compression = readByte() == 1;
                 }
-                ValueLob lob = ValueLob.open(type, handler, tableId, objectId, precision, compression);
                 if (smallLen == -2) {
-                    lob.setFileName(readString(), false);
+                    String filename = readString();
+                    return ValueLob.openUnlinked(type, handler, tableId, objectId, precision, compression, filename);
                 }
-                return lob;
+                return ValueLob.openLinked(type, handler, tableId, objectId, precision, compression);
             }
         }
         case Value.ARRAY: {

@@ -16,11 +16,11 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import org.lealone.engine.Constants;
+import org.lealone.fs.FilePath;
+import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.StringDataType;
-import org.lealone.store.fs.FilePath;
-import org.lealone.store.fs.FileUtils;
 
 /**
  * Utility methods used in combination with the MVStore.

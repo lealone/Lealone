@@ -14,10 +14,10 @@ import java.util.HashSet;
 import java.util.Properties;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.fs.FilePathEncrypt;
+import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.security.SHA256;
-import org.lealone.store.fs.FilePathEncrypt;
-import org.lealone.store.fs.FileUtils;
 import org.lealone.util.New;
 import org.lealone.util.SortedProperties;
 import org.lealone.util.StringUtils;

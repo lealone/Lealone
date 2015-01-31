@@ -14,13 +14,13 @@ import java.sql.SQLException;
 import java.util.Arrays;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.engine.DataHandler;
 import org.lealone.message.DbException;
 import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.WriteBuffer;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.result.SortOrder;
-import org.lealone.store.DataHandler;
 import org.lealone.value.CompareMode;
 import org.lealone.value.Value;
 import org.lealone.value.ValueArray;

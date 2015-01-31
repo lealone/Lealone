@@ -27,5 +27,5 @@ public interface StorageEngine {
 
     String getName();
 
-    //void init();
+    LobStorageInterface getLobStorage();
 }

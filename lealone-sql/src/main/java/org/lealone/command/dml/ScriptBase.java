@@ -17,18 +17,18 @@ import org.lealone.api.ErrorCode;
 import org.lealone.command.Prepared;
 import org.lealone.compress.CompressTool;
 import org.lealone.engine.Constants;
+import org.lealone.engine.DataHandler;
 import org.lealone.engine.Database;
+import org.lealone.engine.LobStorageInterface;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.expression.Expression;
+import org.lealone.fs.FileStore;
+import org.lealone.fs.FileStoreInputStream;
+import org.lealone.fs.FileStoreOutputStream;
+import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.security.SHA256;
-import org.lealone.store.DataHandler;
-import org.lealone.store.FileStore;
-import org.lealone.store.FileStoreInputStream;
-import org.lealone.store.FileStoreOutputStream;
-import org.lealone.store.LobStorage;
-import org.lealone.store.fs.FileUtils;
 import org.lealone.util.IOUtils;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.util.TempFileDeleter;
@@ -97,6 +97,7 @@ abstract class ScriptBase extends Prepared implements DataHandler {
         return fileName;
     }
 
+    @Override
     public boolean isTransactional() {
         return false;
     }
@@ -189,34 +190,42 @@ abstract class ScriptBase extends Prepared implements DataHandler {
         }
     }
 
+    @Override
     public boolean needRecompile() {
         return false;
     }
 
+    @Override
     public String getDatabasePath() {
         return null;
     }
 
+    @Override
     public FileStore openFile(String name, String mode, boolean mustExist) {
         return null;
     }
 
+    @Override
     public void checkPowerOff() {
         session.getDatabase().checkPowerOff();
     }
 
+    @Override
     public void checkWritingAllowed() {
         session.getDatabase().checkWritingAllowed();
     }
 
+    @Override
     public int getMaxLengthInplaceLob() {
         return session.getDatabase().getMaxLengthInplaceLob();
     }
 
+    @Override
     public TempFileDeleter getTempFileDeleter() {
         return session.getDatabase().getTempFileDeleter();
     }
 
+    @Override
     public String getLobCompressionAlgorithm(int type) {
         return session.getDatabase().getLobCompressionAlgorithm(type);
     }
@@ -225,22 +234,27 @@ abstract class ScriptBase extends Prepared implements DataHandler {
         this.compressionAlgorithm = algorithm;
     }
 
+    @Override
     public Object getLobSyncObject() {
         return this;
     }
 
+    @Override
     public SmallLRUCache<String, String[]> getLobFileListCache() {
         return null;
     }
 
-    public LobStorage getLobStorage() {
+    @Override
+    public LobStorageInterface getLobStorage() {
         return null;
     }
 
+    @Override
     public Connection getLobConnection() {
         return null;
     }
 
+    @Override
     public int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
         throw DbException.throwInternalError();
     }

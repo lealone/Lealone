@@ -26,10 +26,10 @@ import java.sql.Types;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.result.SimpleRowSource;
-import org.lealone.store.fs.FileUtils;
 import org.lealone.util.IOUtils;
 import org.lealone.util.JdbcUtils;
 import org.lealone.util.New;

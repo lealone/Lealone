@@ -10,7 +10,9 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.InetAddress;
@@ -20,13 +22,12 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.engine.Data;
 import org.lealone.engine.SessionInterface;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.security.SHA256;
-import org.lealone.store.Data;
-import org.lealone.store.DataReader;
 import org.lealone.util.DataUtils;
 import org.lealone.util.IOUtils;
 import org.lealone.util.MathUtils;
@@ -529,11 +530,11 @@ public class Transfer {
                 long id = readLong();
                 byte[] hmac = readBytes();
                 long precision = readLong();
-                return ValueLobDb.create(Value.BLOB, session.getDataHandler().getLobStorage(), tableId, id, hmac, precision);
+                return ValueLobDb.create(Value.BLOB, session.getDataHandler(), tableId, id, hmac, precision);
             }
             int len = (int) length;
             byte[] small = new byte[len];
-            IOUtils.readFully(in, small, 0, len);
+            IOUtils.readFully(in, small, len);
             int magic = readInt();
             if (magic != LOB_MAGIC) {
                 throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
@@ -547,7 +548,7 @@ public class Transfer {
                 long id = readLong();
                 byte[] hmac = readBytes();
                 long precision = readLong();
-                return ValueLobDb.create(Value.CLOB, session.getDataHandler().getLobStorage(), tableId, id, hmac, precision);
+                return ValueLobDb.create(Value.CLOB, session.getDataHandler(), tableId, id, hmac, precision);
             }
             DataReader reader = new DataReader(in);
             int len = (int) length;
@@ -668,4 +669,83 @@ public class Transfer {
         return hmacData;
     }
 
+    /**
+     * This class is backed by an input stream and supports reading values and
+     * variable size data.
+     */
+    private static class DataReader extends Reader {
+
+        private final InputStream in;
+
+        /**
+         * Create a new data reader.
+         *
+         * @param in the input stream
+         */
+        public DataReader(InputStream in) {
+            this.in = in;
+        }
+
+        /**
+         * Read a byte.
+         *
+         * @return the byte
+         */
+        private byte readByte() throws IOException {
+            int x = in.read();
+            if (x < 0) {
+                throw new FastEOFException();
+            }
+            return (byte) x;
+        }
+
+        /**
+         * Read one character from the input stream.
+         *
+         * @return the character
+         */
+        private char readChar() throws IOException {
+            int x = readByte() & 0xff;
+            if (x < 0x80) {
+                return (char) x;
+            } else if (x >= 0xe0) {
+                return (char) (((x & 0xf) << 12) + ((readByte() & 0x3f) << 6) + (readByte() & 0x3f));
+            } else {
+                return (char) (((x & 0x1f) << 6) + (readByte() & 0x3f));
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            // ignore
+        }
+
+        @Override
+        public int read(char[] buff, int off, int len) throws IOException {
+            int i = 0;
+            try {
+                for (; i < len; i++) {
+                    buff[i] = readChar();
+                }
+                return len;
+            } catch (EOFException e) {
+                return i;
+            }
+        }
+    }
+
+    /**
+     * Constructing such an EOF exception is fast, because the stack trace is
+     * not filled in. If used in a static context, this will also avoid
+     * classloader memory leaks.
+     */
+    private static class FastEOFException extends EOFException {
+
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return null;
+        }
+    }
 }

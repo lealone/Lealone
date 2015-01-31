@@ -24,6 +24,7 @@ import org.lealone.command.Command;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Constants;
 import org.lealone.engine.FrontendSession;
+import org.lealone.engine.LobStorageInterface;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.expression.Parameter;
@@ -31,7 +32,6 @@ import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;
 import org.lealone.result.ResultColumn;
 import org.lealone.result.ResultInterface;
-import org.lealone.store.LobStorage;
 import org.lealone.transaction.TransactionStatusTable;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;
@@ -40,6 +40,7 @@ import org.lealone.util.SmallMap;
 import org.lealone.util.StringUtils;
 import org.lealone.value.Transfer;
 import org.lealone.value.Value;
+import org.lealone.value.ValueLobDb;
 
 /**
  * One server thread is opened per client connection.
@@ -578,28 +579,29 @@ public class TcpServerThread implements Runnable {
         }
         case FrontendSession.LOB_READ: {
             long lobId = transfer.readLong();
-            CachedInputStream in;
             byte[] hmac = transfer.readBytes();
-            transfer.verifyLobMac(hmac, lobId);
-            in = lobs.get(lobId);
+            CachedInputStream in = lobs.get(lobId);
             if (in == null) {
                 in = new CachedInputStream(null);
                 lobs.put(lobId, in);
             }
             long offset = transfer.readLong();
+            int length = transfer.readInt();
+            transfer.verifyLobMac(hmac, lobId);
             if (in.getPos() != offset) {
-                LobStorage lobStorage = session.getDataHandler().getLobStorage();
-                InputStream lobIn = lobStorage.getInputStream(lobId, hmac, -1);
+                LobStorageInterface lobStorage = session.getDataHandler().getLobStorage();
+                // only the lob id is used
+                ValueLobDb lob = ValueLobDb.create(Value.BLOB, null, -1, lobId, hmac, -1);
+                InputStream lobIn = lobStorage.getInputStream(lob, hmac, -1);
                 in = new CachedInputStream(lobIn);
                 lobs.put(lobId, in);
                 lobIn.skip(offset);
             }
-            int length = transfer.readInt();
             // limit the buffer size
             length = Math.min(16 * Constants.IO_BUFFER_SIZE, length);
-            transfer.writeInt(FrontendSession.STATUS_OK);
             byte[] buff = new byte[length];
-            length = IOUtils.readFully(in, buff, 0, length);
+            length = IOUtils.readFully(in, buff, length);
+            transfer.writeInt(FrontendSession.STATUS_OK);
             transfer.writeInt(length);
             transfer.writeBytes(buff, 0, length);
             transfer.flush();

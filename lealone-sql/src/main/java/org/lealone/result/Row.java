@@ -9,7 +9,7 @@ package org.lealone.result;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Constants;
-import org.lealone.store.Data;
+import org.lealone.engine.Data;
 import org.lealone.util.StatementBuilder;
 import org.lealone.value.Value;
 import org.lealone.value.ValueLong;

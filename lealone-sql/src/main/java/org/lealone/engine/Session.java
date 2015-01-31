@@ -38,8 +38,6 @@ import org.lealone.message.TraceSystem;
 import org.lealone.result.ResultInterface;
 import org.lealone.result.Row;
 import org.lealone.result.SubqueryResult;
-import org.lealone.store.DataHandler;
-import org.lealone.store.LobStorage;
 import org.lealone.transaction.TransactionInterface;
 import org.lealone.util.New;
 import org.lealone.util.SmallLRUCache;
@@ -151,12 +149,12 @@ public class Session extends SessionWithState {
             old = variables.remove(name);
         } else {
             // link LOB values, to make sure we have our own object
-            value = value.link(database, LobStorage.TABLE_ID_SESSION_VARIABLE);
+            value = value.link(database, LobStorageInterface.TABLE_ID_SESSION_VARIABLE);
             old = variables.put(name, value);
         }
         if (old != null) {
             // close the old value (in case it is a lob)
-            old.unlink();
+            old.unlink(database);
             old.close();
         }
     }
@@ -520,11 +518,11 @@ public class Session extends SessionWithState {
             }
         }
         if (unlinkLobMap != null && unlinkLobMap.size() > 0) {
-            // need to flush the transaction log, because we can't unlink lobs if the
-            // commit record is not written
+            // need to flush the transaction log, because we can't unlink lobs
+            // if the commit record is not written
             database.flush();
             for (Value v : unlinkLobMap.values()) {
-                v.unlink();
+                v.unlink(database);
                 v.close();
             }
             unlinkLobMap = null;

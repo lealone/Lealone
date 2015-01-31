@@ -41,16 +41,14 @@ import org.lealone.dbobject.table.MetaTable;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableBase;
 import org.lealone.dbobject.table.TableView;
+import org.lealone.fs.FileStore;
+import org.lealone.fs.FileUtils;
 import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.message.TraceSystem;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
-import org.lealone.store.DataHandler;
-import org.lealone.store.FileStore;
-import org.lealone.store.LobStorage;
-import org.lealone.store.fs.FileUtils;
 import org.lealone.util.BitField;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
@@ -159,7 +157,7 @@ public class Database implements DataHandler {
     private int compactMode;
     private SourceCompiler compiler;
     private volatile boolean metaTablesInitialized;
-    private LobStorage lobStorage;
+    private LobStorageInterface lobStorage;
     private int pageSize;
     private int defaultTableType = Table.TYPE_CACHED;
     private DbSettings dbSettings;
@@ -958,11 +956,11 @@ public class Database implements DataHandler {
         }
         // remove all session variables
         if (persistent) {
-            boolean lobStorageIsUsed = infoSchema.findTableOrView(systemSession, LobStorage.LOB_DATA_TABLE) != null;
+            boolean lobStorageIsUsed = infoSchema.findTableOrView(systemSession, LobStorageInterface.LOB_DATA_TABLE) != null;
             if (lobStorageIsUsed) {
                 try {
                     getLobStorage();
-                    lobStorage.removeAllForTable(LobStorage.TABLE_ID_SESSION_VARIABLE);
+                    lobStorage.removeAllForTable(LobStorageInterface.TABLE_ID_SESSION_VARIABLE);
                 } catch (DbException e) {
                     trace.error(e, "close");
                 }
@@ -1947,11 +1945,14 @@ public class Database implements DataHandler {
     }
 
     @Override
-    public LobStorage getLobStorage() {
-        if (lobStorage == null) {
-            lobStorage = new LobStorage(this);
-        }
+    public LobStorageInterface getLobStorage() {
         return lobStorage;
+    }
+
+    public void setLobStorage(LobStorageInterface lobStorage) {
+        if (lobStorage == null) {
+            this.lobStorage = lobStorage;
+        }
     }
 
     @Override

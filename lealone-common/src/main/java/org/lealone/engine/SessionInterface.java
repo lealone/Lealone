@@ -10,7 +10,6 @@ import java.io.Closeable;
 
 import org.lealone.command.CommandInterface;
 import org.lealone.message.Trace;
-import org.lealone.store.DataHandler;
 
 /**
  * A local or remote session. A session represents a database connection.

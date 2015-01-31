@@ -23,14 +23,14 @@ import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.InDoubtTransaction;
 import org.lealone.engine.Session;
-import org.lealone.engine.StorageEngine;
+import org.lealone.engine.StorageEngineBase;
 import org.lealone.engine.StorageEngineManager;
+import org.lealone.fs.FileChannelInputStream;
+import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.MVStoreTool;
-import org.lealone.store.fs.FileChannelInputStream;
-import org.lealone.store.fs.FileUtils;
 import org.lealone.transaction.local.DefaultTransactionEngine;
 import org.lealone.transaction.local.LocalTransaction;
 import org.lealone.transaction.local.TransactionMap;
@@ -41,7 +41,7 @@ import org.lealone.util.New;
 /**
  * A storage engine that internally uses the MVStore.
  */
-public class CBaseStorageEngine implements StorageEngine {
+public class CBaseStorageEngine extends StorageEngineBase {
     public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
 
     //见StorageEngineManager.StorageEngineService中的注释
@@ -64,6 +64,7 @@ public class CBaseStorageEngine implements StorageEngine {
                     store = init(db);
                     stores.put(db.getName(), store);
                     db.setTransactionEngine(store.getTransactionEngine());
+                    db.setLobStorage(new LobStorageMap(db));
                 }
             }
         }

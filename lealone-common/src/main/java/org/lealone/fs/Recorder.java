@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.store.fs;
+package org.lealone.fs;
 
 /**
  * A recorder for the recording file system.

@@ -22,11 +22,10 @@ import java.sql.Types;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.engine.Constants;
+import org.lealone.engine.DataHandler;
 import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.result.SimpleResultSet;
-import org.lealone.store.DataHandler;
-import org.lealone.store.LobStorage;
 import org.lealone.util.DateTimeUtils;
 import org.lealone.util.MathUtils;
 import org.lealone.util.StringUtils;
@@ -756,8 +755,7 @@ public abstract class Value implements Comparable<Value> {
             case BLOB: {
                 switch (getType()) {
                 case BYTES:
-
-                    return LobStorage.createSmallLob(Value.BLOB, getBytesNoCopy());
+                    return ValueLobDb.createSmallLob(Value.BLOB, getBytesNoCopy());
                 }
                 break;
             }
@@ -815,9 +813,9 @@ public abstract class Value implements Comparable<Value> {
             case FLOAT:
                 return ValueFloat.get(Float.parseFloat(s.trim()));
             case CLOB:
-                return LobStorage.createSmallLob(CLOB, s.getBytes(Constants.UTF8));
+                return ValueLobDb.createSmallLob(CLOB, s.getBytes(Constants.UTF8));
             case BLOB:
-                return LobStorage.createSmallLob(BLOB, StringUtils.convertHexToBytes(s.trim()));
+                return ValueLobDb.createSmallLob(BLOB, StringUtils.convertHexToBytes(s.trim()));
             case ARRAY:
                 return ValueArray.get(new Value[] { ValueString.get(s) });
             case RESULT_SET: {
@@ -970,8 +968,10 @@ public abstract class Value implements Comparable<Value> {
     /**
      * Mark any underlying resource as 'not linked to any table'. For values
      * that are kept fully in memory this method has no effect.
+     *
+     * @param handler the data handler
      */
-    public void unlink() {
+    public void unlink(DataHandler handler) {
         // nothing to do
     }
 
@@ -1044,6 +1044,16 @@ public abstract class Value implements Comparable<Value> {
      * @return the new value
      */
     public Value copyToTemp() {
+        return this;
+    }
+
+    /**
+     * Create an independent copy of this value if needed, that will be bound to
+     * a result. If the original row is removed, this copy is still readable.
+     *
+     * @return the value (this for small objects)
+     */
+    public Value copyToResult() {
         return this;
     }
 

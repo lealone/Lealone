@@ -23,8 +23,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.master.HMaster;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
+import org.lealone.fs.FileUtils;
 import org.lealone.hbase.util.HBaseUtils;
-import org.lealone.store.fs.FileUtils;
 
 public class HMasterStarter {
     static Configuration conf = HBaseUtils.getConfiguration();

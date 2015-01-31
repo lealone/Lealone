@@ -23,9 +23,9 @@ import java.util.TreeMap;
 import java.util.Vector;
 import java.util.Map.Entry;
 
+import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
-import org.lealone.store.fs.FileUtils;
 
 /**
  * Sorted properties file.

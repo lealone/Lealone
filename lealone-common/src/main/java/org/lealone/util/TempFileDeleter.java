@@ -12,8 +12,8 @@ import java.lang.ref.ReferenceQueue;
 import java.util.HashMap;
 
 import org.lealone.engine.SysProperties;
+import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
-import org.lealone.store.fs.FileUtils;
 
 /**
  * This class deletes temporary files when they are not used any longer.

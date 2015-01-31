@@ -23,8 +23,8 @@ import java.io.Writer;
 
 import org.lealone.engine.Constants;
 import org.lealone.engine.SysProperties;
+import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
-import org.lealone.store.fs.FileUtils;
 
 /**
  * This utility class contains input/output functions.
@@ -313,21 +313,18 @@ public class IOUtils {
      *
      * @param in the input stream
      * @param buffer the output buffer
-     * @param off the offset in the buffer
      * @param max the number of bytes to read at most
      * @return the number of bytes read, 0 meaning EOF
      */
-    public static int readFully(InputStream in, byte[] buffer, int off, int max) throws IOException {
+    public static int readFully(InputStream in, byte[] buffer, int max) throws IOException {
         try {
-            int len = Math.min(max, buffer.length);
-            int result = 0;
+            int result = 0, len = Math.min(max, buffer.length);
             while (len > 0) {
-                int l = in.read(buffer, off, len);
+                int l = in.read(buffer, result, len);
                 if (l < 0) {
                     break;
                 }
                 result += l;
-                off += l;
                 len -= l;
             }
             return result;

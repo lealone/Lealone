@@ -28,7 +28,6 @@ import org.lealone.engine.SessionInterface;
 import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.result.SimpleResultSet;
-import org.lealone.store.LobStorage;
 import org.lealone.util.New;
 import org.lealone.util.Utils;
 
@@ -457,7 +456,7 @@ public class DataType {
             }
             case Value.CLOB: {
                 if (session == null) {
-                    v = LobStorage.createSmallLob(Value.CLOB, rs.getString(columnIndex).getBytes(Constants.UTF8));
+                    v = ValueLobDb.createSmallLob(Value.CLOB, rs.getString(columnIndex).getBytes(Constants.UTF8));
                 } else {
                     Reader in = rs.getCharacterStream(columnIndex);
                     if (in == null) {
@@ -470,7 +469,7 @@ public class DataType {
             }
             case Value.BLOB: {
                 if (session == null) {
-                    v = LobStorage.createSmallLob(Value.BLOB, rs.getBytes(columnIndex));
+                    v = ValueLobDb.createSmallLob(Value.BLOB, rs.getBytes(columnIndex));
                 } else {
                     InputStream in = rs.getBinaryStream(columnIndex);
                     v = (in == null) ? (Value) ValueNull.INSTANCE : session.getDataHandler().getLobStorage().createBlob(in, -1);

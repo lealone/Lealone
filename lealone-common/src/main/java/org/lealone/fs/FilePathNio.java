@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.store.fs;
+package org.lealone.fs;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -13,8 +13,8 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.NonWritableChannelException;
 
-import org.lealone.store.fs.FileBase;
-import org.lealone.store.fs.FilePathWrapper;
+import org.lealone.fs.FileBase;
+import org.lealone.fs.FilePathWrapper;
 
 /**
  * This file system stores files on disk and uses java.nio to access the files.

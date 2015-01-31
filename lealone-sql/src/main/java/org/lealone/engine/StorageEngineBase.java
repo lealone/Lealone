@@ -17,5 +17,11 @@
  */
 package org.lealone.engine;
 
+import org.lealone.message.DbException;
+
 public abstract class StorageEngineBase implements StorageEngine {
+    @Override
+    public LobStorageInterface getLobStorage() {
+        throw DbException.getUnsupportedException("getLobStorage()");
+    }
 }

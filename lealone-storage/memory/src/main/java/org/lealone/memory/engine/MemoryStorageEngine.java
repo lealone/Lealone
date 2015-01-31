@@ -19,11 +19,11 @@ package org.lealone.memory.engine;
 
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.Table;
-import org.lealone.engine.StorageEngine;
+import org.lealone.engine.StorageEngineBase;
 import org.lealone.engine.StorageEngineManager;
 import org.lealone.memory.dbobject.table.SkipListTable;
 
-public class MemoryStorageEngine implements StorageEngine {
+public class MemoryStorageEngine extends StorageEngineBase {
     public static final String NAME = "Memory";
 
     //见StorageEngineManager.StorageEngineService中的注释

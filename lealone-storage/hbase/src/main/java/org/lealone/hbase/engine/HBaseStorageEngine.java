@@ -20,11 +20,11 @@ package org.lealone.hbase.engine;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Constants;
-import org.lealone.engine.StorageEngine;
+import org.lealone.engine.StorageEngineBase;
 import org.lealone.engine.StorageEngineManager;
 import org.lealone.hbase.dbobject.table.HBaseTable;
 
-public class HBaseStorageEngine implements StorageEngine {
+public class HBaseStorageEngine extends StorageEngineBase {
     public static final String NAME = "HBase";
 
     //见StorageEngineManager.StorageEngineService中的注释

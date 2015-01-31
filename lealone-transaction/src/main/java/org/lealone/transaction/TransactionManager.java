@@ -24,10 +24,10 @@ import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.engine.SystemDatabase;
+import org.lealone.fs.FileUtils;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.MVStoreCache;
 import org.lealone.mvstore.MVStoreTool;
-import org.lealone.store.fs.FileUtils;
 
 public class TransactionManager {
     private static MVStore store;

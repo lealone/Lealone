@@ -4,10 +4,11 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.store;
+package org.lealone.engine;
 
 import java.sql.Connection;
 
+import org.lealone.fs.FileStore;
 import org.lealone.message.DbException;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.util.TempFileDeleter;
@@ -91,7 +92,7 @@ public interface DataHandler {
      *
      * @return the lob storage mechanism
      */
-    LobStorage getLobStorage();
+    LobStorageInterface getLobStorage();
 
     /**
      * Get a database connection to be used for LOB access.

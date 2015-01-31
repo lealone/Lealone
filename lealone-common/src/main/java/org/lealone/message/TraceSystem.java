@@ -17,7 +17,7 @@ import java.util.HashMap;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.engine.Constants;
-import org.lealone.store.fs.FileUtils;
+import org.lealone.fs.FileUtils;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;
 

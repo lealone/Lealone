@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.store.fs;
+package org.lealone.fs;
 
 import java.io.IOException;
 import java.io.InputStream;

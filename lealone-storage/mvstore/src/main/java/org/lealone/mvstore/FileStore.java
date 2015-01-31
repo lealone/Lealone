@@ -11,11 +11,11 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 
+import org.lealone.fs.FilePath;
+import org.lealone.fs.FilePathDisk;
+import org.lealone.fs.FilePathEncrypt;
+import org.lealone.fs.FilePathNio;
 import org.lealone.mvstore.cache.FilePathCache;
-import org.lealone.store.fs.FilePath;
-import org.lealone.store.fs.FilePathDisk;
-import org.lealone.store.fs.FilePathEncrypt;
-import org.lealone.store.fs.FilePathNio;
 
 /**
  * The default storage mechanism of the MVStore. This implementation persists
