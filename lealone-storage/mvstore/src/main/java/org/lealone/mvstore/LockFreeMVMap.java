@@ -85,7 +85,7 @@ public class LockFreeMVMap<K, V> extends MVMap<K, V> implements Callable<Void> {
     @SuppressWarnings("unchecked")
     @Override
     public V remove(Object key) {
-        //按旧到新的次序找，B-Tree中最旧，其实是snapshot，最新是current
+        //按旧到新的次序找，B-Tree中最旧，其次是snapshot，最新是current
         V old = super.get(key);
         if (old != null)
             current.put((K) key, new ValueHolder<V>(null));

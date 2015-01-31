@@ -67,13 +67,13 @@ public abstract class FilePath {
 
     private static void registerDefaultProviders() {
         if (providers == null || defaultProvider == null) {
+            //不使用硬编码包名字符串的方式，重命名包名时常常忘记
+            String packageName = FilePath.class.getPackage().getName() + ".";
             Map<String, FilePath> map = Collections.synchronizedMap(New.<String, FilePath> hashMap());
-            for (String c : new String[] { "org.h2.store.fs.FilePathDisk", "org.h2.store.fs.FilePathMem",
-                    "org.h2.store.fs.FilePathMemLZF", "org.h2.store.fs.FilePathNioMem", "org.h2.store.fs.FilePathNioMemLZF",
-                    "org.h2.store.fs.FilePathSplit", "org.h2.store.fs.FilePathNio", "org.h2.store.fs.FilePathNioMapped",
-                    "org.h2.store.fs.FilePathZip" }) {
+            for (String c : new String[] { "FilePathDisk", "FilePathMem", "FilePathMemLZF", "FilePathNioMem",
+                    "FilePathNioMemLZF", "FilePathSplit", "FilePathNio", "FilePathNioMapped", "FilePathZip" }) {
                 try {
-                    FilePath p = (FilePath) Class.forName(c).newInstance();
+                    FilePath p = (FilePath) Class.forName(packageName + c).newInstance();
                     map.put(p.getScheme(), p);
                     if (defaultProvider == null) {
                         defaultProvider = p;

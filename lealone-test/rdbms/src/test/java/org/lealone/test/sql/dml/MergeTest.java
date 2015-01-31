@@ -70,11 +70,11 @@ public class MergeTest extends TestBase {
             stmt.executeUpdate(sql);
             Assert.fail(sql);
         } catch (Exception e) {
-            //org.h2.jdbc.JdbcSQLException: Column "ID" contains null values; 
+            //org.lealone.message.JdbcSQLException: Column "ID" contains null values; 
             System.out.println(e.getMessage());
         }
 
-        //列必须一样多，否则:org.h2.jdbc.JdbcSQLException: Column count does not match;
+        //列必须一样多，否则:org.lealone.message.JdbcSQLException: Column count does not match;
         sql = "MERGE INTO MergeTest(name) KEY(id) (SELECT * FROM tmpSelectTest)";
         try {
             stmt.executeUpdate(sql);
