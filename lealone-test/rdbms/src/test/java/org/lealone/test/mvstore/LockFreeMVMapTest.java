@@ -65,8 +65,8 @@ public class LockFreeMVMapTest {
 
     void openMap() {
         LockFreeMVMap.Builder<String, String> builder = new LockFreeMVMap.Builder<String, String>();
-        builder.keyType(new StringDataType());
-        builder.valueType(new StringDataType());
+        builder.keyType(StringDataType.INSTANCE);
+        builder.valueType(StringDataType.INSTANCE);
 
         map = store.openMap("test", builder);
     }

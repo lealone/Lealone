@@ -17,6 +17,10 @@ public class StringDataType implements DataType {
 
     public static final StringDataType INSTANCE = new StringDataType();
 
+    protected StringDataType() {
+        //只允许子类继承
+    }
+
     @Override
     public int compare(Object a, Object b) {
         return a.toString().compareTo(b.toString());
@@ -55,4 +59,3 @@ public class StringDataType implements DataType {
     }
 
 }
-
