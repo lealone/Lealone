@@ -8,7 +8,6 @@ package org.lealone.engine;
 
 import java.sql.Connection;
 
-import org.lealone.fs.FileStore;
 import org.lealone.message.DbException;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.util.TempFileDeleter;

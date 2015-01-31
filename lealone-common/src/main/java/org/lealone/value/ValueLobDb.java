@@ -16,11 +16,11 @@ import java.sql.SQLException;
 
 import org.lealone.engine.Constants;
 import org.lealone.engine.DataHandler;
+import org.lealone.engine.FileStore;
+import org.lealone.engine.FileStoreInputStream;
+import org.lealone.engine.FileStoreOutputStream;
 import org.lealone.engine.LobStorageInterface;
 import org.lealone.engine.SysProperties;
-import org.lealone.fs.FileStore;
-import org.lealone.fs.FileStoreInputStream;
-import org.lealone.fs.FileStoreOutputStream;
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.util.DataUtils;

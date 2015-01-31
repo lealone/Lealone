@@ -16,7 +16,6 @@ import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendBatchCommand;
 import org.lealone.command.FrontendCommand;
-import org.lealone.fs.FileStore;
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;

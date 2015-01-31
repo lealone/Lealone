@@ -41,7 +41,6 @@ import org.lealone.dbobject.table.MetaTable;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableBase;
 import org.lealone.dbobject.table.TableView;
-import org.lealone.fs.FileStore;
 import org.lealone.fs.FileUtils;
 import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
