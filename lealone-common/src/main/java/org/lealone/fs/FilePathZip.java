@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.fs;
@@ -58,7 +57,11 @@ public class FilePathZip extends FilePath {
                 return true;
             }
             ZipFile file = openZipFile();
-            return file.getEntry(entryName) != null;
+            try {
+                return file.getEntry(entryName) != null;
+            } finally {
+                file.close();
+            }
         } catch (IOException e) {
             return false;
         }
@@ -94,19 +97,23 @@ public class FilePathZip extends FilePath {
                 return true;
             }
             ZipFile file = openZipFile();
-            Enumeration<? extends ZipEntry> en = file.entries();
-            while (en.hasMoreElements()) {
-                ZipEntry entry = en.nextElement();
-                String n = entry.getName();
-                if (n.equals(entryName)) {
-                    return entry.isDirectory();
-                } else if (n.startsWith(entryName)) {
-                    if (n.length() == entryName.length() + 1) {
-                        if (n.equals(entryName + "/")) {
-                            return true;
+            try {
+                Enumeration<? extends ZipEntry> en = file.entries();
+                while (en.hasMoreElements()) {
+                    ZipEntry entry = en.nextElement();
+                    String n = entry.getName();
+                    if (n.equals(entryName)) {
+                        return entry.isDirectory();
+                    } else if (n.startsWith(entryName)) {
+                        if (n.length() == entryName.length() + 1) {
+                            if (n.equals(entryName + "/")) {
+                                return true;
+                            }
                         }
                     }
                 }
+            } finally {
+                file.close();
             }
             return false;
         } catch (IOException e) {
@@ -128,8 +135,12 @@ public class FilePathZip extends FilePath {
     public long size() {
         try {
             ZipFile file = openZipFile();
-            ZipEntry entry = file.getEntry(getEntryName());
-            return entry == null ? 0 : entry.getSize();
+            try {
+                ZipEntry entry = file.getEntry(getEntryName());
+                return entry == null ? 0 : entry.getSize();
+            } finally {
+                file.close();
+            }
         } catch (IOException e) {
             return 0;
         }
@@ -147,22 +158,26 @@ public class FilePathZip extends FilePath {
                 path += "/";
             }
             ZipFile file = openZipFile();
-            String dirName = getEntryName();
-            String prefix = path.substring(0, path.length() - dirName.length());
-            Enumeration<? extends ZipEntry> en = file.entries();
-            while (en.hasMoreElements()) {
-                ZipEntry entry = en.nextElement();
-                String name = entry.getName();
-                if (!name.startsWith(dirName)) {
-                    continue;
+            try {
+                String dirName = getEntryName();
+                String prefix = path.substring(0, path.length() - dirName.length());
+                Enumeration<? extends ZipEntry> en = file.entries();
+                while (en.hasMoreElements()) {
+                    ZipEntry entry = en.nextElement();
+                    String name = entry.getName();
+                    if (!name.startsWith(dirName)) {
+                        continue;
+                    }
+                    if (name.length() <= dirName.length()) {
+                        continue;
+                    }
+                    int idx = name.indexOf('/', dirName.length());
+                    if (idx < 0 || idx >= name.length() - 1) {
+                        list.add(getPath(prefix + name));
+                    }
                 }
-                if (name.length() <= dirName.length()) {
-                    continue;
-                }
-                int idx = name.indexOf('/', dirName.length());
-                if (idx < 0 || idx >= name.length() - 1) {
-                    list.add(getPath(prefix + name));
-                }
+            } finally {
+                file.close();
             }
             return list;
         } catch (IOException e) {
@@ -180,6 +195,7 @@ public class FilePathZip extends FilePath {
         ZipFile file = openZipFile();
         ZipEntry entry = file.getEntry(getEntryName());
         if (entry == null) {
+            file.close();
             throw new FileNotFoundException(name);
         }
         return new FileZip(file, entry);
@@ -282,7 +298,7 @@ class FileZip extends FileBase {
     @Override
     public int read(ByteBuffer dst) throws IOException {
         seek();
-        int len = in.read(dst.array(), dst.position(), dst.remaining());
+        int len = in.read(dst.array(), dst.arrayOffset() + dst.position(), dst.remaining());
         if (len > 0) {
             dst.position(dst.position() + len);
             pos += len;
@@ -362,6 +378,15 @@ class FileZip extends FileBase {
             };
         }
         return null;
+    }
+
+    @Override
+    protected void implCloseChannel() throws IOException {
+        if (in != null) {
+            in.close();
+            in = null;
+        }
+        file.close();
     }
 
 }

@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.fs;
@@ -13,19 +12,18 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.NonWritableChannelException;
 
-import org.lealone.fs.FileBase;
-import org.lealone.fs.FilePathWrapper;
-
 /**
  * This file system stores files on disk and uses java.nio to access the files.
  * This class uses FileChannel.
  */
 public class FilePathNio extends FilePathWrapper {
 
+    @Override
     public FileChannel open(String mode) throws IOException {
         return new FileNio(name.substring(getScheme().length() + 1), mode);
     }
 
+    @Override
     public String getScheme() {
         return "nio";
     }
@@ -45,53 +43,70 @@ class FileNio extends FileBase {
         channel = new RandomAccessFile(fileName, mode).getChannel();
     }
 
+    @Override
     public void implCloseChannel() throws IOException {
         channel.close();
     }
 
+    @Override
     public long position() throws IOException {
         return channel.position();
     }
 
+    @Override
     public long size() throws IOException {
         return channel.size();
     }
 
+    @Override
     public int read(ByteBuffer dst) throws IOException {
         return channel.read(dst);
     }
 
+    @Override
     public FileChannel position(long pos) throws IOException {
         channel.position(pos);
         return this;
     }
 
+    @Override
     public int read(ByteBuffer dst, long position) throws IOException {
         return channel.read(dst, position);
     }
 
+    @Override
     public int write(ByteBuffer src, long position) throws IOException {
         return channel.write(src, position);
     }
 
+    @Override
     public FileChannel truncate(long newLength) throws IOException {
-        try {
+        long size = channel.size();
+        if (newLength < size) {
+            long pos = channel.position();
             channel.truncate(newLength);
-            if (channel.position() > newLength) {
-                // looks like a bug in this FileChannel implementation, as the
-                // documentation says the position needs to be changed
+            long newPos = channel.position();
+            if (pos < newLength) {
+                // position should stay
+                // in theory, this should not be needed
+                if (newPos != pos) {
+                    channel.position(pos);
+                }
+            } else if (newPos > newLength) {
+                // looks like a bug in this FileChannel implementation, as
+                // the documentation says the position needs to be changed
                 channel.position(newLength);
             }
-            return this;
-        } catch (NonWritableChannelException e) {
-            throw new IOException("read only");
         }
+        return this;
     }
 
+    @Override
     public void force(boolean metaData) throws IOException {
         channel.force(metaData);
     }
 
+    @Override
     public int write(ByteBuffer src) throws IOException {
         try {
             return channel.write(src);
@@ -100,10 +115,12 @@ class FileNio extends FileBase {
         }
     }
 
+    @Override
     public synchronized FileLock tryLock(long position, long size, boolean shared) throws IOException {
         return channel.tryLock(position, size, shared);
     }
 
+    @Override
     public String toString() {
         return "nio:" + name;
     }

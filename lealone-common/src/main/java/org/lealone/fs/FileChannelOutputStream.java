@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.fs;
@@ -35,19 +34,23 @@ public class FileChannelOutputStream extends OutputStream {
         }
     }
 
+    @Override
     public void write(int b) throws IOException {
         buffer[0] = (byte) b;
         FileUtils.writeFully(channel, ByteBuffer.wrap(buffer));
     }
 
+    @Override
     public void write(byte[] b) throws IOException {
         FileUtils.writeFully(channel, ByteBuffer.wrap(b));
     }
 
+    @Override
     public void write(byte[] b, int off, int len) throws IOException {
         FileUtils.writeFully(channel, ByteBuffer.wrap(b, off, len));
     }
 
+    @Override
     public void close() throws IOException {
         channel.close();
     }

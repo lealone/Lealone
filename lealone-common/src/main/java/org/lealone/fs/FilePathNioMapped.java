@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.fs;
@@ -16,9 +15,9 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.NonWritableChannelException;
 
 import org.lealone.engine.SysProperties;
-import org.lealone.fs.FileBase;
 
 /**
  * This file system stores files on disk and uses java.nio to access the files.
@@ -26,10 +25,12 @@ import org.lealone.fs.FileBase;
  */
 public class FilePathNioMapped extends FilePathNio {
 
+    @Override
     public FileChannel open(String mode) throws IOException {
         return new FileNioMapped(name.substring(getScheme().length() + 1), mode);
     }
 
+    @Override
     public String getScheme() {
         return "nioMapped";
     }
@@ -138,6 +139,7 @@ class FileNioMapped extends FileBase {
         }
     }
 
+    @Override
     public void implCloseChannel() throws IOException {
         if (file != null) {
             unMap();
@@ -146,18 +148,22 @@ class FileNioMapped extends FileBase {
         }
     }
 
+    @Override
     public long position() {
         return pos;
     }
 
+    @Override
     public String toString() {
         return "nioMapped:" + name;
     }
 
+    @Override
     public synchronized long size() throws IOException {
         return fileLength;
     }
 
+    @Override
     public synchronized int read(ByteBuffer dst) throws IOException {
         try {
             int len = dst.remaining();
@@ -169,7 +175,7 @@ class FileNioMapped extends FileBase {
                 return -1;
             }
             mapped.position(pos);
-            mapped.get(dst.array(), dst.position(), len);
+            mapped.get(dst.array(), dst.arrayOffset() + dst.position(), len);
             dst.position(dst.position() + len);
             pos += len;
             return len;
@@ -184,13 +190,19 @@ class FileNioMapped extends FileBase {
         }
     }
 
+    @Override
     public FileChannel position(long pos) throws IOException {
         checkFileSizeLimit(pos);
         this.pos = (int) pos;
         return this;
     }
 
+    @Override
     public synchronized FileChannel truncate(long newLength) throws IOException {
+        // compatibility with JDK FileChannel#truncate
+        if (mode == MapMode.READ_ONLY) {
+            throw new NonWritableChannelException();
+        }
         if (newLength < size()) {
             setFileLength(newLength);
         }
@@ -216,11 +228,13 @@ class FileNioMapped extends FileBase {
         pos = (int) Math.min(newLength, oldPos);
     }
 
+    @Override
     public void force(boolean metaData) throws IOException {
         mapped.force();
         file.getFD().sync();
     }
 
+    @Override
     public synchronized int write(ByteBuffer src) throws IOException {
         int len = src.remaining();
         // check if need to expand file
@@ -233,6 +247,7 @@ class FileNioMapped extends FileBase {
         return len;
     }
 
+    @Override
     public synchronized FileLock tryLock(long position, long size, boolean shared) throws IOException {
         return file.getChannel().tryLock(position, size, shared);
     }

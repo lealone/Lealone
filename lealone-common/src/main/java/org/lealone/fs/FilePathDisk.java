@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.fs;
@@ -18,6 +17,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.NonWritableChannelException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +26,6 @@ import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;
-import org.lealone.util.Utils;
 
 /**
  * This file system stores files on disk.
@@ -253,16 +252,14 @@ public class FilePathDisk extends FilePath {
 
     @Override
     public void createDirectory() {
-        File f = new File(name);
-        if (f.exists()) {
-            if (f.isDirectory()) {
-                return;
-            }
-            throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name + " (a file with this name already exists)");
-        }
         File dir = new File(name);
         for (int i = 0; i < SysProperties.MAX_FILE_RETRY; i++) {
-            if ((dir.exists() && dir.isDirectory()) || dir.mkdir()) {
+            if (dir.exists()) {
+                if (dir.isDirectory()) {
+                    return;
+                }
+                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name + " (a file with this name already exists)");
+            } else if (dir.mkdir()) {
                 return;
             }
             wait(i);
@@ -291,8 +288,9 @@ public class FilePathDisk extends FilePath {
     public InputStream newInputStream() throws IOException {
         int index = name.indexOf(':');
         if (index > 1 && index < 20) {
-            // if the ':' is in position 1, a windows file access is assumed: C:.. or D:
-            // if the ':' is not at the beginning, assume its a file name with a colon
+            // if the ':' is in position 1, a windows file access is assumed:
+            // C:.. or D:, and if the ':' is not at the beginning, assume its a
+            // file name with a colon
             if (name.startsWith(CLASSPATH_PREFIX)) {
                 String fileName = name.substring(CLASSPATH_PREFIX.length());
                 if (!fileName.startsWith("/")) {
@@ -318,8 +316,8 @@ public class FilePathDisk extends FilePath {
     }
 
     /**
-     * Call the garbage collection and run finalization. This close all files that
-     * were not closed, and are no longer referenced.
+     * Call the garbage collection and run finalization. This close all files
+     * that were not closed, and are no longer referenced.
      */
     static void freeMemoryAndFinalize() {
         IOUtils.trace("freeMemoryAndFinalize", null, null);
@@ -364,7 +362,7 @@ public class FilePathDisk extends FilePath {
         String prefix = new File(fileName).getName();
         File dir;
         if (inTempDir) {
-            dir = new File(Utils.getProperty("java.io.tmpdir", "."));
+            dir = new File(System.getProperty("java.io.tmpdir", "."));
         } else {
             dir = new File(fileName).getAbsoluteFile().getParentFile();
         }
@@ -398,10 +396,12 @@ class FileDisk extends FileBase {
 
     private final RandomAccessFile file;
     private final String name;
+    private final boolean readOnly;
 
     FileDisk(String fileName, String mode) throws FileNotFoundException {
         this.file = new RandomAccessFile(fileName, mode);
         this.name = fileName;
+        this.readOnly = mode.equals("r");
     }
 
     @Override
@@ -422,6 +422,10 @@ class FileDisk extends FileBase {
 
     @Override
     public FileChannel truncate(long newLength) throws IOException {
+        // compatibility with JDK FileChannel#truncate
+        if (readOnly) {
+            throw new NonWritableChannelException();
+        }
         if (newLength < file.length()) {
             file.setLength(newLength);
         }
@@ -450,7 +454,7 @@ class FileDisk extends FileBase {
 
     @Override
     public int read(ByteBuffer dst) throws IOException {
-        int len = file.read(dst.array(), dst.position(), dst.remaining());
+        int len = file.read(dst.array(), dst.arrayOffset() + dst.position(), dst.remaining());
         if (len > 0) {
             dst.position(dst.position() + len);
         }
@@ -466,7 +470,7 @@ class FileDisk extends FileBase {
     @Override
     public int write(ByteBuffer src) throws IOException {
         int len = src.remaining();
-        file.write(src.array(), src.position(), len);
+        file.write(src.array(), src.arrayOffset() + src.position(), len);
         src.position(src.position() + len);
         return len;
     }

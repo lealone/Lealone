@@ -28,14 +28,13 @@ import org.lealone.util.New;
  * This file system keeps files fully in memory. There is an option to compress
  * file blocks to safe memory.
  */
-public class FilePathMem extends FilePath {
+public class FilePathNioMem extends FilePath {
 
-    private static final TreeMap<String, FileMemData> MEMORY_FILES = new TreeMap<String, FileMemData>();
-    private static final FileMemData DIRECTORY = new FileMemData("", false);
+    private static final TreeMap<String, FileNioMemData> MEMORY_FILES = new TreeMap<String, FileNioMemData>();
 
     @Override
-    public FilePathMem getPath(String path) {
-        FilePathMem p = new FilePathMem();
+    public FilePathNioMem getPath(String path) {
+        FilePathNioMem p = new FilePathNioMem();
         p.name = getCanonicalPath(path);
         return p;
     }
@@ -48,10 +47,10 @@ public class FilePathMem extends FilePath {
     @Override
     public void moveTo(FilePath newName, boolean atomicReplace) {
         synchronized (MEMORY_FILES) {
-            if (!atomicReplace && !newName.name.equals(name) && MEMORY_FILES.containsKey(newName.name)) {
+            if (!atomicReplace && !name.equals(newName.name) && MEMORY_FILES.containsKey(newName.name)) {
                 throw DbException.get(ErrorCode.FILE_RENAME_FAILED_2, new String[] { name, newName + " (exists)" });
             }
-            FileMemData f = getMemoryFile();
+            FileNioMemData f = getMemoryFile();
             f.setName(newName.name);
             MEMORY_FILES.remove(name);
             MEMORY_FILES.put(newName.name, f);
@@ -95,9 +94,7 @@ public class FilePathMem extends FilePath {
         synchronized (MEMORY_FILES) {
             for (String n : MEMORY_FILES.tailMap(name).keySet()) {
                 if (n.startsWith(name)) {
-                    if (!n.equals(name) && n.indexOf('/', name.length() + 1) < 0) {
-                        list.add(getPath(n));
-                    }
+                    list.add(getPath(n));
                 } else {
                     break;
                 }
@@ -117,7 +114,7 @@ public class FilePathMem extends FilePath {
     }
 
     @Override
-    public FilePathMem getParent() {
+    public FilePathNioMem getParent() {
         int idx = name.lastIndexOf('/');
         return idx < 0 ? null : getPath(name.substring(0, idx));
     }
@@ -127,9 +124,10 @@ public class FilePathMem extends FilePath {
         if (isRoot()) {
             return true;
         }
+        // TODO in memory file system currently
+        // does not really support directories
         synchronized (MEMORY_FILES) {
-            FileMemData d = MEMORY_FILES.get(name);
-            return d == DIRECTORY;
+            return MEMORY_FILES.get(name) == null;
         }
     }
 
@@ -140,7 +138,7 @@ public class FilePathMem extends FilePath {
     }
 
     @Override
-    public FilePathMem toRealPath() {
+    public FilePathNioMem toRealPath() {
         return this;
     }
 
@@ -151,42 +149,37 @@ public class FilePathMem extends FilePath {
 
     @Override
     public void createDirectory() {
-        if (exists()) {
+        if (exists() && isDirectory()) {
             throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name + " (a file with this name already exists)");
         }
-        synchronized (MEMORY_FILES) {
-            MEMORY_FILES.put(name, DIRECTORY);
-        }
+        // TODO directories are not really supported
     }
 
     @Override
     public OutputStream newOutputStream(boolean append) throws IOException {
-        FileMemData obj = getMemoryFile();
-        FileMem m = new FileMem(obj, false);
+        FileNioMemData obj = getMemoryFile();
+        FileNioMem m = new FileNioMem(obj, false);
         return new FileChannelOutputStream(m, append);
     }
 
     @Override
     public InputStream newInputStream() {
-        FileMemData obj = getMemoryFile();
-        FileMem m = new FileMem(obj, true);
+        FileNioMemData obj = getMemoryFile();
+        FileNioMem m = new FileNioMem(obj, true);
         return new FileChannelInputStream(m, true);
     }
 
     @Override
     public FileChannel open(String mode) {
-        FileMemData obj = getMemoryFile();
-        return new FileMem(obj, "r".equals(mode));
+        FileNioMemData obj = getMemoryFile();
+        return new FileNioMem(obj, "r".equals(mode));
     }
 
-    private FileMemData getMemoryFile() {
+    private FileNioMemData getMemoryFile() {
         synchronized (MEMORY_FILES) {
-            FileMemData m = MEMORY_FILES.get(name);
-            if (m == DIRECTORY) {
-                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name + " (a directory with this name already exists)");
-            }
+            FileNioMemData m = MEMORY_FILES.get(name);
             if (m == null) {
-                m = new FileMemData(name, compressed());
+                m = new FileNioMemData(name, compressed());
                 MEMORY_FILES.put(name, m);
             }
             return m;
@@ -194,7 +187,7 @@ public class FilePathMem extends FilePath {
     }
 
     private boolean isRoot() {
-        return name.equals(getScheme() + ":");
+        return name.equals(getScheme());
     }
 
     private static String getCanonicalPath(String fileName) {
@@ -208,7 +201,7 @@ public class FilePathMem extends FilePath {
 
     @Override
     public String getScheme() {
-        return "memFS";
+        return "nioMemFS";
     }
 
     /**
@@ -225,7 +218,7 @@ public class FilePathMem extends FilePath {
 /**
  * A memory file system that compresses blocks to conserve memory.
  */
-class FilePathMemLZF extends FilePathMem {
+class FilePathNioMemLZF extends FilePathNioMem {
 
     @Override
     boolean compressed() {
@@ -234,7 +227,7 @@ class FilePathMemLZF extends FilePathMem {
 
     @Override
     public String getScheme() {
-        return "memLZF";
+        return "nioMemLZF";
     }
 
 }
@@ -242,17 +235,17 @@ class FilePathMemLZF extends FilePathMem {
 /**
  * This class represents an in-memory file.
  */
-class FileMem extends FileBase {
+class FileNioMem extends FileBase {
 
     /**
      * The file data.
      */
-    final FileMemData data;
+    final FileNioMemData data;
 
     private final boolean readOnly;
     private long pos;
 
-    FileMem(FileMemData data, boolean readOnly) {
+    FileNioMem(FileNioMemData data, boolean readOnly) {
         this.data = data;
         this.readOnly = readOnly;
     }
@@ -289,7 +282,8 @@ class FileMem extends FileBase {
             return 0;
         }
         data.touch(readOnly);
-        pos = data.readWrite(pos, src.array(), src.arrayOffset() + src.position(), len, true);
+        // offset is 0 because we start writing from src.position()
+        pos = data.readWrite(pos, src, 0, len, true);
         src.position(src.position() + len);
         return len;
     }
@@ -300,7 +294,7 @@ class FileMem extends FileBase {
         if (len == 0) {
             return 0;
         }
-        long newPos = data.readWrite(pos, dst.array(), dst.arrayOffset() + dst.position(), len, false);
+        long newPos = data.readWrite(pos, dst, dst.position(), len, false);
         len = (int) (newPos - pos);
         if (len <= 0) {
             return -1;
@@ -364,7 +358,7 @@ class FileMem extends FileBase {
  * This class contains the data of an in-memory random access file.
  * Data compression using the LZF algorithm is supported as well.
  */
-class FileMemData {
+class FileNioMemData {
 
     private static final int CACHE_SIZE = 8;
     private static final int BLOCK_SIZE_SHIFT = 10;
@@ -372,14 +366,14 @@ class FileMemData {
     private static final int BLOCK_SIZE_MASK = BLOCK_SIZE - 1;
     private static final CompressLZF LZF = new CompressLZF();
     private static final byte[] BUFFER = new byte[BLOCK_SIZE * 2];
-    private static final byte[] COMPRESSED_EMPTY_BLOCK;
+    private static final ByteBuffer COMPRESSED_EMPTY_BLOCK;
 
     private static final Cache<CompressItem, CompressItem> COMPRESS_LATER = new Cache<CompressItem, CompressItem>(CACHE_SIZE);
 
     private String name;
     private final boolean compress;
     private long length;
-    private byte[][] data;
+    private ByteBuffer[] data;
     private long lastModified;
     private boolean isReadOnly;
     private boolean isLockedExclusive;
@@ -388,14 +382,14 @@ class FileMemData {
     static {
         byte[] n = new byte[BLOCK_SIZE];
         int len = LZF.compress(n, BLOCK_SIZE, BUFFER, 0);
-        COMPRESSED_EMPTY_BLOCK = new byte[len];
-        System.arraycopy(BUFFER, 0, COMPRESSED_EMPTY_BLOCK, 0, len);
+        COMPRESSED_EMPTY_BLOCK = ByteBuffer.allocateDirect(len);
+        COMPRESSED_EMPTY_BLOCK.put(BUFFER, 0, len);
     }
 
-    FileMemData(String name, boolean compress) {
+    FileNioMemData(String name, boolean compress) {
         this.name = name;
         this.compress = compress;
-        data = new byte[0][];
+        data = new ByteBuffer[0];
         lastModified = System.currentTimeMillis();
     }
 
@@ -468,7 +462,7 @@ class FileMemData {
         /**
          * The file data.
          */
-        byte[][] data;
+        ByteBuffer[] data;
 
         /**
          * The page to compress.
@@ -491,7 +485,7 @@ class FileMemData {
 
     }
 
-    private static void compressLater(byte[][] data, int page) {
+    private static void compressLater(ByteBuffer[] data, int page) {
         CompressItem c = new CompressItem();
         c.data = data;
         c.page = page;
@@ -500,15 +494,15 @@ class FileMemData {
         }
     }
 
-    private static void expand(byte[][] data, int page) {
-        byte[] d = data[page];
-        if (d.length == BLOCK_SIZE) {
+    private static void expand(ByteBuffer[] data, int page) {
+        ByteBuffer d = data[page];
+        if (d.capacity() == BLOCK_SIZE) {
             return;
         }
-        byte[] out = new byte[BLOCK_SIZE];
+        ByteBuffer out = ByteBuffer.allocateDirect(BLOCK_SIZE);
         if (d != COMPRESSED_EMPTY_BLOCK) {
             synchronized (LZF) {
-                LZF.expand(d, 0, d.length, out, 0, BLOCK_SIZE);
+                CompressLZF.expand(d, out);
             }
         }
         data[page] = out;
@@ -520,15 +514,13 @@ class FileMemData {
      * @param data the page array
      * @param page which page to compress
      */
-    static void compress(byte[][] data, int page) {
-        byte[] d = data[page];
+    static void compress(ByteBuffer[] data, int page) {
+        ByteBuffer d = data[page];
         synchronized (LZF) {
-            int len = LZF.compress(d, BLOCK_SIZE, BUFFER, 0);
-            if (len <= BLOCK_SIZE) {
-                d = new byte[len];
-                System.arraycopy(BUFFER, 0, d, 0, len);
-                data[page] = d;
-            }
+            int len = LZF.compress(d, BUFFER, 0);
+            d = ByteBuffer.allocateDirect(len);
+            d.put(BUFFER, 0, len);
+            data[page] = d;
         }
     }
 
@@ -564,9 +556,9 @@ class FileMemData {
         if (end != newLength) {
             int lastPage = (int) (newLength >>> BLOCK_SIZE_SHIFT);
             expand(data, lastPage);
-            byte[] d = data[lastPage];
+            ByteBuffer d = data[lastPage];
             for (int i = (int) (newLength & BLOCK_SIZE_MASK); i < BLOCK_SIZE; i++) {
-                d[i] = 0;
+                d.put(i, (byte) 0);
             }
             if (compress) {
                 compressLater(data, lastPage);
@@ -579,7 +571,7 @@ class FileMemData {
         len = MathUtils.roundUpLong(len, BLOCK_SIZE);
         int blocks = (int) (len >>> BLOCK_SIZE_SHIFT);
         if (blocks != data.length) {
-            byte[][] n = new byte[blocks][];
+            ByteBuffer[] n = new ByteBuffer[blocks];
             System.arraycopy(data, 0, n, 0, Math.min(data.length, n.length));
             for (int i = data.length; i < blocks; i++) {
                 n[i] = COMPRESSED_EMPTY_BLOCK;
@@ -598,7 +590,7 @@ class FileMemData {
      * @param write true for writing
      * @return the new position
      */
-    long readWrite(long pos, byte[] b, int off, int len, boolean write) {
+    long readWrite(long pos, ByteBuffer b, int off, int len, boolean write) {
         long end = pos + len;
         if (end > length) {
             if (write) {
@@ -611,12 +603,23 @@ class FileMemData {
             int l = (int) Math.min(len, BLOCK_SIZE - (pos & BLOCK_SIZE_MASK));
             int page = (int) (pos >>> BLOCK_SIZE_SHIFT);
             expand(data, page);
-            byte[] block = data[page];
+            ByteBuffer block = data[page];
             int blockOffset = (int) (pos & BLOCK_SIZE_MASK);
             if (write) {
-                System.arraycopy(b, off, block, blockOffset, l);
+                ByteBuffer tmp = b.slice();
+                tmp.position(off);
+                tmp.limit(off + l);
+                block.position(blockOffset);
+                block.put(tmp);
             } else {
-                System.arraycopy(block, blockOffset, b, off, l);
+                block.position(blockOffset);
+                ByteBuffer tmp = block.slice();
+                tmp.limit(l);
+                int oldPosition = b.position();
+                b.position(off);
+                b.put(tmp);
+                // restore old position
+                b.position(oldPosition);
             }
             if (compress) {
                 compressLater(data, page);

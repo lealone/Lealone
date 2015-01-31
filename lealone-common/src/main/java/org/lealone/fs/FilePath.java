@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.fs;
@@ -69,11 +68,10 @@ public abstract class FilePath {
     private static void registerDefaultProviders() {
         if (providers == null || defaultProvider == null) {
             Map<String, FilePath> map = Collections.synchronizedMap(New.<String, FilePath> hashMap());
-            for (String c : new String[] { "org.lealone.store.fs.FilePathDisk", "org.lealone.store.fs.FilePathMem",
-                    "org.lealone.store.fs.FilePathMemLZF", "org.lealone.store.fs.FilePathNioMem",
-                    "org.lealone.store.fs.FilePathNioMemLZF", "org.lealone.store.fs.FilePathSplit",
-                    "org.lealone.store.fs.FilePathNio", "org.lealone.store.fs.FilePathNioMapped",
-                    "org.lealone.store.fs.FilePathZip" }) {
+            for (String c : new String[] { "org.h2.store.fs.FilePathDisk", "org.h2.store.fs.FilePathMem",
+                    "org.h2.store.fs.FilePathMemLZF", "org.h2.store.fs.FilePathNioMem", "org.h2.store.fs.FilePathNioMemLZF",
+                    "org.h2.store.fs.FilePathSplit", "org.h2.store.fs.FilePathNio", "org.h2.store.fs.FilePathNioMapped",
+                    "org.h2.store.fs.FilePathZip" }) {
                 try {
                     FilePath p = (FilePath) Class.forName(c).newInstance();
                     map.put(p.getScheme(), p);

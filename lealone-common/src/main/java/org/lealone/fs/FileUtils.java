@@ -144,7 +144,7 @@ public class FileUtils {
      * @param path the directory
      * @return the list of fully qualified file names
      */
-    public static List<String> newDirectoryStream(String path) { //文件和目录名都会列出来
+    public static List<String> newDirectoryStream(String path) {
         List<FilePath> list = FilePath.get(path).newDirectoryStream();
         int len = list.size();
         List<String> result = New.arrayList(len);
