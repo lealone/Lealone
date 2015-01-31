@@ -17,8 +17,6 @@ import org.lealone.api.ErrorCode;
 import org.lealone.message.DbException;
 import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.WriteBuffer;
-import org.lealone.mvstore.rtree.SpatialDataType;
-import org.lealone.mvstore.rtree.SpatialKey;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.result.SortOrder;
@@ -65,24 +63,15 @@ public class ValueDataType implements DataType {
     private static final int LONG_NEG = 67;
     private static final int STRING_0_31 = 68;
     private static final int BYTES_0_31 = 100;
-    private static final int SPATIAL_KEY_2D = 132;
 
     final DataHandler handler;
     final CompareMode compareMode;
     final int[] sortTypes;
-    SpatialDataType spatialType;
 
     public ValueDataType(CompareMode compareMode, DataHandler handler, int[] sortTypes) {
         this.compareMode = compareMode;
         this.handler = handler;
         this.sortTypes = sortTypes;
-    }
-
-    private SpatialDataType getSpatialDataType() {
-        if (spatialType == null) {
-            spatialType = new SpatialDataType(2);
-        }
-        return spatialType;
     }
 
     @Override
@@ -147,9 +136,6 @@ public class ValueDataType implements DataType {
 
     @Override
     public int getMemory(Object obj) {
-        if (obj instanceof SpatialKey) {
-            return getSpatialDataType().getMemory(obj);
-        }
         return getMemory((Value) obj);
     }
 
@@ -178,11 +164,6 @@ public class ValueDataType implements DataType {
 
     @Override
     public void write(WriteBuffer buff, Object obj) {
-        if (obj instanceof SpatialKey) {
-            buff.put((byte) SPATIAL_KEY_2D);
-            getSpatialDataType().write(buff, obj);
-            return;
-        }
         Value x = (Value) obj;
         writeValue(buff, x);
     }
@@ -531,14 +512,6 @@ public class ValueDataType implements DataType {
             }
             return ValueResultSet.get(rs);
         }
-        //        case Value.GEOMETRY: {
-        //            int len = readVarInt(buff);
-        //            byte[] b = DataUtils.newBytes(len);
-        //            buff.get(b, 0, len);
-        //            return ValueGeometry.get(b);
-        //        }
-        case SPATIAL_KEY_2D:
-            return getSpatialDataType().read(buff);
         default:
             if (type >= INT_0_15 && type < INT_0_15 + 16) {
                 return ValueInt.get(type - INT_0_15);

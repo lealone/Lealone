@@ -42,8 +42,8 @@ import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.result.Row;
 import org.lealone.result.SortOrder;
-import org.lealone.transaction.local.LocalTransaction;
 import org.lealone.transaction.local.DefaultTransactionEngine;
+import org.lealone.transaction.local.LocalTransaction;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
 import org.lealone.value.DataType;
@@ -420,8 +420,6 @@ public class CBaseTable extends TableBase {
         if (mainIndexColumn != -1) {
             primaryIndex.setMainIndexColumn(mainIndexColumn);
             index = new CBaseDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
-            //        } else if (indexType.isSpatial()) {
-            //            index = new MVSpatialIndex(session.getDatabase(), this, indexId, indexName, cols, indexType);
         } else if (indexType.isHash() && cols.length <= 1) { //TODO 是否要支持多版本
             if (indexType.isUnique()) {
                 index = new HashIndex(this, indexId, indexName, cols, indexType);
@@ -450,7 +448,6 @@ public class CBaseTable extends TableBase {
 
     private void rebuildIndex(Session session, CBaseIndex index, String indexName) {
         try {
-            //if (session.getDatabase().getMvStore() == null || index instanceof MVSpatialIndex) {
             if (CBaseStorageEngine.getStore(session) == null) {
                 // in-memory
                 rebuildIndexBuffered(session, index);
@@ -473,10 +470,6 @@ public class CBaseTable extends TableBase {
     }
 
     private void rebuildIndexBlockMerge(Session session, CBaseIndex index) {
-        //        if (index instanceof MVSpatialIndex) {
-        //            // the spatial index doesn't support multi-way merge sort
-        //            rebuildIndexBuffered(session, index);
-        //        }
         // Read entries in memory, sort them, write to a new map (in sorted
         // order); repeat (using a new map for every block of 1 MB) until all
         // record are read. Merge all maps to the target (using merge sort;
