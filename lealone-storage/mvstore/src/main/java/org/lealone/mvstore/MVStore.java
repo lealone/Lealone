@@ -311,7 +311,7 @@ public class MVStore {
         o = config.get("cacheSize");
         int mb = o == null ? 16 : (Integer) o;
         if (mb > 0) {
-            int maxMemoryBytes = mb * 1024 * 1024;
+            long maxMemoryBytes = mb * 1024L * 1024L;
             int segmentCount = 16;
             int stackMoveDistance = 8;
             cache = new CacheLongKeyLIRS<Page>(maxMemoryBytes, segmentCount, stackMoveDistance);
