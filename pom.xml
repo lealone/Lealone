@@ -29,6 +29,7 @@
 		<module>lealone-storage/mvstore</module>
 		<module>lealone-storage/mysql</module>
 		<module>lealone-storage/postgresql</module>
+		<module>lealone-storage/wiredtiger</module>
 
 		<module>lealone-test/rdbms</module>
 		<module>lealone-test/cassandra</module>
