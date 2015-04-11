@@ -23,7 +23,6 @@
 		<module>lealone-bootstrap</module>
 
 		<module>lealone-storage/cbase</module>
-		<module>lealone-storage/memory</module>
 		<module>lealone-storage/mvstore</module>
 		<module>lealone-storage/wiredtiger</module>
 
