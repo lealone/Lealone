@@ -5,16 +5,18 @@
 		<groupId>org.lealone</groupId>
 		<artifactId>lealone</artifactId>
 		<version>1.0.0</version>
+		<relativePath>../pom.xml</relativePath>
 	</parent>
 
-	<artifactId>lealone-bootstrap</artifactId>
+	<artifactId>lealone-test</artifactId>
 	<packaging>jar</packaging>
 	<version>${lealone.version}</version>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-cluster</artifactId>
+			<artifactId>lealone-bootstrap</artifactId>
+			<version>${lealone.version}</version>
 		</dependency>
 	</dependencies>
 </project>

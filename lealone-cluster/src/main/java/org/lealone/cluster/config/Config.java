@@ -180,7 +180,7 @@ public class Config {
         client_server,
         //standalone,
         cluster,
-        mysql_proxy,
-        pg_proxy
+        //mysql_proxy,
+        //pg_proxy
     }
 }

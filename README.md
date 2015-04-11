@@ -1,9 +1,8 @@
 
 ## Lealone是什么
 
-* 既是一个可用于[HBase](http://hbase.apache.org/)、[Cassandra](http://cassandra.apache.org/)、[MySQL](http://www.mysql.com/)、[PostgreSQL](http://www.postgresql.org/)的分布式SQL与分布式事务引擎
+* 是一个对等的(P2P)、面向OLTP场景的分布式关系数据库
 
-* 也是一个可以独立运行的分布式数据库
 
 ## Lealone名字的由来
 
@@ -30,15 +29,8 @@
 
 ## Lealone用户文档
 
-* [HBase用户文档](https://github.com/codefollower/Lealone/wiki/HBase%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
+* [用户文档](https://github.com/codefollower/Lealone/wiki/CBase%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
 
-* [Cassandra用户文档](https://github.com/codefollower/Lealone/wiki/Cassandra%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
-
-* [CBase用户文档](https://github.com/codefollower/Lealone/wiki/CBase%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
-
-* MySQL用户文档
-
-* PostgreSQL用户文档
 
 ## Lealone开发者文档
 
@@ -47,9 +39,9 @@
 
 ## Lealone 1.0 Roadmap
 
-* 继续优化join、subquery、view、index的性能
-* 支持Cassandra、MySQL、PostgreSQL
-* 新的CBase存储引擎
+* 优化join、subquery、view、index的性能
+* 支持[WiredTiger](https://github.com/wiredtiger/wiredtiger/tree/develop)存储引擎
+* 支持[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
 
 ## License
 

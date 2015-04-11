@@ -26,22 +26,6 @@
 
 		<moduleSet>
 			<includes>
-				<include>org.lealone:lealone-storage-cassandra</include>
-			</includes>
-			<binaries>
-				<unpack>false</unpack>
-				<outputDirectory>lealone-storage-cassandra</outputDirectory>
-				<dependencySets>
-					<dependencySet>
-						<useTransitiveFiltering>true</useTransitiveFiltering>
-						<useTransitiveDependencies>true</useTransitiveDependencies>
-					</dependencySet>
-				</dependencySets>
-			</binaries>
-		</moduleSet>
-
-		<moduleSet>
-			<includes>
 				<include>org.lealone:lealone-storage-cbase</include>
 			</includes>
 			<binaries>
@@ -56,52 +40,5 @@
 			</binaries>
 		</moduleSet>
 
-		<moduleSet>
-			<includes>
-				<include>org.lealone:lealone-storage-hbase</include>
-			</includes>
-			<binaries>
-				<unpack>false</unpack>
-				<outputDirectory>lealone-storage-hbase</outputDirectory>
-				<dependencySets>
-					<dependencySet>
-						<useTransitiveFiltering>true</useTransitiveFiltering>
-						<useTransitiveDependencies>true</useTransitiveDependencies>
-					</dependencySet>
-				</dependencySets>
-			</binaries>
-		</moduleSet>
-		
-		<moduleSet>
-			<includes>
-				<include>org.lealone:lealone-storage-mysql</include>
-			</includes>
-			<binaries>
-				<unpack>false</unpack>
-				<outputDirectory>lealone-storage-mysql</outputDirectory>
-				<dependencySets>
-					<dependencySet>
-						<useTransitiveFiltering>true</useTransitiveFiltering>
-						<useTransitiveDependencies>true</useTransitiveDependencies>
-					</dependencySet>
-				</dependencySets>
-			</binaries>
-		</moduleSet>
-		
-		<moduleSet>
-			<includes>
-				<include>org.lealone:lealone-storage-postgresql</include>
-			</includes>
-			<binaries>
-				<unpack>false</unpack>
-				<outputDirectory>lealone-storage-postgresql</outputDirectory>
-				<dependencySets>
-					<dependencySet>
-						<useTransitiveFiltering>true</useTransitiveFiltering>
-						<useTransitiveDependencies>true</useTransitiveDependencies>
-					</dependencySet>
-				</dependencySets>
-			</binaries>
-		</moduleSet>
 	</moduleSets>
 </assembly>

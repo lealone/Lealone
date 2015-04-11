@@ -28,8 +28,6 @@ import org.lealone.cluster.service.StorageService;
 import org.lealone.command.router.Router;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
-import org.lealone.mysql.router.MySQLRouter;
-import org.lealone.postgresql.router.PostgreSQLRouter;
 import org.lealone.server.TcpServer;
 import org.lealone.transaction.TransactionalRouter;
 import org.slf4j.Logger;
@@ -59,12 +57,6 @@ public class Lealone {
 
             if (config.run_mode == RunMode.cluster) {
                 Router r = createRouter();
-                startServer(r);
-            } else if (config.run_mode == RunMode.mysql_proxy) {
-                Router r = new MySQLRouter(config.backend_url, config.backend_user, config.backend_password);
-                startServer(r);
-            } else if (config.run_mode == RunMode.pg_proxy) {
-                Router r = new PostgreSQLRouter(config.backend_url, config.backend_user, config.backend_password);
                 startServer(r);
             } else {
                 startTcpServer();
