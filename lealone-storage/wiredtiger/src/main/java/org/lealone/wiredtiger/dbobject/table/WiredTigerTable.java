@@ -40,7 +40,9 @@ import org.lealone.wiredtiger.dbobject.index.WiredTigerSecondaryIndex;
 public class WiredTigerTable extends TableBase {
     private final WiredTigerPrimaryIndex primaryIndex;
 
-    public WiredTigerTable(CreateTableData data) {
+    //private final com.wiredtiger.db.Session wtSession;
+
+    public WiredTigerTable(CreateTableData data, com.wiredtiger.db.Session wtSession) {
         super(data);
         for (Column col : getColumns()) {
             if (DataType.isLargeObject(col.getType())) {
@@ -51,6 +53,8 @@ public class WiredTigerTable extends TableBase {
                 IndexType.createScan(true));
         indexes.add(primaryIndex);
         scanIndex = primaryIndex;
+        //this.wtSession = wtSession;
+        wtSession.create("table:" + data.tableName, "key_format=S,value_format=u"); //TODO
     }
 
     @Override

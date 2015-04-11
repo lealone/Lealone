@@ -17,14 +17,22 @@
  */
 package org.lealone.wiredtiger.engine;
 
+import java.io.File;
+import java.util.HashMap;
+
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.Table;
+import org.lealone.engine.Database;
 import org.lealone.engine.StorageEngineBase;
 import org.lealone.engine.StorageEngineManager;
 import org.lealone.wiredtiger.dbobject.table.WiredTigerTable;
 
+import com.wiredtiger.db.Connection;
+import com.wiredtiger.db.wiredtiger;
+
 public class WiredTigerStorageEngine extends StorageEngineBase {
     public static final String NAME = "WT";
+    private static final HashMap<String, Connection> connections = new HashMap<String, Connection>(1);
 
     //见StorageEngineManager.StorageEngineService中的注释
     public WiredTigerStorageEngine() {
@@ -38,7 +46,30 @@ public class WiredTigerStorageEngine extends StorageEngineBase {
 
     @Override
     public Table createTable(CreateTableData data) {
-        return new WiredTigerTable(data);
+        Database db = data.session.getDatabase();
+        String dbName = db.getName();
+        Connection conn = connections.get(dbName);
+        if (conn == null) {
+            synchronized (connections) {
+                if (connections.get(dbName) == null) {
+                    conn = createConnection(dbName);
+                    connections.put(dbName, conn);
+                    //db.setTransactionEngine(store.getTransactionEngine());
+                    //db.setLobStorage(new LobStorageMap(db));
+                }
+            }
+        }
+        return new WiredTigerTable(data, conn.open_session(null));
     }
 
+    private Connection createConnection(String dbName) {
+        String home = System.getenv("WIREDTIGER_HOME");
+        if (home == null)
+            home = ".";
+
+        home = home + "/" + dbName;
+        new File(home).mkdir();
+
+        return wiredtiger.open(home, "create");
+    }
 }
