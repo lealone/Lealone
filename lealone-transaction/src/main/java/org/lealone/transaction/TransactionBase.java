@@ -253,6 +253,8 @@ public abstract class TransactionBase implements TransactionInterface {
     protected abstract void commitLocal(String allLocalTransactionNames);
 
     public static String getTransactionName(String hostAndPort, long tid) {
+        if (hostAndPort == null)
+            hostAndPort = "0:0";
         StringBuilder buff = new StringBuilder(hostAndPort);
         buff.append(':');
         buff.append(tid);

@@ -18,5 +18,10 @@
 			<artifactId>lealone-bootstrap</artifactId>
 			<version>${lealone.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.lealone</groupId>
+			<artifactId>lealone-storage-cbase</artifactId>
+			<version>${lealone.version}</version>
+		</dependency>
 	</dependencies>
 </project>
