@@ -27,14 +27,11 @@
   支持触发器、自定义函数、Order By、Group By、聚合
 
 
-## Lealone用户文档
+## Lealone文档
 
-* [用户文档](https://github.com/codefollower/Lealone/wiki/CBase%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
+* 用户文档
 
-
-## Lealone开发者文档
-
-* [Lealone开发者文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)
+* [开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)
 
 
 ## Lealone 1.0 Roadmap
