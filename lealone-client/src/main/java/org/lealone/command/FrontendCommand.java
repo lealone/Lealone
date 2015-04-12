@@ -204,7 +204,8 @@ public class FrontendCommand implements CommandInterface {
             } catch (IOException e) {
                 session.handleException(e);
             } catch (Exception e) {
-                e.printStackTrace();
+                //e.printStackTrace();
+                throw e;
             }
             session.readSessionState();
             return updateCount;

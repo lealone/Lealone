@@ -22,29 +22,27 @@ import org.lealone.test.TestBase;
 
 public class CreateRoleTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.executeUpdate("DROP TABLE IF EXISTS CreateRoleTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS CreateRoleTest (f1 int)");
+    public void run() {
+        executeUpdate("DROP TABLE IF EXISTS CreateRoleTest");
+        executeUpdate("CREATE TABLE IF NOT EXISTS CreateRoleTest (f1 int)");
 
-        stmt.executeUpdate("CREATE ROLE IF NOT EXISTS myrole1");
+        executeUpdate("CREATE ROLE IF NOT EXISTS myrole1");
 
-        stmt.executeUpdate("CREATE ROLE IF NOT EXISTS myrole0");
-        stmt.executeUpdate("GRANT INSERT ON CreateRoleTest TO myrole0");
+        executeUpdate("CREATE ROLE IF NOT EXISTS myrole0");
+        executeUpdate("GRANT INSERT ON CreateRoleTest TO myrole0");
 
-        stmt.executeUpdate("GRANT SELECT,DELETE ON CreateRoleTest TO myrole1");
-        stmt.executeUpdate("GRANT myrole1 TO myrole0");
+        executeUpdate("GRANT SELECT,DELETE ON CreateRoleTest TO myrole1");
+        executeUpdate("GRANT myrole1 TO myrole0");
 
-        stmt.executeUpdate("CREATE USER IF NOT EXISTS sa1 PASSWORD 'abc' ADMIN");
+        executeUpdate("CREATE USER IF NOT EXISTS sa1 PASSWORD 'abc' ADMIN");
 
-        stmt.executeUpdate("GRANT myrole1 TO sa1");
+        executeUpdate("GRANT myrole1 TO sa1");
 
-        stmt.executeUpdate("DROP ROLE IF EXISTS myrole1");
+        executeUpdate("DROP ROLE IF EXISTS myrole1");
 
-        stmt.executeUpdate("CREATE ROLE IF NOT EXISTS myrole3");
-        stmt.executeUpdate("DROP ROLE IF EXISTS myrole3");
-        stmt.executeUpdate("CREATE ROLE IF NOT EXISTS myrole4");
-        stmt.executeUpdate("DROP ROLE IF EXISTS myrole4");
-
+        executeUpdate("CREATE ROLE IF NOT EXISTS myrole3");
+        executeUpdate("DROP ROLE IF EXISTS myrole3");
+        executeUpdate("CREATE ROLE IF NOT EXISTS myrole4");
+        executeUpdate("DROP ROLE IF EXISTS myrole4");
     }
-
 }

@@ -28,7 +28,7 @@ public class TransactionTest extends TestBase {
 
     @Test
     public void run() throws Exception {
-        //create();
+        create();
         insert();
         //select();
 
@@ -38,49 +38,49 @@ public class TransactionTest extends TestBase {
     }
 
     void create() throws Exception {
-        stmt.executeUpdate("DROP TABLE IF EXISTS TransactionTest");
-        //stmt.executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL, f2 int, f3 varchar)");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
-        //stmt.executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (SPLIT KEYS('200'),f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
-        //        stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS TransactionTest_idx1 ON TransactionTest(f1)");
-        //        stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS TransactionTest_idx2 ON TransactionTest(f2)");
-        //        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS TransactionTest_idx3 ON TransactionTest(f3, f2)");
+        executeUpdate("DROP TABLE IF EXISTS TransactionTest");
+        //executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL, f2 int, f3 varchar)");
+        executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
+        //executeUpdate("CREATE TABLE IF NOT EXISTS TransactionTest (SPLIT KEYS('200'),f1 int NOT NULL PRIMARY KEY, f2 int, f3 varchar)");
+        //        executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS TransactionTest_idx1 ON TransactionTest(f1)");
+        //        executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS TransactionTest_idx2 ON TransactionTest(f2)");
+        //        executeUpdate("CREATE INDEX IF NOT EXISTS TransactionTest_idx3 ON TransactionTest(f3, f2)");
     }
 
     void delete() throws Exception {
-        stmt.executeUpdate("DELETE FROM TransactionTest");
+        executeUpdate("DELETE FROM TransactionTest");
     }
 
     void insert() throws Exception {
         conn.setAutoCommit(false);
         //delete();
 
-        //stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(100, 10, 'a')");
+        //executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(100, 10, 'a')");
 
-        //stmt.executeUpdate("DELETE FROM TransactionTest where f1=100");
+        //executeUpdate("DELETE FROM TransactionTest where f1=100");
 
-        //stmt.executeUpdate("INSERT INTO TransactionTest(f3, f2, f1) VALUES('d', 40, 400)");
-        stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(100, 10, 'a')");
-        stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(200, 20, 'b')");
-        stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(300, 30, 'c')");
+        //executeUpdate("INSERT INTO TransactionTest(f3, f2, f1) VALUES('d', 40, 400)");
+        executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(100, 10, 'a')");
+        executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(200, 20, 'b')");
+        executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(300, 30, 'c')");
 
         conn.commit();
         //        try {
-        //            stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(400, 20, 'd')");
+        //            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(400, 20, 'd')");
         //            Assert.fail("insert duplicate key: 20");
         //        } catch (SQLException e) {
         //            //e.printStackTrace();
         //        }
         //
         //        try {
-        //            stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(500, 20, 'e')");
+        //            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(500, 20, 'e')");
         //            Assert.fail("insert duplicate key: 20");
         //        } catch (SQLException e) {
         //            //e.printStackTrace();
         //        }
         //
         //        try {
-        //            stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(600, 20, 'f')");
+        //            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(600, 20, 'f')");
         //            Assert.fail("insert duplicate key: 20");
         //        } catch (SQLException e) {
         //            //e.printStackTrace();
@@ -103,7 +103,7 @@ public class TransactionTest extends TestBase {
         assertEquals(4, getIntValue(1, true));
 
         sql = "DELETE FROM TransactionTest";
-        assertEquals(4, stmt.executeUpdate(sql));
+        assertEquals(4, executeUpdate(sql));
 
         sql = "SELECT count(*) FROM TransactionTest";
         assertEquals(0, getIntValue(1, true));
@@ -154,17 +154,17 @@ public class TransactionTest extends TestBase {
         assertEquals(2, getIntValue(1, true));
 
         sql = "DELETE FROM TransactionTest WHERE f2 >= 20";
-        assertEquals(3, stmt.executeUpdate(sql));
+        assertEquals(3, executeUpdate(sql));
     }
 
     void testSavepoint() throws Exception {
-        stmt.executeUpdate("DELETE FROM TransactionTest");
+        executeUpdate("DELETE FROM TransactionTest");
         try {
             conn.setAutoCommit(false);
-            stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(100, 10, 'a')");
-            stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(200, 20, 'b')");
+            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(100, 10, 'a')");
+            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(200, 20, 'b')");
             Savepoint savepoint = conn.setSavepoint();
-            stmt.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(300, 30, 'c')");
+            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(300, 30, 'c')");
             sql = "SELECT f1, f2, f3 FROM TransactionTest";
             //printResultSet();
             conn.rollback(savepoint);

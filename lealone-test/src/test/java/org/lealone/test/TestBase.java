@@ -20,6 +20,7 @@ package org.lealone.test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.junit.AfterClass;
@@ -60,6 +61,15 @@ public class TestBase {
 
     public static String toS(byte[] v) {
         return Bytes.toString(v);
+    }
+
+    public int executeUpdate(String sql) {
+        try {
+            return stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        }
     }
 
     public void createTableSQL(String sql) throws Exception {
@@ -215,18 +225,22 @@ public class TestBase {
         return rs.next();
     }
 
-    public void printResultSet() throws Exception {
-        rs = stmt.executeQuery(sql);
+    public void printResultSet() {
+        try {
+            rs = stmt.executeQuery(sql);
 
-        int n = rs.getMetaData().getColumnCount();
-        while (rs.next()) {
-            for (int i = 1; i <= n; i++) {
-                System.out.print(rs.getString(i) + " ");
+            int n = rs.getMetaData().getColumnCount();
+            while (rs.next()) {
+                for (int i = 1; i <= n; i++) {
+                    System.out.print(rs.getString(i) + " ");
+                }
+                System.out.println();
             }
+            rs.close();
+            rs = null;
             System.out.println();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-        rs.close();
-        rs = null;
-        System.out.println();
     }
 }

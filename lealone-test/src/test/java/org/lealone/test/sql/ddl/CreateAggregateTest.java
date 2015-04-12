@@ -22,11 +22,11 @@ import org.lealone.test.TestBase;
 
 public class CreateAggregateTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.execute("DROP AGGREGATE IF EXISTS MEDIAN");
-        stmt.execute("CREATE FORCE AGGREGATE IF NOT EXISTS MEDIAN FOR \"" + MedianString.class.getName() + "\"");
-        sql = "SELECT MEDIAN(X) FROM SYSTEM_RANGE(1, 9)";
+    public void run() {
+        executeUpdate("DROP AGGREGATE IF EXISTS MEDIAN");
+        executeUpdate("CREATE FORCE AGGREGATE IF NOT EXISTS MEDIAN FOR \"" + MedianString.class.getName() + "\"");
 
+        sql = "SELECT MEDIAN(X) FROM SYSTEM_RANGE(1, 9)";
         printResultSet();
     }
 }

@@ -37,12 +37,12 @@ public class StringFunctionTest extends TestBase {
         createTable("StringFunctionTest");
 
         //在分区1中保存1到11中的奇数
-        stmt.executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('01', 'a1', 'b', -1)");
-        stmt.executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('02', 'a1', 'b', 3)");
-        stmt.executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('03', 'a1', 'b', 5)");
-        stmt.executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('04', 'a2', 'b', 7)");
-        stmt.executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('05', 'a2', 'b', 9)");
-        stmt.executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('06', 'a2', 'b', 11)");
+        executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('01', 'a1', 'b', -1)");
+        executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('02', 'a1', 'b', 3)");
+        executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('03', 'a1', 'b', 5)");
+        executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('04', 'a2', 'b', 7)");
+        executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('05', 'a2', 'b', 9)");
+        executeUpdate("INSERT INTO StringFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('06', 'a2', 'b', 11)");
     }
 
 }

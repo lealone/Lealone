@@ -22,13 +22,13 @@ import org.lealone.test.TestBase;
 
 public class CreateSchemaTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.executeUpdate("DROP SCHEMA IF EXISTS schema0");
-        stmt.executeUpdate("DROP SCHEMA IF EXISTS schema1");
-        stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS schema0 AUTHORIZATION sa");
+    public void run() {
+        executeUpdate("DROP SCHEMA IF EXISTS schema0");
+        executeUpdate("DROP SCHEMA IF EXISTS schema1");
+        executeUpdate("CREATE SCHEMA IF NOT EXISTS schema0 AUTHORIZATION sa");
 
-        //stmt.executeUpdate("ALTER SCHEMA hbasedb.public.schema0 RENAME TO schema1");
+        //executeUpdate("ALTER SCHEMA hbasedb.public.schema0 RENAME TO schema1");
 
-        //stmt.executeUpdate("DROP SCHEMA IF EXISTS public");
+        //executeUpdate("DROP SCHEMA IF EXISTS public");
     }
 }

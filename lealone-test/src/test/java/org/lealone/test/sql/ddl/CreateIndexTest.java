@@ -22,25 +22,23 @@ import org.lealone.test.TestBase;
 
 public class CreateIndexTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.executeUpdate("DROP TABLE IF EXISTS CreateIndexTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS CreateIndexTest (f1 int NOT NULL, f2 int, f3 int)");
+    public void run() {
+        executeUpdate("DROP TABLE IF EXISTS CreateIndexTest");
+        executeUpdate("CREATE TABLE IF NOT EXISTS CreateIndexTest (f1 int NOT NULL, f2 int, f3 int)");
 
-        //stmt.executeUpdate("CREATE PRIMARY KEY HASH ON CreateIndexTest(f1)");
-        stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON CreateIndexTest(f1)");
+        //executeUpdate("CREATE PRIMARY KEY HASH ON CreateIndexTest(f1)");
+        executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS idx0 ON CreateIndexTest(f1)");
 
-        stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON CreateIndexTest(f2)");
-        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx2 ON CreateIndexTest(f3)");
+        executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS idx1 ON CreateIndexTest(f2)");
+        executeUpdate("CREATE INDEX IF NOT EXISTS idx2 ON CreateIndexTest(f3)");
 
-        stmt.executeUpdate("ALTER INDEX idx2 RENAME TO idx22");
+        executeUpdate("ALTER INDEX idx2 RENAME TO idx22");
 
-        stmt.executeUpdate("DROP INDEX IF EXISTS idx22");
+        executeUpdate("DROP INDEX IF EXISTS idx22");
 
-        //stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS schema0 AUTHORIZATION sa");
-        //stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO schema0.idx1");
+        //executeUpdate("CREATE SCHEMA IF NOT EXISTS schema0 AUTHORIZATION sa");
+        //executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO schema0.idx1");
 
-        //stmt.executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO idx1");
-
+        //executeUpdate("ALTER INDEX mydb.public.idx0 RENAME TO idx1");
     }
-
 }

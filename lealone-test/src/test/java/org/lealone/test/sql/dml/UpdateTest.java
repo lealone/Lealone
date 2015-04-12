@@ -24,37 +24,43 @@ import org.lealone.test.TestBase;
 
 public class UpdateTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        createTableIfNotExists("UpdateTest");
+    public void run() {
+        executeUpdate("DROP TABLE IF EXISTS UpdateTest");
+        executeUpdate("CREATE TABLE UpdateTest (pk varchar NOT NULL PRIMARY KEY, " + //
+                "f1 varchar, f2 varchar, f3 int)");
         testInsert();
         testUpdate();
     }
 
-    void testInsert() throws Exception {
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('01', 'a1', 'b', 51)");
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('02', 'a1', 'b', 61)");
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('03', 'a1', 'b', 61)");
+    void testInsert() {
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 61)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 61)");
 
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('25', 'a2', 'b', 51)");
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('26', 'a2', 'b', 61)");
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('27', 'a2', 'b', 61)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('25', 'a2', 'b', 51)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('26', 'a2', 'b', 61)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('27', 'a2', 'b', 61)");
 
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('50', 'a1', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('51', 'a2', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('52', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('50', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('51', 'a2', 'b', 12)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('52', 'a1', 'b', 12)");
 
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a1', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO UpdateTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('75', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('76', 'a2', 'b', 12)");
+        executeUpdate("INSERT INTO UpdateTest(pk, f1, f2, f3) VALUES('77', 'a1', 'b', 12)");
     }
 
-    void testUpdate() throws Exception {
-        sql = "UPDATE UpdateTest SET f1 = 'a1', cf2.f3 = 61 WHERE _rowkey_= '01'";
-        assertEquals(1, stmt.executeUpdate(sql));
+    void testUpdate() {
+        sql = "UPDATE UpdateTest SET f1 = 'a1', f3 = 61 WHERE pk = '01'";
+        assertEquals(1, executeUpdate(sql));
 
-        sql = "SELECT f1, cf1.f2, cf2.f3 FROM UpdateTest WHERE _rowkey_ = '01'";
-        assertEquals("a1", getStringValue(1));
-        assertEquals("b", getStringValue(2));
-        assertEquals(61, getIntValue(3, true));
+        sql = "SELECT f1, f2, f3 FROM UpdateTest WHERE pk = '01'";
+        try {
+            assertEquals("a1", getStringValue(1));
+            assertEquals("b", getStringValue(2));
+            assertEquals(61, getIntValue(3, true));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

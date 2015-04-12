@@ -41,22 +41,22 @@ public class AggregateFunctionTest extends TestBase {
         createTable("AggregateFunctionTest", "25", "50", "75");
 
         //在分区1中保存1到11中的奇数
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('01', 'a1', 'b', 1)");
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('02', 'a1', 'b', 3)");
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('03', 'a1', 'b', 5)");
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('04', 'a2', 'b', 7)");
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('05', 'a2', 'b', 9)");
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('06', 'a2', 'b', 11)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('01', 'a1', 'b', 1)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('02', 'a1', 'b', 3)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('03', 'a1', 'b', 5)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('04', 'a2', 'b', 7)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('05', 'a2', 'b', 9)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('06', 'a2', 'b', 11)");
 
         //分区2到4中分别保存1到11中的奇数
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('25', 'a1', 'b', 1)");
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('26', 'a1', 'b', 3)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('25', 'a1', 'b', 1)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('26', 'a1', 'b', 3)");
 
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('50', 'a1', 'b', 5)");
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('51', 'a2', 'b', 7)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('50', 'a1', 'b', 5)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('51', 'a2', 'b', 7)");
 
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a2', 'b', 9)");
-        stmt.executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'b', 11)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a2', 'b', 9)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'b', 11)");
     }
 
     //以1结尾的变量是用来统计分区1中的值;

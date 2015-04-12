@@ -22,17 +22,16 @@ import org.lealone.test.TestBase;
 
 public class SetCommentTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.executeUpdate("DROP TABLE IF EXISTS SetCommentTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS SetCommentTest (f1 int)");
+    public void run() {
+        executeUpdate("DROP TABLE IF EXISTS SetCommentTest");
+        executeUpdate("CREATE TABLE IF NOT EXISTS SetCommentTest (f1 int)");
 
-        stmt.executeUpdate("DROP ROLE IF EXISTS myrole");
-        stmt.executeUpdate("CREATE ROLE IF NOT EXISTS myrole");
+        executeUpdate("DROP ROLE IF EXISTS myrole");
+        executeUpdate("CREATE ROLE IF NOT EXISTS myrole");
 
-        stmt.executeUpdate("COMMENT ON COLUMN " + db + ".public.SetCommentTest.f1 IS 'column comment'");
-        stmt.executeUpdate("COMMENT ON TABLE public.SetCommentTest IS 'table comment'");
+        executeUpdate("COMMENT ON COLUMN " + db + ".public.SetCommentTest.f1 IS 'column comment'");
+        executeUpdate("COMMENT ON TABLE public.SetCommentTest IS 'table comment'");
 
-        stmt.executeUpdate("COMMENT ON ROLE myrole IS 'role comment'");
-
+        executeUpdate("COMMENT ON ROLE myrole IS 'role comment'");
     }
 }

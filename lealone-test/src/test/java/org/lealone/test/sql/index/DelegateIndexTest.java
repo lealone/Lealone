@@ -22,10 +22,10 @@ import org.lealone.test.TestBase;
 
 public class DelegateIndexTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS DelegateIndexTest( date_time TIMESTAMP primary key, intcol INT)");
+    public void run() {
+        executeUpdate("CREATE TABLE IF NOT EXISTS DelegateIndexTest(date_time TIMESTAMP primary key, intcol INT)");
 
-        stmt.executeUpdate("INSERT INTO DelegateIndexTest(date_time, intcol) VALUES('1970-01-01 00:00:01.0', 12)");
+        executeUpdate("INSERT INTO DelegateIndexTest(date_time, intcol) VALUES('1970-01-01 00:00:01.0', 12)");
 
         sql = "select * from DelegateIndexTest where date_time='1970-01-01 00:00:01.0'";
         printResultSet();

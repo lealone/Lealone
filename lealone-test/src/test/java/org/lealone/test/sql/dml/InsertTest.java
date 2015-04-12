@@ -24,50 +24,63 @@ import org.lealone.test.TestBase;
 
 public class InsertTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        createTableIfNotExists("InsertTest");
-        createTableIfNotExists("InsertTest2");
+    public void run() {
+        executeUpdate("DROP TABLE IF EXISTS InsertTest");
+        executeUpdate("DROP TABLE IF EXISTS InsertTest2");
+        executeUpdate("CREATE TABLE InsertTest (pk varchar NOT NULL PRIMARY KEY, " + //
+                "f1 varchar, f2 varchar, f3 int)");
+        executeUpdate("CREATE TABLE InsertTest2 (pk varchar NOT NULL PRIMARY KEY, " + //
+                "f1 varchar, f2 varchar, f3 int)");
+
         testInsert();
     }
 
-    void testInsert() throws Exception {
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('01', 'a1', 'b', 51)");
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('02', 'a1', 'b', 61)");
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('03', 'a1', 'b', 61)");
+    void testInsert() {
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 61)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 61)");
 
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('25', 'a2', 'b', 51)");
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('26', 'a2', 'b', 61)");
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('27', 'a2', 'b', 61)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('25', 'a2', 'b', 51)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('26', 'a2', 'b', 61)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('27', 'a2', 'b', 61)");
 
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('50', 'a1', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('51', 'a2', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('52', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('50', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('51', 'a2', 'b', 12)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('52', 'a1', 'b', 12)");
 
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a1', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('75', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('76', 'a2', 'b', 12)");
+        executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('77', 'a1', 'b', 12)");
 
-        String sql = "INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES"
+        sql = "DELETE FROM InsertTest";
+        assertEquals(12, executeUpdate(sql));
+
+        sql = "INSERT INTO InsertTest(pk, f1, f2, f3) VALUES"
                 + " ('01', 'a1', 'b', 12), ('02', 'a1', 'b', 12), ('03', 'a1', 'b', 12)"
                 + ",('25', 'a1', 'b', 12), ('26', 'a1', 'b', 12), ('27', 'a1', 'b', 12)"
                 + ",('50', 'a1', 'b', 12), ('51', 'a1', 'b', 12), ('52', 'a1', 'b', 12)"
                 + ",('75', 'a1', 'b', 12), ('76', 'a1', 'b', 12), ('77', 'a1', 'b', 12)";
 
-        assertEquals(12, stmt.executeUpdate(sql));
+        assertEquals(12, executeUpdate(sql));
 
-        sql = "INSERT INTO InsertTest2(_rowkey_, f1, cf1.f2, cf2.f3) VALUES"
+        sql = "DELETE FROM InsertTest";
+        assertEquals(12, executeUpdate(sql));
+
+        sql = "INSERT INTO InsertTest2(pk, f1, f2, f3) VALUES"
                 + " ('01', 'a1', 'b', 12), ('02', 'a1', 'b', 12), ('03', 'a1', 'b', 12)"
                 + ",('25', 'a1', 'b', 12), ('26', 'a1', 'b', 12), ('27', 'a1', 'b', 12)"
                 + ",('50', 'a1', 'b', 12), ('51', 'a1', 'b', 12), ('52', 'a1', 'b', 12)"
                 + ",('75', 'a1', 'b', 12), ('76', 'a1', 'b', 12), ('77', 'a1', 'b', 12)";
 
-        assertEquals(12, stmt.executeUpdate(sql));
+        assertEquals(12, executeUpdate(sql));
 
-        sql = "INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) SELECT _rowkey_, f1, cf1.f2, cf2.f3 FROM InsertTest2";
-        assertEquals(12, stmt.executeUpdate(sql));
+        sql = "INSERT INTO InsertTest(pk, f1, f2, f3) SELECT pk, f1, f2, f3 FROM InsertTest2";
+        assertEquals(12, executeUpdate(sql));
 
-        sql = "INSERT INTO InsertTest(_rowkey_, f1, cf1.f2, cf2.f3) "
-                + "DIRECT SELECT _rowkey_, f1, cf1.f2, cf2.f3 FROM InsertTest2";
-        assertEquals(12, stmt.executeUpdate(sql));
+        sql = "DELETE FROM InsertTest";
+        assertEquals(12, executeUpdate(sql));
+
+        sql = "INSERT INTO InsertTest(pk, f1, f2, f3) " + "DIRECT SELECT pk, f1, f2, f3 FROM InsertTest2";
+        assertEquals(12, executeUpdate(sql));
     }
 }

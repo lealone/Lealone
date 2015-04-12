@@ -27,14 +27,14 @@ import org.lealone.test.TestBase;
 
 public class CreateUserDataTypeTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.executeUpdate("DROP DOMAIN IF EXISTS EMAIL");
+    public void run() {
+        executeUpdate("DROP DOMAIN IF EXISTS EMAIL");
         //VALUE是CREATE DOMAIN语句的默认临时列名
-        stmt.executeUpdate("CREATE DOMAIN IF NOT EXISTS EMAIL AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
-        stmt.executeUpdate("CREATE TYPE IF NOT EXISTS EMAIL AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
-        stmt.executeUpdate("CREATE DATATYPE IF NOT EXISTS EMAIL AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
+        executeUpdate("CREATE DOMAIN IF NOT EXISTS EMAIL AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
+        executeUpdate("CREATE TYPE IF NOT EXISTS EMAIL AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
+        executeUpdate("CREATE DATATYPE IF NOT EXISTS EMAIL AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
 
-        //stmt.executeUpdate("CREATE DATATYPE IF NOT EXISTS int AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
+        //executeUpdate("CREATE DATATYPE IF NOT EXISTS int AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
 
         //从第二个名称开始的都是隐藏类型的，如下面的int
         //new String[]{"INTEGER", "INT", "MEDIUMINT", "INT4", "SIGNED"}

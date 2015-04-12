@@ -22,9 +22,9 @@ import org.lealone.test.TestBase;
 
 public class CreateConstantTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.executeUpdate("DROP CONSTANT IF EXISTS myconstant");
-        stmt.executeUpdate("CREATE CONSTANT IF NOT EXISTS myconstant VALUE 10");
+    public void run() {
+        executeUpdate("DROP CONSTANT IF EXISTS myconstant");
+        executeUpdate("CREATE CONSTANT IF NOT EXISTS myconstant VALUE 10");
 
         sql = "select myconstant";
         printResultSet();

@@ -64,7 +64,7 @@ public class SystemFunctionTest extends TestBase {
 
         sql = "SELECT SET(@v, 1), CASE @v WHEN 0 THEN 'No' WHEN 1 THEN 'One' ELSE 'Some' END";
         sql = "SELECT SET(@v, 11), CASE WHEN @v<10 THEN 'Low' ELSE 'High' END";
-        stmt.executeUpdate("CREATE SEQUENCE IF NOT EXISTS SEQ_ID");
+        executeUpdate("CREATE SEQUENCE IF NOT EXISTS SEQ_ID");
 
         sql = "SELECT CURRVAL('SEQ_ID'), NEXTVAL('SEQ_ID')";
         printResultSet();

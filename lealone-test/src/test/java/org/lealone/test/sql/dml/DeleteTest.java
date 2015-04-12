@@ -24,46 +24,46 @@ import org.lealone.test.TestBase;
 
 public class DeleteTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        createTableIfNotExists("DeleteTest");
+    public void run() {
+        executeUpdate("DROP TABLE IF EXISTS DeleteTest");
+        executeUpdate("CREATE TABLE DeleteTest (pk varchar NOT NULL PRIMARY KEY, " + //
+                "f1 varchar, f2 varchar, f3 int)");
         testInsert();
         testDelete();
     }
 
-    void testInsert() throws Exception {
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('01', 'a1', 'b', 51)");
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('02', 'a1', 'b', 61)");
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('03', 'a1', 'b', 61)");
+    void testInsert() {
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 61)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 61)");
 
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('25', 'a2', 'b', 51)");
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('26', 'a2', 'b', 61)");
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('27', 'a2', 'b', 61)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('25', 'a2', 'b', 51)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('26', 'a2', 'b', 61)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('27', 'a2', 'b', 61)");
 
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('50', 'a1', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('51', 'a2', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('52', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('50', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('51', 'a2', 'b', 12)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('52', 'a1', 'b', 12)");
 
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a1', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'b', 12)");
-        stmt.executeUpdate("INSERT INTO DeleteTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('77', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('75', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('76', 'a2', 'b', 12)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('77', 'a1', 'b', 12)");
     }
 
-    void testDelete() throws Exception {
-        sql = "DELETE FROM DeleteTest WHERE _rowkey_= '01'";
-        assertEquals(1, stmt.executeUpdate(sql));
+    void testDelete() {
+        sql = "DELETE FROM DeleteTest WHERE pk = '01'";
+        assertEquals(1, executeUpdate(sql));
 
-        sql = "DELETE FROM DeleteTest WHERE _rowkey_<= '25'";
-        assertEquals(3, stmt.executeUpdate(sql));
+        sql = "DELETE FROM DeleteTest WHERE pk <= '25'";
+        assertEquals(3, executeUpdate(sql));
 
-        sql = "DELETE FROM DeleteTest WHERE _rowkey_= '26'";
-        assertEquals(1, stmt.executeUpdate(sql));
+        sql = "DELETE FROM DeleteTest WHERE pk = '26'";
+        assertEquals(1, executeUpdate(sql));
 
-        sql = "DELETE FROM DeleteTest WHERE _rowkey_> '25' AND _rowkey_< '50'";
-        assertEquals(1, stmt.executeUpdate(sql));
+        sql = "DELETE FROM DeleteTest WHERE pk > '25' AND pk < '50'";
+        assertEquals(1, executeUpdate(sql));
 
-        sql = "DELETE FROM DeleteTest WHERE _rowkey_>= '50'";
-        assertEquals(6, stmt.executeUpdate(sql));
-
+        sql = "DELETE FROM DeleteTest WHERE pk >= '50'";
+        assertEquals(6, executeUpdate(sql));
     }
-
 }

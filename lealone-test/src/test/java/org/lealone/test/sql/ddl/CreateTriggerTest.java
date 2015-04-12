@@ -60,10 +60,10 @@ public class CreateTriggerTest extends TestBase {
     public void run() throws Exception {
         conn.setAutoCommit(false);
 
-        //stmt.executeUpdate("DROP TABLE IF EXISTS CreateTriggerTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS CreateTriggerTest(id int, name varchar(500))");
+        //executeUpdate("DROP TABLE IF EXISTS CreateTriggerTest");
+        executeUpdate("CREATE TABLE IF NOT EXISTS CreateTriggerTest(id int, name varchar(500))");
 
-        stmt.executeUpdate("CREATE FORCE TRIGGER IF NOT EXISTS MyTrigger1"
+        executeUpdate("CREATE FORCE TRIGGER IF NOT EXISTS MyTrigger1"
                 + " BEFORE INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest"
                 + " QUEUE 10 NOWAIT CALL \"org.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
 
@@ -77,7 +77,7 @@ public class CreateTriggerTest extends TestBase {
         }
 
         //INSTEAD OF也是BEFORE类型
-        stmt.executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger3"
+        executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger3"
                 + " INSTEAD OF INSERT,UPDATE,DELETE,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
                 + " QUEUE 10 NOWAIT CALL \"org.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
 
@@ -85,7 +85,7 @@ public class CreateTriggerTest extends TestBase {
         //null null
         //10 a
         //20 b
-        stmt.executeUpdate("INSERT INTO CreateTriggerTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')");
+        executeUpdate("INSERT INTO CreateTriggerTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')");
 
         sql = "select id,name from CreateTriggerTest";
         rs = stmt.executeQuery(sql);

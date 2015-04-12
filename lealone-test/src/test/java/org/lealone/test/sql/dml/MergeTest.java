@@ -108,5 +108,4 @@ public class MergeTest extends TestBase {
         sql = "select id,name from MergeTest";
         printResultSet();
     }
-
 }

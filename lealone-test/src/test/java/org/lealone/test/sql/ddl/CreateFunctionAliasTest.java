@@ -20,15 +20,16 @@ package org.lealone.test.sql.ddl;
 import org.junit.Test;
 import org.lealone.test.TestBase;
 
+//Ubuntu环境下运行这个测试，如果出现错误找不到javac，需要在~/.profile文件中把$JAVA_HOME/bin加上$PATH中
 public class CreateFunctionAliasTest extends TestBase {
     @Test
-    public void run() throws Exception {
-        stmt.executeUpdate("DROP ALIAS IF EXISTS my_sqrt");
-        stmt.executeUpdate("DROP ALIAS IF EXISTS my_reverse");
+    public void run() {
+        executeUpdate("DROP ALIAS IF EXISTS my_sqrt");
+        executeUpdate("DROP ALIAS IF EXISTS my_reverse");
 
-        stmt.executeUpdate("CREATE ALIAS IF NOT EXISTS my_sqrt DETERMINISTIC FOR \"java.lang.Math.sqrt\"");
+        executeUpdate("CREATE ALIAS IF NOT EXISTS my_sqrt DETERMINISTIC FOR \"java.lang.Math.sqrt\"");
 
-        stmt.executeUpdate("CREATE ALIAS IF NOT EXISTS my_reverse AS "
+        executeUpdate("CREATE ALIAS IF NOT EXISTS my_reverse AS "
                 + "$$ String reverse(String s) { return new StringBuilder(s).reverse().toString(); } $$");
 
         sql = "select my_sqrt(4.0), my_reverse('abc')";
