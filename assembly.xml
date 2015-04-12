@@ -27,10 +27,12 @@
 		<moduleSet>
 			<includes>
 				<include>org.lealone:lealone-storage-cbase</include>
+				<include>org.lealone:lealone-storage-wiredtiger</include>
+				<include>org.lealone:lealone-bootstrap</include>
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>lealone-storage-cbase</outputDirectory>
+				<outputDirectory>lealone-jars</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
@@ -39,6 +41,5 @@
 				</dependencySets>
 			</binaries>
 		</moduleSet>
-
 	</moduleSets>
 </assembly>
