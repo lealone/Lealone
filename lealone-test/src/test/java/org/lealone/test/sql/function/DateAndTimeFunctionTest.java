@@ -21,7 +21,7 @@ import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.TestBase;
 
 //总共26个日期与时间函数
 public class DateAndTimeFunctionTest extends TestBase {

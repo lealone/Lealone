@@ -26,7 +26,7 @@ import junit.framework.Assert;
 
 import org.junit.Test;
 import org.lealone.api.Trigger;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.TestBase;
 
 public class CreateTriggerTest extends TestBase {
 

@@ -24,7 +24,7 @@ import java.sql.PreparedStatement;
 import junit.framework.Assert;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.TestBase;
 
 public class MergeTest extends TestBase {
     @Test

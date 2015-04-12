@@ -20,7 +20,7 @@ package org.lealone.test.sql.misc;
 import static junit.framework.Assert.assertEquals;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.TestBase;
 
 public class SubqueryTest extends TestBase {
     @Test

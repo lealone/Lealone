@@ -20,7 +20,7 @@ package org.lealone.test.sql.function;
 import static junit.framework.Assert.assertEquals;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.TestBase;
 
 public class NumericFunctionTest extends TestBase {
     @Test

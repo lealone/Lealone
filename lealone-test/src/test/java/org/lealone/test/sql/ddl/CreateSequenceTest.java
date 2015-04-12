@@ -24,7 +24,7 @@ import java.sql.SQLException;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.TestBase;
 
 public class CreateSequenceTest extends TestBase {
     @Test

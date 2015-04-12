@@ -27,7 +27,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.lealone.message.DbException;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.TestBase;
 import org.lealone.util.IOUtils;
 import org.lealone.util.ScriptReader;
 import org.lealone.util.Utils;
