@@ -29,7 +29,6 @@ import org.lealone.util.StringUtils;
 import org.lealone.util.TempFileDeleter;
 import org.lealone.value.Transfer;
 import org.lealone.value.Value;
-import org.lealone.zookeeper.ZooKeeperAdmin;
 
 /**
  * The client side part of a session when using the server mode. This object
@@ -75,10 +74,6 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     public static final int STATUS_OK_STATE_CHANGED = 3;
 
     private static final Random random = new Random(System.currentTimeMillis());
-
-    /** Default value for ZooKeeper session timeout */
-    private static final int DEFAULT_ZK_SESSION_TIMEOUT = 180 * 1000;
-    private ZooKeeperAdmin zkAdmin;
 
     private SessionFactory sessionFactory;
 
@@ -305,12 +300,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
             fileEncryptionKey = MathUtils.secureRandomBytes(32);
         }
 
-        String[] servers;
-        if (ci.isDynamic()) {
-            servers = new String[] { getOnlineServer(ci, server) };
-        } else {
-            servers = StringUtils.arraySplit(server, ',', true);
-        }
+        String[] servers = StringUtils.arraySplit(server, ',', true);
         int len = servers.length;
         transfer = null;
         sessionId = StringUtils.convertBytesToHex(MathUtils.secureRandomBytes(32));
@@ -729,15 +719,6 @@ public class FrontendSession extends SessionWithState implements DataHandler {
                 throw DbException.convert(e);
             }
         }
-    }
-
-    private String getOnlineServer(ConnectionInfo ci, String quorum) {
-        if (zkAdmin == null) {
-            int sessionTimeout = ci.getProperty("ZOOKEEPER_SESSION_TIMEOUT", DEFAULT_ZK_SESSION_TIMEOUT);
-            ci.removeProperty("ZOOKEEPER_SESSION_TIMEOUT", null);
-            zkAdmin = new ZooKeeperAdmin(quorum, sessionTimeout);
-        }
-        return zkAdmin.getOnlineServer();
     }
 
     //    private boolean distributed;
