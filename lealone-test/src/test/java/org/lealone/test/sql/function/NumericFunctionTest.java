@@ -27,7 +27,7 @@ public class NumericFunctionTest extends TestBase {
     public void run() throws Exception {
         init();
 
-        sql = "SELECT abs(f3) FROM NumericFunctionTest WHERE _rowkey_ = '01'";
+        sql = "SELECT abs(f3) FROM NumericFunctionTest WHERE pk = '01'";
         assertEquals(1, getIntValue(1, true));
     }
 
@@ -35,12 +35,11 @@ public class NumericFunctionTest extends TestBase {
         createTable("NumericFunctionTest");
 
         //在分区1中保存1到11中的奇数
-        executeUpdate("INSERT INTO NumericFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('01', 'a1', 'b', -1)");
-        executeUpdate("INSERT INTO NumericFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('02', 'a1', 'b', 3)");
-        executeUpdate("INSERT INTO NumericFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('03', 'a1', 'b', 5)");
-        executeUpdate("INSERT INTO NumericFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('04', 'a2', 'b', 7)");
-        executeUpdate("INSERT INTO NumericFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('05', 'a2', 'b', 9)");
-        executeUpdate("INSERT INTO NumericFunctionTest(_rowkey_, f1, cf1.f2, f3) VALUES('06', 'a2', 'b', 11)");
+        executeUpdate("INSERT INTO NumericFunctionTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', -1)");
+        executeUpdate("INSERT INTO NumericFunctionTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 3)");
+        executeUpdate("INSERT INTO NumericFunctionTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 5)");
+        executeUpdate("INSERT INTO NumericFunctionTest(pk, f1, f2, f3) VALUES('04', 'a2', 'b', 7)");
+        executeUpdate("INSERT INTO NumericFunctionTest(pk, f1, f2, f3) VALUES('05', 'a2', 'b', 9)");
+        executeUpdate("INSERT INTO NumericFunctionTest(pk, f1, f2, f3) VALUES('06', 'a2', 'b', 11)");
     }
-
 }

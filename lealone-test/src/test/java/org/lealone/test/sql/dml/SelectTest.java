@@ -29,9 +29,7 @@ import org.lealone.test.TestBase;
 public class SelectTest extends TestBase {
     @Test
     public void run() throws Exception {
-        executeUpdate("DROP TABLE IF EXISTS SelectTest");
-        executeUpdate("CREATE TABLE SelectTest (pk varchar NOT NULL PRIMARY KEY, " + //
-                "f1 varchar, f2 varchar, f3 int)");
+        createTable("SelectTest");
         testInsert();
         testSelect();
         testAggregate();

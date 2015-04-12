@@ -39,10 +39,6 @@ public class NodeBase extends YamlConfigurationLoader {
     protected String dir;
     protected String nodeBaseDirPrefix;
 
-    protected String url;
-    protected String user = "test";
-    protected String password = "test";
-
     protected RunMode run_mode = RunMode.cluster;
 
     //在org.lealone.cluster.utils.FBUtilities.construct(String, String)中必须使用无参数的构造函数
@@ -60,12 +56,6 @@ public class NodeBase extends YamlConfigurationLoader {
 
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.base_dir);
-
-        if (url != null) {
-            config.backend_url = url;
-            config.backend_user = user;
-            config.backend_password = password;
-        }
 
         return config;
     }

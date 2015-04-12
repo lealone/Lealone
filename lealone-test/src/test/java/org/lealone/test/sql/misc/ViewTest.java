@@ -28,25 +28,24 @@ public class ViewTest extends TestBase {
     }
 
     void init() throws Exception {
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS ViewTest("
-                + "COLUMN FAMILY cf (id int, name varchar(500), b boolean))");
+        executeUpdate("CREATE TABLE IF NOT EXISTS ViewTest(id int, name varchar(500), b boolean)");
         insert();
     }
 
     void insert() throws Exception {
-        stmt.executeUpdate("insert into ViewTest(_rowkey_, id, name, b) values(1, 1, 'a1', true)");
-        stmt.executeUpdate("insert into ViewTest(_rowkey_, id, name, b) values(2, 1, 'b1', true)");
-        stmt.executeUpdate("insert into ViewTest(_rowkey_, id, name, b) values(3, 2, 'a2', false)");
-        stmt.executeUpdate("insert into ViewTest(_rowkey_, id, name, b) values(4, 2, 'b2', true)");
-        stmt.executeUpdate("insert into ViewTest(_rowkey_, id, name, b) values(5, 3, 'a3', false)");
-        stmt.executeUpdate("insert into ViewTest(_rowkey_, id, name, b) values(6, 3, 'b3', true)");
+        executeUpdate("insert into ViewTest(id, name, b) values(1, 'a1', true)");
+        executeUpdate("insert into ViewTest(id, name, b) values(1, 'b1', true)");
+        executeUpdate("insert into ViewTest(id, name, b) values(2, 'a2', false)");
+        executeUpdate("insert into ViewTest(id, name, b) values(2, 'b2', true)");
+        executeUpdate("insert into ViewTest(id, name, b) values(3, 'a3', false)");
+        executeUpdate("insert into ViewTest(id, name, b) values(3, 'b3', true)");
     }
 
     void createView() throws Exception {
         sql = "CREATE OR REPLACE FORCE VIEW IF NOT EXISTS my_view COMMENT IS 'my view'(f1,f2) " //
                 + "AS SELECT id,name FROM ViewTest";
 
-        stmt.executeUpdate(sql);
+        executeUpdate(sql);
 
         sql = "SELECT * FROM my_view";
         //sql = "SELECT * FROM ViewTest";

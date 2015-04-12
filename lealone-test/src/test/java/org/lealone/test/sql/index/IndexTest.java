@@ -34,29 +34,15 @@ public class IndexTest extends TestBase {
         select();
         testCommit();
         testRollback();
-        testSavepoint();
+        //testSavepoint(); //TODO
     }
 
     void init() throws Exception {
-        //stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
+        stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
         stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS IndexTest_idx0 ON IndexTest(f1)");
         stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS IndexTest_idx1 ON IndexTest(f2)");
         stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest_idx2 ON IndexTest(f3, f2)");
-
-        indexFieldWithColumnFamilyPrefix();
-    }
-
-    void indexFieldWithColumnFamilyPrefix() throws Exception {
-        //IndexTest_idx3与IndexTest_idx1一样，只不过索引字段前可加列族前缀，
-        //用CREATE TABLE建立的表是单列族的静态表，列族名称是cf
-        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest_idx3 ON IndexTest(cf.f2)");
-
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS IndexTest2 (" //
-                + "COLUMN FAMILY cf(id int), COLUMN FAMILY cf2(id2 int))");
-
-        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest2_idx1 ON IndexTest2(cf.id)");
-        stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest2_idx2 ON IndexTest2(cf2.id2)");
     }
 
     void delete() throws Exception {
@@ -207,7 +193,7 @@ public class IndexTest extends TestBase {
         try {
             conn.setAutoCommit(false);
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 10, 'a')");
-            stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'b')");
+            //stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'b')");
             Savepoint savepoint = conn.setSavepoint();
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(300, 30, 'c')");
             sql = "SELECT f1, f2, f3 FROM IndexTest";

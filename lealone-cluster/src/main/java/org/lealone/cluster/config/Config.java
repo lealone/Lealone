@@ -129,11 +129,6 @@ public class Config {
 
     public RunMode run_mode = RunMode.cluster;
 
-    //当运行模式是mysql_proxy或pg_proxy时，配置后端数据库的三个参数，用于建立JDBC连接
-    public String backend_url;
-    public String backend_user;
-    public String backend_password;
-
     public boolean isClusterMode() {
         return run_mode == RunMode.cluster;
     }

@@ -31,38 +31,43 @@ public class JoinTest extends TestBase {
     }
 
     void init() throws Exception {
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest1(" //
-                + "COLUMN FAMILY cf(id int, name varchar(500), b boolean))");
+        executeUpdate("DROP TABLE IF EXISTS JoinTest1");
+        executeUpdate("DROP TABLE IF EXISTS JoinTest2");
+        executeUpdate("DROP TABLE IF EXISTS JoinTest3");
+        executeUpdate("DROP TABLE IF EXISTS JoinTest4");
 
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest2(" //
-                + "COLUMN FAMILY cf(id2 int, name2 varchar(500)))");
+        executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest1" //
+                + "(pk int NOT NULL PRIMARY KEY, id int, name varchar(500), b boolean)");
 
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest3(" //
-                + "COLUMN FAMILY cf(id3 int, name3 varchar(500)))");
+        executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest2" //
+                + "(pk int NOT NULL PRIMARY KEY, id2 int, name2 varchar(500))");
 
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest4(" //
-                + "COLUMN FAMILY cf(id int, name varchar(500)))");
+        executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest3" //
+                + "(pk int NOT NULL PRIMARY KEY, id3 int, name3 varchar(500))");
+
+        executeUpdate("CREATE TABLE IF NOT EXISTS JoinTest4" //
+                + "(pk int NOT NULL PRIMARY KEY, id int, name varchar(500))");
     }
 
     void insert() throws Exception {
-        stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(1, 10, 'a1', true)");
-        stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(2, 20, 'b1', true)");
-        stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(3, 30, 'a2', false)");
-        stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(4, 40, 'b2', true)");
-        stmt.executeUpdate("insert into JoinTest1(_rowkey_, id, name, b) values(5, 80, 'b2', true)");
+        executeUpdate("insert into JoinTest1(pk, id, name, b) values(1, 10, 'a1', true)");
+        executeUpdate("insert into JoinTest1(pk, id, name, b) values(2, 20, 'b1', true)");
+        executeUpdate("insert into JoinTest1(pk, id, name, b) values(3, 30, 'a2', false)");
+        executeUpdate("insert into JoinTest1(pk, id, name, b) values(4, 40, 'b2', true)");
+        executeUpdate("insert into JoinTest1(pk, id, name, b) values(5, 80, 'b2', true)");
 
-        stmt.executeUpdate("insert into JoinTest2(_rowkey_, id2, name2) values(1, 60, 'a11')");
-        stmt.executeUpdate("insert into JoinTest2(_rowkey_, id2, name2) values(2, 70, 'a11')");
-        stmt.executeUpdate("insert into JoinTest2(_rowkey_, id2, name2) values(3, 80, 'a11')");
-        stmt.executeUpdate("insert into JoinTest2(_rowkey_, id2, name2) values(4, 90, 'a11')");
+        executeUpdate("insert into JoinTest2(pk, id2, name2) values(1, 60, 'a11')");
+        executeUpdate("insert into JoinTest2(pk, id2, name2) values(2, 70, 'a11')");
+        executeUpdate("insert into JoinTest2(pk, id2, name2) values(3, 80, 'a11')");
+        executeUpdate("insert into JoinTest2(pk, id2, name2) values(4, 90, 'a11')");
 
-        stmt.executeUpdate("insert into JoinTest3(_rowkey_, id3, name3) values(1, 100, 'a11')");
-        stmt.executeUpdate("insert into JoinTest3(_rowkey_, id3, name3) values(2, 200, 'a11')");
+        executeUpdate("insert into JoinTest3(pk, id3, name3) values(1, 100, 'a11')");
+        executeUpdate("insert into JoinTest3(pk, id3, name3) values(2, 200, 'a11')");
 
-        stmt.executeUpdate("insert into JoinTest4(_rowkey_, id, name) values(1, 10, 'a1')");
-        stmt.executeUpdate("insert into JoinTest4(_rowkey_, id, name) values(2, 10, 'a1')");
-        stmt.executeUpdate("insert into JoinTest4(_rowkey_, id, name) values(3, 20, 'a1')");
-        stmt.executeUpdate("insert into JoinTest4(_rowkey_, id, name) values(4, 30, 'a1')");
+        executeUpdate("insert into JoinTest4(pk, id, name) values(1, 10, 'a1')");
+        executeUpdate("insert into JoinTest4(pk, id, name) values(2, 10, 'a1')");
+        executeUpdate("insert into JoinTest4(pk, id, name) values(3, 20, 'a1')");
+        executeUpdate("insert into JoinTest4(pk, id, name) values(4, 30, 'a1')");
     }
 
     void test() throws Exception {
@@ -100,26 +105,25 @@ public class JoinTest extends TestBase {
 
         sql = "SELECT rownum, * FROM JoinTest1 LEFT OUTER JOIN JoinTest2 ON name2=null";
 
-        sql = "SELECT rownum, * FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1._rowkey_ = 1 and JoinTest2._rowkey_ = 2";
+        sql = "SELECT rownum, * FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1.pk = 1 and JoinTest2.pk = 2";
 
-        sql = "SELECT rownum, id, id2 FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1._rowkey_ = 1 and JoinTest2._rowkey_ = 2";
+        sql = "SELECT rownum, id, id2 FROM JoinTest1 JOIN JoinTest2 WHERE JoinTest1.pk = 1 and JoinTest2.pk = 2";
 
         sql = "SELECT rownum, * FROM JoinTest1";
         printResultSet();
 
-        sql = "SELECT rownum, t1.cf.id FROM JoinTest1 t1 JOIN JoinTest2 t2";
+        sql = "SELECT rownum, t1.id FROM JoinTest1 t1 JOIN JoinTest2 t2";
 
-        sql = "SELECT rownum, t1.cf.id FROM JoinTest1 t1 JOIN JoinTest2 t2 WHERE t1.cf.id = t2.cf.id2";
+        sql = "SELECT rownum, t1.id FROM JoinTest1 t1 JOIN JoinTest2 t2 WHERE t1.id = t2.id2";
         printResultSet();
 
-        sql = "SELECT count(*) FROM JoinTest1 t1 JOIN JoinTest2 t2 WHERE t1.cf.id = t2.cf.id2";
+        sql = "SELECT count(*) FROM JoinTest1 t1 JOIN JoinTest2 t2 WHERE t1.id = t2.id2";
         assertEquals(1, getIntValue(1, true));
 
-        sql = "SELECT t1.cf.name FROM JoinTest1 t1 join JoinTest4 t4 ON t1.cf.id = t4.cf.id";
+        sql = "SELECT t1.name FROM JoinTest1 t1 join JoinTest4 t4 ON t1.id = t4.id";
         printResultSet();
 
-        sql = "SELECT count(*) FROM JoinTest1 t1 join JoinTest4 t4 ON t1.cf.id = t4.cf.id";
+        sql = "SELECT count(*) FROM JoinTest1 t1 join JoinTest4 t4 ON t1.id = t4.id";
         assertEquals(4, getIntValue(1, true));
-
     }
 }

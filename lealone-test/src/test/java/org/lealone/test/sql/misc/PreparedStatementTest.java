@@ -32,9 +32,9 @@ public class PreparedStatementTest extends TestBase {
     }
 
     void init() throws Exception {
-        createTableSQL("CREATE HBASE TABLE IF NOT EXISTS PreparedStatementTest(COLUMN FAMILY cf)");
+        createTable("PreparedStatementTest");
 
-        sql = "INSERT INTO PreparedStatementTest(_rowkey_, f1, f2) VALUES(?, ?, ?)";
+        sql = "INSERT INTO PreparedStatementTest(pk, f1, f2) VALUES(?, ?, ?)";
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setString(1, "01");
         ps.setString(2, "a1");

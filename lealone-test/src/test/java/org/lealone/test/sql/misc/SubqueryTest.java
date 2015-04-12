@@ -30,43 +30,41 @@ public class SubqueryTest extends TestBase {
     }
 
     void init() throws Exception {
-        createTableSQL("CREATE HBASE TABLE IF NOT EXISTS SubqueryTest(COLUMN FAMILY cf)");
+        createTable("SubqueryTest");
 
-        stmt.executeUpdate("INSERT INTO SubqueryTest(_rowkey_, f1, f2) VALUES('01', 'a1', 10)");
-        stmt.executeUpdate("INSERT INTO SubqueryTest(_rowkey_, f1, f2) VALUES('02', 'a2', 50)");
-        stmt.executeUpdate("INSERT INTO SubqueryTest(_rowkey_, f1, f2) VALUES('03', 'a3', 30)");
+        executeUpdate("INSERT INTO SubqueryTest(pk, f1, f2) VALUES('01', 'a1', 10)");
+        executeUpdate("INSERT INTO SubqueryTest(pk, f1, f2) VALUES('02', 'a2', 50)");
+        executeUpdate("INSERT INTO SubqueryTest(pk, f1, f2) VALUES('03', 'a3', 30)");
 
-        stmt.executeUpdate("INSERT INTO SubqueryTest(_rowkey_, f1, f2) VALUES('04', 'a4', 40)");
-        stmt.executeUpdate("INSERT INTO SubqueryTest(_rowkey_, f1, f2) VALUES('05', 'a5', 20)");
-        stmt.executeUpdate("INSERT INTO SubqueryTest(_rowkey_, f1, f2) VALUES('06', 'a6', 60)");
+        executeUpdate("INSERT INTO SubqueryTest(pk, f1, f2) VALUES('04', 'a4', 40)");
+        executeUpdate("INSERT INTO SubqueryTest(pk, f1, f2) VALUES('05', 'a5', 20)");
+        executeUpdate("INSERT INTO SubqueryTest(pk, f1, f2) VALUES('06', 'a6', 60)");
     }
 
     void testSelect() throws Exception {
-
         //scalar subquery
-        sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"
-                + " AND f2 >= (SELECT f2 FROM SubqueryTest WHERE _rowkey_='01')";
+        sql = "SELECT count(*) FROM SubqueryTest WHERE pk>='01'" //
+                + " AND f2 >= (SELECT f2 FROM SubqueryTest WHERE pk='01')";
         assertEquals(6, getIntValue(1, true));
 
-        sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"
-                + " AND EXISTS(SELECT f2 FROM SubqueryTest WHERE _rowkey_='01' AND f1='a1')";
+        sql = "SELECT count(*) FROM SubqueryTest WHERE pk>='01'" //
+                + " AND EXISTS(SELECT f2 FROM SubqueryTest WHERE pk='01' AND f1='a1')";
         assertEquals(6, getIntValue(1, true));
 
-        sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"
-                + " AND f2 IN(SELECT f2 FROM SubqueryTest WHERE _rowkey_>='04')";
+        sql = "SELECT count(*) FROM SubqueryTest WHERE pk>='01'" //
+                + " AND f2 IN(SELECT f2 FROM SubqueryTest WHERE pk>='04')";
         assertEquals(3, getIntValue(1, true));
 
-        sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"
-                + " AND f2 < ALL(SELECT f2 FROM SubqueryTest WHERE _rowkey_>='04')";
+        sql = "SELECT count(*) FROM SubqueryTest WHERE pk>='01'" //
+                + " AND f2 < ALL(SELECT f2 FROM SubqueryTest WHERE pk>='04')";
         assertEquals(1, getIntValue(1, true));
 
-        sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"
-                + " AND f2 < ANY(SELECT f2 FROM SubqueryTest WHERE _rowkey_>='04')";
+        sql = "SELECT count(*) FROM SubqueryTest WHERE pk>='01'" //
+                + " AND f2 < ANY(SELECT f2 FROM SubqueryTest WHERE pk>='04')";
         assertEquals(5, getIntValue(1, true));
 
-        sql = "SELECT count(*) FROM SubqueryTest WHERE _rowkey_>='01'"
-                + " AND f2 < SOME(SELECT f2 FROM SubqueryTest WHERE _rowkey_>='04')";
+        sql = "SELECT count(*) FROM SubqueryTest WHERE pk>='01'" //
+                + " AND f2 < SOME(SELECT f2 FROM SubqueryTest WHERE pk>='04')";
         assertEquals(5, getIntValue(1, true));
-
     }
 }

@@ -25,7 +25,6 @@ import java.sql.Statement;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.lealone.util.Bytes;
 
 public class TestBase {
 
@@ -59,10 +58,6 @@ public class TestBase {
             conn.close();
     }
 
-    public static String toS(byte[] v) {
-        return Bytes.toString(v);
-    }
-
     public int executeUpdate(String sql) {
         try {
             return stmt.executeUpdate(sql);
@@ -72,62 +67,10 @@ public class TestBase {
         }
     }
 
-    public void createTableSQL(String sql) throws Exception {
-        stmt.executeUpdate(sql);
-    }
-
-    public void createTableIfNotExists(String tableName) throws Exception {
-        //建立了4个分区
-        //------------------------
-        //分区1: rowKey < 25
-        //分区2: 25 <= rowKey < 50
-        //分区3: 50 <= rowKey < 75
-        //分区4: rowKey > 75
-        createTable(tableName, "25", "50", "75");
-    }
-
-    public void createTable(String tableName, String... splitKeys) throws Exception {
-        //stmt.executeUpdate("DROP TABLE IF EXISTS " + tableName);
-
-        StringBuilder builder = new StringBuilder();
-        for (String s : splitKeys) {
-            if (builder.length() > 0) {
-                builder.append(", ");
-            }
-            builder.append("'").append(s).append("'");
-        }
-
-        String splitKeyStr = "";
-        if (splitKeys.length > 0) {
-            splitKeyStr = "SPLIT KEYS(" + builder + "), ";
-        }
-
-        //CREATE HBASE TABLE语句不用定义字段
-        createTableSQL("CREATE HBASE TABLE IF NOT EXISTS " + tableName + " (" //
-                //此OPTIONS对应org.apache.hadoop.hbase.HTableDescriptor的参数选项
-                + "OPTIONS(DEFERRED_LOG_FLUSH='false'), "
-
-                //预分region
-                + splitKeyStr
-
-                //COLUMN FAMILY中的OPTIONS对应org.apache.hadoop.hbase.HColumnDescriptor的参数选项
-                + "COLUMN FAMILY cf1 (OPTIONS(MIN_VERSIONS=2, KEEP_DELETED_CELLS=true)), " //
-
-                + "COLUMN FAMILY cf2 (OPTIONS(MIN_VERSIONS=2, KEEP_DELETED_CELLS=true))" //
-                + ")");
-
-        //        Configuration conf = HBaseConfiguration.create();
-        //        //确保表已可用
-        //        while (true) {
-        //            if (ZKTableReadOnly.isEnabledTable(new ZooKeeperWatcher(conf, "TestBase", null), tableName.toUpperCase()))
-        //                break;
-        //            Thread.sleep(100);
-        //        }
-        //
-        //        //TODO H2数据库会默认把标识符转成大写，这个问题未解决，所以这里表名、列族名用大写
-        //        HTable t = new HTable(conf, tableName.toUpperCase());
-        //        Assert.assertEquals(splitKeys.length + 1, t.getRegionLocations().size());
-        //        t.close();
+    public void createTable(String tableName) {
+        executeUpdate("DROP TABLE IF EXISTS " + tableName);
+        executeUpdate("CREATE TABLE " + tableName + " (pk varchar NOT NULL PRIMARY KEY, " + //
+                "f1 varchar, f2 varchar, f3 int)");
     }
 
     private void check() throws Exception {

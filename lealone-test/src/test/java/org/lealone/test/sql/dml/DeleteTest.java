@@ -25,9 +25,7 @@ import org.lealone.test.TestBase;
 public class DeleteTest extends TestBase {
     @Test
     public void run() {
-        executeUpdate("DROP TABLE IF EXISTS DeleteTest");
-        executeUpdate("CREATE TABLE DeleteTest (pk varchar NOT NULL PRIMARY KEY, " + //
-                "f1 varchar, f2 varchar, f3 int)");
+        createTable("DeleteTest");
         testInsert();
         testDelete();
     }

@@ -32,31 +32,25 @@ public class AggregateFunctionTest extends TestBase {
     }
 
     void init() throws Exception {
-        //建立了4个分区
-        //------------------------
-        //分区1: rowKey < 25
-        //分区2: 25 <= rowKey < 50
-        //分区3: 50 <= rowKey < 75
-        //分区4: rowKey > 75
-        createTable("AggregateFunctionTest", "25", "50", "75");
+        createTable("AggregateFunctionTest");
 
         //在分区1中保存1到11中的奇数
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('01', 'a1', 'b', 1)");
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('02', 'a1', 'b', 3)");
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('03', 'a1', 'b', 5)");
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('04', 'a2', 'b', 7)");
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('05', 'a2', 'b', 9)");
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('06', 'a2', 'b', 11)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 1)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 3)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 5)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('04', 'a2', 'b', 7)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('05', 'a2', 'b', 9)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('06', 'a2', 'b', 11)");
 
         //分区2到4中分别保存1到11中的奇数
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('25', 'a1', 'b', 1)");
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('26', 'a1', 'b', 3)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('25', 'a1', 'b', 1)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('26', 'a1', 'b', 3)");
 
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('50', 'a1', 'b', 5)");
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('51', 'a2', 'b', 7)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('50', 'a1', 'b', 5)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('51', 'a2', 'b', 7)");
 
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('75', 'a2', 'b', 9)");
-        executeUpdate("INSERT INTO AggregateFunctionTest(_rowkey_, f1, cf1.f2, cf2.f3) VALUES('76', 'a2', 'b', 11)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('75', 'a2', 'b', 9)");
+        executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('76', 'a2', 'b', 11)");
     }
 
     //以1结尾的变量是用来统计分区1中的值;
@@ -68,26 +62,26 @@ public class AggregateFunctionTest extends TestBase {
     boolean bool_and1, bool_and2, bool_or1, bool_or2;
     double avg1, avg2, stddev_pop1, stddev_pop2, stddev_samp1, stddev_samp2, var_pop1, var_pop2, var_samp1, var_samp2;
 
-    String select = "SELECT count(*), max(cf2.f3), min(cf2.f3), sum(cf2.f3), " //
+    String select = "SELECT count(*), max(f3), min(f3), sum(f3), " //
 
-            + " bool_and((cf2.f3 % 2)=1), " //
-            + " bool_or(cf2.f3=5), " //
+            + " bool_and((f3 % 2)=1), " //
+            + " bool_or(f3=5), " //
 
-            + " avg(cf2.f3), " //
+            + " avg(f3), " //
 
-            + " stddev_pop(cf2.f3), " //
-            + " stddev_samp(cf2.f3), " //
-            + " var_pop(cf2.f3), " //
-            + " var_samp(cf2.f3) " //
+            + " stddev_pop(f3), " //
+            + " stddev_samp(f3), " //
+            + " var_pop(f3), " //
+            + " var_samp(f3) " //
 
             + " FROM AggregateFunctionTest WHERE ";
 
     void testAggregateFunctions() throws Exception {
 
-        sql = select + "_rowkey_ >= '01' AND _rowkey_ < '25'";
+        sql = select + "pk >= '01' AND pk < '25'";
         getValues1();
 
-        sql = select + " _rowkey_ >= '25'";
+        sql = select + " pk >= '25'";
         getValues2();
 
         assertValues();
@@ -97,20 +91,20 @@ public class AggregateFunctionTest extends TestBase {
         //会得到两个分组，一个是a1，另一个是a2
 
         //测试a1的分组
-        sql = select + "_rowkey_ >= '01' AND _rowkey_ < '25' GROUP BY f1";
+        sql = select + "pk >= '01' AND pk < '25' GROUP BY f1";
         getValues1();
 
-        sql = select + " _rowkey_ >= '25' GROUP BY f1";
+        sql = select + " pk >= '25' GROUP BY f1";
         getValues2();
 
         assertValues();
 
         //测试a2的分组
-        sql = select + "_rowkey_ >= '01' AND _rowkey_ < '25' GROUP BY f1";
+        sql = select + "pk >= '01' AND pk < '25' GROUP BY f1";
         next();
         getValues1();
 
-        sql = select + " _rowkey_ >= '25' GROUP BY f1";
+        sql = select + " pk >= '25' GROUP BY f1";
         next();
         getValues2();
 
@@ -170,5 +164,4 @@ public class AggregateFunctionTest extends TestBase {
         assertEquals(var_pop1, var_pop2, 0.00000001);
         assertEquals(var_samp1, var_samp2, 0.00000001);
     }
-
 }

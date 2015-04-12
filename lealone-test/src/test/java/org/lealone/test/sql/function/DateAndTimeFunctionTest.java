@@ -32,13 +32,15 @@ public class DateAndTimeFunctionTest extends TestBase {
     }
 
     void init() throws Exception {
-        //stmt.executeUpdate("DROP TABLE IF EXISTS DateAndTimeFunctionTest");
-        stmt.executeUpdate("CREATE HBASE TABLE IF NOT EXISTS DateAndTimeFunctionTest(" + "COLUMN FAMILY cf)");
+        executeUpdate("DROP TABLE IF EXISTS DateAndTimeFunctionTest");
+        executeUpdate("CREATE TABLE DateAndTimeFunctionTest (pk int NOT NULL PRIMARY KEY, " + //
+                "d date, t time, ts timestamp)");
+
         insert();
     }
 
     void insert() throws Exception {
-        stmt.executeUpdate("INSERT INTO DateAndTimeFunctionTest(_rowkey_, d, t, ts) "
+        stmt.executeUpdate("INSERT INTO DateAndTimeFunctionTest(pk, d, t, ts) "
                 + "VALUES(1, DATE '2012-12-21', TIME '11:59:59.999', TIMESTAMP '2012-12-21 11:59:59')");
     }
 

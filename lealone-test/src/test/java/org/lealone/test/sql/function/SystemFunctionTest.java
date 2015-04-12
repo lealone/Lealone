@@ -72,5 +72,4 @@ public class SystemFunctionTest extends TestBase {
         sql = "SELECT CAST(65535 AS BINARY);";
         printResultSet();
     }
-
 }

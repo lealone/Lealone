@@ -25,13 +25,8 @@ import org.lealone.test.TestBase;
 public class InsertTest extends TestBase {
     @Test
     public void run() {
-        executeUpdate("DROP TABLE IF EXISTS InsertTest");
-        executeUpdate("DROP TABLE IF EXISTS InsertTest2");
-        executeUpdate("CREATE TABLE InsertTest (pk varchar NOT NULL PRIMARY KEY, " + //
-                "f1 varchar, f2 varchar, f3 int)");
-        executeUpdate("CREATE TABLE InsertTest2 (pk varchar NOT NULL PRIMARY KEY, " + //
-                "f1 varchar, f2 varchar, f3 int)");
-
+        createTable("InsertTest");
+        createTable("InsertTest2");
         testInsert();
     }
 

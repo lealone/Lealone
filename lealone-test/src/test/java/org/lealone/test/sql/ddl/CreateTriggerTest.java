@@ -46,12 +46,12 @@ public class CreateTriggerTest extends TestBase {
 
         @Override
         public void close() throws SQLException {
-            System.out.println("org.lealone.test.jdbc.ddl.CreateTriggerTest.MyInsertTrigger.close()");
+            System.out.println("org.lealone.test.sql.ddl.CreateTriggerTest.MyInsertTrigger.close()");
         }
 
         @Override
         public void remove() throws SQLException {
-            System.out.println("org.lealone.test.jdbc.ddl.CreateTriggerTest.MyInsertTrigger.remove()");
+            System.out.println("org.lealone.test.sql.ddl.CreateTriggerTest.MyInsertTrigger.remove()");
         }
 
     }
@@ -60,17 +60,17 @@ public class CreateTriggerTest extends TestBase {
     public void run() throws Exception {
         conn.setAutoCommit(false);
 
-        //executeUpdate("DROP TABLE IF EXISTS CreateTriggerTest");
+        executeUpdate("DROP TABLE IF EXISTS CreateTriggerTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS CreateTriggerTest(id int, name varchar(500))");
 
         executeUpdate("CREATE FORCE TRIGGER IF NOT EXISTS MyTrigger1"
                 + " BEFORE INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest"
-                + " QUEUE 10 NOWAIT CALL \"org.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
+                + " QUEUE 10 NOWAIT CALL \"org.lealone.test.sql.ddl.CreateTriggerTest$MyTrigger\"");
 
         try {
             stmt.executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger2"
                     + " AFTER INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
-                    + " QUEUE 10 NOWAIT CALL \"org.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
+                    + " QUEUE 10 NOWAIT CALL \"org.lealone.test.sql.ddl.CreateTriggerTest$MyTrigger\"");
             Assert.fail("do not throw SQLException");
         } catch (SQLException e) {
             assertEquals(90005, e.getErrorCode());
@@ -79,7 +79,7 @@ public class CreateTriggerTest extends TestBase {
         //INSTEAD OF也是BEFORE类型
         executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger3"
                 + " INSTEAD OF INSERT,UPDATE,DELETE,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
-                + " QUEUE 10 NOWAIT CALL \"org.lealone.test.jdbc.ddl.CreateTriggerTest$MyTrigger\"");
+                + " QUEUE 10 NOWAIT CALL \"org.lealone.test.sql.ddl.CreateTriggerTest$MyTrigger\"");
 
         //这种语法可查入多条记录
         //null null

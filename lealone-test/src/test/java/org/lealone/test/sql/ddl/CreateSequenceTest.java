@@ -60,13 +60,7 @@ public class CreateSequenceTest extends TestBase {
     }
 
     void init() throws Exception {
-        //建立了4个分区
-        //------------------------
-        //分区1: rowKey < 25
-        //分区2: 25 <= rowKey < 50
-        //分区3: 50 <= rowKey < 75
-        //分区4: rowKey > 75
-        createTable("CreateSequenceTest", "25", "50", "75");
+        createTable("CreateSequenceTest");
         stmt.executeUpdate("DROP SEQUENCE IF EXISTS myseq3");
         stmt.executeUpdate("CREATE SEQUENCE IF NOT EXISTS myseq3 START WITH 1000 INCREMENT BY 1 CACHE 3");
     }
@@ -74,17 +68,17 @@ public class CreateSequenceTest extends TestBase {
     void testInsert() throws Exception {
         //f1没有加列族前缀，默认是cf1，按CREATE HBASE TABLE中的定义顺序，哪个在先默认就是哪个
         //或者在表OPTIONS中指定DEFAULT_COLUMN_FAMILY_NAME参数
-        stmt.executeUpdate("INSERT INTO CreateSequenceTest(_ROWKEY_, f1) VALUES('01', myseq3.NEXTVAL)");
-        stmt.executeUpdate("INSERT INTO CreateSequenceTest(_ROWKEY_, f1) VALUES('26', myseq3.NEXTVAL)");
-        stmt.executeUpdate("INSERT INTO CreateSequenceTest(_ROWKEY_, f1) VALUES('51', myseq3.NEXTVAL)");
-        stmt.executeUpdate("INSERT INTO CreateSequenceTest(_ROWKEY_, f1) VALUES('76', myseq3.NEXTVAL)");
+        stmt.executeUpdate("INSERT INTO CreateSequenceTest(pk, f1) VALUES('01', myseq3.NEXTVAL)");
+        stmt.executeUpdate("INSERT INTO CreateSequenceTest(pk, f1) VALUES('26', myseq3.NEXTVAL)");
+        stmt.executeUpdate("INSERT INTO CreateSequenceTest(pk, f1) VALUES('51', myseq3.NEXTVAL)");
+        stmt.executeUpdate("INSERT INTO CreateSequenceTest(pk, f1) VALUES('76', myseq3.NEXTVAL)");
 
-        sql = "SELECT _ROWKEY_, f1 FROM CreateSequenceTest";
+        sql = "SELECT pk, f1 FROM CreateSequenceTest";
         printResultSet();
     }
 
     void testSelect() throws Exception {
-        sql = "SELECT _ROWKEY_, f1 FROM CreateSequenceTest";
+        sql = "SELECT pk, f1 FROM CreateSequenceTest";
         printResultSet();
     }
 }

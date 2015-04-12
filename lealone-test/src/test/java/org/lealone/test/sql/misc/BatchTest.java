@@ -33,7 +33,8 @@ public class BatchTest extends TestBase {
     }
 
     void init() throws Exception {
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS BatchTest(f1 int primary key, f2 int)");
+        executeUpdate("DROP TABLE IF EXISTS BatchTest");
+        executeUpdate("CREATE TABLE IF NOT EXISTS BatchTest(f1 int, f2 int)");
     }
 
     void testStatementBatch() throws Exception {
