@@ -17,13 +17,6 @@
  */
 package org.lealone.wiredtiger.dbobject.index;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-
 import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
@@ -38,39 +31,34 @@ import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
 import org.lealone.value.Value;
+import org.lealone.value.ValueInt;
 import org.lealone.value.ValueLong;
 import org.lealone.value.ValueNull;
+import org.lealone.value.ValueString;
 import org.lealone.wiredtiger.dbobject.table.WiredTigerTable;
 
 public class WiredTigerPrimaryIndex extends BaseIndex {
-
-    /**
-     * The minimum long value.
-     */
-    static final ValueLong MIN = ValueLong.get(Long.MIN_VALUE);
-
-    /**
-     * The maximum long value.
-     */
-    static final ValueLong MAX = ValueLong.get(Long.MAX_VALUE);
-
-    /**
-     * The zero long value.
-     */
-    static final ValueLong ZERO = ValueLong.get(0);
-
-    private final ConcurrentNavigableMap<Value, Row> rows = new ConcurrentSkipListMap<Value, Row>();
     private final WiredTigerTable table;
     private long lastKey;
     private int mainIndexColumn = -1;
 
-    public WiredTigerPrimaryIndex(Database db, WiredTigerTable table, int id, IndexColumn[] columns, IndexType indexType) {
+    private final char[] valueFormat;
+    private final int length;
+    private final com.wiredtiger.db.Cursor wtCursor;
+
+    public WiredTigerPrimaryIndex(Database db, WiredTigerTable table, int id, //
+            IndexColumn[] columns, IndexType indexType, com.wiredtiger.db.Session wtSession) {
         this.table = table;
         initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
         int[] sortTypes = new int[columns.length];
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = SortOrder.ASCENDING;
         }
+
+        wtCursor = wtSession.open_cursor("table:" + table.getName(), null, "append");
+
+        valueFormat = table.getValueFormat().toCharArray();
+        length = valueFormat.length;
     }
 
     @Override
@@ -94,17 +82,6 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
     @Override
     public void close(Session session) {
         // ok
-    }
-
-    private Value getKey(Row row) {
-        Value key = ValueLong.get(row.getKey());
-        key.compareMode = table.getCompareMode();
-        return key;
-    }
-
-    private Value getKey(Value v) {
-        v.compareMode = table.getCompareMode();
-        return v;
     }
 
     @Override
@@ -131,26 +108,38 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
             }
         }
 
-        Value key = getKey(row);
-        Row old = rows.get(key);
-        if (row.isUpdate()) {
-            old.merge(row);
-        } else {
-            if (old != null) {
-                String sql = "PRIMARY KEY ON " + table.getSQL();
-                if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
-                    sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
-                }
-                DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-                e.setSource(this);
-                throw e;
+        wtCursor.putKeyLong(row.getKey());
+        putValues(row);
+        wtCursor.insert();
+        //TODO 
+        //        Row old = null;
+        //        if (old != null) {
+        //            String sql = "PRIMARY KEY ON " + table.getSQL();
+        //            if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
+        //                sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+        //            }
+        //            DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
+        //            e.setSource(this);
+        //            throw e;
+        //        }
+        lastKey = Math.max(lastKey, row.getKey());
+    }
+
+    private void putValues(Row row) {
+        for (Value v : row.getValueList()) {
+            switch (v.getType()) {
+            case Value.INT:
+                wtCursor.putValueInt(v.getInt());
+                break;
+            case Value.LONG:
+                wtCursor.putValueLong(v.getLong());
+                break;
+            case Value.STRING:
+                wtCursor.putValueString(v.getString());
+                break;
+            default:
+                wtCursor.putValueByteArray(v.getBytesNoCopy());
             }
-            try {
-                rows.put(key, row);
-            } catch (IllegalStateException e) {
-                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-            }
-            lastKey = Math.max(lastKey, row.getKey());
         }
     }
 
@@ -164,27 +153,20 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
                 }
             }
         }
-        Value key = getKey(row);
-        Row old = rows.get(key);
-        try {
-            if (old == null) {
-                throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
-            }
-            if (row.isUpdate())
-                row.cleanUpdateFlag(); //由update语句触发，什么都不做
-            else
-                //不删除行，只设个删除标记
-                old.setDeleted(true); //rows.remove(key);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
+        wtCursor.putKeyLong(row.getKey());
+        wtCursor.remove();
+        //TODO
+        //        Row old = null;
+        //        if (old == null) {
+        //            throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
+        //        }
     }
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         Value min, max;
         if (first == null) {
-            min = MIN;
+            min = null;
         } else if (mainIndexColumn < 0) {
             min = ValueLong.get(first.getKey());
         } else {
@@ -196,7 +178,7 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
             }
         }
         if (last == null) {
-            max = MAX;
+            max = null;
         } else if (mainIndexColumn < 0) {
             max = ValueLong.get(last.getKey());
         } else {
@@ -217,7 +199,35 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
 
     @Override
     public Row getRow(Session session, long key) {
-        return rows.get(ValueLong.get(key));
+        wtCursor.reset();
+        wtCursor.putKeyLong(key);
+        if (wtCursor.search() != 0) {
+            return createNewRow(key);
+        }
+        return null;
+    }
+
+    private Row createNewRow(long key) {
+        Value[] values = new Value[length];
+        for (int i = 0; i < length; i++) {
+            switch (valueFormat[i]) {
+            case 'i':
+                values[i] = ValueInt.get(wtCursor.getValueInt());
+                break;
+            case 'q':
+                values[i] = ValueLong.get(wtCursor.getValueLong());
+                break;
+            case 'S':
+                values[i] = ValueString.get(wtCursor.getValueString());
+                break;
+            default:
+                values[i] = ValueString.get(wtCursor.getValueString());
+                break;
+            }
+        }
+        Row row = new Row(values, 0);
+        row.setKey(key);
+        return row;
     }
 
     @Override
@@ -255,18 +265,7 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
 
     @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
-        Row row = (first ? rows.firstEntry().getValue() : rows.lastEntry().getValue());
-        if (row == null) {
-            return new WiredTigerPrimaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
-                    .getTransaction().getTransactionId());
-        }
-        ValueLong key = ValueLong.get(row.getKey());
-        HashMap<Value, Row> e = new HashMap<>(1);
-        e.put(getKey(key), row);
-        WiredTigerPrimaryIndexCursor c = new WiredTigerPrimaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
-                .getTransactionId());
-        c.next();
-        return c;
+        return new FirstOrLastRowCursor(first);
     }
 
     @Override
@@ -276,7 +275,7 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
 
     @Override
     public long getRowCount(Session session) {
-        return rows.size();
+        return getRowCountMax();
     }
 
     /**
@@ -286,7 +285,8 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
      */
     public long getRowCountMax() {
         try {
-            return rows.size();
+            //TODO
+            return 0;
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }
@@ -337,8 +337,7 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
      * @return the cursor
      */
     Cursor find(Session session, Value first, Value last) {
-        return new WiredTigerPrimaryIndexCursor(rows.tailMap(getKey(first)).entrySet().iterator(), last, session.getTransaction()
-                .getTransactionId());
+        return new WiredTigerPrimaryIndexCursor(first, last);
     }
 
     @Override
@@ -346,33 +345,25 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
         return true;
     }
 
-    /**
-     * A cursor.
-     */
-    private static class WiredTigerPrimaryIndexCursor implements Cursor {
+    private class FirstOrLastRowCursor implements Cursor {
+        private Row row = null;
+        private boolean end;
 
-        private final Iterator<Entry<Value, Row>> it;
-        private final Value last;
-        private Entry<Value, Row> current;
-        private Row row;
-
-        private final long transactionId;
-
-        public WiredTigerPrimaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
-            this.it = it;
-            this.last = last;
-            this.transactionId = transactionId;
+        public FirstOrLastRowCursor(boolean first) {
+            wtCursor.reset();
+            if (first) {
+                if (wtCursor.next() != 0) {
+                    row = createNewRow(wtCursor.getKeyLong());
+                }
+            } else {
+                if (wtCursor.prev() != 0) {
+                    row = createNewRow(wtCursor.getKeyLong());
+                }
+            }
         }
 
         @Override
         public Row get() {
-            if (row == null) {
-                if (current != null) {
-                    row = current.getValue();
-                }
-            }
-            if (row != null)
-                row.setTransactionId(transactionId);
             return row;
         }
 
@@ -383,22 +374,69 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
 
         @Override
         public boolean next() {
-            current = it.hasNext() ? it.next() : null;
-            if (current != null && current.getKey().getLong() > last.getLong()) {
-                current = null;
+            if (row != null && !end) {
+                end = true;
+                return true;
             }
-            if (current != null && current.getValue().isDeleted()) //过滤掉已删除的行
-                return next();
+            return false;
+        }
 
-            row = null;
-            return current != null;
+        @Override
+        public boolean previous() {
+            return false;
+        }
+    }
+
+    private class WiredTigerPrimaryIndexCursor implements Cursor {
+        private final com.wiredtiger.db.Cursor wtCursor;
+        private final Value last;
+        private Row row;
+        private boolean searched;
+
+        public WiredTigerPrimaryIndexCursor(Value first, Value last) {
+            wtCursor = WiredTigerPrimaryIndex.this.wtCursor;
+            wtCursor.reset();
+            if (first != null)
+                wtCursor.putKeyLong(first.getLong());
+            else
+                searched = true;
+            this.last = last;
+        }
+
+        @Override
+        public Row get() {
+            return row;
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            return get();
+        }
+
+        @Override
+        public boolean next() {
+            if (!searched) {
+                searched = true;
+                if (wtCursor.search() != 0)
+                    return false;
+                row = createNewRow(wtCursor.getKeyLong());
+                return true;
+            }
+
+            if (wtCursor.next() != 0)
+                return false;
+
+            long key = wtCursor.getKeyLong();
+            if (last != null && key > last.getLong())
+                return false;
+
+            row = createNewRow(key);
+            return true;
         }
 
         @Override
         public boolean previous() {
             throw DbException.getUnsupportedException("previous");
         }
-
     }
-
 }

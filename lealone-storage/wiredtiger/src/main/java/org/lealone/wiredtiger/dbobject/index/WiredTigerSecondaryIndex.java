@@ -17,90 +17,74 @@
  */
 package org.lealone.wiredtiger.dbobject.index;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentNavigableMap;
-import java.util.concurrent.ConcurrentSkipListMap;
-
 import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.index.BaseIndex;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
-import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
 import org.lealone.value.Value;
-import org.lealone.value.ValueArray;
+import org.lealone.value.ValueInt;
 import org.lealone.value.ValueLong;
+import org.lealone.value.ValueString;
+import org.lealone.wiredtiger.dbobject.table.WiredTigerTable;
 
 public class WiredTigerSecondaryIndex extends BaseIndex {
-    private final ConcurrentNavigableMap<Value, Row> rows = new ConcurrentSkipListMap<Value, Row>();
-    private final int keyColumns;
+    private final com.wiredtiger.db.Cursor wtCursor;
+    private final char[] indexColumnFormat;
+    private final int indexColumnLength;
+    private final WiredTigerTable table;
 
-    public WiredTigerSecondaryIndex(Table table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+    public WiredTigerSecondaryIndex(WiredTigerTable table, int id, String indexName, //
+            IndexColumn[] columns, IndexType indexType, com.wiredtiger.db.Session wtSession) {
+        this.table = table;
         initBaseIndex(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }
 
-        // always store the row key in the map key,
-        // even for unique indexes, as some of the index columns could be null
-        keyColumns = columns.length + 1;
-    }
+        StringBuilder columnNames = new StringBuilder();
+        StringBuilder indexColumnFormat = new StringBuilder();
+        for (IndexColumn c : columns) {
+            if (columnNames.length() != 0)
+                columnNames.append(',');
+            columnNames.append(c.columnName);
 
-    //    private static void checkIndexColumnTypes(IndexColumn[] columns) {
-    //        for (IndexColumn c : columns) {
-    //            int type = c.column.getType();
-    //            if (type == Value.CLOB || type == Value.BLOB) {
-    //                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1,
-    //                        "Index on BLOB or CLOB column: " + c.column.getCreateSQL());
-    //            }
-    //        }
-    //    }
+            indexColumnFormat.append(WiredTigerTable.getWiredTigerType(c.column.getType()));
+        }
+        this.indexColumnFormat = indexColumnFormat.toString().toCharArray();
+        this.indexColumnLength = this.indexColumnFormat.length;
+        wtSession.create("index:" + table.getName() + ":" + indexName, "columns=(" + columnNames + ")");
+        String uri = "index:" + table.getName() + ":" + indexName + "(" + Column.ROWID + ")";
+        wtCursor = wtSession.open_cursor(uri, null, null);
+    }
 
     @Override
     public void close(Session session) {
     }
 
-    private Value getKey(Value v) {
-        v.compareMode = table.getCompareMode();
-        return v;
-    }
-
     @Override
     public void add(Session session, Row row) {
-        ValueArray array = convertToKey(row);
-        rows.put(getKey(array), row);
     }
 
     @Override
     public void remove(Session session, Row row) {
-        ValueArray array = convertToKey(row);
-        rows.remove(getKey(array));
     }
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        ValueArray firstArray = convertToKey(first);
-        ValueArray lastArray = convertToKey(last);
-        if (lastArray != null) {
-            lastArray.getList()[keyColumns - 1] = WiredTigerPrimaryIndex.MAX;
-        }
-        return new WiredTigerSecondaryIndexCursor(rows.tailMap(getKey(firstArray)).entrySet().iterator(), lastArray, session
-                .getTransaction().getTransactionId());
+        return new WiredTigerSecondaryIndexCursor(first, last);
     }
 
     @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
         try {
-            return 10 * getCostRangeIndex(masks, rows.size(), sortOrder);
+            return 10 * getCostRangeIndex(masks, getRowCountApproximation(), sortOrder);
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }
@@ -108,12 +92,10 @@ public class WiredTigerSecondaryIndex extends BaseIndex {
 
     @Override
     public void remove(Session session) {
-        rows.clear();
     }
 
     @Override
     public void truncate(Session session) {
-        rows.clear();
     }
 
     @Override
@@ -123,34 +105,23 @@ public class WiredTigerSecondaryIndex extends BaseIndex {
 
     @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
-        Row row = (first ? rows.firstEntry().getValue() : rows.lastEntry().getValue());
-        if (row == null) {
-            return new WiredTigerSecondaryIndexCursor(Collections.<Entry<Value, Row>> emptyList().iterator(), null, session
-                    .getTransaction().getTransactionId());
-        }
-        ValueArray array = convertToKey(row);
-        HashMap<Value, Row> e = new HashMap<>(1);
-        Value key = getKey(array);
-        e.put(key, row);
-        WiredTigerSecondaryIndexCursor c = new WiredTigerSecondaryIndexCursor(e.entrySet().iterator(), key, session.getTransaction()
-                .getTransactionId());
-        c.next();
-        return c;
+        return new FirstOrLastRowCursor(first);
     }
 
     @Override
     public boolean needRebuild() {
-        return rows.size() == 0;
+        return false;
     }
 
     @Override
     public long getRowCount(Session session) {
-        return rows.size();
+        return getRowCountApproximation();
     }
 
     @Override
     public long getRowCountApproximation() {
-        return rows.size();
+        //TODO
+        return table.getRowCountApproximation();
     }
 
     @Override
@@ -163,11 +134,83 @@ public class WiredTigerSecondaryIndex extends BaseIndex {
         //ok
     }
 
-    private ValueArray convertToKey(SearchRow r) {
-        if (r == null) {
-            return null;
+    private SearchRow createNewRow() {
+        SearchRow searchRow = table.getTemplateRow();
+        Column[] cols = getColumns();
+        Value v;
+        for (int i = 0; i < indexColumnLength; i++) {
+            switch (indexColumnFormat[i]) {
+            case 'i':
+                v = ValueInt.get(wtCursor.getKeyInt());
+                break;
+            case 'q':
+                v = ValueLong.get(wtCursor.getKeyLong());
+                break;
+            case 'S':
+                v = ValueString.get(wtCursor.getKeyString());
+                break;
+            default:
+                v = ValueString.get(wtCursor.getKeyString());
+                break;
+            }
+
+            int idx = cols[i].getColumnId();
+            searchRow.setValue(idx, v);
         }
-        Value[] array = new Value[keyColumns];
+        searchRow.setKey(wtCursor.getValueLong()); //对应Column.ROWID
+        return searchRow;
+    }
+
+    private class FirstOrLastRowCursor implements Cursor {
+        private Row row;
+        private SearchRow searchRow;
+        private boolean end;
+
+        public FirstOrLastRowCursor(boolean first) {
+            wtCursor.reset();
+            if (first) {
+                if (wtCursor.next() != 0) {
+                    searchRow = createNewRow();
+                }
+            } else {
+                if (wtCursor.prev() != 0) {
+                    searchRow = createNewRow();
+                }
+            }
+        }
+
+        @Override
+        public Row get() {
+            if (searchRow != null)
+                row = table.getRow(null, wtCursor.getKeyLong());
+            return row;
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            return searchRow;
+        }
+
+        @Override
+        public boolean next() {
+            if (row != null && !end) {
+                end = true;
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean previous() {
+            return false;
+        }
+    }
+
+    private void putKeys(SearchRow r) {
+        if (r == null) {
+            return;
+        }
+        Value[] array = new Value[columns.length];
         for (int i = 0; i < columns.length; i++) {
             Column c = columns[i];
             int idx = c.getColumnId();
@@ -176,59 +219,77 @@ public class WiredTigerSecondaryIndex extends BaseIndex {
                 array[i] = v.convertTo(c.getType());
             }
         }
-        array[keyColumns - 1] = ValueLong.get(r.getKey());
-        return ValueArray.get(array);
+
+        for (Value v : array) {
+            switch (v.getType()) {
+            case Value.INT:
+                wtCursor.putKeyInt(v.getInt());
+                break;
+            case Value.LONG:
+                wtCursor.putKeyLong(v.getLong());
+                break;
+            case Value.STRING:
+                wtCursor.putKeyString(v.getString());
+                break;
+            default:
+                wtCursor.putKeyByteArray(v.getBytesNoCopy());
+            }
+        }
     }
 
-    private static class WiredTigerSecondaryIndexCursor implements Cursor {
-
-        private final Iterator<Entry<Value, Row>> it;
-        private final Value last;
-        private Entry<Value, Row> current;
+    private class WiredTigerSecondaryIndexCursor implements Cursor {
+        private final com.wiredtiger.db.Cursor wtCursor;
+        private final SearchRow last;
         private Row row;
+        private SearchRow searchRow;
+        private boolean searched;
 
-        private final long transactionId;
-
-        public WiredTigerSecondaryIndexCursor(Iterator<Entry<Value, Row>> it, Value last, long transactionId) {
-            this.it = it;
+        public WiredTigerSecondaryIndexCursor(SearchRow first, SearchRow last) {
+            wtCursor = WiredTigerSecondaryIndex.this.wtCursor;
+            wtCursor.reset();
+            if (first != null)
+                putKeys(first);
+            else
+                searched = true;
             this.last = last;
-            this.transactionId = transactionId;
         }
 
         @Override
         public Row get() {
-            if (row == null) {
-                if (current != null) {
-                    row = current.getValue();
-                }
-            }
-            if (row != null)
-                row.setTransactionId(transactionId);
+            if (searchRow != null)
+                row = table.getRow(null, wtCursor.getKeyLong());
             return row;
         }
 
         @Override
         public SearchRow getSearchRow() {
-            return get();
+            return searchRow;
         }
 
         @Override
         public boolean next() {
-            current = it.hasNext() ? it.next() : null;
-            if (current != null && current.getKey().compareTo(last) > 0) {
-                current = null;
+            if (!searched) {
+                searched = true;
+                if (wtCursor.search() != 0)
+                    return false;
+                searchRow = createNewRow();
+                return true;
             }
-            if (current != null && current.getValue().isDeleted()) //过滤掉已删除的行
-                return next();
 
-            row = null;
-            return current != null;
+            if (wtCursor.next() != 0)
+                return false;
+
+            searchRow = createNewRow();
+            if (last != null && compareRows(searchRow, last) > 0) {
+                searchRow = null;
+                return false;
+            }
+            return true;
         }
 
         @Override
         public boolean previous() {
             throw DbException.getUnsupportedException("previous");
         }
-
     }
 }

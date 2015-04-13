@@ -40,26 +40,60 @@ import org.lealone.wiredtiger.dbobject.index.WiredTigerSecondaryIndex;
 public class WiredTigerTable extends TableBase {
     private final WiredTigerPrimaryIndex primaryIndex;
 
-    //private final com.wiredtiger.db.Session wtSession;
+    private final com.wiredtiger.db.Session wtSession;
+    private final String valueFormat;
 
     public WiredTigerTable(CreateTableData data, com.wiredtiger.db.Session wtSession) {
         super(data);
+        StringBuilder valueFormat = new StringBuilder();
+        StringBuilder columnNames = new StringBuilder();
         for (Column col : getColumns()) {
             if (DataType.isLargeObject(col.getType())) {
                 containsLargeObject = true;
             }
+            valueFormat.append(getWiredTigerType(col.getType()));
+
+            if (columnNames.length() != 0)
+                columnNames.append(',');
+            columnNames.append(col.getName());
         }
-        primaryIndex = new WiredTigerPrimaryIndex(data.session.getDatabase(), this, getId(), IndexColumn.wrap(getColumns()),
-                IndexType.createScan(true));
+
+        this.wtSession = wtSession;
+        wtSession.create("table:" + data.tableName, //
+                "key_format=Q,value_format=" + valueFormat + ",columns=(" + Column.ROWID + "," + columnNames + ")");
+        this.valueFormat = valueFormat.toString();
+
+        primaryIndex = new WiredTigerPrimaryIndex(data.session.getDatabase(), this, getId(), //
+                IndexColumn.wrap(getColumns()), IndexType.createScan(true), wtSession);
         indexes.add(primaryIndex);
         scanIndex = primaryIndex;
-        //this.wtSession = wtSession;
-        wtSession.create("table:" + data.tableName, "key_format=S,value_format=u"); //TODO
+    }
+
+    public String getValueFormat() {
+        return valueFormat;
+    }
+
+    public static char getWiredTigerType(int colType) {
+        switch (colType) {
+        case Value.INT:
+            return 'i';
+        case Value.LONG:
+            return 'q';
+        case Value.STRING:
+            return 'S';
+        default:
+            return 'S';
+        }
+    }
+
+    @Override
+    public Row getRow(Session session, long key) {
+        return primaryIndex.getRow(session, key);
     }
 
     @Override
     public void close(Session session) {
-
+        wtSession.close(null);
     }
 
     @Override
@@ -218,7 +252,7 @@ public class WiredTigerTable extends TableBase {
         if (isDelegateIndex)
             index = new WiredTigerDelegateIndex(this, indexId, indexName, cols, primaryIndex, indexType);
         else
-            index = new WiredTigerSecondaryIndex(this, indexId, indexName, cols, indexType);
+            index = new WiredTigerSecondaryIndex(this, indexId, indexName, cols, indexType, wtSession);
 
         index.setTemporary(isTemporary());
         if (index.getCreateSQL() != null) {

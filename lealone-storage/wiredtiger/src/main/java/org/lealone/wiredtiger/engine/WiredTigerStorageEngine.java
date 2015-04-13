@@ -54,6 +54,7 @@ public class WiredTigerStorageEngine extends StorageEngineBase {
                 if (connections.get(dbName) == null) {
                     conn = createConnection(dbName);
                     connections.put(dbName, conn);
+                    //TODO
                     //db.setTransactionEngine(store.getTransactionEngine());
                     //db.setLobStorage(new LobStorageMap(db));
                 }
@@ -63,13 +64,10 @@ public class WiredTigerStorageEngine extends StorageEngineBase {
     }
 
     private Connection createConnection(String dbName) {
-        String home = System.getenv("WIREDTIGER_HOME");
-        if (home == null)
-            home = ".";
+        File home = new File(dbName);
+        if (!home.exists())
+            home.mkdir();
 
-        home = home + "/" + dbName;
-        new File(home).mkdir();
-
-        return wiredtiger.open(home, "create");
+        return wiredtiger.open(dbName, "create");
     }
 }
