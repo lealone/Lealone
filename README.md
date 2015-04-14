@@ -13,17 +13,17 @@
 
 
 ## Lealone有哪些特性
+ 
+* 插件化存储引擎架构，内置[WiredTiger](https://github.com/wiredtiger/wiredtiger/tree/develop)和[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
 
-* 支持高性能的分布式事务，<br>
+* 支持ACID、高性能分布式事务，<br>
   使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/wiki/Lealone-transaction-model)
+  
+* 支持JDBC 4.0规范
 
 * 对[H2数据库](http://www.h2database.com/html/main.html)的SQL引擎进行了大量的改进和扩展
 
-* 支持MySQL、PostgreSQL的SQL语法
-
-* 支持JDBC 4.0规范
-
-* 支持索引、视图、Join、子查询、各种DDL <br>
+* SQL语法类似MySQL、PostgreSQL，支持索引、视图、Join、子查询 <br>
   支持触发器、自定义函数、Order By、Group By、聚合
 
 
@@ -31,22 +31,12 @@
 
 * 用户文档
 
+* 设计文档
+
 * [开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)
 
 
-## Lealone 1.0 Roadmap
-
-* 优化join、subquery、view、index的性能
-* 支持[WiredTiger](https://github.com/wiredtiger/wiredtiger/tree/develop)存储引擎
-* 支持[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
-
 ## License
 
-以下子工程中的代码使用[H2数据库的License](http://www.h2database.com/html/license.html)
-* lealone-client
-* lealone-common
-* lealone-server
-* lealone-sql
-* lealone-storage-cbase
+* [License](https://github.com/codefollower/Lealone/blob/master/LICENSE.txt)
 
-除此之外的代码使用[Apache License Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
