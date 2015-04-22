@@ -18,20 +18,28 @@
 package org.lealone.cluster.gms;
 
 public enum ApplicationState {
-    STATUS, //
-    LOAD, //
-    SCHEMA, //
-    DC, //
-    RACK, //
-    RELEASE_VERSION, //
-    REMOVAL_COORDINATOR, //
-    INTERNAL_IP, //
-    RPC_ADDRESS, //
-    X_11_PADDING, // padding specifically for 1.1
-    SEVERITY, //
-    NET_VERSION, //
-    HOST_ID, //
-    TOKENS, //
-    // pad to allow adding new states to existing cluster
-    X1, X2, X3, X4, X5, X6, X7, X8, X9, X10,
+    STATUS,
+    LOAD,
+    SCHEMA,
+    DC,
+    RACK,
+    RELEASE_VERSION,
+    REMOVAL_COORDINATOR,
+    INTERNAL_IP,
+    RPC_ADDRESS,
+    SEVERITY,
+    NET_VERSION,
+    HOST_ID,
+    TOKENS,
+    //pad to allow adding new states to existing cluster
+    X1,
+    X2,
+    X3,
+    X4,
+    X5,
+    X6,
+    X7,
+    X8,
+    X9,
+    X10,
 }

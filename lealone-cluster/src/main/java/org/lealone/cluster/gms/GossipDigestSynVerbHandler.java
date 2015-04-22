@@ -18,7 +18,11 @@
 package org.lealone.cluster.gms;
 
 import java.net.InetAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.net.IVerbHandler;
@@ -31,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestSynVerbHandler.class);
 
+    @Override
     public void doVerb(MessageIn<GossipDigestSyn> message, int id) {
         InetAddress from = message.from;
         if (logger.isTraceEnabled())
@@ -70,7 +75,8 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
         List<GossipDigest> deltaGossipDigestList = new ArrayList<GossipDigest>();
         Map<InetAddress, EndpointState> deltaEpStateMap = new HashMap<InetAddress, EndpointState>();
         Gossiper.instance.examineGossiper(gDigestList, deltaGossipDigestList, deltaEpStateMap);
-        logger.trace("sending {} digests and {} deltas", deltaGossipDigestList.size(), deltaEpStateMap.size());
+        if (logger.isTraceEnabled())
+            logger.trace("sending {} digests and {} deltas", deltaGossipDigestList.size(), deltaEpStateMap.size());
         MessageOut<GossipDigestAck> gDigestAckMessage = new MessageOut<GossipDigestAck>(MessagingService.Verb.GOSSIP_DIGEST_ACK,
                 new GossipDigestAck(deltaGossipDigestList, deltaEpStateMap), GossipDigestAck.serializer);
         if (logger.isTraceEnabled())

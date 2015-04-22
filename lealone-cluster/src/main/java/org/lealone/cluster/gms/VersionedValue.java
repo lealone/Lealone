@@ -17,15 +17,15 @@
  */
 package org.lealone.cluster.gms;
 
-import java.io.*;
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collection;
 import java.util.UUID;
-
-import static java.nio.charset.StandardCharsets.ISO_8859_1;
-
-import com.google.common.collect.Iterables;
 
 import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.db.TypeSizes;
@@ -35,6 +35,8 @@ import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.utils.FBUtilities;
+
+import com.google.common.collect.Iterables;
 
 /**
  * This abstraction represents the state associated with a particular node which an
@@ -47,7 +49,6 @@ import org.lealone.cluster.utils.FBUtilities;
  * ApplicationState loadState = new ApplicationState(<string representation of load>);
  * Gossiper.instance.addApplicationState("LOAD STATE", loadState);
  */
-
 public class VersionedValue implements Comparable<VersionedValue> {
 
     public static final IVersionedSerializer<VersionedValue> serializer = new VersionedValueSerializer();
@@ -88,6 +89,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
         this(value, VersionGenerator.getNextVersion());
     }
 
+    @Override
     public int compareTo(VersionedValue value) {
         return this.version - value.version;
     }
@@ -207,6 +209,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
     }
 
     private static class VersionedValueSerializer implements IVersionedSerializer<VersionedValue> {
+        @Override
         public void serialize(VersionedValue value, DataOutputPlus out, int version) throws IOException {
             out.writeUTF(outValue(value, version));
             out.writeInt(value.version);
@@ -216,12 +219,14 @@ public class VersionedValue implements Comparable<VersionedValue> {
             return value.value;
         }
 
+        @Override
         public VersionedValue deserialize(DataInput in, int version) throws IOException {
             String value = in.readUTF();
             int valVersion = in.readInt();
             return new VersionedValue(value, valVersion);
         }
 
+        @Override
         public long serializedSize(VersionedValue value, int version) {
             return TypeSizes.NATIVE.sizeof(outValue(value, version)) + TypeSizes.NATIVE.sizeof(value.version);
         }

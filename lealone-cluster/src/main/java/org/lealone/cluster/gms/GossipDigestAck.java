@@ -51,38 +51,41 @@ public class GossipDigestAck {
     Map<InetAddress, EndpointState> getEndpointStateMap() {
         return epStateMap;
     }
-}
 
-class GossipDigestAckSerializer implements IVersionedSerializer<GossipDigestAck> {
-    public void serialize(GossipDigestAck gDigestAckMessage, DataOutputPlus out, int version) throws IOException {
-        GossipDigestSerializationHelper.serialize(gDigestAckMessage.gDigestList, out, version);
-        out.writeInt(gDigestAckMessage.epStateMap.size());
-        for (Map.Entry<InetAddress, EndpointState> entry : gDigestAckMessage.epStateMap.entrySet()) {
-            InetAddress ep = entry.getKey();
-            CompactEndpointSerializationHelper.serialize(ep, out);
-            EndpointState.serializer.serialize(entry.getValue(), out, version);
+    private static class GossipDigestAckSerializer implements IVersionedSerializer<GossipDigestAck> {
+        @Override
+        public void serialize(GossipDigestAck gDigestAckMessage, DataOutputPlus out, int version) throws IOException {
+            GossipDigestSerializationHelper.serialize(gDigestAckMessage.gDigestList, out, version);
+            out.writeInt(gDigestAckMessage.epStateMap.size());
+            for (Map.Entry<InetAddress, EndpointState> entry : gDigestAckMessage.epStateMap.entrySet()) {
+                InetAddress ep = entry.getKey();
+                CompactEndpointSerializationHelper.serialize(ep, out);
+                EndpointState.serializer.serialize(entry.getValue(), out, version);
+            }
         }
-    }
 
-    public GossipDigestAck deserialize(DataInput in, int version) throws IOException {
-        List<GossipDigest> gDigestList = GossipDigestSerializationHelper.deserialize(in, version);
-        int size = in.readInt();
-        Map<InetAddress, EndpointState> epStateMap = new HashMap<InetAddress, EndpointState>(size);
+        @Override
+        public GossipDigestAck deserialize(DataInput in, int version) throws IOException {
+            List<GossipDigest> gDigestList = GossipDigestSerializationHelper.deserialize(in, version);
+            int size = in.readInt();
+            Map<InetAddress, EndpointState> epStateMap = new HashMap<InetAddress, EndpointState>(size);
 
-        for (int i = 0; i < size; ++i) {
-            InetAddress ep = CompactEndpointSerializationHelper.deserialize(in);
-            EndpointState epState = EndpointState.serializer.deserialize(in, version);
-            epStateMap.put(ep, epState);
+            for (int i = 0; i < size; ++i) {
+                InetAddress ep = CompactEndpointSerializationHelper.deserialize(in);
+                EndpointState epState = EndpointState.serializer.deserialize(in, version);
+                epStateMap.put(ep, epState);
+            }
+            return new GossipDigestAck(gDigestList, epStateMap);
         }
-        return new GossipDigestAck(gDigestList, epStateMap);
-    }
 
-    public long serializedSize(GossipDigestAck ack, int version) {
-        int size = GossipDigestSerializationHelper.serializedSize(ack.gDigestList, version);
-        size += TypeSizes.NATIVE.sizeof(ack.epStateMap.size());
-        for (Map.Entry<InetAddress, EndpointState> entry : ack.epStateMap.entrySet())
-            size += CompactEndpointSerializationHelper.serializedSize(entry.getKey())
-                    + EndpointState.serializer.serializedSize(entry.getValue(), version);
-        return size;
+        @Override
+        public long serializedSize(GossipDigestAck ack, int version) {
+            int size = GossipDigestSerializationHelper.serializedSize(ack.gDigestList, version);
+            size += TypeSizes.NATIVE.sizeof(ack.epStateMap.size());
+            for (Map.Entry<InetAddress, EndpointState> entry : ack.epStateMap.entrySet())
+                size += CompactEndpointSerializationHelper.serializedSize(entry.getKey())
+                        + EndpointState.serializer.serializedSize(entry.getValue(), version);
+            return size;
+        }
     }
 }

@@ -263,71 +263,68 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
         return sb.toString();
     }
 
-    public static void main(String[] args) {
-    }
-}
+    private static class ArrivalWindow {
+        private static final Logger logger = LoggerFactory.getLogger(ArrivalWindow.class);
+        private long tLast = 0L;
+        private final BoundedStatsDeque arrivalIntervals;
 
-class ArrivalWindow {
-    private static final Logger logger = LoggerFactory.getLogger(ArrivalWindow.class);
-    private long tLast = 0L;
-    private final BoundedStatsDeque arrivalIntervals;
+        // this is useless except to provide backwards compatibility in phi_convict_threshold,
+        // because everyone seems pretty accustomed to the default of 8, and users who have
+        // already tuned their phi_convict_threshold for their own environments won't need to
+        // change.
+        //private final double PHI_FACTOR = 1.0 / Math.log(10.0);
 
-    // this is useless except to provide backwards compatibility in phi_convict_threshold,
-    // because everyone seems pretty accustomed to the default of 8, and users who have
-    // already tuned their phi_convict_threshold for their own environments won't need to
-    // change.
-    //private final double PHI_FACTOR = 1.0 / Math.log(10.0);
+        // in the event of a long partition, never record an interval longer than the rpc timeout,
+        // since if a host is regularly experiencing connectivity problems lasting this long we'd
+        // rather mark it down quickly instead of adapting
+        // this value defaults to the same initial value the FD is seeded with
+        private final long MAX_INTERVAL_IN_NANO = getMaxInterval();
 
-    // in the event of a long partition, never record an interval longer than the rpc timeout,
-    // since if a host is regularly experiencing connectivity problems lasting this long we'd
-    // rather mark it down quickly instead of adapting
-    // this value defaults to the same initial value the FD is seeded with
-    private final long MAX_INTERVAL_IN_NANO = getMaxInterval();
-
-    ArrivalWindow(int size) {
-        arrivalIntervals = new BoundedStatsDeque(size);
-    }
-
-    private static long getMaxInterval() {
-        String newvalue = System.getProperty("lealone.fd_max_interval_ms");
-        if (newvalue == null) {
-            return FailureDetector.INITIAL_VALUE_NANOS;
-        } else {
-            logger.info("Overriding FD MAX_INTERVAL to {}ms", newvalue);
-            return TimeUnit.NANOSECONDS.convert(Integer.parseInt(newvalue), TimeUnit.MILLISECONDS);
+        ArrivalWindow(int size) {
+            arrivalIntervals = new BoundedStatsDeque(size);
         }
-    }
 
-    synchronized void add(long value) {
-        assert tLast >= 0;
-        if (tLast > 0L) {
-            long interArrivalTime = (value - tLast);
-            if (interArrivalTime <= MAX_INTERVAL_IN_NANO)
-                arrivalIntervals.add(interArrivalTime);
-            else
-                logger.debug("Ignoring interval time of {}", interArrivalTime);
-        } else {
-            // We use a very large initial interval since the "right" average depends on the cluster size
-            // and it's better to err high (false negatives, which will be corrected by waiting a bit longer)
-            // than low (false positives, which cause "flapping").
-            arrivalIntervals.add(FailureDetector.INITIAL_VALUE_NANOS);
+        private static long getMaxInterval() {
+            String newvalue = System.getProperty("lealone.fd_max_interval_ms");
+            if (newvalue == null) {
+                return FailureDetector.INITIAL_VALUE_NANOS;
+            } else {
+                logger.info("Overriding FD MAX_INTERVAL to {}ms", newvalue);
+                return TimeUnit.NANOSECONDS.convert(Integer.parseInt(newvalue), TimeUnit.MILLISECONDS);
+            }
         }
-        tLast = value;
-    }
 
-    double mean() {
-        return arrivalIntervals.mean();
-    }
+        synchronized void add(long value) {
+            assert tLast >= 0;
+            if (tLast > 0L) {
+                long interArrivalTime = (value - tLast);
+                if (interArrivalTime <= MAX_INTERVAL_IN_NANO)
+                    arrivalIntervals.add(interArrivalTime);
+                else
+                    logger.debug("Ignoring interval time of {}", interArrivalTime);
+            } else {
+                // We use a very large initial interval since the "right" average depends on the cluster size
+                // and it's better to err high (false negatives, which will be corrected by waiting a bit longer)
+                // than low (false positives, which cause "flapping").
+                arrivalIntervals.add(FailureDetector.INITIAL_VALUE_NANOS);
+            }
+            tLast = value;
+        }
 
-    // see lealone-2597 for an explanation of the math at work here.
-    double phi(long tnow) {
-        assert arrivalIntervals.size() > 0 && tLast > 0; // should not be called before any samples arrive
-        long t = tnow - tLast;
-        return t / mean();
-    }
+        double mean() {
+            return arrivalIntervals.mean();
+        }
 
-    @Override
-    public String toString() {
-        return StringUtils.join(arrivalIntervals.iterator(), " ");
+        // see lealone-2597 for an explanation of the math at work here.
+        double phi(long tnow) {
+            assert arrivalIntervals.size() > 0 && tLast > 0; // should not be called before any samples arrive
+            long t = tnow - tLast;
+            return t / mean();
+        }
+
+        @Override
+        public String toString() {
+            return StringUtils.join(arrivalIntervals.iterator(), " ");
+        }
     }
 }

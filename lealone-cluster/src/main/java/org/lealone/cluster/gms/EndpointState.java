@@ -30,7 +30,6 @@ import org.lealone.cluster.io.IVersionedSerializer;
  * This abstraction represents both the HeartBeatState and the ApplicationState in an EndpointState
  * instance. Any state for a given endpoint can be retrieved from this instance.
  */
-
 public class EndpointState {
     private static final ApplicationState[] STATES = ApplicationState.values();
 

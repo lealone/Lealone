@@ -178,7 +178,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                        someone will gossip to it, and then do a gossip to a random seed from the
                        gossipedToSeed check.
 
-                       See lealone-150 for more exposition. */
+                       See Cassandra-150 for more exposition. */
                     if (!gossipedToSeed || liveEndpoints.size() < seeds.size())
                         doGossipToSeed(message);
 
@@ -575,7 +575,6 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
      */
     public void replacementQuarantine(InetAddress endpoint) {
         // remember, quarantineEndpoint will effectively already add QUARANTINE_DELAY, so this is 2x
-        logger.debug("");
         quarantineEndpoint(endpoint, System.currentTimeMillis() + QUARANTINE_DELAY);
     }
 
@@ -1055,11 +1054,12 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     */
     void examineGossiper(List<GossipDigest> gDigestList, List<GossipDigest> deltaGossipDigestList,
             Map<InetAddress, EndpointState> deltaEpStateMap) {
-        if (gDigestList.size() == 0) {
+        if (gDigestList.isEmpty()) {
             /* we've been sent a *completely* empty syn, which should normally never happen since an endpoint will at least send a syn with itself.
                If this is happening then the node is attempting shadow gossip, and we should reply with everything we know.
              */
-            logger.debug("Shadow request received, adding all states");
+            if (logger.isDebugEnabled())
+                logger.debug("Shadow request received, adding all states");
             for (Map.Entry<InetAddress, EndpointState> entry : endpointStateMap.entrySet()) {
                 gDigestList.add(new GossipDigest(entry.getKey(), 0, 0));
             }

@@ -72,29 +72,29 @@ public class GossipDigest implements Comparable<GossipDigest> {
         sb.append(maxVersion);
         return sb.toString();
     }
-}
 
-class GossipDigestSerializer implements IVersionedSerializer<GossipDigest> {
-    @Override
-    public void serialize(GossipDigest gDigest, DataOutputPlus out, int version) throws IOException {
-        CompactEndpointSerializationHelper.serialize(gDigest.endpoint, out);
-        out.writeInt(gDigest.generation);
-        out.writeInt(gDigest.maxVersion);
-    }
+    private static class GossipDigestSerializer implements IVersionedSerializer<GossipDigest> {
+        @Override
+        public void serialize(GossipDigest gDigest, DataOutputPlus out, int version) throws IOException {
+            CompactEndpointSerializationHelper.serialize(gDigest.endpoint, out);
+            out.writeInt(gDigest.generation);
+            out.writeInt(gDigest.maxVersion);
+        }
 
-    @Override
-    public GossipDigest deserialize(DataInput in, int version) throws IOException {
-        InetAddress endpoint = CompactEndpointSerializationHelper.deserialize(in);
-        int generation = in.readInt();
-        int maxVersion = in.readInt();
-        return new GossipDigest(endpoint, generation, maxVersion);
-    }
+        @Override
+        public GossipDigest deserialize(DataInput in, int version) throws IOException {
+            InetAddress endpoint = CompactEndpointSerializationHelper.deserialize(in);
+            int generation = in.readInt();
+            int maxVersion = in.readInt();
+            return new GossipDigest(endpoint, generation, maxVersion);
+        }
 
-    @Override
-    public long serializedSize(GossipDigest gDigest, int version) {
-        long size = CompactEndpointSerializationHelper.serializedSize(gDigest.endpoint);
-        size += TypeSizes.NATIVE.sizeof(gDigest.generation);
-        size += TypeSizes.NATIVE.sizeof(gDigest.maxVersion);
-        return size;
+        @Override
+        public long serializedSize(GossipDigest gDigest, int version) {
+            long size = CompactEndpointSerializationHelper.serializedSize(gDigest.endpoint);
+            size += TypeSizes.NATIVE.sizeof(gDigest.generation);
+            size += TypeSizes.NATIVE.sizeof(gDigest.maxVersion);
+            return size;
+        }
     }
 }

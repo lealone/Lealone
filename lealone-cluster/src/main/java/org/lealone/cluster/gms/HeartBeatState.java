@@ -17,7 +17,8 @@
  */
 package org.lealone.cluster.gms;
 
-import java.io.*;
+import java.io.DataInput;
+import java.io.IOException;
 
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.io.DataOutputPlus;
@@ -57,22 +58,26 @@ class HeartBeatState {
         generation += 1;
     }
 
+    @Override
     public String toString() {
         return String.format("HeartBeat: generation = %d, version = %d", generation, version);
     }
-}
 
-class HeartBeatStateSerializer implements IVersionedSerializer<HeartBeatState> {
-    public void serialize(HeartBeatState hbState, DataOutputPlus out, int version) throws IOException {
-        out.writeInt(hbState.getGeneration());
-        out.writeInt(hbState.getHeartBeatVersion());
-    }
+    private static class HeartBeatStateSerializer implements IVersionedSerializer<HeartBeatState> {
+        @Override
+        public void serialize(HeartBeatState hbState, DataOutputPlus out, int version) throws IOException {
+            out.writeInt(hbState.getGeneration());
+            out.writeInt(hbState.getHeartBeatVersion());
+        }
 
-    public HeartBeatState deserialize(DataInput in, int version) throws IOException {
-        return new HeartBeatState(in.readInt(), in.readInt());
-    }
+        @Override
+        public HeartBeatState deserialize(DataInput in, int version) throws IOException {
+            return new HeartBeatState(in.readInt(), in.readInt());
+        }
 
-    public long serializedSize(HeartBeatState state, int version) {
-        return TypeSizes.NATIVE.sizeof(state.getGeneration()) + TypeSizes.NATIVE.sizeof(state.getHeartBeatVersion());
+        @Override
+        public long serializedSize(HeartBeatState state, int version) {
+            return TypeSizes.NATIVE.sizeof(state.getGeneration()) + TypeSizes.NATIVE.sizeof(state.getHeartBeatVersion());
+        }
     }
 }
