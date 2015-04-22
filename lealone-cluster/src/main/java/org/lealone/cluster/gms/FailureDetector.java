@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
  */
 public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     private static final Logger logger = LoggerFactory.getLogger(FailureDetector.class);
-    public static final String MBEAN_NAME = "org.lealone.cluster:type=FailureDetector";
     private static final int SAMPLE_SIZE = 1000;
     protected static final long INITIAL_VALUE_NANOS = TimeUnit.NANOSECONDS.convert(getInitialValue(), TimeUnit.MILLISECONDS);
 
@@ -64,14 +63,14 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     // change.
     private final double PHI_FACTOR = 1.0 / Math.log(10.0); // 0.434...
 
-    private final Map<InetAddress, ArrivalWindow> arrivalSamples = new Hashtable<InetAddress, ArrivalWindow>();
-    private final List<IFailureDetectionEventListener> fdEvntListeners = new CopyOnWriteArrayList<IFailureDetectionEventListener>();
+    private final Map<InetAddress, ArrivalWindow> arrivalSamples = new Hashtable<>();
+    private final List<IFailureDetectionEventListener> fdEvntListeners = new CopyOnWriteArrayList<>();
 
     public FailureDetector() {
         // Register this instance with JMX
         try {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(this, new ObjectName(MBEAN_NAME));
+            mbs.registerMBean(this, new ObjectName("org.lealone.cluster:type=FailureDetector"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -80,7 +79,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     private static long getInitialValue() {
         String newvalue = System.getProperty("lealone.fd_initial_value_ms");
         if (newvalue == null) {
-            return Gossiper.intervalInMillis * 2;
+            return Gossiper.INTERVAL_IN_MILLIS * 2;
         } else {
             logger.info("Overriding FD INITIAL_VALUE to {}ms", newvalue);
             return Integer.parseInt(newvalue);

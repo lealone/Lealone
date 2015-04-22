@@ -18,7 +18,6 @@ server_encryption_options:
     keystore_password: cassandra
     truststore: conf/.truststore
     truststore_password: cassandra
-incremental_backups: true
 
 row_cache_size_in_mb: 5
 row_cache_save_period: 14400

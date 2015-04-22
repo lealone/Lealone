@@ -17,16 +17,14 @@
  */
 package org.lealone.cluster.gms;
 
-import java.io.*;
+import java.io.DataInput;
+import java.io.IOException;
 import java.util.Map;
 
+import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.cliffc.high_scale_lib.NonBlockingHashMap;
 
 /**
  * This abstraction represents both the HeartBeatState and the ApplicationState in an EndpointState
@@ -34,7 +32,7 @@ import org.cliffc.high_scale_lib.NonBlockingHashMap;
  */
 
 public class EndpointState {
-    protected static final Logger logger = LoggerFactory.getLogger(EndpointState.class);
+    private static final ApplicationState[] STATES = ApplicationState.values();
 
     public final static IVersionedSerializer<EndpointState> serializer = new EndpointStateSerializer();
 
@@ -100,48 +98,52 @@ public class EndpointState {
         isAlive = false;
     }
 
+    @Override
     public String toString() {
         return "EndpointState: HeartBeatState = " + hbState + ", AppStateMap = " + applicationState;
     }
-}
 
-class EndpointStateSerializer implements IVersionedSerializer<EndpointState> {
-    public void serialize(EndpointState epState, DataOutputPlus out, int version) throws IOException {
-        /* serialize the HeartBeatState */
-        HeartBeatState hbState = epState.getHeartBeatState();
-        HeartBeatState.serializer.serialize(hbState, out, version);
+    private static class EndpointStateSerializer implements IVersionedSerializer<EndpointState> {
+        @Override
+        public void serialize(EndpointState epState, DataOutputPlus out, int version) throws IOException {
+            /* serialize the HeartBeatState */
+            HeartBeatState hbState = epState.getHeartBeatState();
+            HeartBeatState.serializer.serialize(hbState, out, version);
 
-        /* serialize the map of ApplicationState objects */
-        int size = epState.applicationState.size();
-        out.writeInt(size);
-        for (Map.Entry<ApplicationState, VersionedValue> entry : epState.applicationState.entrySet()) {
-            VersionedValue value = entry.getValue();
-            out.writeInt(entry.getKey().ordinal());
-            VersionedValue.serializer.serialize(value, out, version);
+            /* serialize the map of ApplicationState objects */
+            int size = epState.applicationState.size();
+            out.writeInt(size);
+            for (Map.Entry<ApplicationState, VersionedValue> entry : epState.applicationState.entrySet()) {
+                VersionedValue value = entry.getValue();
+                out.writeInt(entry.getKey().ordinal());
+                VersionedValue.serializer.serialize(value, out, version);
+            }
         }
-    }
 
-    public EndpointState deserialize(DataInput in, int version) throws IOException {
-        HeartBeatState hbState = HeartBeatState.serializer.deserialize(in, version);
-        EndpointState epState = new EndpointState(hbState);
+        @Override
+        public EndpointState deserialize(DataInput in, int version) throws IOException {
+            HeartBeatState hbState = HeartBeatState.serializer.deserialize(in, version);
+            EndpointState epState = new EndpointState(hbState);
 
-        int appStateSize = in.readInt();
-        for (int i = 0; i < appStateSize; ++i) {
-            int key = in.readInt();
-            VersionedValue value = VersionedValue.serializer.deserialize(in, version);
-            epState.addApplicationState(Gossiper.STATES[key], value);
+            int appStateSize = in.readInt();
+            for (int i = 0; i < appStateSize; ++i) {
+                int key = in.readInt();
+                VersionedValue value = VersionedValue.serializer.deserialize(in, version);
+                epState.addApplicationState(EndpointState.STATES[key], value);
+            }
+            return epState;
         }
-        return epState;
-    }
 
-    public long serializedSize(EndpointState epState, int version) {
-        long size = HeartBeatState.serializer.serializedSize(epState.getHeartBeatState(), version);
-        size += TypeSizes.NATIVE.sizeof(epState.applicationState.size());
-        for (Map.Entry<ApplicationState, VersionedValue> entry : epState.applicationState.entrySet()) {
-            VersionedValue value = entry.getValue();
-            size += TypeSizes.NATIVE.sizeof(entry.getKey().ordinal());
-            size += VersionedValue.serializer.serializedSize(value, version);
+        @Override
+        public long serializedSize(EndpointState epState, int version) {
+            long size = HeartBeatState.serializer.serializedSize(epState.getHeartBeatState(), version);
+            size += TypeSizes.NATIVE.sizeof(epState.applicationState.size());
+            for (Map.Entry<ApplicationState, VersionedValue> entry : epState.applicationState.entrySet()) {
+                VersionedValue value = entry.getValue();
+                size += TypeSizes.NATIVE.sizeof(entry.getKey().ordinal());
+                size += VersionedValue.serializer.serializedSize(value, version);
+            }
+            return size;
         }
-        return size;
     }
 }
