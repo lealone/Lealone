@@ -38,5 +38,5 @@
 
 ## License
 
-* [License](https://github.com/codefollower/Lealone/blob/master/LICENSE.txt)
+* [License](https://github.com/codefollower/Lealone/blob/master/LICENSE.md)
 
