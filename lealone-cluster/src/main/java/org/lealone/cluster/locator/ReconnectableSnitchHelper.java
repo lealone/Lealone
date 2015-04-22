@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.lealone.cluster.locator;
 
 import java.net.InetAddress;
@@ -63,34 +62,41 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
         }
     }
 
+    @Override
     public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
             VersionedValue newValue) {
         // no-op
     }
 
+    @Override
     public void onJoin(InetAddress endpoint, EndpointState epState) {
         if (preferLocal && epState.getApplicationState(ApplicationState.INTERNAL_IP) != null)
             reconnect(endpoint, epState.getApplicationState(ApplicationState.INTERNAL_IP));
     }
 
+    @Override
     public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value) {
         if (preferLocal && state == ApplicationState.INTERNAL_IP)
             reconnect(endpoint, value);
     }
 
+    @Override
     public void onAlive(InetAddress endpoint, EndpointState state) {
         if (preferLocal && state.getApplicationState(ApplicationState.INTERNAL_IP) != null)
             reconnect(endpoint, state.getApplicationState(ApplicationState.INTERNAL_IP));
     }
 
+    @Override
     public void onDead(InetAddress endpoint, EndpointState state) {
         // do nothing.
     }
 
+    @Override
     public void onRemove(InetAddress endpoint) {
         // do nothing.
     }
 
+    @Override
     public void onRestart(InetAddress endpoint, EndpointState state) {
         // do nothing.
     }

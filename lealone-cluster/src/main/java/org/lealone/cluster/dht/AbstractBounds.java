@@ -35,7 +35,8 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
     public static final AbstractBoundsSerializer serializer = new AbstractBoundsSerializer();
 
     private enum Type {
-        RANGE, BOUNDS
+        RANGE,
+        BOUNDS
     }
 
     public final T left;

@@ -76,7 +76,9 @@ public class SystemKeyspace {
     }
 
     public enum BootstrapState {
-        NEEDS_BOOTSTRAP, COMPLETED, IN_PROGRESS
+        NEEDS_BOOTSTRAP,
+        COMPLETED,
+        IN_PROGRESS
     }
 
     public static Map<InetAddress, Map<String, String>> loadDcRackInfo() {

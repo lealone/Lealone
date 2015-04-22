@@ -36,11 +36,11 @@ public class NamedThreadFactory implements ThreadFactory {
     }
 
     public NamedThreadFactory(String id, int priority) {
-
         this.id = id;
         this.priority = priority;
     }
 
+    @Override
     public Thread newThread(Runnable runnable) {
         String name = id + ":" + n.getAndIncrement();
         Thread thread = new Thread(runnable, name);

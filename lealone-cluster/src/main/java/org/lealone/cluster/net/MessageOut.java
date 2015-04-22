@@ -15,16 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.lealone.cluster.net;
+
+import static org.lealone.cluster.tracing.Tracing.TRACE_HEADER;
+import static org.lealone.cluster.tracing.Tracing.TRACE_TYPE;
+import static org.lealone.cluster.tracing.Tracing.isTracing;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.Map;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableMap;
 
 import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.config.DatabaseDescriptor;
@@ -35,9 +35,8 @@ import org.lealone.cluster.tracing.Tracing;
 import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.cluster.utils.UUIDGen;
 
-import static org.lealone.cluster.tracing.Tracing.TRACE_HEADER;
-import static org.lealone.cluster.tracing.Tracing.TRACE_TYPE;
-import static org.lealone.cluster.tracing.Tracing.isTracing;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 
 public class MessageOut<T> {
     public final InetAddress from;
@@ -86,6 +85,7 @@ public class MessageOut<T> {
         return DatabaseDescriptor.getTimeout(verb);
     }
 
+    @Override
     public String toString() {
         StringBuilder sbuf = new StringBuilder();
         sbuf.append("TYPE:").append(getStage()).append(" VERB:").append(verb);

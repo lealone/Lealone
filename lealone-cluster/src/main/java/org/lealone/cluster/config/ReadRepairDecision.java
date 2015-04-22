@@ -18,5 +18,7 @@
 package org.lealone.cluster.config;
 
 public enum ReadRepairDecision {
-    NONE, GLOBAL, DC_LOCAL;
+    NONE,
+    GLOBAL,
+    DC_LOCAL;
 }

@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.lealone.cluster.auth;
 
 import java.net.InetAddress;

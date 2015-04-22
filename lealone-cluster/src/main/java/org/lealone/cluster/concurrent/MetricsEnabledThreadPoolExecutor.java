@@ -48,8 +48,8 @@ public class MetricsEnabledThreadPoolExecutor extends DebuggableThreadPoolExecut
                 priority), "internal");
     }
 
-    public MetricsEnabledThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue,
-            NamedThreadFactory threadFactory, String jmxPath) {
+    public MetricsEnabledThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit,
+            BlockingQueue<Runnable> workQueue, NamedThreadFactory threadFactory, String jmxPath) {
         this(corePoolSize, corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath);
     }
 

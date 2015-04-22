@@ -20,7 +20,6 @@ package org.lealone.cluster.io;
 import java.io.DataInput;
 import java.io.IOException;
 
-
 public interface IVersionedSerializer<T> {
     /**
      * Serialize the specified type into the specified DataOutputStream instance.

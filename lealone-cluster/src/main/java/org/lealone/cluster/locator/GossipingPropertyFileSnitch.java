@@ -15,12 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.lealone.cluster.locator;
 
 import java.net.InetAddress;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.cluster.db.SystemKeyspace;
 import org.lealone.cluster.exceptions.ConfigurationException;
@@ -43,7 +42,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
     private volatile String myDC;
     private volatile String myRack;
     private volatile boolean preferLocal;
-    private AtomicReference<ReconnectableSnitchHelper> snitchHelperReference;
+    private final AtomicReference<ReconnectableSnitchHelper> snitchHelperReference;
     private volatile boolean gossipStarted;
 
     private Map<InetAddress, Map<String, String>> savedEndpoints;
@@ -71,6 +70,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
         try {
             FBUtilities.resourceToFile(SnitchProperties.RACKDC_PROPERTY_FILENAME);
             Runnable runnable = new WrappedRunnable() {
+                @Override
                 protected void runMayThrow() throws ConfigurationException {
                     reloadConfiguration();
                 }
@@ -88,6 +88,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
      * @param endpoint the endpoint to process
      * @return string of data center
      */
+    @Override
     public String getDatacenter(InetAddress endpoint) {
         if (endpoint.equals(FBUtilities.getBroadcastAddress()))
             return myDC;
@@ -112,6 +113,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
      * @param endpoint the endpoint to process
      * @return string of rack
      */
+    @Override
     public String getRack(InetAddress endpoint) {
         if (endpoint.equals(FBUtilities.getBroadcastAddress()))
             return myRack;
@@ -130,6 +132,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
         return epState.getApplicationState(ApplicationState.RACK).value;
     }
 
+    @Override
     public void gossiperStarting() {
         super.gossiperStarting();
 

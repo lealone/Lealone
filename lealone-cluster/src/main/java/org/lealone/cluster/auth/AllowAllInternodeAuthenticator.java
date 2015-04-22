@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.lealone.cluster.auth;
 
 import java.net.InetAddress;
@@ -24,10 +23,12 @@ import java.net.InetAddress;
 import org.lealone.cluster.exceptions.ConfigurationException;
 
 public class AllowAllInternodeAuthenticator implements IInternodeAuthenticator {
+    @Override
     public boolean authenticate(InetAddress remoteAddress, int remotePort) {
         return true;
     }
 
+    @Override
     public void validateConfiguration() throws ConfigurationException {
     }
 }

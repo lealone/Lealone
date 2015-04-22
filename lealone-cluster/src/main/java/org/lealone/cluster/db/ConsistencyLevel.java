@@ -37,8 +37,17 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.Iterables;
 
 public enum ConsistencyLevel {
-    ANY(0), ONE(1), TWO(2), THREE(3), QUORUM(4), ALL(5), LOCAL_QUORUM(6, true), EACH_QUORUM(7), SERIAL(8), LOCAL_SERIAL(9), LOCAL_ONE(
-            10, true);
+    ANY(0),
+    ONE(1),
+    TWO(2),
+    THREE(3),
+    QUORUM(4),
+    ALL(5),
+    LOCAL_QUORUM(6, true),
+    EACH_QUORUM(7),
+    SERIAL(8),
+    LOCAL_SERIAL(9),
+    LOCAL_ONE(10, true);
 
     private static final Logger logger = LoggerFactory.getLogger(ConsistencyLevel.class);
 

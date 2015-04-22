@@ -31,7 +31,9 @@ public interface RowPosition extends RingPosition<RowPosition> {
     public static enum Kind {
         // Only add new values to the end of the enum, the ordinal is used
         // during serialization
-        ROW_KEY, MIN_BOUND, MAX_BOUND;
+        ROW_KEY,
+        MIN_BOUND,
+        MAX_BOUND;
 
         private static final Kind[] allKinds = Kind.values();
 

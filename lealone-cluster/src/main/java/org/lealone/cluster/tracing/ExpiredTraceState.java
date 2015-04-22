@@ -18,7 +18,6 @@
  * under the License.
  * 
  */
-
 package org.lealone.cluster.tracing;
 
 import java.util.UUID;

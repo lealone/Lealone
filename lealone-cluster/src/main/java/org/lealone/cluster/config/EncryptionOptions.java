@@ -36,7 +36,10 @@ public abstract class EncryptionOptions {
 
     public static class ServerEncryptionOptions extends EncryptionOptions {
         public static enum InternodeEncryption {
-            all, none, dc, rack
+            all,
+            none,
+            dc,
+            rack
         }
 
         public InternodeEncryption internode_encryption = InternodeEncryption.none;
