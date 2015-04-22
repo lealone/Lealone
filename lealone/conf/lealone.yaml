@@ -17,4 +17,23 @@
 
 # Lealone config YAML 
 
-# TODO
+base_dir: ../data_base_dir
+
+listen_address: 127.0.0.1
+
+cluster_name: Test Cluster
+
+partitioner: Murmur3Partitioner
+
+seed_provider:
+    - class_name: org.lealone.cluster.locator.SimpleSeedProvider
+      parameters:
+          - seeds: "127.0.0.1"
+
+endpoint_snitch: SimpleSnitch
+dynamic_snitch: true
+
+num_tokens: 2
+
+run_mode: client_server
+

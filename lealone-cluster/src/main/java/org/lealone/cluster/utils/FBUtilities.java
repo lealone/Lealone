@@ -265,7 +265,7 @@ public class FBUtilities {
     public static String getReleaseVersionString() {
         InputStream in = null;
         try {
-            in = FBUtilities.class.getClassLoader().getResourceAsStream("org/lealone/config/version.properties");
+            in = FBUtilities.class.getClassLoader().getResourceAsStream("org/lealone/res/version.properties");
             if (in == null) {
                 return System.getProperty("lealone.releaseVersion", "Unknown");
             }

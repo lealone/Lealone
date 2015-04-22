@@ -113,7 +113,7 @@ public class Config {
     //TCP Server
     public String base_dir;
     public int tcp_port = 0;
-    public boolean tcp_daemon = true;
+    public boolean tcp_daemon = false;
     public boolean tcp_allow_others = true;
 
     public RunMode run_mode = RunMode.cluster;
