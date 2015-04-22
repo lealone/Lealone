@@ -101,11 +101,10 @@ import com.google.common.util.concurrent.Uninterruptibles;
  */
 public class StorageService extends NotificationBroadcasterSupport implements IEndpointStateChangeSubscriber, StorageServiceMBean {
     private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
+    private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
 
+    public static final StorageService instance = new StorageService();
     public static final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
-
-    /* JMX notification serial number counter */
-    private final AtomicLong notificationSerialNumber = new AtomicLong();
 
     private static int getRingDelay() {
         String newdelay = System.getProperty("lealone.ring_delay_ms");
@@ -116,43 +115,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             return 30 * 1000;
     }
 
-    /* This abstraction maintains the token/endpoint metadata information */
-    private TokenMetadata tokenMetadata = new TokenMetadata();
-
-    public volatile VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(getPartitioner());
-
-    private Thread drainOnShutdown = null;
-
-    public static final StorageService instance = new StorageService();
-
     public static IPartitioner getPartitioner() {
         return DatabaseDescriptor.getPartitioner();
     }
-
-    public Collection<Range<Token>> getLocalRanges(String keyspaceName) {
-        return getRangesForEndpoint(keyspaceName, FBUtilities.getBroadcastAddress());
-    }
-
-    public Collection<Range<Token>> getPrimaryRanges(String keyspace) {
-        return getPrimaryRangesForEndpoint(keyspace, FBUtilities.getBroadcastAddress());
-    }
-
-    public Collection<Range<Token>> getPrimaryRangesWithinDC(String keyspace) {
-        return getPrimaryRangeForEndpointWithinDC(keyspace, FBUtilities.getBroadcastAddress());
-    }
-
-    private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
-
-    private InetAddress removingNode;
-
-    /* Are we starting this node in bootstrap mode? */
-    private boolean isBootstrapMode;
-
-    /* we bootstrap but do NOT join the ring unless told to do so */
-    private boolean isSurveyMode = Boolean.parseBoolean(System.getProperty("lealone.write_survey", "false"));
-
-    private boolean initialized;
-    private volatile boolean joined = false;
 
     private static enum Mode {
         STARTING,
@@ -167,170 +132,57 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private Mode operationMode = Mode.STARTING;
 
+    public final VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(getPartitioner());
+    /* This abstraction maintains the token/endpoint metadata information */
+    private final TokenMetadata tokenMetadata = new TokenMetadata();
+
+    /* JMX notification serial number counter */
+    private final AtomicLong notificationSerialNumber = new AtomicLong();
+    private final ObjectName jmxObjectName;
     private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
 
-    private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
+    private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
+    private InetAddress removingNode;
+    /* we bootstrap but do NOT join the ring unless told to do so */
+    private boolean isSurveyMode = Boolean.parseBoolean(System.getProperty("lealone.write_survey", "false"));
+    private boolean initialized;
+    private volatile boolean joined = false;
+    /* Are we starting this node in bootstrap mode? */
+    private boolean isBootstrapMode;
+    private Collection<Token> bootstrapTokens;
 
-    private final ObjectName jmxObjectName;
-
-    private Collection<Token> bootstrapTokens = null;
-
-    public void finishBootstrapping() {
-        isBootstrapMode = false;
-    }
-
-    /** This method updates the local token on disk  */
-    public void setTokens(Collection<Token> tokens) {
-        if (logger.isDebugEnabled())
-            logger.debug("Setting tokens to {}", tokens);
-        SystemKeyspace.updateTokens(tokens);
-        tokenMetadata.updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
-        Collection<Token> localTokens = getLocalTokens();
-        List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
-        states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(localTokens)));
-        states.add(Pair.create(ApplicationState.STATUS, valueFactory.normal(localTokens)));
-        Gossiper.instance.addLocalApplicationStates(states);
-        setMode(Mode.NORMAL, false);
-    }
+    private Thread drainOnShutdown;
 
     public StorageService() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            jmxObjectName = new ObjectName("org.lealone.db:type=StorageService");
+            jmxObjectName = new ObjectName("org.lealone.cluster:type=StorageService");
             mbs.registerMBean(this, jmxObjectName);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.REQUEST_RESPONSE, new ResponseVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.INTERNAL_RESPONSE, new ResponseVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler());
-
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_SYN,
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.REQUEST_RESPONSE, //
+                new ResponseVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.INTERNAL_RESPONSE, //
+                new ResponseVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, //
+                new GossipShutdownVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_SYN, //
                 new GossipDigestSynVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK,
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK, //
                 new GossipDigestAckVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK2,
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK2, //
                 new GossipDigestAck2VerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler());
+        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ECHO, //
+                new EchoVerbHandler());
     }
 
-    public void register(IEndpointLifecycleSubscriber subscriber) {
-        lifecycleSubscribers.add(subscriber);
+    public synchronized void start() throws ConfigurationException {
+        start(RING_DELAY);
     }
 
-    public void unregister(IEndpointLifecycleSubscriber subscriber) {
-        lifecycleSubscribers.remove(subscriber);
-    }
-
-    // should only be called via JMX
-    @Override
-    public void stopGossiping() {
-        if (initialized) {
-            logger.warn("Stopping gossip by operator request");
-            Gossiper.instance.stop();
-            initialized = false;
-        }
-    }
-
-    // should only be called via JMX
-    @Override
-    public void startGossiping() {
-        if (!initialized) {
-            logger.warn("Starting gossip by operator request");
-            Gossiper.instance.start((int) (System.currentTimeMillis() / 1000));
-            initialized = true;
-        }
-    }
-
-    // should only be called via JMX
-    @Override
-    public boolean isGossipRunning() {
-        return Gossiper.instance.isEnabled();
-    }
-
-    public void stopTransports() {
-        if (isInitialized()) {
-            logger.error("Stopping gossiper");
-            stopGossiping();
-        }
-    }
-
-    public void stopClient() {
-        Gossiper.instance.unregister(this);
-        Gossiper.instance.stop();
-        MessagingService.instance().shutdown();
-        // give it a second so that task accepted before the MessagingService shutdown gets submitted to the stage (to avoid RejectedExecutionException)
-        Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
-        StageManager.shutdownNow();
-    }
-
-    @Override
-    public boolean isInitialized() {
-        return initialized;
-    }
-
-    public synchronized Collection<Token> prepareReplacementInfo() throws ConfigurationException {
-        logger.info("Gathering node replacement information for {}", DatabaseDescriptor.getReplaceAddress());
-        if (!MessagingService.instance().isListening())
-            MessagingService.instance().listen(FBUtilities.getLocalAddress());
-
-        // make magic happen
-        Gossiper.instance.doShadowRound();
-
-        UUID hostId = null;
-        // now that we've gossiped at least once, we should be able to find the node we're replacing
-        if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()) == null)
-            throw new RuntimeException("Cannot replace_address " + DatabaseDescriptor.getReplaceAddress()
-                    + " because it doesn't exist in gossip");
-        hostId = Gossiper.instance.getHostId(DatabaseDescriptor.getReplaceAddress());
-        try {
-            if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()).getApplicationState(
-                    ApplicationState.TOKENS) == null)
-                throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
-            Collection<Token> tokens = TokenSerializer.deserialize(
-                    getPartitioner(),
-                    new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(DatabaseDescriptor.getReplaceAddress(),
-                            ApplicationState.TOKENS))));
-
-            SystemKeyspace.setLocalHostId(hostId); // use the replacee's host Id as our own so we receive hints, etc
-            Gossiper.instance.resetEndpointStateMap(); // clean up since we have what we need
-            return tokens;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public synchronized void checkForEndpointCollision() throws ConfigurationException {
-        logger.debug("Starting shadow gossip round to check for endpoint collision");
-        if (!MessagingService.instance().isListening())
-            MessagingService.instance().listen(FBUtilities.getLocalAddress());
-        Gossiper.instance.doShadowRound();
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(FBUtilities.getBroadcastAddress());
-        if (epState != null && !Gossiper.instance.isDeadState(epState)
-                && !Gossiper.instance.isGossipOnlyMember(FBUtilities.getBroadcastAddress())) {
-            throw new RuntimeException(String.format("A node with address %s already exists, cancelling join. "
-                    + "Use lealone.replace_address if you want to replace this node.", FBUtilities.getBroadcastAddress()));
-        }
-        Gossiper.instance.resetEndpointStateMap();
-    }
-
-    // for testing only
-    public void unsafeInitialize() throws ConfigurationException {
-        initialized = true;
-        Gossiper.instance.register(this);
-        Gossiper.instance.start((int) (System.currentTimeMillis() / 1000)); // needed for node-ring gathering.
-        Gossiper.instance.addLocalApplicationState(ApplicationState.NET_VERSION, valueFactory.networkVersion());
-        if (!MessagingService.instance().isListening())
-            MessagingService.instance().listen(FBUtilities.getLocalAddress());
-    }
-
-    public synchronized void initServer() throws ConfigurationException {
-        initServer(RING_DELAY);
-    }
-
-    public synchronized void initServer(int delay) throws ConfigurationException {
-        logger.info("lealone version: {}", FBUtilities.getReleaseVersionString());
+    public synchronized void start(int delay) throws ConfigurationException {
         initialized = true;
 
         if (Boolean.parseBoolean(System.getProperty("lealone.load_ring_state", "true"))) {
@@ -350,33 +202,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
         }
 
-        // daemon threads, like our executors', continue to run while shutdown hooks are invoked
-        drainOnShutdown = new Thread(new WrappedRunnable() {
-            @Override
-            public void runMayThrow() throws InterruptedException {
-                ExecutorService counterMutationStage = StageManager.getStage(Stage.COUNTER_MUTATION);
-                ExecutorService mutationStage = StageManager.getStage(Stage.MUTATION);
-                if (mutationStage.isShutdown() && counterMutationStage.isShutdown())
-                    return; // drained already
-                ScheduledExecutors.optionalTasks.shutdown();
-                Gossiper.instance.stop();
-
-                // In-progress writes originating here could generate hints to be written, so shut down MessagingService
-                // before mutation stage, so we can get all the hints saved before shutting down
-                MessagingService.instance().shutdown();
-                counterMutationStage.shutdown();
-                mutationStage.shutdown();
-                counterMutationStage.awaitTermination(3600, TimeUnit.SECONDS);
-                mutationStage.awaitTermination(3600, TimeUnit.SECONDS);
-
-                // wait for miscellaneous tasks like sstable and commitlog segment deletion
-                ScheduledExecutors.nonPeriodicTasks.shutdown();
-                if (!ScheduledExecutors.nonPeriodicTasks.awaitTermination(1, TimeUnit.MINUTES))
-                    logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
-            }
-        }, "StorageServiceShutdownHook");
-        Runtime.getRuntime().addShutdownHook(drainOnShutdown);
-
+        addShutdownHook();
         prepareToJoin();
 
         if (Boolean.parseBoolean(System.getProperty("lealone.join_ring", "true"))) {
@@ -395,17 +221,30 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
     }
 
-    /**
-     * In the event of forceful termination we need to remove the shutdown hook to prevent hanging (OOM for instance)
-     */
-    public void removeShutdownHook() {
-        if (drainOnShutdown != null)
-            Runtime.getRuntime().removeShutdownHook(drainOnShutdown);
-    }
+    private void addShutdownHook() {
+        // daemon threads, like our executors', continue to run while shutdown hooks are invoked
+        drainOnShutdown = new Thread(new WrappedRunnable() {
+            @Override
+            public void runMayThrow() throws InterruptedException {
+                ExecutorService mutationStage = StageManager.getStage(Stage.MUTATION);
+                if (mutationStage.isShutdown())
+                    return; // drained already
+                ScheduledExecutors.optionalTasks.shutdown();
+                Gossiper.instance.stop();
 
-    private boolean shouldBootstrap() {
-        return DatabaseDescriptor.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete()
-                && !DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress());
+                // In-progress writes originating here could generate hints to be written, so shut down MessagingService
+                // before mutation stage, so we can get all the hints saved before shutting down
+                MessagingService.instance().shutdown();
+                mutationStage.shutdown();
+                mutationStage.awaitTermination(3600, TimeUnit.SECONDS);
+
+                // wait for miscellaneous tasks like sstable and commitlog segment deletion
+                ScheduledExecutors.nonPeriodicTasks.shutdown();
+                if (!ScheduledExecutors.nonPeriodicTasks.awaitTermination(1, TimeUnit.MINUTES))
+                    logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
+            }
+        }, "StorageServiceShutdownHook");
+        Runtime.getRuntime().addShutdownHook(drainOnShutdown);
     }
 
     private void prepareToJoin() throws ConfigurationException {
@@ -450,8 +289,65 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             if (!MessagingService.instance().isListening())
                 MessagingService.instance().listen(FBUtilities.getLocalAddress());
             LoadBroadcaster.instance.startBroadcasting();
-
         }
+    }
+
+    private Collection<Token> prepareReplacementInfo() throws ConfigurationException {
+        logger.info("Gathering node replacement information for {}", DatabaseDescriptor.getReplaceAddress());
+        if (!MessagingService.instance().isListening())
+            MessagingService.instance().listen(FBUtilities.getLocalAddress());
+
+        // make magic happen
+        Gossiper.instance.doShadowRound();
+
+        UUID hostId = null;
+        // now that we've gossiped at least once, we should be able to find the node we're replacing
+        if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()) == null)
+            throw new RuntimeException("Cannot replace_address " + DatabaseDescriptor.getReplaceAddress()
+                    + " because it doesn't exist in gossip");
+        hostId = Gossiper.instance.getHostId(DatabaseDescriptor.getReplaceAddress());
+        try {
+            if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()).getApplicationState(
+                    ApplicationState.TOKENS) == null)
+                throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
+            Collection<Token> tokens = TokenSerializer.deserialize(
+                    getPartitioner(),
+                    new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(DatabaseDescriptor.getReplaceAddress(),
+                            ApplicationState.TOKENS))));
+
+            SystemKeyspace.setLocalHostId(hostId); // use the replacee's host Id as our own so we receive hints, etc
+            Gossiper.instance.resetEndpointStateMap(); // clean up since we have what we need
+            return tokens;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private boolean shouldBootstrap() {
+        return DatabaseDescriptor.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete()
+                && !DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress());
+    }
+
+    private void checkForEndpointCollision() throws ConfigurationException {
+        logger.debug("Starting shadow gossip round to check for endpoint collision");
+        if (!MessagingService.instance().isListening())
+            MessagingService.instance().listen(FBUtilities.getLocalAddress());
+        Gossiper.instance.doShadowRound();
+        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(FBUtilities.getBroadcastAddress());
+        if (epState != null && !Gossiper.instance.isDeadState(epState)
+                && !Gossiper.instance.isGossipOnlyMember(FBUtilities.getBroadcastAddress())) {
+            throw new RuntimeException(String.format("A node with address %s already exists, cancelling join. "
+                    + "Use lealone.replace_address if you want to replace this node.", FBUtilities.getBroadcastAddress()));
+        }
+        Gossiper.instance.resetEndpointStateMap();
+    }
+
+    public void gossipSnitchInfo() {
+        IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+        String dc = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
+        String rack = snitch.getRack(FBUtilities.getBroadcastAddress());
+        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, StorageService.instance.valueFactory.datacenter(dc));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, StorageService.instance.valueFactory.rack(rack));
     }
 
     private void joinTokenRing(int delay) throws ConfigurationException {
@@ -589,12 +485,104 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
     }
 
-    public void gossipSnitchInfo() {
-        IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
-        String dc = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
-        String rack = snitch.getRack(FBUtilities.getBroadcastAddress());
-        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, StorageService.instance.valueFactory.datacenter(dc));
-        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, StorageService.instance.valueFactory.rack(rack));
+    private void bootstrap(Collection<Token> tokens) {
+        isBootstrapMode = true;
+        SystemKeyspace.updateTokens(tokens); // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
+        if (!DatabaseDescriptor.isReplacing()) {
+            // if not an existing token then bootstrap
+            List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
+            states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(tokens)));
+            states.add(Pair.create(ApplicationState.STATUS, valueFactory.bootstrapping(tokens)));
+            Gossiper.instance.addLocalApplicationStates(states);
+            setMode(Mode.JOINING, "sleeping " + RING_DELAY + " ms for pending range setup", true);
+            Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS);
+        } else {
+            // Dont set any state for the node which is bootstrapping the existing token...
+            tokenMetadata.updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
+            SystemKeyspace.removeEndpoint(DatabaseDescriptor.getReplaceAddress());
+        }
+        if (!Gossiper.instance.seenAnySeed())
+            throw new IllegalStateException("Unable to contact any seeds!");
+        setMode(Mode.JOINING, "Starting to bootstrap...", true);
+        new BootStrapper(FBUtilities.getBroadcastAddress(), tokens, tokenMetadata).bootstrap(); // handles token update
+        logger.info("Bootstrap completed! for the tokens {}", tokens);
+    }
+
+    public void finishBootstrapping() {
+        isBootstrapMode = false;
+    }
+
+    /** This method updates the local token on disk  */
+    public void setTokens(Collection<Token> tokens) {
+        if (logger.isDebugEnabled())
+            logger.debug("Setting tokens to {}", tokens);
+        SystemKeyspace.updateTokens(tokens);
+        tokenMetadata.updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
+        Collection<Token> localTokens = getLocalTokens();
+        List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
+        states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(localTokens)));
+        states.add(Pair.create(ApplicationState.STATUS, valueFactory.normal(localTokens)));
+        Gossiper.instance.addLocalApplicationStates(states);
+        setMode(Mode.NORMAL, false);
+    }
+
+    public Collection<Range<Token>> getLocalRanges(String keyspaceName) {
+        return getRangesForEndpoint(keyspaceName, FBUtilities.getBroadcastAddress());
+    }
+
+    public Collection<Range<Token>> getPrimaryRanges(String keyspace) {
+        return getPrimaryRangesForEndpoint(keyspace, FBUtilities.getBroadcastAddress());
+    }
+
+    public Collection<Range<Token>> getPrimaryRangesWithinDC(String keyspace) {
+        return getPrimaryRangeForEndpointWithinDC(keyspace, FBUtilities.getBroadcastAddress());
+    }
+
+    public void register(IEndpointLifecycleSubscriber subscriber) {
+        lifecycleSubscribers.add(subscriber);
+    }
+
+    public void unregister(IEndpointLifecycleSubscriber subscriber) {
+        lifecycleSubscribers.remove(subscriber);
+    }
+
+    // should only be called via JMX
+    @Override
+    public void stopGossiping() {
+        if (initialized) {
+            logger.warn("Stopping gossip by operator request");
+            Gossiper.instance.stop();
+            initialized = false;
+        }
+    }
+
+    // should only be called via JMX
+    @Override
+    public void startGossiping() {
+        if (!initialized) {
+            logger.warn("Starting gossip by operator request");
+            Gossiper.instance.start((int) (System.currentTimeMillis() / 1000));
+            initialized = true;
+        }
+    }
+
+    // should only be called via JMX
+    @Override
+    public boolean isGossipRunning() {
+        return Gossiper.instance.isEnabled();
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    /**
+     * In the event of forceful termination we need to remove the shutdown hook to prevent hanging (OOM for instance)
+     */
+    public void removeShutdownHook() {
+        if (drainOnShutdown != null)
+            Runtime.getRuntime().removeShutdownHook(drainOnShutdown);
     }
 
     @Override
@@ -620,16 +608,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         return joined;
     }
 
-    @Override
-    public boolean isIncrementalBackupsEnabled() {
-        return DatabaseDescriptor.isIncrementalBackupsEnabled();
-    }
-
-    @Override
-    public void setIncrementalBackupsEnabled(boolean value) {
-        DatabaseDescriptor.setIncrementalBackupsEnabled(value);
-    }
-
     private void setMode(Mode m, boolean log) {
         setMode(m, null, log);
     }
@@ -641,29 +619,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             logger.info(logMsg);
         else
             logger.debug(logMsg);
-    }
-
-    private void bootstrap(Collection<Token> tokens) {
-        isBootstrapMode = true;
-        SystemKeyspace.updateTokens(tokens); // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
-        if (!DatabaseDescriptor.isReplacing()) {
-            // if not an existing token then bootstrap
-            List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
-            states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(tokens)));
-            states.add(Pair.create(ApplicationState.STATUS, valueFactory.bootstrapping(tokens)));
-            Gossiper.instance.addLocalApplicationStates(states);
-            setMode(Mode.JOINING, "sleeping " + RING_DELAY + " ms for pending range setup", true);
-            Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS);
-        } else {
-            // Dont set any state for the node which is bootstrapping the existing token...
-            tokenMetadata.updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
-            SystemKeyspace.removeEndpoint(DatabaseDescriptor.getReplaceAddress());
-        }
-        if (!Gossiper.instance.seenAnySeed())
-            throw new IllegalStateException("Unable to contact any seeds!");
-        setMode(Mode.JOINING, "Starting to bootstrap...", true);
-        new BootStrapper(FBUtilities.getBroadcastAddress(), tokens, tokenMetadata).bootstrap(); // handles token update
-        logger.info("Bootstrap completed! for the tokens {}", tokens);
     }
 
     public boolean isBootstrapMode() {
@@ -1792,20 +1747,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @Override
     public boolean isStarting() {
         return operationMode == Mode.STARTING;
-    }
-
-    // Never ever do this at home. Used by tests.
-    IPartitioner setPartitionerUnsafe(IPartitioner newPartitioner) {
-        IPartitioner oldPartitioner = DatabaseDescriptor.getPartitioner();
-        DatabaseDescriptor.setPartitioner(newPartitioner);
-        valueFactory = new VersionedValue.VersionedValueFactory(getPartitioner());
-        return oldPartitioner;
-    }
-
-    TokenMetadata setTokenMetadataUnsafe(TokenMetadata tmd) {
-        TokenMetadata old = tokenMetadata;
-        tokenMetadata = tmd;
-        return old;
     }
 
     @Override

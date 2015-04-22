@@ -65,9 +65,6 @@ import com.google.common.collect.AbstractIterator;
 
 public class FBUtilities {
     private static final Logger logger = LoggerFactory.getLogger(FBUtilities.class);
-
-    //private static ObjectMapper jsonMapper = new ObjectMapper(new JsonFactory());
-
     public static final BigInteger TWO = new BigInteger("2");
     private static final String DEFAULT_TRIGGER_DIR = "triggers";
 
@@ -218,46 +215,6 @@ public class FBUtilities {
         return new BigInteger(hash(data)).abs();
     }
 
-    //
-    //    @Deprecated
-    //    public static void serialize(TSerializer serializer, TBase struct, DataOutput out)
-    //    throws IOException
-    //    {
-    //        assert serializer != null;
-    //        assert struct != null;
-    //        assert out != null;
-    //        byte[] bytes;
-    //        try
-    //        {
-    //            bytes = serializer.serialize(struct);
-    //        }
-    //        catch (TException e)
-    //        {
-    //            throw new RuntimeException(e);
-    //        }
-    //        out.writeInt(bytes.length);
-    //        out.write(bytes);
-    //    }
-    //
-    //    @Deprecated
-    //    public static void deserialize(TDeserializer deserializer, TBase struct, DataInput in)
-    //    throws IOException
-    //    {
-    //        assert deserializer != null;
-    //        assert struct != null;
-    //        assert in != null;
-    //        byte[] bytes = new byte[in.readInt()];
-    //        in.readFully(bytes);
-    //        try
-    //        {
-    //            deserializer.deserialize(struct, bytes);
-    //        }
-    //        catch (TException ex)
-    //        {
-    //            throw new IOException(ex);
-    //        }
-    //    }
-
     public static void sortSampledKeys(List<DecoratedKey> keys, Range<Token> range) {
         if (range.left.compareTo(range.right) >= 0) {
             // range wraps.  have to be careful that we sort in the same order as the range to find the right midpoint.
@@ -345,22 +302,11 @@ public class FBUtilities {
         }
     }
 
-    //    public static void waitOnFutures(List<AsyncOneResponse> results, long ms) throws TimeoutException {
-    //        for (AsyncOneResponse<?> result : results)
-    //            result.get(ms, TimeUnit.MILLISECONDS);
-    //    }
-
     public static IPartitioner newPartitioner(String partitionerClassName) throws ConfigurationException {
         if (!partitionerClassName.contains("."))
             partitionerClassName = "org.lealone.cluster.dht." + partitionerClassName;
         return FBUtilities.instanceOrConstruct(partitionerClassName, "partitioner");
     }
-
-    //    public static IAllocator newOffHeapAllocator(String offheap_allocator) throws ConfigurationException {
-    //        if (!offheap_allocator.contains("."))
-    //            offheap_allocator = "org.lealone.cluster.io.util." + offheap_allocator;
-    //        return FBUtilities.construct(offheap_allocator, "off-heap allocator");
-    //    }
 
     /**
      * @return The Class for the given name.
@@ -457,30 +403,6 @@ public class FBUtilities {
         return new WrappedCloseableIterator<T>(iterator);
     }
 
-    //    public static Map<String, String> fromJsonMap(String json) {
-    //        try {
-    //            return jsonMapper.readValue(json, Map.class);
-    //        } catch (IOException e) {
-    //            throw new RuntimeException(e);
-    //        }
-    //    }
-    //
-    //    public static List<String> fromJsonList(String json) {
-    //        try {
-    //            return jsonMapper.readValue(json, List.class);
-    //        } catch (IOException e) {
-    //            throw new RuntimeException(e);
-    //        }
-    //    }
-    //
-    //    public static String json(Object object) {
-    //        try {
-    //            return jsonMapper.writeValueAsString(object);
-    //        } catch (IOException e) {
-    //            throw new RuntimeException(e);
-    //        }
-    //    }
-
     /**
      * Starts and waits for the given @param pb to finish.
      * @throws java.io.IOException on non-zero exit code
@@ -539,21 +461,6 @@ public class FBUtilities {
         }
     }
 
-    //    public static <T> byte[] serialize(T object, IVersionedSerializer<T> serializer, int version) {
-    //        try {
-    //            int size = (int) serializer.serializedSize(object, version);
-    //            DataOutputBuffer buffer = new DataOutputBuffer(size);
-    //            serializer.serialize(object, buffer, version);
-    //            assert buffer.getLength() == size && buffer.getData().length == size : String.format(
-    //                    "Final buffer length %s to accommodate data size of %s (predicted %s) for %s", buffer.getData().length,
-    //                    buffer.getLength(), size, object);
-    //            return buffer.getData();
-    //        } catch (IOException e) {
-    //            // We're doing in-memory serialization...
-    //            throw new AssertionError(e);
-    //        }
-    //    }
-
     public static long copy(InputStream from, OutputStream to, long limit) throws IOException {
         byte[] buffer = new byte[64]; // 64 byte buffer
         long copied = 0;
@@ -571,12 +478,6 @@ public class FBUtilities {
         }
         return copied;
     }
-
-    //    public static File getToolsOutputDirectory() {
-    //        File historyDir = new File(System.getProperty("user.home"), ".lealone");
-    //        FileUtils.createDirectory(historyDir);
-    //        return historyDir;
-    //    }
 
     public static boolean isUnix() {
         return !isWindows;

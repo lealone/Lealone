@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
  */
 public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     private static final Logger logger = LoggerFactory.getLogger(FailureDetector.class);
-    public static final String MBEAN_NAME = "org.lealone.net:type=FailureDetector";
+    public static final String MBEAN_NAME = "org.lealone.cluster:type=FailureDetector";
     private static final int SAMPLE_SIZE = 1000;
     protected static final long INITIAL_VALUE_NANOS = TimeUnit.NANOSECONDS.convert(getInitialValue(), TimeUnit.MILLISECONDS);
 

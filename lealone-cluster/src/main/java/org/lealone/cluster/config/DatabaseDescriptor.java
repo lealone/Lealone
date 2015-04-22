@@ -367,14 +367,6 @@ public class DatabaseDescriptor {
         conf.write_request_timeout_in_ms = timeOutInMillis;
     }
 
-    public static long getCounterWriteRpcTimeout() {
-        return conf.counter_write_request_timeout_in_ms;
-    }
-
-    public static void setCounterWriteRpcTimeout(Long timeOutInMillis) {
-        conf.counter_write_request_timeout_in_ms = timeOutInMillis;
-    }
-
     public static long getTruncateRpcTimeout() {
         return conf.truncate_request_timeout_in_ms;
     }
@@ -399,8 +391,6 @@ public class DatabaseDescriptor {
         case READ_REPAIR:
         case MUTATION:
             return getWriteRpcTimeout();
-        case COUNTER_MUTATION:
-            return getCounterWriteRpcTimeout();
         default:
             return getRpcTimeout();
         }
@@ -411,7 +401,7 @@ public class DatabaseDescriptor {
      */
     public static long getMinRpcTimeout() {
         return Longs.min(getRpcTimeout(), getReadRpcTimeout(), getRangeRpcTimeout(), getWriteRpcTimeout(),
-                getCounterWriteRpcTimeout(), getTruncateRpcTimeout());
+                getTruncateRpcTimeout());
     }
 
     public static double getPhiConvictThreshold() {
@@ -564,14 +554,6 @@ public class DatabaseDescriptor {
 
     public static int getMaxHintsThread() {
         return conf.max_hints_delivery_threads;
-    }
-
-    public static boolean isIncrementalBackupsEnabled() {
-        return conf.incremental_backups;
-    }
-
-    public static void setIncrementalBackupsEnabled(boolean value) {
-        conf.incremental_backups = value;
     }
 
     public static long getKeyCacheSizeInMB() {

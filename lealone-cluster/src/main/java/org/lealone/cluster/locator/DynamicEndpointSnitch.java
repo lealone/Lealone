@@ -21,9 +21,15 @@ package org.lealone.cluster.locator;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
@@ -42,13 +48,13 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     private static final double ALPHA = 0.75; // set to 0.75 to make EDS more biased to towards the newer values
     private static final int WINDOW_SIZE = 100;
 
-    private int UPDATE_INTERVAL_IN_MS = DatabaseDescriptor.getDynamicUpdateInterval();
-    private int RESET_INTERVAL_IN_MS = DatabaseDescriptor.getDynamicResetInterval();
-    private double BADNESS_THRESHOLD = DatabaseDescriptor.getDynamicBadnessThreshold();
+    private final int UPDATE_INTERVAL_IN_MS = DatabaseDescriptor.getDynamicUpdateInterval();
+    private final int RESET_INTERVAL_IN_MS = DatabaseDescriptor.getDynamicResetInterval();
+    private final double BADNESS_THRESHOLD = DatabaseDescriptor.getDynamicBadnessThreshold();
 
     // the score for a merged set of endpoints must be this much worse than the score for separate endpoints to
     // warrant not merging two ranges into a single range
-    private double RANGE_MERGING_PREFERENCE = 1.5;
+    private final double RANGE_MERGING_PREFERENCE = 1.5;
 
     private String mbeanName;
     private boolean registered = false;
@@ -63,16 +69,18 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     }
 
     public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance) {
-        mbeanName = "org.lealone.db:type=DynamicEndpointSnitch";
+        mbeanName = "org.lealone.cluster:type=DynamicEndpointSnitch";
         if (instance != null)
             mbeanName += ",instance=" + instance;
         subsnitch = snitch;
         Runnable update = new Runnable() {
+            @Override
             public void run() {
                 updateScores();
             }
         };
         Runnable reset = new Runnable() {
+            @Override
             public void run() {
                 // we do this so that a host considered bad has a chance to recover, otherwise would we never try
                 // to read from it, which would cause its score to never change
@@ -109,14 +117,17 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
         subsnitch.gossiperStarting();
     }
 
+    @Override
     public String getRack(InetAddress endpoint) {
         return subsnitch.getRack(endpoint);
     }
 
+    @Override
     public String getDatacenter(InetAddress endpoint) {
         return subsnitch.getDatacenter(endpoint);
     }
 
+    @Override
     public List<InetAddress> getSortedListByProximity(final InetAddress address, Collection<InetAddress> addresses) {
         List<InetAddress> list = new ArrayList<InetAddress>(addresses);
         sortByProximity(address, list);
@@ -165,6 +176,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
         }
     }
 
+    @Override
     public int compareEndpoints(InetAddress target, InetAddress a1, InetAddress a2) {
         Double scored1 = scores.get(a1);
         Double scored2 = scores.get(a2);
@@ -187,6 +199,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
             return 1;
     }
 
+    @Override
     public void receiveTiming(InetAddress host, long latency) // this is cheap
     {
         ExponentiallyDecayingSample sample = samples.get(host);
@@ -234,26 +247,32 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
             sample.clear();
     }
 
+    @Override
     public Map<InetAddress, Double> getScores() {
         return scores;
     }
 
+    @Override
     public int getUpdateInterval() {
         return UPDATE_INTERVAL_IN_MS;
     }
 
+    @Override
     public int getResetInterval() {
         return RESET_INTERVAL_IN_MS;
     }
 
+    @Override
     public double getBadnessThreshold() {
         return BADNESS_THRESHOLD;
     }
 
+    @Override
     public String getSubsnitchClassName() {
         return subsnitch.getClass().getName();
     }
 
+    @Override
     public List<Double> dumpTimings(String hostname) throws UnknownHostException {
         InetAddress host = InetAddress.getByName(hostname);
         ArrayList<Double> timings = new ArrayList<Double>();
@@ -265,14 +284,17 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
         return timings;
     }
 
+    @Override
     public void setSeverity(double severity) {
         StorageService.instance.reportManualSeverity(severity);
     }
 
+    @Override
     public double getSeverity() {
         return StorageService.instance.getSeverity(FBUtilities.getBroadcastAddress());
     }
 
+    @Override
     public boolean isWorthMergingForRangeQuery(List<InetAddress> merged, List<InetAddress> l1, List<InetAddress> l2) {
         if (!subsnitch.isWorthMergingForRangeQuery(merged, l1, l2))
             return false;

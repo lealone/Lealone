@@ -27,5 +27,4 @@ public interface GossiperMBean {
     public void unsafeAssassinateEndpoint(String address) throws UnknownHostException;
 
     public void assassinateEndpoint(String address) throws UnknownHostException;
-
 }

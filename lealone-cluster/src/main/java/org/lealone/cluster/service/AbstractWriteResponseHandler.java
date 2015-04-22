@@ -58,9 +58,7 @@ public abstract class AbstractWriteResponseHandler implements IAsyncCallback<Obj
     }
 
     public void get() throws WriteTimeoutException {
-        long requestTimeout = writeType == WriteType.COUNTER ? DatabaseDescriptor.getCounterWriteRpcTimeout()
-                : DatabaseDescriptor.getWriteRpcTimeout();
-
+        long requestTimeout = DatabaseDescriptor.getWriteRpcTimeout();
         long timeout = TimeUnit.MILLISECONDS.toNanos(requestTimeout) - (System.nanoTime() - start);
 
         boolean success;

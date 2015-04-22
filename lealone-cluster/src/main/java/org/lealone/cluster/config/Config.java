@@ -55,8 +55,6 @@ public class Config {
 
     public volatile Long write_request_timeout_in_ms = 2000L;
 
-    public volatile Long counter_write_request_timeout_in_ms = 5000L;
-
     public volatile Long truncate_request_timeout_in_ms = 60000L;
 
     public boolean cross_node_timeout = false;
@@ -92,8 +90,6 @@ public class Config {
     public int hinted_handoff_throttle_in_kb = 1024;
     public int batchlog_replay_throttle_in_kb = 1024;
     public int max_hints_delivery_threads = 1;
-
-    public volatile boolean incremental_backups = false;
 
     public Long key_cache_size_in_mb = null;
     public volatile int key_cache_save_period = 14400;

@@ -20,6 +20,7 @@ package org.lealone.cluster.locator;
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
@@ -29,20 +30,23 @@ public class EndpointSnitchInfo implements EndpointSnitchInfoMBean {
     public static void create() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName("org.lealone.db:type=EndpointSnitchInfo"));
+            mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName("org.lealone.cluster:type=EndpointSnitchInfo"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
+    @Override
     public String getDatacenter(String host) throws UnknownHostException {
         return DatabaseDescriptor.getEndpointSnitch().getDatacenter(InetAddress.getByName(host));
     }
 
+    @Override
     public String getRack(String host) throws UnknownHostException {
         return DatabaseDescriptor.getEndpointSnitch().getRack(InetAddress.getByName(host));
     }
 
+    @Override
     public String getSnitchName() {
         return DatabaseDescriptor.getEndpointSnitch().getClass().getName();
     }

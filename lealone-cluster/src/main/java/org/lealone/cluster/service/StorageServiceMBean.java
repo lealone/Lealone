@@ -193,10 +193,6 @@ public interface StorageServiceMBean extends NotificationEmitter {
 
     public boolean isJoined();
 
-    public boolean isIncrementalBackupsEnabled();
-
-    public void setIncrementalBackupsEnabled(boolean value);
-
     public void deliverHints(String host) throws UnknownHostException;
 
     /** Returns the name of the cluster */

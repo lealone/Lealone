@@ -20,10 +20,8 @@ package org.lealone.cluster.concurrent;
 public enum Stage {
     READ,
     MUTATION,
-    COUNTER_MUTATION,
     GOSSIP,
     REQUEST_RESPONSE,
-    ANTI_ENTROPY,
     MIGRATION,
     MISC,
     TRACING,
@@ -32,7 +30,6 @@ public enum Stage {
 
     public String getJmxType() {
         switch (this) {
-        case ANTI_ENTROPY:
         case GOSSIP:
         case MIGRATION:
         case MISC:
@@ -40,7 +37,6 @@ public enum Stage {
         case INTERNAL_RESPONSE:
             return "internal";
         case MUTATION:
-        case COUNTER_MUTATION:
         case READ:
         case REQUEST_RESPONSE:
         case READ_REPAIR:

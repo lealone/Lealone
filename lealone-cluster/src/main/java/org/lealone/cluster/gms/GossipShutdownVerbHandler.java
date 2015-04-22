@@ -34,5 +34,4 @@ public class GossipShutdownVerbHandler implements IVerbHandler<Void> {
         }
         FailureDetector.instance.forceConviction(message.from);
     }
-
 }

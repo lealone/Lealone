@@ -18,5 +18,9 @@
 package org.lealone.cluster.db;
 
 public enum WriteType {
-    SIMPLE, BATCH, UNLOGGED_BATCH, COUNTER, BATCH_LOG, CAS;
+    SIMPLE,
+    BATCH,
+    UNLOGGED_BATCH,
+    BATCH_LOG,
+    CAS;
 }

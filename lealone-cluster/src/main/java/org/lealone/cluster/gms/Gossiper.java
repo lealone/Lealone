@@ -79,7 +79,7 @@ import com.google.common.util.concurrent.Uninterruptibles;
  */
 
 public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
-    public static final String MBEAN_NAME = "org.lealone.cluster.gms:type=Gossiper";
+    public static final String MBEAN_NAME = "org.lealone.cluster:type=Gossiper";
 
     private static final DebuggableScheduledThreadPoolExecutor executor = new DebuggableScheduledThreadPoolExecutor("GossipTasks");
 
@@ -96,7 +96,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     public static final long aVeryLongTime = 259200 * 1000; // 3 days
 
-    /** Maximimum difference in generation and version values we are willing to accept about a peer */
+    /** Maximum difference in generation and version values we are willing to accept about a peer */
     private static final long MAX_GENERATION_DIFFERENCE = 86400 * 365;
     private final long fatClientTimeout;
     private final Random random = new Random();
@@ -801,7 +801,6 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 }
             }
         }
-
     }
 
     private void markAlive(final InetAddress addr, final EndpointState localState) {
@@ -1257,5 +1256,4 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     public static long computeExpireTime() {
         return System.currentTimeMillis() + Gossiper.aVeryLongTime;
     }
-
 }

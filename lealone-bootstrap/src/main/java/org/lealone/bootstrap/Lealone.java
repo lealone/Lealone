@@ -25,6 +25,7 @@ import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.router.P2PRouter;
 import org.lealone.cluster.service.StorageService;
+import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.command.router.Router;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
@@ -47,6 +48,7 @@ public class Lealone {
 
     public void start() {
         try {
+            logger.info("Lealone version: {}", FBUtilities.getReleaseVersionString());
             config = DatabaseDescriptor.loadConfig();
 
             // log warnings for different kinds of sub-optimal JVMs.  tldr use 64-bit Oracle >= 1.6u32
@@ -72,14 +74,14 @@ public class Lealone {
             throw new ConfigurationException("base_dir must be specified");
         SysProperties.setBaseDir(config.base_dir);
 
-        logger.info("base_dir: {}", config.base_dir);
+        logger.info("Base dir: {}", config.base_dir);
     }
 
     private static void startServer(Router r) throws Exception {
         Session.setClusterMode(true);
         Session.setRouter(new TransactionalRouter(r));
         startTcpServer();
-        StorageService.instance.initServer();
+        StorageService.instance.start();
     }
 
     private static void startTcpServer() throws Exception {

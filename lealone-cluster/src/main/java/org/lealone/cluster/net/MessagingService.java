@@ -82,7 +82,7 @@ import com.google.common.collect.Lists;
 
 @SuppressWarnings({ "rawtypes", "deprecation" })
 public final class MessagingService implements MessagingServiceMBean {
-    public static final String MBEAN_NAME = "org.lealone.net:type=MessagingService";
+    public static final String MBEAN_NAME = "org.lealone.cluster:type=MessagingService";
 
     // 8 bits version, so don't waste versions
     public static final int VERSION_12 = 6;
@@ -117,8 +117,6 @@ public final class MessagingService implements MessagingServiceMBean {
         SCHEMA_CHECK,
         REPLICATION_FINISHED,
         INTERNAL_RESPONSE, // responses to internal calls
-        COUNTER_MUTATION,
-        SNAPSHOT, // Similar to nt snapshot
         MIGRATION_REQUEST,
         GOSSIP_SHUTDOWN,
         _TRACE, // dummy verb so we can use MS.droppedMessages
@@ -135,7 +133,6 @@ public final class MessagingService implements MessagingServiceMBean {
             MessagingService.Verb.class) {
         {
             put(Verb.MUTATION, Stage.MUTATION);
-            put(Verb.COUNTER_MUTATION, Stage.COUNTER_MUTATION);
             put(Verb.READ_REPAIR, Stage.MUTATION);
             put(Verb.TRUNCATE, Stage.MUTATION);
 
@@ -147,9 +144,7 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.INTERNAL_RESPONSE, Stage.INTERNAL_RESPONSE);
 
             put(Verb.REPLICATION_FINISHED, Stage.MISC);
-            put(Verb.SNAPSHOT, Stage.MISC);
 
-            put(Verb.REPAIR_MESSAGE, Stage.ANTI_ENTROPY);
             put(Verb.GOSSIP_DIGEST_ACK, Stage.GOSSIP);
             put(Verb.GOSSIP_DIGEST_ACK2, Stage.GOSSIP);
             put(Verb.GOSSIP_DIGEST_SYN, Stage.GOSSIP);
@@ -159,8 +154,6 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.SCHEMA_CHECK, Stage.MIGRATION);
             put(Verb.MIGRATION_REQUEST, Stage.MIGRATION);
             put(Verb.REPLICATION_FINISHED, Stage.MISC);
-            put(Verb.COUNTER_MUTATION, Stage.MUTATION);
-            put(Verb.SNAPSHOT, Stage.MISC);
             put(Verb.ECHO, Stage.GOSSIP);
 
             put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);
@@ -197,7 +190,6 @@ public final class MessagingService implements MessagingServiceMBean {
     public static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<Verb, IVersionedSerializer<?>>(
             Verb.class) {
         {
-            put(Verb.SNAPSHOT, null);
             put(Verb.SCHEMA_CHECK, UUIDSerializer.serializer);
             put(Verb.REPLICATION_FINISHED, null);
         }
@@ -245,8 +237,8 @@ public final class MessagingService implements MessagingServiceMBean {
      * all correspond to client requests or something triggered by them; we don't want to
      * drop internal messages like bootstrap or repair notifications.
      */
-    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb._TRACE, Verb.MUTATION, Verb.COUNTER_MUTATION,
-            Verb.READ_REPAIR, Verb.READ, Verb.RANGE_SLICE, Verb.PAGED_RANGE, Verb.REQUEST_RESPONSE);
+    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb._TRACE, Verb.MUTATION, Verb.READ_REPAIR, Verb.READ,
+            Verb.RANGE_SLICE, Verb.PAGED_RANGE, Verb.REQUEST_RESPONSE);
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<Verb, DroppedMessageMetrics>(Verb.class);
@@ -481,7 +473,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     public int addCallback(IAsyncCallback cb, MessageOut<? extends IMutation> message, InetAddress to, long timeout,
             ConsistencyLevel consistencyLevel, boolean allowHints) {
-        assert message.verb == Verb.MUTATION || message.verb == Verb.COUNTER_MUTATION;
+        assert message.verb == Verb.MUTATION;
         int messageId = nextId();
 
         CallbackInfo previous = callbacks.put(messageId,
