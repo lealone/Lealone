@@ -398,9 +398,6 @@ public class DatabaseDescriptor {
             return getTruncateRpcTimeout();
         case READ_REPAIR:
         case MUTATION:
-        case PAXOS_COMMIT:
-        case PAXOS_PREPARE:
-        case PAXOS_PROPOSE:
             return getWriteRpcTimeout();
         case COUNTER_MUTATION:
             return getCounterWriteRpcTimeout();
@@ -615,10 +612,6 @@ public class DatabaseDescriptor {
 
     public static void setRowCacheKeysToSave(int rowCacheKeysToSave) {
         conf.row_cache_keys_to_save = rowCacheKeysToSave;
-    }
-
-    public static int getStreamingSocketTimeout() {
-        return conf.streaming_socket_timeout_in_ms;
     }
 
     public static String getLocalDataCenter() {

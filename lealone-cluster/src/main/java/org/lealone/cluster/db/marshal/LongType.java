@@ -19,9 +19,6 @@ package org.lealone.cluster.db.marshal;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.cluster.serializers.LongSerializer;
-import org.lealone.cluster.serializers.MarshalException;
-import org.lealone.cluster.serializers.TypeSerializer;
 import org.lealone.cluster.utils.ByteBufferUtil;
 
 public class LongType extends AbstractType<Long> {
@@ -63,20 +60,38 @@ public class LongType extends AbstractType<Long> {
         return decompose(longType);
     }
 
-    //    @Override
-    //    public boolean isValueCompatibleWithInternal(AbstractType<?> otherType)
-    //    {
-    //        return this == otherType || otherType == DateType.instance || otherType == TimestampType.instance;
-    //    }
-    //
-    //    public CQL3Type asCQL3Type()
-    //    {
-    //        return CQL3Type.Native.BIGINT;
-    //    }
-
     @Override
     public TypeSerializer<Long> getSerializer() {
         return LongSerializer.instance;
     }
 
+    private static class LongSerializer implements TypeSerializer<Long> {
+        public static final LongSerializer instance = new LongSerializer();
+
+        @Override
+        public Long deserialize(ByteBuffer bytes) {
+            return bytes.remaining() == 0 ? null : ByteBufferUtil.toLong(bytes);
+        }
+
+        @Override
+        public ByteBuffer serialize(Long value) {
+            return value == null ? ByteBufferUtil.EMPTY_BYTE_BUFFER : ByteBufferUtil.bytes(value);
+        }
+
+        @Override
+        public void validate(ByteBuffer bytes) throws MarshalException {
+            if (bytes.remaining() != 8 && bytes.remaining() != 0)
+                throw new MarshalException(String.format("Expected 8 or 0 byte long (%d)", bytes.remaining()));
+        }
+
+        @Override
+        public String toString(Long value) {
+            return value == null ? "" : String.valueOf(value);
+        }
+
+        @Override
+        public Class<Long> getType() {
+            return Long.class;
+        }
+    }
 }

@@ -15,10 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.cluster.utils;
 
-import java.util.Iterator;
+package org.lealone.cluster.db.marshal;
 
-public interface IMergeIterator<In, Out> extends CloseableIterator<Out> {
-    Iterable<? extends Iterator<In>> iterators();
+import java.nio.ByteBuffer;
+
+
+public interface TypeSerializer<T> {
+    public ByteBuffer serialize(T value);
+
+    public T deserialize(ByteBuffer bytes);
+
+    /*
+     * Validate that the byte array is a valid sequence for the type this represents.
+     * This guarantees deserialize() can be called without errors.
+     */
+    public void validate(ByteBuffer bytes) throws MarshalException;
+
+    public String toString(T value);
+
+    public Class<T> getType();
 }

@@ -68,7 +68,6 @@ import org.lealone.cluster.security.SSLFactory;
 import org.lealone.cluster.service.AbstractWriteResponseHandler;
 import org.lealone.cluster.tracing.TraceState;
 import org.lealone.cluster.tracing.Tracing;
-import org.lealone.cluster.utils.BooleanSerializer;
 import org.lealone.cluster.utils.ExpiringMap;
 import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.cluster.utils.FileUtils;
@@ -125,10 +124,6 @@ public final class MessagingService implements MessagingServiceMBean {
         _TRACE, // dummy verb so we can use MS.droppedMessages
         ECHO,
         REPAIR_MESSAGE,
-        // use as padding for backwards compatability where a previous version needs to validate a verb from the future.
-        PAXOS_PREPARE,
-        PAXOS_PROPOSE,
-        PAXOS_COMMIT,
         PAGED_RANGE,
         // remember to add new verbs at the end, since we serialize by ordinal
         UNUSED_1,
@@ -143,9 +138,6 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.COUNTER_MUTATION, Stage.COUNTER_MUTATION);
             put(Verb.READ_REPAIR, Stage.MUTATION);
             put(Verb.TRUNCATE, Stage.MUTATION);
-            put(Verb.PAXOS_PREPARE, Stage.MUTATION);
-            put(Verb.PAXOS_PROPOSE, Stage.MUTATION);
-            put(Verb.PAXOS_COMMIT, Stage.MUTATION);
 
             put(Verb.READ, Stage.READ);
             put(Verb.RANGE_SLICE, Stage.READ);
@@ -191,26 +183,11 @@ public final class MessagingService implements MessagingServiceMBean {
         {
             put(Verb.REQUEST_RESPONSE, CallbackDeterminedSerializer.instance);
             put(Verb.INTERNAL_RESPONSE, CallbackDeterminedSerializer.instance);
-
-            //        put(Verb.MUTATION, Mutation.serializer);
-            //        put(Verb.READ_REPAIR, Mutation.serializer);
-            //        put(Verb.READ, ReadCommand.serializer);
-            //        put(Verb.RANGE_SLICE, RangeSliceCommand.serializer);
-            //        put(Verb.PAGED_RANGE, PagedRangeCommand.serializer);
-            //        put(Verb.BOOTSTRAP_TOKEN, BootStrapper.StringSerializer.instance);
-            //        put(Verb.REPAIR_MESSAGE, RepairMessage.serializer);
             put(Verb.GOSSIP_DIGEST_ACK, GossipDigestAck.serializer);
             put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
             put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
-            //put(Verb.DEFINITIONS_UPDATE, MigrationManager.MigrationsSerializer.instance);
-            //        put(Verb.TRUNCATE, Truncation.serializer);
             put(Verb.REPLICATION_FINISHED, null);
-            //        put(Verb.COUNTER_MUTATION, CounterMutation.serializer);
-            //        put(Verb.SNAPSHOT, SnapshotCommand.serializer);
             put(Verb.ECHO, EchoMessage.serializer);
-            //        put(Verb.PAXOS_PREPARE, Commit.serializer);
-            //        put(Verb.PAXOS_PROPOSE, Commit.serializer);
-            //        put(Verb.PAXOS_COMMIT, Commit.serializer);
         }
     };
 
@@ -220,21 +197,9 @@ public final class MessagingService implements MessagingServiceMBean {
     public static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<Verb, IVersionedSerializer<?>>(
             Verb.class) {
         {
-            //            put(Verb.MUTATION, WriteResponse.serializer);
-            //            put(Verb.READ_REPAIR, WriteResponse.serializer);
-            //            put(Verb.COUNTER_MUTATION, WriteResponse.serializer);
-            //            put(Verb.RANGE_SLICE, RangeSliceReply.serializer);
-            //            put(Verb.PAGED_RANGE, RangeSliceReply.serializer);
-            //            put(Verb.READ, ReadResponse.serializer);
-            //            put(Verb.TRUNCATE, TruncateResponse.serializer);
             put(Verb.SNAPSHOT, null);
-
-            //put(Verb.MIGRATION_REQUEST, MigrationManager.MigrationsSerializer.instance);
             put(Verb.SCHEMA_CHECK, UUIDSerializer.serializer);
             put(Verb.REPLICATION_FINISHED, null);
-
-            //            put(Verb.PAXOS_PREPARE, PrepareResponse.serializer);
-            put(Verb.PAXOS_PROPOSE, BooleanSerializer.serializer);
         }
     };
 

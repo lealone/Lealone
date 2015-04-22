@@ -59,8 +59,6 @@ public class Config {
 
     public volatile Long truncate_request_timeout_in_ms = 60000L;
 
-    public Integer streaming_socket_timeout_in_ms = 0;
-
     public boolean cross_node_timeout = false;
 
     public volatile Double phi_convict_threshold = 8.0;
@@ -170,7 +168,5 @@ public class Config {
         client_server,
         //standalone,
         cluster,
-        //mysql_proxy,
-        //pg_proxy
     }
 }

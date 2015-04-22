@@ -15,12 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.cluster.utils;
 
-public interface SearchIterator<K, V> {
+package org.lealone.cluster.db.marshal;
 
-    public boolean hasNext();
+public class MarshalException extends RuntimeException {
+    public MarshalException(String message) {
+        super(message);
+    }
 
-    public V next(K key);
-
+    public MarshalException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

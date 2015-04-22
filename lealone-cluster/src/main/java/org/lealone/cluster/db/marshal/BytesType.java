@@ -19,9 +19,6 @@ package org.lealone.cluster.db.marshal;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.cluster.serializers.BytesSerializer;
-import org.lealone.cluster.serializers.MarshalException;
-import org.lealone.cluster.serializers.TypeSerializer;
 import org.lealone.cluster.utils.ByteBufferUtil;
 import org.lealone.cluster.utils.Hex;
 
@@ -45,14 +42,6 @@ public class BytesType extends AbstractType<ByteBuffer> {
         }
     }
 
-    //    @Override
-    //    public boolean isCompatibleWith(AbstractType<?> previous)
-    //    {
-    //        // Both asciiType and utf8Type really use bytes comparison and
-    //        // bytesType validate everything, so it is compatible with the former.
-    //        return this == previous || previous == AsciiType.instance || previous == UTF8Type.instance;
-    //    }
-
     @Override
     public boolean isValueCompatibleWithInternal(AbstractType<?> otherType) {
         // BytesType can read anything
@@ -64,12 +53,39 @@ public class BytesType extends AbstractType<ByteBuffer> {
         return true;
     }
 
-    //    public CQL3Type asCQL3Type() {
-    //        return CQL3Type.Native.BLOB;
-    //    }
-
     @Override
     public TypeSerializer<ByteBuffer> getSerializer() {
         return BytesSerializer.instance;
+    }
+
+    private static class BytesSerializer implements TypeSerializer<ByteBuffer> {
+        public static final BytesSerializer instance = new BytesSerializer();
+
+        @Override
+        public ByteBuffer serialize(ByteBuffer bytes) {
+            // We make a copy in case the user modifies the input
+            return bytes.duplicate();
+        }
+
+        @Override
+        public ByteBuffer deserialize(ByteBuffer value) {
+            // This is from the DB, so it is not shared with someone else
+            return value;
+        }
+
+        @Override
+        public void validate(ByteBuffer bytes) throws MarshalException {
+            // all bytes are legal.
+        }
+
+        @Override
+        public String toString(ByteBuffer value) {
+            return ByteBufferUtil.bytesToHex(value);
+        }
+
+        @Override
+        public Class<ByteBuffer> getType() {
+            return ByteBuffer.class;
+        }
     }
 }
