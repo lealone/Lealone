@@ -3,27 +3,19 @@
 <assembly>
 	<formats>
 		<format>dir</format>
+		<format>zip</format>
+		<format>tar.gz</format>
 	</formats>
 
 	<baseDirectory>/</baseDirectory>
+	<fileSets>
+        <fileSet>
+            <directory>lealone</directory>
+            <outputDirectory>/</outputDirectory>
+        </fileSet>
+    </fileSets>
 
 	<moduleSets>
-		<moduleSet>
-			<includes>
-				<include>org.lealone:lealone-client</include>
-			</includes>
-			<binaries>
-				<unpack>false</unpack>
-				<outputDirectory>lealone-client</outputDirectory>
-				<dependencySets>
-					<dependencySet>
-						<useTransitiveFiltering>true</useTransitiveFiltering>
-						<useTransitiveDependencies>true</useTransitiveDependencies>
-					</dependencySet>
-				</dependencySets>
-			</binaries>
-		</moduleSet>
-
 		<moduleSet>
 			<includes>
 				<include>org.lealone:lealone-storage-cbase</include>
@@ -32,7 +24,7 @@
 			</includes>
 			<binaries>
 				<unpack>false</unpack>
-				<outputDirectory>lealone-jars</outputDirectory>
+				<outputDirectory>lib</outputDirectory>
 				<dependencySets>
 					<dependencySet>
 						<useTransitiveFiltering>true</useTransitiveFiltering>
