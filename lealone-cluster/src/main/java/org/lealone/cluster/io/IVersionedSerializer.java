@@ -20,7 +20,6 @@ package org.lealone.cluster.io;
 import java.io.DataInput;
 import java.io.IOException;
 
-import org.lealone.cluster.io.util.DataOutputPlus;
 
 public interface IVersionedSerializer<T> {
     /**

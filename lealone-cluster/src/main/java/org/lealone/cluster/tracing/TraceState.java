@@ -44,7 +44,9 @@ public class TraceState {
     private Object notificationHandle;
 
     public enum Status {
-        IDLE, ACTIVE, STOPPED;
+        IDLE,
+        ACTIVE,
+        STOPPED;
     }
 
     private Status status;

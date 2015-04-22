@@ -327,10 +327,6 @@ public class DatabaseDescriptor {
         return conf.cluster_name;
     }
 
-    public static int getMaxStreamingRetries() {
-        return conf.max_streaming_retries;
-    }
-
     public static int getStoragePort() {
         return Integer.parseInt(System.getProperty("lealone.storage_port", conf.storage_port.toString()));
     }
@@ -439,22 +435,6 @@ public class DatabaseDescriptor {
 
     public static boolean getDisableSTCSInL0() {
         return Boolean.getBoolean("lealone.disable_stcs_in_l0");
-    }
-
-    public static int getStreamThroughputOutboundMegabitsPerSec() {
-        return conf.stream_throughput_outbound_megabits_per_sec;
-    }
-
-    public static void setStreamThroughputOutboundMegabitsPerSec(int value) {
-        conf.stream_throughput_outbound_megabits_per_sec = value;
-    }
-
-    public static int getInterDCStreamThroughputOutboundMegabitsPerSec() {
-        return conf.inter_dc_stream_throughput_outbound_megabits_per_sec;
-    }
-
-    public static void setInterDCStreamThroughputOutboundMegabitsPerSec(int value) {
-        conf.inter_dc_stream_throughput_outbound_megabits_per_sec = value;
     }
 
     public static Set<InetAddress> getSeeds() {

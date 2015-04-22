@@ -33,5 +33,4 @@ public interface IMutation {
     public String toString(boolean shallow);
 
     public void addAll(IMutation m);
-    //public Collection<ColumnFamily> getColumnFamilies();
 }

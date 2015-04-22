@@ -21,7 +21,6 @@ import java.io.DataInput;
 import java.io.IOException;
 
 import org.lealone.cluster.db.TypeSizes;
-import org.lealone.cluster.io.util.DataOutputPlus;
 
 public interface ISerializer<T> {
     /**

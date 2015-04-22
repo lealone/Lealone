@@ -20,8 +20,8 @@ package org.lealone.cluster.utils;
 import java.io.DataInput;
 import java.io.IOException;
 
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 
 public class BooleanSerializer implements IVersionedSerializer<Boolean> {
     public static BooleanSerializer serializer = new BooleanSerializer();

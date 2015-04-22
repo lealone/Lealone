@@ -33,7 +33,6 @@ import net.jpountz.lz4.LZ4FastDecompressor;
 import net.jpountz.xxhash.XXHashFactory;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.db.UnknownColumnFamilyException;
 import org.lealone.cluster.gms.Gossiper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,8 +76,6 @@ public class IncomingTcpConnection extends Thread {
         } catch (EOFException e) {
             logger.trace("eof reading from socket; closing", e);
             // connection will be reset so no need to throw an exception.
-        } catch (UnknownColumnFamilyException e) {
-            logger.warn("UnknownColumnFamilyException reading from socket; closing", e);
         } catch (IOException e) {
             logger.debug("IOException reading from socket; closing", e);
         } finally {

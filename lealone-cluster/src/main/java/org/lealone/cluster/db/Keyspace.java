@@ -1,7 +1,5 @@
 package org.lealone.cluster.db;
 
-import java.io.IOException;
-
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.SimpleStrategy;
@@ -30,18 +28,6 @@ public class Keyspace {
 
     public static Iterable<Keyspace> all() {
         return null;
-    }
-
-    public boolean snapshotExists(String snapshotName) {
-        return false;
-    }
-
-    public void snapshot(String snapshotName, String columnFamilyName) throws IOException {
-
-    }
-
-    public static void clearSnapshot(String snapshotName, String keyspace) {
-
     }
 
     public String getName() {

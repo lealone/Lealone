@@ -25,8 +25,8 @@ import java.nio.ByteBuffer;
 import org.lealone.cluster.db.RowPosition;
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.exceptions.ConfigurationException;
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.ISerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.ByteBufferUtil;
 

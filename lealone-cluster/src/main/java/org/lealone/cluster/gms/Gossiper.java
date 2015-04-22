@@ -98,7 +98,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     /** Maximimum difference in generation and version values we are willing to accept about a peer */
     private static final long MAX_GENERATION_DIFFERENCE = 86400 * 365;
-    private final long FatClientTimeout;
+    private final long fatClientTimeout;
     private final Random random = new Random();
     private final Comparator<InetAddress> inetcomparator = new Comparator<InetAddress>() {
         @Override
@@ -194,7 +194,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     private Gossiper() {
         // half of QUARATINE_DELAY, to ensure justRemovedEndpoints has enough leeway to prevent re-gossip
-        FatClientTimeout = QUARANTINE_DELAY / 2;
+        fatClientTimeout = QUARANTINE_DELAY / 2;
         /* register with the Failure Detector for receiving Failure detector events */
         FailureDetector.instance.registerFailureDetectionEventListener(this);
 
@@ -650,8 +650,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 // check if this is a fat client. fat clients are removed automatically from
                 // gossip after FatClientTimeout.  Do not remove dead states here.
                 if (isGossipOnlyMember(endpoint) && !justRemovedEndpoints.containsKey(endpoint)
-                        && TimeUnit.NANOSECONDS.toMillis(nowNano - epState.getUpdateTimestamp()) > FatClientTimeout) {
-                    logger.info("FatClient {} has been silent for {}ms, removing from gossip", endpoint, FatClientTimeout);
+                        && TimeUnit.NANOSECONDS.toMillis(nowNano - epState.getUpdateTimestamp()) > fatClientTimeout) {
+                    logger.info("FatClient {} has been silent for {}ms, removing from gossip", endpoint, fatClientTimeout);
                     removeEndpoint(endpoint); // will put it in justRemovedEndpoints to respect quarantine delay
                     evictFromMembership(endpoint); // can get rid of the state immediately
                 }

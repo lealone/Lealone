@@ -80,11 +80,6 @@ public class Config {
     public Integer internode_send_buff_size_in_bytes;
     public Integer internode_recv_buff_size_in_bytes;
 
-    public Integer max_streaming_retries = 3;
-
-    public volatile Integer stream_throughput_outbound_megabits_per_sec = 200;
-    public volatile Integer inter_dc_stream_throughput_outbound_megabits_per_sec = 0;
-
     public String endpoint_snitch;
     public Boolean dynamic_snitch = true;
     public Integer dynamic_snitch_update_interval_in_ms = 100;

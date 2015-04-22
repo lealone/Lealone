@@ -44,7 +44,7 @@ import net.jpountz.xxhash.XXHashFactory;
 
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.io.util.DataOutputStreamPlus;
+import org.lealone.cluster.io.DataOutputStreamPlus;
 import org.lealone.cluster.tracing.TraceState;
 import org.lealone.cluster.tracing.Tracing;
 import org.lealone.cluster.utils.FBUtilities;

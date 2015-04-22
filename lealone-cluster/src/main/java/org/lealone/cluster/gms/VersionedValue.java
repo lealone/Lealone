@@ -31,8 +31,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.dht.IPartitioner;
 import org.lealone.cluster.dht.Token;
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.utils.FBUtilities;
 

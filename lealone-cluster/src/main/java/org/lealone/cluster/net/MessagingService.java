@@ -59,14 +59,13 @@ import org.lealone.cluster.gms.EchoMessage;
 import org.lealone.cluster.gms.GossipDigestAck;
 import org.lealone.cluster.gms.GossipDigestAck2;
 import org.lealone.cluster.gms.GossipDigestSyn;
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.locator.ILatencySubscriber;
 import org.lealone.cluster.metrics.ConnectionMetrics;
 import org.lealone.cluster.metrics.DroppedMessageMetrics;
 import org.lealone.cluster.security.SSLFactory;
 import org.lealone.cluster.service.AbstractWriteResponseHandler;
-import org.lealone.cluster.sink.SinkManager;
 import org.lealone.cluster.tracing.TraceState;
 import org.lealone.cluster.tracing.Tracing;
 import org.lealone.cluster.utils.BooleanSerializer;
@@ -599,17 +598,11 @@ public final class MessagingService implements MessagingServiceMBean {
         if (to.equals(FBUtilities.getBroadcastAddress()))
             logger.trace("Message-to-self {} going over MessagingService", message);
 
-        // message sinks are a testing hook
-        MessageOut processedMessage = SinkManager.processOutboundMessage(message, id, to);
-        if (processedMessage == null) {
-            return;
-        }
-
         // get pooled connection (really, connection queue)
-        OutboundTcpConnection connection = getConnection(to, processedMessage);
+        OutboundTcpConnection connection = getConnection(to, message);
 
         // write it
-        connection.enqueue(processedMessage, id);
+        connection.enqueue(message, id);
     }
 
     public <T> AsyncOneResponse<T> sendRR(MessageOut message, InetAddress to) {
@@ -650,13 +643,6 @@ public final class MessagingService implements MessagingServiceMBean {
         TraceState state = Tracing.instance.initializeFromMessage(message);
         if (state != null)
             state.trace("Message received from {}", message.from);
-
-        Verb verb = message.verb;
-        message = SinkManager.processInboundMessage(message, id);
-        if (message == null) {
-            incrementRejectedMessages(verb);
-            return;
-        }
 
         Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
         TracingAwareExecutorService stage = StageManager.getStage(message.getMessageType());
@@ -759,18 +745,6 @@ public final class MessagingService implements MessagingServiceMBean {
     public void incrementDroppedMessages(Verb verb) {
         assert DROPPABLE_VERBS.contains(verb) : "Verb " + verb + " should not legally be dropped";
         droppedMessages.get(verb).dropped.mark();
-    }
-
-    /**
-     * Same as incrementDroppedMessages(), but allows non-droppable verbs. Called for IMessageSink-caused message drops.
-     */
-    private void incrementRejectedMessages(Verb verb) {
-        DroppedMessageMetrics metrics = droppedMessages.get(verb);
-        if (metrics == null) {
-            metrics = new DroppedMessageMetrics(verb);
-            droppedMessages.put(verb, metrics);
-        }
-        metrics.dropped.mark();
     }
 
     private void logDroppedMessages() {

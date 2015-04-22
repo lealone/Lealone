@@ -24,8 +24,8 @@ package org.lealone.cluster.gms;
 import java.io.DataInput;
 import java.io.IOException;
 
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 
 public class EchoMessage {
     public static final IVersionedSerializer<EchoMessage> serializer = new EchoMessageSerializer();

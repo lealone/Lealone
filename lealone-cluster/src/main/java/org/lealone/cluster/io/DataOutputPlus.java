@@ -15,17 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.cluster.io.util;
+package org.lealone.cluster.io;
 
 import java.io.DataOutput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public interface DataOutputPlus extends DataOutput {
-
     // write the buffer without modifying its position
     void write(ByteBuffer buffer) throws IOException;
-    //
-    //    void write(Memory memory) throws IOException;
-
 }

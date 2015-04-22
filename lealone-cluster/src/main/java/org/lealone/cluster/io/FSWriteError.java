@@ -18,14 +18,14 @@
 package org.lealone.cluster.io;
 
 import java.io.File;
+import java.io.IOError;
 
-public class FSWriteError extends FSError {
+public class FSWriteError extends IOError {
+    public final File path;
+
     public FSWriteError(Throwable cause, File path) {
-        super(cause, path);
-    }
-
-    public FSWriteError(Throwable cause, String path) {
-        this(cause, new File(path));
+        super(cause);
+        this.path = path;
     }
 
     @Override

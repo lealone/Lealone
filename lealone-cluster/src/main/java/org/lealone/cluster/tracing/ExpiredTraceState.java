@@ -30,6 +30,7 @@ public class ExpiredTraceState extends TraceState {
         super(FBUtilities.getBroadcastAddress(), sessionId, traceType);
     }
 
+    @Override
     public int elapsed() {
         return -1;
     }

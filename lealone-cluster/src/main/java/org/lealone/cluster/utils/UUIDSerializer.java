@@ -22,8 +22,8 @@ import java.io.IOException;
 import java.util.UUID;
 
 import org.lealone.cluster.db.TypeSizes;
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 
 public class UUIDSerializer implements IVersionedSerializer<UUID> {
     public static UUIDSerializer serializer = new UUIDSerializer();

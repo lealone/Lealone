@@ -22,8 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.cluster.db.TypeSizes;
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 
 /**
  * This is the first message that gets sent out as a start of the Gossip protocol in a

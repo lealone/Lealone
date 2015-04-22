@@ -25,8 +25,8 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import com.google.common.base.Objects;
 
 import org.lealone.cluster.db.TypeSizes;
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.ISerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 import org.slf4j.Logger;
 
 public class EstimatedHistogram {

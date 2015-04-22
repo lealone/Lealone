@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.cluster.io.util;
+package org.lealone.cluster.io;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -24,7 +24,28 @@ import java.nio.ByteBuffer;
 
 import org.lealone.cluster.utils.ByteBufferUtil;
 
-public abstract class AbstractDataOutput extends OutputStream implements DataOutputPlus {
+/**
+ * When possible use {@link DataOutputStreamAndChannel} instead of this class, as it will
+ * be more efficient. This class is only for situations where it cannot be used
+ */
+public class DataOutputStreamPlus extends OutputStream implements DataOutputPlus {
+    protected final OutputStream out;
+    private byte[] buf;
+
+    public DataOutputStreamPlus(OutputStream out) {
+        this.out = out;
+    }
+
+    @Override
+    public void close() throws IOException {
+        out.close();
+    }
+
+    @Override
+    public void flush() throws IOException {
+        out.flush();
+    }
+
     /*
     !! DataOutput methods below are copied from the implementation in Apache Harmony RandomAccessFile.
     */
@@ -63,7 +84,9 @@ public abstract class AbstractDataOutput extends OutputStream implements DataOut
      *             If offset or count are outside of bounds.
      */
     @Override
-    public abstract void write(byte[] buffer, int offset, int count) throws IOException;
+    public void write(byte[] buffer, int offset, int count) throws IOException {
+        out.write(buffer, offset, count);
+    }
 
     /**
      * Writes the specified byte <code>oneByte</code> to this RandomAccessFile
@@ -78,7 +101,9 @@ public abstract class AbstractDataOutput extends OutputStream implements DataOut
      *             RandomAccessFile.
      */
     @Override
-    public abstract void write(int oneByte) throws IOException;
+    public void write(int oneByte) throws IOException {
+        out.write(oneByte);
+    }
 
     /**
      * Writes a boolean to this output stream.
@@ -307,8 +332,6 @@ public abstract class AbstractDataOutput extends OutputStream implements DataOut
         write(utfBytes);
     }
 
-    private byte[] buf;
-
     @Override
     public synchronized void write(ByteBuffer buffer) throws IOException {
         int len = buffer.remaining();
@@ -332,10 +355,4 @@ public abstract class AbstractDataOutput extends OutputStream implements DataOut
             len -= sublen;
         }
     }
-    //
-    //    public void write(Memory memory) throws IOException
-    //    {
-    //        for (ByteBuffer buffer : memory.asByteBuffers())
-    //            write(buffer);
-    //    }
 }

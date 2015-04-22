@@ -26,8 +26,8 @@ import org.lealone.cluster.db.DecoratedKey;
 import org.lealone.cluster.db.RowPosition;
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.db.marshal.AbstractType;
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.utils.Pair;
 
 public abstract class AbstractBounds<T extends RingPosition<T>> implements Serializable {

@@ -23,8 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.cluster.db.TypeSizes;
+import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.io.util.DataOutputPlus;
 import org.lealone.cluster.net.CompactEndpointSerializationHelper;
 
 /**
