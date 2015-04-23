@@ -17,9 +17,6 @@
  */
 package org.lealone.cluster.concurrent;
 
-import static org.lealone.cluster.config.DatabaseDescriptor.getConcurrentReaders;
-import static org.lealone.cluster.config.DatabaseDescriptor.getConcurrentWriters;
-
 import java.util.EnumMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -35,19 +32,15 @@ public class StageManager {
     private static final EnumMap<Stage, LealoneExecutorService> stages = new EnumMap<Stage, LealoneExecutorService>(
             Stage.class);
 
-    public static final long KEEPALIVE = 60; // seconds to keep "extra" threads alive for when idle
+    private static final long KEEPALIVE = 60; // seconds to keep "extra" threads alive for when idle
 
     static {
-        stages.put(Stage.MUTATION, multiThreadedLowSignalStage(Stage.MUTATION, getConcurrentWriters()));
-        stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, getConcurrentReaders()));
         stages.put(Stage.REQUEST_RESPONSE,
                 multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, FBUtilities.getAvailableProcessors()));
         stages.put(Stage.INTERNAL_RESPONSE,
                 multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors()));
         // the rest are all single-threaded
         stages.put(Stage.GOSSIP, new MetricsEnabledThreadPoolExecutor(Stage.GOSSIP));
-        stages.put(Stage.MIGRATION, new MetricsEnabledThreadPoolExecutor(Stage.MIGRATION));
-        stages.put(Stage.MISC, new MetricsEnabledThreadPoolExecutor(Stage.MISC));
     }
 
     private static MetricsEnabledThreadPoolExecutor multiThreadedStage(Stage stage, int numThreads) {

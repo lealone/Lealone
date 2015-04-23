@@ -49,14 +49,6 @@ public class Config {
 
     public volatile Long request_timeout_in_ms = 10000L;
 
-    public volatile Long read_request_timeout_in_ms = 5000L;
-
-    public volatile Long range_request_timeout_in_ms = 10000L;
-
-    public volatile Long write_request_timeout_in_ms = 2000L;
-
-    public volatile Long truncate_request_timeout_in_ms = 60000L;
-
     public boolean cross_node_timeout = false;
 
     public volatile Double phi_convict_threshold = 8.0;

@@ -67,7 +67,6 @@ import org.lealone.cluster.utils.ExpiringMap;
 import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.cluster.utils.FileUtils;
 import org.lealone.cluster.utils.Pair;
-import org.lealone.cluster.utils.UUIDSerializer;
 import org.lealone.cluster.utils.concurrent.SimpleCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,56 +98,29 @@ public final class MessagingService implements MessagingServiceMBean {
 
     /* All verb handler identifiers */
     public enum Verb {
-        MUTATION, //
-        READ_REPAIR,
-        READ,
         REQUEST_RESPONSE, // client-initiated reads and writes
-        RANGE_SLICE,
         GOSSIP_DIGEST_SYN,
         GOSSIP_DIGEST_ACK,
         GOSSIP_DIGEST_ACK2,
-        DEFINITIONS_UPDATE,
-        TRUNCATE,
-        SCHEMA_CHECK,
-        REPLICATION_FINISHED,
-        INTERNAL_RESPONSE, // responses to internal calls
-        MIGRATION_REQUEST,
         GOSSIP_SHUTDOWN,
-        _TRACE, // dummy verb so we can use MS.droppedMessages
+        INTERNAL_RESPONSE, // responses to internal calls
         ECHO,
-        REPAIR_MESSAGE,
-        PAGED_RANGE,
         // remember to add new verbs at the end, since we serialize by ordinal
         UNUSED_1,
         UNUSED_2,
-        UNUSED_3, ;
+        UNUSED_3;
     }
 
     public static final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(
             MessagingService.Verb.class) {
         {
-            put(Verb.MUTATION, Stage.MUTATION);
-            put(Verb.READ_REPAIR, Stage.MUTATION);
-            put(Verb.TRUNCATE, Stage.MUTATION);
-
-            put(Verb.READ, Stage.READ);
-            put(Verb.RANGE_SLICE, Stage.READ);
-            put(Verb.PAGED_RANGE, Stage.READ);
-
             put(Verb.REQUEST_RESPONSE, Stage.REQUEST_RESPONSE);
             put(Verb.INTERNAL_RESPONSE, Stage.INTERNAL_RESPONSE);
-
-            put(Verb.REPLICATION_FINISHED, Stage.MISC);
 
             put(Verb.GOSSIP_DIGEST_ACK, Stage.GOSSIP);
             put(Verb.GOSSIP_DIGEST_ACK2, Stage.GOSSIP);
             put(Verb.GOSSIP_DIGEST_SYN, Stage.GOSSIP);
             put(Verb.GOSSIP_SHUTDOWN, Stage.GOSSIP);
-
-            put(Verb.DEFINITIONS_UPDATE, Stage.MIGRATION);
-            put(Verb.SCHEMA_CHECK, Stage.MIGRATION);
-            put(Verb.MIGRATION_REQUEST, Stage.MIGRATION);
-            put(Verb.REPLICATION_FINISHED, Stage.MISC);
             put(Verb.ECHO, Stage.GOSSIP);
 
             put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);
@@ -174,7 +146,6 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.GOSSIP_DIGEST_ACK, GossipDigestAck.serializer);
             put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
             put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
-            put(Verb.REPLICATION_FINISHED, null);
             put(Verb.ECHO, EchoMessage.serializer);
         }
     };
@@ -182,13 +153,7 @@ public final class MessagingService implements MessagingServiceMBean {
     /**
      * A Map of what kind of serializer to wire up to a REQUEST_RESPONSE callback, based on outbound Verb.
      */
-    public static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<Verb, IVersionedSerializer<?>>(
-            Verb.class) {
-        {
-            put(Verb.SCHEMA_CHECK, UUIDSerializer.serializer);
-            put(Verb.REPLICATION_FINISHED, null);
-        }
-    };
+    public static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<>(Verb.class);
 
     /* This records all the results mapped by message Id */
     private final ExpiringMap<Integer, CallbackInfo> callbacks;
@@ -232,8 +197,7 @@ public final class MessagingService implements MessagingServiceMBean {
      * all correspond to client requests or something triggered by them; we don't want to
      * drop internal messages like bootstrap or repair notifications.
      */
-    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb._TRACE, Verb.MUTATION, Verb.READ_REPAIR,
-            Verb.READ, Verb.RANGE_SLICE, Verb.PAGED_RANGE, Verb.REQUEST_RESPONSE);
+    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb.REQUEST_RESPONSE);
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<Verb, DroppedMessageMetrics>(
@@ -298,7 +262,7 @@ public final class MessagingService implements MessagingServiceMBean {
             }
         };
 
-        callbacks = new ExpiringMap<Integer, CallbackInfo>(DatabaseDescriptor.getMinRpcTimeout(), timeoutReporter);
+        callbacks = new ExpiringMap<Integer, CallbackInfo>(DatabaseDescriptor.getRpcTimeout(), timeoutReporter);
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
@@ -460,7 +424,6 @@ public final class MessagingService implements MessagingServiceMBean {
     }
 
     public int addCallback(IAsyncCallback cb, MessageOut message, InetAddress to, long timeout, boolean failureCallback) {
-        assert message.verb != Verb.MUTATION; // mutations need to call the overload with a ConsistencyLevel
         int messageId = nextId();
         CallbackInfo previous = callbacks.put(messageId,
                 new CallbackInfo(to, cb, callbackDeserializers.get(message.verb), failureCallback), timeout);
@@ -547,8 +510,6 @@ public final class MessagingService implements MessagingServiceMBean {
      */
     public void shutdown() {
         logger.info("Waiting for messaging service to quiesce");
-        // We may need to schedule hints on the mutation stage, so it's erroneous to shut down the mutation stage first
-        assert !StageManager.getStage(Stage.MUTATION).isShutdown();
 
         // the important part
         callbacks.shutdownBlocking();

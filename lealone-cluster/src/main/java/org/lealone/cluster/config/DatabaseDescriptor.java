@@ -51,7 +51,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.primitives.Longs;
 
 public class DatabaseDescriptor {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseDescriptor.class);
@@ -350,65 +349,13 @@ public class DatabaseDescriptor {
         conf.request_timeout_in_ms = timeOutInMillis;
     }
 
-    public static long getReadRpcTimeout() {
-        return conf.read_request_timeout_in_ms;
-    }
-
-    public static void setReadRpcTimeout(Long timeOutInMillis) {
-        conf.read_request_timeout_in_ms = timeOutInMillis;
-    }
-
-    public static long getRangeRpcTimeout() {
-        return conf.range_request_timeout_in_ms;
-    }
-
-    public static void setRangeRpcTimeout(Long timeOutInMillis) {
-        conf.range_request_timeout_in_ms = timeOutInMillis;
-    }
-
-    public static long getWriteRpcTimeout() {
-        return conf.write_request_timeout_in_ms;
-    }
-
-    public static void setWriteRpcTimeout(Long timeOutInMillis) {
-        conf.write_request_timeout_in_ms = timeOutInMillis;
-    }
-
-    public static long getTruncateRpcTimeout() {
-        return conf.truncate_request_timeout_in_ms;
-    }
-
-    public static void setTruncateRpcTimeout(Long timeOutInMillis) {
-        conf.truncate_request_timeout_in_ms = timeOutInMillis;
-    }
-
     public static boolean hasCrossNodeTimeout() {
         return conf.cross_node_timeout;
     }
 
     // not part of the Verb enum so we can change timeouts easily via JMX
     public static long getTimeout(MessagingService.Verb verb) {
-        switch (verb) {
-        case READ:
-            return getReadRpcTimeout();
-        case RANGE_SLICE:
-            return getRangeRpcTimeout();
-        case TRUNCATE:
-            return getTruncateRpcTimeout();
-        case READ_REPAIR:
-        case MUTATION:
-            return getWriteRpcTimeout();
-        default:
-            return getRpcTimeout();
-        }
-    }
-
-    /**
-     * @return the minimum configured {read, write, range, truncate, misc} timeout
-     */
-    public static long getMinRpcTimeout() {
-        return Longs.min(getRpcTimeout(), getReadRpcTimeout(), getRangeRpcTimeout(), getWriteRpcTimeout(),
-                getTruncateRpcTimeout());
+        return getRpcTimeout();
     }
 
     public static double getPhiConvictThreshold() {

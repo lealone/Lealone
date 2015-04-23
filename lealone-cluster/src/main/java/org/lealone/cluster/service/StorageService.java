@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -48,9 +47,6 @@ import javax.management.NotificationBroadcasterSupport;
 import javax.management.ObjectName;
 
 import org.apache.commons.lang3.StringUtils;
-import org.lealone.cluster.concurrent.ScheduledExecutors;
-import org.lealone.cluster.concurrent.Stage;
-import org.lealone.cluster.concurrent.StageManager;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.db.SystemKeyspace;
@@ -213,8 +209,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             Collection<Token> tokens = SystemKeyspace.getSavedTokens();
             if (!tokens.isEmpty()) {
                 tokenMetadata.updateNormalTokens(tokens, FBUtilities.getBroadcastAddress());
-                // order is important here, the gossiper can fire in between adding these two states.  It's ok to send TOKENS without STATUS, but *not* vice versa.
-                List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
+                // order is important here, the gossiper can fire in between adding these two states.  
+                // It's ok to send TOKENS without STATUS, but *not* vice versa.
+                List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<>();
                 states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(tokens)));
                 states.add(Pair.create(ApplicationState.STATUS, valueFactory.hibernate(true)));
                 Gossiper.instance.addLocalApplicationStates(states);
@@ -228,22 +225,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         drainOnShutdown = new Thread(new WrappedRunnable() {
             @Override
             public void runMayThrow() throws InterruptedException {
-                ExecutorService mutationStage = StageManager.getStage(Stage.MUTATION);
-                if (mutationStage.isShutdown())
-                    return; // drained already
-                //ScheduledExecutors.optionalTasks.shutdown();
                 Gossiper.instance.stop();
 
                 // In-progress writes originating here could generate hints to be written, so shut down MessagingService
                 // before mutation stage, so we can get all the hints saved before shutting down
                 MessagingService.instance().shutdown();
-                mutationStage.shutdown();
-                mutationStage.awaitTermination(3600, TimeUnit.SECONDS);
-
-                // wait for miscellaneous tasks like sstable and commitlog segment deletion
-                ScheduledExecutors.nonPeriodicTasks.shutdown();
-                if (!ScheduledExecutors.nonPeriodicTasks.awaitTermination(1, TimeUnit.MINUTES))
-                    logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
             }
         }, "StorageServiceShutdownHook");
         Runtime.getRuntime().addShutdownHook(drainOnShutdown);
@@ -410,12 +396,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     && (tokenMetadata.getBootstrapTokens().valueSet().size() > 0
                             || tokenMetadata.getLeavingEndpoints().size() > 0 || tokenMetadata.getMovingEndpoints()
                             .size() > 0))
-                throw new UnsupportedOperationException(
-                        "Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while lealone.consistent.rangemovement is true");
+                throw new UnsupportedOperationException("Other bootstrapping/leaving/moving nodes detected, "
+                        + "cannot bootstrap while lealone.consistent.rangemovement is true");
 
             if (!DatabaseDescriptor.isReplacing()) {
                 if (tokenMetadata.isMember(FBUtilities.getBroadcastAddress())) {
-                    String s = "This node is already a member of the token ring; bootstrap aborted. (If replacing a dead node, remove the old one from the ring first.)";
+                    String s = "This node is already a member of the token ring; "
+                            + "bootstrap aborted. (If replacing a dead node, remove the old one from the ring first.)";
                     throw new UnsupportedOperationException(s);
                 }
                 setMode(Mode.JOINING, "getting bootstrap token", true);
@@ -462,9 +449,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             if (bootstrapTokens.isEmpty()) {
                 bootstrapTokens = BootStrapper.getRandomTokens(tokenMetadata, DatabaseDescriptor.getNumTokens());
                 if (DatabaseDescriptor.getNumTokens() == 1)
-                    logger.warn(
-                            "Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/lealone/Operations",
-                            bootstrapTokens);
+                    logger.warn("Generated random token {}. Random tokens will result in an unbalanced ring; "
+                            + "see http://wiki.apache.org/lealone/Operations", bootstrapTokens);
                 else
                     logger.info("Generated random tokens. tokens are {}", bootstrapTokens);
             } else {
@@ -492,13 +478,15 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             //Auth.setup();
         } else {
-            logger.info("Startup complete, but write survey mode is active, not becoming an active ring member. Use JMX (StorageService->joinRing()) to finalize ring joining.");
+            logger.info("Startup complete, but write survey mode is active, not becoming an active ring member. "
+                    + "Use JMX (StorageService->joinRing()) to finalize ring joining.");
         }
     }
 
     private void bootstrap(Collection<Token> tokens) {
         isBootstrapMode = true;
-        SystemKeyspace.updateTokens(tokens); // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
+        // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
+        SystemKeyspace.updateTokens(tokens);
         if (!DatabaseDescriptor.isReplacing()) {
             // if not an existing token then bootstrap
             List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
@@ -953,7 +941,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      */
     private void handleStateBootstrap(InetAddress endpoint) {
         Collection<Token> tokens;
-        // explicitly check for TOKENS, because a bootstrapping node might be bootstrapping in legacy mode; that is, not using vnodes and no token specified
+        // explicitly check for TOKENS, because a bootstrapping node might be bootstrapping in legacy mode; that is, 
+        // not using vnodes and no token specified
         tokens = getTokensFor(endpoint);
 
         if (logger.isDebugEnabled())
@@ -1035,7 +1024,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
 
         for (final Token token : tokens) {
-            // we don't want to update if this node is responsible for the token and it has a later startup time than endpoint.
+            // we don't want to update if this node is responsible for the token
+            // and it has a later startup time than endpoint.
             InetAddress currentOwner = tokenMetadata.getEndpoint(token);
             if (currentOwner == null) {
                 logger.debug("New node {} at token {}", endpoint, token);
@@ -1068,7 +1058,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         for (InetAddress ep : endpointsToRemove) {
             removeEndpoint(ep);
             if (DatabaseDescriptor.isReplacing() && DatabaseDescriptor.getReplaceAddress().equals(ep))
-                Gossiper.instance.replacementQuarantine(ep); // quarantine locally longer than normally; see lealone-8260
+                Gossiper.instance.replacementQuarantine(ep); // quarantine locally longer than normally; see Cassandra-8260
         }
         if (!tokensToUpdateInSystemKeyspace.isEmpty())
             SystemKeyspace.updateTokens(endpoint, tokensToUpdateInSystemKeyspace);

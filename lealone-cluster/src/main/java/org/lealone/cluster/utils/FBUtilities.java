@@ -39,7 +39,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -61,7 +60,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.AbstractIterator;
 
 public class FBUtilities {
     private static final Logger logger = LoggerFactory.getLogger(FBUtilities.class);
@@ -401,10 +399,6 @@ public class FBUtilities {
         return field;
     }
 
-    public static <T> CloseableIterator<T> closeableIterator(Iterator<T> iterator) {
-        return new WrappedCloseableIterator<T>(iterator);
-    }
-
     /**
      * Starts and waits for the given @param pb to finish.
      * @throws java.io.IOException on non-zero exit code
@@ -443,25 +437,6 @@ public class FBUtilities {
     public static long abs(long index) {
         long negbit = index >> 63;
         return (index ^ negbit) - negbit;
-    }
-
-    private static final class WrappedCloseableIterator<T> extends AbstractIterator<T> implements CloseableIterator<T> {
-        private final Iterator<T> source;
-
-        public WrappedCloseableIterator(Iterator<T> source) {
-            this.source = source;
-        }
-
-        @Override
-        protected T computeNext() {
-            if (!source.hasNext())
-                return endOfData();
-            return source.next();
-        }
-
-        @Override
-        public void close() {
-        }
     }
 
     public static long copy(InputStream from, OutputStream to, long limit) throws IOException {

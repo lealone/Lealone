@@ -18,26 +18,16 @@
 package org.lealone.cluster.concurrent;
 
 public enum Stage {
-    READ,
-    MUTATION,
     GOSSIP,
     REQUEST_RESPONSE,
-    MIGRATION,
-    MISC,
-    INTERNAL_RESPONSE,
-    READ_REPAIR;
+    INTERNAL_RESPONSE;
 
     public String getJmxType() {
         switch (this) {
         case GOSSIP:
-        case MIGRATION:
-        case MISC:
         case INTERNAL_RESPONSE:
             return "internal";
-        case MUTATION:
-        case READ:
         case REQUEST_RESPONSE:
-        case READ_REPAIR:
             return "request";
         default:
             throw new AssertionError("Unknown stage " + this);

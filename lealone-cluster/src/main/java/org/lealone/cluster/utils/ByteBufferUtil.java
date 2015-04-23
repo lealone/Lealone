@@ -33,7 +33,6 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.UUID;
 
 import net.nicoulaj.compilecommand.annotations.Inline;
 
@@ -450,10 +449,6 @@ public class ByteBufferUtil {
 
     public static ByteBuffer bytes(InetAddress address) {
         return ByteBuffer.wrap(address.getAddress());
-    }
-
-    public static ByteBuffer bytes(UUID uuid) {
-        return ByteBuffer.wrap(UUIDGen.decompose(uuid));
     }
 
     // Returns whether {@code prefix} is a prefix of {@code value}.
