@@ -17,7 +17,7 @@
  */
 package org.lealone.cluster.exceptions;
 
-public abstract class LealoneException extends RuntimeException implements TransportException {
+public class LealoneException extends RuntimeException {
     private final ExceptionCode code;
 
     protected LealoneException(ExceptionCode code, String msg) {
@@ -30,7 +30,6 @@ public abstract class LealoneException extends RuntimeException implements Trans
         this.code = code;
     }
 
-    @Override
     public ExceptionCode code() {
         return code;
     }

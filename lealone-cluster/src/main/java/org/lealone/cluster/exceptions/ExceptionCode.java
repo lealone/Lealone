@@ -43,24 +43,28 @@ public enum ExceptionCode {
     INVALID(0x2200),
     CONFIG_ERROR(0x2300),
     ALREADY_EXISTS(0x2400),
-    UNPREPARED(0x2500);
+    UNPREPARED(0x2500),
+
+    // 9xx: 
+    UNKNOWN(0x9000);
 
     public final int value;
-    private static final Map<Integer, ExceptionCode> valueToCode = new HashMap<Integer, ExceptionCode>(
-            ExceptionCode.values().length);
-    static {
-        for (ExceptionCode code : ExceptionCode.values())
-            valueToCode.put(code.value, code);
-    }
 
     private ExceptionCode(int value) {
         this.value = value;
     }
 
+    private static final Map<Integer, ExceptionCode> valueToCode = new HashMap<>(ExceptionCode.values().length);
+
+    static {
+        for (ExceptionCode code : ExceptionCode.values())
+            valueToCode.put(code.value, code);
+    }
+
     public static ExceptionCode fromValue(int value) {
         ExceptionCode code = valueToCode.get(value);
         if (code == null)
-            throw new ProtocolException(String.format("Unknown error code %d", value));
+            throw new LealoneException(UNKNOWN, String.format("Unknown error code %d", value));
         return code;
     }
 }

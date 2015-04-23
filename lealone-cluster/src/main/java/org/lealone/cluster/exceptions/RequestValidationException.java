@@ -17,7 +17,7 @@
  */
 package org.lealone.cluster.exceptions;
 
-public abstract class RequestValidationException extends LealoneException {
+public class RequestValidationException extends LealoneException {
     protected RequestValidationException(ExceptionCode code, String msg) {
         super(code, msg);
     }
