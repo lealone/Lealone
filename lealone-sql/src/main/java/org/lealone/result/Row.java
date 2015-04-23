@@ -30,9 +30,6 @@ public class Row implements SearchRow {
     private Value rowKey;
     private Table table;
 
-    private long transactionId = -1;
-    private boolean isUpdate;
-
     @Override
     public Value getRowKey() {
         return rowKey;
@@ -41,15 +38,6 @@ public class Row implements SearchRow {
     @Override
     public void setRowKey(Value rowKey) {
         this.rowKey = rowKey;
-    }
-
-    public long getTransactionId() {
-        return transactionId;
-    }
-
-    public Row setTransactionId(long transactionId) {
-        this.transactionId = transactionId;
-        return this;
     }
 
     public Row(Value[] data, int memory) {
@@ -105,19 +93,7 @@ public class Row implements SearchRow {
 
     @Override
     public Value getValue(int i) {
-        //return i == -1 ? ValueLong.get(key) : (i == -2 ? rowKey : data[i]);
-        Value v;
-        if (i == -1)
-            v = ValueLong.get(key);
-        else if (i == -2)
-            v = rowKey;
-        else {
-            v = data[i];
-            while (v != null && transactionId < v.version && v.next != null)
-                v = v.next;
-        }
-
-        return v;
+        return i == -1 ? ValueLong.get(key) : (i == -2 ? rowKey : data[i]);
     }
 
     /**
@@ -144,7 +120,6 @@ public class Row implements SearchRow {
         } else if (i == -2) {
             this.rowKey = v;
         } else {
-            v.version = transactionId;
             data[i] = v;
         }
     }
@@ -215,28 +190,6 @@ public class Row implements SearchRow {
         return data;
     }
 
-    public boolean isUpdate() {
-        return isUpdate;
-    }
-
-    public void makeUpdateFlag() {
-        isUpdate = true;
-    }
-
-    public void cleanUpdateFlag() {
-        isUpdate = false;
-    }
-
-    //TODO处理并发更新冲突
-    public void merge(Row newRow) {
-        for (int i = 0, len = data.length; i < len; i++) {
-            if (newRow.data[i] != null) {
-                newRow.data[i].next = data[i];
-                data[i] = newRow.data[i];
-            }
-        }
-    }
-
     public Table getTable() {
         return table;
     }
@@ -244,22 +197,5 @@ public class Row implements SearchRow {
     public Row setTable(Table table) {
         this.table = table;
         return this;
-    }
-
-    private Tag tag;
-
-    public Tag getTag() {
-        return tag;
-    }
-
-    public Row setTag(Tag tag) {
-        this.tag = tag;
-        return this;
-    }
-
-    public static enum Tag {
-        INSERT,
-        UPDATE,
-        DELETE;
     }
 }

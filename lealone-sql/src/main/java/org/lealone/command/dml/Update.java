@@ -141,8 +141,6 @@ public class Update extends Prepared implements Callable<Integer> {
                         }
                         newRow.setValue(i, newValue);
                     }
-                    oldRow.makeUpdateFlag();
-                    newRow.makeUpdateFlag();
                     table.validateConvertUpdateSequence(session, newRow);
                     boolean done = false;
                     if (table.fireRow()) {
