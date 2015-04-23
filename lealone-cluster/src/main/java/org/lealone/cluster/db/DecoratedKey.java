@@ -34,18 +34,32 @@ import org.lealone.cluster.utils.ByteBufferUtil;
  * if this matters, you can subclass RP to use a stronger hash, or use a non-lossy tokenization scheme (as in the
  * OrderPreservingPartitioner classes).
  */
-public abstract class DecoratedKey implements RowPosition {
+public class DecoratedKey implements RowPosition {
     public static final Comparator<DecoratedKey> comparator = new Comparator<DecoratedKey>() {
+        @Override
         public int compare(DecoratedKey o1, DecoratedKey o2) {
             return o1.compareTo(o2);
         }
     };
 
     private final Token token;
+    private final ByteBuffer key;
 
-    public DecoratedKey(Token token) {
+    public DecoratedKey(Token token, ByteBuffer key) {
+
+        assert key != null;
         assert token != null;
+        this.key = key;
         this.token = token;
+    }
+
+    @Override
+    public Token getToken() {
+        return token;
+    }
+
+    public ByteBuffer getKey() {
+        return key;
     }
 
     @Override
@@ -64,6 +78,7 @@ public abstract class DecoratedKey implements RowPosition {
         return ByteBufferUtil.compareUnsigned(getKey(), other.getKey()) == 0; // we compare faster than BB.equals for array backed BB
     }
 
+    @Override
     public int compareTo(RowPosition pos) {
         if (this == pos)
             return 0;
@@ -87,19 +102,23 @@ public abstract class DecoratedKey implements RowPosition {
         return cmp == 0 ? ByteBufferUtil.compareUnsigned(key, otherKey.getKey()) : cmp;
     }
 
+    @Override
     public IPartitioner getPartitioner() {
         return getToken().getPartitioner();
     }
 
+    @Override
     public KeyBound minValue() {
         return getPartitioner().getMinimumToken().minKeyBound();
     }
 
+    @Override
     public boolean isMinimum() {
         // A DecoratedKey can never be the minimum position on the ring
         return false;
     }
 
+    @Override
     public RowPosition.Kind kind() {
         return RowPosition.Kind.ROW_KEY;
     }
@@ -109,10 +128,4 @@ public abstract class DecoratedKey implements RowPosition {
         String keystring = getKey() == null ? "null" : ByteBufferUtil.bytesToHex(getKey());
         return "DecoratedKey(" + getToken() + ", " + keystring + ")";
     }
-
-    public Token getToken() {
-        return token;
-    }
-
-    public abstract ByteBuffer getKey();
 }

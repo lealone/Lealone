@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.cluster.db.DecoratedKey;
-import org.lealone.cluster.db.marshal.AbstractType;
 
 public interface IPartitioner {
     /**
@@ -59,7 +58,7 @@ public interface IPartitioner {
      */
     public Token getRandomToken();
 
-    public Token.TokenFactory getTokenFactory();
+    public TokenFactory getTokenFactory();
 
     /**
      * @return True if the implementing class preserves key order in the Tokens
@@ -75,6 +74,4 @@ public interface IPartitioner {
      * @return the mapping from 'token' to 'percentage of the ring owned by that token'.
      */
     public Map<Token, Float> describeOwnership(List<Token> sortedTokens);
-
-    public AbstractType<?> getTokenValidator();
 }

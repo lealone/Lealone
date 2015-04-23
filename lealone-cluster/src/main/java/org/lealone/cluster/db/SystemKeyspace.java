@@ -17,6 +17,7 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.dht.Token;
+import org.lealone.cluster.dht.TokenFactory;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.engine.SystemDatabase;
 import org.slf4j.Logger;
@@ -131,7 +132,7 @@ public class SystemKeyspace {
     }
 
     private static Collection<Token> deserializeTokens(Collection<String> tokensStrings) {
-        Token.TokenFactory factory = StorageService.getPartitioner().getTokenFactory();
+        TokenFactory factory = StorageService.getPartitioner().getTokenFactory();
         List<Token> tokens = new ArrayList<>(tokensStrings.size());
         for (String tk : tokensStrings)
             tokens.add(factory.fromString(tk));
@@ -301,7 +302,7 @@ public class SystemKeyspace {
     }
 
     private static Set<String> tokensAsSet(Collection<Token> tokens) {
-        Token.TokenFactory factory = StorageService.getPartitioner().getTokenFactory();
+        TokenFactory factory = StorageService.getPartitioner().getTokenFactory();
         Set<String> s = new HashSet<>(tokens.size());
         for (Token tk : tokens)
             s.add(factory.toString(tk));

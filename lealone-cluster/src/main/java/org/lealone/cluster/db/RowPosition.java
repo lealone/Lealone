@@ -21,13 +21,20 @@ import java.io.DataInput;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.lealone.cluster.dht.*;
+import org.lealone.cluster.dht.RingPosition;
+import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.ISerializer;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.ByteBufferUtil;
 
 public interface RowPosition extends RingPosition<RowPosition> {
+
+    public Kind kind();
+
+    @Override
+    public boolean isMinimum();
+
     public static enum Kind {
         // Only add new values to the end of the enum, the ordinal is used
         // during serialization
@@ -42,17 +49,13 @@ public interface RowPosition extends RingPosition<RowPosition> {
         }
     }
 
-    public static final class ForKey {
-        public static RowPosition get(ByteBuffer key, IPartitioner p) {
-            return key == null || key.remaining() == 0 ? p.getMinimumToken().minKeyBound() : p.decorateKey(key);
-        }
-    }
+    //    public static final class ForKey {
+    //        public static RowPosition get(ByteBuffer key, IPartitioner p) {
+    //            return key == null || key.remaining() == 0 ? p.getMinimumToken().minKeyBound() : p.decorateKey(key);
+    //        }
+    //    }
 
     public static final RowPositionSerializer serializer = new RowPositionSerializer();
-
-    public Kind kind();
-
-    public boolean isMinimum();
 
     public static class RowPositionSerializer implements ISerializer<RowPosition> {
         /*
@@ -66,6 +69,7 @@ public interface RowPosition extends RingPosition<RowPosition> {
          * token is recreated on the other side). In the other cases, we then
          * serialize the token.
          */
+        @Override
         public void serialize(RowPosition pos, DataOutputPlus out) throws IOException {
             Kind kind = pos.kind();
             out.writeByte(kind.ordinal());
@@ -75,6 +79,7 @@ public interface RowPosition extends RingPosition<RowPosition> {
                 Token.serializer.serialize(pos.getToken(), out);
         }
 
+        @Override
         public RowPosition deserialize(DataInput in) throws IOException {
             Kind kind = Kind.fromOrdinal(in.readByte());
             if (kind == Kind.ROW_KEY) {
@@ -86,6 +91,7 @@ public interface RowPosition extends RingPosition<RowPosition> {
             }
         }
 
+        @Override
         public long serializedSize(RowPosition pos, TypeSizes typeSizes) {
             Kind kind = pos.kind();
             int size = 1; // 1 byte for enum

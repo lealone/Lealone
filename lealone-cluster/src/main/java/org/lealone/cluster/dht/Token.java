@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 
 import org.lealone.cluster.db.RowPosition;
 import org.lealone.cluster.db.TypeSizes;
-import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.ISerializer;
 import org.lealone.cluster.service.StorageService;
@@ -33,27 +32,17 @@ import org.lealone.cluster.utils.ByteBufferUtil;
 public abstract class Token implements RingPosition<Token>, Serializable {
     private static final long serialVersionUID = 1L;
 
-    public static final TokenSerializer serializer = new TokenSerializer();
+    public static final ISerializer<Token> serializer = new TokenSerializer();
 
-    public static abstract class TokenFactory {
-        public abstract ByteBuffer toByteArray(Token token);
-
-        public abstract Token fromByteArray(ByteBuffer bytes);
-
-        public abstract String toString(Token token); // serialize as string, not necessarily human-readable
-
-        public abstract Token fromString(String string); // deserialize
-
-        public abstract void validate(String token) throws ConfigurationException;
-    }
-
-    public static class TokenSerializer implements ISerializer<Token> {
+    private static class TokenSerializer implements ISerializer<Token> {
+        @Override
         public void serialize(Token token, DataOutputPlus out) throws IOException {
             IPartitioner p = StorageService.getPartitioner();
             ByteBuffer b = p.getTokenFactory().toByteArray(token);
             ByteBufferUtil.writeWithLength(b, out);
         }
 
+        @Override
         public Token deserialize(DataInput in) throws IOException {
             IPartitioner p = StorageService.getPartitioner();
             int size = in.readInt();
@@ -62,6 +51,7 @@ public abstract class Token implements RingPosition<Token>, Serializable {
             return p.getTokenFactory().fromByteArray(ByteBuffer.wrap(bytes));
         }
 
+        @Override
         public long serializedSize(Token object, TypeSizes typeSizes) {
             IPartitioner p = StorageService.getPartitioner();
             ByteBuffer b = p.getTokenFactory().toByteArray(object);
@@ -69,20 +59,24 @@ public abstract class Token implements RingPosition<Token>, Serializable {
         }
     }
 
+    @Override
     abstract public IPartitioner getPartitioner();
 
     abstract public long getHeapSize();
 
     abstract public Object getTokenValue();
 
+    @Override
     public Token getToken() {
         return this;
     }
 
+    @Override
     public Token minValue() {
         return getPartitioner().getMinimumToken();
     }
 
+    @Override
     public boolean isMinimum() {
         return this.equals(minValue());
     }
@@ -135,10 +129,12 @@ public abstract class Token implements RingPosition<Token>, Serializable {
             this.isMinimumBound = isMinimumBound;
         }
 
+        @Override
         public Token getToken() {
             return token;
         }
 
+        @Override
         public int compareTo(RowPosition pos) {
             if (this == pos)
                 return 0;
@@ -153,18 +149,22 @@ public abstract class Token implements RingPosition<Token>, Serializable {
                 return ((pos instanceof KeyBound) && !((KeyBound) pos).isMinimumBound) ? 0 : 1;
         }
 
+        @Override
         public IPartitioner getPartitioner() {
             return getToken().getPartitioner();
         }
 
+        @Override
         public KeyBound minValue() {
             return getPartitioner().getMinimumToken().minKeyBound();
         }
 
+        @Override
         public boolean isMinimum() {
             return getToken().isMinimum();
         }
 
+        @Override
         public RowPosition.Kind kind() {
             return isMinimumBound ? RowPosition.Kind.MIN_BOUND : RowPosition.Kind.MAX_BOUND;
         }

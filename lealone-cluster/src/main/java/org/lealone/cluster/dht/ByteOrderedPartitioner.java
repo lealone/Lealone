@@ -27,10 +27,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.lealone.cluster.db.BufferDecoratedKey;
 import org.lealone.cluster.db.DecoratedKey;
-import org.lealone.cluster.db.marshal.AbstractType;
-import org.lealone.cluster.db.marshal.BytesType;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.utils.ByteBufferUtil;
 import org.lealone.cluster.utils.FBUtilities;
@@ -113,7 +110,7 @@ public class ByteOrderedPartitioner implements IPartitioner {
 
     @Override
     public DecoratedKey decorateKey(ByteBuffer key) {
-        return new BufferDecoratedKey(getToken(key), key);
+        return new DecoratedKey(getToken(key), key);
     }
 
     @Override
@@ -176,7 +173,7 @@ public class ByteOrderedPartitioner implements IPartitioner {
         return new BytesToken(buffer);
     }
 
-    private final Token.TokenFactory tokenFactory = new Token.TokenFactory() {
+    private final TokenFactory tokenFactory = new TokenFactory() {
         @Override
         public ByteBuffer toByteArray(Token token) {
             BytesToken bytesToken = (BytesToken) token;
@@ -214,7 +211,7 @@ public class ByteOrderedPartitioner implements IPartitioner {
     };
 
     @Override
-    public Token.TokenFactory getTokenFactory() {
+    public TokenFactory getTokenFactory() {
         return tokenFactory;
     }
 
@@ -257,10 +254,5 @@ public class ByteOrderedPartitioner implements IPartitioner {
             allTokens.put(row.getKey(), row.getValue() / total);
 
         return allTokens;
-    }
-
-    @Override
-    public AbstractType<?> getTokenValidator() {
-        return BytesType.instance;
     }
 }

@@ -50,24 +50,7 @@ public class BootStrapper {
     public void bootstrap() {
         if (logger.isDebugEnabled())
             logger.debug("Beginning bootstrap process");
-        //
-        //        RangeStreamer streamer = new RangeStreamer(tokenMetadata, tokens, address, "Bootstrap");
-        //        streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
-
-        //        for (String keyspaceName : Schema.instance.getNonSystemKeyspaces())
-        //        {
-        //            AbstractReplicationStrategy strategy = Keyspace.open(keyspaceName).getReplicationStrategy();
-        //            streamer.addRanges(keyspaceName, strategy.getPendingAddressRanges(tokenMetadata, tokens, address));
-        //        }
-
-        //try {
-        //streamer.fetchAsync().get();
         StorageService.instance.finishBootstrapping();
-        //        } catch (InterruptedException e) {
-        //            throw new RuntimeException("Interrupted while waiting on boostrap to complete. Bootstrap will have to be restarted.");
-        //        } catch (ExecutionException e) {
-        //            throw new RuntimeException("Error during boostrap: " + e.getCause().getMessage(), e.getCause());
-        //        }
     }
 
     /**

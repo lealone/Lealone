@@ -22,10 +22,8 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 
-import org.lealone.cluster.db.DecoratedKey;
 import org.lealone.cluster.db.RowPosition;
 import org.lealone.cluster.db.TypeSizes;
-import org.lealone.cluster.db.marshal.AbstractType;
 import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.utils.Pair;
@@ -82,19 +80,6 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
 
     public abstract List<? extends AbstractBounds<T>> unwrap();
 
-    public String getString(AbstractType<?> keyValidator) {
-        return getOpeningString() + format(left, keyValidator) + ", " + format(right, keyValidator)
-                + getClosingString();
-    }
-
-    private String format(T value, AbstractType<?> keyValidator) {
-        if (value instanceof DecoratedKey) {
-            return keyValidator.getString(((DecoratedKey) value).getKey());
-        } else {
-            return value.toString();
-        }
-    }
-
     protected abstract String getOpeningString();
 
     protected abstract String getClosingString();
@@ -107,7 +92,8 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
 
     /**
      * Transform this abstract bounds to a token abstract bounds.
-     * If this abstract bounds was already an abstractBounds of token, this is a noop, otherwise this use the row position tokens.
+     * If this abstract bounds was already an abstractBounds of token, 
+     * this is a noop, otherwise this use the row position tokens.
      */
     public abstract AbstractBounds<Token> toTokenBounds();
 
@@ -117,8 +103,9 @@ public abstract class AbstractBounds<T extends RingPosition<T>> implements Seria
         @Override
         public void serialize(AbstractBounds<?> range, DataOutputPlus out, int version) throws IOException {
             /*
-             * The first int tells us if it's a range or bounds (depending on the value) _and_ if it's tokens or keys (depending on the
-             * sign). We use negative kind for keys so as to preserve the serialization of token from older version.
+             * The first int tells us if it's a range 
+             * or bounds (depending on the value) _and_ if it's tokens or keys (depending on the sign).
+             * We use negative kind for keys so as to preserve the serialization of token from older version.
              */
             out.writeInt(kindInt(range));
             if (range.left instanceof Token) {

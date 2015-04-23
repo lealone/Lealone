@@ -26,10 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.lealone.cluster.db.BufferDecoratedKey;
 import org.lealone.cluster.db.DecoratedKey;
-import org.lealone.cluster.db.marshal.AbstractType;
-import org.lealone.cluster.db.marshal.LongType;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.utils.ByteBufferUtil;
 import org.lealone.cluster.utils.MurmurHash;
@@ -48,10 +45,12 @@ public class Murmur3Partitioner implements IPartitioner {
 
     public static final Murmur3Partitioner instance = new Murmur3Partitioner();
 
+    @Override
     public DecoratedKey decorateKey(ByteBuffer key) {
-        return new BufferDecoratedKey(getToken(key), key);
+        return new DecoratedKey(getToken(key), key);
     }
 
+    @Override
     public Token midpoint(Token lToken, Token rToken) {
         // using BigInteger to avoid long overflow in intermediate operations
         BigInteger l = BigInteger.valueOf(((LongToken) lToken).token), r = BigInteger
@@ -75,6 +74,7 @@ public class Murmur3Partitioner implements IPartitioner {
         return new LongToken(midpoint.longValue());
     }
 
+    @Override
     public LongToken getMinimumToken() {
         return MINIMUM;
     }
@@ -88,10 +88,12 @@ public class Murmur3Partitioner implements IPartitioner {
             this.token = token;
         }
 
+        @Override
         public String toString() {
             return Long.toString(token);
         }
 
+        @Override
         public boolean equals(Object obj) {
             if (this == obj)
                 return true;
@@ -101,10 +103,12 @@ public class Murmur3Partitioner implements IPartitioner {
             return token == (((LongToken) obj).token);
         }
 
+        @Override
         public int hashCode() {
             return Longs.hashCode(token);
         }
 
+        @Override
         public int compareTo(Token o) {
             return Long.compare(token, ((LongToken) o).token);
         }
@@ -131,6 +135,7 @@ public class Murmur3Partitioner implements IPartitioner {
      * In particular we don't want MINIMUM to correspond to any key because the range (MINIMUM, X] doesn't
      * include MINIMUM but we use such range to select all data whose token is smaller than X.
      */
+    @Override
     public LongToken getToken(ByteBuffer key) {
         if (key.remaining() == 0)
             return MINIMUM;
@@ -140,6 +145,7 @@ public class Murmur3Partitioner implements IPartitioner {
         return new LongToken(normalize(hash[0]));
     }
 
+    @Override
     public LongToken getRandomToken() {
         return new LongToken(normalize(ThreadLocalRandom.current().nextLong()));
     }
@@ -149,10 +155,12 @@ public class Murmur3Partitioner implements IPartitioner {
         return v == Long.MIN_VALUE ? Long.MAX_VALUE : v;
     }
 
+    @Override
     public boolean preservesOrder() {
         return false;
     }
 
+    @Override
     public Map<Token, Float> describeOwnership(List<Token> sortedTokens) {
         Map<Token, Float> ownerships = new HashMap<Token, Float>();
         Iterator<Token> i = sortedTokens.iterator();
@@ -162,10 +170,11 @@ public class Murmur3Partitioner implements IPartitioner {
             throw new RuntimeException("No nodes present in the cluster. Has this node finished starting up?");
         // 1-case
         if (sortedTokens.size() == 1)
-            ownerships.put((Token) i.next(), new Float(1.0));
+            ownerships.put(i.next(), new Float(1.0));
         // n-case
         else {
-            final BigInteger ri = BigInteger.valueOf(MAXIMUM).subtract(BigInteger.valueOf(MINIMUM.token + 1)); //  (used for addition later)
+            // used for addition later
+            final BigInteger ri = BigInteger.valueOf(MAXIMUM).subtract(BigInteger.valueOf(MINIMUM.token + 1));
             final BigDecimal r = new BigDecimal(ri);
             Token start = i.next();
             BigInteger ti = BigInteger.valueOf(((LongToken) start).token); // The first token and its value
@@ -173,7 +182,7 @@ public class Murmur3Partitioner implements IPartitioner {
             BigInteger tim1 = ti; // The last token and its value (after loop)
 
             while (i.hasNext()) {
-                t = (Token) i.next();
+                t = i.next();
                 ti = BigInteger.valueOf(((LongToken) t).token); // The next token and its value
                 float age = new BigDecimal(ti.subtract(tim1).add(ri).mod(ri)).divide(r, 6, BigDecimal.ROUND_HALF_EVEN)
                         .floatValue(); // %age = ((T(i) - T(i-1) + R) % R) / R
@@ -190,24 +199,29 @@ public class Murmur3Partitioner implements IPartitioner {
         return ownerships;
     }
 
-    public Token.TokenFactory getTokenFactory() {
+    @Override
+    public TokenFactory getTokenFactory() {
         return tokenFactory;
     }
 
-    private final Token.TokenFactory tokenFactory = new Token.TokenFactory() {
+    private final TokenFactory tokenFactory = new TokenFactory() {
+        @Override
         public ByteBuffer toByteArray(Token token) {
             LongToken longToken = (LongToken) token;
             return ByteBufferUtil.bytes(longToken.token);
         }
 
+        @Override
         public Token fromByteArray(ByteBuffer bytes) {
             return new LongToken(ByteBufferUtil.toLong(bytes));
         }
 
+        @Override
         public String toString(Token token) {
             return token.toString();
         }
 
+        @Override
         public void validate(String token) throws ConfigurationException {
             try {
                 Long.valueOf(token);
@@ -216,19 +230,14 @@ public class Murmur3Partitioner implements IPartitioner {
             }
         }
 
+        @Override
         public Token fromString(String string) {
             try {
                 return new LongToken(Long.valueOf(string));
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        String.format(
-                                "Invalid token for Murmur3Partitioner. Got %s but expected a long value (unsigned 8 bytes integer).",
-                                string));
+                throw new IllegalArgumentException(String.format("Invalid token for Murmur3Partitioner. "
+                        + "Got %s but expected a long value (unsigned 8 bytes integer).", string));
             }
         }
     };
-
-    public AbstractType<?> getTokenValidator() {
-        return LongType.instance;
-    }
 }

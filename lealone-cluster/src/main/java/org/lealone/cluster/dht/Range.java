@@ -191,7 +191,8 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         Set<Range<T>> intersection = new HashSet<Range<T>>(2);
         if (other.contains(wrapping.right))
             intersection.add(new Range<T>(other.left, wrapping.right));
-        // need the extra compareto here because ranges are asymmetrical; wrapping.left _is not_ contained by the wrapping range
+        // need the extra compareto here because ranges are asymmetrical; 
+        // wrapping.left _is not_ contained by the wrapping range
         if (other.contains(wrapping.left) && wrapping.left.compareTo(other.right) < 0)
             intersection.add(new Range<T>(wrapping.left, other.right));
         return Collections.unmodifiableSet(intersection);
@@ -344,7 +345,8 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
     }
 
     /**
-     * @return A copy of the given list of with all ranges unwrapped, sorted by left bound and with overlapping bounds merged.
+     * @return A copy of the given list of with all ranges unwrapped, 
+     *         sorted by left bound and with overlapping bounds merged.
      */
     public static <T extends RingPosition<T>> List<Range<T>> normalize(Collection<Range<T>> ranges) {
         // unwrap all
@@ -391,8 +393,10 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
 
             Range<T> next = iter.next();
 
-            // if next left is equal to current right, we do not intersect per se, but replacing (A, B] and (B, C] by (A, C] is
-            // legit, and since this avoid special casing and will result in more "optimal" ranges, we do the transformation
+            // if next left is equal to current right, we do not intersect per se,
+            // but replacing (A, B] and (B, C] by (A, C] is legit, 
+            // and since this avoid special casing and will result in more "optimal" ranges
+            // we do the transformation
             if (next.left.compareTo(current.right) <= 0) {
                 // We do overlap
                 // (we've handled current.right.equals(min) already)

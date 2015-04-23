@@ -15,23 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-package org.lealone.cluster.db.marshal;
+package org.lealone.cluster.dht;
 
 import java.nio.ByteBuffer;
 
-public interface TypeSerializer<T> {
-    public ByteBuffer serialize(T value);
+import org.lealone.cluster.exceptions.ConfigurationException;
 
-    public T deserialize(ByteBuffer bytes);
+public interface TokenFactory {
+    public ByteBuffer toByteArray(Token token);
 
-    /*
-     * Validate that the byte array is a valid sequence for the type this represents.
-     * This guarantees deserialize() can be called without errors.
-     */
-    public void validate(ByteBuffer bytes) throws MarshalException;
+    public Token fromByteArray(ByteBuffer bytes);
 
-    public String toString(T value);
+    public String toString(Token token); // serialize as string, not necessarily human-readable
 
-    public Class<T> getType();
+    public Token fromString(String string); // deserialize
+
+    public void validate(String token) throws ConfigurationException;
 }
