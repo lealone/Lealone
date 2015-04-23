@@ -52,8 +52,6 @@ import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.concurrent.StageManager;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
-import org.lealone.cluster.db.ConsistencyLevel;
-import org.lealone.cluster.db.IMutation;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.EchoMessage;
 import org.lealone.cluster.gms.GossipDigestAck;
@@ -65,7 +63,6 @@ import org.lealone.cluster.locator.ILatencySubscriber;
 import org.lealone.cluster.metrics.ConnectionMetrics;
 import org.lealone.cluster.metrics.DroppedMessageMetrics;
 import org.lealone.cluster.security.SSLFactory;
-import org.lealone.cluster.service.AbstractWriteResponseHandler;
 import org.lealone.cluster.utils.ExpiringMap;
 import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.cluster.utils.FileUtils;
@@ -471,18 +468,6 @@ public final class MessagingService implements MessagingServiceMBean {
         return messageId;
     }
 
-    public int addCallback(IAsyncCallback cb, MessageOut<? extends IMutation> message, InetAddress to, long timeout,
-            ConsistencyLevel consistencyLevel, boolean allowHints) {
-        assert message.verb == Verb.MUTATION;
-        int messageId = nextId();
-
-        CallbackInfo previous = callbacks.put(messageId,
-                new WriteCallbackInfo(to, cb, message, callbackDeserializers.get(message.verb), consistencyLevel,
-                        allowHints), timeout);
-        assert previous == null : String.format("Callback already exists for id %d! (%s)", messageId, previous);
-        return messageId;
-    }
-
     private static final AtomicInteger idGen = new AtomicInteger(0);
 
     private static int nextId() {
@@ -511,25 +496,6 @@ public final class MessagingService implements MessagingServiceMBean {
     public int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb, long timeout, boolean failureCallback) {
         int id = addCallback(cb, message, to, timeout, failureCallback);
         sendOneWay(failureCallback ? message.withParameter(FAILURE_CALLBACK_PARAM, ONE_BYTE) : message, id, to);
-        return id;
-    }
-
-    /**
-     * Send a mutation message to a given endpoint. This method specifies a callback
-     * which is invoked with the actual response.
-     * Also holds the message (only mutation messages) to determine if it
-     * needs to trigger a hint (uses StorageProxy for that).
-     *
-     * @param message message to be sent.
-     * @param to      endpoint to which the message needs to be sent
-     * @param handler callback interface which is used to pass the responses or
-     *                suggest that a timeout occurred to the invoker of the send().
-     * @return an reference to message id used to match with the result
-     */
-    public int sendRR(MessageOut<? extends IMutation> message, InetAddress to, AbstractWriteResponseHandler handler,
-            boolean allowHints) {
-        int id = addCallback(handler, message, to, message.getTimeout(), handler.consistencyLevel, allowHints);
-        sendOneWay(message, id, to);
         return id;
     }
 
