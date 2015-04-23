@@ -51,7 +51,8 @@ public final class SSLFactory {
     public static final String[] ACCEPTED_PROTOCOLS = new String[] { "SSLv2Hello", "TLSv1", "TLSv1.1", "TLSv1.2" };
     private static boolean checkedExpiry = false;
 
-    public static SSLServerSocket getServerSocket(EncryptionOptions options, InetAddress address, int port) throws IOException {
+    public static SSLServerSocket getServerSocket(EncryptionOptions options, InetAddress address, int port)
+            throws IOException {
         SSLContext ctx = createSSLContext(options, true);
         SSLServerSocket serverSocket = (SSLServerSocket) ctx.getServerSocketFactory().createServerSocket();
         serverSocket.setReuseAddress(true);
@@ -64,8 +65,8 @@ public final class SSLFactory {
     }
 
     /** Create a socket and connect */
-    public static SSLSocket getSocket(EncryptionOptions options, InetAddress address, int port, InetAddress localAddress,
-            int localPort) throws IOException {
+    public static SSLSocket getSocket(EncryptionOptions options, InetAddress address, int port,
+            InetAddress localAddress, int localPort) throws IOException {
         SSLContext ctx = createSSLContext(options, true);
         SSLSocket socket = (SSLSocket) ctx.getSocketFactory().createSocket(address, port, localAddress, localPort);
         String[] suits = filterCipherSuites(socket.getSupportedCipherSuites(), options.cipher_suites);

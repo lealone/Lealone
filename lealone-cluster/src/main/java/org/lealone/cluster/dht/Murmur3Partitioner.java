@@ -54,7 +54,8 @@ public class Murmur3Partitioner implements IPartitioner {
 
     public Token midpoint(Token lToken, Token rToken) {
         // using BigInteger to avoid long overflow in intermediate operations
-        BigInteger l = BigInteger.valueOf(((LongToken) lToken).token), r = BigInteger.valueOf(((LongToken) rToken).token), midpoint;
+        BigInteger l = BigInteger.valueOf(((LongToken) lToken).token), r = BigInteger
+                .valueOf(((LongToken) rToken).token), midpoint;
 
         if (l.compareTo(r) < 0) {
             BigInteger sum = l.add(r);
@@ -181,8 +182,8 @@ public class Murmur3Partitioner implements IPartitioner {
             }
 
             // The start token's range extends backward to the last token, which is why both were saved above.
-            float x = new BigDecimal(BigInteger.valueOf(((LongToken) start).token).subtract(ti).add(ri).mod(ri)).divide(r, 6,
-                    BigDecimal.ROUND_HALF_EVEN).floatValue();
+            float x = new BigDecimal(BigInteger.valueOf(((LongToken) start).token).subtract(ti).add(ri).mod(ri))
+                    .divide(r, 6, BigDecimal.ROUND_HALF_EVEN).floatValue();
             ownerships.put(start, x);
         }
 
@@ -219,9 +220,10 @@ public class Murmur3Partitioner implements IPartitioner {
             try {
                 return new LongToken(Long.valueOf(string));
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(String.format(
-                        "Invalid token for Murmur3Partitioner. Got %s but expected a long value (unsigned 8 bytes integer).",
-                        string));
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Invalid token for Murmur3Partitioner. Got %s but expected a long value (unsigned 8 bytes integer).",
+                                string));
             }
         }
     };

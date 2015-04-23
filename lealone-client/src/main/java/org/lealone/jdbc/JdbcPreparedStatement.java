@@ -24,8 +24,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 
-
-
 //## Java 1.6 ##
 import java.sql.RowId;
 import java.sql.NClob;
@@ -194,7 +192,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                             ResultInterface result = command.executeQuery(maxRows, scrollable);
-                            resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                            resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable,
+                                    updatable);
                         } else {
                             returnsResultSet = false;
                             updateCount = command.executeUpdate();
@@ -1100,7 +1099,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     return new int[0];
 
                 if (session instanceof FrontendSession) {
-                    FrontendBatchCommand c = ((FrontendSession) session).getFrontendBatchCommand(command, batchParameters);
+                    FrontendBatchCommand c = ((FrontendSession) session).getFrontendBatchCommand(command,
+                            batchParameters);
                     c.executeUpdate();
                     int[] result = c.getResult();
                     c.close();

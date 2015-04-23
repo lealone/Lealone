@@ -126,7 +126,8 @@ public class Comparison extends Condition {
             sql = left.getSQL(isDistributed) + " IS NOT NULL";
             break;
         default:
-            sql = left.getSQL(isDistributed) + " " + getCompareOperator(compareType) + " " + right.getSQL(isDistributed);
+            sql = left.getSQL(isDistributed) + " " + getCompareOperator(compareType) + " "
+                    + right.getSQL(isDistributed);
         }
         return "(" + sql + ")";
     }
@@ -345,7 +346,8 @@ public class Comparison extends Condition {
                 switch (compareType) {
                 case IS_NULL:
                     if (session.getDatabase().getSettings().optimizeIsNull) {
-                        filter.addIndexCondition(IndexCondition.get(Comparison.EQUAL_NULL_SAFE, l, ValueExpression.getNull()));
+                        filter.addIndexCondition(IndexCondition.get(Comparison.EQUAL_NULL_SAFE, l,
+                                ValueExpression.getNull()));
                     }
                 }
             }

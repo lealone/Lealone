@@ -99,7 +99,8 @@ import com.google.common.util.concurrent.Uninterruptibles;
  * This class will also maintain histograms of the load information
  * of other nodes in the cluster.
  */
-public class StorageService extends NotificationBroadcasterSupport implements IEndpointStateChangeSubscriber, StorageServiceMBean {
+public class StorageService extends NotificationBroadcasterSupport implements IEndpointStateChangeSubscriber,
+        StorageServiceMBean {
     private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
     private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
 
@@ -132,7 +133,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private Mode operationMode = Mode.STARTING;
 
-    public final VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(getPartitioner());
+    public final VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(
+            getPartitioner());
     /* This abstraction maintains the token/endpoint metadata information */
     private final TokenMetadata tokenMetadata = new TokenMetadata();
 
@@ -251,7 +253,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (!joined) {
             Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
 
-            if (DatabaseDescriptor.isReplacing() && !(Boolean.parseBoolean(System.getProperty("lealone.join_ring", "true"))))
+            if (DatabaseDescriptor.isReplacing()
+                    && !(Boolean.parseBoolean(System.getProperty("lealone.join_ring", "true"))))
                 throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
             if (DatabaseDescriptor.getReplaceTokens().size() > 0 || DatabaseDescriptor.getReplaceNode() != null)
                 throw new RuntimeException("Replace method removed; use lealone.replace_address instead");
@@ -276,7 +279,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             getTokenMetadata().updateHostId(localHostId, FBUtilities.getBroadcastAddress());
             appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
             appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(localHostId));
-            appStates.put(ApplicationState.RPC_ADDRESS, valueFactory.rpcaddress(DatabaseDescriptor.getBroadcastRpcAddress()));
+            appStates.put(ApplicationState.RPC_ADDRESS,
+                    valueFactory.rpcaddress(DatabaseDescriptor.getBroadcastRpcAddress()));
             appStates.put(ApplicationState.RELEASE_VERSION, valueFactory.releaseVersion());
             logger.info("Starting up server gossip");
             Gossiper.instance.register(this);
@@ -307,13 +311,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     + " because it doesn't exist in gossip");
         hostId = Gossiper.instance.getHostId(DatabaseDescriptor.getReplaceAddress());
         try {
-            if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()).getApplicationState(
-                    ApplicationState.TOKENS) == null)
-                throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
+            if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress())
+                    .getApplicationState(ApplicationState.TOKENS) == null)
+                throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress()
+                        + " to replace");
             Collection<Token> tokens = TokenSerializer.deserialize(
                     getPartitioner(),
-                    new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(DatabaseDescriptor.getReplaceAddress(),
-                            ApplicationState.TOKENS))));
+                    new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(
+                            DatabaseDescriptor.getReplaceAddress(), ApplicationState.TOKENS))));
 
             SystemKeyspace.setLocalHostId(hostId); // use the replacee's host Id as our own so we receive hints, etc
             Gossiper.instance.resetEndpointStateMap(); // clean up since we have what we need
@@ -337,7 +342,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (epState != null && !Gossiper.instance.isDeadState(epState)
                 && !Gossiper.instance.isGossipOnlyMember(FBUtilities.getBroadcastAddress())) {
             throw new RuntimeException(String.format("A node with address %s already exists, cancelling join. "
-                    + "Use lealone.replace_address if you want to replace this node.", FBUtilities.getBroadcastAddress()));
+                    + "Use lealone.replace_address if you want to replace this node.",
+                    FBUtilities.getBroadcastAddress()));
         }
         Gossiper.instance.resetEndpointStateMap();
     }
@@ -346,8 +352,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
         String dc = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
         String rack = snitch.getRack(FBUtilities.getBroadcastAddress());
-        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, StorageService.instance.valueFactory.datacenter(dc));
-        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, StorageService.instance.valueFactory.rack(rack));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.DC,
+                StorageService.instance.valueFactory.datacenter(dc));
+        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK,
+                StorageService.instance.valueFactory.rack(rack));
     }
 
     private void joinTokenRing(int delay) throws ConfigurationException {
@@ -363,8 +371,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // We attempted to replace this with a schema-presence check, but you need a meaningful sleep
         // to get schema info from gossip which defeats the purpose.  See lealone-4427 for the gory details.
         Set<InetAddress> current = new HashSet<>();
-        logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(),
-                SystemKeyspace.bootstrapInProgress(), SystemKeyspace.bootstrapComplete(),
+        logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(), SystemKeyspace
+                .bootstrapInProgress(), SystemKeyspace.bootstrapComplete(),
                 DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()));
         if (DatabaseDescriptor.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete()
                 && DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()))
@@ -400,7 +408,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             if (Boolean.parseBoolean(System.getProperty("lealone.consistent.rangemovement", "true"))
                     && (tokenMetadata.getBootstrapTokens().valueSet().size() > 0
-                            || tokenMetadata.getLeavingEndpoints().size() > 0 || tokenMetadata.getMovingEndpoints().size() > 0))
+                            || tokenMetadata.getLeavingEndpoints().size() > 0 || tokenMetadata.getMovingEndpoints()
+                            .size() > 0))
                 throw new UnsupportedOperationException(
                         "Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while lealone.consistent.rangemovement is true");
 
@@ -426,11 +435,13 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                         InetAddress existing = tokenMetadata.getEndpoint(token);
                         if (existing != null) {
                             long nanoDelay = delay * 1000000L;
-                            if (Gossiper.instance.getEndpointStateForEndpoint(existing).getUpdateTimestamp() > (System.nanoTime() - nanoDelay))
+                            if (Gossiper.instance.getEndpointStateForEndpoint(existing).getUpdateTimestamp() > (System
+                                    .nanoTime() - nanoDelay))
                                 throw new UnsupportedOperationException("Cannot replace a live node... ");
                             current.add(existing);
                         } else {
-                            throw new UnsupportedOperationException("Cannot replace token " + token + " which does not exist!");
+                            throw new UnsupportedOperationException("Cannot replace token " + token
+                                    + " which does not exist!");
                         }
                     }
                 } else {
@@ -458,8 +469,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     logger.info("Generated random tokens. tokens are {}", bootstrapTokens);
             } else {
                 if (bootstrapTokens.size() != DatabaseDescriptor.getNumTokens())
-                    throw new ConfigurationException("Cannot change the number of tokens from " + bootstrapTokens.size() + " to "
-                            + DatabaseDescriptor.getNumTokens());
+                    throw new ConfigurationException("Cannot change the number of tokens from "
+                            + bootstrapTokens.size() + " to " + DatabaseDescriptor.getNumTokens());
                 else
                     logger.info("Using saved tokens {}", bootstrapTokens);
             }
@@ -667,10 +678,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public String getRpcaddress(InetAddress endpoint) {
         if (endpoint.equals(FBUtilities.getBroadcastAddress()))
             return DatabaseDescriptor.getBroadcastRpcAddress().getHostAddress();
-        else if (Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.RPC_ADDRESS) == null)
+        else if (Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(
+                ApplicationState.RPC_ADDRESS) == null)
             return endpoint.getHostAddress();
         else
-            return Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.RPC_ADDRESS).value;
+            return Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(
+                    ApplicationState.RPC_ADDRESS).value;
     }
 
     /**
@@ -903,7 +916,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 break;
             case RPC_ADDRESS:
                 try {
-                    SystemKeyspace.updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(entry.getValue().value));
+                    SystemKeyspace.updatePeerInfo(endpoint, "rpc_address",
+                            InetAddress.getByName(entry.getValue().value));
                 } catch (UnknownHostException e) {
                     throw new RuntimeException(e);
                 }
@@ -1004,14 +1018,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                         tokenMetadata.removeEndpoint(endpoint);
                         endpointsToRemove.add(endpoint);
                     } else if (Gossiper.instance.compareEndpointStartup(endpoint, existing) > 0) {
-                        logger.warn("Host ID collision for {} between {} and {}; {} is the new owner", hostId, existing,
-                                endpoint, endpoint);
+                        logger.warn("Host ID collision for {} between {} and {}; {} is the new owner", hostId,
+                                existing, endpoint, endpoint);
                         tokenMetadata.removeEndpoint(existing);
                         endpointsToRemove.add(existing);
                         tokenMetadata.updateHostId(hostId, endpoint);
                     } else {
-                        logger.warn("Host ID collision for {} between {} and {}; ignored {}", hostId, existing, endpoint,
-                                endpoint);
+                        logger.warn("Host ID collision for {} between {} and {}; ignored {}", hostId, existing,
+                                endpoint, endpoint);
                         tokenMetadata.removeEndpoint(endpoint);
                         endpointsToRemove.add(endpoint);
                     }
@@ -1042,11 +1056,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 if (epToTokenCopy.get(currentOwner).size() < 1)
                     endpointsToRemove.add(currentOwner);
 
-                logger.info(String.format("Nodes %s and %s have the same token %s.  %s is the new owner", endpoint, currentOwner,
-                        token, endpoint));
+                logger.info(String.format("Nodes %s and %s have the same token %s.  %s is the new owner", endpoint,
+                        currentOwner, token, endpoint));
             } else {
-                logger.info(String.format("Nodes %s and %s have the same token %s.  Ignoring %s", endpoint, currentOwner, token,
-                        endpoint));
+                logger.info(String.format("Nodes %s and %s have the same token %s.  Ignoring %s", endpoint,
+                        currentOwner, token, endpoint));
             }
         }
 
@@ -1429,7 +1443,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      * @param userObject Arbitrary object to attach to notification
      */
     public void sendNotification(String type, String message, Object userObject) {
-        Notification jmxNotification = new Notification(type, jmxObjectName, notificationSerialNumber.incrementAndGet(), message);
+        Notification jmxNotification = new Notification(type, jmxObjectName,
+                notificationSerialNumber.incrementAndGet(), message);
         jmxNotification.setUserData(userObject);
         sendNotification(jmxNotification);
     }

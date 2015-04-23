@@ -51,7 +51,8 @@ public class StageManager {
         stages.put(Stage.READ, multiThreadedLowSignalStage(Stage.READ, getConcurrentReaders()));
         stages.put(Stage.REQUEST_RESPONSE,
                 multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, FBUtilities.getAvailableProcessors()));
-        stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors()));
+        stages.put(Stage.INTERNAL_RESPONSE,
+                multiThreadedStage(Stage.INTERNAL_RESPONSE, FBUtilities.getAvailableProcessors()));
         // the rest are all single-threaded
         stages.put(Stage.GOSSIP, new MetricsEnabledThreadPoolExecutor(Stage.GOSSIP));
         stages.put(Stage.MIGRATION, new MetricsEnabledThreadPoolExecutor(Stage.MIGRATION));
@@ -71,8 +72,8 @@ public class StageManager {
     }
 
     private static MetricsEnabledThreadPoolExecutor multiThreadedStage(Stage stage, int numThreads) {
-        return new MetricsEnabledThreadPoolExecutor(numThreads, KEEPALIVE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
-                new NamedThreadFactory(stage.getJmxName()), stage.getJmxType());
+        return new MetricsEnabledThreadPoolExecutor(numThreads, KEEPALIVE, TimeUnit.SECONDS,
+                new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(stage.getJmxName()), stage.getJmxType());
     }
 
     private static TracingAwareExecutorService multiThreadedLowSignalStage(Stage stage, int numThreads) {

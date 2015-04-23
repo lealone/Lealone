@@ -135,11 +135,12 @@ public class FrontendCommand implements CommandInterface {
             ResultRemote result = null;
             prepareIfRequired();
             try {
-                boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+                boolean isDistributedQuery = session.getTransaction() != null
+                        && !session.getTransaction().isAutoCommit();
                 if (isDistributedQuery) {
                     session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
-                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
-                            .writeInt(maxRows);
+                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id)
+                            .writeInt(objectId).writeInt(maxRows);
                 } else {
                     session.traceOperation("COMMAND_EXECUTE_QUERY", id);
                     transfer.writeInt(FrontendSession.COMMAND_EXECUTE_QUERY) //
@@ -184,7 +185,8 @@ public class FrontendCommand implements CommandInterface {
             //boolean autoCommit = false;
             prepareIfRequired();
             try {
-                boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+                boolean isDistributedUpdate = session.getTransaction() != null
+                        && !session.getTransaction().isAutoCommit();
                 if (isDistributedUpdate) {
                     session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
                     transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);

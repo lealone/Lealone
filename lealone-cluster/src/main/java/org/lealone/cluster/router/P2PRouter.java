@@ -108,7 +108,8 @@ public class P2PRouter implements Router {
     }
 
     private static int executeInsertOrMerge(InsertOrMerge iom) {
-        final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getDatacenter(
+                FBUtilities.getBroadcastAddress());
         String keyspaceName = iom.getTable().getSchema().getName();
         //AbstractReplicationStrategy rs = Keyspace.open(keyspaceName).getReplicationStrategy();
 
@@ -124,8 +125,8 @@ public class P2PRouter implements Router {
                 partitionKey = ValueUuid.getNewRandom();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
             List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,
-                    keyspaceName);
+            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(
+                    tk, keyspaceName);
 
             Iterable<InetAddress> targets = Iterables.concat(naturalEndpoints, pendingEndpoints);
             for (InetAddress destination : targets) {
@@ -321,8 +322,8 @@ public class P2PRouter implements Router {
             return select.getSQL();
     }
 
-    private static Callable<ResultInterface> createSelectCallable(InetAddress endpoint, Select select, final int maxRows,
-            final boolean scrollable) throws Exception {
+    private static Callable<ResultInterface> createSelectCallable(InetAddress endpoint, Select select,
+            final int maxRows, final boolean scrollable) throws Exception {
         final FrontendCommand c = createFrontendCommand(endpoint, select, getSelectPlanSQL(select));
 
         Callable<ResultInterface> call = new Callable<ResultInterface>() {
@@ -352,8 +353,8 @@ public class P2PRouter implements Router {
             String keyspaceName = tableFilter.getTable().getSchema().getName();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(startPK.getBytesNoCopy()));
             List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,
-                    keyspaceName);
+            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(
+                    tk, keyspaceName);
 
             naturalEndpoints.addAll(pendingEndpoints);
             return naturalEndpoints;
@@ -366,7 +367,8 @@ public class P2PRouter implements Router {
         return createUpdateCallable(endpoint, p, p.getSQL());
     }
 
-    private static Callable<Integer> createUpdateCallable(InetAddress endpoint, Prepared p, String sql) throws Exception {
+    private static Callable<Integer> createUpdateCallable(InetAddress endpoint, Prepared p, String sql)
+            throws Exception {
         final FrontendCommand c = createFrontendCommand(endpoint, p, sql);
         Callable<Integer> call = new Callable<Integer>() {
             @Override

@@ -183,7 +183,8 @@ public class FilePathMem extends FilePath {
         synchronized (MEMORY_FILES) {
             FileMemData m = MEMORY_FILES.get(name);
             if (m == DIRECTORY) {
-                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name + " (a directory with this name already exists)");
+                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name
+                        + " (a directory with this name already exists)");
             }
             if (m == null) {
                 m = new FileMemData(name, compressed());
@@ -374,7 +375,8 @@ class FileMemData {
     private static final byte[] BUFFER = new byte[BLOCK_SIZE * 2];
     private static final byte[] COMPRESSED_EMPTY_BLOCK;
 
-    private static final Cache<CompressItem, CompressItem> COMPRESS_LATER = new Cache<CompressItem, CompressItem>(CACHE_SIZE);
+    private static final Cache<CompressItem, CompressItem> COMPRESS_LATER = new Cache<CompressItem, CompressItem>(
+            CACHE_SIZE);
 
     private String name;
     private final boolean compress;

@@ -258,7 +258,8 @@ public class FilePathDisk extends FilePath {
                 if (dir.isDirectory()) {
                     return;
                 }
-                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name + " (a file with this name already exists)");
+                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name
+                        + " (a file with this name already exists)");
             } else if (dir.mkdir()) {
                 return;
             }

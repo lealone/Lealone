@@ -88,7 +88,8 @@ public class ExcludingBounds<T extends RingPosition<T>> extends AbstractBounds<T
     @Override
     @SuppressWarnings("unchecked")
     public AbstractBounds<RowPosition> toRowBounds() {
-        return (left instanceof Token) ? makeRowBounds((Token) left, (Token) right) : (ExcludingBounds<RowPosition>) this;
+        return (left instanceof Token) ? makeRowBounds((Token) left, (Token) right)
+                : (ExcludingBounds<RowPosition>) this;
     }
 
     @Override

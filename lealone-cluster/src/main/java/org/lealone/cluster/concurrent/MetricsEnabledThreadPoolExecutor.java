@@ -34,18 +34,18 @@ public class MetricsEnabledThreadPoolExecutor extends DebuggableThreadPoolExecut
     private final ThreadPoolMetrics metrics;
 
     public MetricsEnabledThreadPoolExecutor(String threadPoolName) {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName),
-                "internal");
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(
+                threadPoolName), "internal");
     }
 
     public MetricsEnabledThreadPoolExecutor(String threadPoolName, String jmxPath) {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName),
-                jmxPath);
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(
+                threadPoolName), jmxPath);
     }
 
     public MetricsEnabledThreadPoolExecutor(String threadPoolName, int priority) {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName,
-                priority), "internal");
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(
+                threadPoolName, priority), "internal");
     }
 
     public MetricsEnabledThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit,

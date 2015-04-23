@@ -156,7 +156,8 @@ public class TcpServerThread implements Runnable {
         return new ConnectionInfo(originalURL, dbName);
     }
 
-    private Session createSession(String dbName, String originalURL, String userName, Transfer transfer) throws IOException {
+    private Session createSession(String dbName, String originalURL, String userName, Transfer transfer)
+            throws IOException {
         byte[] userPasswordHash = transfer.readBytes();
         byte[] filePasswordHash = transfer.readBytes();
         byte[] fileEncryptionKey = transfer.readBytes();
@@ -272,8 +273,8 @@ public class TcpServerThread implements Runnable {
                 message = e.getMessage();
                 sql = null;
             }
-            transfer.writeInt(FrontendSession.STATUS_ERROR).writeString(e.getSQLState()).writeString(message).writeString(sql)
-                    .writeInt(e.getErrorCode()).writeString(trace).flush();
+            transfer.writeInt(FrontendSession.STATUS_ERROR).writeString(e.getSQLState()).writeString(message)
+                    .writeString(sql).writeInt(e.getErrorCode()).writeString(trace).flush();
         } catch (Exception e2) {
             if (!transfer.isClosed()) {
                 server.traceError(e2);

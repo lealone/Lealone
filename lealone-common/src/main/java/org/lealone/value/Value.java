@@ -734,7 +734,8 @@ public abstract class Value implements Comparable<Value> {
                 }
                 case INT: {
                     int x = getInt();
-                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
+                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8),
+                            (byte) x });
                 }
                 case LONG: {
                     long x = getLong();
@@ -772,7 +773,8 @@ public abstract class Value implements Comparable<Value> {
             case NULL:
                 return ValueNull.INSTANCE;
             case BOOLEAN: {
-                if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("t") || s.equalsIgnoreCase("yes") || s.equalsIgnoreCase("y")) {
+                if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("t") || s.equalsIgnoreCase("yes")
+                        || s.equalsIgnoreCase("y")) {
                     return ValueBoolean.get(true);
                 } else if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("f") || s.equalsIgnoreCase("no")
                         || s.equalsIgnoreCase("n")) {
@@ -1059,7 +1061,8 @@ public abstract class Value implements Comparable<Value> {
 
     public ResultSet getResultSet() {
         SimpleResultSet rs = new SimpleResultSet();
-        rs.addColumn("X", DataType.convertTypeToSQLType(getType()), MathUtils.convertLongToInt(getPrecision()), getScale());
+        rs.addColumn("X", DataType.convertTypeToSQLType(getType()), MathUtils.convertLongToInt(getPrecision()),
+                getScale());
         rs.addRow(getObject());
         return rs;
     }

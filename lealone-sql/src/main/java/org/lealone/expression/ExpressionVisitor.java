@@ -110,8 +110,8 @@ public class ExpressionVisitor {
     private final long[] maxDataModificationId;
     private final ColumnResolver resolver;
 
-    private ExpressionVisitor(int type, int queryLevel, HashSet<DbObject> dependencies, HashSet<Column> columns, Table table,
-            ColumnResolver resolver, long[] maxDataModificationId) {
+    private ExpressionVisitor(int type, int queryLevel, HashSet<DbObject> dependencies, HashSet<Column> columns,
+            Table table, ColumnResolver resolver, long[] maxDataModificationId) {
         this.type = type;
         this.queryLevel = queryLevel;
         this.dependencies = dependencies;
@@ -213,7 +213,8 @@ public class ExpressionVisitor {
      * @return a clone of this expression visitor, with the changed query level
      */
     public ExpressionVisitor incrementQueryLevel(int offset) {
-        return new ExpressionVisitor(type, queryLevel + offset, dependencies, columns, table, resolver, maxDataModificationId);
+        return new ExpressionVisitor(type, queryLevel + offset, dependencies, columns, table, resolver,
+                maxDataModificationId);
     }
 
     /**

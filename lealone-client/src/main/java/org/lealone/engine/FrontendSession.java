@@ -463,7 +463,8 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     public void done(Transfer transfer) throws IOException {
         //正常来讲不会出现这种情况，如果出现了，说明存在bug，找出为什么transfer的输入流没正常读完的原因
         if (transfer.available() > 0) {
-            throw DbException.throwInternalError("before transfer flush, the available bytes was " + transfer.available());
+            throw DbException.throwInternalError("before transfer flush, the available bytes was "
+                    + transfer.available());
         }
 
         transfer.flush();

@@ -364,7 +364,8 @@ public class FunctionAlias extends SchemaObjectBase {
                 Object o;
                 if (Value.class.isAssignableFrom(paramClass)) {
                     o = v;
-                } else if (v.getType() == Value.ARRAY && paramClass.isArray() && paramClass.getComponentType() != Object.class) {
+                } else if (v.getType() == Value.ARRAY && paramClass.isArray()
+                        && paramClass.getComponentType() != Object.class) {
                     Value[] array = ((ValueArray) v).getList();
                     Object[] objArray = (Object[]) Array.newInstance(paramClass.getComponentType(), array.length);
                     int componentType = DataType.getTypeFromClass(paramClass.getComponentType());

@@ -314,7 +314,8 @@ public class OutboundTcpConnection extends Thread {
                 }
 
                 if (targetVersion < maxTargetVersion && targetVersion < MessagingService.current_version) {
-                    logger.trace("Detected higher max version {} (using {}); will reconnect when queued messages are done",
+                    logger.trace(
+                            "Detected higher max version {} (using {}); will reconnect when queued messages are done",
                             maxTargetVersion, targetVersion);
                     softCloseSocket();
                 }
@@ -330,7 +331,8 @@ public class OutboundTcpConnection extends Thread {
                     } else {
                         // TODO: custom LZ4 OS that supports BB write methods
                         LZ4Compressor compressor = LZ4Factory.fastestInstance().fastCompressor();
-                        Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(LZ4_HASH_SEED).asChecksum();
+                        Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(LZ4_HASH_SEED)
+                                .asChecksum();
                         out = new DataOutputStreamPlus(new LZ4BlockOutputStream(socket.getOutputStream(), 1 << 14, // 16k block size
                                 compressor, checksum, true)); // no async flushing
                     }

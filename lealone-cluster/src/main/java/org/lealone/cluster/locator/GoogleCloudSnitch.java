@@ -74,7 +74,8 @@ public class GoogleCloudSnitch extends AbstractNetworkTopologySnitch {
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Metadata-Flavor", "Google");
             if (conn.getResponseCode() != 200)
-                throw new ConfigurationException("GoogleCloudSnitch was unable to execute the API call. Not a gce node?");
+                throw new ConfigurationException(
+                        "GoogleCloudSnitch was unable to execute the API call. Not a gce node?");
 
             // Read the information.
             int cl = conn.getContentLength();

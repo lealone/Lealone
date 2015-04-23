@@ -52,7 +52,8 @@ public class TcpServer implements Server {
      */
     private static final String MANAGEMENT_DB_PREFIX = "management_db_";
 
-    private static final Map<Integer, TcpServer> SERVERS = Collections.synchronizedMap(new HashMap<Integer, TcpServer>());
+    private static final Map<Integer, TcpServer> SERVERS = Collections
+            .synchronizedMap(new HashMap<Integer, TcpServer>());
 
     private String listenAddress;
     private int port;

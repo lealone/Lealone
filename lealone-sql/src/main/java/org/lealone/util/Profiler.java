@@ -43,8 +43,8 @@ public class Profiler implements Runnable {
             + "java.lang.Thread.getThreads," + "java.lang.Thread.sleep," + "java.lang.UNIXProcess.waitForProcessExit,"
             + "java.net.PlainSocketImpl.accept," + "java.net.PlainSocketImpl.socketAccept,"
             + "java.net.SocketInputStream.socketRead," + "java.net.SocketOutputStream.socketWrite,"
-            + "sun.awt.windows.WToolkit.eventLoop," + "sun.misc.Unsafe.park," + "dalvik.system.VMStack.getThreadStackTrace,"
-            + "dalvik.system.NativeStart.run").split(",");
+            + "sun.awt.windows.WToolkit.eventLoop," + "sun.misc.Unsafe.park,"
+            + "dalvik.system.VMStack.getThreadStackTrace," + "dalvik.system.NativeStart.run").split(",");
 
     private volatile boolean stop;
     private final HashMap<String, Integer> counts = new HashMap<String, Integer>();
@@ -403,8 +403,8 @@ public class Profiler implements Runnable {
                     buff.append(percent).append("%: ").append(best.getKey()).append(LINE_SEPARATOR);
                 }
             } else {
-                buff.append(c).append('/').append(total).append(" (").append(percent).append("%):").append(LINE_SEPARATOR)
-                        .append(best.getKey()).append(LINE_SEPARATOR);
+                buff.append(c).append('/').append(total).append(" (").append(percent).append("%):")
+                        .append(LINE_SEPARATOR).append(best.getKey()).append(LINE_SEPARATOR);
             }
         }
     }

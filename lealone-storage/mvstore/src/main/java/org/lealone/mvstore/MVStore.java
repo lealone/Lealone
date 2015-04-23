@@ -587,17 +587,19 @@ public class MVStore {
             }
         }
         if (!validHeader) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Store header is corrupt: {0}", fileStore);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Store header is corrupt: {0}",
+                    fileStore);
         }
         long format = DataUtils.readHexLong(fileHeader, "format", 1);
         if (format > FORMAT_WRITE && !fileStore.isReadOnly()) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT, "The write format {0} is larger "
-                    + "than the supported format {1}, " + "and the file was not opened in read-only mode", format, FORMAT_WRITE);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT,
+                    "The write format {0} is larger " + "than the supported format {1}, "
+                            + "and the file was not opened in read-only mode", format, FORMAT_WRITE);
         }
         format = DataUtils.readHexLong(fileHeader, "formatRead", format);
         if (format > FORMAT_READ) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT, "The read format {0} is larger "
-                    + "than the supported format {1}", format, FORMAT_READ);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT,
+                    "The read format {0} is larger " + "than the supported format {1}", format, FORMAT_READ);
         }
         lastStoredVersion = -1;
         chunks.clear();
@@ -679,7 +681,8 @@ public class MVStore {
             Chunk c = Chunk.fromString(s);
             if (!chunks.containsKey(c.id)) {
                 if (c.block == Long.MAX_VALUE) {
-                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Chunk {0} is invalid", c.id);
+                    throw DataUtils
+                            .newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Chunk {0} is invalid", c.id);
                 }
                 chunks.put(c.id, c);
             }
@@ -858,7 +861,8 @@ public class MVStore {
             if (!Thread.holdsLock(this)) {
                 // it could also be unsynchronized metadata
                 // access (if synchronization on this was forgotten)
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_CHUNK_NOT_FOUND, "Chunk {0} no longer exists", chunkId);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_CHUNK_NOT_FOUND, "Chunk {0} no longer exists",
+                        chunkId);
             }
             String s = meta.get(Chunk.getMetaKey(chunkId));
             if (s == null) {
@@ -1235,8 +1239,8 @@ public class MVStore {
                 long filePos = c.block * BLOCK_SIZE;
                 filePos += DataUtils.getPageOffset(pos);
                 if (filePos < 0) {
-                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}; p={1}, c={2}",
-                            filePos, pos, c.toString());
+                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                            "Negative position {0}; p={1}, c={2}", filePos, pos, c.toString());
                 }
                 long maxPos = (c.block + c.len) * BLOCK_SIZE;
                 r = PageChildren.read(fileStore, pos, mapId, filePos, maxPos);
@@ -1337,12 +1341,12 @@ public class MVStore {
                                 c.pageCountLive);
                     }
                     if (c.maxLenLive < 0 && c.maxLenLive > -MARKED_FREE) {
-                        throw DataUtils
-                                .newIllegalStateException(DataUtils.ERROR_INTERNAL, "Corrupt max length {0}", c.maxLenLive);
+                        throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Corrupt max length {0}",
+                                c.maxLenLive);
                     }
                     if (c.pageCountLive <= 0 && c.maxLenLive > 0 || c.maxLenLive <= 0 && c.pageCountLive > 0) {
-                        throw DataUtils
-                                .newIllegalStateException(DataUtils.ERROR_INTERNAL, "Corrupt max length {0}", c.maxLenLive);
+                        throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Corrupt max length {0}",
+                                c.maxLenLive);
                     }
                     modified.add(c);
                 }
@@ -1775,7 +1779,8 @@ public class MVStore {
             long filePos = c.block * BLOCK_SIZE;
             filePos += DataUtils.getPageOffset(pos);
             if (filePos < 0) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}", filePos);
+                throw DataUtils
+                        .newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}", filePos);
             }
             long maxPos = (c.block + c.len) * BLOCK_SIZE;
             p = Page.read(fileStore, pos, map, filePos, maxPos);
@@ -2731,7 +2736,5 @@ public class MVStore {
             builder.config.putAll(config);
             return builder;
         }
-
     }
-
 }

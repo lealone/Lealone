@@ -94,7 +94,8 @@ public class IncomingTcpConnection extends Thread {
         from = CompactEndpointSerializationHelper.deserialize(in);
         // record the (true) version of the endpoint
         MessagingService.instance().setVersion(from, maxVersion);
-        logger.debug("Set version for {} to {} (will use {})", from, maxVersion, MessagingService.instance().getVersion(from));
+        logger.debug("Set version for {} to {} (will use {})", from, maxVersion, MessagingService.instance()
+                .getVersion(from));
 
         if (compressed) {
             logger.debug("Upgrading incoming connection to be compressed");
@@ -102,8 +103,8 @@ public class IncomingTcpConnection extends Thread {
                 in = new DataInputStream(new SnappyInputStream(socket.getInputStream()));
             } else {
                 LZ4FastDecompressor decompressor = LZ4Factory.fastestInstance().fastDecompressor();
-                Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(OutboundTcpConnection.LZ4_HASH_SEED)
-                        .asChecksum();
+                Checksum checksum = XXHashFactory.fastestInstance()
+                        .newStreamingHash32(OutboundTcpConnection.LZ4_HASH_SEED).asChecksum();
                 in = new DataInputStream(new LZ4BlockInputStream(socket.getInputStream(), decompressor, checksum));
             }
         } else {

@@ -462,7 +462,8 @@ public class Utils {
         partialQuickSort(array, 0, array.length - 1, comp, offset, offset + limit - 1);
     }
 
-    private static <X> void partialQuickSort(X[] array, int low, int high, Comparator<? super X> comp, int start, int end) {
+    private static <X> void partialQuickSort(X[] array, int low, int high, Comparator<? super X> comp, int start,
+            int end) {
         if (low > end || high < start || (low > start && high < end)) {
             return;
         }
@@ -676,7 +677,8 @@ public class Utils {
         return callMethod(instance, instance.getClass(), methodName, params);
     }
 
-    private static Object callMethod(Object instance, Class<?> clazz, String methodName, Object... params) throws Exception {
+    private static Object callMethod(Object instance, Class<?> clazz, String methodName, Object... params)
+            throws Exception {
         Method best = null;
         int bestMatch = 0;
         boolean isStatic = instance == null;

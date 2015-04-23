@@ -1464,7 +1464,8 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
         try {
             checkClosed();
             if (outParameters == null) {
-                maxOutParameters = Math.min(getParameterMetaData().getParameterCount(), getCheckedMetaData().getColumnCount());
+                maxOutParameters = Math.min(getParameterMetaData().getParameterCount(), getCheckedMetaData()
+                        .getColumnCount());
                 outParameters = new BitField();
             }
             checkIndexBounds(parameterIndex);

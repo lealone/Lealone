@@ -24,8 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Hex {
-    private static final Constructor<String> stringConstructor = getProtectedConstructor(String.class, int.class, int.class,
-            char[].class);
+    private static final Constructor<String> stringConstructor = getProtectedConstructor(String.class, int.class,
+            int.class, char[].class);
     private final static byte[] charToByte = new byte[256];
     private static final Logger logger = LoggerFactory.getLogger(Hex.class);
 
@@ -89,8 +89,8 @@ public class Hex {
             } catch (InvocationTargetException ite) {
                 // The underlying constructor failed. Unwrapping the exception.
                 Throwable cause = ite.getCause();
-                logger.error("Underlying string constructor threw an error: {}",
-                        cause == null ? ite.getMessage() : cause.getMessage());
+                logger.error("Underlying string constructor threw an error: {}", cause == null ? ite.getMessage()
+                        : cause.getMessage());
             } catch (Exception e) {
                 JVMStabilityInspector.inspectThrowable(e);
                 // Swallowing as we'll just use a copying constructor

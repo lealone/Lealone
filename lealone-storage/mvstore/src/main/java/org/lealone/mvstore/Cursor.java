@@ -98,8 +98,7 @@ public class Cursor<K, V> implements Iterator<K> {
 
     @Override
     public void remove() {
-        throw DataUtils.newUnsupportedOperationException(
-                "Removing is not supported");
+        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
     }
 
     /**

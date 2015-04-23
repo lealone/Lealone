@@ -163,7 +163,8 @@ public class MathUtils {
                 Object localHost = inetAddressClass.getMethod("getLocalHost").invoke(null);
                 String hostName = inetAddressClass.getMethod("getHostName").invoke(localHost).toString();
                 out.writeUTF(hostName);
-                Object[] list = (Object[]) inetAddressClass.getMethod("getAllByName", String.class).invoke(null, hostName);
+                Object[] list = (Object[]) inetAddressClass.getMethod("getAllByName", String.class).invoke(null,
+                        hostName);
                 Method getAddress = inetAddressClass.getMethod("getAddress");
                 for (Object o : list) {
                     out.write((byte[]) getAddress.invoke(o));

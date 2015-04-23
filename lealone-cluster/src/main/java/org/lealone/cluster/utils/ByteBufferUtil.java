@@ -128,7 +128,8 @@ public class ByteBufferUtil {
      * @param charset the String encoding charset
      * @return the decoded string
      */
-    public static String string(ByteBuffer buffer, int position, int length, Charset charset) throws CharacterCodingException {
+    public static String string(ByteBuffer buffer, int position, int length, Charset charset)
+            throws CharacterCodingException {
         ByteBuffer copy = buffer.duplicate();
         copy.position(position);
         copy.limit(copy.position() + length);
@@ -224,7 +225,8 @@ public class ByteBufferUtil {
         ByteBuffer clone = ByteBuffer.allocate(buffer.remaining());
 
         if (buffer.hasArray()) {
-            System.arraycopy(buffer.array(), buffer.arrayOffset() + buffer.position(), clone.array(), 0, buffer.remaining());
+            System.arraycopy(buffer.array(), buffer.arrayOffset() + buffer.position(), clone.array(), 0,
+                    buffer.remaining());
         } else {
             clone.put(buffer.duplicate());
             clone.flip();

@@ -72,7 +72,8 @@ public class TriggerObject extends SchemaObjectBase {
         } catch (Throwable e) {
             // try again later
             triggerCallback = null;
-            throw DbException.get(ErrorCode.ERROR_CREATING_TRIGGER_OBJECT_3, e, getName(), triggerClassName, e.toString());
+            throw DbException.get(ErrorCode.ERROR_CREATING_TRIGGER_OBJECT_3, e, getName(), triggerClassName,
+                    e.toString());
         }
     }
 

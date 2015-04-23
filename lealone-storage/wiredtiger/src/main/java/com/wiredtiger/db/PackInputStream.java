@@ -27,7 +27,6 @@
  */
 package com.wiredtiger.db;
 
-
 /**
  * An internal helper class for decoding WiredTiger packed values.
  *

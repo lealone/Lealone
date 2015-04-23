@@ -187,8 +187,8 @@ public abstract class TableBase extends Table {
     }
 
     @Override
-    public abstract Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment);
+    public abstract Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment);
 
     @Override
     public boolean canGetRowCount() {

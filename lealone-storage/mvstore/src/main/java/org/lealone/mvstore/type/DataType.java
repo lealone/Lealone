@@ -69,4 +69,3 @@ public interface DataType {
     void read(ByteBuffer buff, Object[] obj, int len, boolean key);
 
 }
-

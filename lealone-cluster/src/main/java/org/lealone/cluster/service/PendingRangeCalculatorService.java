@@ -35,8 +35,9 @@ public class PendingRangeCalculatorService {
     public static final PendingRangeCalculatorService instance = new PendingRangeCalculatorService();
 
     private static Logger logger = LoggerFactory.getLogger(PendingRangeCalculatorService.class);
-    private final MetricsEnabledThreadPoolExecutor executor = new MetricsEnabledThreadPoolExecutor(1, Integer.MAX_VALUE,
-            TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(1), new NamedThreadFactory("PendingRangeCalculator"), "internal");
+    private final MetricsEnabledThreadPoolExecutor executor = new MetricsEnabledThreadPoolExecutor(1,
+            Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(1), new NamedThreadFactory(
+                    "PendingRangeCalculator"), "internal");
 
     private final AtomicInteger updateJobs = new AtomicInteger(0);
 
@@ -59,8 +60,8 @@ public class PendingRangeCalculatorService {
             PendingRangeCalculatorService.instance.finishUpdate();
 
             if (logger.isDebugEnabled())
-                logger.debug("finished calculation for {} keyspaces in {}ms", Schema.instance.getNonSystemKeyspaces().size(),
-                        System.currentTimeMillis() - start);
+                logger.debug("finished calculation for {} keyspaces in {}ms", Schema.instance.getNonSystemKeyspaces()
+                        .size(), System.currentTimeMillis() - start);
         }
     }
 

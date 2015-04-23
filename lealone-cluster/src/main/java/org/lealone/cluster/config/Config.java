@@ -140,7 +140,8 @@ public class Config {
                 try {
                     hinted_handoff_enabled_by_dc.addAll(parseHintedHandoffEnabledDCs(hinted_handoff_enabled));
                 } catch (IOException e) {
-                    throw new ConfigurationException("Invalid hinted_handoff_enabled parameter " + hinted_handoff_enabled, e);
+                    throw new ConfigurationException("Invalid hinted_handoff_enabled parameter "
+                            + hinted_handoff_enabled, e);
                 }
             }
         }

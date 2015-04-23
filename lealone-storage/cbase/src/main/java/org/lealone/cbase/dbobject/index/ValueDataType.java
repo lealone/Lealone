@@ -321,7 +321,8 @@ public class ValueDataType implements DataType {
             ValueLobDb lob = (ValueLobDb) v;
             byte[] small = lob.getSmall();
             if (small == null) {
-                buff.putVarInt(-3).putVarInt(lob.getTableId()).putVarLong(lob.getLobId()).putVarLong(lob.getPrecision());
+                buff.putVarInt(-3).putVarInt(lob.getTableId()).putVarLong(lob.getLobId())
+                        .putVarLong(lob.getPrecision());
             } else {
                 buff.putVarInt(small.length).put(small);
             }
@@ -345,7 +346,8 @@ public class ValueDataType implements DataType {
                 buff.putVarInt(columnCount);
                 for (int i = 0; i < columnCount; i++) {
                     writeString(buff, meta.getColumnName(i + 1));
-                    buff.putVarInt(meta.getColumnType(i + 1)).putVarInt(meta.getPrecision(i + 1)).putVarInt(meta.getScale(i + 1));
+                    buff.putVarInt(meta.getColumnType(i + 1)).putVarInt(meta.getPrecision(i + 1))
+                            .putVarInt(meta.getScale(i + 1));
                 }
                 while (rs.next()) {
                     buff.put((byte) 1);

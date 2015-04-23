@@ -207,8 +207,8 @@ public class Operation extends Expression {
                 } else {
                     dataType = Value.DECIMAL;
                 }
-            } else if (l == Value.DATE || l == Value.TIMESTAMP || l == Value.TIME || r == Value.DATE || r == Value.TIMESTAMP
-                    || r == Value.TIME) {
+            } else if (l == Value.DATE || l == Value.TIMESTAMP || l == Value.TIME || r == Value.DATE
+                    || r == Value.TIMESTAMP || r == Value.TIME) {
                 if (opType == PLUS) {
                     if (r != Value.getHigherOrder(l, r)) {
                         // order left and right: INT < TIME < DATE < TIMESTAMP
@@ -257,7 +257,8 @@ public class Operation extends Expression {
                         // Oracle date subtract
                         Function f = Function.getFunction(session.getDatabase(), "DATEADD");
                         f.setParameter(0, ValueExpression.get(ValueString.get("SECOND")));
-                        right = new Operation(Operation.MULTIPLY, ValueExpression.get(ValueInt.get(60 * 60 * 24)), right);
+                        right = new Operation(Operation.MULTIPLY, ValueExpression.get(ValueInt.get(60 * 60 * 24)),
+                                right);
                         right = new Operation(NEGATE, right, null);
                         right = right.optimize(session);
                         f.setParameter(1, right);
@@ -299,8 +300,8 @@ public class Operation extends Expression {
                         return this;
                     }
                 }
-                throw DbException.getUnsupportedException(DataType.getDataType(l).name + " " + getOperationToken() + " "
-                        + DataType.getDataType(r).name);
+                throw DbException.getUnsupportedException(DataType.getDataType(l).name + " " + getOperationToken()
+                        + " " + DataType.getDataType(r).name);
             } else {
                 dataType = Value.getHigherOrder(l, r);
                 if (DataType.isStringType(dataType) && session.getDatabase().getMode().allowPlusForStringConcat) {

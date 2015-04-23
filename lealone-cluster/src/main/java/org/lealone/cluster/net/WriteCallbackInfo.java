@@ -29,8 +29,8 @@ public class WriteCallbackInfo extends CallbackInfo {
     private final ConsistencyLevel consistencyLevel;
     private final boolean allowHints;
 
-    public WriteCallbackInfo(InetAddress target, IAsyncCallback callback, MessageOut message, IVersionedSerializer<?> serializer,
-            ConsistencyLevel consistencyLevel, boolean allowHints) {
+    public WriteCallbackInfo(InetAddress target, IAsyncCallback callback, MessageOut message,
+            IVersionedSerializer<?> serializer, ConsistencyLevel consistencyLevel, boolean allowHints) {
         super(target, callback, serializer);
         assert message != null;
         this.sentMessage = message;

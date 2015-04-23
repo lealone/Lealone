@@ -52,7 +52,8 @@ public class ExpressionColumn extends Expression {
         this.columnName = columnName;
     }
 
-    public ExpressionColumn(Database database, String schemaName, String tableAlias, String columnFamilyName, String columnName) {
+    public ExpressionColumn(Database database, String schemaName, String tableAlias, String columnFamilyName,
+            String columnName) {
         this.database = database;
         this.schemaName = schemaName;
         this.tableAlias = tableAlias;
@@ -202,7 +203,8 @@ public class ExpressionColumn extends Expression {
 
     public Expression optimize(Session session) {
         if (columnResolver == null) {
-            Schema schema = session.getDatabase().findSchema(tableAlias == null ? session.getCurrentSchemaName() : tableAlias);
+            Schema schema = session.getDatabase().findSchema(
+                    tableAlias == null ? session.getCurrentSchemaName() : tableAlias);
             if (schema != null) {
                 Constant constant = schema.findConstant(columnName);
                 if (constant != null) {
@@ -370,7 +372,8 @@ public class ExpressionColumn extends Expression {
     public void createIndexConditions(Session session, TableFilter filter) {
         TableFilter tf = getTableFilter();
         if (filter == tf && column.getType() == Value.BOOLEAN) {
-            IndexCondition cond = IndexCondition.get(Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(true)));
+            IndexCondition cond = IndexCondition.get(Comparison.EQUAL, this,
+                    ValueExpression.get(ValueBoolean.get(true)));
             filter.addIndexCondition(cond);
         }
     }

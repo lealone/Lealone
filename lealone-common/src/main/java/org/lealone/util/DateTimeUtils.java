@@ -93,8 +93,8 @@ public class DateTimeUtils {
         cal.clear();
         cal.setLenient(true);
         long dateValue = d.getDateValue();
-        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue), dayFromDateValue(dateValue), 0, 0, 0,
-                0);
+        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue),
+                dayFromDateValue(dateValue), 0, 0, 0, 0);
         long ms = cal.getTimeInMillis();
         return new Date(ms);
     }
@@ -153,8 +153,8 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue), dayFromDateValue(dateValue), (int) h,
-                (int) m, (int) s, (int) millis);
+        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue),
+                dayFromDateValue(dateValue), (int) h, (int) m, (int) s, (int) millis);
         long ms = cal.getTimeInMillis();
         Timestamp x = new Timestamp(ms);
         x.setNanos((int) (nanos + millis * 1000000));
@@ -370,8 +370,8 @@ public class DateTimeUtils {
         }
     }
 
-    private static long getTimeTry(boolean lenient, TimeZone tz, int year, int month, int day, int hour, int minute, int second,
-            int millis) {
+    private static long getTimeTry(boolean lenient, TimeZone tz, int year, int month, int day, int hour, int minute,
+            int second, int millis) {
         Calendar c;
         if (tz == null) {
             c = getCalendar();
@@ -386,7 +386,8 @@ public class DateTimeUtils {
         }
     }
 
-    private static void setCalendarFields(Calendar cal, int year, int month, int day, int hour, int minute, int second, int millis) {
+    private static void setCalendarFields(Calendar cal, int year, int month, int day, int hour, int minute, int second,
+            int millis) {
         if (year <= 0) {
             cal.set(Calendar.ERA, GregorianCalendar.BC);
             cal.set(Calendar.YEAR, 1 - year);

@@ -35,8 +35,8 @@ public class WiredTigerDelegateIndex extends BaseIndex {
 
     private final WiredTigerPrimaryIndex mainIndex;
 
-    public WiredTigerDelegateIndex(WiredTigerTable table, int id, String name, IndexColumn[] cols, WiredTigerPrimaryIndex mainIndex,
-            IndexType indexType) {
+    public WiredTigerDelegateIndex(WiredTigerTable table, int id, String name, IndexColumn[] cols,
+            WiredTigerPrimaryIndex mainIndex, IndexType indexType) {
         if (id < 0)
             throw DbException.throwInternalError(name);
         this.initBaseIndex(table, id, name, cols, indexType);

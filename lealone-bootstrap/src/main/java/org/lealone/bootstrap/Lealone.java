@@ -105,7 +105,8 @@ public class Lealone {
 
         server.init(list.toArray(new String[list.size()]));
         server.start();
-        logger.info("Lealone TcpServer started, listening address: {}, port: {}", config.listen_address, server.getPort());
+        logger.info("Lealone TcpServer started, listening address: {}, port: {}", config.listen_address,
+                server.getPort());
     }
 
 }

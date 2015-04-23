@@ -19,8 +19,8 @@ import org.lealone.value.Value;
  * but for large results only a subset is in-memory.
  */
 public class ResultRemoteInMemory extends ResultRemote {
-    public ResultRemoteInMemory(FrontendSession session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
-            throws IOException {
+    public ResultRemoteInMemory(FrontendSession session, Transfer transfer, int id, int columnCount, int rowCount,
+            int fetchSize) throws IOException {
         super(session, transfer, id, columnCount, rowCount, fetchSize);
     }
 

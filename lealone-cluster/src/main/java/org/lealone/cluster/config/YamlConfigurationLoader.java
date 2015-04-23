@@ -64,9 +64,10 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
             if (url == null) {
                 String required = "file:" + File.separator + File.separator;
                 if (!configUrl.startsWith(required))
-                    throw new ConfigurationException("Expecting URI in variable: [lealone.config].  Please prefix the file with "
-                            + required + File.separator + " for local files or " + required + "<server>" + File.separator
-                            + " for remote files.  Aborting.");
+                    throw new ConfigurationException(
+                            "Expecting URI in variable: [lealone.config].  Please prefix the file with " + required
+                                    + File.separator + " for local files or " + required + "<server>" + File.separator
+                                    + " for remote files.  Aborting.");
                 throw new ConfigurationException("Cannot locate " + configUrl
                         + ".  If this is a local file, please confirm you've provided " + required + File.separator
                         + " as a URI prefix.");
@@ -94,7 +95,8 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
 
             logConfig(configBytes);
 
-            org.yaml.snakeyaml.constructor.Constructor constructor = new org.yaml.snakeyaml.constructor.Constructor(Config.class);
+            org.yaml.snakeyaml.constructor.Constructor constructor = new org.yaml.snakeyaml.constructor.Constructor(
+                    Config.class);
             TypeDescription seedDesc = new TypeDescription(SeedProviderDef.class);
             seedDesc.putMapPropertyType("parameters", String.class, String.class);
             constructor.addTypeDescription(seedDesc);
@@ -111,7 +113,8 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
     }
 
     private void logConfig(byte[] configBytes) {
-        Map<Object, Object> configMap = new TreeMap<>((Map<?, ?>) new Yaml().load(new ByteArrayInputStream(configBytes)));
+        Map<Object, Object> configMap = new TreeMap<>(
+                (Map<?, ?>) new Yaml().load(new ByteArrayInputStream(configBytes)));
         // these keys contain passwords, don't log them
         for (String sensitiveKey : new String[] { "client_encryption_options", "server_encryption_options" }) {
             if (configMap.containsKey(sensitiveKey)) {

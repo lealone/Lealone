@@ -38,11 +38,12 @@ public class SortedBiMultiValMap<K, V> extends BiMultiValMap<K, V> {
             keyComparator = defaultComparator();
         if (valueComparator == null)
             valueComparator = defaultComparator();
-        return new SortedBiMultiValMap<K, V>(new TreeMap<K, V>(keyComparator), TreeMultimap.<V, K> create(valueComparator,
-                keyComparator));
+        return new SortedBiMultiValMap<K, V>(new TreeMap<K, V>(keyComparator), TreeMultimap.<V, K> create(
+                valueComparator, keyComparator));
     }
 
-    public static <K extends Comparable<K>, V extends Comparable<V>> SortedBiMultiValMap<K, V> create(BiMultiValMap<K, V> map) {
+    public static <K extends Comparable<K>, V extends Comparable<V>> SortedBiMultiValMap<K, V> create(
+            BiMultiValMap<K, V> map) {
         SortedBiMultiValMap<K, V> newMap = SortedBiMultiValMap.<K, V> create();
         newMap.forwardMap.putAll(map);
         newMap.reverseMap.putAll(map.inverse());

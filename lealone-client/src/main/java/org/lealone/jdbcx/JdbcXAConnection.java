@@ -19,8 +19,6 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-
-
 //## Java 1.6 ##
 import javax.sql.StatementEventListener;
 

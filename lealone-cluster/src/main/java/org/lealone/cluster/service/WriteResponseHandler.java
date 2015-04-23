@@ -37,8 +37,8 @@ public class WriteResponseHandler extends AbstractWriteResponseHandler {
     protected static final Logger logger = LoggerFactory.getLogger(WriteResponseHandler.class);
 
     protected volatile int responses;
-    private static final AtomicIntegerFieldUpdater<WriteResponseHandler> responsesUpdater = AtomicIntegerFieldUpdater.newUpdater(
-            WriteResponseHandler.class, "responses");
+    private static final AtomicIntegerFieldUpdater<WriteResponseHandler> responsesUpdater = AtomicIntegerFieldUpdater
+            .newUpdater(WriteResponseHandler.class, "responses");
 
     public WriteResponseHandler(Collection<InetAddress> writeEndpoints, Collection<InetAddress> pendingEndpoints,
             ConsistencyLevel consistencyLevel, Keyspace keyspace, Runnable callback, WriteType writeType) {
@@ -47,7 +47,8 @@ public class WriteResponseHandler extends AbstractWriteResponseHandler {
     }
 
     public WriteResponseHandler(InetAddress endpoint, WriteType writeType, Runnable callback) {
-        this(Arrays.asList(endpoint), Collections.<InetAddress> emptyList(), ConsistencyLevel.ONE, null, callback, writeType);
+        this(Arrays.asList(endpoint), Collections.<InetAddress> emptyList(), ConsistencyLevel.ONE, null, callback,
+                writeType);
     }
 
     public WriteResponseHandler(InetAddress endpoint, WriteType writeType) {

@@ -223,8 +223,8 @@ public class SourceCompiler {
             Method compile;
             compile = JAVAC_SUN.getMethod("compile", String[].class);
             Object javac = JAVAC_SUN.newInstance();
-            compile.invoke(javac, (Object) new String[] { "-sourcepath", compileDir, "-d", compileDir, "-encoding", "UTF-8",
-                    javaFile.getAbsolutePath() });
+            compile.invoke(javac, (Object) new String[] { "-sourcepath", compileDir, "-d", compileDir, "-encoding",
+                    "UTF-8", javaFile.getAbsolutePath() });
             String err = new String(buff.toByteArray(), "UTF-8");
             throwSyntaxError(err);
         } catch (Exception e) {

@@ -37,7 +37,8 @@ public class MessageIn<T> {
     public final MessagingService.Verb verb;
     public final int version;
 
-    private MessageIn(InetAddress from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb, int version) {
+    private MessageIn(InetAddress from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb,
+            int version) {
         this.from = from;
         this.payload = payload;
         this.parameters = parameters;

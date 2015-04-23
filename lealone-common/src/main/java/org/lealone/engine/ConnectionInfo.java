@@ -32,9 +32,10 @@ public class ConnectionInfo implements Cloneable {
         ArrayList<String> list = SetTypes.getTypes();
         HashSet<String> set = KNOWN_SETTINGS;
         set.addAll(list);
-        String[] connectionSettings = { "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "FILE_LOCK", "IGNORE_UNKNOWN_SETTINGS",
-                "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE",
-                "PASSWORD_HASH", "JMX", "ZOOKEEPER_SESSION_TIMEOUT", "IS_LOCAL" };
+        String[] connectionSettings = { "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "FILE_LOCK",
+                "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER",
+                "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX", "ZOOKEEPER_SESSION_TIMEOUT",
+                "IS_LOCAL" };
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && set.contains(key)) {
                 DbException.throwInternalError(key);
@@ -642,8 +643,8 @@ public class ConnectionInfo implements Cloneable {
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
             try {
-                sessionFactory = (SessionFactory) Class.forName("org.lealone.engine.DatabaseEngine").getMethod("getInstance")
-                        .invoke(null);
+                sessionFactory = (SessionFactory) Class.forName("org.lealone.engine.DatabaseEngine")
+                        .getMethod("getInstance").invoke(null);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }

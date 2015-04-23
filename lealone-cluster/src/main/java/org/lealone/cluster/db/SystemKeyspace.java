@@ -318,7 +318,8 @@ public class SystemKeyspace {
      * @param rmTokens tokens to remove
      * @return the collection of persisted tokens
      */
-    public static synchronized Collection<Token> updateLocalTokens(Collection<Token> addTokens, Collection<Token> rmTokens) {
+    public static synchronized Collection<Token> updateLocalTokens(Collection<Token> addTokens,
+            Collection<Token> rmTokens) {
         Collection<Token> tokens = getSavedTokens();
         tokens.removeAll(rmTokens);
         tokens.addAll(addTokens);

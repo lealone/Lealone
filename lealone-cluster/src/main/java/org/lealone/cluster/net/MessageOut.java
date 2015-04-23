@@ -57,7 +57,8 @@ public class MessageOut<T> {
                 .<String, byte[]> emptyMap());
     }
 
-    private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters) {
+    private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
+            Map<String, byte[]> parameters) {
         this(FBUtilities.getBroadcastAddress(), verb, payload, serializer, parameters);
     }
 

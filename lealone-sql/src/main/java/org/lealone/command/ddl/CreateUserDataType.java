@@ -60,7 +60,8 @@ public class CreateUserDataType extends DefineCommand {
             }
             Table table = session.getDatabase().getFirstUserTable();
             if (table != null) {
-                throw DbException.get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1, typeName + " (" + table.getSQL() + ")");
+                throw DbException
+                        .get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1, typeName + " (" + table.getSQL() + ")");
             }
         }
         int id = getObjectId();

@@ -146,7 +146,8 @@ public class CompressTool {
         if (x < 0xf0) {
             return ((x & 0xf) << 24) + ((buff[pos++] & 0xff) << 16) + ((buff[pos++] & 0xff) << 8) + (buff[pos] & 0xff);
         }
-        return ((buff[pos++] & 0xff) << 24) + ((buff[pos++] & 0xff) << 16) + ((buff[pos++] & 0xff) << 8) + (buff[pos] & 0xff);
+        return ((buff[pos++] & 0xff) << 24) + ((buff[pos++] & 0xff) << 16) + ((buff[pos++] & 0xff) << 8)
+                + (buff[pos] & 0xff);
     }
 
     /**

@@ -87,11 +87,12 @@ public class ConnectionMetrics {
                 return connectionPool.ackCon.getPendingMessages();
             }
         });
-        responseCompletedTasks = Metrics.newGauge(factory.createMetricName("ResponseCompletedTasks"), new Gauge<Long>() {
-            public Long value() {
-                return connectionPool.ackCon.getCompletedMesssages();
-            }
-        });
+        responseCompletedTasks = Metrics.newGauge(factory.createMetricName("ResponseCompletedTasks"),
+                new Gauge<Long>() {
+                    public Long value() {
+                        return connectionPool.ackCon.getCompletedMesssages();
+                    }
+                });
         timeouts = Metrics.newMeter(factory.createMetricName("Timeouts"), "timeouts", TimeUnit.SECONDS);
     }
 

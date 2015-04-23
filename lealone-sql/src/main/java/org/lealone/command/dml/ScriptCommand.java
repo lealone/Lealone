@@ -438,8 +438,10 @@ public class ScriptCommand extends ScriptBase {
             add("CREATE TABLE IF NOT EXISTS SYSTEM_LOB_STREAM"
                     + "(ID INT NOT NULL, PART INT NOT NULL, CDATA VARCHAR, BDATA BINARY)", true);
             add("CREATE PRIMARY KEY SYSTEM_LOB_STREAM_PRIMARY_KEY " + "ON SYSTEM_LOB_STREAM(ID, PART)", true);
-            add("CREATE ALIAS IF NOT EXISTS " + "SYSTEM_COMBINE_CLOB FOR \"" + this.getClass().getName() + ".combineClob\"", true);
-            add("CREATE ALIAS IF NOT EXISTS " + "SYSTEM_COMBINE_BLOB FOR \"" + this.getClass().getName() + ".combineBlob\"", true);
+            add("CREATE ALIAS IF NOT EXISTS " + "SYSTEM_COMBINE_CLOB FOR \"" + this.getClass().getName()
+                    + ".combineClob\"", true);
+            add("CREATE ALIAS IF NOT EXISTS " + "SYSTEM_COMBINE_BLOB FOR \"" + this.getClass().getName()
+                    + ".combineBlob\"", true);
             tempLobTableCreated = true;
         }
         int id = nextLobId++;
@@ -629,7 +631,8 @@ public class ScriptCommand extends ScriptBase {
     }
 
     private static ResultSet getLobStream(Connection conn, String column, int id) throws SQLException {
-        PreparedStatement prep = conn.prepareStatement("SELECT " + column + " FROM SYSTEM_LOB_STREAM WHERE ID=? ORDER BY PART");
+        PreparedStatement prep = conn.prepareStatement("SELECT " + column
+                + " FROM SYSTEM_LOB_STREAM WHERE ID=? ORDER BY PART");
         prep.setInt(1, id);
         return prep.executeQuery();
     }

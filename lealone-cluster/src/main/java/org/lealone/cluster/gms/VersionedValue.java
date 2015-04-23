@@ -168,7 +168,8 @@ public class VersionedValue implements Comparable<VersionedValue> {
         }
 
         public VersionedValue removedNonlocal(UUID hostId, long expireTime) {
-            return new VersionedValue(versionString(VersionedValue.REMOVED_TOKEN, hostId.toString(), Long.toString(expireTime)));
+            return new VersionedValue(versionString(VersionedValue.REMOVED_TOKEN, hostId.toString(),
+                    Long.toString(expireTime)));
         }
 
         public VersionedValue removalCoordinator(UUID hostId) {

@@ -43,7 +43,8 @@ import com.yammer.metrics.stats.ExponentiallyDecayingSample;
 /**
  * A dynamic snitch that sorts endpoints by latency with an adapted phi failure detector
  */
-public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILatencySubscriber, DynamicEndpointSnitchMBean {
+public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILatencySubscriber,
+        DynamicEndpointSnitchMBean {
     private static final double ALPHA = 0.75; // set to 0.75 to make EDS more biased to towards the newer values
     private static final int WINDOW_SIZE = 100;
 

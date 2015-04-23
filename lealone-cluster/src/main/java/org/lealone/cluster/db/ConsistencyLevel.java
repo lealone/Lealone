@@ -130,7 +130,8 @@ public enum ConsistencyLevel {
     }
 
     public boolean isLocal(InetAddress endpoint) {
-        return DatabaseDescriptor.getLocalDataCenter().equals(DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint));
+        return DatabaseDescriptor.getLocalDataCenter().equals(
+                DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint));
     }
 
     public int countLocalEndpoints(Iterable<InetAddress> liveEndpoints) {
@@ -159,7 +160,8 @@ public enum ConsistencyLevel {
         return filterForQuery(keyspace, liveEndpoints, ReadRepairDecision.NONE);
     }
 
-    public List<InetAddress> filterForQuery(Keyspace keyspace, List<InetAddress> liveEndpoints, ReadRepairDecision readRepair) {
+    public List<InetAddress> filterForQuery(Keyspace keyspace, List<InetAddress> liveEndpoints,
+            ReadRepairDecision readRepair) {
         /*
          * Endpoints are expected to be restricted to live replicas, sorted by snitch preference.
          * For LOCAL_QUORUM, move local-DC replicas in front first as we need them there whether
@@ -216,7 +218,8 @@ public enum ConsistencyLevel {
         }
     }
 
-    public void assureSufficientLiveNodes(Keyspace keyspace, Iterable<InetAddress> liveEndpoints) throws UnavailableException {
+    public void assureSufficientLiveNodes(Keyspace keyspace, Iterable<InetAddress> liveEndpoints)
+            throws UnavailableException {
         int blockFor = blockFor(keyspace);
         switch (this) {
         case ANY:
@@ -256,8 +259,8 @@ public enum ConsistencyLevel {
         default:
             int live = Iterables.size(liveEndpoints);
             if (live < blockFor) {
-                logger.debug("Live nodes {} do not satisfy ConsistencyLevel ({} required)", Iterables.toString(liveEndpoints),
-                        blockFor);
+                logger.debug("Live nodes {} do not satisfy ConsistencyLevel ({} required)",
+                        Iterables.toString(liveEndpoints), blockFor);
                 throw new UnavailableException(this, blockFor, live);
             }
             break;
@@ -297,7 +300,8 @@ public enum ConsistencyLevel {
 
     public void validateForCas() throws InvalidRequestException {
         if (!isSerialConsistency())
-            throw new InvalidRequestException("Invalid consistency for conditional update. Must be one of SERIAL or LOCAL_SERIAL");
+            throw new InvalidRequestException(
+                    "Invalid consistency for conditional update. Must be one of SERIAL or LOCAL_SERIAL");
     }
 
     public boolean isSerialConsistency() {
@@ -315,7 +319,8 @@ public enum ConsistencyLevel {
     private void requireNetworkTopologyStrategy(String keyspaceName) throws InvalidRequestException {
         AbstractReplicationStrategy strategy = Keyspace.open(keyspaceName).getReplicationStrategy();
         if (!(strategy instanceof NetworkTopologyStrategy))
-            throw new InvalidRequestException(String.format("consistency level %s not compatible with replication strategy (%s)",
-                    this, strategy.getClass().getName()));
+            throw new InvalidRequestException(String.format(
+                    "consistency level %s not compatible with replication strategy (%s)", this, strategy.getClass()
+                            .getName()));
     }
 }

@@ -126,16 +126,18 @@ public abstract class AbstractReplicationStrategy {
     public abstract List<InetAddress> calculateNaturalEndpoints(Token searchToken, TokenMetadata tokenMetadata);
 
     public AbstractWriteResponseHandler getWriteResponseHandler(Collection<InetAddress> naturalEndpoints,
-            Collection<InetAddress> pendingEndpoints, ConsistencyLevel consistency_level, Runnable callback, WriteType writeType) {
+            Collection<InetAddress> pendingEndpoints, ConsistencyLevel consistency_level, Runnable callback,
+            WriteType writeType) {
         if (consistency_level.isDatacenterLocal()) {
             // block for in this context will be localnodes block.
-            return new DatacenterWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(),
-                    callback, writeType);
+            return new DatacenterWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level,
+                    getKeyspace(), callback, writeType);
         } else if (consistency_level == ConsistencyLevel.EACH_QUORUM && (this instanceof NetworkTopologyStrategy)) {
-            return new DatacenterSyncWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(),
-                    callback, writeType);
+            return new DatacenterSyncWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level,
+                    getKeyspace(), callback, writeType);
         }
-        return new WriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback, writeType);
+        return new WriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback,
+                writeType);
     }
 
     private Keyspace getKeyspace() {
@@ -188,7 +190,8 @@ public abstract class AbstractReplicationStrategy {
         return getAddressRanges(tokenMetadata.cloneOnlyTokenMap());
     }
 
-    public Collection<Range<Token>> getPendingAddressRanges(TokenMetadata metadata, Token pendingToken, InetAddress pendingAddress) {
+    public Collection<Range<Token>> getPendingAddressRanges(TokenMetadata metadata, Token pendingToken,
+            InetAddress pendingAddress) {
         return getPendingAddressRanges(metadata, Arrays.asList(pendingToken), pendingAddress);
     }
 
@@ -212,12 +215,13 @@ public abstract class AbstractReplicationStrategy {
     }
 
     private static AbstractReplicationStrategy createInternal(String keyspaceName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
-            Map<String, String> strategyOptions) throws ConfigurationException {
+            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata,
+            IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigurationException {
         AbstractReplicationStrategy strategy;
         Class<?>[] parameterTypes = new Class[] { String.class, TokenMetadata.class, IEndpointSnitch.class, Map.class };
         try {
-            Constructor<? extends AbstractReplicationStrategy> constructor = strategyClass.getConstructor(parameterTypes);
+            Constructor<? extends AbstractReplicationStrategy> constructor = strategyClass
+                    .getConstructor(parameterTypes);
             strategy = constructor.newInstance(keyspaceName, tokenMetadata, snitch, strategyOptions);
         } catch (Exception e) {
             throw new ConfigurationException("Error constructing replication strategy class", e);
@@ -226,8 +230,8 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public static AbstractReplicationStrategy createReplicationStrategy(String keyspaceName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
-            Map<String, String> strategyOptions) {
+            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata,
+            IEndpointSnitch snitch, Map<String, String> strategyOptions) {
         try {
             AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch,
                     strategyOptions);
@@ -248,9 +252,10 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public static void validateReplicationStrategy(String keyspaceName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
-            Map<String, String> strategyOptions) throws ConfigurationException {
-        AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch, strategyOptions);
+            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata,
+            IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigurationException {
+        AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch,
+                strategyOptions);
         strategy.validateExpectedOptions();
         strategy.validateOptions();
     }
@@ -260,7 +265,8 @@ public abstract class AbstractReplicationStrategy {
         Class<AbstractReplicationStrategy> strategyClass = FBUtilities.classForName(className, "replication strategy");
         if (!AbstractReplicationStrategy.class.isAssignableFrom(strategyClass)) {
             throw new ConfigurationException(String.format(
-                    "Specified replication strategy class (%s) is not derived from AbstractReplicationStrategy", className));
+                    "Specified replication strategy class (%s) is not derived from AbstractReplicationStrategy",
+                    className));
         }
         return strategyClass;
     }
@@ -282,8 +288,9 @@ public abstract class AbstractReplicationStrategy {
 
         for (String key : configOptions.keySet()) {
             if (!expectedOptions.contains(key))
-                throw new ConfigurationException(String.format("Unrecognized strategy option {%s} passed to %s for keyspace %s",
-                        key, getClass().getSimpleName(), keyspaceName));
+                throw new ConfigurationException(String.format(
+                        "Unrecognized strategy option {%s} passed to %s for keyspace %s", key, getClass()
+                                .getSimpleName(), keyspaceName));
         }
     }
 }

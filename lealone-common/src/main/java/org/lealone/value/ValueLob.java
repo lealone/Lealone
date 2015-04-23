@@ -64,8 +64,8 @@ public class ValueLob extends Value {
     private boolean compressed;
     private FileStore tempFile;
 
-    private ValueLob(int type, DataHandler handler, String fileName, int tableId, int objectId, boolean linked, long precision,
-            boolean compressed) {
+    private ValueLob(int type, DataHandler handler, String fileName, int tableId, int objectId, boolean linked,
+            long precision, boolean compressed) {
         this.type = type;
         this.handler = handler;
         this.fileName = fileName;
@@ -89,8 +89,8 @@ public class ValueLob extends Value {
     }
 
     private static ValueLob copy(ValueLob lob) {
-        ValueLob copy = new ValueLob(lob.type, lob.handler, lob.fileName, lob.tableId, lob.objectId, lob.linked, lob.precision,
-                lob.compressed);
+        ValueLob copy = new ValueLob(lob.type, lob.handler, lob.fileName, lob.tableId, lob.objectId, lob.linked,
+                lob.precision, lob.compressed);
         copy.small = lob.small;
         copy.hash = lob.hash;
         return copy;
@@ -392,7 +392,8 @@ public class ValueLob extends Value {
         synchronized (h) {
             String path = h.getDatabasePath();
             if ((path != null) && (path.length() == 0)) {
-                path = new File(Utils.getProperty("java.io.tmpdir", "."), SysProperties.PREFIX_TEMP_FILE).getAbsolutePath();
+                path = new File(Utils.getProperty("java.io.tmpdir", "."), SysProperties.PREFIX_TEMP_FILE)
+                        .getAbsolutePath();
             }
             objectId = getNewObjectId(h);
             fileName = getFileNamePrefix(path, objectId) + Constants.SUFFIX_TEMP_FILE;
@@ -403,7 +404,8 @@ public class ValueLob extends Value {
         return out;
     }
 
-    private void createFromStream(byte[] buff, int len, InputStream in, long remaining, DataHandler h) throws IOException {
+    private void createFromStream(byte[] buff, int len, InputStream in, long remaining, DataHandler h)
+            throws IOException {
         FileStoreOutputStream out = initLarge(h);
         boolean compress = h.getLobCompressionAlgorithm(Value.BLOB) != null;
         try {

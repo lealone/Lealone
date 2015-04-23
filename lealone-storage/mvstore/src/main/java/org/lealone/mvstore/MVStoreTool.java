@@ -160,9 +160,9 @@ public class MVStoreTool {
                     boolean compressed = (type & 2) != 0;
                     boolean node = (type & 1) != 0;
                     if (details) {
-                        pw.printf("+%0" + len + "x %s, map %x, %d entries, %d bytes, maxLen %x%n", p, (node ? "node" : "leaf")
-                                + (compressed ? " compressed" : ""), mapId, node ? entries + 1 : entries, pageSize,
-                                DataUtils.getPageMaxLength(DataUtils.getPagePos(0, 0, pageSize, 0)));
+                        pw.printf("+%0" + len + "x %s, map %x, %d entries, %d bytes, maxLen %x%n", p, (node ? "node"
+                                : "leaf") + (compressed ? " compressed" : ""), mapId, node ? entries + 1 : entries,
+                                pageSize, DataUtils.getPageMaxLength(DataUtils.getPagePos(0, 0, pageSize, 0)));
                     }
                     p += pageSize;
                     Integer mapSize = mapSizes.get(mapId);
@@ -238,8 +238,8 @@ public class MVStoreTool {
                 int footerPos = chunk.limit() - Chunk.FOOTER_LENGTH;
                 try {
                     chunk.position(footerPos);
-                    pw.printf("+%0" + len + "x chunkFooter %s%n", footerPos, new String(chunk.array(), chunk.position(),
-                            Chunk.FOOTER_LENGTH, DataUtils.LATIN).trim());
+                    pw.printf("+%0" + len + "x chunkFooter %s%n", footerPos, new String(chunk.array(),
+                            chunk.position(), Chunk.FOOTER_LENGTH, DataUtils.LATIN).trim());
                 } catch (IllegalArgumentException e) {
                     // too far
                     pw.printf("ERROR illegal footer position %d%n", footerPos);
@@ -247,8 +247,8 @@ public class MVStoreTool {
             }
             pw.printf("%n%0" + len + "x eof%n", fileSize);
             pw.printf("\n");
-            pw.printf("page size total: %d bytes, page count: %d, average page size: %d bytes\n", pageSizeTotal, pageCount,
-                    pageSizeTotal / pageCount);
+            pw.printf("page size total: %d bytes, page count: %d, average page size: %d bytes\n", pageSizeTotal,
+                    pageCount, pageSizeTotal / pageCount);
             for (Integer mapId : mapSizesTotal.keySet()) {
                 int percent = (int) (100 * mapSizesTotal.get(mapId) / pageSizeTotal);
                 pw.printf("map %x: %d bytes, %d%%%n", mapId, mapSizesTotal.get(mapId), percent);
@@ -443,8 +443,8 @@ public class MVStoreTool {
             }
         }
         for (String mapName : source.getMapNames()) {
-            MVMap.Builder<Object, Object> mp = new MVMap.Builder<Object, Object>().keyType(new GenericDataType()).valueType(
-                    new GenericDataType());
+            MVMap.Builder<Object, Object> mp = new MVMap.Builder<Object, Object>().keyType(new GenericDataType())
+                    .valueType(new GenericDataType());
             MVMap<Object, Object> sourceMap = source.openMap(mapName, mp);
             MVMap<Object, Object> targetMap = target.openMap(mapName, mp);
             targetMap.copyFrom(sourceMap);

@@ -237,11 +237,12 @@ public final class MessagingService implements MessagingServiceMBean {
      * all correspond to client requests or something triggered by them; we don't want to
      * drop internal messages like bootstrap or repair notifications.
      */
-    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb._TRACE, Verb.MUTATION, Verb.READ_REPAIR, Verb.READ,
-            Verb.RANGE_SLICE, Verb.PAGED_RANGE, Verb.REQUEST_RESPONSE);
+    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb._TRACE, Verb.MUTATION, Verb.READ_REPAIR,
+            Verb.READ, Verb.RANGE_SLICE, Verb.PAGED_RANGE, Verb.REQUEST_RESPONSE);
 
     // total dropped message counts for server lifetime
-    private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<Verb, DroppedMessageMetrics>(Verb.class);
+    private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<Verb, DroppedMessageMetrics>(
+            Verb.class);
     // dropped count when last requested for the Recent api.  high concurrency isn't necessary here.
     private final Map<Verb, Integer> lastDroppedInternal = new EnumMap<Verb, Integer>(Verb.class);
 
@@ -286,7 +287,8 @@ public final class MessagingService implements MessagingServiceMBean {
                     StageManager.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable() {
                         @Override
                         public void run() {
-                            ((IAsyncCallbackWithFailure) expiredCallbackInfo.callback).onFailure(expiredCallbackInfo.target);
+                            ((IAsyncCallbackWithFailure) expiredCallbackInfo.callback)
+                                    .onFailure(expiredCallbackInfo.target);
                         }
                     });
                 }
@@ -465,8 +467,8 @@ public final class MessagingService implements MessagingServiceMBean {
     public int addCallback(IAsyncCallback cb, MessageOut message, InetAddress to, long timeout, boolean failureCallback) {
         assert message.verb != Verb.MUTATION; // mutations need to call the overload with a ConsistencyLevel
         int messageId = nextId();
-        CallbackInfo previous = callbacks.put(messageId, new CallbackInfo(to, cb, callbackDeserializers.get(message.verb),
-                failureCallback), timeout);
+        CallbackInfo previous = callbacks.put(messageId,
+                new CallbackInfo(to, cb, callbackDeserializers.get(message.verb), failureCallback), timeout);
         assert previous == null : String.format("Callback already exists for id %d! (%s)", messageId, previous);
         return messageId;
     }
@@ -477,8 +479,8 @@ public final class MessagingService implements MessagingServiceMBean {
         int messageId = nextId();
 
         CallbackInfo previous = callbacks.put(messageId,
-                new WriteCallbackInfo(to, cb, message, callbackDeserializers.get(message.verb), consistencyLevel, allowHints),
-                timeout);
+                new WriteCallbackInfo(to, cb, message, callbackDeserializers.get(message.verb), consistencyLevel,
+                        allowHints), timeout);
         assert previous == null : String.format("Callback already exists for id %d! (%s)", messageId, previous);
         return messageId;
     }
@@ -712,7 +714,8 @@ public final class MessagingService implements MessagingServiceMBean {
             int recent = dropped - lastDroppedInternal.get(verb);
             if (recent > 0) {
                 //logTpstats = true;
-                logger.info("{} {} messages dropped in last {}ms", new Object[] { recent, verb, LOG_DROPPED_INTERVAL_IN_MS });
+                logger.info("{} {} messages dropped in last {}ms", new Object[] { recent, verb,
+                        LOG_DROPPED_INTERVAL_IN_MS });
                 lastDroppedInternal.put(verb, dropped);
             }
         }
@@ -752,8 +755,8 @@ public final class MessagingService implements MessagingServiceMBean {
                     logger.debug("Connection version {} from {}", version, socket.getInetAddress());
                     socket.setSoTimeout(0);
 
-                    Thread thread = isStream ? new IncomingStreamingConnection(version, socket) : new IncomingTcpConnection(
-                            version, MessagingService.getBits(header, 2, 1) == 1, socket);
+                    Thread thread = isStream ? new IncomingStreamingConnection(version, socket)
+                            : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket);
                     thread.start();
                 } catch (AsynchronousCloseException e) {
                     // this happens when another thread calls close().
@@ -776,7 +779,8 @@ public final class MessagingService implements MessagingServiceMBean {
         }
 
         private boolean authenticate(Socket socket) {
-            return DatabaseDescriptor.getInternodeAuthenticator().authenticate(socket.getInetAddress(), socket.getPort());
+            return DatabaseDescriptor.getInternodeAuthenticator().authenticate(socket.getInetAddress(),
+                    socket.getPort());
         }
     }
 

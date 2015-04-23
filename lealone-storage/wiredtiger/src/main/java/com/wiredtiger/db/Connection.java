@@ -90,7 +90,8 @@ public class Connection {
     /**
      * @copydoc WT_CONNECTION::async_new_op
      */
-    public AsyncOp async_new_op(String uri, String config, Object callbackObject) throws com.wiredtiger.db.WiredTigerException {
+    public AsyncOp async_new_op(String uri, String config, Object callbackObject)
+            throws com.wiredtiger.db.WiredTigerException {
         long cPtr = wiredtigerJNI.Connection_async_new_op(swigCPtr, this, uri, config, callbackObject);
         return (cPtr == 0) ? null : new AsyncOp(cPtr, false);
     }

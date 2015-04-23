@@ -32,7 +32,6 @@ import java.sql.RowId;
 import java.sql.SQLXML;
 //*/
 
-
 import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.engine.SysProperties;
@@ -142,7 +141,8 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
             }
             checkClosed();
             String catalog = conn.getCatalog();
-            JdbcResultSetMetaData meta = new JdbcResultSetMetaData(this, null, result, catalog, conn.getSession().getTrace(), id);
+            JdbcResultSetMetaData meta = new JdbcResultSetMetaData(this, null, result, catalog, conn.getSession()
+                    .getTrace(), id);
             return meta;
         } catch (Exception e) {
             throw logAndConvert(e);

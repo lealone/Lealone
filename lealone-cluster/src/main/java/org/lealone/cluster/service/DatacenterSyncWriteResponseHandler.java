@@ -40,8 +40,9 @@ public class DatacenterSyncWriteResponseHandler extends AbstractWriteResponseHan
     private final HashMap<String, AtomicInteger> responses = new HashMap<String, AtomicInteger>();
     private final AtomicInteger acks = new AtomicInteger(0);
 
-    public DatacenterSyncWriteResponseHandler(Collection<InetAddress> naturalEndpoints, Collection<InetAddress> pendingEndpoints,
-            ConsistencyLevel consistencyLevel, Keyspace keyspace, Runnable callback, WriteType writeType) {
+    public DatacenterSyncWriteResponseHandler(Collection<InetAddress> naturalEndpoints,
+            Collection<InetAddress> pendingEndpoints, ConsistencyLevel consistencyLevel, Keyspace keyspace,
+            Runnable callback, WriteType writeType) {
         // Response is been managed by the map so make it 1 for the superclass.
         super(keyspace, naturalEndpoints, pendingEndpoints, consistencyLevel, callback, writeType);
         assert consistencyLevel == ConsistencyLevel.EACH_QUORUM;
@@ -62,7 +63,8 @@ public class DatacenterSyncWriteResponseHandler extends AbstractWriteResponseHan
 
     @Override
     public void response(MessageIn<Object> message) {
-        String dataCenter = message == null ? DatabaseDescriptor.getLocalDataCenter() : snitch.getDatacenter(message.from);
+        String dataCenter = message == null ? DatabaseDescriptor.getLocalDataCenter() : snitch
+                .getDatacenter(message.from);
 
         responses.get(dataCenter).getAndDecrement();
         acks.incrementAndGet();

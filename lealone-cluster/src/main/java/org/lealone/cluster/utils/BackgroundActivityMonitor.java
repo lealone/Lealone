@@ -52,7 +52,8 @@ public class BackgroundActivityMonitor {
 
     private final AtomicDouble compaction_severity = new AtomicDouble();
     private final AtomicDouble manual_severity = new AtomicDouble();
-    private final ScheduledExecutorService reportThread = new DebuggableScheduledThreadPoolExecutor("Background_Reporter");
+    private final ScheduledExecutorService reportThread = new DebuggableScheduledThreadPoolExecutor(
+            "Background_Reporter");
 
     private RandomAccessFile statsFile;
     private long[] lastReading;

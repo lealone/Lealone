@@ -259,7 +259,8 @@ public abstract class Query extends Prepared {
                 return false;
             }
         }
-        if (!isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR) || !isEverything(ExpressionVisitor.INDEPENDENT_VISITOR)) {
+        if (!isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)
+                || !isEverything(ExpressionVisitor.INDEPENDENT_VISITOR)) {
             return false;
         }
         if (db.getModificationDataId() > lastEval && getMaxDataModificationId() > lastEval) {

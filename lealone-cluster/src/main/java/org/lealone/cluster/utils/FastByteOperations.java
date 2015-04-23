@@ -94,7 +94,8 @@ public class FastByteOperations {
          */
         static ByteOperations getBest() {
             String arch = System.getProperty("os.arch");
-            boolean unaligned = arch.equals("i386") || arch.equals("x86") || arch.equals("amd64") || arch.equals("x86_64");
+            boolean unaligned = arch.equals("i386") || arch.equals("x86") || arch.equals("amd64")
+                    || arch.equals("x86_64");
             if (!unaligned)
                 return new PureJavaOperations();
             try {
@@ -156,8 +157,8 @@ public class FastByteOperations {
 
         @Override
         public int compare(byte[] buffer1, int offset1, int length1, byte[] buffer2, int offset2, int length2) {
-            return compareTo(buffer1, BYTE_ARRAY_BASE_OFFSET + offset1, length1, buffer2, BYTE_ARRAY_BASE_OFFSET + offset2,
-                    length2);
+            return compareTo(buffer1, BYTE_ARRAY_BASE_OFFSET + offset1, length1, buffer2, BYTE_ARRAY_BASE_OFFSET
+                    + offset2, length2);
         }
 
         @Override
@@ -212,7 +213,8 @@ public class FastByteOperations {
             if (trgBuf.hasArray())
                 copy(src, srcOffset, trgBuf.array(), trgBuf.arrayOffset() + trgPosition, length);
             else
-                copy(src, srcOffset, null, trgPosition + theUnsafe.getLong(trgBuf, DIRECT_BUFFER_ADDRESS_OFFSET), length);
+                copy(src, srcOffset, null, trgPosition + theUnsafe.getLong(trgBuf, DIRECT_BUFFER_ADDRESS_OFFSET),
+                        length);
         }
 
         public static void copy(Object src, long srcOffset, byte[] trg, int trgPosition, int length) {
@@ -288,8 +290,8 @@ public class FastByteOperations {
          * @return 0 if equal, < 0 if left is less than right, etc.
          */
         @Inline
-        public static int compareTo(Object buffer1, long memoryOffset1, int length1, Object buffer2, long memoryOffset2,
-                int length2) {
+        public static int compareTo(Object buffer1, long memoryOffset1, int length1, Object buffer2,
+                long memoryOffset2, int length2) {
             int minLength = Math.min(length1, length2);
 
             /*
@@ -344,8 +346,8 @@ public class FastByteOperations {
         @Override
         public int compare(ByteBuffer buffer1, byte[] buffer2, int offset2, int length2) {
             if (buffer1.hasArray())
-                return compare(buffer1.array(), buffer1.arrayOffset() + buffer1.position(), buffer1.remaining(), buffer2,
-                        offset2, length2);
+                return compare(buffer1.array(), buffer1.arrayOffset() + buffer1.position(), buffer1.remaining(),
+                        buffer2, offset2, length2);
             return compare(buffer1, ByteBuffer.wrap(buffer2, offset2, length2));
         }
 
@@ -377,8 +379,8 @@ public class FastByteOperations {
         @Override
         public void copy(ByteBuffer src, int srcPosition, ByteBuffer trg, int trgPosition, int length) {
             if (src.hasArray() && trg.hasArray()) {
-                System.arraycopy(src.array(), src.arrayOffset() + srcPosition, trg.array(), trg.arrayOffset() + trgPosition,
-                        length);
+                System.arraycopy(src.array(), src.arrayOffset() + srcPosition, trg.array(), trg.arrayOffset()
+                        + trgPosition, length);
                 return;
             }
             src = src.duplicate();

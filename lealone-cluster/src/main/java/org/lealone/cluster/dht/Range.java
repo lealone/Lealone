@@ -125,7 +125,8 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
         // Same punishment than in Bounds.contains(), we must be carefull if that.left == that.right as
         // as new Range<T>(that.left, that.right) will then cover the full ring which is not what we
         // want.
-        return contains(that.left) || (!that.left.equals(that.right) && intersects(new Range<T>(that.left, that.right)));
+        return contains(that.left)
+                || (!that.left.equals(that.right) && intersects(new Range<T>(that.left, that.right)));
     }
 
     @SafeVarargs
@@ -169,8 +170,8 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
             // (2) only that's start endpoint lies in this's right segment:
             //  ---------B----1---A-------2------>
             // or, we have the same cases on the left segement, which we can handle by swapping this and that.
-            return this.left.compareTo(that.left) < 0 ? intersectionBothWrapping(this, that) : intersectionBothWrapping(that,
-                    this);
+            return this.left.compareTo(that.left) < 0 ? intersectionBothWrapping(this, that)
+                    : intersectionBothWrapping(that, this);
         }
         if (thiswraps && !thatwraps)
             return intersectionOneWrapping(this, that);
@@ -422,8 +423,8 @@ public class Range<T extends RingPosition<T>> extends AbstractBounds<T> implemen
     @Override
     @SuppressWarnings("unchecked")
     public AbstractBounds<Token> toTokenBounds() {
-        return (left instanceof RowPosition) ? new Range<Token>(((RowPosition) left).getToken(), ((RowPosition) right).getToken())
-                : (Range<Token>) this;
+        return (left instanceof RowPosition) ? new Range<Token>(((RowPosition) left).getToken(),
+                ((RowPosition) right).getToken()) : (Range<Token>) this;
     }
 
     @Override

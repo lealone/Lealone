@@ -425,7 +425,8 @@ public class Page {
                 }
             }
             if (check != totalCount) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Expected: {0} got: {1}", check, totalCount);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Expected: {0} got: {1}", check,
+                        totalCount);
             }
         }
         return totalCount;
@@ -613,8 +614,10 @@ public class Page {
         int start = buff.position();
         int pageLength = buff.getInt();
         if (pageLength > maxLength) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "File corrupted in chunk {0}, expected page length =< {1}, got {2}", chunkId, maxLength, pageLength);
+            throw DataUtils
+                    .newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                            "File corrupted in chunk {0}, expected page length =< {1}, got {2}", chunkId, maxLength,
+                            pageLength);
         }
         buff.limit(start + pageLength);
         short check = buff.getShort();
@@ -623,7 +626,8 @@ public class Page {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
                     "File corrupted in chunk {0}, expected map id {1}, got {2}", chunkId, map.getId(), mapId);
         }
-        int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset) ^ DataUtils.getCheckValue(pageLength);
+        int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
+                ^ DataUtils.getCheckValue(pageLength);
         if (check != (short) checkTest) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
                     "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest, check);
@@ -723,7 +727,8 @@ public class Page {
         }
         int pageLength = buff.position() - start;
         int chunkId = chunk.id;
-        int check = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(start) ^ DataUtils.getCheckValue(pageLength);
+        int check = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(start)
+                ^ DataUtils.getCheckValue(pageLength);
         buff.putInt(start, pageLength).putShort(start + 4, (short) check);
         if (pos != 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
@@ -983,7 +988,8 @@ public class Page {
             int pageLength = buff.getInt();
             if (pageLength > maxLength) {
                 throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                        "File corrupted in chunk {0}, expected page length =< {1}, got {2}", chunkId, maxLength, pageLength);
+                        "File corrupted in chunk {0}, expected page length =< {1}, got {2}", chunkId, maxLength,
+                        pageLength);
             }
             buff.limit(start + pageLength);
             short check = buff.getShort();

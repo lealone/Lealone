@@ -88,9 +88,10 @@ public class ObjectDataType implements DataType {
     static final long DOUBLE_ZERO_BITS = Double.doubleToLongBits(0.0d);
     static final long DOUBLE_ONE_BITS = Double.doubleToLongBits(1.0d);
 
-    static final Class<?>[] COMMON_CLASSES = { boolean.class, byte.class, short.class, char.class, int.class, long.class,
-            float.class, double.class, Object.class, Boolean.class, Byte.class, Short.class, Character.class, Integer.class,
-            Long.class, BigInteger.class, Float.class, Double.class, BigDecimal.class, String.class, UUID.class, Date.class };
+    static final Class<?>[] COMMON_CLASSES = { boolean.class, byte.class, short.class, char.class, int.class,
+            long.class, float.class, double.class, Object.class, Boolean.class, Byte.class, Short.class,
+            Character.class, Integer.class, Long.class, BigInteger.class, Float.class, Double.class, BigDecimal.class,
+            String.class, UUID.class, Date.class };
 
     private static final HashMap<Class<?>, Integer> COMMON_CLASSES_MAP = New.hashMap();
 

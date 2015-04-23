@@ -53,8 +53,8 @@ public class CompareLike extends Condition {
         this(db.getCompareMode(), db.getSettings().defaultEscape, left, right, escape, regexp);
     }
 
-    public CompareLike(CompareMode compareMode, String defaultEscape, Expression left, Expression right, Expression escape,
-            boolean regexp) {
+    public CompareLike(CompareMode compareMode, String defaultEscape, Expression left, Expression right,
+            Expression escape, boolean regexp) {
         this.compareMode = compareMode;
         this.defaultEscape = defaultEscape;
         this.regexp = regexp;
@@ -195,7 +195,8 @@ public class CompareLike extends Condition {
         }
         String begin = buff.toString();
         if (maxMatch == patternLength) {
-            filter.addIndexCondition(IndexCondition.get(Comparison.EQUAL, l, ValueExpression.get(ValueString.get(begin))));
+            filter.addIndexCondition(IndexCondition.get(Comparison.EQUAL, l,
+                    ValueExpression.get(ValueString.get(begin))));
         } else {
             // TODO check if this is correct according to Unicode rules
             // (code points)
@@ -250,7 +251,8 @@ public class CompareLike extends Condition {
     }
 
     private boolean compare(char[] pattern, String s, int pi, int si) {
-        return pattern[pi] == s.charAt(si) || (!fastCompare && compareMode.equalsChars(patternString, pi, s, si, ignoreCase));
+        return pattern[pi] == s.charAt(si)
+                || (!fastCompare && compareMode.equalsChars(patternString, pi, s, si, ignoreCase));
     }
 
     private boolean compareAt(String s, int pi, int si, int sLen, char[] pattern, int[] types) {
@@ -399,7 +401,8 @@ public class CompareLike extends Condition {
     }
 
     public boolean isEverything(ExpressionVisitor visitor) {
-        return left.isEverything(visitor) && right.isEverything(visitor) && (escape == null || escape.isEverything(visitor));
+        return left.isEverything(visitor) && right.isEverything(visitor)
+                && (escape == null || escape.isEverything(visitor));
     }
 
     public int getCost() {

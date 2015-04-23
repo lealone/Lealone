@@ -23,8 +23,10 @@ class VersionedValue {
 
     @Override
     public String toString() {
-        return value + (operationId == 0 ? "" : //
-                (" " + DefaultTransactionEngine.getTransactionId(operationId) + "/" + DefaultTransactionEngine.getLogId(operationId)));
+        return value
+                + (operationId == 0 ? "" : //
+                        (" " + DefaultTransactionEngine.getTransactionId(operationId) + "/" + DefaultTransactionEngine
+                                .getLogId(operationId)));
     }
 
 }

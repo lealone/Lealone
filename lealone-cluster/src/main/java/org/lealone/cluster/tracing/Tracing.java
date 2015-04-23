@@ -60,8 +60,8 @@ public class Tracing {
             return (byte) value.ordinal();
         }
 
-        private static final int[] TTLS = { DatabaseDescriptor.getTracetypeQueryTTL(), DatabaseDescriptor.getTracetypeQueryTTL(),
-                DatabaseDescriptor.getTracetypeRepairTTL() };
+        private static final int[] TTLS = { DatabaseDescriptor.getTracetypeQueryTTL(),
+                DatabaseDescriptor.getTracetypeQueryTTL(), DatabaseDescriptor.getTracetypeRepairTTL() };
 
         public int getTTL() {
             return TTLS[ordinal()];

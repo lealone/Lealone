@@ -168,8 +168,8 @@ public abstract class Table extends SchemaObjectBase {
      * @param indexComment the comment
      * @return the index
      */
-    public abstract Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment);
+    public abstract Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment);
 
     /**
      * Remove a row from the table and all indexes.

@@ -258,6 +258,8 @@ public class Row implements SearchRow {
     }
 
     public static enum Tag {
-        INSERT, UPDATE, DELETE;
+        INSERT,
+        UPDATE,
+        DELETE;
     }
 }

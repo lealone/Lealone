@@ -412,8 +412,8 @@ public class StreamStore {
                     try {
                         buffer = nextBuffer();
                     } catch (IllegalStateException e) {
-                        String msg = DataUtils.formatMessage(DataUtils.ERROR_BLOCK_NOT_FOUND, "Block not found in id {0}",
-                                Arrays.toString(idBuffer.array()));
+                        String msg = DataUtils.formatMessage(DataUtils.ERROR_BLOCK_NOT_FOUND,
+                                "Block not found in id {0}", Arrays.toString(idBuffer.array()));
                         throw new IOException(msg, e);
                     }
                     if (buffer == null) {
@@ -472,7 +472,8 @@ public class StreamStore {
                     return nextBuffer();
                 }
                 default:
-                    throw DataUtils.newIllegalArgumentException("Unsupported id {0}", Arrays.toString(idBuffer.array()));
+                    throw DataUtils
+                            .newIllegalArgumentException("Unsupported id {0}", Arrays.toString(idBuffer.array()));
                 }
             }
             return null;

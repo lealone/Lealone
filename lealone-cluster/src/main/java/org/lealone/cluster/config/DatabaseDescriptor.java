@@ -151,15 +151,18 @@ public class DatabaseDescriptor {
             }
 
             if (listenAddress.isAnyLocalAddress())
-                throw new ConfigurationException("listen_address cannot be a wildcard address (" + conf.listen_address + ")!");
+                throw new ConfigurationException("listen_address cannot be a wildcard address (" + conf.listen_address
+                        + ")!");
         } else if (conf.listen_interface != null) {
             try {
                 Enumeration<InetAddress> addrs = NetworkInterface.getByName(conf.listen_interface).getInetAddresses();
                 listenAddress = addrs.nextElement();
                 if (addrs.hasMoreElements())
-                    throw new ConfigurationException("Interface " + conf.listen_interface + " can't have more than one address");
+                    throw new ConfigurationException("Interface " + conf.listen_interface
+                            + " can't have more than one address");
             } catch (SocketException e) {
-                throw new ConfigurationException("Unknown network interface in listen_interface " + conf.listen_interface);
+                throw new ConfigurationException("Unknown network interface in listen_interface "
+                        + conf.listen_interface);
             }
 
         }
@@ -173,8 +176,8 @@ public class DatabaseDescriptor {
             }
 
             if (broadcastAddress.isAnyLocalAddress())
-                throw new ConfigurationException("broadcast_address cannot be a wildcard address (" + conf.broadcast_address
-                        + ")!");
+                throw new ConfigurationException("broadcast_address cannot be a wildcard address ("
+                        + conf.broadcast_address + ")!");
         }
 
         /* RPC address to broadcast */
@@ -193,7 +196,8 @@ public class DatabaseDescriptor {
 
             if (broadcastRpcAddress.isAnyLocalAddress())
                 throw new ConfigurationException("If rpc_address is set to a wildcard address (" + broadcastRpcAddress
-                        + "), then " + "you must set broadcast_rpc_address to a value other than " + broadcastRpcAddress);
+                        + "), then " + "you must set broadcast_rpc_address to a value other than "
+                        + broadcastRpcAddress);
         }
 
         /* end point snitch */
@@ -220,7 +224,8 @@ public class DatabaseDescriptor {
         if (conf.num_tokens == null)
             conf.num_tokens = 1;
         else if (conf.num_tokens > MAX_NUM_TOKENS)
-            throw new ConfigurationException(String.format("A maximum number of %d tokens per node is supported", MAX_NUM_TOKENS));
+            throw new ConfigurationException(String.format("A maximum number of %d tokens per node is supported",
+                    MAX_NUM_TOKENS));
 
         try {
             // if key_cache_size_in_mb option was set to "auto" then size of the cache should be "min(5% of Heap (in MB), 100MB)
@@ -231,15 +236,16 @@ public class DatabaseDescriptor {
             if (keyCacheSizeInMB < 0)
                 throw new NumberFormatException(); // to escape duplicating error message
         } catch (NumberFormatException e) {
-            throw new ConfigurationException("key_cache_size_in_mb option was set incorrectly to '" + conf.key_cache_size_in_mb
-                    + "', supported values are <integer> >= 0.");
+            throw new ConfigurationException("key_cache_size_in_mb option was set incorrectly to '"
+                    + conf.key_cache_size_in_mb + "', supported values are <integer> >= 0.");
         }
         if (conf.seed_provider == null) {
             throw new ConfigurationException("seeds configuration is missing; a minimum of one seed is required.");
         }
         try {
             Class<?> seedProviderClass = Class.forName(conf.seed_provider.class_name);
-            seedProvider = (SeedProvider) seedProviderClass.getConstructor(Map.class).newInstance(conf.seed_provider.parameters);
+            seedProvider = (SeedProvider) seedProviderClass.getConstructor(Map.class).newInstance(
+                    conf.seed_provider.parameters);
         }
         // there are about 5 checked exceptions that could be thrown here.
         catch (Exception e) {
@@ -316,7 +322,8 @@ public class DatabaseDescriptor {
     }
 
     public static boolean isReplacing() {
-        if (System.getProperty("lealone.replace_address_first_boot", null) != null && SystemKeyspace.bootstrapComplete()) {
+        if (System.getProperty("lealone.replace_address_first_boot", null) != null
+                && SystemKeyspace.bootstrapComplete()) {
             logger.info("Replace address on first boot requested; this node is already bootstrapped");
             return false;
         }

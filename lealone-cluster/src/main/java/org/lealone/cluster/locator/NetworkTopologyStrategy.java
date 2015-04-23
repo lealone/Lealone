@@ -147,7 +147,8 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         return dcReplicas.get(dc).size() >= Math.min(allEndpoints.get(dc).size(), getReplicationFactor(dc));
     }
 
-    private boolean hasSufficientReplicas(Map<String, Set<InetAddress>> dcReplicas, Multimap<String, InetAddress> allEndpoints) {
+    private boolean hasSufficientReplicas(Map<String, Set<InetAddress>> dcReplicas,
+            Multimap<String, InetAddress> allEndpoints) {
         for (String dc : datacenters.keySet())
             if (!hasSufficientReplicas(dc, dcReplicas, allEndpoints))
                 return false;

@@ -419,7 +419,8 @@ public class DefaultTransactionEngine implements TransactionEngine {
         }
         VersionedValueType vt = new VersionedValueType(valueType);
         MVMap<K, VersionedValue> map;
-        MVMap.Builder<K, VersionedValue> builder = new MVMap.Builder<K, VersionedValue>().keyType(keyType).valueType(vt);
+        MVMap.Builder<K, VersionedValue> builder = new MVMap.Builder<K, VersionedValue>().keyType(keyType)
+                .valueType(vt);
         map = store.openMap(name, builder);
         @SuppressWarnings("unchecked")
         MVMap<Object, VersionedValue> m = (MVMap<Object, VersionedValue>) map;
@@ -444,8 +445,8 @@ public class DefaultTransactionEngine implements TransactionEngine {
             return null;
         }
         VersionedValueType vt = new VersionedValueType(dataType);
-        MVMap.Builder<Object, VersionedValue> mapBuilder = new MVMap.Builder<Object, VersionedValue>().keyType(dataType)
-                .valueType(vt);
+        MVMap.Builder<Object, VersionedValue> mapBuilder = new MVMap.Builder<Object, VersionedValue>()
+                .keyType(dataType).valueType(vt);
         map = store.openMap(mapName, mapBuilder);
         maps.put(mapId, map);
         return map;
@@ -618,8 +619,8 @@ public class DefaultTransactionEngine implements TransactionEngine {
         TransactionStatusTable.commit(t, allLocalTransactionNames);
 
         Session s = t.getSession();
-        TransactionValidator.getInstance().enqueue(s.getDatabase().getShortName(), this, t.getId(), s.getOriginalProperties(),
-                allLocalTransactionNames);
+        TransactionValidator.getInstance().enqueue(s.getDatabase().getShortName(), this, t.getId(),
+                s.getOriginalProperties(), allLocalTransactionNames);
     }
 
     boolean validateTransaction(Session session, int tid, LocalTransaction currentTransaction) {

@@ -27,8 +27,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Map;
 
-
-
 //## Java 1.6 ##
 import java.sql.NClob;
 import java.sql.RowId;

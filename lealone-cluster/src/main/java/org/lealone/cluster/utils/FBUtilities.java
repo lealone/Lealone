@@ -124,8 +124,8 @@ public class FBUtilities {
 
     public static InetAddress getBroadcastAddress() {
         if (broadcastInetAddress == null)
-            broadcastInetAddress = DatabaseDescriptor.getBroadcastAddress() == null ? getLocalAddress() : DatabaseDescriptor
-                    .getBroadcastAddress();
+            broadcastInetAddress = DatabaseDescriptor.getBroadcastAddress() == null ? getLocalAddress()
+                    : DatabaseDescriptor.getBroadcastAddress();
         return broadcastInetAddress;
     }
 
@@ -357,15 +357,17 @@ public class FBUtilities {
         try {
             return cls.newInstance();
         } catch (IllegalAccessException e) {
-            throw new ConfigurationException(String.format("Default constructor for %s class '%s' is inaccessible.", readable,
-                    classname));
+            throw new ConfigurationException(String.format("Default constructor for %s class '%s' is inaccessible.",
+                    readable, classname));
         } catch (InstantiationException e) {
-            throw new ConfigurationException(String.format("Cannot use abstract class '%s' as %s.", classname, readable));
+            throw new ConfigurationException(
+                    String.format("Cannot use abstract class '%s' as %s.", classname, readable));
         } catch (Exception e) {
             // Catch-all because Class.newInstance() "propagates any exception thrown by the nullary constructor, including a checked exception".
             if (e.getCause() instanceof ConfigurationException)
                 throw (ConfigurationException) e.getCause();
-            throw new ConfigurationException(String.format("Error instantiating %s class '%s'.", readable, classname), e);
+            throw new ConfigurationException(String.format("Error instantiating %s class '%s'.", readable, classname),
+                    e);
         }
     }
 
@@ -421,8 +423,9 @@ public class FBUtilities {
                         sb.append(str).append(lineSep);
                     while ((str = err.readLine()) != null)
                         sb.append(str).append(lineSep);
-                    throw new IOException("Exception while executing the command: " + StringUtils.join(pb.command(), " ")
-                            + ", command error Code: " + errCode + ", command output: " + sb.toString());
+                    throw new IOException("Exception while executing the command: "
+                            + StringUtils.join(pb.command(), " ") + ", command error Code: " + errCode
+                            + ", command output: " + sb.toString());
                 }
             }
         } catch (InterruptedException e) {

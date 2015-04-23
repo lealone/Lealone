@@ -82,12 +82,12 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     };
 
     public DebuggableThreadPoolExecutor(String threadPoolName, int priority) {
-        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName,
-                priority));
+        this(1, Integer.MAX_VALUE, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(
+                threadPoolName, priority));
     }
 
-    public DebuggableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> queue,
-            ThreadFactory factory) {
+    public DebuggableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit,
+            BlockingQueue<Runnable> queue, ThreadFactory factory) {
         this(corePoolSize, corePoolSize, keepAliveTime, unit, queue, factory);
     }
 
@@ -112,8 +112,8 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      * @return The new DebuggableThreadPoolExecutor
      */
     public static DebuggableThreadPoolExecutor createCachedThreadpoolWithMaxSize(String threadPoolName) {
-        return new DebuggableThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>(),
-                new NamedThreadFactory(threadPoolName));
+        return new DebuggableThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
+                new SynchronousQueue<Runnable>(), new NamedThreadFactory(threadPoolName));
     }
 
     /**
@@ -138,8 +138,8 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
      * @param unit tht time unit for {@code keepAliveTime}
      * @return the new DebuggableThreadPoolExecutor
      */
-    public static DebuggableThreadPoolExecutor createWithMaximumPoolSize(String threadPoolName, int size, int keepAliveTime,
-            TimeUnit unit) {
+    public static DebuggableThreadPoolExecutor createWithMaximumPoolSize(String threadPoolName, int size,
+            int keepAliveTime, TimeUnit unit) {
         return new DebuggableThreadPoolExecutor(size, Integer.MAX_VALUE, keepAliveTime, unit,
                 new LinkedBlockingQueue<Runnable>(), new NamedThreadFactory(threadPoolName));
     }
@@ -155,8 +155,8 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
 
     @Override
     public void execute(Runnable command, TraceState state) {
-        super.execute(state == null || command instanceof TraceSessionWrapper ? command : new TraceSessionWrapper<Object>(
-                command, state));
+        super.execute(state == null || command instanceof TraceSessionWrapper ? command
+                : new TraceSessionWrapper<Object>(command, state));
     }
 
     @Override
@@ -167,8 +167,8 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     // execute does not call newTaskFor
     @Override
     public void execute(Runnable command) {
-        super.execute(isTracing() && !(command instanceof TraceSessionWrapper) ? new TraceSessionWrapper<Object>(Executors
-                .callable(command, null)) : command);
+        super.execute(isTracing() && !(command instanceof TraceSessionWrapper) ? new TraceSessionWrapper<Object>(
+                Executors.callable(command, null)) : command);
     }
 
     @Override

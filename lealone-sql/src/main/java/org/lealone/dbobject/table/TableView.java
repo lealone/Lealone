@@ -49,7 +49,8 @@ public class TableView extends Table {
     private ViewIndex index;
     private boolean recursive;
     private DbException createException;
-    private final SmallLRUCache<IntArray, ViewIndex> indexCache = SmallLRUCache.newInstance(Constants.VIEW_INDEX_CACHE_SIZE);
+    private final SmallLRUCache<IntArray, ViewIndex> indexCache = SmallLRUCache
+            .newInstance(Constants.VIEW_INDEX_CACHE_SIZE);
     private long lastModificationCheck;
     private long maxDataModificationId;
     private User owner;
@@ -57,8 +58,8 @@ public class TableView extends Table {
     private LocalResult recursiveResult;
     private boolean tableExpression;
 
-    public TableView(Schema schema, int id, String name, String querySQL, ArrayList<Parameter> params, String[] columnNames,
-            Session session, boolean recursive) {
+    public TableView(Schema schema, int id, String name, String querySQL, ArrayList<Parameter> params,
+            String[] columnNames, Session session, boolean recursive) {
         super(schema, id, name, false, true);
         init(querySQL, params, columnNames, session, recursive);
     }

@@ -74,32 +74,35 @@ import org.lealone.value.ValueUuid;
  * This class implements most built-in functions of this database.
  */
 public class Function extends Expression implements FunctionCall {
-    public static final int ABS = 0, ACOS = 1, ASIN = 2, ATAN = 3, ATAN2 = 4, BITAND = 5, BITOR = 6, BITXOR = 7, CEILING = 8,
-            COS = 9, COT = 10, DEGREES = 11, EXP = 12, FLOOR = 13, LOG = 14, LOG10 = 15, MOD = 16, PI = 17, POWER = 18,
-            RADIANS = 19, RAND = 20, ROUND = 21, ROUNDMAGIC = 22, SIGN = 23, SIN = 24, SQRT = 25, TAN = 26, TRUNCATE = 27,
-            SECURE_RAND = 28, HASH = 29, ENCRYPT = 30, DECRYPT = 31, COMPRESS = 32, EXPAND = 33, ZERO = 34, RANDOM_UUID = 35,
-            COSH = 36, SINH = 37, TANH = 38, LN = 39;
+    public static final int ABS = 0, ACOS = 1, ASIN = 2, ATAN = 3, ATAN2 = 4, BITAND = 5, BITOR = 6, BITXOR = 7,
+            CEILING = 8, COS = 9, COT = 10, DEGREES = 11, EXP = 12, FLOOR = 13, LOG = 14, LOG10 = 15, MOD = 16,
+            PI = 17, POWER = 18, RADIANS = 19, RAND = 20, ROUND = 21, ROUNDMAGIC = 22, SIGN = 23, SIN = 24, SQRT = 25,
+            TAN = 26, TRUNCATE = 27, SECURE_RAND = 28, HASH = 29, ENCRYPT = 30, DECRYPT = 31, COMPRESS = 32,
+            EXPAND = 33, ZERO = 34, RANDOM_UUID = 35, COSH = 36, SINH = 37, TANH = 38, LN = 39;
 
     public static final int ASCII = 50, BIT_LENGTH = 51, CHAR = 52, CHAR_LENGTH = 53, CONCAT = 54, DIFFERENCE = 55,
             HEXTORAW = 56, INSERT = 57, INSTR = 58, LCASE = 59, LEFT = 60, LENGTH = 61, LOCATE = 62, LTRIM = 63,
-            OCTET_LENGTH = 64, RAWTOHEX = 65, REPEAT = 66, REPLACE = 67, RIGHT = 68, RTRIM = 69, SOUNDEX = 70, SPACE = 71,
-            SUBSTR = 72, SUBSTRING = 73, UCASE = 74, LOWER = 75, UPPER = 76, POSITION = 77, TRIM = 78, STRINGENCODE = 79,
-            STRINGDECODE = 80, STRINGTOUTF8 = 81, UTF8TOSTRING = 82, XMLATTR = 83, XMLNODE = 84, XMLCOMMENT = 85, XMLCDATA = 86,
-            XMLSTARTDOC = 87, XMLTEXT = 88, REGEXP_REPLACE = 89, RPAD = 90, LPAD = 91, CONCAT_WS = 92;
+            OCTET_LENGTH = 64, RAWTOHEX = 65, REPEAT = 66, REPLACE = 67, RIGHT = 68, RTRIM = 69, SOUNDEX = 70,
+            SPACE = 71, SUBSTR = 72, SUBSTRING = 73, UCASE = 74, LOWER = 75, UPPER = 76, POSITION = 77, TRIM = 78,
+            STRINGENCODE = 79, STRINGDECODE = 80, STRINGTOUTF8 = 81, UTF8TOSTRING = 82, XMLATTR = 83, XMLNODE = 84,
+            XMLCOMMENT = 85, XMLCDATA = 86, XMLSTARTDOC = 87, XMLTEXT = 88, REGEXP_REPLACE = 89, RPAD = 90, LPAD = 91,
+            CONCAT_WS = 92;
 
-    public static final int CURDATE = 100, CURTIME = 101, DATE_ADD = 102, DATE_DIFF = 103, DAY_NAME = 104, DAY_OF_MONTH = 105,
-            DAY_OF_WEEK = 106, DAY_OF_YEAR = 107, HOUR = 108, MINUTE = 109, MONTH = 110, MONTH_NAME = 111, NOW = 112,
-            QUARTER = 113, SECOND = 114, WEEK = 115, YEAR = 116, CURRENT_DATE = 117, CURRENT_TIME = 118, CURRENT_TIMESTAMP = 119,
-            EXTRACT = 120, FORMATDATETIME = 121, PARSEDATETIME = 122, ISO_YEAR = 123, ISO_WEEK = 124, ISO_DAY_OF_WEEK = 125;
+    public static final int CURDATE = 100, CURTIME = 101, DATE_ADD = 102, DATE_DIFF = 103, DAY_NAME = 104,
+            DAY_OF_MONTH = 105, DAY_OF_WEEK = 106, DAY_OF_YEAR = 107, HOUR = 108, MINUTE = 109, MONTH = 110,
+            MONTH_NAME = 111, NOW = 112, QUARTER = 113, SECOND = 114, WEEK = 115, YEAR = 116, CURRENT_DATE = 117,
+            CURRENT_TIME = 118, CURRENT_TIMESTAMP = 119, EXTRACT = 120, FORMATDATETIME = 121, PARSEDATETIME = 122,
+            ISO_YEAR = 123, ISO_WEEK = 124, ISO_DAY_OF_WEEK = 125;
 
     public static final int DATABASE = 150, USER = 151, CURRENT_USER = 152, IDENTITY = 153, SCOPE_IDENTITY = 154,
             AUTOCOMMIT = 155, READONLY = 156, DATABASE_PATH = 157, LOCK_TIMEOUT = 158, DISK_SPACE_USED = 159;
 
-    public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204, NULLIF = 205, CASE = 206,
-            NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210, CSVWRITE = 211, MEMORY_FREE = 212, MEMORY_USED = 213,
-            LOCK_MODE = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217, LINK_SCHEMA = 218, GREATEST = 219, LEAST = 220,
-            CANCEL_SESSION = 221, SET = 222, TABLE = 223, TABLE_DISTINCT = 224, FILE_READ = 225, TRANSACTION_ID = 226,
-            TRUNCATE_VALUE = 227, NVL2 = 228, DECODE = 229, ARRAY_CONTAINS = 230;
+    public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204, NULLIF = 205,
+            CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210, CSVWRITE = 211,
+            MEMORY_FREE = 212, MEMORY_USED = 213, LOCK_MODE = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217,
+            LINK_SCHEMA = 218, GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, TABLE = 223,
+            TABLE_DISTINCT = 224, FILE_READ = 225, TRANSACTION_ID = 226, TRUNCATE_VALUE = 227, NVL2 = 228,
+            DECODE = 229, ARRAY_CONTAINS = 230;
 
     /**
      * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
@@ -376,8 +379,8 @@ public class Function extends Expression implements FunctionCall {
         }
     }
 
-    private static void addFunction(String name, int type, int parameterCount, int dataType, boolean nullIfParameterIsNull,
-            boolean deterministic, boolean fast) {
+    private static void addFunction(String name, int type, int parameterCount, int dataType,
+            boolean nullIfParameterIsNull, boolean deterministic, boolean fast) {
         FunctionInfo info = new FunctionInfo();
         info.name = name;
         info.type = type;
@@ -1142,10 +1145,12 @@ public class Function extends Expression implements FunctionCall {
             break;
         }
         case RPAD:
-            result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(), true));
+            result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(),
+                    true));
             break;
         case LPAD:
-            result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(), false));
+            result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(),
+                    false));
             break;
         case LEALONE_VERSION:
             result = ValueString.get(Constants.getVersion());
@@ -1444,10 +1449,12 @@ public class Function extends Expression implements FunctionCall {
         TimeZone zone = calendar.getTimeZone();
         calendar.setTime(d1);
         t1 += zone.getOffset(calendar.get(Calendar.ERA), calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.DAY_OF_WEEK), calendar.get(Calendar.MILLISECOND));
+                calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.DAY_OF_WEEK),
+                calendar.get(Calendar.MILLISECOND));
         calendar.setTime(d2);
         t2 += zone.getOffset(calendar.get(Calendar.ERA), calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.DAY_OF_WEEK), calendar.get(Calendar.MILLISECOND));
+                calendar.get(Calendar.DAY_OF_MONTH), calendar.get(Calendar.DAY_OF_WEEK),
+                calendar.get(Calendar.MILLISECOND));
         switch (field) {
         case Calendar.MILLISECOND:
             return t2 - t1;
@@ -2156,7 +2163,8 @@ public class Function extends Expression implements FunctionCall {
         return (ValueResultSet) getValueWithArgs(session, argList);
     }
 
-    private static void setCsvDelimiterEscape(Csv csv, String fieldSeparator, String fieldDelimiter, String escapeCharacter) {
+    private static void setCsvDelimiterEscape(Csv csv, String fieldSeparator, String fieldDelimiter,
+            String escapeCharacter) {
         if (fieldSeparator != null) {
             csv.setFieldSeparatorWrite(fieldSeparator);
             if (fieldSeparator.length() > 0) {

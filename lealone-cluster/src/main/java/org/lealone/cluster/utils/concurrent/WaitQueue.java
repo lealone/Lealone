@@ -73,8 +73,8 @@ public final class WaitQueue {
     private static final int SIGNALLED = 1;
     private static final int NOT_SET = 0;
 
-    private static final AtomicIntegerFieldUpdater<RegisteredSignal> signalledUpdater = AtomicIntegerFieldUpdater.newUpdater(
-            RegisteredSignal.class, "state");
+    private static final AtomicIntegerFieldUpdater<RegisteredSignal> signalledUpdater = AtomicIntegerFieldUpdater
+            .newUpdater(RegisteredSignal.class, "state");
 
     // the waiting signals
     private final ConcurrentLinkedQueue<RegisteredSignal> queue = new ConcurrentLinkedQueue<>();

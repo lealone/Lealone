@@ -77,7 +77,8 @@ class HeartBeatState {
 
         @Override
         public long serializedSize(HeartBeatState state, int version) {
-            return TypeSizes.NATIVE.sizeof(state.getGeneration()) + TypeSizes.NATIVE.sizeof(state.getHeartBeatVersion());
+            return TypeSizes.NATIVE.sizeof(state.getGeneration())
+                    + TypeSizes.NATIVE.sizeof(state.getHeartBeatVersion());
         }
     }
 }

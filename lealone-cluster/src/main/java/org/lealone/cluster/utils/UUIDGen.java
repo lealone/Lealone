@@ -253,7 +253,8 @@ public class UUIDGen {
          */
         Collection<InetAddress> localAddresses = FBUtilities.getAllLocalAddresses();
         if (localAddresses.isEmpty())
-            throw new RuntimeException("Cannot generate the node component of the UUID because cannot retrieve any IP addresses.");
+            throw new RuntimeException(
+                    "Cannot generate the node component of the UUID because cannot retrieve any IP addresses.");
 
         // ideally, we'd use the MAC address, but java doesn't expose that.
         byte[] hash = hash(localAddresses);

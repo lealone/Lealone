@@ -303,7 +303,8 @@ public class TransactionMap<K, V> {
         }
 
         if (tx % 2 == 1) {
-            boolean isValid = transaction.transactionEngine.validateTransaction(transaction.getSession(), tx, transaction);
+            boolean isValid = transaction.transactionEngine.validateTransaction(transaction.getSession(), tx,
+                    transaction);
             if (isValid) {
                 transaction.transactionEngine.commitAfterValidate(tx);
                 return trySet(key, value, onlyIfUnchanged);
@@ -406,7 +407,8 @@ public class TransactionMap<K, V> {
             }
 
             if (tx % 2 == 1) {
-                boolean isValid = transaction.transactionEngine.validateTransaction(transaction.getSession(), tx, transaction);
+                boolean isValid = transaction.transactionEngine.validateTransaction(transaction.getSession(), tx,
+                        transaction);
                 if (isValid) {
                     transaction.transactionEngine.commitAfterValidate(tx);
                     return getValue(key, maxLog, map.get(key));

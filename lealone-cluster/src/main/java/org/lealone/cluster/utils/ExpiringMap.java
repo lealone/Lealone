@@ -53,7 +53,8 @@ public class ExpiringMap<K, V> {
     }
 
     // if we use more ExpiringMaps we may want to add multiple threads to this executor
-    private static final ScheduledExecutorService service = new DebuggableScheduledThreadPoolExecutor("EXPIRING-MAP-REAPER");
+    private static final ScheduledExecutorService service = new DebuggableScheduledThreadPoolExecutor(
+            "EXPIRING-MAP-REAPER");
 
     private final ConcurrentMap<K, CacheableObject<V>> cache = new ConcurrentHashMap<K, CacheableObject<V>>();
     private final long defaultExpiration;

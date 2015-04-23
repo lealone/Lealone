@@ -689,7 +689,8 @@ public class Aggregate extends Expression {
         case AVG:
             if (isDistributed) {
                 if (distinct) {
-                    return "COUNT(DISTINCT " + on.getSQL(isDistributed) + "), SUM(DISTINCT " + on.getSQL(isDistributed) + ")";
+                    return "COUNT(DISTINCT " + on.getSQL(isDistributed) + "), SUM(DISTINCT " + on.getSQL(isDistributed)
+                            + ")";
                 } else {
                     return "COUNT(" + on.getSQL(isDistributed) + "), SUM(" + on.getSQL(isDistributed) + ")";
                 }
@@ -734,7 +735,8 @@ public class Aggregate extends Expression {
     private String getSQL_STDDEV_VAR() {
         String onSQL = on.getSQL(true);
         if (distinct) {
-            return "COUNT(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + " * " + onSQL + ")";
+            return "COUNT(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + "), SUM(DISTINCT " + onSQL + " * " + onSQL
+                    + ")";
         } else {
             return "COUNT(" + onSQL + "), SUM(" + onSQL + "), SUM(" + onSQL + " * " + onSQL + ")";
         }

@@ -26,8 +26,8 @@ import org.slf4j.LoggerFactory;
 
 public class ResourceWatcher {
     public static void watch(String resource, Runnable callback, int period) {
-        ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(new WatchedResource(resource, callback), period, period,
-                TimeUnit.MILLISECONDS);
+        ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(new WatchedResource(resource, callback), period,
+                period, TimeUnit.MILLISECONDS);
     }
 
     public static class WatchedResource implements Runnable {

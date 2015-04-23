@@ -79,6 +79,7 @@ public class CreateTableData {
     public boolean isHidden;
 
     public boolean isMemoryTable() {
-        return !session.getDatabase().isPersistent() || isHidden || globalTemporary || temporary || !persistData || id <= 0;
+        return !session.getDatabase().isPersistent() || isHidden || globalTemporary || temporary || !persistData
+                || id <= 0;
     }
 }

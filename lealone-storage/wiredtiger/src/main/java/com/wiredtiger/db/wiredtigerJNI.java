@@ -27,9 +27,11 @@ public class wiredtigerJNI {
 
     public final static native String Cursor_value_format_get(long jarg1, Cursor jarg1_);
 
-    public final static native int Cursor_next_wrap(long jarg1, Cursor jarg1_) throws com.wiredtiger.db.WiredTigerException;
+    public final static native int Cursor_next_wrap(long jarg1, Cursor jarg1_)
+            throws com.wiredtiger.db.WiredTigerException;
 
-    public final static native int Cursor_prev_wrap(long jarg1, Cursor jarg1_) throws com.wiredtiger.db.WiredTigerException;
+    public final static native int Cursor_prev_wrap(long jarg1, Cursor jarg1_)
+            throws com.wiredtiger.db.WiredTigerException;
 
     public final static native int Cursor_reset(long jarg1, Cursor jarg1_) throws com.wiredtiger.db.WiredTigerException;
 
@@ -64,7 +66,8 @@ public class wiredtigerJNI {
 
     public final static native String AsyncOp_value_format_get(long jarg1, AsyncOp jarg1_);
 
-    public final static native int AsyncOp_compact(long jarg1, AsyncOp jarg1_) throws com.wiredtiger.db.WiredTigerException;
+    public final static native int AsyncOp_compact(long jarg1, AsyncOp jarg1_)
+            throws com.wiredtiger.db.WiredTigerException;
 
     public final static native int AsyncOp_getType(long jarg1, AsyncOp jarg1_);
 
@@ -82,7 +85,8 @@ public class wiredtigerJNI {
 
     public final static native int AsyncOp_java_init(long jarg1, AsyncOp jarg1_, Object jarg2);
 
-    public final static native int AsyncOp_getId(long jarg1, AsyncOp jarg1_) throws com.wiredtiger.db.WiredTigerException;
+    public final static native int AsyncOp_getId(long jarg1, AsyncOp jarg1_)
+            throws com.wiredtiger.db.WiredTigerException;
 
     public final static native long Session_connection_get(long jarg1, Session jarg1_);
 
@@ -113,8 +117,8 @@ public class wiredtigerJNI {
     public final static native int Session_salvage(long jarg1, Session jarg1_, String jarg3, String jarg4)
             throws com.wiredtiger.db.WiredTigerException;
 
-    public final static native int Session_truncate(long jarg1, Session jarg1_, String jarg3, long jarg4, Cursor jarg4_,
-            long jarg5, Cursor jarg5_, String jarg6) throws com.wiredtiger.db.WiredTigerException;
+    public final static native int Session_truncate(long jarg1, Session jarg1_, String jarg3, long jarg4,
+            Cursor jarg4_, long jarg5, Cursor jarg5_, String jarg6) throws com.wiredtiger.db.WiredTigerException;
 
     public final static native int Session_upgrade(long jarg1, Session jarg1_, String jarg3, String jarg4)
             throws com.wiredtiger.db.WiredTigerException;
@@ -136,8 +140,8 @@ public class wiredtigerJNI {
 
     public final static native int Session_java_init(long jarg1, Session jarg1_, Object jarg2);
 
-    public final static native long Session_open_cursor(long jarg1, Session jarg1_, String jarg3, long jarg4, Cursor jarg4_,
-            String jarg5) throws com.wiredtiger.db.WiredTigerException;
+    public final static native long Session_open_cursor(long jarg1, Session jarg1_, String jarg3, long jarg4,
+            Cursor jarg4_, String jarg5) throws com.wiredtiger.db.WiredTigerException;
 
     public final static native int Session_transaction_pinned_range(long jarg1, Session jarg1_)
             throws com.wiredtiger.db.WiredTigerException;
@@ -153,8 +157,8 @@ public class wiredtigerJNI {
 
     public final static native String Connection_get_home(long jarg1, Connection jarg1_);
 
-    public final static native int Connection_configure_method(long jarg1, Connection jarg1_, String jarg3, String jarg4,
-            String jarg5, String jarg6, String jarg7) throws com.wiredtiger.db.WiredTigerException;
+    public final static native int Connection_configure_method(long jarg1, Connection jarg1_, String jarg3,
+            String jarg4, String jarg5, String jarg6, String jarg7) throws com.wiredtiger.db.WiredTigerException;
 
     public final static native int Connection_is_new(long jarg1, Connection jarg1_);
 

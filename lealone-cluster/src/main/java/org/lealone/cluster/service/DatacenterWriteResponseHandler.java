@@ -29,8 +29,9 @@ import org.lealone.cluster.net.MessageIn;
  * This class blocks for a quorum of responses _in the local datacenter only_ (CL.LOCAL_QUORUM).
  */
 public class DatacenterWriteResponseHandler extends WriteResponseHandler {
-    public DatacenterWriteResponseHandler(Collection<InetAddress> naturalEndpoints, Collection<InetAddress> pendingEndpoints,
-            ConsistencyLevel consistencyLevel, Keyspace keyspace, Runnable callback, WriteType writeType) {
+    public DatacenterWriteResponseHandler(Collection<InetAddress> naturalEndpoints,
+            Collection<InetAddress> pendingEndpoints, ConsistencyLevel consistencyLevel, Keyspace keyspace,
+            Runnable callback, WriteType writeType) {
         super(naturalEndpoints, pendingEndpoints, consistencyLevel, keyspace, callback, writeType);
         assert consistencyLevel.isDatacenterLocal();
     }

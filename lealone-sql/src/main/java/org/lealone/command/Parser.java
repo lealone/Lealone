@@ -883,12 +883,12 @@ public class Parser {
                 schemaName = readUniqueIdentifier();
             }
             buff.append("C.COLUMN_NAME FIELD, " + "C.TYPE_NAME || '(' || C.NUMERIC_PRECISION || ')' TYPE, "
-                    + "C.IS_NULLABLE \"NULL\", " + "CASE (SELECT MAX(I.INDEX_TYPE_NAME) FROM " + "INFORMATION_SCHEMA.INDEXES I "
-                    + "WHERE I.TABLE_SCHEMA=C.TABLE_SCHEMA " + "AND I.TABLE_NAME=C.TABLE_NAME "
-                    + "AND I.COLUMN_NAME=C.COLUMN_NAME)" + "WHEN 'PRIMARY KEY' THEN 'PRI' "
-                    + "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, " + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT "
-                    + "FROM INFORMATION_SCHEMA.COLUMNS C " + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=? "
-                    + "ORDER BY C.ORDINAL_POSITION");
+                    + "C.IS_NULLABLE \"NULL\", " + "CASE (SELECT MAX(I.INDEX_TYPE_NAME) FROM "
+                    + "INFORMATION_SCHEMA.INDEXES I " + "WHERE I.TABLE_SCHEMA=C.TABLE_SCHEMA "
+                    + "AND I.TABLE_NAME=C.TABLE_NAME " + "AND I.COLUMN_NAME=C.COLUMN_NAME)"
+                    + "WHEN 'PRIMARY KEY' THEN 'PRI' " + "WHEN 'UNIQUE INDEX' THEN 'UNI' ELSE '' END KEY, "
+                    + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT " + "FROM INFORMATION_SCHEMA.COLUMNS C "
+                    + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=? " + "ORDER BY C.ORDINAL_POSITION");
             paramValues.add(ValueString.get(schemaName));
         } else if (readIf("DATABASES") || readIf("SCHEMAS")) {
             // for MySQL compatibility
@@ -2584,7 +2584,8 @@ public class Parser {
                     // convert Integer.MIN_VALUE to type 'int'
                     // (Integer.MAX_VALUE+1 is of type 'long')
                     r = ValueExpression.get(ValueInt.get(Integer.MIN_VALUE));
-                } else if (r.getType() == Value.DECIMAL && r.getValue(session).getBigDecimal().compareTo(ValueLong.MIN_BD) == 0) {
+                } else if (r.getType() == Value.DECIMAL
+                        && r.getValue(session).getBigDecimal().compareTo(ValueLong.MIN_BD) == 0) {
                     // convert Long.MIN_VALUE to type 'long'
                     // (Long.MAX_VALUE+1 is of type 'decimal')
                     r = ValueExpression.get(ValueLong.get(Long.MIN_VALUE));
@@ -3729,7 +3730,8 @@ public class Parser {
                 throw DbException.get(ErrorCode.UNKNOWN_DATA_TYPE_1, currentToken);
             }
         }
-        if (database.getIgnoreCase() && dataType.type == Value.STRING && !equalsToken("VARCHAR_CASESENSITIVE", original)) {
+        if (database.getIgnoreCase() && dataType.type == Value.STRING
+                && !equalsToken("VARCHAR_CASESENSITIVE", original)) {
             original = "VARCHAR_IGNORECASE";
             dataType = DataType.getTypeByName(original);
         }
@@ -3793,7 +3795,8 @@ public class Parser {
         readIf("UNSIGNED");
         int type = dataType.type;
         if (scale > precision) {
-            throw DbException.get(ErrorCode.INVALID_VALUE_2, Integer.toString(scale), "scale (precision = " + precision + ")");
+            throw DbException.get(ErrorCode.INVALID_VALUE_2, Integer.toString(scale), "scale (precision = " + precision
+                    + ")");
         }
         Column column = new Column(columnName, type, precision, scale, displaySize);
         if (templateColumn != null) {
@@ -4263,7 +4266,8 @@ public class Parser {
     private CreateFunctionAlias parseCreateFunctionAlias(boolean force) {
         boolean ifNotExists = readIfNoExists();
         String aliasName = readIdentifierWithSchema();
-        if (isKeyword(aliasName) || Function.getFunction(database, aliasName) != null || getAggregateType(aliasName) >= 0) {
+        if (isKeyword(aliasName) || Function.getFunction(database, aliasName) != null
+                || getAggregateType(aliasName) >= 0) {
             throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, aliasName);
         }
         CreateFunctionAlias command = new CreateFunctionAlias(session, getSchema());
@@ -5324,7 +5328,8 @@ public class Parser {
         } while (readIfMore());
     }
 
-    protected CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes, boolean dynamicTable) {
+    protected CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes,
+            boolean dynamicTable) {
         boolean ifNotExists = readIfNoExists();
         String tableName = readIdentifierWithSchema();
         if (temp && globalTemp && equalsToken("SESSION", schemaName)) {

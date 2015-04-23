@@ -59,7 +59,8 @@ public class OutboundTcpConnectionPool {
      */
     OutboundTcpConnection getConnection(MessageOut<?> msg) {
         Stage stage = msg.getStage();
-        return stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP ? ackCon : cmdCon;
+        return stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP ? ackCon
+                : cmdCon;
     }
 
     void reset() {
@@ -117,7 +118,8 @@ public class OutboundTcpConnectionPool {
                 return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint,
                         DatabaseDescriptor.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
         } else {
-            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.getStoragePort())).socket();
+            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.getStoragePort()))
+                    .socket();
             if (Config.getOutboundBindAny() && !socket.isBound())
                 socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(), 0));
             return socket;

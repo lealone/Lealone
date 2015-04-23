@@ -36,7 +36,7 @@ public class EndpointState {
     public final static IVersionedSerializer<EndpointState> serializer = new EndpointStateSerializer();
 
     private volatile HeartBeatState hbState;
-    final Map<ApplicationState, VersionedValue> applicationState = new NonBlockingHashMap<ApplicationState, VersionedValue>();
+    final Map<ApplicationState, VersionedValue> applicationState = new NonBlockingHashMap<>();
 
     /* fields below do not get serialized */
     private volatile long updateTimestamp;

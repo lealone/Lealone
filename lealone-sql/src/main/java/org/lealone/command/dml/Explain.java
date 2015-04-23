@@ -81,7 +81,8 @@ public class Explain extends Prepared {
                         for (Entry<String, Integer> e : statistics.entrySet()) {
                             int value = e.getValue();
                             int percent = (int) (100L * value / total);
-                            buff.append(e.getKey()).append(": ").append(value).append(" (").append(percent).append("%)\n");
+                            buff.append(e.getKey()).append(": ").append(value).append(" (").append(percent)
+                                    .append("%)\n");
                         }
                         plan += "\n/*\n" + buff.toString() + "*/";
                     }

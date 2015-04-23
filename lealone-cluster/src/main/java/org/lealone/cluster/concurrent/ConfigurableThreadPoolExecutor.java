@@ -22,8 +22,8 @@ import java.util.concurrent.TimeUnit;
 
 public class ConfigurableThreadPoolExecutor extends MetricsEnabledThreadPoolExecutor {
 
-    public ConfigurableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue,
-            NamedThreadFactory threadFactory, String jmxPath) {
+    public ConfigurableThreadPoolExecutor(int corePoolSize, long keepAliveTime, TimeUnit unit,
+            BlockingQueue<Runnable> workQueue, NamedThreadFactory threadFactory, String jmxPath) {
         super(corePoolSize, keepAliveTime, unit, workQueue, threadFactory, jmxPath);
     }
 
