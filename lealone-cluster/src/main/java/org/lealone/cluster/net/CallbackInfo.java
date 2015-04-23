@@ -51,10 +51,6 @@ public class CallbackInfo {
         this.failureCallback = failureCallback;
     }
 
-    public boolean shouldHint() {
-        return false;
-    }
-
     public boolean isFailureCallback() {
         return failureCallback;
     }

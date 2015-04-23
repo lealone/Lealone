@@ -193,14 +193,9 @@ public interface StorageServiceMBean extends NotificationEmitter {
 
     public boolean isJoined();
 
-    public void deliverHints(String host) throws UnknownHostException;
-
     /** Returns the name of the cluster */
     public String getClusterName();
 
     /** Returns the cluster partitioner */
     public String getPartitionerName();
-
-    /** Sets the hinted handoff throttle in kb per second, per delivery thread. */
-    public void setHintedHandoffThrottleInKB(int throttleInKB);
 }

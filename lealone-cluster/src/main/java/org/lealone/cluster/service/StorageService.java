@@ -273,8 +273,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             Gossiper.instance.start(SystemKeyspace.incrementAndGetGeneration(), appStates); // needed for node-ring gathering.
             // gossip snitch infos (local DC and rack)
             gossipSnitchInfo();
-            // gossip Schema.emptyVersion forcing immediate check for schema updates (see MigrationManager#maybeScheduleSchemaPull)
-            //Schema.instance.updateVersionAndAnnounce(); // Ensure we know our own actual Schema UUID in preparation for updates
 
             if (!MessagingService.instance().isListening())
                 MessagingService.instance().listen(FBUtilities.getLocalAddress());
@@ -378,12 +376,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             //                }
             //                Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
             //            }
-            // if our schema hasn't matched yet, keep sleeping until it does
-            // (post lealone-1391 we don't expect this to be necessary very often, but it doesn't hurt to be careful)
-            //            while (!MigrationManager.isReadyForBootstrap()) {
-            //                setMode(Mode.JOINING, "waiting for schema information to complete", true);
-            //                Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
-            //            }
             setMode(Mode.JOINING, "schema complete, ready to bootstrap", true);
             setMode(Mode.JOINING, "waiting for pending range calculation", true);
             PendingRangeCalculatorService.instance.blockUntilFinished();
@@ -462,10 +454,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
         }
 
-        // if we don't have system_traces keyspace at this point, then create it manually
-        //        if (Schema.instance.getKSMetaData(TraceKeyspace.NAME) == null)
-        //            MigrationManager.announceNewKeyspace(TraceKeyspace.definition(), 0, false);
-
         if (!isSurveyMode) {
             // start participating in the ring.
             SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.COMPLETED);
@@ -475,8 +463,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 for (InetAddress existing : current)
                     Gossiper.instance.replacedEndpoint(existing);
             assert tokenMetadata.sortedTokens().size() > 0;
-
-            //Auth.setup();
         } else {
             logger.info("Startup complete, but write survey mode is active, not becoming an active ring member. "
                     + "Use JMX (StorageService->joinRing()) to finalize ring joining.");
@@ -880,7 +866,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 break;
             case SCHEMA:
                 SystemKeyspace.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value));
-                //MigrationManager.instance.scheduleSchemaPull(endpoint, epState);
                 break;
             case HOST_ID:
                 SystemKeyspace.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value));
@@ -1191,7 +1176,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private void excise(Collection<Token> tokens, InetAddress endpoint) {
         logger.info("Removing tokens {} for {}", tokens, endpoint);
-        //HintedHandOffManager.instance.deleteHintsForEndpoint(endpoint);
         removeEndpoint(endpoint);
         tokenMetadata.removeEndpoint(endpoint);
         tokenMetadata.removeBootstrapTokens(tokens);
@@ -1281,18 +1265,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
             onChange(endpoint, entry.getKey(), entry.getValue());
         }
-        //MigrationManager.instance.scheduleSchemaPull(endpoint, epState);
     }
 
     @Override
     public void onAlive(InetAddress endpoint, EndpointState state) {
-        //        MigrationManager.instance.scheduleSchemaPull(endpoint, state);
-        //
-        //        if (tokenMetadata.isMember(endpoint)) {
-        //            HintedHandOffManager.instance.scheduleHintDelivery(endpoint, true);
-        //            for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
-        //                subscriber.onUp(endpoint);
-        //        }
+        if (tokenMetadata.isMember(endpoint)) {
+            for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
+                subscriber.onUp(endpoint);
+        }
     }
 
     @Override
@@ -1344,11 +1324,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // gossiper doesn't see its own updates, so we need to special-case the local node
         map.put(FBUtilities.getBroadcastAddress().getHostAddress(), getLoadString());
         return map;
-    }
-
-    @Override
-    public final void deliverHints(String host) throws UnknownHostException {
-        // HintedHandOffManager.instance.scheduleHintDelivery(host);
     }
 
     public Collection<Token> getLocalTokens() {
@@ -1781,11 +1756,5 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     @Override
     public String getPartitionerName() {
         return DatabaseDescriptor.getPartitionerName();
-    }
-
-    @Override
-    public void setHintedHandoffThrottleInKB(int throttleInKB) {
-        DatabaseDescriptor.setHintedHandoffThrottleInKB(throttleInKB);
-        logger.info(String.format("Updated hinted_handoff_throttle_in_kb to %d", throttleInKB));
     }
 }

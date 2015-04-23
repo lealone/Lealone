@@ -184,7 +184,7 @@ public final class MessagingService implements MessagingServiceMBean {
     /* Lookup table for registering message handlers based on the verb. */
     private final Map<Verb, IVerbHandler> verbHandlers;
 
-    private final ConcurrentMap<InetAddress, OutboundTcpConnectionPool> connectionManagers = new NonBlockingHashMap<InetAddress, OutboundTcpConnectionPool>();
+    private final ConcurrentMap<InetAddress, OutboundTcpConnectionPool> connectionManagers = new NonBlockingHashMap<>();
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
     private static final int LOG_DROPPED_INTERVAL_IN_MS = 5000;
@@ -235,7 +235,8 @@ public final class MessagingService implements MessagingServiceMBean {
         ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(logDropped, LOG_DROPPED_INTERVAL_IN_MS,
                 LOG_DROPPED_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
 
-        Function<Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>>, ?> timeoutReporter = new Function<Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>>, Object>() {
+        Function<Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>>, ?> timeoutReporter = //
+        new Function<Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>>, Object>() {
             @Override
             public Object apply(Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>> pair) {
                 final CallbackInfo expiredCallbackInfo = pair.right.value;
@@ -251,13 +252,6 @@ public final class MessagingService implements MessagingServiceMBean {
                         }
                     });
                 }
-
-                //                if (expiredCallbackInfo.shouldHint()) {
-                //                    Mutation mutation = (Mutation) ((WriteCallbackInfo) expiredCallbackInfo).sentMessage.payload;
-                //
-                //                    return StorageProxy.submitHint(mutation, expiredCallbackInfo.target, null);
-                //                }
-
                 return null;
             }
         };
@@ -628,21 +622,16 @@ public final class MessagingService implements MessagingServiceMBean {
     }
 
     private void logDroppedMessages() {
-        //boolean logTpstats = false;
         for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet()) {
             int dropped = (int) entry.getValue().dropped.count();
             Verb verb = entry.getKey();
             int recent = dropped - lastDroppedInternal.get(verb);
             if (recent > 0) {
-                //logTpstats = true;
                 logger.info("{} {} messages dropped in last {}ms", new Object[] { recent, verb,
                         LOG_DROPPED_INTERVAL_IN_MS });
                 lastDroppedInternal.put(verb, dropped);
             }
         }
-
-        //        if (logTpstats)
-        //            StatusLogger.log();
     }
 
     private static class SocketThread extends Thread {

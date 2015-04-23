@@ -17,18 +17,8 @@
  */
 package org.lealone.cluster.config;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.List;
-import java.util.Set;
-
 import org.lealone.cluster.config.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
-import org.lealone.cluster.exceptions.ConfigurationException;
-import org.supercsv.io.CsvListReader;
-import org.supercsv.prefs.CsvPreference;
-
-import com.google.common.collect.Sets;
 
 /**
  * A class that contains configuration properties for the lealone node it runs within.
@@ -38,10 +28,6 @@ public class Config {
     public String partitioner;
 
     public Boolean auto_bootstrap = true;
-    public volatile boolean hinted_handoff_enabled_global = true;
-    public String hinted_handoff_enabled;
-    public Set<String> hinted_handoff_enabled_by_dc = Sets.newConcurrentHashSet();
-    public volatile Integer max_hint_window_in_ms = 3600 * 1000; // one hour
 
     public SeedProviderDef seed_provider;
 
@@ -76,20 +62,9 @@ public class Config {
 
     public InternodeCompression internode_compression = InternodeCompression.none;
 
-    public int hinted_handoff_throttle_in_kb = 1024;
-    public int batchlog_replay_throttle_in_kb = 1024;
-    public int max_hints_delivery_threads = 1;
-
     public boolean inter_dc_tcp_nodelay = true;
 
     private static boolean outboundBindAny = false;
-
-    private static final CsvPreference STANDARD_SURROUNDING_SPACES_NEED_QUOTES = new CsvPreference.Builder(
-            CsvPreference.STANDARD_PREFERENCE).surroundingSpacesNeedQuotes(true).build();
-
-    // TTL for different types of trace events.
-    public Integer tracetype_query_ttl = 60 * 60 * 24;
-    public Integer tracetype_repair_ttl = 60 * 60 * 24 * 7;
 
     //TCP Server
     public String base_dir;
@@ -109,30 +84,6 @@ public class Config {
 
     public static void setOutboundBindAny(boolean value) {
         outboundBindAny = value;
-    }
-
-    public void configHintedHandoff() throws ConfigurationException {
-        if (hinted_handoff_enabled != null && !hinted_handoff_enabled.isEmpty()) {
-            if (hinted_handoff_enabled.equalsIgnoreCase("true")) {
-                hinted_handoff_enabled_global = true;
-            } else if (hinted_handoff_enabled.equalsIgnoreCase("false")) {
-                hinted_handoff_enabled_global = false;
-            } else {
-                try {
-                    hinted_handoff_enabled_by_dc.addAll(parseHintedHandoffEnabledDCs(hinted_handoff_enabled));
-                } catch (IOException e) {
-                    throw new ConfigurationException("Invalid hinted_handoff_enabled parameter "
-                            + hinted_handoff_enabled, e);
-                }
-            }
-        }
-    }
-
-    public static List<String> parseHintedHandoffEnabledDCs(final String dcNames) throws IOException {
-        try (final CsvListReader csvListReader = new CsvListReader(new StringReader(dcNames),
-                STANDARD_SURROUNDING_SPACES_NEED_QUOTES)) {
-            return csvListReader.read();
-        }
     }
 
     public static enum InternodeCompression {

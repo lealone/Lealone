@@ -17,14 +17,12 @@
  */
 package org.lealone.cluster.config;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
@@ -49,7 +47,6 @@ import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 
 public class DatabaseDescriptor {
@@ -68,7 +65,6 @@ public class DatabaseDescriptor {
     private static SeedProvider seedProvider;
     private static IInternodeAuthenticator internodeAuthenticator;
 
-    /* Hashing strategy Random or OPHF */
     private static IPartitioner partitioner;
     private static String paritionerName;
 
@@ -88,7 +84,6 @@ public class DatabaseDescriptor {
         }
     }
 
-    @VisibleForTesting
     public static Config loadConfig() throws ConfigurationException {
         if (conf != null)
             return conf;
@@ -108,7 +103,6 @@ public class DatabaseDescriptor {
 
         internodeAuthenticator.validateConfiguration();
 
-        /* Hashing strategy */
         if (conf.partitioner == null) {
             throw new ConfigurationException("Missing directive: partitioner");
         }
@@ -118,10 +112,6 @@ public class DatabaseDescriptor {
             throw new ConfigurationException("Invalid partitioner class " + conf.partitioner);
         }
         paritionerName = partitioner.getClass().getCanonicalName();
-
-        if (conf.max_hint_window_in_ms == null) {
-            throw new ConfigurationException("max_hint_window_in_ms cannot be set to null");
-        }
 
         /* phi convict threshold for FailureDetector */
         if (conf.phi_convict_threshold < 5 || conf.phi_convict_threshold > 16) {
@@ -248,17 +238,8 @@ public class DatabaseDescriptor {
         return paritionerName;
     }
 
-    /* For tests ONLY, don't use otherwise or all hell will break loose */
-    public static void setPartitioner(IPartitioner newPartitioner) {
-        partitioner = newPartitioner;
-    }
-
     public static IEndpointSnitch getEndpointSnitch() {
         return snitch;
-    }
-
-    public static void setEndpointSnitch(IEndpointSnitch eps) {
-        snitch = eps;
     }
 
     public static Collection<String> tokensFromString(String tokenString) {
@@ -322,10 +303,6 @@ public class DatabaseDescriptor {
         return conf.request_timeout_in_ms;
     }
 
-    public static void setRpcTimeout(Long timeOutInMillis) {
-        conf.request_timeout_in_ms = timeOutInMillis;
-    }
-
     public static boolean hasCrossNodeTimeout() {
         return conf.cross_node_timeout;
     }
@@ -341,10 +318,6 @@ public class DatabaseDescriptor {
 
     public static void setPhiConvictThreshold(double phiConvictThreshold) {
         conf.phi_convict_threshold = phiConvictThreshold;
-    }
-
-    public static boolean getDisableSTCSInL0() {
-        return Boolean.getBoolean("lealone.disable_stcs_in_l0");
     }
 
     public static Set<InetAddress> getSeeds() {
@@ -387,50 +360,6 @@ public class DatabaseDescriptor {
         return Boolean.parseBoolean(System.getProperty("lealone.auto_bootstrap", conf.auto_bootstrap.toString()));
     }
 
-    public static void setHintedHandoffEnabled(boolean hintedHandoffEnabled) {
-        conf.hinted_handoff_enabled_global = hintedHandoffEnabled;
-        conf.hinted_handoff_enabled_by_dc.clear();
-    }
-
-    public static void setHintedHandoffEnabled(final String dcNames) {
-        List<String> dcNameList;
-        try {
-            dcNameList = Config.parseHintedHandoffEnabledDCs(dcNames);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Could not read csv of dcs for hinted handoff enable. " + dcNames, e);
-        }
-
-        if (dcNameList.isEmpty())
-            throw new IllegalArgumentException("Empty list of Dcs for hinted handoff enable");
-
-        conf.hinted_handoff_enabled_by_dc.clear();
-        conf.hinted_handoff_enabled_by_dc.addAll(dcNameList);
-    }
-
-    public static boolean hintedHandoffEnabled() {
-        return conf.hinted_handoff_enabled_global;
-    }
-
-    public static Set<String> hintedHandoffEnabledByDC() {
-        return Collections.unmodifiableSet(conf.hinted_handoff_enabled_by_dc);
-    }
-
-    public static boolean shouldHintByDC() {
-        return !conf.hinted_handoff_enabled_by_dc.isEmpty();
-    }
-
-    public static boolean hintedHandoffEnabled(final String dcName) {
-        return conf.hinted_handoff_enabled_by_dc.contains(dcName);
-    }
-
-    public static void setMaxHintWindow(int ms) {
-        conf.max_hint_window_in_ms = ms;
-    }
-
-    public static int getMaxHintWindow() {
-        return conf.max_hint_window_in_ms;
-    }
-
     public static int getDynamicUpdateInterval() {
         return conf.dynamic_snitch_update_interval_in_ms;
     }
@@ -463,22 +392,6 @@ public class DatabaseDescriptor {
         return conf.client_encryption_options;
     }
 
-    public static int getHintedHandoffThrottleInKB() {
-        return conf.hinted_handoff_throttle_in_kb;
-    }
-
-    public static int getBatchlogReplayThrottleInKB() {
-        return conf.batchlog_replay_throttle_in_kb;
-    }
-
-    public static void setHintedHandoffThrottleInKB(Integer throttleInKB) {
-        conf.hinted_handoff_throttle_in_kb = throttleInKB;
-    }
-
-    public static int getMaxHintsThread() {
-        return conf.max_hints_delivery_threads;
-    }
-
     public static String getLocalDataCenter() {
         return localDC;
     }
@@ -508,13 +421,5 @@ public class DatabaseDescriptor {
         }
         String arch = System.getProperty("os.arch");
         return arch.contains("64") || arch.contains("sparcv9");
-    }
-
-    public static int getTracetypeRepairTTL() {
-        return conf.tracetype_repair_ttl;
-    }
-
-    public static int getTracetypeQueryTTL() {
-        return conf.tracetype_query_ttl;
     }
 }
