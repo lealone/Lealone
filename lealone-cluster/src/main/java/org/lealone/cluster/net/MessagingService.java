@@ -710,13 +710,15 @@ public final class MessagingService implements MessagingServiceMBean {
                     DataInputStream in = new DataInputStream(socket.getInputStream());
                     MessagingService.validateMagic(in.readInt());
                     int header = in.readInt();
-                    boolean isStream = MessagingService.getBits(header, 3, 1) == 1;
+                    // isStream
+                    // MessagingService.getBits(header, 3, 1);
                     int version = MessagingService.getBits(header, 15, 8);
-                    logger.debug("Connection version {} from {}", version, socket.getInetAddress());
+                    if (logger.isDebugEnabled())
+                        logger.debug("Connection version {} from {}", version, socket.getInetAddress());
                     socket.setSoTimeout(0);
 
-                    Thread thread = isStream ? new IncomingStreamingConnection(version, socket)
-                            : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1, socket);
+                    Thread thread = new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1,
+                            socket);
                     thread.start();
                 } catch (AsynchronousCloseException e) {
                     // this happens when another thread calls close().
