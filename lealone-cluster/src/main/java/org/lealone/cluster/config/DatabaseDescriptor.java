@@ -74,8 +74,6 @@ public class DatabaseDescriptor {
 
     private static Config conf;
 
-    private static long keyCacheSizeInMB;
-
     private static String localDC;
     private static Comparator<InetAddress> localComparator;
 
@@ -128,15 +126,6 @@ public class DatabaseDescriptor {
         /* phi convict threshold for FailureDetector */
         if (conf.phi_convict_threshold < 5 || conf.phi_convict_threshold > 16) {
             throw new ConfigurationException("phi_convict_threshold must be between 5 and 16");
-        }
-
-        /* Thread per pool */
-        if (conf.concurrent_reads != null && conf.concurrent_reads < 2) {
-            throw new ConfigurationException("concurrent_reads must be at least 2");
-        }
-
-        if (conf.concurrent_writes != null && conf.concurrent_writes < 2) {
-            throw new ConfigurationException("concurrent_writes must be at least 2");
         }
 
         /* Local IP, hostname or interface to bind services to */
@@ -226,18 +215,6 @@ public class DatabaseDescriptor {
             throw new ConfigurationException(String.format("A maximum number of %d tokens per node is supported",
                     MAX_NUM_TOKENS));
 
-        try {
-            // if key_cache_size_in_mb option was set to "auto" then size of the cache should be "min(5% of Heap (in MB), 100MB)
-            keyCacheSizeInMB = (conf.key_cache_size_in_mb == null) ? Math.min(
-                    Math.max(1, (int) (Runtime.getRuntime().totalMemory() * 0.05 / 1024 / 1024)), 100)
-                    : conf.key_cache_size_in_mb;
-
-            if (keyCacheSizeInMB < 0)
-                throw new NumberFormatException(); // to escape duplicating error message
-        } catch (NumberFormatException e) {
-            throw new ConfigurationException("key_cache_size_in_mb option was set incorrectly to '"
-                    + conf.key_cache_size_in_mb + "', supported values are <integer> >= 0.");
-        }
         if (conf.seed_provider == null) {
             throw new ConfigurationException("seeds configuration is missing; a minimum of one seed is required.");
         }
@@ -364,14 +341,6 @@ public class DatabaseDescriptor {
 
     public static void setPhiConvictThreshold(double phiConvictThreshold) {
         conf.phi_convict_threshold = phiConvictThreshold;
-    }
-
-    public static int getConcurrentReaders() {
-        return conf.concurrent_reads;
-    }
-
-    public static int getConcurrentWriters() {
-        return conf.concurrent_writes;
     }
 
     public static boolean getDisableSTCSInL0() {
@@ -508,46 +477,6 @@ public class DatabaseDescriptor {
 
     public static int getMaxHintsThread() {
         return conf.max_hints_delivery_threads;
-    }
-
-    public static long getKeyCacheSizeInMB() {
-        return keyCacheSizeInMB;
-    }
-
-    public static int getKeyCacheSavePeriod() {
-        return conf.key_cache_save_period;
-    }
-
-    public static void setKeyCacheSavePeriod(int keyCacheSavePeriod) {
-        conf.key_cache_save_period = keyCacheSavePeriod;
-    }
-
-    public static int getKeyCacheKeysToSave() {
-        return conf.key_cache_keys_to_save;
-    }
-
-    public static void setKeyCacheKeysToSave(int keyCacheKeysToSave) {
-        conf.key_cache_keys_to_save = keyCacheKeysToSave;
-    }
-
-    public static long getRowCacheSizeInMB() {
-        return conf.row_cache_size_in_mb;
-    }
-
-    public static int getRowCacheSavePeriod() {
-        return conf.row_cache_save_period;
-    }
-
-    public static void setRowCacheSavePeriod(int rowCacheSavePeriod) {
-        conf.row_cache_save_period = rowCacheSavePeriod;
-    }
-
-    public static int getRowCacheKeysToSave() {
-        return conf.row_cache_keys_to_save;
-    }
-
-    public static void setRowCacheKeysToSave(int rowCacheKeysToSave) {
-        conf.row_cache_keys_to_save = rowCacheKeysToSave;
     }
 
     public static String getLocalDataCenter() {

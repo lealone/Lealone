@@ -53,9 +53,6 @@ public class Config {
 
     public volatile Double phi_convict_threshold = 8.0;
 
-    public Integer concurrent_reads = 32;
-    public Integer concurrent_writes = 32;
-
     public Integer storage_port = 6210;
     public Integer ssl_storage_port = 6211;
     public String listen_address;
@@ -82,14 +79,6 @@ public class Config {
     public int hinted_handoff_throttle_in_kb = 1024;
     public int batchlog_replay_throttle_in_kb = 1024;
     public int max_hints_delivery_threads = 1;
-
-    public Long key_cache_size_in_mb = null;
-    public volatile int key_cache_save_period = 14400;
-    public volatile int key_cache_keys_to_save = Integer.MAX_VALUE;
-
-    public long row_cache_size_in_mb = 0;
-    public volatile int row_cache_save_period = 0;
-    public volatile int row_cache_keys_to_save = Integer.MAX_VALUE;
 
     public boolean inter_dc_tcp_nodelay = true;
 
