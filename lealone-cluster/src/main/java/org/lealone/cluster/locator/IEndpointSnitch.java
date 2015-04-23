@@ -26,7 +26,6 @@ import java.util.List;
  * Give a node A and another node B it can tell if A and B are on the same rack or in the same
  * data center.
  */
-
 public interface IEndpointSnitch {
     /**
      * returns a String repesenting the rack this endpoint belongs to

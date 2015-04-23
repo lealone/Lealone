@@ -18,11 +18,16 @@
 package org.lealone.cluster.locator;
 
 import java.net.InetAddress;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
 
 public abstract class AbstractEndpointSnitch implements IEndpointSnitch {
+    @Override
     public abstract int compareEndpoints(InetAddress target, InetAddress a1, InetAddress a2);
 
     /**
@@ -31,6 +36,7 @@ public abstract class AbstractEndpointSnitch implements IEndpointSnitch {
      * @param unsortedAddress the nodes to sort
      * @return a new sorted <tt>List</tt>
      */
+    @Override
     public List<InetAddress> getSortedListByProximity(InetAddress address, Collection<InetAddress> unsortedAddress) {
         List<InetAddress> preferred = new ArrayList<InetAddress>(unsortedAddress);
         sortByProximity(address, preferred);
@@ -42,18 +48,22 @@ public abstract class AbstractEndpointSnitch implements IEndpointSnitch {
      * @param address the address to sort the proximity by
      * @param addresses the nodes to sort
      */
+    @Override
     public void sortByProximity(final InetAddress address, List<InetAddress> addresses) {
         Collections.sort(addresses, new Comparator<InetAddress>() {
+            @Override
             public int compare(InetAddress a1, InetAddress a2) {
                 return compareEndpoints(address, a1, a2);
             }
         });
     }
 
+    @Override
     public void gossiperStarting() {
         // noop by default
     }
 
+    @Override
     public boolean isWorthMergingForRangeQuery(List<InetAddress> merged, List<InetAddress> l1, List<InetAddress> l2) {
         // Querying remote DC is likely to be an order of magnitude slower than
         // querying locally, so 2 queries to local nodes is likely to still be

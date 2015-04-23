@@ -19,8 +19,8 @@ package org.lealone.cluster.locator;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +40,7 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
         super(keyspaceName, tokenMetadata, snitch, configOptions);
     }
 
+    @Override
     public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata) {
         int replicas = getReplicationFactor();
         ArrayList<Token> tokens = metadata.sortedTokens();
@@ -58,10 +59,12 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
         return endpoints;
     }
 
+    @Override
     public int getReplicationFactor() {
         return Integer.parseInt(this.configOptions.get("replication_factor"));
     }
 
+    @Override
     public void validateOptions() throws ConfigurationException {
         String rf = configOptions.get("replication_factor");
         if (rf == null)
@@ -69,6 +72,7 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
         validateReplicationFactor(rf);
     }
 
+    @Override
     public Collection<String> recognizedOptions() {
         return Collections.<String> singleton("replication_factor");
     }

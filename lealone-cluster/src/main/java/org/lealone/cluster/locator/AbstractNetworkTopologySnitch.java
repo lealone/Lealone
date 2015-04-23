@@ -29,6 +29,7 @@ public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnit
      * @param endpoint a specified endpoint
      * @return string of rack
      */
+    @Override
     abstract public String getRack(InetAddress endpoint);
 
     /**
@@ -36,8 +37,10 @@ public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnit
      * @param endpoint a specified endpoint
      * @return string of data center
      */
+    @Override
     abstract public String getDatacenter(InetAddress endpoint);
 
+    @Override
     public int compareEndpoints(InetAddress address, InetAddress a1, InetAddress a2) {
         if (address.equals(a1) && !address.equals(a2))
             return -1;

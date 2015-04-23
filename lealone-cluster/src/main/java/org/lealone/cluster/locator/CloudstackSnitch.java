@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
  * <country>-<location>-<availability zone> and uses the country/location
  * tuple as a datacenter and the availability zone as a rack
  */
-
 public class CloudstackSnitch extends AbstractNetworkTopologySnitch {
     protected static final Logger logger = LoggerFactory.getLogger(CloudstackSnitch.class);
     protected static final String ZONE_NAME_QUERY_URI = "/latest/meta-data/availability-zone";

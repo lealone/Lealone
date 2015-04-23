@@ -24,10 +24,12 @@ import java.net.InetAddress;
  * in the 2nd and 3rd octets of the ip address, respectively.
  */
 public class RackInferringSnitch extends AbstractNetworkTopologySnitch {
+    @Override
     public String getRack(InetAddress endpoint) {
         return Integer.toString(endpoint.getAddress()[2] & 0xFF, 10);
     }
 
+    @Override
     public String getDatacenter(InetAddress endpoint) {
         return Integer.toString(endpoint.getAddress()[1] & 0xFF, 10);
     }

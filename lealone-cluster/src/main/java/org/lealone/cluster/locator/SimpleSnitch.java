@@ -26,10 +26,12 @@ import java.util.List;
  * cache locality.
  */
 public class SimpleSnitch extends AbstractEndpointSnitch {
+    @Override
     public String getRack(InetAddress endpoint) {
         return "rack1";
     }
 
+    @Override
     public String getDatacenter(InetAddress endpoint) {
         return "datacenter1";
     }
@@ -39,6 +41,7 @@ public class SimpleSnitch extends AbstractEndpointSnitch {
         // Optimization to avoid walking the list
     }
 
+    @Override
     public int compareEndpoints(InetAddress target, InetAddress a1, InetAddress a2) {
         // Making all endpoints equal ensures we won't change the original ordering (since
         // Collections.sort is guaranteed to be stable)

@@ -35,6 +35,7 @@ public class SimpleSeedProvider implements SeedProvider {
     public SimpleSeedProvider(Map<String, String> args) {
     }
 
+    @Override
     public List<InetAddress> getSeeds() {
         Config conf;
         try {

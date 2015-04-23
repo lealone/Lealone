@@ -59,8 +59,8 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     private String mbeanName;
     private boolean registered = false;
 
-    private final ConcurrentHashMap<InetAddress, Double> scores = new ConcurrentHashMap<InetAddress, Double>();
-    private final ConcurrentHashMap<InetAddress, ExponentiallyDecayingSample> samples = new ConcurrentHashMap<InetAddress, ExponentiallyDecayingSample>();
+    private final ConcurrentHashMap<InetAddress, Double> scores = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<InetAddress, ExponentiallyDecayingSample> samples = new ConcurrentHashMap<>();
 
     public final IEndpointSnitch subsnitch;
 
@@ -234,7 +234,8 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
         // now make another pass to do the weighting based on the maximums we found before
         for (Map.Entry<InetAddress, ExponentiallyDecayingSample> entry : samples.entrySet()) {
             double score = entry.getValue().getSnapshot().getMedian() / maxLatency;
-            // finally, add the severity without any weighting, since hosts scale this relative to their own load and the size of the task causing the severity.
+            // finally, add the severity without any weighting,
+            // since hosts scale this relative to their own load and the size of the task causing the severity.
             // "Severity" is basically a measure of compaction activity (lealone-3722).
             score += StorageService.instance.getSeverity(entry.getKey());
             // lowest score (least amount of badness) wins.

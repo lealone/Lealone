@@ -42,7 +42,6 @@ import org.lealone.cluster.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
@@ -52,16 +51,14 @@ import com.google.common.collect.Multimap;
 public abstract class AbstractReplicationStrategy {
     private static final Logger logger = LoggerFactory.getLogger(AbstractReplicationStrategy.class);
 
-    @VisibleForTesting
-    final String keyspaceName;
-    private Keyspace keyspace;
-    public final Map<String, String> configOptions;
+    protected final Map<String, String> configOptions;
     private final TokenMetadata tokenMetadata;
+    private final Map<Token, ArrayList<InetAddress>> cachedEndpoints = new NonBlockingHashMap<>();
+    private final String keyspaceName;
+    private Keyspace keyspace;
 
     // track when the token range changes, signaling we need to invalidate our endpoint cache
     private volatile long lastInvalidatedVersion = 0;
-
-    public IEndpointSnitch snitch;
 
     AbstractReplicationStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
             Map<String, String> configOptions) {
@@ -69,13 +66,30 @@ public abstract class AbstractReplicationStrategy {
         assert snitch != null;
         assert tokenMetadata != null;
         this.tokenMetadata = tokenMetadata;
-        this.snitch = snitch;
         this.configOptions = configOptions == null ? Collections.<String, String> emptyMap() : configOptions;
         this.keyspaceName = keyspaceName;
         // lazy-initialize keyspace itself since we don't create them until after the replication strategies
     }
 
-    private final Map<Token, ArrayList<InetAddress>> cachedEndpoints = new NonBlockingHashMap<Token, ArrayList<InetAddress>>();
+    /**
+     * calculate the natural endpoints for the given token
+     *
+     * @see #getNaturalEndpoints(org.lealone.cluster.dht.RingPosition)
+     *
+     * @param searchToken the token the natural endpoints are requested for
+     * @return a copy of the natural endpoints for the given token
+     */
+    public abstract List<InetAddress> calculateNaturalEndpoints(Token searchToken, TokenMetadata tokenMetadata);
+
+    /**
+     * calculate the RF based on strategy_options. When overwriting, ensure that this get()
+     *  is FAST, as this is called often.
+     *
+     * @return the replication factor
+     */
+    public abstract int getReplicationFactor();
+
+    public abstract void validateOptions() throws ConfigurationException;
 
     public ArrayList<InetAddress> getCachedEndpoints(Token t) {
         long lastVersion = tokenMetadata.getRingVersion();
@@ -83,7 +97,8 @@ public abstract class AbstractReplicationStrategy {
         if (lastVersion > lastInvalidatedVersion) {
             synchronized (this) {
                 if (lastVersion > lastInvalidatedVersion) {
-                    logger.debug("clearing cached endpoints");
+                    if (logger.isDebugEnabled())
+                        logger.debug("clearing cached endpoints");
                     cachedEndpoints.clear();
                     lastInvalidatedVersion = lastVersion;
                 }
@@ -115,16 +130,6 @@ public abstract class AbstractReplicationStrategy {
         return new ArrayList<InetAddress>(endpoints);
     }
 
-    /**
-     * calculate the natural endpoints for the given token
-     *
-     * @see #getNaturalEndpoints(org.lealone.cluster.dht.RingPosition)
-     *
-     * @param searchToken the token the natural endpoints are requested for
-     * @return a copy of the natural endpoints for the given token
-     */
-    public abstract List<InetAddress> calculateNaturalEndpoints(Token searchToken, TokenMetadata tokenMetadata);
-
     public AbstractWriteResponseHandler getWriteResponseHandler(Collection<InetAddress> naturalEndpoints,
             Collection<InetAddress> pendingEndpoints, ConsistencyLevel consistency_level, Runnable callback,
             WriteType writeType) {
@@ -145,14 +150,6 @@ public abstract class AbstractReplicationStrategy {
             keyspace = Keyspace.open(keyspaceName);
         return keyspace;
     }
-
-    /**
-     * calculate the RF based on strategy_options. When overwriting, ensure that this get()
-     *  is FAST, as this is called often.
-     *
-     * @return the replication factor
-     */
-    public abstract int getReplicationFactor();
 
     /*
      * NOTE: this is pretty inefficient. also the inverse (getRangeAddresses) below.
@@ -202,8 +199,6 @@ public abstract class AbstractReplicationStrategy {
         return getAddressRanges(temp).get(pendingAddress);
     }
 
-    public abstract void validateOptions() throws ConfigurationException;
-
     /*
      * The options recognized by the strategy.
      * The empty collection means that no options are accepted, but null means
@@ -212,6 +207,29 @@ public abstract class AbstractReplicationStrategy {
     public Collection<String> recognizedOptions() {
         // We default to null for backward compatibility sake
         return null;
+    }
+
+    protected void validateReplicationFactor(String rf) throws ConfigurationException {
+        try {
+            if (Integer.parseInt(rf) < 0) {
+                throw new ConfigurationException("Replication factor must be non-negative; found " + rf);
+            }
+        } catch (NumberFormatException e2) {
+            throw new ConfigurationException("Replication factor must be numeric; found " + rf);
+        }
+    }
+
+    private void validateExpectedOptions() throws ConfigurationException {
+        Collection<?> expectedOptions = recognizedOptions();
+        if (expectedOptions == null)
+            return;
+
+        for (String key : configOptions.keySet()) {
+            if (!expectedOptions.contains(key))
+                throw new ConfigurationException(String.format(
+                        "Unrecognized strategy option {%s} passed to %s for keyspace %s", key, getClass()
+                                .getSimpleName(), keyspaceName));
+        }
     }
 
     private static AbstractReplicationStrategy createInternal(String keyspaceName,
@@ -269,28 +287,5 @@ public abstract class AbstractReplicationStrategy {
                     className));
         }
         return strategyClass;
-    }
-
-    protected void validateReplicationFactor(String rf) throws ConfigurationException {
-        try {
-            if (Integer.parseInt(rf) < 0) {
-                throw new ConfigurationException("Replication factor must be non-negative; found " + rf);
-            }
-        } catch (NumberFormatException e2) {
-            throw new ConfigurationException("Replication factor must be numeric; found " + rf);
-        }
-    }
-
-    private void validateExpectedOptions() throws ConfigurationException {
-        Collection<?> expectedOptions = recognizedOptions();
-        if (expectedOptions == null)
-            return;
-
-        for (String key : configOptions.keySet()) {
-            if (!expectedOptions.contains(key))
-                throw new ConfigurationException(String.format(
-                        "Unrecognized strategy option {%s} passed to %s for keyspace %s", key, getClass()
-                                .getSimpleName(), keyspaceName));
-        }
     }
 }
