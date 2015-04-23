@@ -52,7 +52,7 @@ public class MetricsEnabledSharedExecutorPool extends SharedExecutorPool {
         }
     }
 
-    public TracingAwareExecutorService newExecutor(int maxConcurrency, int maxQueuedTasks, String name, String jmxPath) {
+    public LealoneExecutorService newExecutor(int maxConcurrency, int maxQueuedTasks, String name, String jmxPath) {
         MetricsEnabledSEPExecutor executor = new MetricsEnabledSEPExecutor(maxConcurrency, maxQueuedTasks, name,
                 jmxPath);
         executors.add(executor);

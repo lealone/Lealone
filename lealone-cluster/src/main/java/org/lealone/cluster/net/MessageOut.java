@@ -17,10 +17,6 @@
  */
 package org.lealone.cluster.net;
 
-import static org.lealone.cluster.tracing.Tracing.TRACE_HEADER;
-import static org.lealone.cluster.tracing.Tracing.TRACE_TYPE;
-import static org.lealone.cluster.tracing.Tracing.isTracing;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collections;
@@ -31,9 +27,7 @@ import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.tracing.Tracing;
 import org.lealone.cluster.utils.FBUtilities;
-import org.lealone.cluster.utils.UUIDGen;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -51,10 +45,7 @@ public class MessageOut<T> {
     }
 
     public MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer) {
-        this(verb, payload, serializer, isTracing() ? ImmutableMap.of(TRACE_HEADER,
-                UUIDGen.decompose(Tracing.instance.getSessionId()), TRACE_TYPE,
-                new byte[] { Tracing.TraceType.serialize(Tracing.instance.getTraceType()) }) : Collections
-                .<String, byte[]> emptyMap());
+        this(verb, payload, serializer, Collections.<String, byte[]> emptyMap());
     }
 
     private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,

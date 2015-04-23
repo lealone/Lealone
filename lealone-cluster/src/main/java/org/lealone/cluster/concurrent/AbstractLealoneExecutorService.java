@@ -17,8 +17,6 @@
  */
 package org.lealone.cluster.concurrent;
 
-import static org.lealone.cluster.tracing.Tracing.isTracing;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -28,15 +26,13 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.lealone.cluster.tracing.TraceState;
-import org.lealone.cluster.tracing.Tracing;
 import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.lealone.cluster.utils.concurrent.SimpleCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class AbstractTracingAwareExecutorService implements TracingAwareExecutorService {
-    private static final Logger logger = LoggerFactory.getLogger(AbstractTracingAwareExecutorService.class);
+public abstract class AbstractLealoneExecutorService implements LealoneExecutorService {
+    private static final Logger logger = LoggerFactory.getLogger(AbstractLealoneExecutorService.class);
 
     protected abstract void addTask(FutureTask<?> futureTask);
 
@@ -81,17 +77,8 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
         throw new UnsupportedOperationException();
     }
 
-    protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result) {
-        return newTaskFor(runnable, result, Tracing.instance.get());
-    }
-
     @SuppressWarnings("unchecked")
-    protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result, TraceState traceState) {
-        if (traceState != null) {
-            if (runnable instanceof TraceSessionFutureTask)
-                return (TraceSessionFutureTask<T>) runnable;
-            return new TraceSessionFutureTask<T>(runnable, result, traceState);
-        }
+    protected <T> FutureTask<T> newTaskFor(Runnable runnable, T result) {
         if (runnable instanceof FutureTask)
             return (FutureTask<T>) runnable;
         return new FutureTask<>(runnable, result);
@@ -99,39 +86,9 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
 
     @SuppressWarnings("unchecked")
     protected <T> FutureTask<T> newTaskFor(Callable<T> callable) {
-        if (isTracing()) {
-            if (callable instanceof TraceSessionFutureTask)
-                return (TraceSessionFutureTask<T>) callable;
-            return new TraceSessionFutureTask<T>(callable, Tracing.instance.get());
-        }
         if (callable instanceof FutureTask)
             return (FutureTask<T>) callable;
         return new FutureTask<>(callable);
-    }
-
-    private class TraceSessionFutureTask<T> extends FutureTask<T> {
-        private final TraceState state;
-
-        public TraceSessionFutureTask(Callable<T> callable, TraceState state) {
-            super(callable);
-            this.state = state;
-        }
-
-        public TraceSessionFutureTask(Runnable runnable, T result, TraceState state) {
-            super(runnable, result);
-            this.state = state;
-        }
-
-        @Override
-        public void run() {
-            TraceState oldState = Tracing.instance.get();
-            Tracing.instance.set(state);
-            try {
-                super.run();
-            } finally {
-                Tracing.instance.set(oldState);
-            }
-        }
     }
 
     @SuppressWarnings("unchecked")
@@ -205,10 +162,5 @@ public abstract class AbstractTracingAwareExecutorService implements TracingAwar
     @Override
     public void execute(Runnable command) {
         addTask(newTaskFor(command, null));
-    }
-
-    @Override
-    public void execute(Runnable command, TraceState state) {
-        addTask(newTaskFor(command, null, state));
     }
 }

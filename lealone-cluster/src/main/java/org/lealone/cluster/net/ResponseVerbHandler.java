@@ -19,7 +19,6 @@ package org.lealone.cluster.net;
 
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.cluster.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,12 +33,11 @@ public class ResponseVerbHandler implements IVerbHandler {
         CallbackInfo callbackInfo = MessagingService.instance().removeRegisteredCallback(id);
         if (callbackInfo == null) {
             String msg = "Callback already removed for {} (from {})";
-            logger.debug(msg, id, message.from);
-            Tracing.trace(msg, id, message.from);
+            if (logger.isDebugEnabled())
+                logger.debug(msg, id, message.from);
             return;
         }
 
-        Tracing.trace("Processing response from {}", message.from);
         IAsyncCallback cb = callbackInfo.callback;
         if (message.isFailureResponse()) {
             ((IAsyncCallbackWithFailure) cb).onFailure(message.from);

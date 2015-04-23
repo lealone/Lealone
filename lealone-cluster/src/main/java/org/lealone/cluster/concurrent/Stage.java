@@ -24,7 +24,6 @@ public enum Stage {
     REQUEST_RESPONSE,
     MIGRATION,
     MISC,
-    TRACING,
     INTERNAL_RESPONSE,
     READ_REPAIR;
 
@@ -33,7 +32,6 @@ public enum Stage {
         case GOSSIP:
         case MIGRATION:
         case MISC:
-        case TRACING:
         case INTERNAL_RESPONSE:
             return "internal";
         case MUTATION:

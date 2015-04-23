@@ -24,11 +24,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -45,11 +43,8 @@ import net.jpountz.xxhash.XXHashFactory;
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.io.DataOutputStreamPlus;
-import org.lealone.cluster.tracing.TraceState;
-import org.lealone.cluster.tracing.Tracing;
 import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.cluster.utils.JVMStabilityInspector;
-import org.lealone.cluster.utils.UUIDGen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xerial.snappy.SnappyOutputStream;
@@ -179,24 +174,6 @@ public class OutboundTcpConnection extends Thread {
 
     private void writeConnected(QueuedMessage qm, boolean flush) {
         try {
-            byte[] sessionBytes = qm.message.parameters.get(Tracing.TRACE_HEADER);
-            if (sessionBytes != null) {
-                UUID sessionId = UUIDGen.getUUID(ByteBuffer.wrap(sessionBytes));
-                TraceState state = Tracing.instance.get(sessionId);
-                String message = String.format("Sending message to %s", poolReference.endPoint());
-                // session may have already finished; see lealone-5668
-                if (state == null) {
-                    byte[] traceTypeBytes = qm.message.parameters.get(Tracing.TRACE_TYPE);
-                    Tracing.TraceType traceType = traceTypeBytes == null ? Tracing.TraceType.QUERY : Tracing.TraceType
-                            .deserialize(traceTypeBytes[0]);
-                    TraceState.trace(ByteBuffer.wrap(sessionBytes), message, -1, traceType.getTTL(), null);
-                } else {
-                    state.trace(message);
-                    if (qm.message.verb == MessagingService.Verb.REQUEST_RESPONSE)
-                        Tracing.instance.doneWithNonLocalSession(state);
-                }
-            }
-
             writeInternal(qm.message, qm.id, qm.timestamp);
 
             completed++;

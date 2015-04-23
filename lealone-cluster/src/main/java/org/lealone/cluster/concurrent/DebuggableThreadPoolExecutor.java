@@ -17,26 +17,18 @@
  */
 package org.lealone.cluster.concurrent;
 
-import static org.lealone.cluster.tracing.Tracing.isTracing;
-
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RejectedExecutionHandler;
-import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.cluster.tracing.TraceState;
-import org.lealone.cluster.tracing.Tracing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +49,7 @@ import org.slf4j.LoggerFactory;
  *   threads and the queue is full, we want the enqueuer to block.  But to allow the number of threads to drop if a
  *   stage is less busy, core thread timeout is enabled.
  */
-public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements TracingAwareExecutorService {
+public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements LealoneExecutorService {
     protected static final Logger logger = LoggerFactory.getLogger(DebuggableThreadPoolExecutor.class);
     public static final RejectedExecutionHandler blockingExecutionHandler = new RejectedExecutionHandler() {
         @Override
@@ -154,62 +146,15 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     }
 
     @Override
-    public void execute(Runnable command, TraceState state) {
-        super.execute(state == null || command instanceof TraceSessionWrapper ? command
-                : new TraceSessionWrapper<Object>(command, state));
-    }
-
-    @Override
     public void maybeExecuteImmediately(Runnable command) {
         execute(command);
-    }
-
-    // execute does not call newTaskFor
-    @Override
-    public void execute(Runnable command) {
-        super.execute(isTracing() && !(command instanceof TraceSessionWrapper) ? new TraceSessionWrapper<Object>(
-                Executors.callable(command, null)) : command);
-    }
-
-    @Override
-    protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T result) {
-        if (isTracing() && !(runnable instanceof TraceSessionWrapper)) {
-            return new TraceSessionWrapper<T>(Executors.callable(runnable, result));
-        }
-        return super.newTaskFor(runnable, result);
-    }
-
-    @Override
-    protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
-        if (isTracing() && !(callable instanceof TraceSessionWrapper)) {
-            return new TraceSessionWrapper<T>(callable);
-        }
-        return super.newTaskFor(callable);
     }
 
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
         super.afterExecute(r, t);
 
-        maybeResetTraceSessionWrapper(r);
         logExceptionsAfterExecute(r, t);
-    }
-
-    protected static void maybeResetTraceSessionWrapper(Runnable r) {
-        if (r instanceof TraceSessionWrapper) {
-            TraceSessionWrapper<?> tsw = (TraceSessionWrapper<?>) r;
-            // we have to reset trace state as its presence is what denotes the current thread is tracing
-            // and if left this thread might start tracing unrelated tasks
-            tsw.reset();
-        }
-    }
-
-    @Override
-    protected void beforeExecute(Thread t, Runnable r) {
-        if (r instanceof TraceSessionWrapper)
-            ((TraceSessionWrapper<?>) r).setupContext();
-
-        super.beforeExecute(t, r);
     }
 
     /**
@@ -260,33 +205,5 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
         }
 
         return null;
-    }
-
-    /**
-     * Used to wrap a Runnable or Callable passed to submit or execute so we can clone the TraceSessionContext and move
-     * it into the worker thread.
-     *
-     * @param <T>
-     */
-    private static class TraceSessionWrapper<T> extends FutureTask<T> {
-        private final TraceState state;
-
-        public TraceSessionWrapper(Callable<T> callable) {
-            super(callable);
-            state = Tracing.instance.get();
-        }
-
-        public TraceSessionWrapper(Runnable command, TraceState state) {
-            super(command, null);
-            this.state = state;
-        }
-
-        private void setupContext() {
-            Tracing.instance.set(state);
-        }
-
-        private void reset() {
-            Tracing.instance.set(null);
-        }
     }
 }

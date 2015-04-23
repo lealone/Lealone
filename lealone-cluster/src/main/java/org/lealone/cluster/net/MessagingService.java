@@ -46,10 +46,10 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
+import org.lealone.cluster.concurrent.LealoneExecutorService;
 import org.lealone.cluster.concurrent.ScheduledExecutors;
 import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.concurrent.StageManager;
-import org.lealone.cluster.concurrent.TracingAwareExecutorService;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.cluster.db.ConsistencyLevel;
@@ -66,8 +66,6 @@ import org.lealone.cluster.metrics.ConnectionMetrics;
 import org.lealone.cluster.metrics.DroppedMessageMetrics;
 import org.lealone.cluster.security.SSLFactory;
 import org.lealone.cluster.service.AbstractWriteResponseHandler;
-import org.lealone.cluster.tracing.TraceState;
-import org.lealone.cluster.tracing.Tracing;
 import org.lealone.cluster.utils.ExpiringMap;
 import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.cluster.utils.FileUtils;
@@ -599,15 +597,11 @@ public final class MessagingService implements MessagingServiceMBean {
     }
 
     public void receive(MessageIn message, int id, long timestamp) {
-        TraceState state = Tracing.instance.initializeFromMessage(message);
-        if (state != null)
-            state.trace("Message received from {}", message.from);
-
         Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
-        TracingAwareExecutorService stage = StageManager.getStage(message.getMessageType());
+        LealoneExecutorService stage = StageManager.getStage(message.getMessageType());
         assert stage != null : "No stage for message type " + message.verb;
 
-        stage.execute(runnable, state);
+        stage.execute(runnable);
     }
 
     public void setCallbackForTests(int messageId, CallbackInfo callback) {

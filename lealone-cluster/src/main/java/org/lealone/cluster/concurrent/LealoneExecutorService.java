@@ -18,19 +18,11 @@
  * under the License.
  * 
  */
-package org.lealone.cluster.tracing;
+package org.lealone.cluster.concurrent;
 
-import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 
-import org.lealone.cluster.utils.FBUtilities;
-
-public class ExpiredTraceState extends TraceState {
-    public ExpiredTraceState(UUID sessionId, Tracing.TraceType traceType) {
-        super(FBUtilities.getBroadcastAddress(), sessionId, traceType);
-    }
-
-    @Override
-    public int elapsed() {
-        return -1;
-    }
+public interface LealoneExecutorService extends ExecutorService {
+    // permits executing in the context of the submitting thread
+    public void maybeExecuteImmediately(Runnable command);
 }

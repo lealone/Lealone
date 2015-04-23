@@ -29,7 +29,7 @@ import org.lealone.cluster.utils.concurrent.WaitQueue;
 
 import static org.lealone.cluster.concurrent.SEPWorker.Work;
 
-public class SEPExecutor extends AbstractTracingAwareExecutorService {
+public class SEPExecutor extends AbstractLealoneExecutorService {
     private final SharedExecutorPool pool;
 
     private final int maxWorkers;
