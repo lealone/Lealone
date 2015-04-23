@@ -212,7 +212,7 @@ public class TcpServer implements Server {
 
     @Override
     public String getURL() {
-        return (ssl ? "ssl" : "tcp") + "://" + NetUtils.getLocalAddress() + ":" + port;
+        return (ssl ? "ssl" : "tcp") + "://" + getListenAddress() + ":" + port;
     }
 
     @Override
