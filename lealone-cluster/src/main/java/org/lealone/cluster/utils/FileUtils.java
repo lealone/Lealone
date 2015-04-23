@@ -116,7 +116,7 @@ public class FileUtils {
         return createTempFile(prefix, suffix, new File(System.getProperty("java.io.tmpdir")));
     }
 
-    public static String stringifyFileSize(double value) {
+    public synchronized static String stringifyFileSize(double value) {
         double d;
         if (value >= TB) {
             d = value / TB;
