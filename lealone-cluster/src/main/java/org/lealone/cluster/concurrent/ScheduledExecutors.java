@@ -36,9 +36,9 @@ public class ScheduledExecutors {
         nonPeriodicTasks.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
     }
 
-    /**
-     * This executor is used for tasks that do not need to be waited for on shutdown/drain.
-     */
-    public static final DebuggableScheduledThreadPoolExecutor optionalTasks = new DebuggableScheduledThreadPoolExecutor(
-            "OptionalTasks");
+    //    /**
+    //     * This executor is used for tasks that do not need to be waited for on shutdown/drain.
+    //     */
+    //    public static final DebuggableScheduledThreadPoolExecutor optionalTasks = new DebuggableScheduledThreadPoolExecutor(
+    //            "OptionalTasks");
 }

@@ -231,7 +231,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 ExecutorService mutationStage = StageManager.getStage(Stage.MUTATION);
                 if (mutationStage.isShutdown())
                     return; // drained already
-                ScheduledExecutors.optionalTasks.shutdown();
+                //ScheduledExecutors.optionalTasks.shutdown();
                 Gossiper.instance.stop();
 
                 // In-progress writes originating here could generate hints to be written, so shut down MessagingService
