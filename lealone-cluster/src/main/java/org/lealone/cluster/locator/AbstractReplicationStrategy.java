@@ -27,17 +27,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
-import org.lealone.cluster.db.ConsistencyLevel;
-import org.lealone.cluster.db.Keyspace;
-import org.lealone.cluster.db.WriteType;
 import org.lealone.cluster.dht.Range;
 import org.lealone.cluster.dht.RingPosition;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.exceptions.ConfigurationException;
-import org.lealone.cluster.service.AbstractWriteResponseHandler;
-import org.lealone.cluster.service.DatacenterSyncWriteResponseHandler;
-import org.lealone.cluster.service.DatacenterWriteResponseHandler;
-import org.lealone.cluster.service.WriteResponseHandler;
 import org.lealone.cluster.utils.FBUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +48,6 @@ public abstract class AbstractReplicationStrategy {
     private final TokenMetadata tokenMetadata;
     private final Map<Token, ArrayList<InetAddress>> cachedEndpoints = new NonBlockingHashMap<>();
     private final String keyspaceName;
-    private Keyspace keyspace;
 
     // track when the token range changes, signaling we need to invalidate our endpoint cache
     private volatile long lastInvalidatedVersion = 0;
@@ -128,27 +120,6 @@ public abstract class AbstractReplicationStrategy {
         }
 
         return new ArrayList<InetAddress>(endpoints);
-    }
-
-    public AbstractWriteResponseHandler getWriteResponseHandler(Collection<InetAddress> naturalEndpoints,
-            Collection<InetAddress> pendingEndpoints, ConsistencyLevel consistency_level, Runnable callback,
-            WriteType writeType) {
-        if (consistency_level.isDatacenterLocal()) {
-            // block for in this context will be localnodes block.
-            return new DatacenterWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level,
-                    getKeyspace(), callback, writeType);
-        } else if (consistency_level == ConsistencyLevel.EACH_QUORUM && (this instanceof NetworkTopologyStrategy)) {
-            return new DatacenterSyncWriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level,
-                    getKeyspace(), callback, writeType);
-        }
-        return new WriteResponseHandler(naturalEndpoints, pendingEndpoints, consistency_level, getKeyspace(), callback,
-                writeType);
-    }
-
-    private Keyspace getKeyspace() {
-        if (keyspace == null)
-            keyspace = Keyspace.open(keyspaceName);
-        return keyspace;
     }
 
     /*
