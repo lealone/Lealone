@@ -31,9 +31,9 @@
 
 * [用户文档](https://github.com/codefollower/Lealone/wiki/Lealone%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
 
-* 设计文档
+* [设计文档](https://github.com/codefollower/Lealone/wiki/Lealone%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3)
 
-* [开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E8%80%85%E6%96%87%E6%A1%A3)
+* [开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%96%87%E6%A1%A3)
 
 
 ## License
