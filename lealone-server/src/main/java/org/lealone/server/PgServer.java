@@ -149,7 +149,7 @@ public class PgServer implements Server {
 
     @Override
     public String getURL() {
-        return "pg://" + NetUtils.getLocalAddress() + ":" + port;
+        return "pg://" + getListenAddress() + ":" + port;
     }
 
     @Override
@@ -177,7 +177,7 @@ public class PgServer implements Server {
     @Override
     public void start() {
         try {
-            serverSocket = NetUtils.createServerSocket(port, false);
+            serverSocket = NetUtils.createServerSocket(listenAddress, port, false);
         } catch (DbException e) {
             if (!portIsSet) {
                 serverSocket = NetUtils.createServerSocket(0, false);
