@@ -30,6 +30,7 @@ public class Config {
     public Boolean auto_bootstrap = true;
 
     public SeedProviderDef seed_provider;
+    public ReplicationStrategyDef replication_strategy;
 
     public Integer num_tokens = 1;
 

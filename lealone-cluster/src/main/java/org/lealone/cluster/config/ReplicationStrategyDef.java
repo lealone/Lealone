@@ -19,8 +19,8 @@ package org.lealone.cluster.config;
 
 import java.util.LinkedHashMap;
 
-public class SeedProviderDef extends MapPropertyTypeDef {
-    public SeedProviderDef(LinkedHashMap<String, ?> p) {
+public class ReplicationStrategyDef extends MapPropertyTypeDef {
+    public ReplicationStrategyDef(LinkedHashMap<String, ?> p) {
         super(p);
     }
 }

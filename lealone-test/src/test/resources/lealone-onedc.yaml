@@ -24,7 +24,12 @@ seed_provider:
     - class_name: org.lealone.cluster.locator.SimpleSeedProvider
       parameters:
           - seeds: "127.0.0.1"
-
+          
+# replication_strategy:
+#     - class_name: org.lealone.cluster.locator.SimpleStrategy
+#       parameters:
+#          - replication_factor: 3
+         
 endpoint_snitch: SimpleSnitch
 dynamic_snitch: true
 

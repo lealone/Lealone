@@ -100,6 +100,10 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
             TypeDescription seedDesc = new TypeDescription(SeedProviderDef.class);
             seedDesc.putMapPropertyType("parameters", String.class, String.class);
             constructor.addTypeDescription(seedDesc);
+            TypeDescription replicationStrategyDesc = new TypeDescription(ReplicationStrategyDef.class);
+            replicationStrategyDesc.putMapPropertyType("parameters", String.class, String.class);
+            constructor.addTypeDescription(replicationStrategyDesc);
+
             MissingPropertiesChecker propertiesChecker = new MissingPropertiesChecker();
             constructor.setPropertyUtils(propertiesChecker);
             Yaml yaml = new Yaml(constructor);

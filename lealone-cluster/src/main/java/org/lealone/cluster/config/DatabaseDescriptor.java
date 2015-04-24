@@ -37,16 +37,20 @@ import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.cluster.db.SystemKeyspace;
 import org.lealone.cluster.dht.IPartitioner;
 import org.lealone.cluster.exceptions.ConfigurationException;
+import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.DynamicEndpointSnitch;
 import org.lealone.cluster.locator.EndpointSnitchInfo;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.locator.SeedProvider;
+import org.lealone.cluster.locator.SimpleStrategy;
 import org.lealone.cluster.net.MessagingService;
+import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.FBUtilities;
 import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 public class DatabaseDescriptor {
@@ -67,6 +71,7 @@ public class DatabaseDescriptor {
 
     private static IPartitioner partitioner;
     private static String paritionerName;
+    private static AbstractReplicationStrategy defaultReplicationStrategy;
 
     private static Config conf;
 
@@ -221,6 +226,18 @@ public class DatabaseDescriptor {
         if (seedProvider.getSeeds().size() == 0)
             throw new ConfigurationException("The seed provider lists no seeds.");
 
+        initDefaultReplicationStrategy();
+    }
+
+    private static void initDefaultReplicationStrategy() throws ConfigurationException {
+        if (conf.replication_strategy == null)
+            defaultReplicationStrategy = new SimpleStrategy("system", StorageService.instance.getTokenMetadata(),
+                    getEndpointSnitch(), ImmutableMap.of("replication_factor", "1"));
+        else
+            defaultReplicationStrategy = AbstractReplicationStrategy.createReplicationStrategy("system",
+                    AbstractReplicationStrategy.getClass(conf.replication_strategy.class_name),
+                    StorageService.instance.getTokenMetadata(), getEndpointSnitch(),
+                    conf.replication_strategy.parameters);
     }
 
     private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException {
@@ -228,6 +245,10 @@ public class DatabaseDescriptor {
             snitchClassName = "org.lealone.cluster.locator." + snitchClassName;
         IEndpointSnitch snitch = FBUtilities.construct(snitchClassName, "snitch");
         return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
+    }
+
+    public static AbstractReplicationStrategy getDefaultReplicationStrategy() {
+        return defaultReplicationStrategy;
     }
 
     public static IPartitioner getPartitioner() {

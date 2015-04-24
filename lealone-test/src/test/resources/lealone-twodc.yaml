@@ -25,6 +25,12 @@ seed_provider:
       parameters:
           - seeds: "127.0.0.1,127.0.0.4"
 
+# replication_strategy:
+#     - class_name: org.lealone.cluster.locator.NetworkTopologyStrategy
+#       parameters:
+#          - dc1: 1
+#          - dc2: 2
+
 endpoint_snitch: GossipingPropertyFileSnitch
 dynamic_snitch: true
 
