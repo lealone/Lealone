@@ -73,24 +73,24 @@ public class DatabaseDescriptor {
     private static String localDC;
     private static Comparator<InetAddress> localComparator;
 
-    static {
+    public static Config loadConfig() throws ConfigurationException {
+        if (conf != null)
+            return conf;
+
+        String loaderClass = System.getProperty("lealone.config.loader");
+        ConfigurationLoader loader = loaderClass == null ? new YamlConfigurationLoader() : FBUtilities
+                .<ConfigurationLoader> construct(loaderClass, "configuration loading");
+        Config conf = loader.loadConfig();
+
         try {
-            applyConfig(loadConfig());
+            applyConfig(conf);
         } catch (Exception e) {
             logger.error("", e);
             JVMStabilityInspector.inspectThrowable(e);
             throw new ExceptionInInitializerError(e.getMessage()
                     + "\nFatal configuration error; unable to start. See log for stacktrace.");
         }
-    }
-
-    public static Config loadConfig() throws ConfigurationException {
-        if (conf != null)
-            return conf;
-        String loaderClass = System.getProperty("lealone.config.loader");
-        ConfigurationLoader loader = loaderClass == null ? new YamlConfigurationLoader() : FBUtilities
-                .<ConfigurationLoader> construct(loaderClass, "configuration loading");
-        return loader.loadConfig();
+        return conf;
     }
 
     private static void applyConfig(Config config) throws ConfigurationException {

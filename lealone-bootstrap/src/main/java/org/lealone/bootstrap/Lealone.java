@@ -20,7 +20,6 @@ package org.lealone.bootstrap;
 import java.util.ArrayList;
 
 import org.lealone.cluster.config.Config;
-import org.lealone.cluster.config.Config.RunMode;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.router.P2PRouter;
@@ -30,6 +29,7 @@ import org.lealone.cluster.utils.WrappedRunnable;
 import org.lealone.command.router.Router;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
+import org.lealone.server.PgServer;
 import org.lealone.server.TcpServer;
 import org.lealone.transaction.TransactionalRouter;
 import org.slf4j.Logger;
@@ -52,18 +52,20 @@ public class Lealone {
             logger.info("Lealone version: {}", FBUtilities.getReleaseVersionString());
             config = DatabaseDescriptor.loadConfig();
 
-            // log warnings for different kinds of sub-optimal JVMs.  tldr use 64-bit Oracle >= 1.6u32
             if (!DatabaseDescriptor.hasLargeAddressSpace())
-                logger.info("32bit JVM detected.  It is recommended to run lealone on a 64bit JVM for better performance.");
+                logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
 
             initBaseDir();
 
-            if (config.run_mode == RunMode.cluster) {
+            if (config.isClusterMode()) {
                 Router r = createRouter();
                 startServer(r);
             } else {
                 startTcpServer();
             }
+
+            if (config.pg_server_enabled)
+                startPgServer();
         } catch (Exception e) {
             logger.error("Fatal error; unable to start Lealone.  See log for stacktrace.", e);
             System.exit(1);
@@ -111,6 +113,32 @@ public class Lealone {
                 server.getPort());
     }
 
+    private static void startPgServer() throws Exception {
+        ArrayList<String> list = new ArrayList<>();
+        list.add("-baseDir");
+        list.add(config.base_dir);
+        list.add("-pgListenAddress");
+        list.add(config.listen_address);
+        if (config.pg_port > 0) {
+            list.add("-pgPort");
+            list.add(Integer.toString(config.pg_port));
+        }
+
+        if (config.pg_allow_others)
+            list.add("-pgAllowOthers");
+
+        if (config.pg_daemon)
+            list.add("-pgDaemon");
+
+        PgServer server = new PgServer();
+
+        server.init(list.toArray(new String[list.size()]));
+        server.start();
+        addPgServerShutdownHook(server);
+        logger.info("Lealone PgServer started, listening address: {}, port: {}", config.listen_address,
+                server.getPort());
+    }
+
     private static void addTcpServerShutdownHook(final TcpServer server) {
         Thread t = new Thread(new WrappedRunnable() {
             @Override
@@ -119,6 +147,17 @@ public class Lealone {
                 logger.info("Lealone TcpServer stopped");
             }
         }, "TcpServerShutdownHook");
+        Runtime.getRuntime().addShutdownHook(t);
+    }
+
+    private static void addPgServerShutdownHook(final PgServer server) {
+        Thread t = new Thread(new WrappedRunnable() {
+            @Override
+            public void runMayThrow() throws Exception {
+                server.stop();
+                logger.info("Lealone PgServer stopped");
+            }
+        }, "PgServerShutdownHook");
         Runtime.getRuntime().addShutdownHook(t);
     }
 }

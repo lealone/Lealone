@@ -66,11 +66,18 @@ public class Config {
 
     private static boolean outboundBindAny = false;
 
-    //TCP Server
     public String base_dir;
-    public int tcp_port = 0;
+
+    //TCP Server
+    public Integer tcp_port = 0;
     public boolean tcp_daemon = false;
     public boolean tcp_allow_others = true;
+
+    //PG Server
+    public boolean pg_server_enabled = false;
+    public Integer pg_port = 0;
+    public boolean pg_daemon = false;
+    public boolean pg_allow_others = true;
 
     public RunMode run_mode = RunMode.cluster;
 

@@ -128,7 +128,7 @@ public class PgServerThread implements Runnable {
         info.put("MODE", "PostgreSQL");
         info.put("USER", userName);
         info.put("PASSWORD", password);
-        String url = Constants.URL_PREFIX + databaseName;
+        String url = Constants.URL_PREFIX + Constants.URL_EMBED + databaseName;
         ConnectionInfo ci = new ConnectionInfo(url, info);
         String baseDir = server.getBaseDir();
         if (baseDir == null) {

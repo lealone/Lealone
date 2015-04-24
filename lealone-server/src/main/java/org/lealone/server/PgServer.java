@@ -41,7 +41,7 @@ public class PgServer implements Server {
      * The default port to use for the PG server.
      * This value is also in the documentation and in the Server javadoc.
      */
-    public static final int DEFAULT_PORT = 5435;
+    public static final int DEFAULT_PORT = 5211;
 
     /**
      * The VARCHAR type.
