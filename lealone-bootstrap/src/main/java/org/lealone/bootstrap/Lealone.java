@@ -26,6 +26,7 @@ import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.router.P2PRouter;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.WrappedRunnable;
 import org.lealone.command.router.Router;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
@@ -105,8 +106,19 @@ public class Lealone {
 
         server.init(list.toArray(new String[list.size()]));
         server.start();
+        addTcpServerShutdownHook(server);
         logger.info("Lealone TcpServer started, listening address: {}, port: {}", config.listen_address,
                 server.getPort());
     }
 
+    private static void addTcpServerShutdownHook(final TcpServer server) {
+        Thread t = new Thread(new WrappedRunnable() {
+            @Override
+            public void runMayThrow() throws Exception {
+                server.stop();
+                logger.info("Lealone TcpServer stopped");
+            }
+        }, "TcpServerShutdownHook");
+        Runtime.getRuntime().addShutdownHook(t);
+    }
 }
