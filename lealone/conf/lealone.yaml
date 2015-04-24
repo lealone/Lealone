@@ -33,7 +33,7 @@ seed_provider:
 endpoint_snitch: SimpleSnitch
 dynamic_snitch: true
 
-num_tokens: 2
+num_tokens: 256
 
 run_mode: client_server
 
