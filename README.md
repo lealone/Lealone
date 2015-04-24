@@ -29,7 +29,7 @@
 
 ## Lealone文档
 
-* 用户文档
+* [用户文档](https://github.com/codefollower/Lealone/wiki/Lealone%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
 
 * 设计文档
 
