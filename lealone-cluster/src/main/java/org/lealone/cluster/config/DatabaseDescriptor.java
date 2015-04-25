@@ -46,7 +46,6 @@ import org.lealone.cluster.locator.SimpleStrategy;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Utils;
-import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,14 +86,7 @@ public class DatabaseDescriptor {
                 .<ConfigurationLoader> construct(loaderClass, "configuration loading");
         Config conf = loader.loadConfig();
 
-        try {
-            applyConfig(conf);
-        } catch (Exception e) {
-            logger.error("", e);
-            JVMStabilityInspector.inspectThrowable(e);
-            throw new ExceptionInInitializerError(e.getMessage()
-                    + "\nFatal configuration error; unable to start. See log for stacktrace.");
-        }
+        applyConfig(conf);
         return conf;
     }
 

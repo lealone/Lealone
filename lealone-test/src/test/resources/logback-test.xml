@@ -20,7 +20,7 @@
 <configuration>
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
-      <pattern>%-5level %date{HH:mm:ss.SSS} %msg%n</pattern>
+      <pattern>%-5level %date{HH:mm:ss.SSS}  %msg%n</pattern>
     </encoder>
   </appender>
 
