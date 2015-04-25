@@ -18,61 +18,22 @@
 package org.lealone.test.start.client_server_mode;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 
-import org.lealone.server.PgServer;
-import org.lealone.server.Server;
-import org.lealone.server.TcpServer;
+import org.lealone.bootstrap.Lealone;
 
 public class TcpServerStart {
     public static void main(String[] args) throws SQLException {
+        setProperty();
+        Lealone.main(args);
+    }
+
+    private static void setProperty() {
+        System.setProperty("lealone.config", "lealone-cs.yaml");
+
         // System.setProperty("DATABASE_TO_UPPER", "false");
         System.setProperty("lealone.lobInDatabase", "false");
         System.setProperty("lealone.lobClientMaxSizeMemory", "1024");
         System.setProperty("java.io.tmpdir", "./target/test/tmp");
-        System.setProperty("lealone.base.dir", "./lealone-test-data/cs");
-        //System.setProperty("lealone.check2", "true");
-        ArrayList<String> list = new ArrayList<>();
-
-        list.add("-tcpPort");
-        list.add("5210");
-
-        //list.add("-pg");
-        list.add("-tcp");
-
-        start(list.toArray(new String[list.size()]));
-    }
-
-    public static void start(String[] args) {
-        Server server = null;
-        String arg;
-        for (int i = 0; args != null && i < args.length; i++) {
-            arg = args[i];
-            if (arg != null && !arg.isEmpty()) {
-                arg = arg.trim();
-                switch (arg) {
-                case "-tcp":
-                    server = new TcpServer();
-                    break;
-                case "-pg":
-                    server = new PgServer();
-                    break;
-                }
-                if (server != null)
-                    break;
-            }
-        }
-
-        if (server == null)
-            server = new TcpServer();
-
-        try {
-            server.init(args);
-            server.start();
-            System.out.println("Lealone " + server.getName() + " started, listening address: " //
-                    + server.getListenAddress() + ", port: " + server.getPort());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // System.setProperty("lealone.check2", "true");
     }
 }

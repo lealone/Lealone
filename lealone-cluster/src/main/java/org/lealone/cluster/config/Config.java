@@ -42,12 +42,14 @@ public class Config {
 
     public Integer storage_port = 6210;
     public Integer ssl_storage_port = 6211;
+
     public String listen_address;
     public String listen_interface;
+    public Boolean listen_interface_prefer_ipv6 = false;
     public String broadcast_address;
-    public String internode_authenticator;
-
     public String broadcast_rpc_address;
+
+    public String internode_authenticator;
 
     public Integer internode_send_buff_size_in_bytes;
     public Integer internode_recv_buff_size_in_bytes;
