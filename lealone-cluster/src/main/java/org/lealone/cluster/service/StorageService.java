@@ -49,7 +49,7 @@ import javax.management.ObjectName;
 import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.Keyspace;
-import org.lealone.cluster.db.SystemKeyspace;
+import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.dht.BootStrapper;
 import org.lealone.cluster.dht.IPartitioner;
 import org.lealone.cluster.dht.Range;
@@ -185,12 +185,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         if (Boolean.parseBoolean(System.getProperty("lealone.load_ring_state", "true"))) {
             logger.info("Loading persisted ring state");
-            Multimap<InetAddress, Token> loadedTokens = SystemKeyspace.loadTokens();
-            Map<InetAddress, UUID> loadedHostIds = SystemKeyspace.loadHostIds();
+            Multimap<InetAddress, Token> loadedTokens = ClusterMetaData.loadTokens();
+            Map<InetAddress, UUID> loadedHostIds = ClusterMetaData.loadHostIds();
             for (InetAddress ep : loadedTokens.keySet()) {
                 if (ep.equals(Utils.getBroadcastAddress())) {
                     // entry has been mistakenly added, delete it
-                    SystemKeyspace.removeEndpoint(ep);
+                    ClusterMetaData.removeEndpoint(ep);
                 } else {
                     tokenMetadata.updateNormalTokens(loadedTokens.get(ep), ep);
                     if (loadedHostIds.containsKey(ep))
@@ -206,7 +206,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (Boolean.parseBoolean(System.getProperty("lealone.join_ring", "true"))) {
             joinTokenRing(delay);
         } else {
-            Collection<Token> tokens = SystemKeyspace.getSavedTokens();
+            Collection<Token> tokens = ClusterMetaData.getSavedTokens();
             if (!tokens.isEmpty()) {
                 tokenMetadata.updateNormalTokens(tokens, Utils.getBroadcastAddress());
                 // order is important here, the gossiper can fire in between adding these two states.  
@@ -245,7 +245,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             if (DatabaseDescriptor.getReplaceTokens().size() > 0 || DatabaseDescriptor.getReplaceNode() != null)
                 throw new RuntimeException("Replace method removed; use lealone.replace_address instead");
             if (DatabaseDescriptor.isReplacing()) {
-                if (SystemKeyspace.bootstrapComplete())
+                if (ClusterMetaData.bootstrapComplete())
                     throw new RuntimeException("Cannot replace address with a node that is already bootstrapped");
                 if (!DatabaseDescriptor.isAutoBootstrap())
                     throw new RuntimeException(
@@ -261,7 +261,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             // for bootstrap to get the load info it needs.
             // (we won't be part of the storage ring though until we add a counterId to our state, below.)
             // Seed the host ID-to-endpoint map with our own ID.
-            UUID localHostId = SystemKeyspace.getLocalHostId();
+            UUID localHostId = ClusterMetaData.getLocalHostId();
             getTokenMetadata().updateHostId(localHostId, Utils.getBroadcastAddress());
             appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
             appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(localHostId));
@@ -270,7 +270,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             appStates.put(ApplicationState.RELEASE_VERSION, valueFactory.releaseVersion());
             logger.info("Starting up server gossip");
             Gossiper.instance.register(this);
-            Gossiper.instance.start(SystemKeyspace.incrementAndGetGeneration(), appStates); // needed for node-ring gathering.
+            Gossiper.instance.start(ClusterMetaData.incrementAndGetGeneration(), appStates); // needed for node-ring gathering.
             // gossip snitch infos (local DC and rack)
             gossipSnitchInfo();
 
@@ -304,7 +304,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                     new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(
                             DatabaseDescriptor.getReplaceAddress(), ApplicationState.TOKENS))));
 
-            SystemKeyspace.setLocalHostId(hostId); // use the replacee's host Id as our own so we receive hints, etc
+            ClusterMetaData.setLocalHostId(hostId); // use the replacee's host Id as our own so we receive hints, etc
             Gossiper.instance.resetEndpointStateMap(); // clean up since we have what we need
             return tokens;
         } catch (IOException e) {
@@ -313,7 +313,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     private boolean shouldBootstrap() {
-        return DatabaseDescriptor.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete()
+        return DatabaseDescriptor.isAutoBootstrap() && !ClusterMetaData.bootstrapComplete()
                 && !DatabaseDescriptor.getSeeds().contains(Utils.getBroadcastAddress());
     }
 
@@ -354,17 +354,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // We attempted to replace this with a schema-presence check, but you need a meaningful sleep
         // to get schema info from gossip which defeats the purpose.  See lealone-4427 for the gory details.
         Set<InetAddress> current = new HashSet<>();
-        logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(), SystemKeyspace
-                .bootstrapInProgress(), SystemKeyspace.bootstrapComplete(),
+        logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(), ClusterMetaData
+                .bootstrapInProgress(), ClusterMetaData.bootstrapComplete(),
                 DatabaseDescriptor.getSeeds().contains(Utils.getBroadcastAddress()));
-        if (DatabaseDescriptor.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete()
+        if (DatabaseDescriptor.isAutoBootstrap() && !ClusterMetaData.bootstrapComplete()
                 && DatabaseDescriptor.getSeeds().contains(Utils.getBroadcastAddress()))
             logger.info("This node will not auto bootstrap because it is configured to be a seed node.");
         if (shouldBootstrap()) {
-            if (SystemKeyspace.bootstrapInProgress())
+            if (ClusterMetaData.bootstrapInProgress())
                 logger.warn("Detected previous bootstrap failure; retrying");
             else
-                SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.IN_PROGRESS);
+                ClusterMetaData.setBootstrapState(ClusterMetaData.BootstrapState.IN_PROGRESS);
             setMode(Mode.JOINING, "waiting for ring information", true);
             // first sleep the delay to make sure we see all our peers
             //            for (int i = 0; i < delay; i += 1000) {
@@ -436,7 +436,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             bootstrap(bootstrapTokens);
             assert !isBootstrapMode; // bootstrap will block until finished
         } else {
-            bootstrapTokens = SystemKeyspace.getSavedTokens();
+            bootstrapTokens = ClusterMetaData.getSavedTokens();
             if (bootstrapTokens.isEmpty()) {
                 bootstrapTokens = BootStrapper.getRandomTokens(tokenMetadata, DatabaseDescriptor.getNumTokens());
                 if (DatabaseDescriptor.getNumTokens() == 1)
@@ -455,7 +455,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         if (!isSurveyMode) {
             // start participating in the ring.
-            SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.COMPLETED);
+            ClusterMetaData.setBootstrapState(ClusterMetaData.BootstrapState.COMPLETED);
             setTokens(bootstrapTokens);
             // remove the existing info about the replaced node.
             if (!current.isEmpty())
@@ -471,7 +471,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private void bootstrap(Collection<Token> tokens) {
         isBootstrapMode = true;
         // DON'T use setToken, that makes us part of the ring locally which is incorrect until we are done bootstrapping
-        SystemKeyspace.updateTokens(tokens);
+        ClusterMetaData.updateTokens(tokens);
         if (!DatabaseDescriptor.isReplacing()) {
             // if not an existing token then bootstrap
             List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
@@ -483,7 +483,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         } else {
             // Dont set any state for the node which is bootstrapping the existing token...
             tokenMetadata.updateNormalTokens(tokens, Utils.getBroadcastAddress());
-            SystemKeyspace.removeEndpoint(DatabaseDescriptor.getReplaceAddress());
+            ClusterMetaData.removeEndpoint(DatabaseDescriptor.getReplaceAddress());
         }
         if (!Gossiper.instance.seenAnySeed())
             throw new IllegalStateException("Unable to contact any seeds!");
@@ -500,7 +500,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public void setTokens(Collection<Token> tokens) {
         if (logger.isDebugEnabled())
             logger.debug("Setting tokens to {}", tokens);
-        SystemKeyspace.updateTokens(tokens);
+        ClusterMetaData.updateTokens(tokens);
         tokenMetadata.updateNormalTokens(tokens, Utils.getBroadcastAddress());
         Collection<Token> localTokens = getLocalTokens();
         List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
@@ -579,8 +579,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 throw new IOException(e.getMessage());
             }
         } else if (isSurveyMode) {
-            setTokens(SystemKeyspace.getSavedTokens());
-            SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.COMPLETED);
+            setTokens(ClusterMetaData.getSavedTokens());
+            ClusterMetaData.setBootstrapState(ClusterMetaData.BootstrapState.COMPLETED);
             isSurveyMode = false;
             logger.info("Leaving write survey mode and joining ring at operator request");
             assert tokenMetadata.sortedTokens().size() > 0;
@@ -848,26 +848,26 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             switch (state) {
             case RELEASE_VERSION:
-                SystemKeyspace.updatePeerInfo(endpoint, "release_version", value.value);
+                ClusterMetaData.updatePeerInfo(endpoint, "release_version", value.value);
                 break;
             case DC:
-                SystemKeyspace.updatePeerInfo(endpoint, "data_center", value.value);
+                ClusterMetaData.updatePeerInfo(endpoint, "data_center", value.value);
                 break;
             case RACK:
-                SystemKeyspace.updatePeerInfo(endpoint, "rack", value.value);
+                ClusterMetaData.updatePeerInfo(endpoint, "rack", value.value);
                 break;
             case RPC_ADDRESS:
                 try {
-                    SystemKeyspace.updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(value.value));
+                    ClusterMetaData.updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(value.value));
                 } catch (UnknownHostException e) {
                     throw new RuntimeException(e);
                 }
                 break;
             case SCHEMA:
-                SystemKeyspace.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value));
+                ClusterMetaData.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value));
                 break;
             case HOST_ID:
-                SystemKeyspace.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value));
+                ClusterMetaData.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value));
                 break;
             }
         }
@@ -878,27 +878,27 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
             switch (entry.getKey()) {
             case RELEASE_VERSION:
-                SystemKeyspace.updatePeerInfo(endpoint, "release_version", entry.getValue().value);
+                ClusterMetaData.updatePeerInfo(endpoint, "release_version", entry.getValue().value);
                 break;
             case DC:
-                SystemKeyspace.updatePeerInfo(endpoint, "data_center", entry.getValue().value);
+                ClusterMetaData.updatePeerInfo(endpoint, "data_center", entry.getValue().value);
                 break;
             case RACK:
-                SystemKeyspace.updatePeerInfo(endpoint, "rack", entry.getValue().value);
+                ClusterMetaData.updatePeerInfo(endpoint, "rack", entry.getValue().value);
                 break;
             case RPC_ADDRESS:
                 try {
-                    SystemKeyspace.updatePeerInfo(endpoint, "rpc_address",
+                    ClusterMetaData.updatePeerInfo(endpoint, "rpc_address",
                             InetAddress.getByName(entry.getValue().value));
                 } catch (UnknownHostException e) {
                     throw new RuntimeException(e);
                 }
                 break;
             case SCHEMA:
-                SystemKeyspace.updatePeerInfo(endpoint, "schema_version", UUID.fromString(entry.getValue().value));
+                ClusterMetaData.updatePeerInfo(endpoint, "schema_version", UUID.fromString(entry.getValue().value));
                 break;
             case HOST_ID:
-                SystemKeyspace.updatePeerInfo(endpoint, "host_id", UUID.fromString(entry.getValue().value));
+                ClusterMetaData.updatePeerInfo(endpoint, "host_id", UUID.fromString(entry.getValue().value));
                 break;
             }
         }
@@ -1045,9 +1045,9 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 Gossiper.instance.replacementQuarantine(ep); // quarantine locally longer than normally; see Cassandra-8260
         }
         if (!tokensToUpdateInSystemKeyspace.isEmpty())
-            SystemKeyspace.updateTokens(endpoint, tokensToUpdateInSystemKeyspace);
+            ClusterMetaData.updateTokens(endpoint, tokensToUpdateInSystemKeyspace);
         if (!localTokensToRemove.isEmpty())
-            SystemKeyspace.updateLocalTokens(Collections.<Token> emptyList(), localTokensToRemove);
+            ClusterMetaData.updateLocalTokens(Collections.<Token> emptyList(), localTokensToRemove);
 
         if (tokenMetadata.isMoving(endpoint)) // if endpoint was moving to a new token
         {
@@ -1192,7 +1192,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     /** unlike excise we just need this endpoint gone without going through any notifications **/
     private void removeEndpoint(InetAddress endpoint) {
         Gossiper.instance.removeEndpoint(endpoint);
-        SystemKeyspace.removeEndpoint(endpoint);
+        ClusterMetaData.removeEndpoint(endpoint);
     }
 
     protected void addExpireTimeIfFound(InetAddress endpoint, long expireTime) {
@@ -1326,7 +1326,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     public Collection<Token> getLocalTokens() {
-        Collection<Token> tokens = SystemKeyspace.getSavedTokens();
+        Collection<Token> tokens = ClusterMetaData.getSavedTokens();
         assert tokens != null && !tokens.isEmpty(); // should not be called before initServer sets this
         return tokens;
     }

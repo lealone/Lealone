@@ -21,7 +21,7 @@ import java.net.InetAddress;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.lealone.cluster.db.SystemKeyspace;
+import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.ApplicationState;
 import org.lealone.cluster.gms.EndpointState;
@@ -97,7 +97,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
         if (epState == null || epState.getApplicationState(ApplicationState.DC) == null) {
             if (psnitch == null) {
                 if (savedEndpoints == null)
-                    savedEndpoints = SystemKeyspace.loadDcRackInfo();
+                    savedEndpoints = ClusterMetaData.loadDcRackInfo();
                 if (savedEndpoints.containsKey(endpoint))
                     return savedEndpoints.get(endpoint).get("data_center");
                 return DEFAULT_DC;
@@ -122,7 +122,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
         if (epState == null || epState.getApplicationState(ApplicationState.RACK) == null) {
             if (psnitch == null) {
                 if (savedEndpoints == null)
-                    savedEndpoints = SystemKeyspace.loadDcRackInfo();
+                    savedEndpoints = ClusterMetaData.loadDcRackInfo();
                 if (savedEndpoints.containsKey(endpoint))
                     return savedEndpoints.get(endpoint).get("rack");
                 return DEFAULT_RACK;

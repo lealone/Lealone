@@ -36,7 +36,7 @@ import org.lealone.cluster.auth.AllowAllInternodeAuthenticator;
 import org.lealone.cluster.auth.IInternodeAuthenticator;
 import org.lealone.cluster.config.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
-import org.lealone.cluster.db.SystemKeyspace;
+import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.dht.IPartitioner;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
@@ -333,7 +333,7 @@ public class DatabaseDescriptor {
 
     public static boolean isReplacing() {
         if (System.getProperty("lealone.replace_address_first_boot", null) != null
-                && SystemKeyspace.bootstrapComplete()) {
+                && ClusterMetaData.bootstrapComplete()) {
             logger.info("Replace address on first boot requested; this node is already bootstrapped");
             return false;
         }

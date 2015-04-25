@@ -28,7 +28,7 @@ import java.util.concurrent.TimeUnit;
 import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.db.SystemKeyspace;
+import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.metrics.ConnectionMetrics;
 import org.lealone.cluster.security.SSLFactory;
@@ -46,7 +46,7 @@ public class OutboundTcpConnectionPool {
 
     OutboundTcpConnectionPool(InetAddress remoteEp) {
         id = remoteEp;
-        resetEndpoint = SystemKeyspace.getPreferredIP(remoteEp);
+        resetEndpoint = ClusterMetaData.getPreferredIP(remoteEp);
         started = new CountDownLatch(1);
 
         cmdCon = new OutboundTcpConnection(this);
@@ -81,7 +81,7 @@ public class OutboundTcpConnectionPool {
      * @param remoteEP
      */
     public void reset(InetAddress remoteEP) {
-        SystemKeyspace.updatePreferredIP(id, remoteEP);
+        ClusterMetaData.updatePreferredIP(id, remoteEP);
         resetEndpoint = remoteEP;
         for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
             conn.softCloseSocket();

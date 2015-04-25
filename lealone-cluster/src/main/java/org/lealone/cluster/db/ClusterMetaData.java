@@ -26,8 +26,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 
-public class SystemKeyspace {
-    private static final Logger logger = LoggerFactory.getLogger(SystemKeyspace.class);
+public class ClusterMetaData {
+    private static final Logger logger = LoggerFactory.getLogger(ClusterMetaData.class);
 
     //private static Connection conn;
     private static Statement stmt;
@@ -265,9 +265,8 @@ public class SystemKeyspace {
                     final int storedGeneration = generation + 1;
                     final int now = (int) (System.currentTimeMillis() / 1000);
                     if (storedGeneration >= now) {
-                        logger.warn(
-                                "Using stored Gossip Generation {} as it is greater than current system time {}.  See CASSANDRA-3654 if you experience problems",
-                                storedGeneration, now);
+                        logger.warn("Using stored Gossip Generation {} as it is greater than current system time {}.  "
+                                + "See CASSANDRA-3654 if you experience problems", storedGeneration, now);
                         generation = storedGeneration;
                     } else {
                         generation = now;

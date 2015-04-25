@@ -26,7 +26,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-import org.lealone.cluster.db.SystemKeyspace;
+import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.ApplicationState;
 import org.lealone.cluster.gms.EndpointState;
@@ -93,7 +93,7 @@ public class Ec2Snitch extends AbstractNetworkTopologySnitch {
         EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (state == null || state.getApplicationState(ApplicationState.RACK) == null) {
             if (savedEndpoints == null)
-                savedEndpoints = SystemKeyspace.loadDcRackInfo();
+                savedEndpoints = ClusterMetaData.loadDcRackInfo();
             if (savedEndpoints.containsKey(endpoint))
                 return savedEndpoints.get(endpoint).get("rack");
             return DEFAULT_RACK;
@@ -108,7 +108,7 @@ public class Ec2Snitch extends AbstractNetworkTopologySnitch {
         EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (state == null || state.getApplicationState(ApplicationState.DC) == null) {
             if (savedEndpoints == null)
-                savedEndpoints = SystemKeyspace.loadDcRackInfo();
+                savedEndpoints = ClusterMetaData.loadDcRackInfo();
             if (savedEndpoints.containsKey(endpoint))
                 return savedEndpoints.get(endpoint).get("data_center");
             return DEFAULT_DC;
