@@ -69,7 +69,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
     }
 
     public DynamicEndpointSnitch(IEndpointSnitch snitch, String instance) {
-        mbeanName = "org.lealone.cluster:type=DynamicEndpointSnitch";
+        mbeanName = Utils.getJmxObjectName("DynamicEndpointSnitch");
         if (instance != null)
             mbeanName += ",instance=" + instance;
         subsnitch = snitch;

@@ -55,9 +55,9 @@ import org.lealone.cluster.net.MessageIn;
 import org.lealone.cluster.net.MessageOut;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.lealone.cluster.utils.Pair;
+import org.lealone.cluster.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -201,7 +201,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         // Register this instance with JMX
         try {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(this, new ObjectName("org.lealone.cluster:type=Gossiper"));
+            mbs.registerMBean(this, new ObjectName(Utils.getJmxObjectName("Gossiper")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -40,8 +40,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.io.FSWriteError;
 import org.lealone.cluster.utils.BoundedStatsDeque;
-import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.FileUtils;
+import org.lealone.cluster.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,7 +71,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
         // Register this instance with JMX
         try {
             MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.registerMBean(this, new ObjectName("org.lealone.cluster:type=FailureDetector"));
+            mbs.registerMBean(this, new ObjectName(Utils.getJmxObjectName("FailureDetector")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

@@ -74,9 +74,9 @@ import org.lealone.cluster.locator.TokenMetadata;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.net.ResponseVerbHandler;
 import org.lealone.cluster.utils.BackgroundActivityMonitor;
-import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.FileUtils;
 import org.lealone.cluster.utils.Pair;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.WrappedRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,7 +154,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public StorageService() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            jmxObjectName = new ObjectName("org.lealone.cluster:type=StorageService");
+            jmxObjectName = new ObjectName(Utils.getJmxObjectName("StorageService"));
             mbs.registerMBean(this, jmxObjectName);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -326,8 +326,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         if (epState != null && !Gossiper.instance.isDeadState(epState)
                 && !Gossiper.instance.isGossipOnlyMember(Utils.getBroadcastAddress())) {
             throw new RuntimeException(String.format("A node with address %s already exists, cancelling join. "
-                    + "Use lealone.replace_address if you want to replace this node.",
-                    Utils.getBroadcastAddress()));
+                    + "Use lealone.replace_address if you want to replace this node.", Utils.getBroadcastAddress()));
         }
         Gossiper.instance.resetEndpointStateMap();
     }

@@ -57,6 +57,8 @@ public class Lealone {
 
             initBaseDir();
 
+            logger.info("Lealone run mode: {}", config.run_mode);
+
             if (config.isClusterMode()) {
                 Router r = createRouter();
                 startServer(r);
@@ -66,8 +68,6 @@ public class Lealone {
 
             if (config.pg_server_enabled)
                 startPgServer();
-
-            logger.info("Lealone started, run mode: {}", config.run_mode);
         } catch (Exception e) {
             logger.error("Fatal error; unable to start Lealone.  See log for stacktrace.", e);
             System.exit(1);

@@ -76,8 +76,6 @@ import com.google.common.collect.Lists;
 
 @SuppressWarnings({ "rawtypes", "deprecation" })
 public final class MessagingService implements MessagingServiceMBean {
-    public static final String MBEAN_NAME = "org.lealone.cluster:type=MessagingService";
-
     // 8 bits version, so don't waste versions
     public static final int VERSION_12 = 6;
     public static final int VERSION_20 = 7;
@@ -260,7 +258,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            mbs.registerMBean(this, new ObjectName(MBEAN_NAME));
+            mbs.registerMBean(this, new ObjectName(Utils.getJmxObjectName("MessagingService")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

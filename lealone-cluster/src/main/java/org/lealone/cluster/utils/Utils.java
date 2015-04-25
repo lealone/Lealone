@@ -53,6 +53,12 @@ public class Utils {
 
     public static final int MAX_UNSIGNED_SHORT = 0xFFFF;
 
+    private static String JMX_OBJECT_NAME_PREFIX = "org.lealone.cluster:type=";
+
+    public static String getJmxObjectName(String type) {
+        return JMX_OBJECT_NAME_PREFIX + type;
+    }
+
     public static int getAvailableProcessors() {
         if (System.getProperty("lealone.available_processors") != null)
             return Integer.parseInt(System.getProperty("lealone.available_processors"));

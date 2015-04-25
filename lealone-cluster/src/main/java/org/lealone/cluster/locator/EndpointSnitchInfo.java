@@ -25,12 +25,13 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
+import org.lealone.cluster.utils.Utils;
 
 public class EndpointSnitchInfo implements EndpointSnitchInfoMBean {
     public static void create() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName("org.lealone.cluster:type=EndpointSnitchInfo"));
+            mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName(Utils.getJmxObjectName("EndpointSnitchInfo")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
