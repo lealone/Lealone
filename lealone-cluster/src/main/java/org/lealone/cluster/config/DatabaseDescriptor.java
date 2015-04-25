@@ -45,7 +45,7 @@ import org.lealone.cluster.locator.SeedProvider;
 import org.lealone.cluster.locator.SimpleStrategy;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +83,7 @@ public class DatabaseDescriptor {
             return conf;
 
         String loaderClass = System.getProperty("lealone.config.loader");
-        ConfigurationLoader loader = loaderClass == null ? new YamlConfigurationLoader() : FBUtilities
+        ConfigurationLoader loader = loaderClass == null ? new YamlConfigurationLoader() : Utils
                 .<ConfigurationLoader> construct(loaderClass, "configuration loading");
         Config conf = loader.loadConfig();
 
@@ -102,7 +102,7 @@ public class DatabaseDescriptor {
         conf = config;
 
         if (conf.internode_authenticator != null)
-            internodeAuthenticator = FBUtilities.construct(conf.internode_authenticator, "internode_authenticator");
+            internodeAuthenticator = Utils.construct(conf.internode_authenticator, "internode_authenticator");
         else
             internodeAuthenticator = new AllowAllInternodeAuthenticator();
 
@@ -112,7 +112,7 @@ public class DatabaseDescriptor {
             throw new ConfigurationException("Missing directive: partitioner");
         }
         try {
-            partitioner = FBUtilities.newPartitioner(System.getProperty("lealone.partitioner", conf.partitioner));
+            partitioner = Utils.newPartitioner(System.getProperty("lealone.partitioner", conf.partitioner));
         } catch (Exception e) {
             throw new ConfigurationException("Invalid partitioner class " + conf.partitioner);
         }
@@ -175,7 +175,7 @@ public class DatabaseDescriptor {
                 throw new ConfigurationException("broadcast_rpc_address cannot be a wildcard address ("
                         + conf.broadcast_rpc_address + ")!");
         } else {
-            broadcastRpcAddress = FBUtilities.getLocalAddress();
+            broadcastRpcAddress = Utils.getLocalAddress();
 
             if (broadcastRpcAddress.isAnyLocalAddress())
                 throw new ConfigurationException("If rpc_address is set to a wildcard address (" + broadcastRpcAddress
@@ -190,7 +190,7 @@ public class DatabaseDescriptor {
         snitch = createEndpointSnitch(conf.endpoint_snitch);
         EndpointSnitchInfo.create();
 
-        localDC = snitch.getDatacenter(FBUtilities.getBroadcastAddress());
+        localDC = snitch.getDatacenter(Utils.getBroadcastAddress());
         localComparator = new Comparator<InetAddress>() {
             @Override
             public int compare(InetAddress endpoint1, InetAddress endpoint2) {
@@ -243,7 +243,7 @@ public class DatabaseDescriptor {
     private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException {
         if (!snitchClassName.contains("."))
             snitchClassName = "org.lealone.cluster.locator." + snitchClassName;
-        IEndpointSnitch snitch = FBUtilities.construct(snitchClassName, "snitch");
+        IEndpointSnitch snitch = Utils.construct(snitchClassName, "snitch");
         return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
     }
 

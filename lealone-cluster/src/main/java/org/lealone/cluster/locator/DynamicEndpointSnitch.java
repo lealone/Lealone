@@ -36,7 +36,7 @@ import org.lealone.cluster.concurrent.ScheduledExecutors;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 
 import com.yammer.metrics.stats.ExponentiallyDecayingSample;
 
@@ -136,7 +136,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     @Override
     public void sortByProximity(final InetAddress address, List<InetAddress> addresses) {
-        assert address.equals(FBUtilities.getBroadcastAddress()); // we only know about ourself
+        assert address.equals(Utils.getBroadcastAddress()); // we only know about ourself
         if (BADNESS_THRESHOLD == 0) {
             sortByProximityWithScore(address, addresses);
         } else {
@@ -292,7 +292,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch implements ILa
 
     @Override
     public double getSeverity() {
-        return StorageService.instance.getSeverity(FBUtilities.getBroadcastAddress());
+        return StorageService.instance.getSeverity(Utils.getBroadcastAddress());
     }
 
     @Override

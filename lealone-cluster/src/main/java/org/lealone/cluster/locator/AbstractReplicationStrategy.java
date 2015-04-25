@@ -31,7 +31,7 @@ import org.lealone.cluster.dht.Range;
 import org.lealone.cluster.dht.RingPosition;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.exceptions.ConfigurationException;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -251,7 +251,7 @@ public abstract class AbstractReplicationStrategy {
 
     public static Class<AbstractReplicationStrategy> getClass(String cls) throws ConfigurationException {
         String className = cls.contains(".") ? cls : "org.lealone.cluster.locator." + cls;
-        Class<AbstractReplicationStrategy> strategyClass = FBUtilities.classForName(className, "replication strategy");
+        Class<AbstractReplicationStrategy> strategyClass = Utils.classForName(className, "replication strategy");
         if (!AbstractReplicationStrategy.class.isAssignableFrom(strategyClass)) {
             throw new ConfigurationException(String.format(
                     "Specified replication strategy class (%s) is not derived from AbstractReplicationStrategy",

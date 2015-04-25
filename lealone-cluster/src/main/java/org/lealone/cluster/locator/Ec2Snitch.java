@@ -31,7 +31,7 @@ import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.ApplicationState;
 import org.lealone.cluster.gms.EndpointState;
 import org.lealone.cluster.gms.Gossiper;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,7 +88,7 @@ public class Ec2Snitch extends AbstractNetworkTopologySnitch {
 
     @Override
     public String getRack(InetAddress endpoint) {
-        if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+        if (endpoint.equals(Utils.getBroadcastAddress()))
             return ec2zone;
         EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (state == null || state.getApplicationState(ApplicationState.RACK) == null) {
@@ -103,7 +103,7 @@ public class Ec2Snitch extends AbstractNetworkTopologySnitch {
 
     @Override
     public String getDatacenter(InetAddress endpoint) {
-        if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+        if (endpoint.equals(Utils.getBroadcastAddress()))
             return ec2region;
         EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (state == null || state.getApplicationState(ApplicationState.DC) == null) {

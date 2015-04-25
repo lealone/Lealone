@@ -34,7 +34,7 @@ import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.net.MessagingService;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 
 import com.google.common.collect.Iterables;
 
@@ -193,7 +193,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
         }
 
         public VersionedValue releaseVersion() {
-            return new VersionedValue(FBUtilities.getReleaseVersionString());
+            return new VersionedValue(Utils.getReleaseVersionString());
         }
 
         public VersionedValue networkVersion() {

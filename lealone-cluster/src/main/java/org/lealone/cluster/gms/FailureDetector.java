@@ -40,7 +40,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.io.FSWriteError;
 import org.lealone.cluster.utils.BoundedStatsDeque;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -177,7 +177,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
 
     @Override
     public boolean isAlive(InetAddress ep) {
-        if (ep.equals(FBUtilities.getBroadcastAddress()))
+        if (ep.equals(Utils.getBroadcastAddress()))
             return true;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);

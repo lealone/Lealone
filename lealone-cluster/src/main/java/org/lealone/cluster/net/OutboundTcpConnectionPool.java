@@ -32,7 +32,7 @@ import org.lealone.cluster.db.SystemKeyspace;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.metrics.ConnectionMetrics;
 import org.lealone.cluster.security.SSLFactory;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 
 public class OutboundTcpConnectionPool {
     // pointer for the real Address.
@@ -116,19 +116,19 @@ public class OutboundTcpConnectionPool {
                         DatabaseDescriptor.getSSLStoragePort());
             else
                 return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint,
-                        DatabaseDescriptor.getSSLStoragePort(), FBUtilities.getLocalAddress(), 0);
+                        DatabaseDescriptor.getSSLStoragePort(), Utils.getLocalAddress(), 0);
         } else {
             Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.getStoragePort()))
                     .socket();
             if (Config.getOutboundBindAny() && !socket.isBound())
-                socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(), 0));
+                socket.bind(new InetSocketAddress(Utils.getLocalAddress(), 0));
             return socket;
         }
     }
 
     public InetAddress endPoint() {
-        if (id.equals(FBUtilities.getBroadcastAddress()))
-            return FBUtilities.getLocalAddress();
+        if (id.equals(Utils.getBroadcastAddress()))
+            return Utils.getLocalAddress();
         return resetEndpoint;
     }
 
@@ -140,13 +140,13 @@ public class OutboundTcpConnectionPool {
         case all:
             break;
         case dc:
-            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(FBUtilities.getBroadcastAddress())))
+            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(Utils.getBroadcastAddress())))
                 return false;
             break;
         case rack:
             // for rack then check if the DC's are the same.
-            if (snitch.getRack(address).equals(snitch.getRack(FBUtilities.getBroadcastAddress()))
-                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(FBUtilities.getBroadcastAddress())))
+            if (snitch.getRack(address).equals(snitch.getRack(Utils.getBroadcastAddress()))
+                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(Utils.getBroadcastAddress())))
                 return false;
             break;
         }

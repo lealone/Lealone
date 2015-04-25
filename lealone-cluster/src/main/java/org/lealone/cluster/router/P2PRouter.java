@@ -31,7 +31,7 @@ import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.gms.FailureDetector;
 import org.lealone.cluster.gms.Gossiper;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.command.CommandInterface;
 import org.lealone.command.FrontendCommand;
 import org.lealone.command.Prepared;
@@ -79,7 +79,7 @@ public class P2PRouter implements Router {
         Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
         List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
 
-        liveMembers.remove(FBUtilities.getBroadcastAddress());
+        liveMembers.remove(Utils.getBroadcastAddress());
         commands.add(defineCommand);
         try {
             for (InetAddress endpoint : liveMembers) {
@@ -109,7 +109,7 @@ public class P2PRouter implements Router {
 
     private static int executeInsertOrMerge(InsertOrMerge iom) {
         final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getDatacenter(
-                FBUtilities.getBroadcastAddress());
+                Utils.getBroadcastAddress());
         String keyspaceName = iom.getTable().getSchema().getName();
         //AbstractReplicationStrategy rs = Keyspace.open(keyspaceName).getReplicationStrategy();
 
@@ -131,7 +131,7 @@ public class P2PRouter implements Router {
             Iterable<InetAddress> targets = Iterables.concat(naturalEndpoints, pendingEndpoints);
             for (InetAddress destination : targets) {
                 if (FailureDetector.instance.isAlive(destination)) {
-                    if (destination.equals(FBUtilities.getBroadcastAddress())) {
+                    if (destination.equals(Utils.getBroadcastAddress())) {
                         if (localRows == null)
                             localRows = New.arrayList();
                         localRows.add(row);
@@ -215,7 +215,7 @@ public class P2PRouter implements Router {
 
             try {
                 for (InetAddress endpoint : targetEndpoints) {
-                    if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
+                    if (endpoint.equals(Utils.getBroadcastAddress())) {
                         commands.add((Callable<Integer>) p);
                     } else {
                         commands.add(createUpdateCallable(endpoint, p));
@@ -230,7 +230,7 @@ public class P2PRouter implements Router {
             List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
             try {
                 for (InetAddress endpoint : liveMembers) {
-                    if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
+                    if (endpoint.equals(Utils.getBroadcastAddress())) {
                         commands.add((Callable<Integer>) p);
                     } else {
                         commands.add(createUpdateCallable(endpoint, p, p.getSQL()));
@@ -250,7 +250,7 @@ public class P2PRouter implements Router {
 
         List<InetAddress> targetEndpoints = getTargetEndpointsIfEqual(select.getTopTableFilter());
         if (targetEndpoints != null) {
-            boolean isLocal = targetEndpoints.contains(FBUtilities.getBroadcastAddress());
+            boolean isLocal = targetEndpoints.contains(Utils.getBroadcastAddress());
             if (isLocal)
                 return select.call();
 
@@ -275,7 +275,7 @@ public class P2PRouter implements Router {
                     List<CommandInterface> commands = New.arrayList(liveMembers.size());
 
                     //在本地节点执行
-                    liveMembers.remove(FBUtilities.getBroadcastAddress());
+                    liveMembers.remove(Utils.getBroadcastAddress());
                     String sql = getSelectPlanSQL(select);
                     Prepared p = select.getSession().prepare(sql, true);
                     p.setLocal(true);
@@ -290,7 +290,7 @@ public class P2PRouter implements Router {
                 } else {
                     List<Callable<ResultInterface>> commands = New.arrayList(liveMembers.size());
                     for (InetAddress endpoint : liveMembers) {
-                        if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
+                        if (endpoint.equals(Utils.getBroadcastAddress())) {
                             commands.add(select);
                         } else {
                             commands.add(createSelectCallable(endpoint, select, maxRows, scrollable));

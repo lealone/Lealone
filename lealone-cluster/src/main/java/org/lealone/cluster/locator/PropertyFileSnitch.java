@@ -28,7 +28,7 @@ import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.FileUtils;
 import org.lealone.cluster.utils.ResourceWatcher;
 import org.lealone.cluster.utils.WrappedRunnable;
@@ -59,7 +59,7 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch {
         reloadConfiguration();
 
         try {
-            FBUtilities.resourceToFile(SNITCH_PROPERTIES_FILENAME);
+            Utils.resourceToFile(SNITCH_PROPERTIES_FILENAME);
             Runnable runnable = new WrappedRunnable() {
                 @Override
                 protected void runMayThrow() throws ConfigurationException {
@@ -162,11 +162,11 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch {
                 reloadedMap.put(host, token);
             }
         }
-        if (defaultDCRack == null && !reloadedMap.containsKey(FBUtilities.getBroadcastAddress()))
+        if (defaultDCRack == null && !reloadedMap.containsKey(Utils.getBroadcastAddress()))
             throw new ConfigurationException(String.format(
                     "Snitch definitions at %s do not define a location for this node's broadcast address %s, "
                             + "nor does it provides a default", SNITCH_PROPERTIES_FILENAME,
-                    FBUtilities.getBroadcastAddress()));
+                    Utils.getBroadcastAddress()));
 
         if (logger.isDebugEnabled()) {
             StringBuilder sb = new StringBuilder();

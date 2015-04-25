@@ -64,7 +64,7 @@ import org.lealone.cluster.metrics.ConnectionMetrics;
 import org.lealone.cluster.metrics.DroppedMessageMetrics;
 import org.lealone.cluster.security.SSLFactory;
 import org.lealone.cluster.utils.ExpiringMap;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.FileUtils;
 import org.lealone.cluster.utils.Pair;
 import org.lealone.cluster.utils.concurrent.SimpleCondition;
@@ -473,9 +473,9 @@ public final class MessagingService implements MessagingServiceMBean {
      */
     public void sendOneWay(MessageOut message, int id, InetAddress to) {
         if (logger.isTraceEnabled())
-            logger.trace("{} sending {} to {}@{}", FBUtilities.getBroadcastAddress(), message.verb, id, to);
+            logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
 
-        if (to.equals(FBUtilities.getBroadcastAddress()))
+        if (to.equals(Utils.getBroadcastAddress()))
             logger.trace("Message-to-self {} going over MessagingService", message);
 
         // get pooled connection (really, connection queue)

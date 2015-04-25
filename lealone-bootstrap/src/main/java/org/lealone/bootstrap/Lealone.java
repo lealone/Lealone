@@ -24,7 +24,7 @@ import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.router.P2PRouter;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.WrappedRunnable;
 import org.lealone.command.router.Router;
 import org.lealone.engine.Session;
@@ -49,7 +49,7 @@ public class Lealone {
 
     public void start() {
         try {
-            logger.info("Lealone version: {}", FBUtilities.getReleaseVersionString());
+            logger.info("Lealone version: {}", Utils.getReleaseVersionString());
             config = DatabaseDescriptor.loadConfig();
 
             if (!DatabaseDescriptor.hasLargeAddressSpace())

@@ -33,7 +33,7 @@ import java.util.Set;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.locator.TokenMetadata.Topology;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +76,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
 
         datacenters = Collections.unmodifiableMap(newDatacenters);
         if (logger.isDebugEnabled())
-            logger.debug("Configured datacenter replicas are {}", FBUtilities.toString(datacenters));
+            logger.debug("Configured datacenter replicas are {}", Utils.toString(datacenters));
     }
 
     /**

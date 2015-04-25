@@ -27,7 +27,7 @@ import org.lealone.cluster.gms.ApplicationState;
 import org.lealone.cluster.gms.EndpointState;
 import org.lealone.cluster.gms.Gossiper;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.ResourceWatcher;
 import org.lealone.cluster.utils.WrappedRunnable;
 import org.slf4j.Logger;
@@ -68,7 +68,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
         }
 
         try {
-            FBUtilities.resourceToFile(SnitchProperties.RACKDC_PROPERTY_FILENAME);
+            Utils.resourceToFile(SnitchProperties.RACKDC_PROPERTY_FILENAME);
             Runnable runnable = new WrappedRunnable() {
                 @Override
                 protected void runMayThrow() throws ConfigurationException {
@@ -90,7 +90,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
      */
     @Override
     public String getDatacenter(InetAddress endpoint) {
-        if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+        if (endpoint.equals(Utils.getBroadcastAddress()))
             return myDC;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -115,7 +115,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
      */
     @Override
     public String getRack(InetAddress endpoint) {
-        if (endpoint.equals(FBUtilities.getBroadcastAddress()))
+        if (endpoint.equals(Utils.getBroadcastAddress()))
             return myRack;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -137,7 +137,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageService.instance.valueFactory.internalIP(FBUtilities.getLocalAddress().getHostAddress()));
+                StorageService.instance.valueFactory.internalIP(Utils.getLocalAddress().getHostAddress()));
 
         reloadGossiperState();
 

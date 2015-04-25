@@ -43,7 +43,7 @@ import net.jpountz.xxhash.XXHashFactory;
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.io.DataOutputStreamPlus;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +81,7 @@ public class OutboundTcpConnection extends Thread {
 
     private static boolean isLocalDC(InetAddress targetHost) {
         String remoteDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+        String localDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(Utils.getBroadcastAddress());
         return remoteDC.equals(localDC);
     }
 
@@ -298,7 +298,7 @@ public class OutboundTcpConnection extends Thread {
                 }
 
                 out.writeInt(MessagingService.current_version);
-                CompactEndpointSerializationHelper.serialize(FBUtilities.getBroadcastAddress(), out);
+                CompactEndpointSerializationHelper.serialize(Utils.getBroadcastAddress(), out);
                 if (shouldCompressConnection()) {
                     out.flush();
                     logger.trace("Upgrading OutputStream to be compressed");

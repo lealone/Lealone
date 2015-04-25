@@ -272,14 +272,14 @@ public class ByteBufferUtil {
 
     public static void writeWithShortLength(ByteBuffer buffer, DataOutputPlus out) throws IOException {
         int length = buffer.remaining();
-        assert 0 <= length && length <= FBUtilities.MAX_UNSIGNED_SHORT : length;
+        assert 0 <= length && length <= Utils.MAX_UNSIGNED_SHORT : length;
         out.writeShort(length);
         out.write(buffer);
     }
 
     public static void writeWithShortLength(byte[] buffer, DataOutput out) throws IOException {
         int length = buffer.length;
-        assert 0 <= length && length <= FBUtilities.MAX_UNSIGNED_SHORT : length;
+        assert 0 <= length && length <= Utils.MAX_UNSIGNED_SHORT : length;
         out.writeShort(length);
         out.write(buffer);
     }

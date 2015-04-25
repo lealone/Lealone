@@ -27,7 +27,7 @@ import java.util.Map;
 import org.lealone.cluster.dht.RingPosition;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.exceptions.ConfigurationException;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 
 public class LocalStrategy extends AbstractReplicationStrategy {
     public LocalStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
@@ -43,13 +43,13 @@ public class LocalStrategy extends AbstractReplicationStrategy {
     @Override
     public ArrayList<InetAddress> getNaturalEndpoints(RingPosition<?> searchPosition) {
         ArrayList<InetAddress> l = new ArrayList<InetAddress>(1);
-        l.add(FBUtilities.getBroadcastAddress());
+        l.add(Utils.getBroadcastAddress());
         return l;
     }
 
     @Override
     public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata) {
-        return Collections.singletonList(FBUtilities.getBroadcastAddress());
+        return Collections.singletonList(Utils.getBroadcastAddress());
     }
 
     @Override

@@ -44,7 +44,7 @@ public class ResourceWatcher {
 
         public void run() {
             try {
-                String filename = FBUtilities.resourceToFile(resource);
+                String filename = Utils.resourceToFile(resource);
                 long lastModified = new File(filename).lastModified();
                 if (lastModified > lastLoaded) {
                     callback.run();

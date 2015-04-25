@@ -27,7 +27,7 @@ import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.TypeSizes;
 import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -50,7 +50,7 @@ public class MessageOut<T> {
 
     private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
             Map<String, byte[]> parameters) {
-        this(FBUtilities.getBroadcastAddress(), verb, payload, serializer, parameters);
+        this(Utils.getBroadcastAddress(), verb, payload, serializer, parameters);
     }
 
     @VisibleForTesting

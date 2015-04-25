@@ -30,7 +30,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.lealone.cluster.db.DecoratedKey;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.utils.ByteBufferUtil;
-import org.lealone.cluster.utils.FBUtilities;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.Hex;
 import org.lealone.cluster.utils.ObjectSizes;
 import org.lealone.cluster.utils.Pair;
@@ -65,7 +65,7 @@ public class ByteOrderedPartitioner implements IPartitioner {
         @Override
         public int compareTo(Token other) {
             BytesToken o = (BytesToken) other;
-            return FBUtilities.compareUnsigned(token, o.token, 0, 0, token.length, o.token.length);
+            return Utils.compareUnsigned(token, o.token, 0, 0, token.length, o.token.length);
         }
 
         @Override
@@ -122,7 +122,7 @@ public class ByteOrderedPartitioner implements IPartitioner {
         BigInteger left = bigForBytes(ltoken.token, sigbytes);
         BigInteger right = bigForBytes(rtoken.token, sigbytes);
 
-        Pair<BigInteger, Boolean> midpair = FBUtilities.midpoint(left, right, 8 * sigbytes);
+        Pair<BigInteger, Boolean> midpair = Utils.midpoint(left, right, 8 * sigbytes);
         return new BytesToken(bytesForBig(midpair.left, sigbytes, midpair.right));
     }
 
