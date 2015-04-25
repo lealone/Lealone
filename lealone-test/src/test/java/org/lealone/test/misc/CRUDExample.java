@@ -24,6 +24,7 @@ import java.sql.Statement;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
+import org.junit.Assert;
 import org.lealone.test.sql.TestBase;
 
 public class CRUDExample {
@@ -36,8 +37,30 @@ public class CRUDExample {
     }
 
     public static void main(String[] args) throws Exception {
-        crud();
+        crud0();
+        //crud();
         //benchmark();
+    }
+
+    static void crud0() throws Exception {
+        Connection conn = getConnection();
+        Statement stmt = conn.createStatement();
+
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 1)");
+        stmt.executeUpdate("UPDATE test SET f2 = 2 WHERE f1 = 1");
+        ResultSet rs = stmt.executeQuery("SELECT * FROM test");
+        Assert.assertTrue(rs.next());
+        System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+        Assert.assertFalse(rs.next());
+        rs.close();
+        stmt.executeUpdate("DELETE FROM test WHERE f1 = 1");
+        rs = stmt.executeQuery("SELECT * FROM test");
+        Assert.assertFalse(rs.next());
+        rs.close();
+        stmt.executeUpdate("DROP TABLE IF EXISTS test");
+        stmt.close();
+        conn.close();
     }
 
     static void crud() throws Exception {
