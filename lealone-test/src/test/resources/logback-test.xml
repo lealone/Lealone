@@ -23,7 +23,7 @@
       <pattern>%-5level %date{HH:mm:ss.SSS} %msg%n</pattern>
     </encoder>
   </appender>
-        
+
   <root level="INFO">
     <appender-ref ref="STDOUT" />
   </root>

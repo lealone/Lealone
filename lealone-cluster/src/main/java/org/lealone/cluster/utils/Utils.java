@@ -174,9 +174,7 @@ public class Utils {
     public static <T> Class<T> classForName(String classname, String readable) throws ConfigurationException {
         try {
             return (Class<T>) Class.forName(classname);
-        } catch (ClassNotFoundException e) {
-            throw new ConfigurationException(String.format("Unable to find %s class '%s'", readable, classname), e);
-        } catch (NoClassDefFoundError e) {
+        } catch (ClassNotFoundException | NoClassDefFoundError e) {
             throw new ConfigurationException(String.format("Unable to find %s class '%s'", readable, classname), e);
         }
     }
