@@ -4,10 +4,10 @@
 	<parent>
 		<groupId>org.lealone</groupId>
 		<artifactId>lealone</artifactId>
-		<version>1.0.0</version>
+		<version>1.0.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>lealone-common</artifactId>
 	<packaging>jar</packaging>
-	<version>${lealone.version}</version>
+	<version>1.0.0-SNAPSHOT</version>
 </project>

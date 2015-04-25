@@ -4,29 +4,29 @@
 	<parent>
 		<groupId>org.lealone</groupId>
 		<artifactId>lealone</artifactId>
-		<version>1.0.0</version>
+		<version>1.0.0-SNAPSHOT</version>
 		<relativePath>../pom.xml</relativePath>
 	</parent>
 
 	<artifactId>lealone-test</artifactId>
 	<packaging>jar</packaging>
-	<version>${lealone.version}</version>
+	<version>1.0.0-SNAPSHOT</version>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.lealone</groupId>
 			<artifactId>lealone-bootstrap</artifactId>
-			<version>${lealone.version}</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lealone</groupId>
 			<artifactId>lealone-storage-cbase</artifactId>
-			<version>${lealone.version}</version>
+			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lealone</groupId>
 			<artifactId>lealone-storage-wiredtiger</artifactId>
-			<version>${lealone.version}</version>
+			<version>${project.version}</version>
 		</dependency>
 	</dependencies>
 </project>
