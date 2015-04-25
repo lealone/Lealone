@@ -46,10 +46,6 @@ public final class JVMStabilityInspector {
         if (t instanceof OutOfMemoryError)
             isUnstable = true;
 
-        //        if (DatabaseDescriptor.getDiskFailurePolicy() == Config.DiskFailurePolicy.die)
-        //            if (t instanceof FSError || t instanceof CorruptSSTableException)
-        //                isUnstable = true;
-
         // Check for file handle exhaustion
         if (t instanceof FileNotFoundException || t instanceof SocketException)
             if (t.getMessage().contains("Too many open files"))
@@ -60,16 +56,10 @@ public final class JVMStabilityInspector {
     }
 
     @VisibleForTesting
-    public static Killer replaceKiller(Killer newKiller) {
-        Killer oldKiller = JVMStabilityInspector.killer;
-        JVMStabilityInspector.killer = newKiller;
-        return oldKiller;
-    }
-
-    @VisibleForTesting
     public static class Killer {
         /**
-        * Certain situations represent "Die" conditions for the server, and if so, the reason is logged and the current JVM is killed.
+        * Certain situations represent "Die" conditions for the server, and if so, 
+        * the reason is logged and the current JVM is killed.
         *
         * @param t
         *      The Throwable to log before killing the current JVM

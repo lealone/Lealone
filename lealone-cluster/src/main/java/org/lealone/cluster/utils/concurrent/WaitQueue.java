@@ -125,7 +125,8 @@ public final class WaitQueue {
         // to avoid a race where the condition is not met and the woken thread managed to wait on the queue before
         // we finish signalling it all, we pick a random thread we have woken-up and hold onto it, so that if we encounter
         // it again we know we're looping. We reselect a random thread periodically, progressively less often.
-        // the "correct" solution to this problem is to use a queue that permits snapshot iteration, but this solution is sufficient
+        // the "correct" solution to this problem is to use a queue that permits snapshot iteration, 
+        // but this solution is sufficient
         int i = 0, s = 5;
         Thread randomThread = null;
         Iterator<RegisteredSignal> iter = queue.iterator();
