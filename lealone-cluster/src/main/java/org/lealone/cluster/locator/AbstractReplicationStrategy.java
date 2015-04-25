@@ -250,7 +250,8 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public static Class<AbstractReplicationStrategy> getClass(String cls) throws ConfigurationException {
-        String className = cls.contains(".") ? cls : "org.lealone.cluster.locator." + cls;
+        String className = cls.contains(".") ? cls : AbstractReplicationStrategy.class.getPackage().getName() + "."
+                + cls;
         Class<AbstractReplicationStrategy> strategyClass = Utils.classForName(className, "replication strategy");
         if (!AbstractReplicationStrategy.class.isAssignableFrom(strategyClass)) {
             throw new ConfigurationException(String.format(

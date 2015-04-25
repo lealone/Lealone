@@ -160,7 +160,7 @@ public class Utils {
 
     public static IPartitioner newPartitioner(String partitionerClassName) throws ConfigurationException {
         if (!partitionerClassName.contains("."))
-            partitionerClassName = "org.lealone.cluster.dht." + partitionerClassName;
+            partitionerClassName = IPartitioner.class.getPackage().getName() + "." + partitionerClassName;
         return Utils.instanceOrConstruct(partitionerClassName, "partitioner");
     }
 

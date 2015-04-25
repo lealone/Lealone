@@ -234,7 +234,7 @@ public class DatabaseDescriptor {
 
     private static IEndpointSnitch createEndpointSnitch(String snitchClassName) throws ConfigurationException {
         if (!snitchClassName.contains("."))
-            snitchClassName = "org.lealone.cluster.locator." + snitchClassName;
+            snitchClassName = IEndpointSnitch.class.getPackage().getName() + "." + snitchClassName;
         IEndpointSnitch snitch = Utils.construct(snitchClassName, "snitch");
         return conf.dynamic_snitch ? new DynamicEndpointSnitch(snitch) : snitch;
     }
