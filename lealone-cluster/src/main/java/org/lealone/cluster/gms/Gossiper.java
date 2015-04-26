@@ -1194,7 +1194,6 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         } finally {
             taskLock.unlock();
         }
-
     }
 
     public void stop() {

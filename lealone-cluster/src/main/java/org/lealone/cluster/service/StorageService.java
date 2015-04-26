@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.MBeanServer;
@@ -87,7 +86,6 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
-import com.google.common.util.concurrent.Uninterruptibles;
 
 /**
  * This abstraction contains the token/identifier of this node
@@ -367,28 +365,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 logger.warn("Detected previous bootstrap failure; retrying");
             else
                 ClusterMetaData.setBootstrapState(ClusterMetaData.BootstrapState.IN_PROGRESS);
-            setMode(Mode.JOINING, "waiting for ring information", true);
-            // first sleep the delay to make sure we see all our peers
-            //            for (int i = 0; i < delay; i += 1000) {
-            //                // if we see schema, we can proceed to the next check directly
-            //                if (!Schema.instance.getVersion().equals(Schema.emptyVersion)) {
-            //                    logger.debug("got schema: {}", Schema.instance.getVersion());
-            //                    break;
-            //                }
-            //                Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
-            //            }
-            setMode(Mode.JOINING, "schema complete, ready to bootstrap", true);
-            setMode(Mode.JOINING, "waiting for pending range calculation", true);
-            PendingRangeCalculatorService.instance.blockUntilFinished();
-            setMode(Mode.JOINING, "calculation complete, ready to bootstrap", true);
 
             if (logger.isDebugEnabled())
                 logger.debug("... got ring + schema info");
 
             if (Boolean.parseBoolean(System.getProperty("lealone.consistent.rangemovement", "true"))
-                    && (tokenMetadata.getBootstrapTokens().valueSet().size() > 0
-                            || tokenMetadata.getLeavingEndpoints().size() > 0 || tokenMetadata.getMovingEndpoints()
-                            .size() > 0))
+                    && (tokenMetadata.getBootstrapTokens().valueSet().size() > 0 //
+                            || tokenMetadata.getLeavingEndpoints().size() > 0 //
+                    || tokenMetadata.getMovingEndpoints().size() > 0))
                 throw new UnsupportedOperationException("Other bootstrapping/leaving/moving nodes detected, "
                         + "cannot bootstrap while lealone.consistent.rangemovement is true");
 
@@ -476,12 +460,17 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         ClusterMetaData.updateTokens(tokens);
         if (!DatabaseDescriptor.isReplacing()) {
             // if not an existing token then bootstrap
-            List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
+            List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<>();
             states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(tokens)));
             states.add(Pair.create(ApplicationState.STATUS, valueFactory.bootstrapping(tokens)));
             Gossiper.instance.addLocalApplicationStates(states);
-            setMode(Mode.JOINING, "sleeping " + RING_DELAY + " ms for pending range setup", true);
-            Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS);
+
+            setMode(Mode.JOINING, "waiting for pending range calculation", true);
+            PendingRangeCalculatorService.instance.blockUntilFinished();
+            setMode(Mode.JOINING, "calculation complete, ready to bootstrap", true);
+
+            //setMode(Mode.JOINING, "sleeping " + RING_DELAY + " ms for pending range setup", true);
+            //Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS);
         } else {
             // Dont set any state for the node which is bootstrapping the existing token...
             tokenMetadata.updateNormalTokens(tokens, Utils.getBroadcastAddress());
