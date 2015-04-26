@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.dht.TokenFactory;
 import org.lealone.cluster.service.StorageService;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.engine.SystemDatabase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,9 +94,9 @@ public class ClusterMetaData {
     }
 
     public static BootstrapState getBootstrapState() {
-        String req = "SELECT bootstrapped FROM %s WHERE key='%s'";
+        String sql = "SELECT bootstrapped FROM %s WHERE key='%s'";
         try {
-            ResultSet rs = stmt.executeQuery(String.format(req, LOCAL_TABLE, LOCAL_KEY));
+            ResultSet rs = stmt.executeQuery(String.format(sql, LOCAL_TABLE, LOCAL_KEY));
             if (rs.next()) {
                 String bootstrapped = rs.getString(1);
                 if (bootstrapped != null) {
@@ -120,10 +121,10 @@ public class ClusterMetaData {
     }
 
     public static void setBootstrapState(BootstrapState state) {
-        //String req = "INSERT INTO %s (key, bootstrapped) VALUES ('%s', '%s')";
-        String req = "UPDATE %s SET bootstrapped = '%s' WHERE key = '%s'";
+        //String sql = "INSERT INTO %s (key, bootstrapped) VALUES ('%s', '%s')";
+        String sql = "UPDATE %s SET bootstrapped = '%s' WHERE key = '%s'";
         try {
-            stmt.executeUpdate(String.format(req, LOCAL_TABLE, state.name(), LOCAL_KEY));
+            stmt.executeUpdate(String.format(sql, LOCAL_TABLE, state.name(), LOCAL_KEY));
         } catch (SQLException e) {
             handleException(e);
         }
@@ -175,19 +176,19 @@ public class ClusterMetaData {
     }
 
     public static synchronized void removeEndpoint(InetAddress ep) {
-        String req = "DELETE FROM %s WHERE peer = '%s'";
+        String sql = "DELETE FROM %s WHERE peer = '%s'";
         try {
-            stmt.executeUpdate(String.format(req, PEERS_TABLE, ep.getCanonicalHostName()));
+            stmt.executeUpdate(String.format(sql, PEERS_TABLE, ep.getCanonicalHostName()));
         } catch (SQLException e) {
             handleException(e);
         }
     }
 
     public static Collection<Token> getSavedTokens() {
-        String req = "SELECT tokens FROM %s WHERE key='%s'";
+        String sql = "SELECT tokens FROM %s WHERE key='%s'";
 
         try {
-            ResultSet rs = stmt.executeQuery(String.format(req, LOCAL_TABLE, LOCAL_KEY));
+            ResultSet rs = stmt.executeQuery(String.format(sql, LOCAL_TABLE, LOCAL_KEY));
             if (rs.next()) {
                 String tokens = rs.getString(1);
                 if (tokens != null) {
@@ -205,10 +206,10 @@ public class ClusterMetaData {
     }
 
     public static UUID getLocalHostId() {
-        String req = "SELECT host_id FROM %s WHERE key='%s'";
+        String sql = "SELECT host_id FROM %s WHERE key='%s'";
 
         try {
-            ResultSet rs = stmt.executeQuery(String.format(req, LOCAL_TABLE, LOCAL_KEY));
+            ResultSet rs = stmt.executeQuery(String.format(sql, LOCAL_TABLE, LOCAL_KEY));
             if (rs.next()) {
                 String host_id = rs.getString(1);
                 if (host_id != null) {
@@ -228,9 +229,9 @@ public class ClusterMetaData {
     }
 
     public static UUID setLocalHostId(UUID hostId) {
-        String req = "INSERT INTO %s (key, host_id) VALUES ('%s', '%s')";
+        String sql = "INSERT INTO %s (key, host_id) VALUES ('%s', '%s')";
         try {
-            stmt.executeUpdate(String.format(req, LOCAL_TABLE, LOCAL_KEY, hostId.toString()));
+            stmt.executeUpdate(String.format(sql, LOCAL_TABLE, LOCAL_KEY, hostId.toString()));
         } catch (SQLException e) {
             handleException(e);
         }
@@ -239,10 +240,10 @@ public class ClusterMetaData {
     }
 
     public static int incrementAndGetGeneration() {
-        String req = "SELECT gossip_generation FROM %s WHERE key='%s'";
+        String sql = "SELECT gossip_generation FROM %s WHERE key='%s'";
         int generation = 0;
         try {
-            ResultSet rs = stmt.executeQuery(String.format(req, LOCAL_TABLE, LOCAL_KEY));
+            ResultSet rs = stmt.executeQuery(String.format(sql, LOCAL_TABLE, LOCAL_KEY));
             if (rs.next()) {
                 generation = rs.getInt(1);
                 if (generation == 0) {
@@ -267,9 +268,9 @@ public class ClusterMetaData {
         } catch (Exception e) {
             handleException(e);
         }
-        req = "UPDATE %s SET gossip_generation = %d WHERE key = '%s'";
+        sql = "UPDATE %s SET gossip_generation = %d WHERE key = '%s'";
         try {
-            stmt.executeUpdate(String.format(req, LOCAL_TABLE, generation, LOCAL_KEY));
+            stmt.executeUpdate(String.format(sql, LOCAL_TABLE, generation, LOCAL_KEY));
         } catch (SQLException e) {
             handleException(e);
         }
@@ -282,9 +283,9 @@ public class ClusterMetaData {
 
     public static synchronized void updateTokens(Collection<Token> tokens) {
         assert !tokens.isEmpty() : "removeEndpoint should be used instead";
-        String req = "UPDATE %s SET tokens = '%s' WHERE key = '%s'";
+        String sql = "UPDATE %s SET tokens = '%s' WHERE key = '%s'";
         try {
-            stmt.executeUpdate(String.format(req, LOCAL_TABLE, StringUtils.join(tokensAsSet(tokens), ','), LOCAL_KEY));
+            stmt.executeUpdate(String.format(sql, LOCAL_TABLE, StringUtils.join(tokensAsSet(tokens), ','), LOCAL_KEY));
         } catch (SQLException e) {
             handleException(e);
         }
@@ -299,6 +300,14 @@ public class ClusterMetaData {
     }
 
     public static synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value) {
+        if (ep.equals(Utils.getBroadcastAddress()))
+            return;
+        String sql = "UPDATE %s SET %s = '%s' WHERE peer = '%s'";
+        try {
+            stmt.executeUpdate(String.format(sql, PEERS_TABLE, columnName, value, ep));
+        } catch (SQLException e) {
+            handleException(e);
+        }
     }
 
     /**
