@@ -48,8 +48,8 @@ import javax.management.ObjectName;
 
 import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.db.ClusterMetaData;
+import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.dht.BootStrapper;
 import org.lealone.cluster.dht.IPartitioner;
 import org.lealone.cluster.dht.Range;

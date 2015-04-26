@@ -27,20 +27,21 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 
 public class ClusterMetaData {
+    public static enum BootstrapState {
+        NEEDS_BOOTSTRAP,
+        COMPLETED,
+        IN_PROGRESS
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(ClusterMetaData.class);
-
-    //private static Connection conn;
-    private static Statement stmt;
-    public static final String NAME = SystemDatabase.NAME;
-
-    public static final String LOCAL_TABLE = "local";
-    public static final String PEERS_TABLE = "peers";
-
+    private static final String LOCAL_TABLE = "local";
+    private static final String PEERS_TABLE = "peers";
     private static final String LOCAL_KEY = "local";
+
+    private static Statement stmt;
 
     static {
         try {
-            //conn = DriverManager.getConnection("jdbc:lealone:embed:" + NAME, "sa", "");
             stmt = SystemDatabase.getConnection().createStatement();
             stmt.execute("CREATE TABLE IF NOT EXISTS " + PEERS_TABLE + "(" //
                     + "peer varchar,"//
@@ -66,20 +67,17 @@ public class ClusterMetaData {
                     + "rack varchar,"//
                     + "release_version varchar,"//
                     + "schema_version uuid,"//
-                    //+ "thrift_version varchar,"//
                     + "tokens varchar,"//
                     //+ "truncated_at map<uuid, blob>,"//
                     + "PRIMARY KEY (key))");
-            //stmt.close();
         } catch (SQLException e) {
             handleException(e);
         }
     }
 
-    public enum BootstrapState {
-        NEEDS_BOOTSTRAP,
-        COMPLETED,
-        IN_PROGRESS
+    private static void handleException(Exception e) {
+        //TODO 是否要重新抛出异常
+        logger.error("Cluster metadata exception", e);
     }
 
     public static Map<InetAddress, Map<String, String>> loadDcRackInfo() {
@@ -142,7 +140,6 @@ public class ClusterMetaData {
     public static SetMultimap<InetAddress, Token> loadTokens() {
         SetMultimap<InetAddress, Token> tokenMap = HashMultimap.create();
         try {
-            //Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("SELECT peer, tokens FROM " + PEERS_TABLE);
             while (rs.next()) {
                 String tokens = rs.getString(2);
@@ -153,7 +150,6 @@ public class ClusterMetaData {
                 }
             }
             rs.close();
-            //stmt.close();
         } catch (Exception e) {
             handleException(e);
         }
@@ -163,7 +159,6 @@ public class ClusterMetaData {
     public static Map<InetAddress, UUID> loadHostIds() {
         Map<InetAddress, UUID> hostIdMap = new HashMap<>();
         try {
-            //Statement stmt = conn.createStatement();
             ResultSet rs = stmt.executeQuery("SELECT peer, host_id FROM " + PEERS_TABLE);
             while (rs.next()) {
                 String host_id = rs.getString(2);
@@ -173,7 +168,6 @@ public class ClusterMetaData {
                 }
             }
             rs.close();
-            //stmt.close();
         } catch (Exception e) {
             handleException(e);
         }
@@ -187,10 +181,6 @@ public class ClusterMetaData {
         } catch (SQLException e) {
             handleException(e);
         }
-    }
-
-    private static void handleException(Exception e) {
-        e.printStackTrace();
     }
 
     public static Collection<Token> getSavedTokens() {
@@ -326,5 +316,4 @@ public class ClusterMetaData {
         updateTokens(tokens);
         return tokens;
     }
-
 }
