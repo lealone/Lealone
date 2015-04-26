@@ -270,7 +270,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             appStates.put(ApplicationState.RELEASE_VERSION, valueFactory.releaseVersion());
             logger.info("Starting up server gossip");
             Gossiper.instance.register(this);
-            Gossiper.instance.start(ClusterMetaData.incrementAndGetGeneration(), appStates); // needed for node-ring gathering.
+            Gossiper.instance.start(ClusterMetaData.incrementAndGetGeneration(), appStates);
             // gossip snitch infos (local DC and rack)
             gossipSnitchInfo();
 

@@ -80,7 +80,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
         // blindly interning everything is somewhat suboptimal -- lots of VersionedValues are unique --
         // but harmless, and interning the non-unique ones saves significant memory.  (Unfortunately,
         // we don't really have enough information here in VersionedValue to tell the probably-unique
-        // values apart.)  See lealone-6410.
+        // values apart.)  See Cassandra-6410.
         this.value = value.intern();
         this.version = version;
     }
