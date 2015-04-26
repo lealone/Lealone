@@ -324,11 +324,10 @@ public class DatabaseDescriptor {
     }
 
     public static UUID getReplaceNode() {
-        try {
-            return UUID.fromString(System.getProperty("lealone.replace_node", null));
-        } catch (NullPointerException e) {
-            return null;
-        }
+        String replaceNode = System.getProperty("lealone.replace_node", null);
+        if (replaceNode != null)
+            return UUID.fromString(replaceNode);
+        return null;
     }
 
     public static boolean isReplacing() {
