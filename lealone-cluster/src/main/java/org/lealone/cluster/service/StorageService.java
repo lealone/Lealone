@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.management.MBeanServer;
@@ -86,6 +87,7 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
+import com.google.common.util.concurrent.Uninterruptibles;
 
 /**
  * This abstraction contains the token/identifier of this node
@@ -476,8 +478,24 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             tokenMetadata.updateNormalTokens(tokens, Utils.getBroadcastAddress());
             ClusterMetaData.removeEndpoint(DatabaseDescriptor.getReplaceAddress());
         }
-        if (!Gossiper.instance.seenAnySeed())
-            throw new IllegalStateException("Unable to contact any seeds!");
+
+        //GossipTask是在另一个线程中异步执行的，
+        //执行bootstrap的线程运行到这里时GossipTask可能还在与seed节点交换信息的过程中，
+        //虽然在执行doShadowRound时与seed节点通信过一次，
+        //但执行完doShadowRound后就在checkForEndpointCollision中马上就调用resetEndpointStateMap把endpointStateMap清空了，
+        //所以seenAnySeed()会返回false，
+        //这里没有像上面那样使用Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS)，
+        //是不想在执行bootstrap时暂停太久，因为RING_DELAY的默认值是30秒!
+        int delay = 0;
+        while (true) {
+            if (Gossiper.instance.seenAnySeed())
+                break;
+            Uninterruptibles.sleepUninterruptibly(100, TimeUnit.MILLISECONDS);
+            delay += 100;
+            if (delay > RING_DELAY)
+                throw new IllegalStateException("Unable to contact any seeds!");
+        }
+
         setMode(Mode.JOINING, "Starting to bootstrap...", true);
         new BootStrapper(Utils.getBroadcastAddress(), tokens, tokenMetadata).bootstrap(); // handles token update
         logger.info("Bootstrap completed! for the tokens {}", tokens);
