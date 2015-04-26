@@ -18,13 +18,18 @@
 package org.lealone.cluster.service;
 
 import java.net.InetAddress;
-import java.util.*;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.cluster.concurrent.ScheduledExecutors;
-import org.lealone.cluster.gms.*;
+import org.lealone.cluster.gms.ApplicationState;
+import org.lealone.cluster.gms.EndpointState;
+import org.lealone.cluster.gms.Gossiper;
+import org.lealone.cluster.gms.IEndpointStateChangeSubscriber;
+import org.lealone.cluster.gms.VersionedValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,18 +40,20 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
 
     private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
 
-    private ConcurrentMap<InetAddress, Double> loadInfo = new ConcurrentHashMap<InetAddress, java.lang.Double>();
+    private final ConcurrentMap<InetAddress, Double> loadInfo = new ConcurrentHashMap<>();
 
     private LoadBroadcaster() {
         Gossiper.instance.register(this);
     }
 
+    @Override
     public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value) {
         if (state != ApplicationState.LOAD)
             return;
         loadInfo.put(endpoint, Double.valueOf(value.value));
     }
 
+    @Override
     public void onJoin(InetAddress endpoint, EndpointState epState) {
         VersionedValue localValue = epState.getApplicationState(ApplicationState.LOAD);
         if (localValue != null) {
@@ -54,19 +61,24 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
         }
     }
 
+    @Override
     public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
             VersionedValue newValue) {
     }
 
+    @Override
     public void onAlive(InetAddress endpoint, EndpointState state) {
     }
 
+    @Override
     public void onDead(InetAddress endpoint, EndpointState state) {
     }
 
+    @Override
     public void onRestart(InetAddress endpoint, EndpointState state) {
     }
 
+    @Override
     public void onRemove(InetAddress endpoint) {
         loadInfo.remove(endpoint);
     }
@@ -79,6 +91,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
         // send the first broadcast "right away" (i.e., in 2 gossip heartbeats, when we should have someone to talk to);
         // after that send every BROADCAST_INTERVAL.
         Runnable runnable = new Runnable() {
+            @Override
             public void run() {
                 if (logger.isDebugEnabled())
                     logger.debug("Disseminating load info ...");

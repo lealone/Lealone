@@ -276,7 +276,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
             if (!MessagingService.instance().isListening())
                 MessagingService.instance().listen(Utils.getLocalAddress());
-            LoadBroadcaster.instance.startBroadcasting();
+            //LoadBroadcaster.instance.startBroadcasting(); //TODO
         }
     }
 
@@ -355,9 +355,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // We attempted to replace this with a schema-presence check, but you need a meaningful sleep
         // to get schema info from gossip which defeats the purpose.  See lealone-4427 for the gory details.
         Set<InetAddress> current = new HashSet<>();
-        logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(), ClusterMetaData
-                .bootstrapInProgress(), ClusterMetaData.bootstrapComplete(),
-                DatabaseDescriptor.getSeeds().contains(Utils.getBroadcastAddress()));
+        if (logger.isDebugEnabled())
+            logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(), ClusterMetaData
+                    .bootstrapInProgress(), ClusterMetaData.bootstrapComplete(), DatabaseDescriptor.getSeeds()
+                    .contains(Utils.getBroadcastAddress()));
         if (DatabaseDescriptor.isAutoBootstrap() && !ClusterMetaData.bootstrapComplete()
                 && DatabaseDescriptor.getSeeds().contains(Utils.getBroadcastAddress()))
             logger.info("This node will not auto bootstrap because it is configured to be a seed node.");
@@ -442,7 +443,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 bootstrapTokens = BootStrapper.getRandomTokens(tokenMetadata, DatabaseDescriptor.getNumTokens());
                 if (DatabaseDescriptor.getNumTokens() == 1)
                     logger.warn("Generated random token {}. Random tokens will result in an unbalanced ring; "
-                            + "see http://wiki.apache.org/lealone/Operations", bootstrapTokens);
+                            + "see http://wiki.apache.org/cassandra/Operations", bootstrapTokens);
                 else
                     logger.info("Generated random tokens. tokens are {}", bootstrapTokens);
             } else {
@@ -504,7 +505,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         ClusterMetaData.updateTokens(tokens);
         tokenMetadata.updateNormalTokens(tokens, Utils.getBroadcastAddress());
         Collection<Token> localTokens = getLocalTokens();
-        List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<Pair<ApplicationState, VersionedValue>>();
+        List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<>(2);
         states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(localTokens)));
         states.add(Pair.create(ApplicationState.STATUS, valueFactory.normal(localTokens)));
         Gossiper.instance.addLocalApplicationStates(states);
@@ -1297,16 +1298,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     /** raw load value */
     public double getLoad() {
-        //        double bytes = 0;
-        //        for (String keyspaceName : Schema.instance.getKeyspaces()) {
-        //            Keyspace keyspace = Schema.instance.getKeyspaceInstance(keyspaceName);
-        //            if (keyspace == null)
-        //                continue;
-        //            for (ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())
-        //                bytes += cfs.getLiveDiskSpaceUsed();
-        //        }
-        //        return bytes;
-
+        //TODO 看看硬盘使用情况
         return 0.0;
     }
 
