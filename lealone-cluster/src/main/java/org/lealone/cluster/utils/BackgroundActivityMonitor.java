@@ -52,8 +52,7 @@ public class BackgroundActivityMonitor {
 
     private final AtomicDouble compaction_severity = new AtomicDouble();
     private final AtomicDouble manual_severity = new AtomicDouble();
-    private final ScheduledExecutorService reportThread = new DebuggableScheduledThreadPoolExecutor(
-            "Background_Reporter");
+    private final ScheduledExecutorService reportThread;
 
     private RandomAccessFile statsFile;
     private long[] lastReading;
@@ -67,7 +66,12 @@ public class BackgroundActivityMonitor {
                 logger.warn("Couldn't open /proc/stats");
             statsFile = null;
         }
-        reportThread.scheduleAtFixedRate(new BackgroundActivityReporter(), 1, 1, TimeUnit.SECONDS);
+        if (System.getProperty("lealone.background.activity.monitor.enabled", null) == null)
+            reportThread = null;
+        else {
+            reportThread = new DebuggableScheduledThreadPoolExecutor("Background_Reporter");
+            reportThread.scheduleAtFixedRate(new BackgroundActivityReporter(), 1, 1, TimeUnit.SECONDS);
+        }
     }
 
     private long[] readAndCompute() throws IOException {

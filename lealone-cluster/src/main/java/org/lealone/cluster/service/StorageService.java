@@ -100,8 +100,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     private static final Logger logger = LoggerFactory.getLogger(StorageService.class);
     private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
 
-    public static final StorageService instance = new StorageService();
     public static final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
+    public static final StorageService instance = new StorageService();
 
     private static int getRingDelay() {
         String newdelay = System.getProperty("lealone.ring_delay_ms");
