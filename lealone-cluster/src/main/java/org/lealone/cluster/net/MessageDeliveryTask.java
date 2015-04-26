@@ -49,7 +49,8 @@ public class MessageDeliveryTask implements Runnable {
 
         IVerbHandler verbHandler = MessagingService.instance().getVerbHandler(verb);
         if (verbHandler == null) {
-            logger.debug("Unknown verb {}", verb);
+            if (logger.isDebugEnabled())
+                logger.debug("Unknown verb {}", verb);
             return;
         }
 

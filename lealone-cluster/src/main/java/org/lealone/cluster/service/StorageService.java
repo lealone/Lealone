@@ -257,8 +257,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 checkForEndpointCollision();
             }
 
-            // have to start the gossip service before we can see any info on other nodes.  this is necessary
-            // for bootstrap to get the load info it needs.
+            // have to start the gossip service before we can see any info on other nodes.  
+            // this is necessary for bootstrap to get the load info it needs.
             // (we won't be part of the storage ring though until we add a counterId to our state, below.)
             // Seed the host ID-to-endpoint map with our own ID.
             UUID localHostId = ClusterMetaData.getLocalHostId();
@@ -318,7 +318,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     private void checkForEndpointCollision() throws ConfigurationException {
-        logger.debug("Starting shadow gossip round to check for endpoint collision");
+        if (logger.isDebugEnabled())
+            logger.debug("Starting shadow gossip round to check for endpoint collision");
         if (!MessagingService.instance().isListening())
             MessagingService.instance().listen(Utils.getLocalAddress());
         Gossiper.instance.doShadowRound();

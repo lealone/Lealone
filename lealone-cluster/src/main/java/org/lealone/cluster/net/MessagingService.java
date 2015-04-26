@@ -64,9 +64,9 @@ import org.lealone.cluster.metrics.ConnectionMetrics;
 import org.lealone.cluster.metrics.DroppedMessageMetrics;
 import org.lealone.cluster.security.SSLFactory;
 import org.lealone.cluster.utils.ExpiringMap;
-import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.FileUtils;
 import org.lealone.cluster.utils.Pair;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.concurrent.SimpleCondition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,11 +77,8 @@ import com.google.common.collect.Lists;
 @SuppressWarnings({ "rawtypes", "deprecation" })
 public final class MessagingService implements MessagingServiceMBean {
     // 8 bits version, so don't waste versions
-    public static final int VERSION_12 = 6;
-    public static final int VERSION_20 = 7;
-    public static final int VERSION_21 = 8;
-    public static final int VERSION_30 = 9;
-    public static final int current_version = VERSION_30;
+    public static final int VERSION_10 = 1;
+    public static final int current_version = VERSION_10;
 
     public static final String FAILURE_CALLBACK_PARAM = "CAL_BAC";
     public static final byte[] ONE_BYTE = new byte[1];
@@ -91,8 +88,6 @@ public final class MessagingService implements MessagingServiceMBean {
      * we preface every message with this number so the recipient can validate the sender is sane
      */
     public static final int PROTOCOL_MAGIC = 0xCA552DFA;
-
-    private boolean allNodesAtLeast21 = true;
 
     /* All verb handler identifiers */
     public enum Verb {
@@ -285,7 +280,8 @@ public final class MessagingService implements MessagingServiceMBean {
      * called from gossiper when it notices a node is not responding.
      */
     public void convict(InetAddress ep) {
-        logger.debug("Resetting pool for {}", ep);
+        if (logger.isDebugEnabled())
+            logger.debug("Resetting pool for {}", ep);
         getConnectionPool(ep).reset();
     }
 
@@ -358,7 +354,8 @@ public final class MessagingService implements MessagingServiceMBean {
         try {
             listenGate.await();
         } catch (InterruptedException ie) {
-            logger.debug("await interrupted");
+            if (logger.isDebugEnabled())
+                logger.debug("await interrupted");
         }
     }
 
@@ -474,7 +471,8 @@ public final class MessagingService implements MessagingServiceMBean {
             logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
 
         if (to.equals(Utils.getBroadcastAddress()))
-            logger.trace("Message-to-self {} going over MessagingService", message);
+            if (logger.isTraceEnabled())
+                logger.trace("Message-to-self {} going over MessagingService", message);
 
         // get pooled connection (really, connection queue)
         OutboundTcpConnection connection = getConnection(to, message);
@@ -551,48 +549,29 @@ public final class MessagingService implements MessagingServiceMBean {
         return packed >>> (start + 1) - count & ~(-1 << count);
     }
 
-    public boolean areAllNodesAtLeast21() {
-        return allNodesAtLeast21;
-    }
-
     /**
      * @return the last version associated with address, or @param version if this is the first such version
      */
     public int setVersion(InetAddress endpoint, int version) {
-        logger.debug("Setting version {} for {}", version, endpoint);
-        if (version < VERSION_21)
-            allNodesAtLeast21 = false;
+        if (logger.isDebugEnabled())
+            logger.debug("Setting version {} for {}", version, endpoint);
         Integer v = versions.put(endpoint, version);
-
-        // if the version was increased to 2.0 or later, see if all nodes are >= 2.0 now
-        if (v != null && v < VERSION_21 && version >= VERSION_21)
-            refreshAllNodesAtLeast21();
 
         return v == null ? version : v;
     }
 
     public void resetVersion(InetAddress endpoint) {
-        logger.debug("Resetting version for {}", endpoint);
-        Integer removed = versions.remove(endpoint);
-        if (removed != null && removed <= VERSION_21)
-            refreshAllNodesAtLeast21();
-    }
-
-    private void refreshAllNodesAtLeast21() {
-        for (Integer version : versions.values()) {
-            if (version < VERSION_21) {
-                allNodesAtLeast21 = false;
-                return;
-            }
-        }
-        allNodesAtLeast21 = true;
+        if (logger.isDebugEnabled())
+            logger.debug("Resetting version for {}", endpoint);
+        versions.remove(endpoint);
     }
 
     public int getVersion(InetAddress endpoint) {
         Integer v = versions.get(endpoint);
         if (v == null) {
             // we don't know the version. assume current. we'll know soon enough if that was incorrect.
-            logger.trace("Assuming current protocol version for {}", endpoint);
+            if (logger.isTraceEnabled())
+                logger.trace("Assuming current protocol version for {}", endpoint);
             return MessagingService.current_version;
         } else
             return Math.min(v, MessagingService.current_version);
@@ -647,7 +626,8 @@ public final class MessagingService implements MessagingServiceMBean {
                 try {
                     socket = server.accept();
                     if (!authenticate(socket)) {
-                        logger.debug("remote failed to authenticate");
+                        if (logger.isDebugEnabled())
+                            logger.debug("remote failed to authenticate");
                         socket.close();
                         continue;
                     }
@@ -669,14 +649,17 @@ public final class MessagingService implements MessagingServiceMBean {
                             socket);
                     thread.start();
                 } catch (AsynchronousCloseException e) {
-                    // this happens when another thread calls close().
-                    logger.debug("Asynchronous close seen by server thread");
+                    if (logger.isDebugEnabled())
+                        // this happens when another thread calls close().
+                        logger.debug("Asynchronous close seen by server thread");
                     break;
                 } catch (ClosedChannelException e) {
-                    logger.debug("MessagingService server thread already closed");
+                    if (logger.isDebugEnabled())
+                        logger.debug("MessagingService server thread already closed");
                     break;
                 } catch (IOException e) {
-                    logger.debug("Error reading the socket " + socket, e);
+                    if (logger.isDebugEnabled())
+                        logger.debug("Error reading the socket " + socket, e);
                     FileUtils.closeQuietly(socket);
                 }
             }
@@ -684,7 +667,8 @@ public final class MessagingService implements MessagingServiceMBean {
         }
 
         void close() throws IOException {
-            logger.debug("Closing accept() thread");
+            if (logger.isDebugEnabled())
+                logger.debug("Closing accept() thread");
             server.close();
         }
 

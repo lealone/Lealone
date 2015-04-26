@@ -43,11 +43,10 @@ import net.jpountz.xxhash.XXHashFactory;
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.io.DataOutputStreamPlus;
-import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.JVMStabilityInspector;
+import org.lealone.cluster.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xerial.snappy.SnappyOutputStream;
 
 import com.google.common.util.concurrent.Uninterruptibles;
 
@@ -203,11 +202,7 @@ public class OutboundTcpConnection extends Thread {
 
     private void writeInternal(MessageOut<?> message, int id, long timestamp) throws IOException {
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
-
-        if (targetVersion < MessagingService.VERSION_20)
-            out.writeUTF(String.valueOf(id));
-        else
-            out.writeInt(id);
+        out.writeInt(id);
 
         // int cast cuts off the high-order half of the timestamp, which we can assume remains
         // the same between now and when the recipient reconstructs it.
@@ -277,7 +272,9 @@ public class OutboundTcpConnection extends Thread {
                     // no version is returned, so disconnect an try again: we will either get
                     // a different target version (targetVersion < MessagingService.VERSION_12)
                     // or if the same version the handshake will finally succeed
-                    logger.debug("Target max version is {}; no version information yet, will retry", maxTargetVersion);
+                    if (logger.isDebugEnabled())
+                        logger.debug("Target max version is {}; no version information yet, will retry",
+                                maxTargetVersion);
                     disconnect();
                     continue;
                 } else {
@@ -285,15 +282,17 @@ public class OutboundTcpConnection extends Thread {
                 }
 
                 if (targetVersion > maxTargetVersion) {
-                    logger.debug("Target max version is {}; will reconnect with that version", maxTargetVersion);
+                    if (logger.isDebugEnabled())
+                        logger.debug("Target max version is {}; will reconnect with that version", maxTargetVersion);
                     disconnect();
                     return false;
                 }
 
                 if (targetVersion < maxTargetVersion && targetVersion < MessagingService.current_version) {
-                    logger.trace(
-                            "Detected higher max version {} (using {}); will reconnect when queued messages are done",
-                            maxTargetVersion, targetVersion);
+                    if (logger.isTraceEnabled())
+                        logger.trace(
+                                "Detected higher max version {} (using {}); will reconnect when queued messages are done",
+                                maxTargetVersion, targetVersion);
                     softCloseSocket();
                 }
 
@@ -301,18 +300,15 @@ public class OutboundTcpConnection extends Thread {
                 CompactEndpointSerializationHelper.serialize(Utils.getBroadcastAddress(), out);
                 if (shouldCompressConnection()) {
                     out.flush();
-                    logger.trace("Upgrading OutputStream to be compressed");
-                    if (targetVersion < MessagingService.VERSION_21) {
-                        // Snappy is buffered, so no need for extra buffering output stream
-                        out = new DataOutputStreamPlus(new SnappyOutputStream(socket.getOutputStream()));
-                    } else {
-                        // TODO: custom LZ4 OS that supports BB write methods
-                        LZ4Compressor compressor = LZ4Factory.fastestInstance().fastCompressor();
-                        Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(LZ4_HASH_SEED)
-                                .asChecksum();
-                        out = new DataOutputStreamPlus(new LZ4BlockOutputStream(socket.getOutputStream(), 1 << 14, // 16k block size
-                                compressor, checksum, true)); // no async flushing
-                    }
+                    if (logger.isTraceEnabled())
+                        logger.trace("Upgrading OutputStream to be compressed");
+                    // TODO: custom LZ4 OS that supports BB write methods
+                    LZ4Compressor compressor = LZ4Factory.fastestInstance().fastCompressor();
+                    Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(LZ4_HASH_SEED).asChecksum();
+
+                    // 16k block size
+                    out = new DataOutputStreamPlus(new LZ4BlockOutputStream(socket.getOutputStream(), 1 << 14,
+                            compressor, checksum, true)); // no async flushing
                 }
 
                 return true;
