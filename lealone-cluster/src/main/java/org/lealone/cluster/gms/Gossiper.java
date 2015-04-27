@@ -1171,8 +1171,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     }
 
     public void addLocalApplicationState(ApplicationState state, VersionedValue value) {
-        EndpointState epState = endpointStateMap.get(Utils.getBroadcastAddress());
         InetAddress epAddr = Utils.getBroadcastAddress();
+        EndpointState epState = endpointStateMap.get(epAddr);
         assert epState != null;
         // Fire "before change" notifications:
         doBeforeChangeNotifications(epAddr, epState, state, value);

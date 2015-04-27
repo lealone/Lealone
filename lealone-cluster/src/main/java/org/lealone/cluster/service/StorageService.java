@@ -462,7 +462,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         ClusterMetaData.updateTokens(tokens);
         if (!DatabaseDescriptor.isReplacing()) {
             // if not an existing token then bootstrap
-            List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<>();
+            List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<>(2);
             states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(tokens)));
             states.add(Pair.create(ApplicationState.STATUS, valueFactory.bootstrapping(tokens)));
             Gossiper.instance.addLocalApplicationStates(states);
@@ -883,6 +883,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     private void updatePeerInfo(InetAddress endpoint) {
+        if (endpoint.equals(Utils.getBroadcastAddress()))
+            return;
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
             switch (entry.getKey()) {
@@ -974,7 +976,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         tokens = getTokensFor(endpoint);
 
         Set<Token> tokensToUpdateInMetadata = new HashSet<>();
-        Set<Token> tokensToUpdateInSystemKeyspace = new HashSet<>();
+        Set<Token> tokensToUpdateInClusterMetaData = new HashSet<>();
         Set<Token> localTokensToRemove = new HashSet<>();
         Set<InetAddress> endpointsToRemove = new HashSet<>();
 
@@ -1023,14 +1025,14 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             if (currentOwner == null) {
                 logger.debug("New node {} at token {}", endpoint, token);
                 tokensToUpdateInMetadata.add(token);
-                tokensToUpdateInSystemKeyspace.add(token);
+                tokensToUpdateInClusterMetaData.add(token);
             } else if (endpoint.equals(currentOwner)) {
                 // set state back to normal, since the node may have tried to leave, but failed and is now back up
                 tokensToUpdateInMetadata.add(token);
-                tokensToUpdateInSystemKeyspace.add(token);
+                tokensToUpdateInClusterMetaData.add(token);
             } else if (Gossiper.instance.compareEndpointStartup(endpoint, currentOwner) > 0) {
                 tokensToUpdateInMetadata.add(token);
-                tokensToUpdateInSystemKeyspace.add(token);
+                tokensToUpdateInClusterMetaData.add(token);
 
                 // currentOwner is no longer current, endpoint is.  Keep track of these moves, because when
                 // a host no longer has any tokens, we'll want to remove it.
@@ -1053,8 +1055,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             if (DatabaseDescriptor.isReplacing() && DatabaseDescriptor.getReplaceAddress().equals(ep))
                 Gossiper.instance.replacementQuarantine(ep); // quarantine locally longer than normally; see Cassandra-8260
         }
-        if (!tokensToUpdateInSystemKeyspace.isEmpty())
-            ClusterMetaData.updateTokens(endpoint, tokensToUpdateInSystemKeyspace);
+        if (!tokensToUpdateInClusterMetaData.isEmpty())
+            ClusterMetaData.updateTokens(endpoint, tokensToUpdateInClusterMetaData);
         if (!localTokensToRemove.isEmpty())
             ClusterMetaData.updateLocalTokens(Collections.<Token> emptyList(), localTokensToRemove);
 
