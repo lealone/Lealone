@@ -319,9 +319,8 @@ public class ClusterMetaData {
         return s;
     }
 
+    //由调用者确定是否把本地节点的信息存入PEERS表
     public static synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value) {
-        if (ep.equals(Utils.getBroadcastAddress()))
-            return;
         String sql = "MERGE INTO %s (peer, %s) KEY(peer) VALUES('%s', '%s')";
         try {
             //InetAddress.getCanonicalHostName很慢，别用它

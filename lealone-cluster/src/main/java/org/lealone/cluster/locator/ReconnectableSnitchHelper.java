@@ -47,33 +47,21 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
 
     private void reconnect(InetAddress publicAddress, VersionedValue localAddressValue) {
         try {
-            reconnect(publicAddress, InetAddress.getByName(localAddressValue.value));
+            InetAddress localAddress = InetAddress.getByName(localAddressValue.value);
+
+            if (snitch.getDatacenter(publicAddress).equals(localDc)
+                    && MessagingService.instance().getVersion(publicAddress) == MessagingService.current_version
+                    && !MessagingService.instance().getConnectionPool(publicAddress).endPoint().equals(localAddress)) {
+
+                MessagingService.instance().getConnectionPool(publicAddress).reset(localAddress);
+
+                if (logger.isDebugEnabled())
+                    logger.debug(String.format("Intiated reconnect to an Internal IP %s for the %s", localAddress,
+                            publicAddress));
+            }
         } catch (UnknownHostException e) {
             logger.error("Error in getting the IP address resolved: ", e);
         }
-    }
-
-    private void reconnect(InetAddress publicAddress, InetAddress localAddress) {
-        if (snitch.getDatacenter(publicAddress).equals(localDc)
-                && MessagingService.instance().getVersion(publicAddress) == MessagingService.current_version
-                && !MessagingService.instance().getConnectionPool(publicAddress).endPoint().equals(localAddress)) {
-            MessagingService.instance().getConnectionPool(publicAddress).reset(localAddress);
-            if (logger.isDebugEnabled())
-                logger.debug(String.format("Intiated reconnect to an Internal IP %s for the %s", localAddress,
-                        publicAddress));
-        }
-    }
-
-    @Override
-    public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
-            VersionedValue newValue) {
-        // no-op
-    }
-
-    @Override
-    public void onJoin(InetAddress endpoint, EndpointState epState) {
-        if (preferLocal && epState.getApplicationState(ApplicationState.INTERNAL_IP) != null)
-            reconnect(endpoint, epState.getApplicationState(ApplicationState.INTERNAL_IP));
     }
 
     @Override
@@ -83,23 +71,30 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
     }
 
     @Override
+    public void onJoin(InetAddress endpoint, EndpointState epState) {
+        if (preferLocal && epState.getApplicationState(ApplicationState.INTERNAL_IP) != null)
+            reconnect(endpoint, epState.getApplicationState(ApplicationState.INTERNAL_IP));
+    }
+
+    @Override
     public void onAlive(InetAddress endpoint, EndpointState state) {
-        if (preferLocal && state.getApplicationState(ApplicationState.INTERNAL_IP) != null)
-            reconnect(endpoint, state.getApplicationState(ApplicationState.INTERNAL_IP));
+        onJoin(endpoint, state);
+    }
+
+    @Override
+    public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
+            VersionedValue newValue) {
     }
 
     @Override
     public void onDead(InetAddress endpoint, EndpointState state) {
-        // do nothing.
     }
 
     @Override
     public void onRemove(InetAddress endpoint) {
-        // do nothing.
     }
 
     @Override
     public void onRestart(InetAddress endpoint, EndpointState state) {
-        // do nothing.
     }
 }

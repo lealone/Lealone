@@ -506,7 +506,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     }
 
     /** This method updates the local token on disk  */
-    public void setTokens(Collection<Token> tokens) {
+    private void setTokens(Collection<Token> tokens) {
         if (logger.isDebugEnabled())
             logger.debug("Setting tokens to {}", tokens);
         ClusterMetaData.updateTokens(tokens);
@@ -855,63 +855,45 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 return;
             }
 
-            switch (state) {
-            case RELEASE_VERSION:
-                ClusterMetaData.updatePeerInfo(endpoint, "release_version", value.value);
-                break;
-            case DC:
-                ClusterMetaData.updatePeerInfo(endpoint, "data_center", value.value);
-                break;
-            case RACK:
-                ClusterMetaData.updatePeerInfo(endpoint, "rack", value.value);
-                break;
-            case RPC_ADDRESS:
-                try {
-                    ClusterMetaData.updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(value.value));
-                } catch (UnknownHostException e) {
-                    throw new RuntimeException(e);
-                }
-                break;
-            case SCHEMA:
-                ClusterMetaData.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value));
-                break;
-            case HOST_ID:
-                ClusterMetaData.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value));
-                break;
+            if (!endpoint.equals(Utils.getBroadcastAddress()))
+                updatePeerInfo(endpoint, state, value);
+        }
+    }
+
+    private void updatePeerInfo(InetAddress endpoint, ApplicationState state, VersionedValue value) {
+        switch (state) {
+        case RELEASE_VERSION:
+            ClusterMetaData.updatePeerInfo(endpoint, "release_version", value.value);
+            break;
+        case DC:
+            ClusterMetaData.updatePeerInfo(endpoint, "data_center", value.value);
+            break;
+        case RACK:
+            ClusterMetaData.updatePeerInfo(endpoint, "rack", value.value);
+            break;
+        case RPC_ADDRESS:
+            try {
+                ClusterMetaData.updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(value.value));
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
             }
+            break;
+        case SCHEMA:
+            ClusterMetaData.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value));
+            break;
+        case HOST_ID:
+            ClusterMetaData.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value));
+            break;
         }
     }
 
     private void updatePeerInfo(InetAddress endpoint) {
         if (endpoint.equals(Utils.getBroadcastAddress()))
             return;
+
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
-            switch (entry.getKey()) {
-            case RELEASE_VERSION:
-                ClusterMetaData.updatePeerInfo(endpoint, "release_version", entry.getValue().value);
-                break;
-            case DC:
-                ClusterMetaData.updatePeerInfo(endpoint, "data_center", entry.getValue().value);
-                break;
-            case RACK:
-                ClusterMetaData.updatePeerInfo(endpoint, "rack", entry.getValue().value);
-                break;
-            case RPC_ADDRESS:
-                try {
-                    ClusterMetaData.updatePeerInfo(endpoint, "rpc_address",
-                            InetAddress.getByName(entry.getValue().value));
-                } catch (UnknownHostException e) {
-                    throw new RuntimeException(e);
-                }
-                break;
-            case SCHEMA:
-                ClusterMetaData.updatePeerInfo(endpoint, "schema_version", UUID.fromString(entry.getValue().value));
-                break;
-            case HOST_ID:
-                ClusterMetaData.updatePeerInfo(endpoint, "host_id", UUID.fromString(entry.getValue().value));
-                break;
-            }
+            updatePeerInfo(endpoint, entry.getKey(), entry.getValue());
         }
     }
 

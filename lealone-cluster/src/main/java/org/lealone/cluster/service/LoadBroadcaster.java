@@ -34,16 +34,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
+    private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
+
     static final int BROADCAST_INTERVAL = 60 * 1000;
 
     public static final LoadBroadcaster instance = new LoadBroadcaster();
-
-    private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
 
     private final ConcurrentMap<InetAddress, Double> loadInfo = new ConcurrentHashMap<>();
 
     private LoadBroadcaster() {
         Gossiper.instance.register(this);
+    }
+
+    public void startBroadcasting() {
+        // send the first broadcast "right away" (i.e., in 2 gossip heartbeats, when we should have someone to talk to);
+        // after that send every BROADCAST_INTERVAL.
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                if (logger.isDebugEnabled())
+                    logger.debug("Disseminating load info ...");
+                Gossiper.instance.addLocalApplicationState(ApplicationState.LOAD,
+                        StorageService.instance.valueFactory.load(StorageService.instance.getLoad()));
+            }
+        };
+        ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.INTERVAL_IN_MILLIS,
+                BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
+    }
+
+    public Map<InetAddress, Double> getLoadInfo() {
+        return Collections.unmodifiableMap(loadInfo);
     }
 
     @Override
@@ -62,6 +82,11 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
     }
 
     @Override
+    public void onRemove(InetAddress endpoint) {
+        loadInfo.remove(endpoint);
+    }
+
+    @Override
     public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
             VersionedValue newValue) {
     }
@@ -76,30 +101,5 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
 
     @Override
     public void onRestart(InetAddress endpoint, EndpointState state) {
-    }
-
-    @Override
-    public void onRemove(InetAddress endpoint) {
-        loadInfo.remove(endpoint);
-    }
-
-    public Map<InetAddress, Double> getLoadInfo() {
-        return Collections.unmodifiableMap(loadInfo);
-    }
-
-    public void startBroadcasting() {
-        // send the first broadcast "right away" (i.e., in 2 gossip heartbeats, when we should have someone to talk to);
-        // after that send every BROADCAST_INTERVAL.
-        Runnable runnable = new Runnable() {
-            @Override
-            public void run() {
-                if (logger.isDebugEnabled())
-                    logger.debug("Disseminating load info ...");
-                Gossiper.instance.addLocalApplicationState(ApplicationState.LOAD,
-                        StorageService.instance.valueFactory.load(StorageService.instance.getLoad()));
-            }
-        };
-        ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.INTERVAL_IN_MILLIS,
-                BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
     }
 }
