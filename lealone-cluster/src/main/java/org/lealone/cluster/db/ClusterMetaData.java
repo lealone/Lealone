@@ -175,15 +175,6 @@ public class ClusterMetaData {
         return hostIdMap;
     }
 
-    public static synchronized void removeEndpoint(InetAddress ep) {
-        String sql = "DELETE FROM %s WHERE peer = '%s'";
-        try {
-            stmt.executeUpdate(String.format(sql, PEERS_TABLE, ep.getCanonicalHostName()));
-        } catch (SQLException e) {
-            handleException(e);
-        }
-    }
-
     public static Collection<Token> getSavedTokens() {
         String sql = "SELECT tokens FROM %s WHERE key='%s'";
 
@@ -279,6 +270,18 @@ public class ClusterMetaData {
     }
 
     public static synchronized void updateTokens(InetAddress ep, Collection<Token> tokens) {
+        if (ep.equals(Utils.getBroadcastAddress())) {
+            removeEndpoint(ep);
+            return;
+        }
+
+        String sql = "MERGE INTO %s (peer, tokens) KEY(peer) VALUES('%s', '%s')";
+        try {
+            sql = String.format(sql, PEERS_TABLE, ep.getHostAddress(), StringUtils.join(tokensAsSet(tokens), ','));
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            handleException(e);
+        }
     }
 
     public static synchronized void updateTokens(Collection<Token> tokens) {
@@ -302,9 +305,19 @@ public class ClusterMetaData {
     public static synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value) {
         if (ep.equals(Utils.getBroadcastAddress()))
             return;
-        String sql = "UPDATE %s SET %s = '%s' WHERE peer = '%s'";
+        String sql = "MERGE INTO %s (peer, %s) KEY(peer) VALUES('%s', '%s')";
         try {
-            stmt.executeUpdate(String.format(sql, PEERS_TABLE, columnName, value, ep));
+            //InetAddress.getCanonicalHostName很慢，别用它
+            stmt.executeUpdate(String.format(sql, PEERS_TABLE, columnName, ep.getHostAddress(), value));
+        } catch (SQLException e) {
+            handleException(e);
+        }
+    }
+
+    public static synchronized void removeEndpoint(InetAddress ep) {
+        String sql = "DELETE FROM %s WHERE peer = '%s'";
+        try {
+            stmt.executeUpdate(String.format(sql, PEERS_TABLE, ep.getHostAddress()));
         } catch (SQLException e) {
             handleException(e);
         }
