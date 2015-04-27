@@ -29,7 +29,7 @@ public class EchoVerbHandler implements IVerbHandler<EchoMessage> {
 
     @Override
     public void doVerb(MessageIn<EchoMessage> message, int id) {
-        MessageOut<EchoMessage> echoMessage = new MessageOut<EchoMessage>(MessagingService.Verb.REQUEST_RESPONSE,
+        MessageOut<EchoMessage> echoMessage = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
                 new EchoMessage(), EchoMessage.serializer);
         if (logger.isTraceEnabled())
             logger.trace("Sending a EchoMessage reply {}", message.from);

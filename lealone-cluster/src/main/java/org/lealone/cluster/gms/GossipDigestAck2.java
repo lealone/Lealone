@@ -59,7 +59,7 @@ public class GossipDigestAck2 {
         @Override
         public GossipDigestAck2 deserialize(DataInput in, int version) throws IOException {
             int size = in.readInt();
-            Map<InetAddress, EndpointState> epStateMap = new HashMap<InetAddress, EndpointState>(size);
+            Map<InetAddress, EndpointState> epStateMap = new HashMap<>(size);
 
             for (int i = 0; i < size; ++i) {
                 InetAddress ep = CompactEndpointSerializationHelper.deserialize(in);

@@ -99,7 +99,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
 
     @Override
     public Map<String, String> getSimpleStates() {
-        Map<String, String> nodesStatus = new HashMap<String, String>(Gossiper.instance.endpointStateMap.size());
+        Map<String, String> nodesStatus = new HashMap<>(Gossiper.instance.endpointStateMap.size());
         for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
             if (entry.getValue().isAlive())
                 nodesStatus.put(entry.getKey().toString(), "UP");

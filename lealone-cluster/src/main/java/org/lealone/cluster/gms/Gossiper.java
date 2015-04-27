@@ -156,8 +156,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 if (gDigests.size() > 0) {
                     GossipDigestSyn digestSynMessage = new GossipDigestSyn(DatabaseDescriptor.getClusterName(),
                             DatabaseDescriptor.getPartitionerName(), gDigests);
-                    MessageOut<GossipDigestSyn> message = new MessageOut<GossipDigestSyn>(
-                            MessagingService.Verb.GOSSIP_DIGEST_SYN, digestSynMessage, GossipDigestSyn.serializer);
+                    MessageOut<GossipDigestSyn> message = new MessageOut<>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
+                            digestSynMessage, GossipDigestSyn.serializer);
                     /* Gossip to some random live member */
                     boolean gossipedToSeed = doGossipToLiveMember(message);
 
@@ -258,7 +258,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         int maxVersion = 0;
 
         // local epstate will be part of endpointStateMap
-        List<InetAddress> endpoints = new ArrayList<InetAddress>(endpointStateMap.keySet());
+        List<InetAddress> endpoints = new ArrayList<>(endpointStateMap.keySet());
         Collections.shuffle(endpoints, random);
         for (InetAddress endpoint : endpoints) {
             epState = endpointStateMap.get(endpoint);
@@ -850,8 +850,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private void markAlive(final InetAddress addr, final EndpointState localState) {
         localState.markDead();
 
-        MessageOut<EchoMessage> echoMessage = new MessageOut<EchoMessage>(MessagingService.Verb.ECHO,
-                new EchoMessage(), EchoMessage.serializer);
+        MessageOut<EchoMessage> echoMessage = new MessageOut<>(MessagingService.Verb.ECHO, new EchoMessage(),
+                EchoMessage.serializer);
         logger.trace("Sending a EchoMessage to {}", addr);
         IAsyncCallback<Void> echoHandler = new IAsyncCallback<Void>() {
             @Override
@@ -1122,10 +1122,10 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     public void doShadowRound() {
         buildSeedsList();
         // send a completely empty syn
-        List<GossipDigest> gDigests = new ArrayList<GossipDigest>();
+        List<GossipDigest> gDigests = new ArrayList<>();
         GossipDigestSyn digestSynMessage = new GossipDigestSyn(DatabaseDescriptor.getClusterName(),
                 DatabaseDescriptor.getPartitionerName(), gDigests);
-        MessageOut<GossipDigestSyn> message = new MessageOut<GossipDigestSyn>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
+        MessageOut<GossipDigestSyn> message = new MessageOut<>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
                 digestSynMessage, GossipDigestSyn.serializer);
         inShadowRound = true;
         for (InetAddress seed : seeds)

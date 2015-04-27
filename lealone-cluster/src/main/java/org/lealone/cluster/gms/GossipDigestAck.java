@@ -68,7 +68,7 @@ public class GossipDigestAck {
         public GossipDigestAck deserialize(DataInput in, int version) throws IOException {
             List<GossipDigest> gDigestList = GossipDigestSerializationHelper.deserialize(in, version);
             int size = in.readInt();
-            Map<InetAddress, EndpointState> epStateMap = new HashMap<InetAddress, EndpointState>(size);
+            Map<InetAddress, EndpointState> epStateMap = new HashMap<>(size);
 
             for (int i = 0; i < size; ++i) {
                 InetAddress ep = CompactEndpointSerializationHelper.deserialize(in);

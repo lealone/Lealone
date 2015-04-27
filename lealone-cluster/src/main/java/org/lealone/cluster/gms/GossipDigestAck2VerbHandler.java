@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck2> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestAck2VerbHandler.class);
 
+    @Override
     public void doVerb(MessageIn<GossipDigestAck2> message, int id) {
         if (logger.isTraceEnabled()) {
             InetAddress from = message.from;
