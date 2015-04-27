@@ -382,7 +382,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 // check for dead state removal
                 long expireTime = getExpireTimeForEndpoint(endpoint);
                 if (!epState.isAlive() && (now > expireTime)
-                        && (!StorageService.instance.getTokenMetadata().isMember(endpoint))) {
+                        && (!StorageService.instance.getTokenMetaData().isMember(endpoint))) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("time is expiring for endpoint : {} ({})", endpoint, expireTime);
                     }
@@ -451,7 +451,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         Set<InetAddress> tokenOwners = new HashSet<InetAddress>();
         for (InetAddress member : getLiveMembers()) {
             EndpointState epState = endpointStateMap.get(member);
-            if (epState != null && !isDeadState(epState) && StorageService.instance.getTokenMetadata().isMember(member))
+            if (epState != null && !isDeadState(epState) && StorageService.instance.getTokenMetaData().isMember(member))
                 tokenOwners.add(member);
         }
         return tokenOwners;
@@ -470,7 +470,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     public Set<InetAddress> getUnreachableTokenOwners() {
         Set<InetAddress> tokenOwners = new HashSet<>();
         for (InetAddress endpoint : unreachableEndpoints.keySet()) {
-            if (StorageService.instance.getTokenMetadata().isMember(endpoint))
+            if (StorageService.instance.getTokenMetaData().isMember(endpoint))
                 tokenOwners.add(endpoint);
         }
 
@@ -670,7 +670,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
             epState = new EndpointState(new HeartBeatState((int) ((System.currentTimeMillis() + 60000) / 1000), 9999));
         } else {
             try {
-                tokens = StorageService.instance.getTokenMetadata().getTokens(endpoint);
+                tokens = StorageService.instance.getTokenMetaData().getTokens(endpoint);
             } catch (Throwable th) {
                 JVMStabilityInspector.inspectThrowable(th);
                 // TODO this is broken
@@ -716,7 +716,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         if (epState == null) {
             return false;
         }
-        return !isDeadState(epState) && !StorageService.instance.getTokenMetadata().isMember(endpoint);
+        return !isDeadState(epState) && !StorageService.instance.getTokenMetaData().isMember(endpoint);
     }
 
     protected long getExpireTimeForEndpoint(InetAddress endpoint) {

@@ -87,6 +87,6 @@ public class PendingRangeCalculatorService {
 
     // public & static for testing purposes
     public static void calculatePendingRanges(AbstractReplicationStrategy strategy, String keyspaceName) {
-        StorageService.instance.getTokenMetadata().calculatePendingRanges(strategy, keyspaceName);
+        StorageService.instance.getTokenMetaData().calculatePendingRanges(strategy, keyspaceName);
     }
 }

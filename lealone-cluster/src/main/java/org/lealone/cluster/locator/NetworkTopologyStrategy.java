@@ -32,7 +32,7 @@ import java.util.Set;
 
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.exceptions.ConfigurationException;
-import org.lealone.cluster.locator.TokenMetadata.Topology;
+import org.lealone.cluster.locator.TokenMetaData.Topology;
 import org.lealone.cluster.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,9 +57,9 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
     private final Map<String, Integer> datacenters;
     private static final Logger logger = LoggerFactory.getLogger(NetworkTopologyStrategy.class);
 
-    public NetworkTopologyStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
+    public NetworkTopologyStrategy(String keyspaceName, TokenMetaData tokenMetaData, IEndpointSnitch snitch,
             Map<String, String> configOptions) throws ConfigurationException {
-        super(keyspaceName, tokenMetadata, snitch, configOptions);
+        super(keyspaceName, tokenMetaData, snitch, configOptions);
         this.snitch = snitch;
 
         Map<String, Integer> newDatacenters = new HashMap<>();
@@ -84,7 +84,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
      */
     @Override
     @SuppressWarnings("serial")
-    public List<InetAddress> calculateNaturalEndpoints(Token searchToken, TokenMetadata tokenMetadata) {
+    public List<InetAddress> calculateNaturalEndpoints(Token searchToken, TokenMetaData tokenMetaData) {
         // we want to preserve insertion order so that the first added endpoint becomes primary
         Set<InetAddress> replicas = new LinkedHashSet<>();
         // replicas we have found in each DC
@@ -92,7 +92,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         for (Map.Entry<String, Integer> dc : datacenters.entrySet())
             dcReplicas.put(dc.getKey(), new HashSet<InetAddress>(dc.getValue()));
 
-        Topology topology = tokenMetadata.getTopology();
+        Topology topology = tokenMetaData.getTopology();
         // all endpoints in each DC, so we can check when we have exhausted all the members of a DC
         Multimap<String, InetAddress> allEndpoints = topology.getDatacenterEndpoints();
         // all racks in a DC so we can check when we have exhausted all racks in a DC
@@ -111,10 +111,10 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         for (Map.Entry<String, Integer> dc : datacenters.entrySet())
             skippedDcEndpoints.put(dc.getKey(), new LinkedHashSet<InetAddress>());
 
-        Iterator<Token> tokenIter = TokenMetadata.ringIterator(tokenMetadata.sortedTokens(), searchToken, false);
+        Iterator<Token> tokenIter = TokenMetaData.ringIterator(tokenMetaData.sortedTokens(), searchToken, false);
         while (tokenIter.hasNext() && !hasSufficientReplicas(dcReplicas, allEndpoints)) {
             Token next = tokenIter.next();
-            InetAddress ep = tokenMetadata.getEndpoint(next);
+            InetAddress ep = tokenMetaData.getEndpoint(next);
             String dc = snitch.getDatacenter(ep);
             // have we already found all replicas for this dc?
             if (!datacenters.containsKey(dc) || hasSufficientReplicas(dc, dcReplicas, allEndpoints))

@@ -45,19 +45,19 @@ public abstract class AbstractReplicationStrategy {
     private static final Logger logger = LoggerFactory.getLogger(AbstractReplicationStrategy.class);
 
     protected final Map<String, String> configOptions;
-    private final TokenMetadata tokenMetadata;
+    private final TokenMetaData tokenMetaData;
     private final Map<Token, ArrayList<InetAddress>> cachedEndpoints = new NonBlockingHashMap<>();
     private final String keyspaceName;
 
     // track when the token range changes, signaling we need to invalidate our endpoint cache
     private volatile long lastInvalidatedVersion = 0;
 
-    AbstractReplicationStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
+    AbstractReplicationStrategy(String keyspaceName, TokenMetaData tokenMetaData, IEndpointSnitch snitch,
             Map<String, String> configOptions) {
         assert keyspaceName != null;
         assert snitch != null;
-        assert tokenMetadata != null;
-        this.tokenMetadata = tokenMetadata;
+        assert tokenMetaData != null;
+        this.tokenMetaData = tokenMetaData;
         this.configOptions = configOptions == null ? Collections.<String, String> emptyMap() : configOptions;
         this.keyspaceName = keyspaceName;
         // lazy-initialize keyspace itself since we don't create them until after the replication strategies
@@ -71,7 +71,7 @@ public abstract class AbstractReplicationStrategy {
      * @param searchToken the token the natural endpoints are requested for
      * @return a copy of the natural endpoints for the given token
      */
-    public abstract List<InetAddress> calculateNaturalEndpoints(Token searchToken, TokenMetadata tokenMetadata);
+    public abstract List<InetAddress> calculateNaturalEndpoints(Token searchToken, TokenMetaData tokenMetaData);
 
     /**
      * calculate the RF based on strategy_options. When overwriting, ensure that this get()
@@ -84,7 +84,7 @@ public abstract class AbstractReplicationStrategy {
     public abstract void validateOptions() throws ConfigurationException;
 
     public ArrayList<InetAddress> getCachedEndpoints(Token t) {
-        long lastVersion = tokenMetadata.getRingVersion();
+        long lastVersion = tokenMetaData.getRingVersion();
 
         if (lastVersion > lastInvalidatedVersion) {
             synchronized (this) {
@@ -109,12 +109,12 @@ public abstract class AbstractReplicationStrategy {
      */
     public ArrayList<InetAddress> getNaturalEndpoints(RingPosition<?> searchPosition) {
         Token searchToken = searchPosition.getToken();
-        Token keyToken = TokenMetadata.firstToken(tokenMetadata.sortedTokens(), searchToken);
+        Token keyToken = TokenMetaData.firstToken(tokenMetaData.sortedTokens(), searchToken);
         ArrayList<InetAddress> endpoints = getCachedEndpoints(keyToken);
         if (endpoints == null) {
-            TokenMetadata tm = tokenMetadata.cachedOnlyTokenMap();
+            TokenMetaData tm = tokenMetaData.cachedOnlyTokenMap();
             // if our cache got invalidated, it's possible there is a new token to account for too
-            keyToken = TokenMetadata.firstToken(tm.sortedTokens(), searchToken);
+            keyToken = TokenMetaData.firstToken(tm.sortedTokens(), searchToken);
             endpoints = new ArrayList<InetAddress>(calculateNaturalEndpoints(searchToken, tm));
             cachedEndpoints.put(keyToken, endpoints);
         }
@@ -128,7 +128,7 @@ public abstract class AbstractReplicationStrategy {
      * (fixing this would probably require merging tokenmetadata into replicationstrategy,
      * so we could cache/invalidate cleanly.)
      */
-    public Multimap<InetAddress, Range<Token>> getAddressRanges(TokenMetadata metadata) {
+    public Multimap<InetAddress, Range<Token>> getAddressRanges(TokenMetaData metadata) {
         Multimap<InetAddress, Range<Token>> map = HashMultimap.create();
 
         for (Token token : metadata.sortedTokens()) {
@@ -141,7 +141,7 @@ public abstract class AbstractReplicationStrategy {
         return map;
     }
 
-    public Multimap<Range<Token>, InetAddress> getRangeAddresses(TokenMetadata metadata) {
+    public Multimap<Range<Token>, InetAddress> getRangeAddresses(TokenMetaData metadata) {
         Multimap<Range<Token>, InetAddress> map = HashMultimap.create();
 
         for (Token token : metadata.sortedTokens()) {
@@ -155,17 +155,17 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public Multimap<InetAddress, Range<Token>> getAddressRanges() {
-        return getAddressRanges(tokenMetadata.cloneOnlyTokenMap());
+        return getAddressRanges(tokenMetaData.cloneOnlyTokenMap());
     }
 
-    public Collection<Range<Token>> getPendingAddressRanges(TokenMetadata metadata, Token pendingToken,
+    public Collection<Range<Token>> getPendingAddressRanges(TokenMetaData metadata, Token pendingToken,
             InetAddress pendingAddress) {
         return getPendingAddressRanges(metadata, Arrays.asList(pendingToken), pendingAddress);
     }
 
-    public Collection<Range<Token>> getPendingAddressRanges(TokenMetadata metadata, Collection<Token> pendingTokens,
+    public Collection<Range<Token>> getPendingAddressRanges(TokenMetaData metadata, Collection<Token> pendingTokens,
             InetAddress pendingAddress) {
-        TokenMetadata temp = metadata.cloneOnlyTokenMap();
+        TokenMetaData temp = metadata.cloneOnlyTokenMap();
         temp.updateNormalTokens(pendingTokens, pendingAddress);
         return getAddressRanges(temp).get(pendingAddress);
     }
@@ -204,14 +204,14 @@ public abstract class AbstractReplicationStrategy {
     }
 
     private static AbstractReplicationStrategy createInternal(String keyspaceName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata,
+            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetaData tokenMetaData,
             IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigurationException {
         AbstractReplicationStrategy strategy;
-        Class<?>[] parameterTypes = new Class[] { String.class, TokenMetadata.class, IEndpointSnitch.class, Map.class };
+        Class<?>[] parameterTypes = new Class[] { String.class, TokenMetaData.class, IEndpointSnitch.class, Map.class };
         try {
             Constructor<? extends AbstractReplicationStrategy> constructor = strategyClass
                     .getConstructor(parameterTypes);
-            strategy = constructor.newInstance(keyspaceName, tokenMetadata, snitch, strategyOptions);
+            strategy = constructor.newInstance(keyspaceName, tokenMetaData, snitch, strategyOptions);
         } catch (Exception e) {
             throw new ConfigurationException("Error constructing replication strategy class", e);
         }
@@ -219,10 +219,10 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public static AbstractReplicationStrategy createReplicationStrategy(String keyspaceName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata,
+            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetaData tokenMetaData,
             IEndpointSnitch snitch, Map<String, String> strategyOptions) {
         try {
-            AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch,
+            AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetaData, snitch,
                     strategyOptions);
 
             // Because we used to not properly validate unrecognized options, we only log a warning if we find one.
@@ -241,9 +241,9 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public static void validateReplicationStrategy(String keyspaceName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetadata tokenMetadata,
+            Class<? extends AbstractReplicationStrategy> strategyClass, TokenMetaData tokenMetaData,
             IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigurationException {
-        AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetadata, snitch,
+        AbstractReplicationStrategy strategy = createInternal(keyspaceName, strategyClass, tokenMetaData, snitch,
                 strategyOptions);
         strategy.validateExpectedOptions();
         strategy.validateOptions();

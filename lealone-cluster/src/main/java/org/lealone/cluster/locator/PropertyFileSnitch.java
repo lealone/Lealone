@@ -177,7 +177,7 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch {
 
         endpointMap = reloadedMap;
         if (StorageService.instance != null) // null check tolerates circular dependency; see lealone-4145
-            StorageService.instance.getTokenMetadata().invalidateCachedRings();
+            StorageService.instance.getTokenMetaData().invalidateCachedRings();
 
         if (gossipStarted)
             StorageService.instance.gossipSnitchInfo();

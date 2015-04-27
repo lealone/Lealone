@@ -35,13 +35,13 @@ import org.lealone.cluster.exceptions.ConfigurationException;
  * on the ring.
  */
 public class SimpleStrategy extends AbstractReplicationStrategy {
-    public SimpleStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
+    public SimpleStrategy(String keyspaceName, TokenMetaData tokenMetaData, IEndpointSnitch snitch,
             Map<String, String> configOptions) {
-        super(keyspaceName, tokenMetadata, snitch, configOptions);
+        super(keyspaceName, tokenMetaData, snitch, configOptions);
     }
 
     @Override
-    public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata) {
+    public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetaData metadata) {
         int replicas = getReplicationFactor();
         ArrayList<Token> tokens = metadata.sortedTokens();
         List<InetAddress> endpoints = new ArrayList<InetAddress>(replicas);
@@ -50,7 +50,7 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
             return endpoints;
 
         // Add the token at the index by default
-        Iterator<Token> iter = TokenMetadata.ringIterator(tokens, token, false);
+        Iterator<Token> iter = TokenMetaData.ringIterator(tokens, token, false);
         while (endpoints.size() < replicas && iter.hasNext()) {
             InetAddress ep = metadata.getEndpoint(iter.next());
             if (!endpoints.contains(ep))

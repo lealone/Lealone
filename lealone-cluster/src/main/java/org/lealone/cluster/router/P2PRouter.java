@@ -125,7 +125,7 @@ public class P2PRouter implements Router {
                 partitionKey = ValueUuid.getNewRandom();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
             List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(
+            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetaData().pendingEndpointsFor(
                     tk, keyspaceName);
 
             Iterable<InetAddress> targets = Iterables.concat(naturalEndpoints, pendingEndpoints);
@@ -353,7 +353,7 @@ public class P2PRouter implements Router {
             String keyspaceName = tableFilter.getTable().getSchema().getName();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(startPK.getBytesNoCopy()));
             List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
-            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetadata().pendingEndpointsFor(
+            Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetaData().pendingEndpointsFor(
                     tk, keyspaceName);
 
             naturalEndpoints.addAll(pendingEndpoints);

@@ -63,8 +63,8 @@ public class CloudstackSnitch extends AbstractNetworkTopologySnitch {
     protected String csZoneRack;
 
     public CloudstackSnitch() throws IOException, ConfigurationException {
-        String endpoint = csMetadataEndpoint();
-        String zone = csQueryMetadata(endpoint + ZONE_NAME_QUERY_URI);
+        String endpoint = csMetaDataEndpoint();
+        String zone = csQueryMetaData(endpoint + ZONE_NAME_QUERY_URI);
         String zone_parts[] = zone.split("-");
 
         if (zone_parts.length != 3) {
@@ -104,7 +104,7 @@ public class CloudstackSnitch extends AbstractNetworkTopologySnitch {
         return state.getApplicationState(ApplicationState.DC).value;
     }
 
-    String csQueryMetadata(String url) throws ConfigurationException, IOException {
+    String csQueryMetaData(String url) throws ConfigurationException, IOException {
         HttpURLConnection conn = null;
         DataInputStream is = null;
 
@@ -130,7 +130,7 @@ public class CloudstackSnitch extends AbstractNetworkTopologySnitch {
         }
     }
 
-    String csMetadataEndpoint() throws ConfigurationException {
+    String csMetaDataEndpoint() throws ConfigurationException {
         for (String lease_uri : LEASE_FILES) {
             try {
                 File lease_file = new File(new URI(lease_uri));

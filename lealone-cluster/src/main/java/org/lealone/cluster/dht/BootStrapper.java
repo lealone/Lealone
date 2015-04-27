@@ -24,7 +24,7 @@ import java.util.Set;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.exceptions.ConfigurationException;
-import org.lealone.cluster.locator.TokenMetadata;
+import org.lealone.cluster.locator.TokenMetaData;
 import org.lealone.cluster.service.StorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,15 +36,15 @@ public class BootStrapper {
     protected final InetAddress address;
     /* token of the node being bootstrapped. */
     protected final Collection<Token> tokens;
-    protected final TokenMetadata tokenMetadata;
+    protected final TokenMetaData tokenMetaData;
 
-    public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetadata tmd) {
+    public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetaData tmd) {
         assert address != null;
         assert tokens != null && !tokens.isEmpty();
 
         this.address = address;
         this.tokens = tokens;
-        tokenMetadata = tmd;
+        tokenMetaData = tmd;
     }
 
     public void bootstrap() {
@@ -57,7 +57,7 @@ public class BootStrapper {
      * if num_tokens == 1, pick a token to assume half the load of the most-loaded node.
      * else choose num_tokens tokens at random
      */
-    public static Collection<Token> getBootstrapTokens(final TokenMetadata metadata) throws ConfigurationException {
+    public static Collection<Token> getBootstrapTokens(final TokenMetaData metadata) throws ConfigurationException {
         int numTokens = DatabaseDescriptor.getNumTokens();
         if (numTokens < 1)
             throw new ConfigurationException("num_tokens must be >= 1");
@@ -68,7 +68,7 @@ public class BootStrapper {
         return getRandomTokens(metadata, numTokens);
     }
 
-    public static Collection<Token> getRandomTokens(TokenMetadata metadata, int numTokens) {
+    public static Collection<Token> getRandomTokens(TokenMetaData metadata, int numTokens) {
         Set<Token> tokens = new HashSet<Token>(numTokens);
         while (tokens.size() < numTokens) {
             Token token = StorageService.getPartitioner().getRandomToken();

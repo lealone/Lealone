@@ -263,12 +263,12 @@ public class DatabaseDescriptor {
 
     private static void initDefaultReplicationStrategy() throws ConfigurationException {
         if (conf.replication_strategy == null)
-            defaultReplicationStrategy = new SimpleStrategy("system", StorageService.instance.getTokenMetadata(),
+            defaultReplicationStrategy = new SimpleStrategy("system", StorageService.instance.getTokenMetaData(),
                     getEndpointSnitch(), ImmutableMap.of("replication_factor", "1"));
         else
             defaultReplicationStrategy = AbstractReplicationStrategy.createReplicationStrategy("system",
                     AbstractReplicationStrategy.getClass(conf.replication_strategy.class_name),
-                    StorageService.instance.getTokenMetadata(), getEndpointSnitch(),
+                    StorageService.instance.getTokenMetaData(), getEndpointSnitch(),
                     conf.replication_strategy.parameters);
     }
 

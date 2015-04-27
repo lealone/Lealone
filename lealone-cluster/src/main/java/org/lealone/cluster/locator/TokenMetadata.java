@@ -60,8 +60,8 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 
-public class TokenMetadata {
-    private static final Logger logger = LoggerFactory.getLogger(TokenMetadata.class);
+public class TokenMetaData {
+    private static final Logger logger = LoggerFactory.getLogger(TokenMetaData.class);
 
     /**
      * Maintains token to endpoint map of every node in the cluster.
@@ -112,7 +112,7 @@ public class TokenMetadata {
 
     private final Topology topology;
 
-    private final AtomicReference<TokenMetadata> cachedTokenMap = new AtomicReference<>();
+    private final AtomicReference<TokenMetaData> cachedTokenMap = new AtomicReference<>();
 
     private static final Comparator<InetAddress> inetaddressCmp = new Comparator<InetAddress>() {
         @Override
@@ -124,12 +124,12 @@ public class TokenMetadata {
     // signals replication strategies that nodes have joined or left the ring and they need to recompute ownership
     private volatile long ringVersion = 0;
 
-    public TokenMetadata() {
+    public TokenMetaData() {
         this(SortedBiMultiValMap.<Token, InetAddress> create(null, inetaddressCmp), HashBiMap
                 .<InetAddress, UUID> create(), new Topology());
     }
 
-    private TokenMetadata(BiMultiValMap<Token, InetAddress> tokenToEndpointMap, BiMap<InetAddress, UUID> endpointsMap,
+    private TokenMetaData(BiMultiValMap<Token, InetAddress> tokenToEndpointMap, BiMap<InetAddress, UUID> endpointsMap,
             Topology topology) {
         this.tokenToEndpointMap = tokenToEndpointMap;
         this.topology = topology;
@@ -443,13 +443,13 @@ public class TokenMetadata {
     }
 
     /**
-     * Create a copy of TokenMetadata with only tokenToEndpointMap. That is, pending ranges,
+     * Create a copy of TokenMetaData with only tokenToEndpointMap. That is, pending ranges,
      * bootstrap tokens and leaving endpoints are not included in the copy.
      */
-    public TokenMetadata cloneOnlyTokenMap() {
+    public TokenMetaData cloneOnlyTokenMap() {
         lock.readLock().lock();
         try {
-            return new TokenMetadata(SortedBiMultiValMap.<Token, InetAddress> create(tokenToEndpointMap, null,
+            return new TokenMetaData(SortedBiMultiValMap.<Token, InetAddress> create(tokenToEndpointMap, null,
                     inetaddressCmp), HashBiMap.create(endpointToHostIdMap), new Topology(topology));
         } finally {
             lock.readLock().unlock();
@@ -457,14 +457,14 @@ public class TokenMetadata {
     }
 
     /**
-     * Return a cached TokenMetadata with only tokenToEndpointMap, i.e., the same as cloneOnlyTokenMap but
+     * Return a cached TokenMetaData with only tokenToEndpointMap, i.e., the same as cloneOnlyTokenMap but
      * uses a cached copy that is invalided when the ring changes, so in the common case
      * no extra locking is required.
      *
      * Callers must *NOT* mutate the returned metadata object.
      */
-    public TokenMetadata cachedOnlyTokenMap() {
-        TokenMetadata tm = cachedTokenMap.get();
+    public TokenMetaData cachedOnlyTokenMap() {
+        TokenMetaData tm = cachedTokenMap.get();
         if (tm != null)
             return tm;
 
@@ -480,36 +480,36 @@ public class TokenMetadata {
     }
 
     /**
-     * Create a copy of TokenMetadata with tokenToEndpointMap reflecting situation after all
+     * Create a copy of TokenMetaData with tokenToEndpointMap reflecting situation after all
      * current leave operations have finished.
      *
      * @return new token metadata
      */
-    public TokenMetadata cloneAfterAllLeft() {
+    public TokenMetaData cloneAfterAllLeft() {
         lock.readLock().lock();
         try {
-            TokenMetadata allLeftMetadata = cloneOnlyTokenMap();
+            TokenMetaData allLeftMetaData = cloneOnlyTokenMap();
 
             for (InetAddress endpoint : leavingEndpoints)
-                allLeftMetadata.removeEndpoint(endpoint);
+                allLeftMetaData.removeEndpoint(endpoint);
 
-            return allLeftMetadata;
+            return allLeftMetaData;
         } finally {
             lock.readLock().unlock();
         }
     }
 
     /**
-     * Create a copy of TokenMetadata with tokenToEndpointMap reflecting situation after all
+     * Create a copy of TokenMetaData with tokenToEndpointMap reflecting situation after all
      * current leave, and move operations have finished.
      *
      * @return new token metadata
      */
-    public TokenMetadata cloneAfterAllSettled() {
+    public TokenMetaData cloneAfterAllSettled() {
         lock.readLock().lock();
 
         try {
-            TokenMetadata metadata = cloneOnlyTokenMap();
+            TokenMetaData metadata = cloneOnlyTokenMap();
 
             for (InetAddress endpoint : leavingEndpoints)
                 metadata.removeEndpoint(endpoint);
@@ -614,7 +614,7 @@ public class TokenMetadata {
             Multimap<InetAddress, Range<Token>> addressRanges = strategy.getAddressRanges();
 
             // Copy of metadata reflecting the situation after all leave operations are finished.
-            TokenMetadata allLeftMetadata = cloneAfterAllLeft();
+            TokenMetaData allLeftMetaData = cloneAfterAllLeft();
 
             // get all ranges that will be affected by leaving nodes
             Set<Range<Token>> affectedRanges = new HashSet<Range<Token>>();
@@ -623,12 +623,12 @@ public class TokenMetadata {
 
             // for each of those ranges, find what new nodes will be responsible for the range when
             // all leaving nodes are gone.
-            TokenMetadata metadata = cloneOnlyTokenMap(); // don't do this in the loop! #7758
+            TokenMetaData metadata = cloneOnlyTokenMap(); // don't do this in the loop! #7758
             for (Range<Token> range : affectedRanges) {
                 Set<InetAddress> currentEndpoints = ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,
                         metadata));
                 Set<InetAddress> newEndpoints = ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,
-                        allLeftMetadata));
+                        allLeftMetaData));
                 newPendingRanges.putAll(range, Sets.difference(newEndpoints, currentEndpoints));
             }
 
@@ -636,33 +636,33 @@ public class TokenMetadata {
             // now continue the calculation by checking bootstrapping nodes.
 
             // For each of the bootstrapping nodes, simply add and remove them one by one to
-            // allLeftMetadata and check in between what their ranges would be.
+            // allLeftMetaData and check in between what their ranges would be.
             Multimap<InetAddress, Token> bootstrapAddresses = bootstrapTokens.inverse();
             for (InetAddress endpoint : bootstrapAddresses.keySet()) {
                 Collection<Token> tokens = bootstrapAddresses.get(endpoint);
 
-                allLeftMetadata.updateNormalTokens(tokens, endpoint);
-                for (Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))
+                allLeftMetaData.updateNormalTokens(tokens, endpoint);
+                for (Range<Token> range : strategy.getAddressRanges(allLeftMetaData).get(endpoint))
                     newPendingRanges.put(range, endpoint);
-                allLeftMetadata.removeEndpoint(endpoint);
+                allLeftMetaData.removeEndpoint(endpoint);
             }
 
             // At this stage newPendingRanges has been updated according to leaving and bootstrapping nodes.
             // We can now finish the calculation by checking moving nodes.
 
             // For each of the moving nodes, we do the same thing we did for bootstrapping:
-            // simply add and remove them one by one to allLeftMetadata and check in between what their ranges would be.
+            // simply add and remove them one by one to allLeftMetaData and check in between what their ranges would be.
             for (Pair<Token, InetAddress> moving : movingEndpoints) {
                 InetAddress endpoint = moving.right; // address of the moving node
 
                 //  moving.left is a new token of the endpoint
-                allLeftMetadata.updateNormalToken(moving.left, endpoint);
+                allLeftMetaData.updateNormalToken(moving.left, endpoint);
 
-                for (Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint)) {
+                for (Range<Token> range : strategy.getAddressRanges(allLeftMetaData).get(endpoint)) {
                     newPendingRanges.put(range, endpoint);
                 }
 
-                allLeftMetadata.removeEndpoint(endpoint);
+                allLeftMetaData.removeEndpoint(endpoint);
             }
 
             pendingRanges.put(keyspaceName, newPendingRanges);
@@ -918,11 +918,11 @@ public class TokenMetadata {
     /**
      * @return the Topology map of nodes to DCs + Racks
      *
-     * This is only allowed when a copy has been made of TokenMetadata, to avoid concurrent modifications
+     * This is only allowed when a copy has been made of TokenMetaData, to avoid concurrent modifications
      * when Topology methods are subsequently used by the caller.
      */
     public Topology getTopology() {
-        assert this != StorageService.instance.getTokenMetadata();
+        assert this != StorageService.instance.getTokenMetaData();
         return topology;
     }
 
@@ -937,7 +937,7 @@ public class TokenMetadata {
 
     /**
      * Tracks the assignment of racks and endpoints in each datacenter for all the "normal" endpoints
-     * in this TokenMetadata. This allows faster calculation of endpoints in NetworkTopologyStrategy.
+     * in this TokenMetaData. This allows faster calculation of endpoints in NetworkTopologyStrategy.
      */
     public static class Topology {
         /** multi-map of DC to endpoints in that DC */

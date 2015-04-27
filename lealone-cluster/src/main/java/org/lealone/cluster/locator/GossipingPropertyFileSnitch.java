@@ -165,7 +165,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
             reloadGossiperState();
 
             if (StorageService.instance != null)
-                StorageService.instance.getTokenMetadata().invalidateCachedRings();
+                StorageService.instance.getTokenMetaData().invalidateCachedRings();
 
             if (gossipStarted)
                 StorageService.instance.gossipSnitchInfo();

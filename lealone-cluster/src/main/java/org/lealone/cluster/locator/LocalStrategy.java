@@ -30,9 +30,9 @@ import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.utils.Utils;
 
 public class LocalStrategy extends AbstractReplicationStrategy {
-    public LocalStrategy(String keyspaceName, TokenMetadata tokenMetadata, IEndpointSnitch snitch,
+    public LocalStrategy(String keyspaceName, TokenMetaData tokenMetaData, IEndpointSnitch snitch,
             Map<String, String> configOptions) {
-        super(keyspaceName, tokenMetadata, snitch, configOptions);
+        super(keyspaceName, tokenMetaData, snitch, configOptions);
     }
 
     /**
@@ -48,7 +48,7 @@ public class LocalStrategy extends AbstractReplicationStrategy {
     }
 
     @Override
-    public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetadata metadata) {
+    public List<InetAddress> calculateNaturalEndpoints(Token token, TokenMetaData metadata) {
         return Collections.singletonList(Utils.getBroadcastAddress());
     }
 
