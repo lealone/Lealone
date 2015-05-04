@@ -76,6 +76,9 @@ import com.google.common.collect.Lists;
 
 @SuppressWarnings({ "rawtypes", "deprecation" })
 public final class MessagingService implements MessagingServiceMBean {
+
+    private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
+
     // 8 bits version, so don't waste versions
     public static final int VERSION_10 = 1;
     public static final int current_version = VERSION_10;
@@ -88,6 +91,15 @@ public final class MessagingService implements MessagingServiceMBean {
      * we preface every message with this number so the recipient can validate the sender is sane
      */
     public static final int PROTOCOL_MAGIC = 0xCA552DFA;
+
+    /**
+     * Verbs it's okay to drop if the request has been queued longer than the request timeout.  These
+     * all correspond to client requests or something triggered by them; we don't want to
+     * drop internal messages like bootstrap or repair notifications.
+     */
+    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb.REQUEST_RESPONSE);
+
+    private static final int LOG_DROPPED_INTERVAL_IN_MS = 5000;
 
     /* All verb handler identifiers */
     public enum Verb {
@@ -148,9 +160,6 @@ public final class MessagingService implements MessagingServiceMBean {
      */
     public static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<>(Verb.class);
 
-    /* This records all the results mapped by message Id */
-    private final ExpiringMap<Integer, CallbackInfo> callbacks;
-
     /**
      * a placeholder class that means "deserialize using the callback." We can't implement this without
      * special-case code in InboundTcpConnection because there is no way to pass the message id to IVersionedSerializer.
@@ -174,34 +183,26 @@ public final class MessagingService implements MessagingServiceMBean {
         }
     }
 
+    /* This records all the results mapped by message Id */
+    private final ExpiringMap<Integer, CallbackInfo> callbacks;
+
     /* Lookup table for registering message handlers based on the verb. */
     private final Map<Verb, IVerbHandler> verbHandlers;
 
     private final ConcurrentMap<InetAddress, OutboundTcpConnectionPool> connectionManagers = new NonBlockingHashMap<>();
 
-    private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
-    private static final int LOG_DROPPED_INTERVAL_IN_MS = 5000;
-
     private final List<SocketThread> socketThreads = Lists.newArrayList();
     private final SimpleCondition listenGate;
 
-    /**
-     * Verbs it's okay to drop if the request has been queued longer than the request timeout.  These
-     * all correspond to client requests or something triggered by them; we don't want to
-     * drop internal messages like bootstrap or repair notifications.
-     */
-    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb.REQUEST_RESPONSE);
-
     // total dropped message counts for server lifetime
-    private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<Verb, DroppedMessageMetrics>(
-            Verb.class);
+    private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
     // dropped count when last requested for the Recent api.  high concurrency isn't necessary here.
-    private final Map<Verb, Integer> lastDroppedInternal = new EnumMap<Verb, Integer>(Verb.class);
+    private final Map<Verb, Integer> lastDroppedInternal = new EnumMap<>(Verb.class);
 
-    private final List<ILatencySubscriber> subscribers = new ArrayList<ILatencySubscriber>();
+    private final List<ILatencySubscriber> subscribers = new ArrayList<>();
 
     // protocol versions of the other nodes in the cluster
-    private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<InetAddress, Integer>();
+    private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<>();
 
     private static class MSHandle {
         public static final MessagingService instance = new MessagingService();
@@ -301,11 +302,11 @@ public final class MessagingService implements MessagingServiceMBean {
     }
 
     private List<ServerSocket> getServerSockets(InetAddress localEp) throws ConfigurationException {
-        final List<ServerSocket> ss = new ArrayList<ServerSocket>(2);
-        if (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.none) {
+        final List<ServerSocket> ss = new ArrayList<>(2);
+        ServerEncryptionOptions options = DatabaseDescriptor.getServerEncryptionOptions();
+        if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.none) {
             try {
-                ss.add(SSLFactory.getServerSocket(DatabaseDescriptor.getServerEncryptionOptions(), localEp,
-                        DatabaseDescriptor.getSSLStoragePort()));
+                ss.add(SSLFactory.getServerSocket(options, localEp, DatabaseDescriptor.getSSLStoragePort()));
             } catch (IOException e) {
                 throw new ConfigurationException("Unable to create ssl socket", e);
             }
@@ -313,7 +314,7 @@ public final class MessagingService implements MessagingServiceMBean {
             logger.info("Starting Encrypted Messaging Service on SSL port {}", DatabaseDescriptor.getSSLStoragePort());
         }
 
-        if (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption != ServerEncryptionOptions.InternodeEncryption.all) {
+        if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.all) {
             ServerSocketChannel serverChannel = null;
             try {
                 serverChannel = ServerSocketChannel.open();
@@ -331,14 +332,13 @@ public final class MessagingService implements MessagingServiceMBean {
                 socket.bind(address, 500);
             } catch (BindException e) {
                 if (e.getMessage().contains("in use"))
-                    throw new ConfigurationException(
-                            address
-                                    + " is in use by another process.  Change listen_address:storage_port in lealone.yaml to values that do not conflict with other services");
+                    throw new ConfigurationException(address + " is in use by another process.  "
+                            + "Change listen_address:storage_port in lealone.yaml "
+                            + "to values that do not conflict with other services");
                 else if (e.getMessage().contains("Cannot assign requested address"))
-                    throw new ConfigurationException(
-                            "Unable to bind to address "
-                                    + address
-                                    + ". Set listen_address in lealone.yaml to an interface you can bind to, e.g., your private IP address on EC2");
+                    throw new ConfigurationException("Unable to bind to address " + address
+                            + ". Set listen_address in lealone.yaml to an interface you can bind to, e.g.,"
+                            + " your private IP address on EC2");
                 else
                     throw new RuntimeException(e);
             } catch (IOException e) {
@@ -674,7 +674,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Integer> getCommandPendingTasks() {
-        Map<String, Integer> pendingTasks = new HashMap<String, Integer>(connectionManagers.size());
+        Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
             pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().cmdCon.getPendingMessages());
         return pendingTasks;
@@ -687,7 +687,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Long> getCommandCompletedTasks() {
-        Map<String, Long> completedTasks = new HashMap<String, Long>(connectionManagers.size());
+        Map<String, Long> completedTasks = new HashMap<>(connectionManagers.size());
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
             completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().cmdCon.getCompletedMesssages());
         return completedTasks;
@@ -695,7 +695,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Long> getCommandDroppedTasks() {
-        Map<String, Long> droppedTasks = new HashMap<String, Long>(connectionManagers.size());
+        Map<String, Long> droppedTasks = new HashMap<>(connectionManagers.size());
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
             droppedTasks.put(entry.getKey().getHostAddress(), entry.getValue().cmdCon.getDroppedMessages());
         return droppedTasks;
@@ -703,7 +703,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Integer> getResponsePendingTasks() {
-        Map<String, Integer> pendingTasks = new HashMap<String, Integer>(connectionManagers.size());
+        Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
             pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().ackCon.getPendingMessages());
         return pendingTasks;
@@ -711,7 +711,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Long> getResponseCompletedTasks() {
-        Map<String, Long> completedTasks = new HashMap<String, Long>(connectionManagers.size());
+        Map<String, Long> completedTasks = new HashMap<>(connectionManagers.size());
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
             completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().ackCon.getCompletedMesssages());
         return completedTasks;
@@ -719,7 +719,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Integer> getDroppedMessages() {
-        Map<String, Integer> map = new HashMap<String, Integer>(droppedMessages.size());
+        Map<String, Integer> map = new HashMap<>(droppedMessages.size());
         for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet())
             map.put(entry.getKey().toString(), (int) entry.getValue().dropped.count());
         return map;
@@ -727,7 +727,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Integer> getRecentlyDroppedMessages() {
-        Map<String, Integer> map = new HashMap<String, Integer>(droppedMessages.size());
+        Map<String, Integer> map = new HashMap<>(droppedMessages.size());
         for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet())
             map.put(entry.getKey().toString(), entry.getValue().getRecentlyDropped());
         return map;
@@ -745,7 +745,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Long> getTimeoutsPerHost() {
-        Map<String, Long> result = new HashMap<String, Long>(connectionManagers.size());
+        Map<String, Long> result = new HashMap<>(connectionManagers.size());
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet()) {
             String ip = entry.getKey().getHostAddress();
             long recent = entry.getValue().getTimeouts();
@@ -756,7 +756,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public Map<String, Long> getRecentTimeoutsPerHost() {
-        Map<String, Long> result = new HashMap<String, Long>(connectionManagers.size());
+        Map<String, Long> result = new HashMap<>(connectionManagers.size());
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet()) {
             String ip = entry.getKey().getHostAddress();
             long recent = entry.getValue().getRecentTimeouts();
