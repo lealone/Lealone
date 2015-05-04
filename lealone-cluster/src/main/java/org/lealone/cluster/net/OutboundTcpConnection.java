@@ -19,7 +19,6 @@ package org.lealone.cluster.net;
 
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
-import java.io.DataOutput;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -209,20 +208,6 @@ class OutboundTcpConnection extends Thread {
         message.serialize(out, targetVersion);
     }
 
-    private static void writeHeader(DataOutput out, int version, boolean compressionEnabled) throws IOException {
-        // 2 bits: unused.  used to be "serializer type," which was always Binary
-        // 1 bit: compression
-        // 1 bit: streaming mode
-        // 3 bits: unused
-        // 8 bits: version
-        // 15 bits: unused
-        int header = 0;
-        if (compressionEnabled)
-            header |= 4;
-        header |= (version << 8);
-        out.writeInt(header);
-    }
-
     private void disconnect() {
         if (socket != null) {
             try {
@@ -261,8 +246,10 @@ class OutboundTcpConnection extends Thread {
                 }
                 out = new DataOutputStreamPlus(new BufferedOutputStream(socket.getOutputStream(), 4096));
 
+                //write header
                 out.writeInt(MessagingService.PROTOCOL_MAGIC);
-                writeHeader(out, targetVersion, shouldCompressConnection());
+                out.writeInt(targetVersion);
+                out.writeBoolean(shouldCompressConnection());
                 out.flush();
 
                 DataInputStream in = new DataInputStream(socket.getInputStream());

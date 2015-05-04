@@ -539,10 +539,6 @@ public final class MessagingService implements MessagingServiceMBean {
             throw new IOException("invalid protocol header");
     }
 
-    public static int getBits(int packed, int start, int count) {
-        return packed >>> (start + 1) - count & ~(-1 << count);
-    }
-
     /**
      * @return the last version associated with address, or @param version if this is the first such version
      */
@@ -630,18 +626,18 @@ public final class MessagingService implements MessagingServiceMBean {
                     socket.setSoTimeout(2 * OutboundTcpConnection.WAIT_FOR_VERSION_MAX_TIME);
                     // determine the connection type to decide whether to buffer
                     DataInputStream in = new DataInputStream(socket.getInputStream());
+
+                    //read header
                     MessagingService.validateMagic(in.readInt());
-                    int header = in.readInt();
-                    // isStream
-                    // MessagingService.getBits(header, 3, 1);
-                    int version = MessagingService.getBits(header, 15, 8);
+                    int version = in.readInt();
+                    boolean compressionEnabled = in.readBoolean();
+
                     if (logger.isDebugEnabled())
                         logger.debug("Connection version {} from {}", version, socket.getInetAddress());
                     socket.setSoTimeout(0);
 
-                    Thread thread = new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1,
-                            socket);
-                    thread.start();
+                    new IncomingTcpConnection(version, compressionEnabled, socket).start();
+
                 } catch (AsynchronousCloseException e) {
                     if (logger.isDebugEnabled())
                         // this happens when another thread calls close().

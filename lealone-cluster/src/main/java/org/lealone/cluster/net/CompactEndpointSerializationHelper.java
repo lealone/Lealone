@@ -24,7 +24,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 
-class CompactEndpointSerializationHelper {
+public class CompactEndpointSerializationHelper {
     public static void serialize(InetAddress endpoint, DataOutput out) throws IOException {
         byte[] buf = endpoint.getAddress();
         out.writeByte(buf.length);
