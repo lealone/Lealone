@@ -30,6 +30,7 @@ class ThreadPoolMetricNameFactory implements MetricNameFactory {
         this.poolName = poolName;
     }
 
+    @Override
     public MetricName createMetricName(String metricName) {
         String groupName = ThreadPoolMetrics.class.getPackage().getName();
         StringBuilder mbeanName = new StringBuilder();

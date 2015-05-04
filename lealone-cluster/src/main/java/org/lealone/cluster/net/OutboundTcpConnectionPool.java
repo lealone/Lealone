@@ -88,7 +88,7 @@ public class OutboundTcpConnectionPool {
 
         // release previous metrics and create new one with reset address
         metrics.release();
-        metrics = new ConnectionMetrics(resetEndpoint, this);
+        metrics = new ConnectionMetrics(resetEndpoint);
     }
 
     public long getTimeouts() {
@@ -152,7 +152,7 @@ public class OutboundTcpConnectionPool {
         cmdCon.start();
         ackCon.start();
 
-        metrics = new ConnectionMetrics(id, this);
+        metrics = new ConnectionMetrics(id);
 
         started.countDown();
     }

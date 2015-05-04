@@ -23,30 +23,17 @@ import java.util.concurrent.TimeUnit;
 import org.lealone.cluster.net.OutboundTcpConnectionPool;
 
 import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Gauge;
 import com.yammer.metrics.core.Meter;
 
 /**
  * Metrics for {@link OutboundTcpConnectionPool}.
  */
 public class ConnectionMetrics {
-    public static final String TYPE_NAME = "Connection";
-
     /** Total number of timeouts happened on this node */
     public static final Meter totalTimeouts = Metrics.newMeter(
-            DefaultNameFactory.createMetricName(TYPE_NAME, "TotalTimeouts", null), "total timeouts", TimeUnit.SECONDS);
+            DefaultNameFactory.createMetricName("Connection", "TotalTimeouts", null), "total timeouts",
+            TimeUnit.SECONDS);
 
-    public final String address;
-    /** Pending tasks for Command(Mutations, Read etc) TCP Connections */
-    public final Gauge<Integer> commandPendingTasks;
-    /** Completed tasks for Command(Mutations, Read etc) TCP Connections */
-    public final Gauge<Long> commandCompletedTasks;
-    /** Dropped tasks for Command(Mutations, Read etc) TCP Connections */
-    public final Gauge<Long> commandDroppedTasks;
-    /** Pending tasks for Response(GOSSIP & RESPONSE) TCP Connections */
-    public final Gauge<Integer> responsePendingTasks;
-    /** Completed tasks for Response(GOSSIP & RESPONSE) TCP Connections */
-    public final Gauge<Long> responseCompletedTasks;
     /** Number of timeouts for specific IP */
     public final Meter timeouts;
 
@@ -56,54 +43,17 @@ public class ConnectionMetrics {
      * Create metrics for given connection pool.
      *
      * @param ip IP address to use for metrics label
-     * @param connectionPool Connection pool
      */
-    public ConnectionMetrics(InetAddress ip, final OutboundTcpConnectionPool connectionPool) {
+    public ConnectionMetrics(InetAddress ip) {
         // ipv6 addresses will contain colons, which are invalid in a JMX ObjectName
-        address = ip.getHostAddress().replaceAll(":", ".");
+        String address = ip.getHostAddress().replaceAll(":", ".");
 
         factory = new DefaultNameFactory("Connection", address);
 
-        commandPendingTasks = Metrics.newGauge(factory.createMetricName("CommandPendingTasks"), new Gauge<Integer>() {
-            @Override
-            public Integer value() {
-                return connectionPool.cmdCon.getPendingMessages();
-            }
-        });
-        commandCompletedTasks = Metrics.newGauge(factory.createMetricName("CommandCompletedTasks"), new Gauge<Long>() {
-            @Override
-            public Long value() {
-                return connectionPool.cmdCon.getCompletedMesssages();
-            }
-        });
-        commandDroppedTasks = Metrics.newGauge(factory.createMetricName("CommandDroppedTasks"), new Gauge<Long>() {
-            @Override
-            public Long value() {
-                return connectionPool.cmdCon.getDroppedMessages();
-            }
-        });
-        responsePendingTasks = Metrics.newGauge(factory.createMetricName("ResponsePendingTasks"), new Gauge<Integer>() {
-            @Override
-            public Integer value() {
-                return connectionPool.ackCon.getPendingMessages();
-            }
-        });
-        responseCompletedTasks = Metrics.newGauge(factory.createMetricName("ResponseCompletedTasks"),
-                new Gauge<Long>() {
-                    @Override
-                    public Long value() {
-                        return connectionPool.ackCon.getCompletedMesssages();
-                    }
-                });
         timeouts = Metrics.newMeter(factory.createMetricName("Timeouts"), "timeouts", TimeUnit.SECONDS);
     }
 
     public void release() {
-        Metrics.defaultRegistry().removeMetric(factory.createMetricName("CommandPendingTasks"));
-        Metrics.defaultRegistry().removeMetric(factory.createMetricName("CommandCompletedTasks"));
-        Metrics.defaultRegistry().removeMetric(factory.createMetricName("CommandDroppedTasks"));
-        Metrics.defaultRegistry().removeMetric(factory.createMetricName("ResponsePendingTasks"));
-        Metrics.defaultRegistry().removeMetric(factory.createMetricName("ResponseCompletedTasks"));
         Metrics.defaultRegistry().removeMetric(factory.createMetricName("Timeouts"));
     }
 }

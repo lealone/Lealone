@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.Uninterruptibles;
 
-public class OutboundTcpConnection extends Thread {
+class OutboundTcpConnection extends Thread {
     private static final Logger logger = LoggerFactory.getLogger(OutboundTcpConnection.class);
 
     private static final MessageOut<Void> CLOSE_SENTINEL = new MessageOut<>(MessagingService.Verb.INTERNAL_RESPONSE);

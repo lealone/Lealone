@@ -17,12 +17,14 @@
  */
 package org.lealone.cluster.net;
 
-import java.io.*;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 
-public class CompactEndpointSerializationHelper {
+class CompactEndpointSerializationHelper {
     public static void serialize(InetAddress endpoint, DataOutput out) throws IOException {
         byte[] buf = endpoint.getAddress();
         out.writeByte(buf.length);

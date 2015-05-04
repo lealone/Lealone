@@ -28,15 +28,12 @@ public class DefaultNameFactory implements MetricNameFactory {
     private final String type;
     private final String scope;
 
-    public DefaultNameFactory(String type) {
-        this(type, null);
-    }
-
     public DefaultNameFactory(String type, String scope) {
         this.type = type;
         this.scope = scope;
     }
 
+    @Override
     public MetricName createMetricName(String metricName) {
         return createMetricName(type, metricName, scope);
     }
@@ -45,7 +42,7 @@ public class DefaultNameFactory implements MetricNameFactory {
         return new MetricName(GROUP_NAME, type, metricName, scope, createDefaultMBeanName(type, metricName, scope));
     }
 
-    protected static String createDefaultMBeanName(String type, String name, String scope) {
+    private static String createDefaultMBeanName(String type, String name, String scope) {
         final StringBuilder nameBuilder = new StringBuilder();
         nameBuilder.append(GROUP_NAME);
         nameBuilder.append(":type=");

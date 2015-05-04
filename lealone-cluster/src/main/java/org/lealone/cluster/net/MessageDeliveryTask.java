@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
-public class MessageDeliveryTask implements Runnable {
+class MessageDeliveryTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageDeliveryTask.class);
 
     private static final EnumSet<MessagingService.Verb> GOSSIP_VERBS = EnumSet.of(

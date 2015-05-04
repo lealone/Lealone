@@ -37,7 +37,7 @@ import org.lealone.cluster.gms.Gossiper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IncomingTcpConnection extends Thread {
+class IncomingTcpConnection extends Thread {
     private static final Logger logger = LoggerFactory.getLogger(IncomingTcpConnection.class);
 
     private final int version;
