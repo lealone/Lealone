@@ -481,12 +481,6 @@ public final class MessagingService implements MessagingServiceMBean {
         connection.enqueue(message, id);
     }
 
-    public <T> AsyncOneResponse<T> sendRR(MessageOut message, InetAddress to) {
-        AsyncOneResponse<T> iar = new AsyncOneResponse<T>();
-        sendRR(message, to, iar);
-        return iar;
-    }
-
     public void register(ILatencySubscriber subcriber) {
         subscribers.add(subcriber);
     }
