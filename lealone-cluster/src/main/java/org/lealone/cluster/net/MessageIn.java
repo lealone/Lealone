@@ -46,48 +46,6 @@ public class MessageIn<T> {
         this.version = version;
     }
 
-    public static <T> MessageIn<T> create(InetAddress from, T payload, Map<String, byte[]> parameters,
-            MessagingService.Verb verb, int version) {
-        return new MessageIn<T>(from, payload, parameters, verb, version);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T2> MessageIn<T2> read(DataInput in, int version, int id) throws IOException {
-        InetAddress from = CompactEndpointSerializationHelper.deserialize(in);
-
-        MessagingService.Verb verb = MessagingService.Verb.values()[in.readInt()];
-        int parameterCount = in.readInt();
-        Map<String, byte[]> parameters;
-        if (parameterCount == 0) {
-            parameters = Collections.emptyMap();
-        } else {
-            ImmutableMap.Builder<String, byte[]> builder = ImmutableMap.builder();
-            for (int i = 0; i < parameterCount; i++) {
-                String key = in.readUTF();
-                byte[] value = new byte[in.readInt()];
-                in.readFully(value);
-                builder.put(key, value);
-            }
-            parameters = builder.build();
-        }
-
-        int payloadSize = in.readInt();
-        IVersionedSerializer<T2> serializer = (IVersionedSerializer<T2>) MessagingService.verbSerializers.get(verb);
-        if (serializer instanceof MessagingService.CallbackDeterminedSerializer) {
-            CallbackInfo callback = MessagingService.instance().getRegisteredCallback(id);
-            if (callback == null) {
-                // reply for expired callback.  we'll have to skip it.
-                FileUtils.skipBytesFully(in, payloadSize);
-                return null;
-            }
-            serializer = (IVersionedSerializer<T2>) callback.serializer;
-        }
-        if (payloadSize == 0 || serializer == null)
-            return create(from, null, parameters, verb, version);
-        T2 payload = serializer.deserialize(in, version);
-        return MessageIn.create(from, payload, parameters, verb, version);
-    }
-
     public Stage getMessageType() {
         return MessagingService.verbStages.get(verb);
     }
@@ -109,5 +67,42 @@ public class MessageIn<T> {
         StringBuilder sbuf = new StringBuilder();
         sbuf.append("FROM:").append(from).append(" TYPE:").append(getMessageType()).append(" VERB:").append(verb);
         return sbuf.toString();
+    }
+
+    public static MessageIn<?> read(DataInput in, int version, int id) throws IOException {
+        InetAddress from = CompactEndpointSerializationHelper.deserialize(in);
+
+        MessagingService.Verb verb = MessagingService.Verb.values()[in.readInt()];
+        int parameterCount = in.readInt();
+        Map<String, byte[]> parameters;
+        if (parameterCount == 0) {
+            parameters = Collections.emptyMap();
+        } else {
+            ImmutableMap.Builder<String, byte[]> builder = ImmutableMap.builder();
+            for (int i = 0; i < parameterCount; i++) {
+                String key = in.readUTF();
+                byte[] value = new byte[in.readInt()];
+                in.readFully(value);
+                builder.put(key, value);
+            }
+            parameters = builder.build();
+        }
+
+        int payloadSize = in.readInt();
+        IVersionedSerializer<?> serializer = MessagingService.verbSerializers.get(verb);
+        if (serializer instanceof MessagingService.CallbackDeterminedSerializer) {
+            CallbackInfo callback = MessagingService.instance().getRegisteredCallback(id);
+            if (callback == null) {
+                // reply for expired callback.  we'll have to skip it.
+                FileUtils.skipBytesFully(in, payloadSize);
+                return null;
+            }
+            serializer = callback.serializer;
+        }
+        if (payloadSize == 0 || serializer == null)
+            return new MessageIn<>(from, null, parameters, verb, version);
+
+        Object payload = serializer.deserialize(in, version);
+        return new MessageIn<>(from, payload, parameters, verb, version);
     }
 }

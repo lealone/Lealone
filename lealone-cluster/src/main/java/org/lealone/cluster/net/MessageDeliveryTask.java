@@ -27,6 +27,10 @@ import org.slf4j.LoggerFactory;
 public class MessageDeliveryTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageDeliveryTask.class);
 
+    private static final EnumSet<MessagingService.Verb> GOSSIP_VERBS = EnumSet.of(
+            MessagingService.Verb.GOSSIP_DIGEST_ACK, MessagingService.Verb.GOSSIP_DIGEST_ACK2,
+            MessagingService.Verb.GOSSIP_DIGEST_SYN);
+
     private final MessageIn message;
     private final long constructionTime;
     private final int id;
@@ -68,7 +72,4 @@ public class MessageDeliveryTask implements Runnable {
         if (GOSSIP_VERBS.contains(message.verb))
             Gossiper.instance.setLastProcessedMessageAt(constructionTime);
     }
-
-    EnumSet<MessagingService.Verb> GOSSIP_VERBS = EnumSet.of(MessagingService.Verb.GOSSIP_DIGEST_ACK,
-            MessagingService.Verb.GOSSIP_DIGEST_ACK2, MessagingService.Verb.GOSSIP_DIGEST_SYN);
 }

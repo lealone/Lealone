@@ -43,7 +43,7 @@ public class IncomingTcpConnection extends Thread {
     private final int version;
     private final boolean compressed;
     private final Socket socket;
-    public InetAddress from;
+    private InetAddress from;
 
     public IncomingTcpConnection(int version, boolean compressed, Socket socket) {
         assert socket != null;
