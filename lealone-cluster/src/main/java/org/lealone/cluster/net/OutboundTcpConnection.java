@@ -165,7 +165,6 @@ public class OutboundTcpConnection extends Thread {
     }
 
     private boolean shouldCompressConnection() {
-        // assumes version >= 1.2
         return DatabaseDescriptor.internodeCompression() == Config.InternodeCompression.all
                 || (DatabaseDescriptor.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(poolReference
                         .endPoint()));

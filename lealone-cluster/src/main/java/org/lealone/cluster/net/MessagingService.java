@@ -74,7 +74,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
-@SuppressWarnings({ "rawtypes", "deprecation" })
+@SuppressWarnings({ "rawtypes" })
 public final class MessagingService implements MessagingServiceMBean {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
@@ -726,21 +726,8 @@ public final class MessagingService implements MessagingServiceMBean {
     }
 
     @Override
-    public Map<String, Integer> getRecentlyDroppedMessages() {
-        Map<String, Integer> map = new HashMap<>(droppedMessages.size());
-        for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet())
-            map.put(entry.getKey().toString(), entry.getValue().getRecentlyDropped());
-        return map;
-    }
-
-    @Override
     public long getTotalTimeouts() {
         return ConnectionMetrics.totalTimeouts.count();
-    }
-
-    @Override
-    public long getRecentTotalTimouts() {
-        return ConnectionMetrics.getRecentTotalTimeout();
     }
 
     @Override
@@ -749,17 +736,6 @@ public final class MessagingService implements MessagingServiceMBean {
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet()) {
             String ip = entry.getKey().getHostAddress();
             long recent = entry.getValue().getTimeouts();
-            result.put(ip, recent);
-        }
-        return result;
-    }
-
-    @Override
-    public Map<String, Long> getRecentTimeoutsPerHost() {
-        Map<String, Long> result = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet()) {
-            String ip = entry.getKey().getHostAddress();
-            long recent = entry.getValue().getRecentTimeouts();
             result.put(ip, recent);
         }
         return result;

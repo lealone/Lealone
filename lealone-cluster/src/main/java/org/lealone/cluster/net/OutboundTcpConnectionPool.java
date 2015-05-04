@@ -95,11 +95,6 @@ public class OutboundTcpConnectionPool {
         return metrics.timeouts.count();
     }
 
-    @SuppressWarnings("deprecation")
-    public long getRecentTimeouts() {
-        return metrics.getRecentTimeout();
-    }
-
     public void incrementTimeout() {
         metrics.timeouts.mark();
     }

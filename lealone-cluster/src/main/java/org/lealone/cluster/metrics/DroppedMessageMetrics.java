@@ -19,10 +19,10 @@ package org.lealone.cluster.metrics;
 
 import java.util.concurrent.TimeUnit;
 
+import org.lealone.cluster.net.MessagingService;
+
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
-
-import org.lealone.cluster.net.MessagingService;
 
 /**
  * Metrics for dropped messages by verb.
@@ -31,18 +31,8 @@ public class DroppedMessageMetrics {
     /** Number of dropped messages */
     public final Meter dropped;
 
-    private long lastDropped = 0;
-
     public DroppedMessageMetrics(MessagingService.Verb verb) {
         MetricNameFactory factory = new DefaultNameFactory("DroppedMessage", verb.toString());
         dropped = Metrics.newMeter(factory.createMetricName("Dropped"), "dropped", TimeUnit.SECONDS);
-    }
-
-    @Deprecated
-    public int getRecentlyDropped() {
-        long currentDropped = dropped.count();
-        long recentlyDropped = currentDropped - lastDropped;
-        lastDropped = currentDropped;
-        return (int) recentlyDropped;
     }
 }
