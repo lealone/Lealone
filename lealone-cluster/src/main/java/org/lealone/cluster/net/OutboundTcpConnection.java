@@ -171,7 +171,7 @@ class OutboundTcpConnection extends Thread {
 
     private void writeConnected(QueuedMessage qm, boolean flush) {
         try {
-            writeInternal(qm.message, qm.id, qm.timestamp);
+            sendMessage(qm.message, qm.id, qm.timestamp);
 
             completed++;
             if (flush)
@@ -198,7 +198,7 @@ class OutboundTcpConnection extends Thread {
         }
     }
 
-    private void writeInternal(MessageOut<?> message, int id, long timestamp) throws IOException {
+    private void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
         out.writeInt(id);
 

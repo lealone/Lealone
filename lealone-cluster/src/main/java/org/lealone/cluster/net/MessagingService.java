@@ -46,7 +46,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
-import org.lealone.cluster.concurrent.LealoneExecutorService;
 import org.lealone.cluster.concurrent.ScheduledExecutors;
 import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.concurrent.StageManager;
@@ -505,14 +504,6 @@ public final class MessagingService implements MessagingServiceMBean {
         } catch (IOException e) {
             throw new IOError(e);
         }
-    }
-
-    public void receive(MessageIn message, int id, long timestamp) {
-        Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
-        LealoneExecutorService stage = StageManager.getStage(message.getMessageType());
-        assert stage != null : "No stage for message type " + message.verb;
-
-        stage.execute(runnable);
     }
 
     public void setCallbackForTests(int messageId, CallbackInfo callback) {
