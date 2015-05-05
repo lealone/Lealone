@@ -18,7 +18,6 @@
 package org.lealone.cluster.net;
 
 import java.io.DataInput;
-import java.io.DataInputStream;
 import java.io.IOError;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -400,21 +399,7 @@ public final class MessagingService implements MessagingServiceMBean {
                         continue;
                     }
 
-                    socket.setKeepAlive(true);
-                    socket.setSoTimeout(2 * OutboundTcpConnection.WAIT_FOR_VERSION_MAX_TIME);
-                    // determine the connection type to decide whether to buffer
-                    DataInputStream in = new DataInputStream(socket.getInputStream());
-
-                    //read header
-                    MessagingService.validateMagic(in.readInt());
-                    int version = in.readInt();
-                    boolean compressionEnabled = in.readBoolean();
-
-                    if (logger.isDebugEnabled())
-                        logger.debug("Connection version {} from {}", version, socket.getInetAddress());
-                    socket.setSoTimeout(0);
-
-                    new IncomingTcpConnection(version, compressionEnabled, socket).start();
+                    new IncomingTcpConnection(socket).start();
 
                 } catch (AsynchronousCloseException e) {
                     if (logger.isDebugEnabled())

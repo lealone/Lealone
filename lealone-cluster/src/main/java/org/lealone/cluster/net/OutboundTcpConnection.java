@@ -29,10 +29,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.Checksum;
 
@@ -64,7 +62,6 @@ class OutboundTcpConnection extends Thread {
     static final int WAIT_FOR_VERSION_MAX_TIME = 5000;
 
     private static final int OPEN_RETRY_DELAY = 100; // ms between retries
-    private static final int NO_VERSION = Integer.MIN_VALUE;
 
     private static boolean isLocalDC(InetAddress targetHost) {
         String remoteDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(targetHost);
@@ -90,7 +87,7 @@ class OutboundTcpConnection extends Thread {
     private ConnectionMetrics metrics;
 
     OutboundTcpConnection(InetAddress remoteEndpoint) {
-        super("WRITE-" + remoteEndpoint);
+        super("OutboundTcpConnection-" + remoteEndpoint);
         this.remoteEndpoint = remoteEndpoint;
         resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
         metrics = new ConnectionMetrics(remoteEndpoint);
@@ -292,22 +289,12 @@ class OutboundTcpConnection extends Thread {
                 out.writeInt(MessagingService.PROTOCOL_MAGIC);
                 out.writeInt(targetVersion);
                 out.writeBoolean(shouldCompressConnection());
+                CompactEndpointSerializationHelper.serialize(Utils.getBroadcastAddress(), out);
                 out.flush();
 
                 DataInputStream in = new DataInputStream(socket.getInputStream());
-                int maxTargetVersion = handshakeVersion(in);
-                if (maxTargetVersion == NO_VERSION) {
-                    // no version is returned, so disconnect an try again: we will either get
-                    // a different target version (targetVersion < MessagingService.VERSION_12)
-                    // or if the same version the handshake will finally succeed
-                    if (logger.isDebugEnabled())
-                        logger.debug("Target max version is {}; no version information yet, will retry",
-                                maxTargetVersion);
-                    disconnect();
-                    continue;
-                } else {
-                    MessagingService.instance().setVersion(remoteEndpoint, maxTargetVersion);
-                }
+                int maxTargetVersion = in.readInt();
+                MessagingService.instance().setVersion(remoteEndpoint, maxTargetVersion);
 
                 if (targetVersion > maxTargetVersion) {
                     if (logger.isDebugEnabled())
@@ -324,10 +311,7 @@ class OutboundTcpConnection extends Thread {
                     softCloseSocket();
                 }
 
-                out.writeInt(MessagingService.CURRENT_VERSION);
-                CompactEndpointSerializationHelper.serialize(Utils.getBroadcastAddress(), out);
                 if (shouldCompressConnection()) {
-                    out.flush();
                     if (logger.isTraceEnabled())
                         logger.trace("Upgrading OutputStream to be compressed");
                     // TODO: custom LZ4 OS that supports BB write methods
@@ -348,36 +332,6 @@ class OutboundTcpConnection extends Thread {
             }
         }
         return false;
-    }
-
-    private int handshakeVersion(final DataInputStream inputStream) {
-        final AtomicInteger version = new AtomicInteger(NO_VERSION);
-        final CountDownLatch versionLatch = new CountDownLatch(1);
-        new Thread("HANDSHAKE-" + remoteEndpoint) {
-            @Override
-            public void run() {
-                try {
-                    logger.info("Handshaking version with {}", remoteEndpoint);
-                    version.set(inputStream.readInt());
-                } catch (IOException ex) {
-                    final String msg = "Cannot handshake version with " + remoteEndpoint;
-                    if (logger.isTraceEnabled())
-                        logger.trace(msg, ex);
-                    else
-                        logger.info(msg);
-                } finally {
-                    //unblock the waiting thread on either success or fail
-                    versionLatch.countDown();
-                }
-            }
-        }.start();
-
-        try {
-            versionLatch.await(WAIT_FOR_VERSION_MAX_TIME, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException ex) {
-            throw new AssertionError(ex);
-        }
-        return version.get();
     }
 
     private void expireMessages() {

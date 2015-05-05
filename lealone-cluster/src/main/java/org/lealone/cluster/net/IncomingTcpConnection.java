@@ -44,14 +44,48 @@ class IncomingTcpConnection extends Thread {
 
     private final int version;
     private final boolean compressed;
+    private final InetAddress from;
     private final Socket socket;
-    private InetAddress from;
+    private final DataInputStream in;
+    private final DataOutputStream out;
 
-    IncomingTcpConnection(int version, boolean compressed, Socket socket) {
-        assert socket != null;
-        this.version = version;
-        this.compressed = compressed;
+    IncomingTcpConnection(Socket socket) throws IOException {
+        super("IncomingTcpConnection-" + socket.getInetAddress());
+
         this.socket = socket;
+
+        socket.setKeepAlive(true);
+        socket.setSoTimeout(2 * OutboundTcpConnection.WAIT_FOR_VERSION_MAX_TIME);
+        // determine the connection type to decide whether to buffer
+        DataInputStream in = new DataInputStream(socket.getInputStream());
+
+        //read header
+        MessagingService.validateMagic(in.readInt());
+        version = in.readInt();
+        compressed = in.readBoolean();
+        from = CompactEndpointSerializationHelper.deserialize(in);
+
+        if (logger.isDebugEnabled())
+            logger.debug("Connection version {} from {}", version, socket.getInetAddress());
+        socket.setSoTimeout(0);
+
+        MessagingService.instance().setVersion(from, version);
+
+        out = new DataOutputStream(socket.getOutputStream());
+        out.writeInt(MessagingService.CURRENT_VERSION);
+        out.flush();
+
+        if (compressed) {
+            if (logger.isDebugEnabled())
+                logger.debug("Upgrading incoming connection to be compressed");
+            LZ4FastDecompressor decompressor = LZ4Factory.fastestInstance().fastDecompressor();
+            Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(OutboundTcpConnection.LZ4_HASH_SEED)
+                    .asChecksum();
+            this.in = new DataInputStream(new LZ4BlockInputStream(socket.getInputStream(), decompressor, checksum));
+        } else {
+            this.in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 4096));
+        }
+
         if (DatabaseDescriptor.getInternodeRecvBufferSize() != null) {
             try {
                 this.socket.setReceiveBufferSize(DatabaseDescriptor.getInternodeRecvBufferSize());
@@ -92,31 +126,6 @@ class IncomingTcpConnection extends Thread {
     }
 
     private void receiveMessages() throws IOException {
-        // handshake (true) endpoint versions
-        DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-        out.writeInt(MessagingService.CURRENT_VERSION);
-        out.flush();
-        DataInputStream in = new DataInputStream(socket.getInputStream());
-        int maxVersion = in.readInt();
-
-        from = CompactEndpointSerializationHelper.deserialize(in);
-        // record the (true) version of the endpoint
-        MessagingService.instance().setVersion(from, maxVersion);
-        if (logger.isDebugEnabled())
-            logger.debug("Set version for {} to {} (will use {})", from, maxVersion, MessagingService.instance()
-                    .getVersion(from));
-
-        if (compressed) {
-            if (logger.isDebugEnabled())
-                logger.debug("Upgrading incoming connection to be compressed");
-            LZ4FastDecompressor decompressor = LZ4Factory.fastestInstance().fastDecompressor();
-            Checksum checksum = XXHashFactory.fastestInstance().newStreamingHash32(OutboundTcpConnection.LZ4_HASH_SEED)
-                    .asChecksum();
-            in = new DataInputStream(new LZ4BlockInputStream(socket.getInputStream(), decompressor, checksum));
-        } else {
-            in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 4096));
-        }
-
         if (version > MessagingService.CURRENT_VERSION) {
             // save the endpoint so gossip will reconnect to it
             Gossiper.instance.addSavedEndpoint(from);
@@ -125,22 +134,22 @@ class IncomingTcpConnection extends Thread {
         }
 
         while (true) {
-            receiveMessage(in);
+            receiveMessage();
         }
     }
 
     //对应OutboundTcpConnection.sendMessage
-    private void receiveMessage(DataInputStream input) throws IOException {
-        MessagingService.validateMagic(input.readInt());
-        int id = input.readInt();
+    private void receiveMessage() throws IOException {
+        MessagingService.validateMagic(in.readInt());
+        int id = in.readInt();
 
         long timestamp = System.currentTimeMillis();
         // make sure to readInt, even if cross_node_to is not enabled
-        int partial = input.readInt();
+        int partial = in.readInt();
         if (DatabaseDescriptor.hasCrossNodeTimeout())
             timestamp = (timestamp & 0xFFFFFFFF00000000L) | (((partial & 0xFFFFFFFFL) << 2) >> 2);
 
-        MessageIn<?> message = MessageIn.read(input, version, id);
+        MessageIn<?> message = MessageIn.read(in, version, id);
         if (message != null) {
             Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
             LealoneExecutorService stage = StageManager.getStage(message.getMessageType());
