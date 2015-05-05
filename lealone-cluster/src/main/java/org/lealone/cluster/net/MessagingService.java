@@ -526,14 +526,14 @@ public final class MessagingService implements MessagingServiceMBean {
                 logger.trace("Message-to-self {} going over MessagingService", message);
 
         // get pooled connection (really, connection queue)
-        OutboundTcpConnection connection = getConnection(to, message);
+        OutboundTcpConnection connection = getConnection(to);
 
         // write it
         connection.enqueue(message, id);
     }
 
-    private OutboundTcpConnection getConnection(InetAddress to, MessageOut msg) {
-        return getConnectionPool(to).getConnection(msg);
+    private OutboundTcpConnection getConnection(InetAddress to) {
+        return getConnectionPool(to).getConnection();
     }
 
     public OutboundTcpConnectionPool getConnectionPool(InetAddress to) {
@@ -637,30 +637,6 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public int getVersion(String endpoint) throws UnknownHostException {
         return getVersion(InetAddress.getByName(endpoint));
-    }
-
-    @Override
-    public Map<String, Integer> getCommandPendingTasks() {
-        Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
-            pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().cmdCon.getPendingMessages());
-        return pendingTasks;
-    }
-
-    @Override
-    public Map<String, Long> getCommandCompletedTasks() {
-        Map<String, Long> completedTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
-            completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().cmdCon.getCompletedMesssages());
-        return completedTasks;
-    }
-
-    @Override
-    public Map<String, Long> getCommandDroppedTasks() {
-        Map<String, Long> droppedTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
-            droppedTasks.put(entry.getKey().getHostAddress(), entry.getValue().cmdCon.getDroppedMessages());
-        return droppedTasks;
     }
 
     @Override

@@ -25,7 +25,6 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.ClusterMetaData;
@@ -38,7 +37,6 @@ public class OutboundTcpConnectionPool {
     // pointer for the real Address.
     private final InetAddress id;
     private final CountDownLatch started;
-    public final OutboundTcpConnection cmdCon;
     public final OutboundTcpConnection ackCon;
     // pointer to the reset Address.
     private InetAddress resetEndpoint;
@@ -48,21 +46,16 @@ public class OutboundTcpConnectionPool {
         id = remoteEp;
         resetEndpoint = ClusterMetaData.getPreferredIP(remoteEp);
         started = new CountDownLatch(1);
-
-        cmdCon = new OutboundTcpConnection(this);
         ackCon = new OutboundTcpConnection(this);
     }
 
-    public void start() {
-        cmdCon.start();
+    void start() {
         ackCon.start();
-
         metrics = new ConnectionMetrics(id);
-
         started.countDown();
     }
 
-    public void waitForStarted() {
+    void waitForStarted() {
         if (started.getCount() == 0)
             return;
 
@@ -78,36 +71,20 @@ public class OutboundTcpConnectionPool {
             throw new IllegalStateException(String.format("Connections to %s are not started!", id.getHostAddress()));
     }
 
-    public void close() {
+    void close() {
         // these null guards are simply for tests
         if (ackCon != null)
             ackCon.closeSocket(true);
-        if (cmdCon != null)
-            cmdCon.closeSocket(true);
 
         metrics.release();
     }
 
-    /**
-     * returns the appropriate connection based on message type.
-     * returns null if a connection could not be established.
-     */
-    OutboundTcpConnection getConnection(MessageOut<?> msg) {
-        Stage stage = msg.getStage();
-        return stage == Stage.REQUEST_RESPONSE || stage == Stage.INTERNAL_RESPONSE || stage == Stage.GOSSIP ? ackCon
-                : cmdCon;
+    OutboundTcpConnection getConnection() {
+        return ackCon;
     }
 
     void reset() {
-        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
-            conn.closeSocket(false);
-    }
-
-    public void resetToNewerVersion(int version) {
-        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon }) {
-            if (version > conn.getTargetVersion())
-                conn.softCloseSocket();
-        }
+        ackCon.closeSocket(false);
     }
 
     /**
@@ -118,27 +95,32 @@ public class OutboundTcpConnectionPool {
     public void reset(InetAddress remoteEP) {
         ClusterMetaData.updatePreferredIP(id, remoteEP);
         resetEndpoint = remoteEP;
-        for (OutboundTcpConnection conn : new OutboundTcpConnection[] { cmdCon, ackCon })
-            conn.softCloseSocket();
+        ackCon.softCloseSocket();
 
         // release previous metrics and create new one with reset address
         metrics.release();
         metrics = new ConnectionMetrics(resetEndpoint);
     }
 
-    public long getTimeouts() {
+    long getTimeouts() {
         return metrics.timeouts.count();
     }
 
-    public void incrementTimeout() {
+    void incrementTimeout() {
         metrics.timeouts.mark();
     }
 
-    public Socket newSocket() throws IOException {
+    Socket newSocket() throws IOException {
         return newSocket(endPoint());
     }
 
-    public static Socket newSocket(InetAddress endpoint) throws IOException {
+    public InetAddress endPoint() {
+        if (id.equals(Utils.getBroadcastAddress()))
+            return Utils.getLocalAddress();
+        return resetEndpoint;
+    }
+
+    private static Socket newSocket(InetAddress endpoint) throws IOException {
         // zero means 'bind on any available port.'
         if (isEncryptedChannel(endpoint)) {
             if (Config.getOutboundBindAny())
@@ -156,13 +138,7 @@ public class OutboundTcpConnectionPool {
         }
     }
 
-    public InetAddress endPoint() {
-        if (id.equals(Utils.getBroadcastAddress()))
-            return Utils.getLocalAddress();
-        return resetEndpoint;
-    }
-
-    public static boolean isEncryptedChannel(InetAddress address) {
+    private static boolean isEncryptedChannel(InetAddress address) {
         IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
         switch (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption) {
         case none:
