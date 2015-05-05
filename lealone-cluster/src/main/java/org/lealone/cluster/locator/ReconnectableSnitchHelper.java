@@ -50,7 +50,7 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
             InetAddress localAddress = InetAddress.getByName(localAddressValue.value);
 
             if (snitch.getDatacenter(publicAddress).equals(localDc)
-                    && MessagingService.instance().getVersion(publicAddress) == MessagingService.current_version
+                    && MessagingService.instance().getVersion(publicAddress) == MessagingService.CURRENT_VERSION
                     && !MessagingService.instance().getConnectionPool(publicAddress).endPoint().equals(localAddress)) {
 
                 MessagingService.instance().getConnectionPool(publicAddress).reset(localAddress);

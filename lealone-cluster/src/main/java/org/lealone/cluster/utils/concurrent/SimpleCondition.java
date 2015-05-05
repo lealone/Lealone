@@ -32,6 +32,7 @@ public class SimpleCondition implements Condition {
     private volatile WaitQueue waiting;
     private volatile boolean signaled = false;
 
+    @Override
     public void await() throws InterruptedException {
         if (isSignaled())
             return;
@@ -45,6 +46,7 @@ public class SimpleCondition implements Condition {
         assert isSignaled();
     }
 
+    @Override
     public boolean await(long time, TimeUnit unit) throws InterruptedException {
         if (isSignaled())
             return true;
@@ -60,6 +62,7 @@ public class SimpleCondition implements Condition {
         return s.awaitUntil(until) || isSignaled();
     }
 
+    @Override
     public void signal() {
         throw new UnsupportedOperationException();
     }
@@ -68,20 +71,24 @@ public class SimpleCondition implements Condition {
         return signaled;
     }
 
+    @Override
     public void signalAll() {
         signaled = true;
         if (waiting != null)
             waiting.signalAll();
     }
 
+    @Override
     public void awaitUninterruptibly() {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public long awaitNanos(long nanosTimeout) throws InterruptedException {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public boolean awaitUntil(Date deadline) throws InterruptedException {
         throw new UnsupportedOperationException();
     }

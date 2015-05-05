@@ -25,6 +25,9 @@ import java.util.Map;
  * - OutboundConnectionPools - Command/Response - Pending/Completed Tasks
  */
 public interface MessagingServiceMBean {
+
+    public int getVersion(String address) throws UnknownHostException;
+
     /**
      * Pending tasks for Command(Mutations, Read etc) TCP Connections
      */
@@ -64,6 +67,4 @@ public interface MessagingServiceMBean {
      * Number of timeouts per host
      */
     public Map<String, Long> getTimeoutsPerHost();
-
-    public int getVersion(String address) throws UnknownHostException;
 }

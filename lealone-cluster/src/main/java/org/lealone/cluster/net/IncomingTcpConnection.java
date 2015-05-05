@@ -94,7 +94,7 @@ class IncomingTcpConnection extends Thread {
     private void receiveMessages() throws IOException {
         // handshake (true) endpoint versions
         DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-        out.writeInt(MessagingService.current_version);
+        out.writeInt(MessagingService.CURRENT_VERSION);
         out.flush();
         DataInputStream in = new DataInputStream(socket.getInputStream());
         int maxVersion = in.readInt();
@@ -117,7 +117,7 @@ class IncomingTcpConnection extends Thread {
             in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), 4096));
         }
 
-        if (version > MessagingService.current_version) {
+        if (version > MessagingService.CURRENT_VERSION) {
             // save the endpoint so gossip will reconnect to it
             Gossiper.instance.addSavedEndpoint(from);
             logger.info("Received messages from newer protocol version {}. Ignoring", version);

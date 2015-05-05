@@ -53,6 +53,41 @@ public class OutboundTcpConnectionPool {
         ackCon = new OutboundTcpConnection(this);
     }
 
+    public void start() {
+        cmdCon.start();
+        ackCon.start();
+
+        metrics = new ConnectionMetrics(id);
+
+        started.countDown();
+    }
+
+    public void waitForStarted() {
+        if (started.getCount() == 0)
+            return;
+
+        boolean error = false;
+        try {
+            if (!started.await(1, TimeUnit.MINUTES))
+                error = true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            error = true;
+        }
+        if (error)
+            throw new IllegalStateException(String.format("Connections to %s are not started!", id.getHostAddress()));
+    }
+
+    public void close() {
+        // these null guards are simply for tests
+        if (ackCon != null)
+            ackCon.closeSocket(true);
+        if (cmdCon != null)
+            cmdCon.closeSocket(true);
+
+        metrics.release();
+    }
+
     /**
      * returns the appropriate connection based on message type.
      * returns null if a connection could not be established.
@@ -146,40 +181,5 @@ public class OutboundTcpConnectionPool {
             break;
         }
         return true;
-    }
-
-    public void start() {
-        cmdCon.start();
-        ackCon.start();
-
-        metrics = new ConnectionMetrics(id);
-
-        started.countDown();
-    }
-
-    public void waitForStarted() {
-        if (started.getCount() == 0)
-            return;
-
-        boolean error = false;
-        try {
-            if (!started.await(1, TimeUnit.MINUTES))
-                error = true;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            error = true;
-        }
-        if (error)
-            throw new IllegalStateException(String.format("Connections to %s are not started!", id.getHostAddress()));
-    }
-
-    public void close() {
-        // these null guards are simply for tests
-        if (ackCon != null)
-            ackCon.closeSocket(true);
-        if (cmdCon != null)
-            cmdCon.closeSocket(true);
-
-        metrics.release();
     }
 }

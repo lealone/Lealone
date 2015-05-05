@@ -547,7 +547,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         unreachableEndpoints.remove(endpoint);
         // do not remove endpointState until the quarantine expires
         FailureDetector.instance.remove(endpoint);
-        MessagingService.instance().resetVersion(endpoint);
+        MessagingService.instance().removeVersion(endpoint);
         quarantineEndpoint(endpoint);
         MessagingService.instance().destroyConnectionPool(endpoint);
         if (logger.isDebugEnabled())

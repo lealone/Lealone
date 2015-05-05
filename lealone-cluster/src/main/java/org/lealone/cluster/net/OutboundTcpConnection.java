@@ -274,7 +274,7 @@ class OutboundTcpConnection extends Thread {
                     return false;
                 }
 
-                if (targetVersion < maxTargetVersion && targetVersion < MessagingService.current_version) {
+                if (targetVersion < maxTargetVersion && targetVersion < MessagingService.CURRENT_VERSION) {
                     if (logger.isTraceEnabled())
                         logger.trace(
                                 "Detected higher max version {} (using {}); will reconnect when queued messages are done",
@@ -282,7 +282,7 @@ class OutboundTcpConnection extends Thread {
                     softCloseSocket();
                 }
 
-                out.writeInt(MessagingService.current_version);
+                out.writeInt(MessagingService.CURRENT_VERSION);
                 CompactEndpointSerializationHelper.serialize(Utils.getBroadcastAddress(), out);
                 if (shouldCompressConnection()) {
                     out.flush();

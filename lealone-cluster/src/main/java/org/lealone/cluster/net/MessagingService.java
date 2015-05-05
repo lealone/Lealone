@@ -76,32 +76,8 @@ import com.google.common.collect.Lists;
 @SuppressWarnings({ "rawtypes" })
 public final class MessagingService implements MessagingServiceMBean {
 
-    private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
-
-    // 8 bits version, so don't waste versions
-    public static final int VERSION_10 = 1;
-    public static final int current_version = VERSION_10;
-
-    public static final String FAILURE_CALLBACK_PARAM = "CAL_BAC";
-    public static final byte[] ONE_BYTE = new byte[1];
-    public static final String FAILURE_RESPONSE_PARAM = "FAIL";
-
-    /**
-     * we preface every message with this number so the recipient can validate the sender is sane
-     */
-    public static final int PROTOCOL_MAGIC = 0xCA552DFA;
-
-    /**
-     * Verbs it's okay to drop if the request has been queued longer than the request timeout.  These
-     * all correspond to client requests or something triggered by them; we don't want to
-     * drop internal messages like bootstrap or repair notifications.
-     */
-    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb.REQUEST_RESPONSE);
-
-    private static final int LOG_DROPPED_INTERVAL_IN_MS = 5000;
-
     /* All verb handler identifiers */
-    public enum Verb {
+    public static enum Verb {
         REQUEST_RESPONSE, // client-initiated reads and writes
         GOSSIP_DIGEST_SYN,
         GOSSIP_DIGEST_ACK,
@@ -114,6 +90,34 @@ public final class MessagingService implements MessagingServiceMBean {
         UNUSED_2,
         UNUSED_3;
     }
+
+    private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
+
+    public static final int VERSION_10 = 1;
+    public static final int CURRENT_VERSION = VERSION_10;
+
+    public static final String FAILURE_CALLBACK_PARAM = "CAL_BAC";
+    public static final String FAILURE_RESPONSE_PARAM = "FAIL";
+    public static final byte[] ONE_BYTE = new byte[1];
+
+    /**
+     * we preface every message with this number so the recipient can validate the sender is sane
+     */
+    public static final int PROTOCOL_MAGIC = 0xCA552DFA;
+
+    public static void validateMagic(int magic) throws IOException {
+        if (magic != PROTOCOL_MAGIC)
+            throw new IOException("invalid protocol header");
+    }
+
+    /**
+     * Verbs it's okay to drop if the request has been queued longer than the request timeout.
+     * These all correspond to client requests or something triggered by them; 
+     * we don't want to drop internal messages like bootstrap.
+     */
+    public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb.REQUEST_RESPONSE);
+
+    private static final int LOG_DROPPED_INTERVAL_IN_MS = 5000;
 
     public static final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(
             MessagingService.Verb.class) {
@@ -159,6 +163,12 @@ public final class MessagingService implements MessagingServiceMBean {
      */
     public static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<>(Verb.class);
 
+    private static final AtomicInteger idGen = new AtomicInteger(0);
+
+    private static int nextId() {
+        return idGen.incrementAndGet();
+    }
+
     /**
      * a placeholder class that means "deserialize using the callback." We can't implement this without
      * special-case code in InboundTcpConnection because there is no way to pass the message id to IVersionedSerializer.
@@ -186,12 +196,12 @@ public final class MessagingService implements MessagingServiceMBean {
     private final ExpiringMap<Integer, CallbackInfo> callbacks;
 
     /* Lookup table for registering message handlers based on the verb. */
-    private final Map<Verb, IVerbHandler> verbHandlers;
+    private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);;
 
     private final ConcurrentMap<InetAddress, OutboundTcpConnectionPool> connectionManagers = new NonBlockingHashMap<>();
 
     private final List<SocketThread> socketThreads = Lists.newArrayList();
-    private final SimpleCondition listenGate;
+    private final SimpleCondition listenGate = new SimpleCondition();
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
@@ -217,8 +227,6 @@ public final class MessagingService implements MessagingServiceMBean {
             lastDroppedInternal.put(verb, 0);
         }
 
-        listenGate = new SimpleCondition();
-        verbHandlers = new EnumMap<Verb, IVerbHandler>(Verb.class);
         Runnable logDropped = new Runnable() {
             @Override
             public void run() {
@@ -259,6 +267,24 @@ public final class MessagingService implements MessagingServiceMBean {
         }
     }
 
+    public void incrementDroppedMessages(Verb verb) {
+        assert DROPPABLE_VERBS.contains(verb) : "Verb " + verb + " should not legally be dropped";
+        droppedMessages.get(verb).dropped.mark();
+    }
+
+    private void logDroppedMessages() {
+        for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet()) {
+            int dropped = (int) entry.getValue().dropped.count();
+            Verb verb = entry.getKey();
+            int recent = dropped - lastDroppedInternal.get(verb);
+            if (recent > 0) {
+                logger.info("{} {} messages dropped in last {}ms", new Object[] { recent, verb,
+                        LOG_DROPPED_INTERVAL_IN_MS });
+                lastDroppedInternal.put(verb, dropped);
+            }
+        }
+    }
+
     /**
      * Track latency information for the dynamic snitch
      *
@@ -276,13 +302,17 @@ public final class MessagingService implements MessagingServiceMBean {
             subscriber.receiveTiming(address, latency);
     }
 
-    /**
-     * called from gossiper when it notices a node is not responding.
-     */
-    public void convict(InetAddress ep) {
-        if (logger.isDebugEnabled())
-            logger.debug("Resetting pool for {}", ep);
-        getConnectionPool(ep).reset();
+    public void waitUntilListening() {
+        try {
+            listenGate.await();
+        } catch (InterruptedException ie) {
+            if (logger.isDebugEnabled())
+                logger.debug("await interrupted");
+        }
+    }
+
+    public boolean isListening() {
+        return listenGate.isSignaled();
     }
 
     /**
@@ -347,249 +377,6 @@ public final class MessagingService implements MessagingServiceMBean {
             ss.add(socket);
         }
         return ss;
-    }
-
-    public void waitUntilListening() {
-        try {
-            listenGate.await();
-        } catch (InterruptedException ie) {
-            if (logger.isDebugEnabled())
-                logger.debug("await interrupted");
-        }
-    }
-
-    public boolean isListening() {
-        return listenGate.isSignaled();
-    }
-
-    public void destroyConnectionPool(InetAddress to) {
-        OutboundTcpConnectionPool cp = connectionManagers.get(to);
-        if (cp == null)
-            return;
-        cp.close();
-        connectionManagers.remove(to);
-    }
-
-    public OutboundTcpConnectionPool getConnectionPool(InetAddress to) {
-        OutboundTcpConnectionPool cp = connectionManagers.get(to);
-        if (cp == null) {
-            cp = new OutboundTcpConnectionPool(to);
-            OutboundTcpConnectionPool existingPool = connectionManagers.putIfAbsent(to, cp);
-            if (existingPool != null)
-                cp = existingPool;
-            else
-                cp.start();
-        }
-        cp.waitForStarted();
-        return cp;
-    }
-
-    public OutboundTcpConnection getConnection(InetAddress to, MessageOut msg) {
-        return getConnectionPool(to).getConnection(msg);
-    }
-
-    /**
-     * Register a verb and the corresponding verb handler with the
-     * Messaging Service.
-     *
-     * @param verb
-     * @param verbHandler handler for the specified verb
-     */
-    public void registerVerbHandlers(Verb verb, IVerbHandler verbHandler) {
-        assert !verbHandlers.containsKey(verb);
-        verbHandlers.put(verb, verbHandler);
-    }
-
-    /**
-     * This method returns the verb handler associated with the registered
-     * verb. If no handler has been registered then null is returned.
-     *
-     * @param type for which the verb handler is sought
-     * @return a reference to IVerbHandler which is the handler for the specified verb
-     */
-    public IVerbHandler getVerbHandler(Verb type) {
-        return verbHandlers.get(type);
-    }
-
-    public int addCallback(IAsyncCallback cb, MessageOut message, InetAddress to, long timeout, boolean failureCallback) {
-        int messageId = nextId();
-        CallbackInfo previous = callbacks.put(messageId,
-                new CallbackInfo(to, cb, callbackDeserializers.get(message.verb), failureCallback), timeout);
-        assert previous == null : String.format("Callback already exists for id %d! (%s)", messageId, previous);
-        return messageId;
-    }
-
-    private static final AtomicInteger idGen = new AtomicInteger(0);
-
-    private static int nextId() {
-        return idGen.incrementAndGet();
-    }
-
-    public int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb) {
-        return sendRR(message, to, cb, message.getTimeout(), false);
-    }
-
-    public int sendRRWithFailure(MessageOut message, InetAddress to, IAsyncCallbackWithFailure cb) {
-        return sendRR(message, to, cb, message.getTimeout(), true);
-    }
-
-    /**
-     * Send a non-mutation message to a given endpoint. This method specifies a callback
-     * which is invoked with the actual response.
-     *
-     * @param message message to be sent.
-     * @param to      endpoint to which the message needs to be sent
-     * @param cb      callback interface which is used to pass the responses or
-     *                suggest that a timeout occurred to the invoker of the send().
-     * @param timeout the timeout used for expiration
-     * @return an reference to message id used to match with the result
-     */
-    public int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb, long timeout, boolean failureCallback) {
-        int id = addCallback(cb, message, to, timeout, failureCallback);
-        sendOneWay(failureCallback ? message.withParameter(FAILURE_CALLBACK_PARAM, ONE_BYTE) : message, id, to);
-        return id;
-    }
-
-    public void sendOneWay(MessageOut message, InetAddress to) {
-        sendOneWay(message, nextId(), to);
-    }
-
-    public void sendReply(MessageOut message, int id, InetAddress to) {
-        sendOneWay(message, id, to);
-    }
-
-    /**
-     * Send a message to a given endpoint. This method adheres to the fire and forget
-     * style messaging.
-     *
-     * @param message messages to be sent.
-     * @param to      endpoint to which the message needs to be sent
-     */
-    public void sendOneWay(MessageOut message, int id, InetAddress to) {
-        if (logger.isTraceEnabled())
-            logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
-
-        if (to.equals(Utils.getBroadcastAddress()))
-            if (logger.isTraceEnabled())
-                logger.trace("Message-to-self {} going over MessagingService", message);
-
-        // get pooled connection (really, connection queue)
-        OutboundTcpConnection connection = getConnection(to, message);
-
-        // write it
-        connection.enqueue(message, id);
-    }
-
-    public void register(ILatencySubscriber subcriber) {
-        subscribers.add(subcriber);
-    }
-
-    public void clearCallbacksUnsafe() {
-        callbacks.reset();
-    }
-
-    /**
-     * Wait for callbacks and don't allow any more to be created (since they could require writing hints)
-     */
-    public void shutdown() {
-        logger.info("Waiting for messaging service to quiesce");
-
-        // the important part
-        callbacks.shutdownBlocking();
-
-        // attempt to humor tests that try to stop and restart MS
-        try {
-            for (SocketThread th : socketThreads)
-                th.close();
-        } catch (IOException e) {
-            throw new IOError(e);
-        }
-    }
-
-    public void setCallbackForTests(int messageId, CallbackInfo callback) {
-        callbacks.put(messageId, callback);
-    }
-
-    public CallbackInfo getRegisteredCallback(int messageId) {
-        return callbacks.get(messageId);
-    }
-
-    public CallbackInfo removeRegisteredCallback(int messageId) {
-        return callbacks.remove(messageId);
-    }
-
-    /**
-     * @return System.nanoTime() when callback was created.
-     */
-    public long getRegisteredCallbackAge(int messageId) {
-        return callbacks.getAge(messageId);
-    }
-
-    public static void validateMagic(int magic) throws IOException {
-        if (magic != PROTOCOL_MAGIC)
-            throw new IOException("invalid protocol header");
-    }
-
-    /**
-     * @return the last version associated with address, or @param version if this is the first such version
-     */
-    public int setVersion(InetAddress endpoint, int version) {
-        if (logger.isDebugEnabled())
-            logger.debug("Setting version {} for {}", version, endpoint);
-        Integer v = versions.put(endpoint, version);
-
-        return v == null ? version : v;
-    }
-
-    public void resetVersion(InetAddress endpoint) {
-        if (logger.isDebugEnabled())
-            logger.debug("Resetting version for {}", endpoint);
-        versions.remove(endpoint);
-    }
-
-    public int getVersion(InetAddress endpoint) {
-        Integer v = versions.get(endpoint);
-        if (v == null) {
-            // we don't know the version. assume current. we'll know soon enough if that was incorrect.
-            if (logger.isTraceEnabled())
-                logger.trace("Assuming current protocol version for {}", endpoint);
-            return MessagingService.current_version;
-        } else
-            return Math.min(v, MessagingService.current_version);
-    }
-
-    @Override
-    public int getVersion(String endpoint) throws UnknownHostException {
-        return getVersion(InetAddress.getByName(endpoint));
-    }
-
-    public int getRawVersion(InetAddress endpoint) {
-        Integer v = versions.get(endpoint);
-        if (v == null)
-            throw new IllegalStateException("getRawVersion() was called without checking knowsVersion() result first");
-        return v;
-    }
-
-    public boolean knowsVersion(InetAddress endpoint) {
-        return versions.containsKey(endpoint);
-    }
-
-    public void incrementDroppedMessages(Verb verb) {
-        assert DROPPABLE_VERBS.contains(verb) : "Verb " + verb + " should not legally be dropped";
-        droppedMessages.get(verb).dropped.mark();
-    }
-
-    private void logDroppedMessages() {
-        for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet()) {
-            int dropped = (int) entry.getValue().dropped.count();
-            Verb verb = entry.getKey();
-            int recent = dropped - lastDroppedInternal.get(verb);
-            if (recent > 0) {
-                logger.info("{} {} messages dropped in last {}ms", new Object[] { recent, verb,
-                        LOG_DROPPED_INTERVAL_IN_MS });
-                lastDroppedInternal.put(verb, dropped);
-            }
-        }
     }
 
     private static class SocketThread extends Thread {
@@ -659,17 +446,205 @@ public final class MessagingService implements MessagingServiceMBean {
         }
     }
 
+    /**
+     * Register a verb and the corresponding verb handler with the
+     * Messaging Service.
+     *
+     * @param verb
+     * @param verbHandler handler for the specified verb
+     */
+    public void registerVerbHandlers(Verb verb, IVerbHandler verbHandler) {
+        assert !verbHandlers.containsKey(verb);
+        verbHandlers.put(verb, verbHandler);
+    }
+
+    /**
+     * This method returns the verb handler associated with the registered
+     * verb. If no handler has been registered then null is returned.
+     *
+     * @param type for which the verb handler is sought
+     * @return a reference to IVerbHandler which is the handler for the specified verb
+     */
+    public IVerbHandler getVerbHandler(Verb type) {
+        return verbHandlers.get(type);
+    }
+
+    public int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb) {
+        return sendRR(message, to, cb, message.getTimeout(), false);
+    }
+
+    public int sendRRWithFailure(MessageOut message, InetAddress to, IAsyncCallbackWithFailure cb) {
+        return sendRR(message, to, cb, message.getTimeout(), true);
+    }
+
+    /**
+     * Send a non-mutation message to a given endpoint. This method specifies a callback
+     * which is invoked with the actual response.
+     *
+     * @param message message to be sent.
+     * @param to      endpoint to which the message needs to be sent
+     * @param cb      callback interface which is used to pass the responses or
+     *                suggest that a timeout occurred to the invoker of the send().
+     * @param timeout the timeout used for expiration
+     * @return an reference to message id used to match with the result
+     */
+    public int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb, long timeout, boolean failureCallback) {
+        int id = addCallback(message, to, cb, timeout, failureCallback);
+        sendOneWay(failureCallback ? message.withParameter(FAILURE_CALLBACK_PARAM, ONE_BYTE) : message, id, to);
+        return id;
+    }
+
+    private int addCallback(MessageOut message, InetAddress to, IAsyncCallback cb, long timeout, boolean failureCallback) {
+        int messageId = nextId();
+        CallbackInfo previous = callbacks.put(messageId,
+                new CallbackInfo(to, cb, callbackDeserializers.get(message.verb), failureCallback), timeout);
+        assert previous == null : String.format("Callback already exists for id %d! (%s)", messageId, previous);
+        return messageId;
+    }
+
+    public void sendOneWay(MessageOut message, InetAddress to) {
+        sendOneWay(message, nextId(), to);
+    }
+
+    public void sendReply(MessageOut message, int id, InetAddress to) {
+        sendOneWay(message, id, to);
+    }
+
+    /**
+     * Send a message to a given endpoint. This method adheres to the fire and forget
+     * style messaging.
+     *
+     * @param message messages to be sent.
+     * @param to      endpoint to which the message needs to be sent
+     */
+    public void sendOneWay(MessageOut message, int id, InetAddress to) {
+        if (logger.isTraceEnabled())
+            logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
+
+        if (to.equals(Utils.getBroadcastAddress()))
+            if (logger.isTraceEnabled())
+                logger.trace("Message-to-self {} going over MessagingService", message);
+
+        // get pooled connection (really, connection queue)
+        OutboundTcpConnection connection = getConnection(to, message);
+
+        // write it
+        connection.enqueue(message, id);
+    }
+
+    private OutboundTcpConnection getConnection(InetAddress to, MessageOut msg) {
+        return getConnectionPool(to).getConnection(msg);
+    }
+
+    public OutboundTcpConnectionPool getConnectionPool(InetAddress to) {
+        OutboundTcpConnectionPool cp = connectionManagers.get(to);
+        if (cp == null) {
+            cp = new OutboundTcpConnectionPool(to);
+            OutboundTcpConnectionPool existingPool = connectionManagers.putIfAbsent(to, cp);
+            if (existingPool != null)
+                cp = existingPool;
+            else
+                cp.start();
+        }
+        cp.waitForStarted();
+        return cp;
+    }
+
+    public void destroyConnectionPool(InetAddress to) {
+        OutboundTcpConnectionPool cp = connectionManagers.get(to);
+        if (cp == null)
+            return;
+        cp.close();
+        connectionManagers.remove(to);
+    }
+
+    /**
+     * called from gossiper when it notices a node is not responding.
+     */
+    public void convict(InetAddress ep) {
+        if (logger.isDebugEnabled())
+            logger.debug("Resetting pool for {}", ep);
+        getConnectionPool(ep).reset();
+    }
+
+    public void register(ILatencySubscriber subcriber) {
+        subscribers.add(subcriber);
+    }
+
+    /**
+     * Wait for callbacks and don't allow any more to be created (since they could require writing hints)
+     */
+    public void shutdown() {
+        logger.info("Waiting for messaging service to quiesce");
+
+        // the important part
+        callbacks.shutdownBlocking();
+
+        // attempt to humor tests that try to stop and restart MS
+        try {
+            for (SocketThread th : socketThreads)
+                th.close();
+        } catch (IOException e) {
+            throw new IOError(e);
+        }
+    }
+
+    public CallbackInfo getRegisteredCallback(int messageId) {
+        return callbacks.get(messageId);
+    }
+
+    public CallbackInfo removeRegisteredCallback(int messageId) {
+        return callbacks.remove(messageId);
+    }
+
+    /**
+     * @return System.nanoTime() when callback was created.
+     */
+    public long getRegisteredCallbackAge(int messageId) {
+        return callbacks.getAge(messageId);
+    }
+
+    public void setVersion(InetAddress endpoint, int version) {
+        if (logger.isDebugEnabled())
+            logger.debug("Setting version {} for {}", version, endpoint);
+
+        versions.put(endpoint, version);
+    }
+
+    public void removeVersion(InetAddress endpoint) {
+        if (logger.isDebugEnabled())
+            logger.debug("Removing version for {}", endpoint);
+        versions.remove(endpoint);
+    }
+
+    public int getVersion(InetAddress endpoint) {
+        Integer v = versions.get(endpoint);
+        if (v == null) {
+            // we don't know the version. assume current. we'll know soon enough if that was incorrect.
+            if (logger.isTraceEnabled())
+                logger.trace("Assuming current protocol version for {}", endpoint);
+            return MessagingService.CURRENT_VERSION;
+        } else
+            return Math.min(v, MessagingService.CURRENT_VERSION);
+    }
+
+    public boolean knowsVersion(InetAddress endpoint) {
+        return versions.containsKey(endpoint);
+    }
+
+    //--------------以下是MessagingServiceMBean的API实现-------------
+
+    @Override
+    public int getVersion(String endpoint) throws UnknownHostException {
+        return getVersion(InetAddress.getByName(endpoint));
+    }
+
     @Override
     public Map<String, Integer> getCommandPendingTasks() {
         Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
         for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
             pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().cmdCon.getPendingMessages());
         return pendingTasks;
-    }
-
-    public int getCommandPendingTasks(InetAddress address) {
-        OutboundTcpConnectionPool connection = connectionManagers.get(address);
-        return connection == null ? 0 : connection.cmdCon.getPendingMessages();
     }
 
     @Override

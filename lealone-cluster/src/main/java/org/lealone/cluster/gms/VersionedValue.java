@@ -197,7 +197,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
         }
 
         public VersionedValue networkVersion() {
-            return new VersionedValue(String.valueOf(MessagingService.current_version));
+            return new VersionedValue(String.valueOf(MessagingService.CURRENT_VERSION));
         }
 
         public VersionedValue internalIP(String private_ip) {
