@@ -198,7 +198,7 @@ public final class MessagingService implements MessagingServiceMBean {
     /* Lookup table for registering message handlers based on the verb. */
     private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);;
 
-    private final ConcurrentMap<InetAddress, OutboundTcpConnectionPool> connectionManagers = new NonBlockingHashMap<>();
+    private final ConcurrentMap<InetAddress, OutboundTcpConnection> connectionManagers = new NonBlockingHashMap<>();
 
     private final List<SocketThread> socketThreads = Lists.newArrayList();
     private final SimpleCondition listenGate = new SimpleCondition();
@@ -243,7 +243,7 @@ public final class MessagingService implements MessagingServiceMBean {
                 final CallbackInfo expiredCallbackInfo = pair.right.value;
                 maybeAddLatency(expiredCallbackInfo.callback, expiredCallbackInfo.target, pair.right.timeout);
                 ConnectionMetrics.totalTimeouts.mark();
-                getConnectionPool(expiredCallbackInfo.target).incrementTimeout();
+                getConnection(expiredCallbackInfo.target).incrementTimeout();
                 if (expiredCallbackInfo.isFailureCallback()) {
                     StageManager.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable() {
                         @Override
@@ -532,30 +532,33 @@ public final class MessagingService implements MessagingServiceMBean {
         connection.enqueue(message, id);
     }
 
-    private OutboundTcpConnection getConnection(InetAddress to) {
-        return getConnectionPool(to).getConnection();
-    }
-
-    public OutboundTcpConnectionPool getConnectionPool(InetAddress to) {
-        OutboundTcpConnectionPool cp = connectionManagers.get(to);
-        if (cp == null) {
-            cp = new OutboundTcpConnectionPool(to);
-            OutboundTcpConnectionPool existingPool = connectionManagers.putIfAbsent(to, cp);
-            if (existingPool != null)
-                cp = existingPool;
+    public OutboundTcpConnection getConnection(InetAddress to) {
+        OutboundTcpConnection conn = connectionManagers.get(to);
+        if (conn == null) {
+            conn = new OutboundTcpConnection(to);
+            OutboundTcpConnection existingConn = connectionManagers.putIfAbsent(to, conn);
+            if (existingConn != null)
+                conn = existingConn;
             else
-                cp.start();
+                conn.start();
         }
-        cp.waitForStarted();
-        return cp;
+        return conn;
     }
 
-    public void destroyConnectionPool(InetAddress to) {
-        OutboundTcpConnectionPool cp = connectionManagers.get(to);
-        if (cp == null)
+    public void destroyConnection(InetAddress to) {
+        OutboundTcpConnection conn = connectionManagers.get(to);
+        if (conn == null)
             return;
-        cp.close();
+        conn.close();
         connectionManagers.remove(to);
+    }
+
+    public InetAddress getConnectionEndpoint(InetAddress to) {
+        return getConnection(to).endpoint();
+    }
+
+    public void reconnect(InetAddress old, InetAddress to) {
+        getConnection(old).reset(to);
     }
 
     /**
@@ -564,7 +567,7 @@ public final class MessagingService implements MessagingServiceMBean {
     public void convict(InetAddress ep) {
         if (logger.isDebugEnabled())
             logger.debug("Resetting pool for {}", ep);
-        getConnectionPool(ep).reset();
+        getConnection(ep).reset();
     }
 
     public void register(ILatencySubscriber subcriber) {
@@ -642,16 +645,16 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Integer> getResponsePendingTasks() {
         Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
-            pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().ackCon.getPendingMessages());
+        for (Map.Entry<InetAddress, OutboundTcpConnection> entry : connectionManagers.entrySet())
+            pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().getPendingMessages());
         return pendingTasks;
     }
 
     @Override
     public Map<String, Long> getResponseCompletedTasks() {
         Map<String, Long> completedTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet())
-            completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().ackCon.getCompletedMesssages());
+        for (Map.Entry<InetAddress, OutboundTcpConnection> entry : connectionManagers.entrySet())
+            completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().getCompletedMesssages());
         return completedTasks;
     }
 
@@ -671,7 +674,7 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Long> getTimeoutsPerHost() {
         Map<String, Long> result = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnectionPool> entry : connectionManagers.entrySet()) {
+        for (Map.Entry<InetAddress, OutboundTcpConnection> entry : connectionManagers.entrySet()) {
             String ip = entry.getKey().getHostAddress();
             long recent = entry.getValue().getTimeouts();
             result.put(ip, recent);

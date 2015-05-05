@@ -21,8 +21,10 @@ import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -41,7 +43,11 @@ import net.jpountz.xxhash.XXHashFactory;
 
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
+import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.io.DataOutputStreamPlus;
+import org.lealone.cluster.locator.IEndpointSnitch;
+import org.lealone.cluster.metrics.ConnectionMetrics;
+import org.lealone.cluster.security.SSLFactory;
 import org.lealone.cluster.utils.JVMStabilityInspector;
 import org.lealone.cluster.utils.Utils;
 import org.slf4j.Logger;
@@ -53,29 +59,12 @@ class OutboundTcpConnection extends Thread {
     private static final Logger logger = LoggerFactory.getLogger(OutboundTcpConnection.class);
 
     private static final MessageOut<Void> CLOSE_SENTINEL = new MessageOut<>(MessagingService.Verb.INTERNAL_RESPONSE);
-    private volatile boolean isStopped = false;
-
-    private static final int OPEN_RETRY_DELAY = 100; // ms between retries
-    public static final int WAIT_FOR_VERSION_MAX_TIME = 5000;
-    private static final int NO_VERSION = Integer.MIN_VALUE;
 
     static final int LZ4_HASH_SEED = 0x9747b28c;
+    static final int WAIT_FOR_VERSION_MAX_TIME = 5000;
 
-    private final BlockingQueue<QueuedMessage> backlog = new LinkedBlockingQueue<>();
-
-    private final OutboundTcpConnectionPool poolReference;
-
-    private DataOutputStreamPlus out;
-    private Socket socket;
-    private volatile long completed;
-    private final AtomicLong dropped = new AtomicLong();
-    private volatile int currentMsgBufferCount = 0;
-    private int targetVersion;
-
-    public OutboundTcpConnection(OutboundTcpConnectionPool pool) {
-        super("WRITE-" + pool.endPoint());
-        this.poolReference = pool;
-    }
+    private static final int OPEN_RETRY_DELAY = 100; // ms between retries
+    private static final int NO_VERSION = Integer.MIN_VALUE;
 
     private static boolean isLocalDC(InetAddress targetHost) {
         String remoteDC = DatabaseDescriptor.getEndpointSnitch().getDatacenter(targetHost);
@@ -83,28 +72,28 @@ class OutboundTcpConnection extends Thread {
         return remoteDC.equals(localDC);
     }
 
-    public void enqueue(MessageOut<?> message, int id) {
-        if (backlog.size() > 1024)
-            expireMessages();
-        try {
-            backlog.put(new QueuedMessage(message, id));
-        } catch (InterruptedException e) {
-            throw new AssertionError(e);
-        }
-    }
+    private final BlockingQueue<QueuedMessage> backlog = new LinkedBlockingQueue<>();
+    private final InetAddress remoteEndpoint;
+    private final AtomicLong dropped = new AtomicLong();
 
-    void closeSocket(boolean destroyThread) {
-        backlog.clear();
-        isStopped = destroyThread; // Exit loop to stop the thread
-        enqueue(CLOSE_SENTINEL, -1);
-    }
+    // pointer to the reset Address.
+    private InetAddress resetEndpoint;
 
-    void softCloseSocket() {
-        enqueue(CLOSE_SENTINEL, -1);
-    }
+    private DataOutputStreamPlus out;
+    private Socket socket;
 
-    public int getTargetVersion() {
-        return targetVersion;
+    private volatile long completed;
+    private volatile int currentMsgBufferCount = 0;
+    private volatile boolean isStopped = false;
+
+    private int targetVersion;
+    private ConnectionMetrics metrics;
+
+    OutboundTcpConnection(InetAddress remoteEndpoint) {
+        super("WRITE-" + remoteEndpoint);
+        this.remoteEndpoint = remoteEndpoint;
+        resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
+        metrics = new ConnectionMetrics(remoteEndpoint);
     }
 
     @Override
@@ -143,7 +132,7 @@ class OutboundTcpConnection extends Thread {
                     JVMStabilityInspector.inspectThrowable(e);
                     // really shouldn't get here, as exception handling in writeConnected() is reasonably robust
                     // but we want to catch anything bad we don't drop the messages in the current batch
-                    logger.error("error processing a message intended for {}", poolReference.endPoint(), e);
+                    logger.error("error processing a message intended for {}", remoteEndpoint, e);
                 }
                 currentMsgBufferCount = --count;
             }
@@ -151,22 +140,75 @@ class OutboundTcpConnection extends Thread {
         }
     }
 
-    public int getPendingMessages() {
+    void enqueue(MessageOut<?> message, int id) {
+        if (backlog.size() > 1024)
+            expireMessages();
+        try {
+            backlog.put(new QueuedMessage(message, id));
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    int getPendingMessages() {
         return backlog.size() + currentMsgBufferCount;
     }
 
-    public long getCompletedMesssages() {
+    long getCompletedMesssages() {
         return completed;
     }
 
-    public long getDroppedMessages() {
+    long getDroppedMessages() {
         return dropped.get();
+    }
+
+    long getTimeouts() {
+        return metrics.timeouts.count();
+    }
+
+    void incrementTimeout() {
+        metrics.timeouts.mark();
+    }
+
+    InetAddress endpoint() {
+        if (remoteEndpoint.equals(Utils.getBroadcastAddress()))
+            return Utils.getLocalAddress();
+        return resetEndpoint;
+    }
+
+    void close() {
+        closeSocket(true);
+    }
+
+    void reset() {
+        closeSocket(false);
+    }
+
+    void reset(InetAddress remoteEndpoint) {
+        ClusterMetaData.updatePreferredIP(this.remoteEndpoint, remoteEndpoint);
+        resetEndpoint = remoteEndpoint;
+        softCloseSocket();
+
+        // release previous metrics and create new one with reset address
+        metrics.release();
+        metrics = new ConnectionMetrics(resetEndpoint);
+    }
+
+    private void softCloseSocket() {
+        enqueue(CLOSE_SENTINEL, -1);
+    }
+
+    private void closeSocket(boolean destroyThread) {
+        backlog.clear();
+        isStopped = destroyThread; // Exit loop to stop the thread
+        enqueue(CLOSE_SENTINEL, -1);
+
+        metrics.release();
     }
 
     private boolean shouldCompressConnection() {
         return DatabaseDescriptor.internodeCompression() == Config.InternodeCompression.all
-                || (DatabaseDescriptor.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(poolReference
-                        .endPoint()));
+                || (DatabaseDescriptor.internodeCompression() == Config.InternodeCompression.dc && !isLocalDC(remoteEndpoint));
     }
 
     private void writeConnected(QueuedMessage qm, boolean flush) {
@@ -180,7 +222,7 @@ class OutboundTcpConnection extends Thread {
             disconnect();
             if (e instanceof IOException) {
                 if (logger.isDebugEnabled())
-                    logger.debug("error writing to {}", poolReference.endPoint(), e);
+                    logger.debug("error writing to {}", remoteEndpoint, e);
 
                 // if the message was important, such as a repair acknowledgement, put it back on the queue
                 // to retry after re-connecting.  See lealone-5393
@@ -193,7 +235,7 @@ class OutboundTcpConnection extends Thread {
                 }
             } else {
                 // Non IO exceptions are likely a programming error so let's not silence them
-                logger.error("error writing to {}", poolReference.endPoint(), e);
+                logger.error("error writing to {}", remoteEndpoint, e);
             }
         }
     }
@@ -214,7 +256,7 @@ class OutboundTcpConnection extends Thread {
                 socket.close();
             } catch (IOException e) {
                 if (logger.isTraceEnabled())
-                    logger.trace("exception closing connection to " + poolReference.endPoint(), e);
+                    logger.trace("exception closing connection to " + remoteEndpoint, e);
             }
             out = null;
             socket = null;
@@ -223,16 +265,16 @@ class OutboundTcpConnection extends Thread {
 
     private boolean connect() {
         if (logger.isDebugEnabled())
-            logger.debug("attempting to connect to {}", poolReference.endPoint());
+            logger.debug("attempting to connect to {}", remoteEndpoint);
 
         long start = System.nanoTime();
         long timeout = TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getRpcTimeout());
         while (System.nanoTime() - start < timeout) {
-            targetVersion = MessagingService.instance().getVersion(poolReference.endPoint());
+            targetVersion = MessagingService.instance().getVersion(remoteEndpoint);
             try {
-                socket = poolReference.newSocket();
+                socket = newSocket();
                 socket.setKeepAlive(true);
-                if (isLocalDC(poolReference.endPoint())) {
+                if (isLocalDC(remoteEndpoint)) {
                     socket.setTcpNoDelay(true);
                 } else {
                     socket.setTcpNoDelay(DatabaseDescriptor.getInterDCTcpNoDelay());
@@ -264,7 +306,7 @@ class OutboundTcpConnection extends Thread {
                     disconnect();
                     continue;
                 } else {
-                    MessagingService.instance().setVersion(poolReference.endPoint(), maxTargetVersion);
+                    MessagingService.instance().setVersion(remoteEndpoint, maxTargetVersion);
                 }
 
                 if (targetVersion > maxTargetVersion) {
@@ -301,7 +343,7 @@ class OutboundTcpConnection extends Thread {
             } catch (IOException e) {
                 socket = null;
                 if (logger.isTraceEnabled())
-                    logger.trace("unable to connect to " + poolReference.endPoint(), e);
+                    logger.trace("unable to connect to " + remoteEndpoint, e);
                 Uninterruptibles.sleepUninterruptibly(OPEN_RETRY_DELAY, TimeUnit.MILLISECONDS);
             }
         }
@@ -311,14 +353,14 @@ class OutboundTcpConnection extends Thread {
     private int handshakeVersion(final DataInputStream inputStream) {
         final AtomicInteger version = new AtomicInteger(NO_VERSION);
         final CountDownLatch versionLatch = new CountDownLatch(1);
-        new Thread("HANDSHAKE-" + poolReference.endPoint()) {
+        new Thread("HANDSHAKE-" + remoteEndpoint) {
             @Override
             public void run() {
                 try {
-                    logger.info("Handshaking version with {}", poolReference.endPoint());
+                    logger.info("Handshaking version with {}", remoteEndpoint);
                     version.set(inputStream.readInt());
                 } catch (IOException ex) {
-                    final String msg = "Cannot handshake version with " + poolReference.endPoint();
+                    final String msg = "Cannot handshake version with " + remoteEndpoint;
                     if (logger.isTraceEnabled())
                         logger.trace(msg, ex);
                     else
@@ -347,6 +389,49 @@ class OutboundTcpConnection extends Thread {
             iter.remove();
             dropped.incrementAndGet();
         }
+    }
+
+    private Socket newSocket() throws IOException {
+        return newSocket(endpoint());
+    }
+
+    private static Socket newSocket(InetAddress endpoint) throws IOException {
+        // zero means 'bind on any available port.'
+        if (isEncryptedChannel(endpoint)) {
+            if (Config.getOutboundBindAny())
+                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint,
+                        DatabaseDescriptor.getSSLStoragePort());
+            else
+                return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(), endpoint,
+                        DatabaseDescriptor.getSSLStoragePort(), Utils.getLocalAddress(), 0);
+        } else {
+            Socket socket = SocketChannel.open(new InetSocketAddress(endpoint, DatabaseDescriptor.getStoragePort()))
+                    .socket();
+            if (Config.getOutboundBindAny() && !socket.isBound())
+                socket.bind(new InetSocketAddress(Utils.getLocalAddress(), 0));
+            return socket;
+        }
+    }
+
+    private static boolean isEncryptedChannel(InetAddress address) {
+        IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+        switch (DatabaseDescriptor.getServerEncryptionOptions().internode_encryption) {
+        case none:
+            return false; // if nothing needs to be encrypted then return immediately.
+        case all:
+            break;
+        case dc:
+            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(Utils.getBroadcastAddress())))
+                return false;
+            break;
+        case rack:
+            // for rack then check if the DC's are the same.
+            if (snitch.getRack(address).equals(snitch.getRack(Utils.getBroadcastAddress()))
+                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(Utils.getBroadcastAddress())))
+                return false;
+            break;
+        }
+        return true;
     }
 
     /** messages that have not been retried yet */

@@ -47,7 +47,7 @@ class IncomingTcpConnection extends Thread {
     private final Socket socket;
     private InetAddress from;
 
-    public IncomingTcpConnection(int version, boolean compressed, Socket socket) {
+    IncomingTcpConnection(int version, boolean compressed, Socket socket) {
         assert socket != null;
         this.version = version;
         this.compressed = compressed;
@@ -123,7 +123,6 @@ class IncomingTcpConnection extends Thread {
             logger.info("Received messages from newer protocol version {}. Ignoring", version);
             return;
         }
-        // outbound side will reconnect if necessary to upgrade version
 
         while (true) {
             receiveMessage(in);

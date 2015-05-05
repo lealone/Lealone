@@ -20,13 +20,11 @@ package org.lealone.cluster.metrics;
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.cluster.net.OutboundTcpConnectionPool;
-
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
 
 /**
- * Metrics for {@link OutboundTcpConnectionPool}.
+ * Metrics for {@link OutboundTcpConnection}.
  */
 public class ConnectionMetrics {
     /** Total number of timeouts happened on this node */
