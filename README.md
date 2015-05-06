@@ -1,7 +1,7 @@
 
 ## Lealone是什么
 
-* 是一个对等的(P2P)、面向OLTP场景的分布式关系数据库
+* 是一个面向[OLTP](http://en.wikipedia.org/wiki/Online_transaction_processing)场景的分布式关系数据库
 
 
 ## Lealone名字的由来
@@ -13,11 +13,17 @@
 
 
 ## Lealone有哪些特性
+
+* 去中心化集群架构，没有单点故障
+
+* 支持分片(Sharding)、复制
+
+* 支持ACID、高性能分布式事务，强一制性<br>
+  使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/wiki/Lealone-transaction-model)
  
 * 插件化存储引擎架构，内置[WiredTiger](https://github.com/wiredtiger/wiredtiger/tree/develop)和[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
 
-* 支持ACID、高性能分布式事务，<br>
-  使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/wiki/Lealone-transaction-model)
+
   
 * 支持JDBC 4.0规范
 
