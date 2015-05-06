@@ -10,7 +10,6 @@ package org.lealone.transaction.local;
  * value, and the value itself.
  */
 class VersionedValue {
-
     /**
      * The operation id.
      */
@@ -23,10 +22,16 @@ class VersionedValue {
 
     @Override
     public String toString() {
-        return value
-                + (operationId == 0 ? "" : //
-                        (" " + DefaultTransactionEngine.getTransactionId(operationId) + "/" + DefaultTransactionEngine
-                                .getLogId(operationId)));
-    }
+        StringBuilder buff = new StringBuilder();
+        buff.append("VersionedValue[ value = ").append(value);
+        buff.append(", operationId = ").append(operationId);
 
+        if (operationId != 0) {
+            buff.append(", transactionId = ").append(DefaultTransactionEngine.getTransactionId(operationId));
+            buff.append(", logId = ").append(DefaultTransactionEngine.getLogId(operationId));
+        }
+
+        buff.append("]");
+        return buff.toString();
+    }
 }
