@@ -6,7 +6,6 @@
 package org.lealone.cbase.dbobject.index;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -15,8 +14,8 @@ import java.util.TreeSet;
 import org.lealone.api.ErrorCode;
 import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.cbase.engine.CBaseStorageEngine;
-import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
@@ -70,6 +69,8 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
         ValueDataType keyType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
         dataMap = mvTable.getTransaction(session).openMap(mapName, keyType, valueType);
+        //Fix bug in MVStore when creating lots of temporary tables, where we could run out of transaction IDs
+        session.commit(false);
         if (!keyType.equals(dataMap.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }
@@ -125,19 +126,11 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
                 if (indexType.isUnique()) {
                     Value[] array = ((ValueArray) v).getList();
                     // don't change the original value
-                    array = Arrays.copyOf(array, array.length);
+                    array = array.clone();
                     array[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
                     ValueArray unique = ValueArray.get(array);
-                    ValueArray key = (ValueArray) dataMap.getLatestCeilingKey(unique);
-                    if (key != null) {
-                        SearchRow r2 = convertToSearchRow(key);
-                        SearchRow row = convertToSearchRow((ValueArray) v);
-                        if (compareRows(row, r2) == 0) {
-                            if (!containsNullAndAllowMultipleNull(r2)) {
-                                throw getDuplicateKeyException(key.toString());
-                            }
-                        }
-                    }
+                    SearchRow row = convertToSearchRow((ValueArray) v);
+                    checkUnique(row, dataMap, unique);
                 }
 
                 dataMap.putCommitted(v, ValueNull.INSTANCE);
@@ -193,15 +186,7 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
             // this will detect committed entries only
             unique = convertToKey(row);
             unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-            ValueArray key = (ValueArray) map.getLatestCeilingKey(unique);
-            if (key != null) {
-                SearchRow r2 = convertToSearchRow(key);
-                if (compareRows(row, r2) == 0) {
-                    if (!containsNullAndAllowMultipleNull(r2)) {
-                        throw getDuplicateKeyException(key.toString());
-                    }
-                }
-            }
+            checkUnique(row, map, unique);
         }
         try {
             map.put(array, ValueNull.INSTANCE);
@@ -228,6 +213,22 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
                     throw getDuplicateKeyException(k.toString());
                 }
                 throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName());
+            }
+        }
+    }
+
+    private void checkUnique(SearchRow row, TransactionMap<Value, Value> map, ValueArray unique) {
+        Iterator<Value> it = map.keyIterator(unique, true);
+        while (it.hasNext()) {
+            ValueArray k = (ValueArray) it.next();
+            SearchRow r2 = convertToSearchRow(k);
+            if (compareRows(row, r2) != 0) {
+                break;
+            }
+            if (map.get(k) != null) {
+                if (!containsNullAndAllowMultipleNull(r2)) {
+                    throw getDuplicateKeyException(k.toString());
+                }
             }
         }
     }

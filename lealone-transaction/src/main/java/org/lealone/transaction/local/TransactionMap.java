@@ -422,32 +422,13 @@ public class TransactionMap<K, V> {
             if (d == null) {
                 // this entry should be committed or rolled back
                 // in the meantime (the transaction might still be open)
+                // or it might be changed again in a different
+                // transaction (possibly one with the same id)
                 data = map.get(key);
-                if (data != null && data.operationId == id) {
-                    // the transaction was not committed correctly
-                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
-                            "The transaction log might be corrupt for key {0}", key);
-                }
             } else {
                 data = (VersionedValue) d[2];
             }
-            // verify this is either committed,
-            // or the same transaction and earlier
-            if (data != null) {
-                long id2 = data.operationId;
-                if (id2 != 0) {
-                    int tx2 = DefaultTransactionEngine.getTransactionId(id2);
-                    if (tx2 != tx) {
-                        // a different transaction - ok
-                    } else if (DefaultTransactionEngine.getLogId(id2) > DefaultTransactionEngine.getLogId(id)) {
-                        // newer than before
-                        break;
-                    }
-                }
-            }
         }
-        throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
-                "The transaction log might be corrupt for key {0}", key);
     }
 
     /**
@@ -493,23 +474,6 @@ public class TransactionMap<K, V> {
             }
             k = map.lowerKey(k);
         }
-    }
-
-    /**
-     * Get the most recent smallest key that is larger or equal to this key.
-     *
-     * @param key the key (may not be null)
-     * @return the result
-     */
-    public K getLatestCeilingKey(K key) {
-        Iterator<K> cursor = map.keyIterator(key);
-        while (cursor.hasNext()) {
-            key = cursor.next();
-            if (get(key, Long.MAX_VALUE) != null) {
-                return key;
-            }
-        }
-        return null;
     }
 
     /**

@@ -47,7 +47,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * is not possible). Log entries are written before the data is changed
      * (write-ahead).
      * <p>
-     * Key: [ opId ], value: [ mapId, key, oldValue ].
+     * Key: opId, value: [ mapId, key, oldValue ].
      */
     final MVMap<Long, Object[]> undoLog;
 

@@ -63,7 +63,7 @@ public class CacheLongKeyLIRS<V> {
      *
      * @param maxMemory the maximum memory to use (1 or larger)
      */
-    public CacheLongKeyLIRS(int maxMemory) {
+    public CacheLongKeyLIRS(long maxMemory) {
         this(maxMemory, 16, 8);
     }
 
@@ -275,7 +275,7 @@ public class CacheLongKeyLIRS<V> {
      * immediately cause entries to get removed however; it will only change
      * the limit. To resize the internal array, call the clear method.
      *
-     * @param maxMemory the maximum size (1 or larger)
+     * @param maxMemory the maximum size (1 or larger) in bytes
      */
     public void setMaxMemory(long maxMemory) {
         DataUtils.checkArgument(maxMemory > 0, "Max memory must be larger than 0, is {0}", maxMemory);
@@ -358,6 +358,32 @@ public class CacheLongKeyLIRS<V> {
         int x = 0;
         for (Segment<V> s : segments) {
             x += s.mapSize - s.queueSize - s.queue2Size;
+        }
+        return x;
+    }
+
+    /**
+     * Get the number of cache hits.
+     *
+     * @return the cache hits
+     */
+    public long getHits() {
+        long x = 0;
+        for (Segment<V> s : segments) {
+            x += s.hits;
+        }
+        return x;
+    }
+
+    /**
+     * Get the number of cache misses.
+     *
+     * @return the cache misses
+     */
+    public long getMisses() {
+        int x = 0;
+        for (Segment<V> s : segments) {
+            x += s.misses;
         }
         return x;
     }
@@ -477,6 +503,16 @@ public class CacheLongKeyLIRS<V> {
         int queue2Size;
 
         /**
+         * The number of cache hits.
+         */
+        long hits;
+
+        /**
+         * The number of cache misses.
+         */
+        long misses;
+
+        /**
          * The map array. The size is always a power of 2.
          */
         final Entry<V>[] entries;
@@ -493,7 +529,7 @@ public class CacheLongKeyLIRS<V> {
         private final int stackMoveDistance;
 
         /**
-         * The maximum memory this cache should use.
+         * The maximum memory this cache should use in bytes.
          */
         private long maxMemory;
 
@@ -504,11 +540,6 @@ public class CacheLongKeyLIRS<V> {
         private final int mask;
 
         /**
-         * The LIRS stack size.
-         */
-        private int stackSize;
-
-        /**
          * The stack of recently referenced elements. This includes all hot
          * entries, and the recently referenced cold entries. Resident cold
          * entries that were not recently referenced, as well as non-resident
@@ -517,6 +548,11 @@ public class CacheLongKeyLIRS<V> {
          * There is always at least one entry: the head entry.
          */
         private final Entry<V> stack;
+
+        /**
+         * The number of entries in the stack.
+         */
+        private int stackSize;
 
         /**
          * The queue of resident cold entries.
@@ -575,6 +611,8 @@ public class CacheLongKeyLIRS<V> {
          */
         Segment(Segment<V> old, int len) {
             this(old.maxMemory, old.stackMoveDistance, len);
+            hits = old.hits;
+            misses = old.misses;
             Entry<V> s = old.stack.stackPrev;
             while (s != old.stack) {
                 Entry<V> e = copy(s);
@@ -607,7 +645,7 @@ public class CacheLongKeyLIRS<V> {
         /**
          * Calculate the new number of hash table buckets if the internal map
          * should be re-sized.
-         * 
+         *
          * @return 0 if no resizing is needed, or the new length
          */
         int getNewMapLen() {
@@ -664,11 +702,13 @@ public class CacheLongKeyLIRS<V> {
             Entry<V> e = find(key, hash);
             if (e == null) {
                 // the entry was not found
+                misses++;
                 return null;
             }
             V value = e.value;
             if (value == null) {
                 // it was a non-resident entry
+                misses++;
                 return null;
             }
             if (e.isHot()) {
@@ -680,6 +720,7 @@ public class CacheLongKeyLIRS<V> {
             } else {
                 access(key, hash);
             }
+            hits++;
             return value;
         }
 
@@ -752,6 +793,10 @@ public class CacheLongKeyLIRS<V> {
                 old = e.value;
                 remove(key, hash);
             }
+            if (memory > maxMemory) {
+                // the new entry is too big to fit
+                return old;
+            }
             e = new Entry<V>();
             e.key = key;
             e.value = value;
@@ -760,9 +805,15 @@ public class CacheLongKeyLIRS<V> {
             e.mapNext = entries[index];
             entries[index] = e;
             usedMemory += memory;
-            if (usedMemory > maxMemory && mapSize > 0) {
-                // an old entry needs to be removed
-                evict(e);
+            if (usedMemory > maxMemory) {
+                // old entries needs to be removed
+                evict();
+                // if the cache is full, the new entry is
+                // cold if possible
+                if (stackSize > 0) {
+                    // the new cold entry is at the top of the queue
+                    addToQueue(queue, e);
+                }
             }
             mapSize++;
             // added entries are always added to the stack
@@ -826,23 +877,22 @@ public class CacheLongKeyLIRS<V> {
          * Evict cold entries (resident and non-resident) until the memory limit
          * is reached. The new entry is added as a cold entry, except if it is
          * the only entry.
-         *
-         * @param newCold a new cold entry
          */
-        private void evict(Entry<V> newCold) {
+        private void evict() {
+            do {
+                evictBlock();
+            } while (usedMemory > maxMemory);
+        }
+
+        private void evictBlock() {
             // ensure there are not too many hot entries: right shift of 5 is
             // division by 32, that means if there are only 1/32 (3.125%) or
             // less cold entries, a hot entry needs to become cold
             while (queueSize <= (mapSize >>> 5) && stackSize > 0) {
                 convertOldestHotToCold();
             }
-            if (stackSize > 0) {
-                // the new cold entry is at the top of the queue
-                addToQueue(queue, newCold);
-            }
             // the oldest resident cold entries become non-resident
-            // but at least one cold entry (the new one) must stay
-            while (usedMemory > maxMemory && queueSize > 1) {
+            while (usedMemory > maxMemory && queueSize > 0) {
                 Entry<V> e = queue.queuePrev;
                 usedMemory -= e.memory;
                 removeFromQueue(e);
@@ -1016,7 +1066,7 @@ public class CacheLongKeyLIRS<V> {
          * immediately cause entries to get removed however; it will only change
          * the limit. To resize the internal array, call the clear method.
          *
-         * @param maxMemory the maximum size (1 or larger)
+         * @param maxMemory the maximum size (1 or larger) in bytes
          */
         void setMaxMemory(long maxMemory) {
             this.maxMemory = maxMemory;

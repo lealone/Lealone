@@ -305,6 +305,11 @@ public class CBaseStorageEngine extends StorageEngineBase {
             return result;
         }
 
+        /**
+         * Set the maximum memory to be used by the cache.
+         *
+         * @param kb the maximum size in KB
+         */
         public void setCacheSize(int kb) {
             store.setCacheSize(Math.max(1, kb / 1024));
         }

@@ -125,11 +125,11 @@ public class CBaseTable extends TableBase {
         if (lockExclusiveSession == session) {
             return true;
         }
-        if (!exclusive && lockSharedSessions.contains(session)) {
+        if (!exclusive && lockSharedSessions.containsKey(session)) {
             return true;
         }
         synchronized (getLockSyncObject()) {
-            if (!exclusive && lockSharedSessions.contains(session)) {
+            if (!exclusive && lockSharedSessions.containsKey(session)) {
                 return true;
             }
             session.setWaitForLock(this, Thread.currentThread());
@@ -220,7 +220,7 @@ public class CBaseTable extends TableBase {
                     session.addLock(this);
                     lockExclusiveSession = session;
                     return true;
-                } else if (lockSharedSessions.size() == 1 && lockSharedSessions.contains(session)) {
+                } else if (lockSharedSessions.size() == 1 && lockSharedSessions.containsKey(session)) {
                     traceLock(session, exclusive, "add (upgraded) for ");
                     lockExclusiveSession = session;
                     return true;
@@ -239,7 +239,7 @@ public class CBaseTable extends TableBase {
                         return true;
                     }
                 }
-                if (!lockSharedSessions.contains(session)) {
+                if (!lockSharedSessions.containsKey(session)) {
                     traceLock(session, exclusive, "ok");
                     session.addLock(this);
                     lockSharedSessions.put(session, session);
@@ -312,10 +312,13 @@ public class CBaseTable extends TableBase {
                     }
                 }
             }
-            if (error == null && lockExclusiveSession != null) {
-                Table t = lockExclusiveSession.getWaitForLock();
+            // take a local copy so we don't see inconsistent data, since we are not locked
+            // while checking the lockExclusiveSession value
+            Session copyOfLockExclusiveSession = lockExclusiveSession;
+            if (error == null && copyOfLockExclusiveSession != null) {
+                Table t = copyOfLockExclusiveSession.getWaitForLock();
                 if (t != null) {
-                    error = t.checkDeadlock(lockExclusiveSession, clash, visited);
+                    error = t.checkDeadlock(copyOfLockExclusiveSession, clash, visited);
                     if (error != null) {
                         error.add(session);
                     }
@@ -407,8 +410,6 @@ public class CBaseTable extends TableBase {
             database.lockMeta(session);
         }
         Index index;
-        // TODO support in-memory indexes
-        // if (isPersistIndexes() && indexType.isPersistent()) {
         int mainIndexColumn;
         mainIndexColumn = getMainIndexColumn(indexType, cols);
         if (database.isStarting()) {

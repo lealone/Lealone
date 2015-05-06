@@ -13,8 +13,8 @@ import java.util.Map.Entry;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.cbase.dbobject.table.CBaseTable;
-import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
@@ -71,6 +71,8 @@ public class CBasePrimaryIndex extends IndexBase {
         ValueDataType valueType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         mapName = "table." + getId();
         dataMap = mvTable.getTransaction(session).openMap(mapName, keyType, valueType);
+        //Fix bug in MVStore when creating lots of temporary tables, where we could run out of transaction IDs
+        session.commit(false);
         if (!table.isPersistData()) {
             dataMap.map.setVolatile(true);
         }

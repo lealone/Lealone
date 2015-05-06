@@ -231,6 +231,7 @@ public class MVStoreTool {
                         }
                     }
                 }
+                pageSizeSum = Math.max(1, pageSizeSum);
                 for (Integer mapId : mapSizes.keySet()) {
                     int percent = 100 * mapSizes.get(mapId) / pageSizeSum;
                     pw.printf("map %x: %d bytes, %d%%%n", mapId, mapSizes.get(mapId), percent);
@@ -247,8 +248,10 @@ public class MVStoreTool {
             }
             pw.printf("%n%0" + len + "x eof%n", fileSize);
             pw.printf("\n");
+            pageCount = Math.max(1, pageCount);
             pw.printf("page size total: %d bytes, page count: %d, average page size: %d bytes\n", pageSizeTotal,
                     pageCount, pageSizeTotal / pageCount);
+            pageSizeTotal = Math.max(1, pageSizeTotal);
             for (Integer mapId : mapSizesTotal.keySet()) {
                 int percent = (int) (100 * mapSizesTotal.get(mapId) / pageSizeTotal);
                 pw.printf("map %x: %d bytes, %d%%%n", mapId, mapSizesTotal.get(mapId), percent);
@@ -347,7 +350,7 @@ public class MVStoreTool {
         } else if (value == max) {
             return 100;
         }
-        return (int) (1 + 98 * value / max);
+        return (int) (1 + 98 * value / Math.max(1, max));
     }
 
     /**

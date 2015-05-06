@@ -1439,6 +1439,7 @@ public class Database implements DataHandler {
         return traceSystem;
     }
 
+    //TODO 传递到存储引擎
     public synchronized void setCacheSize(int kb) {
         if (starting) {
             int max = MathUtils.convertLongToInt(Utils.getMemoryMax()) / 2;

@@ -6,8 +6,8 @@
 package org.lealone.mvstore;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
 
 import org.lealone.compress.Compressor;
 import org.lealone.mvstore.type.DataType;
@@ -451,13 +451,17 @@ public class Page {
     public void setChild(int index, Page c) {
         if (c == null) {
             long oldCount = children[index].count;
-            children = Arrays.copyOf(children, children.length);
+            // this is slightly slower:
+            // children = Arrays.copyOf(children, children.length);
+            children = children.clone();
             PageReference ref = new PageReference(null, 0, 0);
             children[index] = ref;
             totalCount -= oldCount;
         } else if (c != children[index].page || c.getPos() != children[index].pos) {
             long oldCount = children[index].count;
-            children = Arrays.copyOf(children, children.length);
+            // this is slightly slower:
+            // children = Arrays.copyOf(children, children.length);
+            children = children.clone();
             PageReference ref = new PageReference(c, c.pos, c.totalCount);
             children[index] = ref;
             totalCount += c.totalCount - oldCount;
@@ -471,7 +475,9 @@ public class Page {
      * @param key the new key
      */
     public void setKey(int index, Object key) {
-        keys = Arrays.copyOf(keys, keys.length);
+        // this is slightly slower:
+        // keys = Arrays.copyOf(keys, keys.length);
+        keys = keys.clone();
         Object old = keys[index];
         DataType keyType = map.getKeyType();
         int mem = keyType.getMemory(key);
@@ -491,7 +497,9 @@ public class Page {
      */
     public Object setValue(int index, Object value) {
         Object old = values[index];
-        values = Arrays.copyOf(values, values.length);
+        // this is slightly slower:
+        // values = Arrays.copyOf(values, values.length);
+        values = values.clone();
         DataType valueType = map.getValueType();
         addMemory(valueType.getMemory(value) - valueType.getMemory(old));
         values[index] = value;
@@ -938,6 +946,11 @@ public class Page {
          */
         long[] children;
 
+        /**
+         * Whether this object only contains the list of chunks.
+         */
+        boolean chunkList;
+
         private PageChildren(long pos, long[] children) {
             this.pos = pos;
             this.children = children;
@@ -1026,27 +1039,40 @@ public class Page {
             HashSet<Integer> chunks = New.hashSet();
             // we don't need references to leaves in the same chunk
             chunks.add(DataUtils.getPageChunkId(pos));
-            // possible space optimization:
-            // we could remove more children, for example
-            // we could remove all leaf references to the same chunk
-            // if there is also a inner node reference to that chunk
             for (int i = 0; i < children.length; i++) {
                 long p = children[i];
+                int chunkId = DataUtils.getPageChunkId(p);
+                boolean wasNew = chunks.add(chunkId);
                 if (DataUtils.getPageType(p) == DataUtils.PAGE_TYPE_NODE) {
                     continue;
                 }
-                int chunkId = DataUtils.getPageChunkId(p);
-                if (chunks.add(chunkId)) {
+                if (wasNew) {
                     continue;
                 }
-                long[] c2 = new long[children.length - 1];
-                DataUtils.copyExcept(children, c2, children.length, i);
-                children = c2;
-                i--;
+                removeChild(i--);
             }
-            if (children.length == 0) {
+        }
+
+        /**
+         * Collect the set of chunks referenced directly by this page.
+         *
+         * @param target the target set
+         */
+        void collectReferencedChunks(Set<Integer> target) {
+            target.add(DataUtils.getPageChunkId(pos));
+            for (long p : children) {
+                target.add(DataUtils.getPageChunkId(p));
+            }
+        }
+
+        private void removeChild(int index) {
+            if (index == 0 && children.length == 1) {
                 children = EMPTY_ARRAY;
+                return;
             }
+            long[] c2 = new long[children.length - 1];
+            DataUtils.copyExcept(children, c2, children.length, index);
+            children = c2;
         }
 
     }
