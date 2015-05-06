@@ -17,8 +17,8 @@
  */
 package org.lealone.command.router;
 
-import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.Table;
@@ -61,68 +61,53 @@ public class MergedIndex extends IndexBase {
 
     @Override
     public void close(Session session) {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public double getCost(Session session, int[] masks, SortOrder sortOrder) {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public void remove(Session session) {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public void truncate(Session session) {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public boolean canGetFirstOrLast() {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public Cursor findFirstOrLast(Session session, boolean first) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public boolean needRebuild() {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public long getRowCount(Session session) {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public long getRowCountApproximation() {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public long getDiskSpaceUsed() {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public void checkRename() {
-        // TODO Auto-generated method stub
-
     }
 
     private static class MergedCursor implements Cursor {
@@ -151,6 +136,5 @@ public class MergedIndex extends IndexBase {
         public boolean previous() {
             return false;
         }
-
     }
 }
