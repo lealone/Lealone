@@ -17,7 +17,7 @@
  */
 package org.lealone.wiredtiger.dbobject.index;
 
-import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
@@ -31,7 +31,7 @@ import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
 import org.lealone.wiredtiger.dbobject.table.WiredTigerTable;
 
-public class WiredTigerDelegateIndex extends BaseIndex {
+public class WiredTigerDelegateIndex extends IndexBase {
 
     private final WiredTigerPrimaryIndex mainIndex;
 
@@ -39,7 +39,7 @@ public class WiredTigerDelegateIndex extends BaseIndex {
             WiredTigerPrimaryIndex mainIndex, IndexType indexType) {
         if (id < 0)
             throw DbException.throwInternalError(name);
-        this.initBaseIndex(table, id, name, cols, indexType);
+        this.initIndexBase(table, id, name, cols, indexType);
         this.mainIndex = mainIndex;
     }
 

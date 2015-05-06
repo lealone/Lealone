@@ -6,7 +6,7 @@
  */
 package org.lealone.cbase.dbobject.index;
 
-import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexCondition;
 import org.lealone.dbobject.index.IndexType;
@@ -24,7 +24,7 @@ import org.lealone.value.Value;
 /**
  * An unique index based on an in-memory hash map.
  */
-public class HashIndex extends BaseIndex {
+public class HashIndex extends IndexBase {
 
     /**
      * The index of the indexed column.
@@ -35,7 +35,7 @@ public class HashIndex extends BaseIndex {
     private ValueHashMap<Long> rows;
 
     public HashIndex(TableBase table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
-        initBaseIndex(table, id, indexName, columns, indexType);
+        initIndexBase(table, id, indexName, columns, indexType);
         this.indexColumn = columns[0].column.getColumnId();
         this.tableData = table;
         reset();

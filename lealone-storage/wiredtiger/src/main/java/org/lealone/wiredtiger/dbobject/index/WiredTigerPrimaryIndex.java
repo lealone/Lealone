@@ -18,7 +18,7 @@
 package org.lealone.wiredtiger.dbobject.index;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
@@ -37,7 +37,7 @@ import org.lealone.value.ValueNull;
 import org.lealone.value.ValueString;
 import org.lealone.wiredtiger.dbobject.table.WiredTigerTable;
 
-public class WiredTigerPrimaryIndex extends BaseIndex {
+public class WiredTigerPrimaryIndex extends IndexBase {
     private final WiredTigerTable table;
     private long lastKey;
     private int mainIndexColumn = -1;
@@ -49,7 +49,7 @@ public class WiredTigerPrimaryIndex extends BaseIndex {
     public WiredTigerPrimaryIndex(Database db, WiredTigerTable table, int id, //
             IndexColumn[] columns, IndexType indexType, com.wiredtiger.db.Session wtSession) {
         this.table = table;
-        initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
+        initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
         int[] sortTypes = new int[columns.length];
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = SortOrder.ASCENDING;

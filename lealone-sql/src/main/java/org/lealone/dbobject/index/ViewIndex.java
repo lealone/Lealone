@@ -38,7 +38,7 @@ import org.lealone.value.ValueNull;
  * This object represents a virtual index for a query.
  * Actually it only represents a prepared SELECT statement.
  */
-public class ViewIndex extends BaseIndex {
+public class ViewIndex extends IndexBase {
 
     private final TableView view;
     private final String querySQL;
@@ -52,7 +52,7 @@ public class ViewIndex extends BaseIndex {
     private final Session createSession;
 
     public ViewIndex(TableView view, String querySQL, ArrayList<Parameter> originalParameters, boolean recursive) {
-        initBaseIndex(view, 0, null, null, IndexType.createNonUnique(false));
+        initIndexBase(view, 0, null, null, IndexType.createNonUnique(false));
         this.view = view;
         this.querySQL = querySQL;
         this.originalParameters = originalParameters;
@@ -63,7 +63,7 @@ public class ViewIndex extends BaseIndex {
     }
 
     public ViewIndex(TableView view, ViewIndex index, Session session, int[] masks) {
-        initBaseIndex(view, 0, null, null, IndexType.createNonUnique(false));
+        initIndexBase(view, 0, null, null, IndexType.createNonUnique(false));
         this.view = view;
         this.querySQL = index.querySQL;
         this.originalParameters = index.originalParameters;

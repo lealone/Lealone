@@ -20,13 +20,13 @@ import org.lealone.result.SortOrder;
 /**
  * The index implementation for meta data tables.
  */
-public class MetaIndex extends BaseIndex {
+public class MetaIndex extends IndexBase {
 
     private final MetaTable meta;
     private final boolean scan;
 
     public MetaIndex(MetaTable meta, IndexColumn[] columns, boolean scan) {
-        initBaseIndex(meta, 0, null, columns, IndexType.createNonUnique(true));
+        initIndexBase(meta, 0, null, columns, IndexType.createNonUnique(true));
         this.meta = meta;
         this.scan = scan;
     }

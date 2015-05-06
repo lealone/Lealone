@@ -25,12 +25,12 @@ import org.lealone.value.Value;
  * An index for a function that returns a result set. This index can only scan
  * through all rows, search is not supported.
  */
-public class FunctionIndex extends BaseIndex {
+public class FunctionIndex extends IndexBase {
 
     private final FunctionTable functionTable;
 
     public FunctionIndex(FunctionTable functionTable, IndexColumn[] columns) {
-        initBaseIndex(functionTable, 0, null, columns, IndexType.createNonUnique(true));
+        initIndexBase(functionTable, 0, null, columns, IndexType.createNonUnique(true));
         this.functionTable = functionTable;
     }
 

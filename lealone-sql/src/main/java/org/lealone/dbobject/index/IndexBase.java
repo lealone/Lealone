@@ -30,7 +30,7 @@ import org.lealone.value.ValueNull;
 /**
  * Most index implementations extend the base index.
  */
-public abstract class BaseIndex extends SchemaObjectBase implements Index {
+public abstract class IndexBase extends SchemaObjectBase implements Index {
 
     protected IndexColumn[] indexColumns;
     protected Column[] columns;
@@ -49,7 +49,7 @@ public abstract class BaseIndex extends SchemaObjectBase implements Index {
      *            not yet known
      * @param newIndexType the index type
      */
-    protected void initBaseIndex(Table newTable, int id, String name, IndexColumn[] newIndexColumns,
+    protected void initIndexBase(Table newTable, int id, String name, IndexColumn[] newIndexColumns,
             IndexType newIndexType) {
         initSchemaObjectBase(newTable.getSchema(), id, name, Trace.INDEX);
         this.indexType = newIndexType;

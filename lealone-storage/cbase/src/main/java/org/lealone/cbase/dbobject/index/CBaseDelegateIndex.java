@@ -8,7 +8,7 @@ package org.lealone.cbase.dbobject.index;
 import java.util.List;
 
 import org.lealone.cbase.dbobject.table.CBaseTable;
-import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
@@ -23,13 +23,13 @@ import org.lealone.value.ValueLong;
 /**
  * An index that delegates indexing to another index.
  */
-public class CBaseDelegateIndex extends BaseIndex implements CBaseIndex {
+public class CBaseDelegateIndex extends IndexBase implements CBaseIndex {
 
     private final CBasePrimaryIndex mainIndex;
 
     public CBaseDelegateIndex(CBaseTable table, int id, String name, CBasePrimaryIndex mainIndex, IndexType indexType) {
         IndexColumn[] cols = IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) });
-        this.initBaseIndex(table, id, name, cols, indexType);
+        this.initIndexBase(table, id, name, cols, indexType);
         this.mainIndex = mainIndex;
         if (id < 0) {
             throw DbException.throwInternalError("" + name);

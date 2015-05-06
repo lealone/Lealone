@@ -17,7 +17,7 @@
  */
 package org.lealone.command.router;
 
-import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.IndexColumn;
@@ -30,13 +30,13 @@ import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
 
-public class MergedIndex extends BaseIndex {
+public class MergedIndex extends IndexBase {
     private final ResultInterface result;
 
     public MergedIndex(ResultInterface result, Table table, int id, IndexColumn[] columns, IndexType indexType) {
         super();
         this.result = result;
-        initBaseIndex(table, id, table.getName() + "_DATA", columns, indexType);
+        initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
     }
 
     @Override

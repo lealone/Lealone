@@ -20,12 +20,12 @@ import org.lealone.value.ValueLong;
  * An index for the SYSTEM_RANGE table.
  * This index can only scan through all rows, search is not supported.
  */
-public class RangeIndex extends BaseIndex {
+public class RangeIndex extends IndexBase {
 
     private final RangeTable rangeTable;
 
     public RangeIndex(RangeTable table, IndexColumn[] columns) {
-        initBaseIndex(table, 0, "RANGE_INDEX", columns, IndexType.createNonUnique(true));
+        initIndexBase(table, 0, "RANGE_INDEX", columns, IndexType.createNonUnique(true));
         this.rangeTable = table;
     }
 

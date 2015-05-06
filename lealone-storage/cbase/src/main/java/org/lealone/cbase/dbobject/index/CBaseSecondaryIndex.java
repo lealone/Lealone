@@ -15,7 +15,7 @@ import java.util.TreeSet;
 import org.lealone.api.ErrorCode;
 import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.cbase.engine.CBaseStorageEngine;
-import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
@@ -39,7 +39,7 @@ import org.lealone.value.ValueNull;
 /**
  * A table stored in a MVStore.
  */
-public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
+public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
 
     /**
      * The multi-value table.
@@ -54,7 +54,7 @@ public class CBaseSecondaryIndex extends BaseIndex implements CBaseIndex {
             IndexType indexType) {
         Database db = session.getDatabase();
         this.mvTable = table;
-        initBaseIndex(table, id, indexName, columns, indexType);
+        initIndexBase(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }

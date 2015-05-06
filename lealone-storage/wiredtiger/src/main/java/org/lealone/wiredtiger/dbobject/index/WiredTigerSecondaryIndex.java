@@ -18,7 +18,7 @@
 package org.lealone.wiredtiger.dbobject.index;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.dbobject.index.BaseIndex;
+import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
@@ -34,7 +34,7 @@ import org.lealone.value.ValueLong;
 import org.lealone.value.ValueString;
 import org.lealone.wiredtiger.dbobject.table.WiredTigerTable;
 
-public class WiredTigerSecondaryIndex extends BaseIndex {
+public class WiredTigerSecondaryIndex extends IndexBase {
     private final com.wiredtiger.db.Cursor wtCursor;
     private final char[] indexColumnFormat;
     private final int indexColumnLength;
@@ -43,7 +43,7 @@ public class WiredTigerSecondaryIndex extends BaseIndex {
     public WiredTigerSecondaryIndex(WiredTigerTable table, int id, String indexName, //
             IndexColumn[] columns, IndexType indexType, com.wiredtiger.db.Session wtSession) {
         this.table = table;
-        initBaseIndex(table, id, indexName, columns, indexType);
+        initIndexBase(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }
