@@ -20,7 +20,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-storage-cbase</artifactId>
+			<artifactId>lealone-storage-mvdb</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>

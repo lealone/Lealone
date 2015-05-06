@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.dbobject.index;
+package org.lealone.mvdb.dbobject.index;
 
 import java.util.ArrayList;
 

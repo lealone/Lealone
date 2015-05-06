@@ -357,7 +357,7 @@ public class DbSettings extends SettingsBase {
 
     /**
      * Database setting <code>DEFAULT_STORAGE_ENGINE</code>
-     * (default: CBASE).<br />
+     * (default: MVStore).<br />
      * The default storage engine to use for new tables.
      */
     public final String defaultStorageEngine = get("DEFAULT_STORAGE_ENGINE", Constants.DEFAULT_STORAGE_ENGINE_NAME);

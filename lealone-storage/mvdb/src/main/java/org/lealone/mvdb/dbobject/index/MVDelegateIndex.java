@@ -3,11 +3,10 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.dbobject.index;
+package org.lealone.mvdb.dbobject.index;
 
 import java.util.List;
 
-import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexType;
@@ -15,6 +14,7 @@ import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
+import org.lealone.mvdb.dbobject.table.MVTable;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
@@ -23,11 +23,11 @@ import org.lealone.value.ValueLong;
 /**
  * An index that delegates indexing to another index.
  */
-public class CBaseDelegateIndex extends IndexBase implements CBaseIndex {
+public class MVDelegateIndex extends IndexBase implements MVIndex {
 
-    private final CBasePrimaryIndex mainIndex;
+    private final MVPrimaryIndex mainIndex;
 
-    public CBaseDelegateIndex(CBaseTable table, int id, String name, CBasePrimaryIndex mainIndex, IndexType indexType) {
+    public MVDelegateIndex(MVTable table, int id, String name, MVPrimaryIndex mainIndex, IndexType indexType) {
         IndexColumn[] cols = IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) });
         this.initIndexBase(table, id, name, cols, indexType);
         this.mainIndex = mainIndex;
@@ -63,10 +63,10 @@ public class CBaseDelegateIndex extends IndexBase implements CBaseIndex {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        ValueLong min = mainIndex.getKey(first, CBasePrimaryIndex.MIN, CBasePrimaryIndex.MIN);
+        ValueLong min = mainIndex.getKey(first, MVPrimaryIndex.MIN, MVPrimaryIndex.MIN);
         // ifNull is MIN_VALUE as well, because the column is never NULL
         // so avoid returning all rows (returning one row is OK)
-        ValueLong max = mainIndex.getKey(last, CBasePrimaryIndex.MAX, CBasePrimaryIndex.MIN);
+        ValueLong max = mainIndex.getKey(last, MVPrimaryIndex.MAX, MVPrimaryIndex.MIN);
         return mainIndex.find(session, min, max);
     }
 

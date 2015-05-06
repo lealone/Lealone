@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.dbobject.index;
+package org.lealone.mvdb.dbobject.index;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,8 +12,6 @@ import java.util.List;
 import java.util.TreeSet;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.dbobject.table.CBaseTable;
-import org.lealone.cbase.engine.CBaseStorageEngine;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.IndexType;
@@ -22,6 +20,8 @@ import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
+import org.lealone.mvdb.dbobject.table.MVTable;
+import org.lealone.mvdb.engine.MVStorageEngine;
 import org.lealone.mvstore.MVMap;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
@@ -38,18 +38,18 @@ import org.lealone.value.ValueNull;
 /**
  * A table stored in a MVStore.
  */
-public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
+public class MVSecondaryIndex extends IndexBase implements MVIndex {
 
     /**
      * The multi-value table.
      */
-    final CBaseTable mvTable;
+    final MVTable mvTable;
 
     private final int keyColumns;
     private final String mapName;
     private final TransactionMap<Value, Value> dataMap;
 
-    public CBaseSecondaryIndex(Session session, CBaseTable table, int id, String indexName, IndexColumn[] columns,
+    public MVSecondaryIndex(Session session, MVTable table, int id, String indexName, IndexColumn[] columns,
             IndexType indexType) {
         Database db = session.getDatabase();
         this.mvTable = table;
@@ -165,7 +165,7 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
         ValueDataType keyType = new ValueDataType(database.getCompareMode(), database, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
         MVMap.Builder<Value, Value> builder = new MVMap.Builder<Value, Value>().keyType(keyType).valueType(valueType);
-        MVMap<Value, Value> map = CBaseStorageEngine.getStore(database).getStore().openMap(mapName, builder);
+        MVMap<Value, Value> map = MVStorageEngine.getStore(database).getStore().openMap(mapName, builder);
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }
@@ -300,10 +300,10 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
                 break;
             }
             if (min == null) {
-                return new CBaseSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
+                return new MVSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
             }
         }
-        return new CBaseSecondaryIndexCursor(session, map.keyIterator(min), last);
+        return new MVSecondaryIndexCursor(session, map.keyIterator(min), last);
     }
 
     private ValueArray convertToKey(SearchRow r) {
@@ -344,7 +344,7 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
     }
 
     @Override
-    public CBaseTable getTable() {
+    public MVTable getTable() {
         return mvTable;
     }
 
@@ -392,7 +392,7 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
         Value key = first ? map.firstKey() : map.lastKey();
         while (true) {
             if (key == null) {
-                return new CBaseSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
+                return new MVSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
             }
             if (((ValueArray) key).getList()[0] != ValueNull.INSTANCE) {
                 break;
@@ -401,7 +401,7 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
         }
         ArrayList<Value> list = New.arrayList();
         list.add(key);
-        CBaseSecondaryIndexCursor cursor = new CBaseSecondaryIndexCursor(session, list.iterator(), null);
+        MVSecondaryIndexCursor cursor = new MVSecondaryIndexCursor(session, list.iterator(), null);
         cursor.next();
         return cursor;
     }
@@ -468,7 +468,7 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
     /**
      * A cursor.
      */
-    private class CBaseSecondaryIndexCursor implements Cursor {
+    private class MVSecondaryIndexCursor implements Cursor {
 
         private final Session session;
         private final Iterator<Value> it;
@@ -477,7 +477,7 @@ public class CBaseSecondaryIndex extends IndexBase implements CBaseIndex {
         private SearchRow searchRow;
         private Row row;
 
-        public CBaseSecondaryIndexCursor(Session session, Iterator<Value> it, SearchRow last) {
+        public MVSecondaryIndexCursor(Session session, Iterator<Value> it, SearchRow last) {
             this.session = session;
             this.it = it;
             this.last = last;

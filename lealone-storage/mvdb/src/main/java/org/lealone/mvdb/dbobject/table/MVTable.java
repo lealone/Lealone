@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.dbobject.table;
+package org.lealone.mvdb.dbobject.table;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -14,14 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.dbobject.index.CBaseDelegateIndex;
-import org.lealone.cbase.dbobject.index.CBaseIndex;
-import org.lealone.cbase.dbobject.index.CBasePrimaryIndex;
-import org.lealone.cbase.dbobject.index.CBaseSecondaryIndex;
-import org.lealone.cbase.dbobject.index.HashIndex;
-import org.lealone.cbase.dbobject.index.NonUniqueHashIndex;
-import org.lealone.cbase.engine.CBaseStorageEngine;
-import org.lealone.cbase.engine.CBaseStorageEngine.Store;
 import org.lealone.command.ddl.Analyze;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.DbObject;
@@ -40,6 +32,14 @@ import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
+import org.lealone.mvdb.dbobject.index.MVDelegateIndex;
+import org.lealone.mvdb.dbobject.index.MVIndex;
+import org.lealone.mvdb.dbobject.index.MVPrimaryIndex;
+import org.lealone.mvdb.dbobject.index.MVSecondaryIndex;
+import org.lealone.mvdb.dbobject.index.HashIndex;
+import org.lealone.mvdb.dbobject.index.NonUniqueHashIndex;
+import org.lealone.mvdb.engine.MVStorageEngine;
+import org.lealone.mvdb.engine.MVStorageEngine.Store;
 import org.lealone.result.Row;
 import org.lealone.result.SortOrder;
 import org.lealone.transaction.local.DefaultTransactionEngine;
@@ -52,9 +52,9 @@ import org.lealone.value.Value;
 /**
  * A table stored in a MVStore.
  */
-public class CBaseTable extends TableBase {
+public class MVTable extends TableBase {
 
-    private CBasePrimaryIndex primaryIndex;
+    private MVPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = New.arrayList();
     private long lastModificationId;
     private volatile Session lockExclusiveSession;
@@ -75,7 +75,7 @@ public class CBaseTable extends TableBase {
 
     private final DefaultTransactionEngine transactionEngine;
 
-    public CBaseTable(CreateTableData data, CBaseStorageEngine.Store store) {
+    public MVTable(CreateTableData data, MVStorageEngine.Store store) {
         super(data);
         nextAnalyze = database.getSettings().analyzeAuto;
         this.transactionEngine = store.getTransactionEngine();
@@ -94,7 +94,7 @@ public class CBaseTable extends TableBase {
      * @param session the session
      */
     public void init(Session session) {
-        primaryIndex = new CBasePrimaryIndex(session, this, getId(), IndexColumn.wrap(getColumns()),
+        primaryIndex = new MVPrimaryIndex(session, this, getId(), IndexColumn.wrap(getColumns()),
                 IndexType.createScan(true));
         indexes.add(primaryIndex);
     }
@@ -266,8 +266,8 @@ public class CBaseTable extends TableBase {
                     buff.append(", ");
                 }
                 buff.append(t.toString());
-                if (t instanceof CBaseTable) {
-                    if (((CBaseTable) t).lockExclusiveSession == s) {
+                if (t instanceof MVTable) {
+                    if (((MVTable) t).lockExclusiveSession == s) {
                         buff.append(" (exclusive)");
                     } else {
                         buff.append(" (shared)");
@@ -282,7 +282,7 @@ public class CBaseTable extends TableBase {
     @Override
     public ArrayList<Session> checkDeadlock(Session session, Session clash, Set<Session> visited) {
         // only one deadlock check at any given time
-        synchronized (CBaseTable.class) {
+        synchronized (MVTable.class) {
             if (clash == null) {
                 // verification is started
                 clash = session;
@@ -421,7 +421,7 @@ public class CBaseTable extends TableBase {
         }
         if (mainIndexColumn != -1) {
             primaryIndex.setMainIndexColumn(mainIndexColumn);
-            index = new CBaseDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
+            index = new MVDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
         } else if (indexType.isHash() && cols.length <= 1) { //TODO 是否要支持多版本
             if (indexType.isUnique()) {
                 index = new HashIndex(this, indexId, indexName, cols, indexType);
@@ -429,10 +429,10 @@ public class CBaseTable extends TableBase {
                 index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
             }
         } else {
-            index = new CBaseSecondaryIndex(session, this, indexId, indexName, cols, indexType);
+            index = new MVSecondaryIndex(session, this, indexId, indexName, cols, indexType);
         }
-        if (index instanceof CBaseIndex && index.needRebuild()) {
-            rebuildIndex(session, (CBaseIndex) index, indexName);
+        if (index instanceof MVIndex && index.needRebuild()) {
+            rebuildIndex(session, (MVIndex) index, indexName);
         }
         index.setTemporary(isTemporary());
         if (index.getCreateSQL() != null) {
@@ -448,9 +448,9 @@ public class CBaseTable extends TableBase {
         return index;
     }
 
-    private void rebuildIndex(Session session, CBaseIndex index, String indexName) {
+    private void rebuildIndex(Session session, MVIndex index, String indexName) {
         try {
-            if (CBaseStorageEngine.getStore(session) == null) {
+            if (MVStorageEngine.getStore(session) == null) {
                 // in-memory
                 rebuildIndexBuffered(session, index);
             } else {
@@ -471,7 +471,7 @@ public class CBaseTable extends TableBase {
         }
     }
 
-    private void rebuildIndexBlockMerge(Session session, CBaseIndex index) {
+    private void rebuildIndexBlockMerge(Session session, MVIndex index) {
         // Read entries in memory, sort them, write to a new map (in sorted
         // order); repeat (using a new map for every block of 1 MB) until all
         // record are read. Merge all maps to the target (using merge sort;
@@ -484,7 +484,7 @@ public class CBaseTable extends TableBase {
         long total = remaining;
         Cursor cursor = scan.find(session, null, null);
         long i = 0;
-        Store store = CBaseStorageEngine.getStore(session);
+        Store store = MVStorageEngine.getStore(session);
 
         int bufferSize = database.getMaxMemoryRows() / 2;
         ArrayList<Row> buffer = New.arrayList(bufferSize);
@@ -713,7 +713,7 @@ public class CBaseTable extends TableBase {
             database.lockMeta(session);
         }
         //database.getMvStore().removeTable(this);
-        CBaseStorageEngine.getStore(session).removeTable(this);
+        MVStorageEngine.getStore(session).removeTable(this);
         super.removeChildrenAndResources(session);
         // go backwards because database.removeIndex will
         // call table.removeIndex

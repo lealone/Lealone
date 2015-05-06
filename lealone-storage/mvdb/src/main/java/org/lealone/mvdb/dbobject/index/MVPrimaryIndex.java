@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.dbobject.index;
+package org.lealone.mvdb.dbobject.index;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.dbobject.index.Cursor;
 import org.lealone.dbobject.index.IndexBase;
 import org.lealone.dbobject.index.IndexType;
@@ -22,6 +21,7 @@ import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
+import org.lealone.mvdb.dbobject.table.MVTable;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
@@ -36,7 +36,7 @@ import org.lealone.value.ValueNull;
 /**
  * A table stored in a MVStore.
  */
-public class CBasePrimaryIndex extends IndexBase {
+public class MVPrimaryIndex extends IndexBase {
 
     /**
      * The minimum long value.
@@ -53,13 +53,13 @@ public class CBasePrimaryIndex extends IndexBase {
      */
     static final ValueLong ZERO = ValueLong.get(0);
 
-    private final CBaseTable mvTable;
+    private final MVTable mvTable;
     private final String mapName;
     private final TransactionMap<Value, Value> dataMap;
     private long lastKey;
     private int mainIndexColumn = -1;
 
-    public CBasePrimaryIndex(Session session, CBaseTable table, int id, IndexColumn[] columns, IndexType indexType) {
+    public MVPrimaryIndex(Session session, MVTable table, int id, IndexColumn[] columns, IndexType indexType) {
         Database db = session.getDatabase();
         this.mvTable = table;
         initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
@@ -196,11 +196,11 @@ public class CBasePrimaryIndex extends IndexBase {
             }
         }
         TransactionMap<Value, Value> map = getMap(session);
-        return new CBasePrimaryIndexCursor(map.entryIterator(min), max);
+        return new MVPrimaryIndexCursor(map.entryIterator(min), max);
     }
 
     @Override
-    public CBaseTable getTable() {
+    public MVTable getTable() {
         return mvTable;
     }
 
@@ -268,12 +268,12 @@ public class CBasePrimaryIndex extends IndexBase {
         TransactionMap<Value, Value> map = getMap(session);
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
         if (v == null) {
-            return new CBasePrimaryIndexCursor(Collections.<Entry<Value, Value>> emptyList().iterator(), null);
+            return new MVPrimaryIndexCursor(Collections.<Entry<Value, Value>> emptyList().iterator(), null);
         }
         Value value = map.get(v);
         Entry<Value, Value> e = new DataUtils.MapEntry<Value, Value>(v, value);
         List<Entry<Value, Value>> list = Arrays.asList(e);
-        CBasePrimaryIndexCursor c = new CBasePrimaryIndexCursor(list.iterator(), v);
+        MVPrimaryIndexCursor c = new MVPrimaryIndexCursor(list.iterator(), v);
         c.next();
         return c;
     }
@@ -353,7 +353,7 @@ public class CBasePrimaryIndex extends IndexBase {
      */
     Cursor find(Session session, ValueLong first, ValueLong last) {
         TransactionMap<Value, Value> map = getMap(session);
-        return new CBasePrimaryIndexCursor(map.entryIterator(first), last);
+        return new MVPrimaryIndexCursor(map.entryIterator(first), last);
     }
 
     @Override
@@ -378,14 +378,14 @@ public class CBasePrimaryIndex extends IndexBase {
     /**
      * A cursor.
      */
-    private static class CBasePrimaryIndexCursor implements Cursor {
+    private static class MVPrimaryIndexCursor implements Cursor {
 
         private final Iterator<Entry<Value, Value>> it;
         private final ValueLong last;
         private Entry<Value, Value> current;
         private Row row;
 
-        public CBasePrimaryIndexCursor(Iterator<Entry<Value, Value>> it, ValueLong last) {
+        public MVPrimaryIndexCursor(Iterator<Entry<Value, Value>> it, ValueLong last) {
             this.it = it;
             this.last = last;
         }

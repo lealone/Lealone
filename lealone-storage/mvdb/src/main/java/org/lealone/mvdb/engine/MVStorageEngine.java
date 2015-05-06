@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.engine;
+package org.lealone.mvdb.engine;
 
 import java.io.InputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
@@ -15,8 +15,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.dbobject.index.ValueDataType;
-import org.lealone.cbase.dbobject.table.CBaseTable;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Constants;
@@ -28,6 +26,8 @@ import org.lealone.engine.StorageEngineManager;
 import org.lealone.fs.FileChannelInputStream;
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
+import org.lealone.mvdb.dbobject.index.ValueDataType;
+import org.lealone.mvdb.dbobject.table.MVTable;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.MVStoreTool;
@@ -41,11 +41,11 @@ import org.lealone.util.New;
 /**
  * A storage engine that internally uses the MVStore.
  */
-public class CBaseStorageEngine extends StorageEngineBase {
+public class MVStorageEngine extends StorageEngineBase {
     public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
 
     //见StorageEngineManager.StorageEngineService中的注释
-    public CBaseStorageEngine() {
+    public MVStorageEngine() {
         StorageEngineManager.registerStorageEngine(this);
     }
 
@@ -69,7 +69,7 @@ public class CBaseStorageEngine extends StorageEngineBase {
             }
         }
 
-        CBaseTable table = new CBaseTable(data, store);
+        MVTable table = new MVTable(data, store);
         table.init(data.session);
         store.tableMap.put(table.getMapName(), table);
         return table;
@@ -163,7 +163,7 @@ public class CBaseStorageEngine extends StorageEngineBase {
          * The map of open tables.
          * Key: the map name, value: the table.
          */
-        final ConcurrentHashMap<String, CBaseTable> tableMap = new ConcurrentHashMap<String, CBaseTable>();
+        final ConcurrentHashMap<String, MVTable> tableMap = new ConcurrentHashMap<String, MVTable>();
 
         /**
          * The store.
@@ -197,8 +197,8 @@ public class CBaseStorageEngine extends StorageEngineBase {
             return transactionEngine;
         }
 
-        public HashMap<String, CBaseTable> getTables() {
-            return new HashMap<String, CBaseTable>(tableMap);
+        public HashMap<String, MVTable> getTables() {
+            return new HashMap<String, MVTable>(tableMap);
         }
 
         /**
@@ -206,7 +206,7 @@ public class CBaseStorageEngine extends StorageEngineBase {
          *
          * @param table the table
          */
-        public void removeTable(CBaseTable table) {
+        public void removeTable(MVTable table) {
             tableMap.remove(table.getMapName());
         }
 

@@ -30,8 +30,8 @@ import org.lealone.test.sql.TestBase;
 public class CRUDExample {
     static Connection getConnection() throws Exception {
         String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db //
-                + ";default_storage_engine=cbase;ALIAS_COLUMN_NAME=true";
-        //url = "jdbc:lealone:embed:" + TestBase.db + "?default_storage_engine=cbase";
+                + ";default_storage_engine=MVStore;ALIAS_COLUMN_NAME=true";
+        //url = "jdbc:lealone:embed:" + TestBase.db + "?default_storage_engine=MVStore";
         Connection conn = DriverManager.getConnection(url, "sa", "");
         return conn;
     }
@@ -69,7 +69,7 @@ public class CRUDExample {
         ResultSet rs;
 
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine cbase");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine MVStore");
         stmt.executeUpdate("CREATE memory TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test3 (f1 int primary key, f2 long)");
 

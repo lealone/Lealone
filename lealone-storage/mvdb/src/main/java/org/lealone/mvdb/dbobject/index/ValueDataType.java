@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.dbobject.index;
+package org.lealone.mvdb.dbobject.index;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

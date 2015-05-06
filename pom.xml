@@ -17,7 +17,7 @@
 		<module>lealone-cluster</module>
 		<module>lealone-bootstrap</module>
 
-		<module>lealone-storage/cbase</module>
+		<module>lealone-storage/mvdb</module>
 		<module>lealone-storage/mvstore</module>
 		<module>lealone-storage/wiredtiger</module>
 

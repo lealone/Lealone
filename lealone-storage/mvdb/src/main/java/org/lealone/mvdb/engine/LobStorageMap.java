@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.cbase.engine;
+package org.lealone.mvdb.engine;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -19,11 +19,11 @@ import java.util.Arrays;
 import java.util.Map.Entry;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.cbase.engine.CBaseStorageEngine.Store;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.LobStorageInterface;
 import org.lealone.message.DbException;
+import org.lealone.mvdb.engine.MVStorageEngine.Store;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.StreamStore;
@@ -87,7 +87,7 @@ public class LobStorageMap implements LobStorageInterface {
             return;
         }
         init = true;
-        Store s = CBaseStorageEngine.getStore(database);
+        Store s = MVStorageEngine.getStore(database);
         MVStore mvStore;
         if (s == null) {
             // in-memory database
@@ -283,7 +283,7 @@ public class LobStorageMap implements LobStorageInterface {
     @Override
     public void removeAllForTable(int tableId) {
         init();
-        if (CBaseStorageEngine.getStore(database).getStore().isClosed()) {
+        if (MVStorageEngine.getStore(database).getStore().isClosed()) {
             return;
         }
         // this might not be very efficient -
