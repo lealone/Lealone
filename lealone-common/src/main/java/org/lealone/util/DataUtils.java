@@ -73,6 +73,11 @@ public class DataUtils {
     public static final int ERROR_CHUNK_NOT_FOUND = 9;
 
     /**
+     * The block in the stream store was not found.
+     */
+    public static final int ERROR_BLOCK_NOT_FOUND = 50;
+
+    /**
      * The transaction store is corrupt.
      */
     public static final int ERROR_TRANSACTION_CORRUPT = 100;
@@ -83,9 +88,20 @@ public class DataUtils {
     public static final int ERROR_TRANSACTION_LOCKED = 101;
 
     /**
+     * There are too many open transactions.
+     */
+    public static final int ERROR_TOO_MANY_OPEN_TRANSACTIONS = 102;
+
+    /**
+     * The transaction store is in an illegal state (for example, not yet
+     * initialized).
+     */
+    public static final int ERROR_TRANSACTION_ILLEGAL_STATE = 103;
+
+    /**
      * A very old transaction is still open.
      */
-    public static final int ERROR_TRANSACTION_STILL_OPEN = 102;
+    public static final int ERROR_TRANSACTION_STILL_OPEN = 104;
 
     /**
      * The type for leaf page.
@@ -749,7 +765,15 @@ public class DataUtils {
         return e;
     }
 
-    private static String formatMessage(int errorCode, String message, Object... arguments) {
+    /**
+     * Format an error message.
+     *
+     * @param errorCode the error code
+     * @param message the message
+     * @param arguments the arguments
+     * @return the formatted message
+     */
+    public static String formatMessage(int errorCode, String message, Object... arguments) {
         // convert arguments to strings, to avoid locale specific formatting
         for (int i = 0; i < arguments.length; i++) {
             Object a = arguments[i];
