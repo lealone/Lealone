@@ -16,12 +16,12 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import org.lealone.engine.Constants;
-import org.lealone.engine.DataType;
-import org.lealone.engine.WriteBuffer;
 import org.lealone.fs.FilePath;
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
-import org.lealone.mvstore.type.StringDataType;
+import org.lealone.type.DataType;
+import org.lealone.type.StringDataType;
+import org.lealone.type.WriteBuffer;
 import org.lealone.util.DataUtils;
 
 /**

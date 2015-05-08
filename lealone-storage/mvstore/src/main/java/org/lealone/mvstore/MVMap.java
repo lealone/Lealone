@@ -15,8 +15,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
-import org.lealone.engine.DataType;
-import org.lealone.mvstore.type.ObjectDataType;
+import org.lealone.engine.StorageMap;
+import org.lealone.type.DataType;
+import org.lealone.type.ObjectDataType;
 import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 
@@ -759,7 +760,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @return the iterator
      */
     public Iterator<K> keyIterator(K from) {
-        return new Cursor<K, V>(this, root, from);
+        return new org.lealone.mvstore.Cursor<K, V>(this, root, from);
     }
 
     /**
@@ -861,7 +862,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      */
     @Override
     public Cursor<K, V> cursor(K from) {
-        return new Cursor<K, V>(this, root, from);
+        return new org.lealone.mvstore.Cursor<>(this, root, from);
     }
 
     @Override
@@ -872,7 +873,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
 
             @Override
             public Iterator<Entry<K, V>> iterator() {
-                final Cursor<K, V> cursor = new Cursor<K, V>(map, root, null);
+                final Cursor<K, V> cursor = new org.lealone.mvstore.Cursor<>(map, root, null);
                 return new Iterator<Entry<K, V>>() {
 
                     @Override
@@ -916,7 +917,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
 
             @Override
             public Iterator<K> iterator() {
-                return new Cursor<K, V>(map, root, null);
+                return new org.lealone.mvstore.Cursor<K, V>(map, root, null);
             }
 
             @Override
@@ -1115,8 +1116,8 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
             throw DataUtils.newUnsupportedOperationException("This map is read-only; need to call "
                     + "the method on the writable map");
         }
-        DataUtils.checkArgument(version >= createVersion, "Unknown version {0}; this map was created in version is {1}", version,
-                createVersion);
+        DataUtils.checkArgument(version >= createVersion,
+                "Unknown version {0}; this map was created in version is {1}", version, createVersion);
         Page newest = null;
         // need to copy because it can change
         Page r = root;

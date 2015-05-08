@@ -3,12 +3,10 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.mvstore.type;
+package org.lealone.type;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.engine.DataType;
-import org.lealone.engine.WriteBuffer;
 import org.lealone.util.DataUtils;
 
 /**

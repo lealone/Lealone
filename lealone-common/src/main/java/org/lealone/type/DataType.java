@@ -3,10 +3,9 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.engine;
+package org.lealone.type;
 
 import java.nio.ByteBuffer;
-
 
 /**
  * A data type.

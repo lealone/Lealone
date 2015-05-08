@@ -22,10 +22,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.lealone.compress.CompressDeflate;
 import org.lealone.compress.CompressLZF;
 import org.lealone.compress.Compressor;
-import org.lealone.engine.WriteBuffer;
+import org.lealone.engine.StorageMap;
 import org.lealone.mvstore.Page.PageChildren;
 import org.lealone.mvstore.cache.CacheLongKeyLIRS;
-import org.lealone.mvstore.type.StringDataType;
+import org.lealone.type.StringDataType;
+import org.lealone.type.WriteBuffer;
 import org.lealone.util.DataUtils;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
@@ -1184,7 +1185,7 @@ public class MVStore {
         DataUtils.checkArgument(testVersion > 0, "Collect references on version 0");
         long readCount = getFileStore().readCount;
         Set<Integer> referenced = New.hashSet();
-        for (Cursor<String, String> c = meta.cursor("root."); c.hasNext();) {
+        for (org.lealone.engine.StorageMap.Cursor<String, String> c = meta.cursor("root."); c.hasNext();) {
             String key = c.next();
             if (!key.startsWith("root.")) {
                 break;
@@ -1457,7 +1458,7 @@ public class MVStore {
         for (MVMap<?, ?> m : maps.values()) {
             @SuppressWarnings("unchecked")
             MVMap<Object, Object> map = (MVMap<Object, Object>) m;
-            Cursor<Object, Object> cursor = map.cursor(null);
+            Cursor<Object, Object> cursor = (Cursor<Object, Object>) map.cursor(null);
             Page lastPage = null;
             while (cursor.hasNext()) {
                 cursor.next();

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.lealone.mvdb.engine;
+package org.lealone.engine;
 
 @SuppressWarnings("unchecked")
 public class WTCursor<K, V> extends org.lealone.mvstore.Cursor<K, V> {

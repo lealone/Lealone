@@ -10,8 +10,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.lealone.compress.Compressor;
-import org.lealone.engine.DataType;
-import org.lealone.engine.WriteBuffer;
+import org.lealone.type.DataType;
+import org.lealone.type.WriteBuffer;
 import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 

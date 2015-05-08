@@ -8,7 +8,7 @@ package org.lealone.mvstore;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 
-import org.lealone.engine.WriteBuffer;
+import org.lealone.type.WriteBuffer;
 import org.lealone.util.DataUtils;
 
 /**

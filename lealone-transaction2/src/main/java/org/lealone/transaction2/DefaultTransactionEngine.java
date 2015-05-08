@@ -11,12 +11,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.engine.DataType;
 import org.lealone.engine.Session;
+import org.lealone.engine.StorageMap;
 import org.lealone.engine.TransactionEngine;
 import org.lealone.mvstore.MVStore;
-import org.lealone.mvstore.StorageMap;
-import org.lealone.mvstore.type.ObjectDataType;
+import org.lealone.type.DataType;
+import org.lealone.type.ObjectDataType;
 import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 

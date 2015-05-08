@@ -22,7 +22,7 @@ import java.util.Map.Entry;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.mvdb.engine.WTMap;
+import org.lealone.engine.WTMap;
 
 import com.wiredtiger.db.Connection;
 import com.wiredtiger.db.Session;
@@ -94,7 +94,7 @@ public class WTMapTest {
             Assert.assertTrue(map.areValuesEqual("a", "a"));
             Assert.assertFalse(map.areValuesEqual("a", "b"));
 
-            org.lealone.mvstore.Cursor<Integer, String> cursor = map.cursor(2);
+            org.lealone.engine.StorageMap.Cursor<Integer, String> cursor = map.cursor(2);
             Assert.assertTrue(cursor.hasNext());
             key = cursor.next();
             Assert.assertEquals(2, (int) key);

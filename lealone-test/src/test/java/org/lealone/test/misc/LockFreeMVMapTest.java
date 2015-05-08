@@ -21,7 +21,7 @@ import java.io.File;
 
 import org.lealone.mvstore.LockFreeMVMap;
 import org.lealone.mvstore.MVStore;
-import org.lealone.mvstore.type.StringDataType;
+import org.lealone.type.StringDataType;
 
 public class LockFreeMVMapTest {
     public static void main(String[] args) {

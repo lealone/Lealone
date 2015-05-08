@@ -7,6 +7,7 @@ package org.lealone.mvstore;
 
 import java.util.Iterator;
 
+import org.lealone.engine.StorageMap;
 import org.lealone.util.DataUtils;
 
 /**
@@ -15,7 +16,7 @@ import org.lealone.util.DataUtils;
  * @param <K> the key type
  * @param <V> the value type
  */
-public class Cursor<K, V> implements Iterator<K> {
+public class Cursor<K, V> implements Iterator<K>, StorageMap.Cursor<K, V> {
 
     private final MVMap<K, ?> map;
     private final K from;
@@ -62,6 +63,7 @@ public class Cursor<K, V> implements Iterator<K> {
      *
      * @return the key or null
      */
+    @Override
     public K getKey() {
         return last;
     }
@@ -71,6 +73,7 @@ public class Cursor<K, V> implements Iterator<K> {
      *
      * @return the value or null
      */
+    @Override
     public V getValue() {
         return lastValue;
     }

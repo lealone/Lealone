@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.mvstore.type;
+package org.lealone.type;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -18,8 +18,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.UUID;
 
-import org.lealone.engine.DataType;
-import org.lealone.engine.WriteBuffer;
 import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 

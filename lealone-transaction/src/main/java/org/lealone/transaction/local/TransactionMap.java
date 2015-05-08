@@ -8,9 +8,8 @@ package org.lealone.transaction.local;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.lealone.engine.DataType;
-import org.lealone.mvstore.Cursor;
 import org.lealone.mvstore.MVMap;
+import org.lealone.type.DataType;
 import org.lealone.util.DataUtils;
 
 /**
@@ -102,7 +101,7 @@ public class TransactionMap<K, V> {
             // the undo log is larger than the map -
             // count the entries of the map
             long size = 0;
-            Cursor<K, VersionedValue> cursor = map.cursor(null);
+            org.lealone.engine.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(null);
             while (cursor.hasNext()) {
                 K key = cursor.next();
                 VersionedValue data = cursor.getValue();
@@ -548,7 +547,7 @@ public class TransactionMap<K, V> {
     public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
         return new Iterator<K>() {
             private K currentKey = from;
-            private Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
+            private org.lealone.engine.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
 
             {
                 fetchNext();
@@ -617,7 +616,7 @@ public class TransactionMap<K, V> {
         return new Iterator<Entry<K, V>>() {
             private Entry<K, V> current;
             private K currentKey = from;
-            private Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
+            private org.lealone.engine.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
 
             {
                 fetchNext();
