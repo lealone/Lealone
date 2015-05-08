@@ -28,12 +28,20 @@ import org.junit.Assert;
 import org.lealone.test.sql.TestBase;
 
 public class CRUDExample {
+    static String storageEngineName = "MVStore";
+
     static Connection getConnection() throws Exception {
         String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db //
-                + ";default_storage_engine=MVStore;ALIAS_COLUMN_NAME=true";
-        //url = "jdbc:lealone:embed:" + TestBase.db + "?default_storage_engine=MVStore";
+                + ";default_storage_engine=" + storageEngineName + ";ALIAS_COLUMN_NAME=true";
+
+        url = "jdbc:lealone:embed:" + TestBase.test_dir + "/" + TestBase.db + "?default_storage_engine="
+                + storageEngineName;
         Connection conn = DriverManager.getConnection(url, "sa", "");
         return conn;
+    }
+
+    public static void setStorageEngineName(String name) {
+        storageEngineName = name;
     }
 
     public static void main(String[] args) throws Exception {
