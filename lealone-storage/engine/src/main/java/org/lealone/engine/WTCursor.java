@@ -18,8 +18,10 @@
  */
 package org.lealone.engine;
 
+import org.lealone.util.DataUtils;
+
 @SuppressWarnings("unchecked")
-public class WTCursor<K, V> extends org.lealone.mvstore.Cursor<K, V> {
+public class WTCursor<K, V> implements org.lealone.engine.StorageMap.Cursor<K, V> {
 
     private final com.wiredtiger.db.Cursor wtCursor;
     private final WTMap<K, V> map;
@@ -79,5 +81,10 @@ public class WTCursor<K, V> extends org.lealone.mvstore.Cursor<K, V> {
     @Override
     public V getValue() {
         return value;
+    }
+
+    @Override
+    public void remove() {
+        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
     }
 }

@@ -34,15 +34,6 @@ public interface StorageMap<K, V> {
     }
 
     public interface Cursor<K, V> extends Iterator<K> {
-        @Override
-        boolean hasNext();
-
-        @Override
-        K next();
-
-        @Override
-        void remove();;
-
         K getKey();
 
         V getValue();
