@@ -11,12 +11,4 @@
 	<artifactId>lealone-storage-wiredtiger</artifactId>
 	<packaging>jar</packaging>
 	<version>1.0.0-SNAPSHOT</version>
-
-	<dependencies>
-		<dependency>
-			<groupId>org.lealone</groupId>
-			<artifactId>lealone-sql</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-	</dependencies>
 </project>
