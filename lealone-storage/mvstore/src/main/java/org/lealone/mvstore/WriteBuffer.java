@@ -7,6 +7,8 @@ package org.lealone.mvstore;
 
 import java.nio.ByteBuffer;
 
+import org.lealone.util.DataUtils;
+
 /**
  * An auto-resize buffer to write data into a ByteBuffer.
  */

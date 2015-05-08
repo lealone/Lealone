@@ -11,9 +11,9 @@ import java.util.Map.Entry;
 import org.lealone.engine.Session;
 import org.lealone.mvdb.engine.TransactionMap;
 import org.lealone.mvstore.Cursor;
-import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.StorageMap;
 import org.lealone.mvstore.type.DataType;
+import org.lealone.util.DataUtils;
 
 /**
  * A map that supports transactions.

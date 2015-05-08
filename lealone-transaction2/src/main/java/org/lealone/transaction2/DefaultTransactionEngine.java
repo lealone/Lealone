@@ -13,11 +13,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.engine.Session;
 import org.lealone.engine.TransactionEngine;
-import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.StorageMap;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
+import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 
 /**

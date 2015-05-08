@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
+import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 
 /**

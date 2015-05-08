@@ -21,6 +21,7 @@ import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.StringDataType;
+import org.lealone.util.DataUtils;
 
 /**
  * Utility methods used in combination with the MVStore.

@@ -9,9 +9,9 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 import org.lealone.mvstore.Cursor;
-import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.type.DataType;
+import org.lealone.util.DataUtils;
 
 /**
  * A map that supports transactions.

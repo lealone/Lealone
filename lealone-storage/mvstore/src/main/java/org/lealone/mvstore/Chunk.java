@@ -8,6 +8,8 @@ package org.lealone.mvstore;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 
+import org.lealone.util.DataUtils;
+
 /**
  * A chunk of data, containing one or multiple pages.
  * <p>

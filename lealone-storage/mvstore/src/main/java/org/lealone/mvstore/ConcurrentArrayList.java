@@ -8,6 +8,8 @@ package org.lealone.mvstore;
 import java.util.Arrays;
 import java.util.Iterator;
 
+import org.lealone.util.DataUtils;
+
 /**
  * A very simple array list that supports concurrent access.
  * Internally, it uses immutable objects.

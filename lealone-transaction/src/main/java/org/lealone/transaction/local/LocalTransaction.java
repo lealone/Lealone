@@ -8,11 +8,11 @@ package org.lealone.transaction.local;
 import java.util.Iterator;
 
 import org.lealone.engine.Session;
-import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.transaction.TransactionBase;
 import org.lealone.transaction.TransactionManager;
+import org.lealone.util.DataUtils;
 
 /**
  * A transaction.

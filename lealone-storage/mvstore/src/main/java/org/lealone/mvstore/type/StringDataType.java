@@ -7,8 +7,8 @@ package org.lealone.mvstore.type;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.WriteBuffer;
+import org.lealone.util.DataUtils;
 
 /**
  * A string type.

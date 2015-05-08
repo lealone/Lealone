@@ -25,6 +25,7 @@ import org.lealone.compress.Compressor;
 import org.lealone.mvstore.Page.PageChildren;
 import org.lealone.mvstore.cache.CacheLongKeyLIRS;
 import org.lealone.mvstore.type.StringDataType;
+import org.lealone.util.DataUtils;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
 

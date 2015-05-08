@@ -25,11 +25,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.lealone.mvstore.Cursor;
-import org.lealone.mvstore.DataUtils;
 import org.lealone.mvstore.StorageMap;
 import org.lealone.mvstore.WriteBuffer;
 import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
+import org.lealone.util.DataUtils;
 
 import com.wiredtiger.db.SearchStatus;
 

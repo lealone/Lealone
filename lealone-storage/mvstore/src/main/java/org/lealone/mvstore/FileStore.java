@@ -16,6 +16,7 @@ import org.lealone.fs.FilePathDisk;
 import org.lealone.fs.FilePathEncrypt;
 import org.lealone.fs.FilePathNio;
 import org.lealone.mvstore.cache.FilePathCache;
+import org.lealone.util.DataUtils;
 
 /**
  * The default storage mechanism of the MVStore. This implementation persists

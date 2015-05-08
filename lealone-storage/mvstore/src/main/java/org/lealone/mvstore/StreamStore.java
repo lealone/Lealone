@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.lealone.util.DataUtils;
+
 /**
  * A facility to store streams in a map. Streams are split into blocks, which
  * are stored in a map. Very small streams are inlined in the stream id.
