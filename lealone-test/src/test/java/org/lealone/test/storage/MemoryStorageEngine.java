@@ -48,32 +48,14 @@ public class MemoryStorageEngine extends MVStorageEngine {
         return "memory";
     }
 
-    static class MemoryMapBuilder implements StorageMap.Builder {
-
-        @Override
-        public <K, V> StorageMap<K, V> openMap(String name) {
-            return openMap(name, null, null);
-        }
-
-        @Override
-        public <K, V> StorageMap<K, V> openMap(String name, DataType valueType) {
-            return openMap(name, null, valueType);
-        }
-
+    static class MemoryMapBuilder extends StorageMap.BuilderBase {
         @Override
         public <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
-            if (keyType == null) {
-                keyType = new ObjectDataType();
-            }
-            if (valueType == null) {
-                valueType = new ObjectDataType();
-            }
             return new MemoryMap<K, V>(name, keyType, valueType);
         }
-
     }
 
-    static class MemoryCursor<K, V> implements org.lealone.engine.StorageMap.Cursor<K, V> {
+    static class MemoryCursor<K, V> implements StorageMap.Cursor<K, V> {
         private final Iterator<Entry<K, V>> iterator;
         private Entry<K, V> e;
 
@@ -228,7 +210,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
 
         @Override
-        public org.lealone.engine.StorageMap.Cursor<K, V> cursor(K from) {
+        public StorageMap.Cursor<K, V> cursor(K from) {
             return new MemoryCursor<>(entrySet().iterator(), from, keyType);
         }
 

@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.lealone.type.DataType;
+import org.lealone.type.ObjectDataType;
 
 public interface StorageMap<K, V> {
 
@@ -31,6 +32,21 @@ public interface StorageMap<K, V> {
         <K, V> StorageMap<K, V> openMap(String name, DataType valueType);
 
         <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType);
+    }
+
+    public abstract class BuilderBase implements Builder {
+        @Override
+        public <K, V> StorageMap<K, V> openMap(String name) {
+            return openMap(name, null);
+        }
+
+        @Override
+        public <K, V> StorageMap<K, V> openMap(String name, DataType valueType) {
+            if (valueType == null) {
+                valueType = new ObjectDataType();
+            }
+            return openMap(name, new ObjectDataType(), valueType);
+        }
     }
 
     public interface Cursor<K, V> extends Iterator<K> {
