@@ -19,15 +19,6 @@ import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.index.ValueDataType;
 import org.lealone.dbobject.table.MVTable;
 import org.lealone.dbobject.table.Table;
-import org.lealone.engine.Constants;
-import org.lealone.engine.Database;
-import org.lealone.engine.InDoubtTransaction;
-import org.lealone.engine.Session;
-import org.lealone.engine.StorageEngineBase;
-import org.lealone.engine.StorageEngineManager;
-import org.lealone.engine.StorageMap;
-import org.lealone.engine.TransactionMap;
-import org.lealone.engine.TransactionStorageEngine;
 import org.lealone.fs.FileChannelInputStream;
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
@@ -48,14 +39,25 @@ import org.lealone.util.New;
 public class MVStorageEngine extends StorageEngineBase implements TransactionStorageEngine {
     public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
 
-    //见StorageEngineManager.StorageEngineService中的注释
+    private StorageMap.Builder mapBuilder;
+
     public MVStorageEngine() {
+        this(null);
+    }
+
+    //见StorageEngineManager.StorageEngineService中的注释
+    public MVStorageEngine(StorageMap.Builder mapBuilder) {
         StorageEngineManager.registerStorageEngine(this);
+        setMapBuilder(mapBuilder);
     }
 
     @Override
     public String getName() {
         return NAME;
+    }
+
+    protected void setMapBuilder(StorageMap.Builder mapBuilder) {
+        this.mapBuilder = mapBuilder;
     }
 
     @Override
@@ -65,7 +67,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
         if (store == null) {
             synchronized (stores) {
                 if (stores.get(db.getName()) == null) {
-                    store = init(db);
+                    store = init(db, mapBuilder);
                     stores.put(db.getName(), store);
                     db.setStorageEngine(this);
                     db.setTransactionEngine(store.getTransactionEngine());
