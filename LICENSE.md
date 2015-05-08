@@ -1,10 +1,14 @@
-﻿以下子工程中的代码使用H2的License http://www.h2database.com/html/license.html
-* lealone-client
-* lealone-common
-* lealone-server
-* lealone-sql
-* lealone-storage-mvdb
-* lealone-storage-mvstore
+﻿包含下面的版权声明的代码或文件都使用H2的License http://www.h2database.com/html/license.html
 
-除此之外的代码使用Apache License Version 2.0 http://www.apache.org/licenses/LICENSE-2.0
+```
+/*
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
+ * Initial Developer: H2 Group
+ */
+```
+
+除此之外的代码或文件使用Apache License Version 2.0 http://www.apache.org/licenses/LICENSE-2.0
+
+
 
