@@ -20,7 +20,6 @@ package org.lealone.transaction2;
 import java.util.Map;
 
 import org.lealone.command.router.FrontendSessionPool;
-import org.lealone.engine.Constants;
 import org.lealone.engine.FrontendSession;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
@@ -120,22 +119,15 @@ class TransactionStatusTable {
 
         FrontendSession fs = null;
         try {
-            fs = FrontendSessionPool
-                    .getFrontendSession(session.getOriginalProperties(), createURL(session, a[0], a[1]));
+            String dbName = session.getDatabase().getShortName();
+            String url = TransactionValidator.createURL(dbName, a[0], a[1]);
+            fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(), url);
             return fs.validateTransaction(localTransactionName);
         } catch (Exception e) {
             throw DbException.convert(e);
         } finally {
             FrontendSessionPool.release(fs);
         }
-    }
-
-    private static String createURL(Session session, String host, String port) {
-        StringBuilder url = new StringBuilder(100);
-        url.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//");
-        url.append(host).append(":").append(port);
-        url.append("/").append(session.getDatabase().getShortName());
-        return url.toString();
     }
 
     public static boolean isValid(String localTransactionName) {

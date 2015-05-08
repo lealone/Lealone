@@ -136,7 +136,7 @@ class TransactionValidator extends Thread {
         }
     }
 
-    private static String createURL(String dbName, String host, String port) {
+    static String createURL(String dbName, String host, String port) {
         StringBuilder url = new StringBuilder(100);
         url.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//");
         url.append(host).append(":").append(port);
