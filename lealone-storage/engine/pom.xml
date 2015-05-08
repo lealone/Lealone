@@ -20,7 +20,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-transaction2</artifactId>
+			<artifactId>lealone-transaction</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
