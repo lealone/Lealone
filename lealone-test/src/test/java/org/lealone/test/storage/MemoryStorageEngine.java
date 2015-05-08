@@ -59,15 +59,8 @@ public class MemoryStorageEngine extends MVStorageEngine {
         private final Iterator<Entry<K, V>> iterator;
         private Entry<K, V> e;
 
-        public MemoryCursor(Iterator<Entry<K, V>> iterator, K from, DataType keyType) {
+        public MemoryCursor(Iterator<Entry<K, V>> iterator, DataType keyType) {
             this.iterator = iterator;
-            if (from != null)
-                while (hasNext()) {
-                    K k = next();
-                    if (MemoryMap.areEqual(k, from, keyType)) {
-                        break;
-                    }
-                }
         }
 
         @Override
@@ -98,6 +91,20 @@ public class MemoryStorageEngine extends MVStorageEngine {
 
     }
 
+    static class KeyComparator<K> implements java.util.Comparator<K> {
+        DataType keyType;
+
+        public KeyComparator(DataType keyType) {
+            this.keyType = keyType;
+        }
+
+        @Override
+        public int compare(K k1, K k2) {
+            return keyType.compare(k1, k2);
+        }
+
+    }
+
     static class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements StorageMap<K, V> {
 
         private static final AtomicInteger counter = new AtomicInteger(0);
@@ -112,6 +119,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
 
         public MemoryMap(String name, DataType keyType, DataType valueType) {
+            super(new KeyComparator<K>(keyType));
             this.name = name;
             this.keyType = keyType;
             this.valueType = valueType;
@@ -211,7 +219,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
 
         @Override
         public StorageMap.Cursor<K, V> cursor(K from) {
-            return new MemoryCursor<>(entrySet().iterator(), from, keyType);
+            return new MemoryCursor<>(tailMap(from).entrySet().iterator(), keyType);
         }
 
         @Override
