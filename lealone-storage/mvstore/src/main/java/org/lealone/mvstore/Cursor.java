@@ -24,6 +24,10 @@ public class Cursor<K, V> implements Iterator<K> {
     private final Page root;
     private boolean initialized;
 
+    public Cursor() {
+        this(null, null, null);
+    }
+
     Cursor(MVMap<K, ?> map, Page root, K from) {
         this.map = map;
         this.root = root;

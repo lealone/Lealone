@@ -63,6 +63,7 @@ public class MVStorageEngine extends StorageEngineBase {
                 if (stores.get(db.getName()) == null) {
                     store = init(db);
                     stores.put(db.getName(), store);
+                    db.setStorageEngine(this);
                     db.setTransactionEngine(store.getTransactionEngine());
                     db.setLobStorage(new LobStorageMap(db));
                 }
@@ -73,6 +74,11 @@ public class MVStorageEngine extends StorageEngineBase {
         table.init(data.session);
         store.tableMap.put(table.getMapName(), table);
         return table;
+    }
+
+    @Override
+    public void close(Database db) {
+        stores.remove(db.getName());
     }
 
     private static HashMap<String, Store> stores = new HashMap<String, Store>(1);

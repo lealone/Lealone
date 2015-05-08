@@ -28,4 +28,6 @@ public interface StorageEngine {
     String getName();
 
     LobStorageInterface getLobStorage();
+
+    void close(Database db);
 }

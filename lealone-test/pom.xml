@@ -5,7 +5,6 @@
 		<groupId>org.lealone</groupId>
 		<artifactId>lealone</artifactId>
 		<version>1.0.0-SNAPSHOT</version>
-		<relativePath>../pom.xml</relativePath>
 	</parent>
 
 	<artifactId>lealone-test</artifactId>
@@ -20,12 +19,17 @@
 		</dependency>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-storage-mvdb</artifactId>
+			<artifactId>lealone-mvdb</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.lealone</groupId>
-			<artifactId>lealone-storage-wiredtiger</artifactId>
+			<artifactId>lealone-transaction2</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.lealone</groupId>
+			<artifactId>lealone-storage-engine</artifactId>
 			<version>${project.version}</version>
 		</dependency>
 	</dependencies>

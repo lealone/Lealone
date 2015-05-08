@@ -371,8 +371,7 @@ public class Database implements DataHandler {
         data.session = systemSession;
         meta = mainSchema.createTable(data);
         IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
-        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, IndexType.createPrimaryKey(false, false), true,
-                null);
+        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, IndexType.createPrimaryKey(false, false), true, null);
 
         Cursor cursor = metaIdIndex.find(systemSession, null, null);
 
@@ -1018,6 +1017,8 @@ public class Database implements DataHandler {
             closeOnExit = null;
         }
         getDatabaseEngine().closeDatabase(databaseName);
+
+        getStorageEngine().close(this);
     }
 
     /**
@@ -2057,8 +2058,8 @@ public class Database implements DataHandler {
 
     }
 
-    public Index createIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols,
-            IndexType indexType, boolean create, Session session) {
+    public Index createIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols, IndexType indexType,
+            boolean create, Session session) {
         throw DbException.throwInternalError();
     }
 
@@ -2082,7 +2083,19 @@ public class Database implements DataHandler {
 
     public TransactionEngine getTransactionEngine() {
         if (transactionEngine == null)
-            throw new IllegalStateException("transactionEngine not init");
+            throw new IllegalStateException("TransactionEngine not init");
         return transactionEngine;
+    }
+
+    private StorageEngine storageEngine;
+
+    public void setStorageEngine(StorageEngine storageEngine) {
+        this.storageEngine = storageEngine;
+    }
+
+    public StorageEngine getStorageEngine() {
+        if (storageEngine == null)
+            throw new IllegalStateException("StorageEngine not init");
+        return storageEngine;
     }
 }

@@ -83,8 +83,6 @@ public class PackFormatInputStream {
             throw new WiredTigerPackingException("No more fields in format.");
         }
 
-        //String fieldName;
-        //boolean lenOK = false;
         int countOff = 0;
 
         while (PackUtil.PackSpecialCharacters.indexOf(format.charAt(formatOff + countOff)) != -1) {

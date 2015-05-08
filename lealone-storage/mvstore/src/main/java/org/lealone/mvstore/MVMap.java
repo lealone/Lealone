@@ -34,7 +34,7 @@ import org.lealone.util.New;
  * @param <K> the key class
  * @param <V> the value class
  */
-public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V> {
+public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V>, StorageMap<K, V> {
 
     /**
      * The store.
@@ -206,6 +206,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @return the first key, or null
      */
+    @Override
     public K firstKey() {
         return getFirstLast(true);
     }
@@ -215,6 +216,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @return the last key, or null
      */
+    @Override
     public K lastKey() {
         return getFirstLast(false);
     }
@@ -227,6 +229,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @param index the index
      * @return the key
      */
+    @Override
     @SuppressWarnings("unchecked")
     public K getKey(long index) {
         if (index < 0 || index >= size()) {
@@ -298,6 +301,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @param key the key
      * @return the index
      */
+    @Override
     public long getKeyIndex(K key) {
         if (size() == 0) {
             return -1;
@@ -351,6 +355,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @param key the key
      * @return the result
      */
+    @Override
     public K higherKey(K key) {
         return getMinMax(key, false, true);
     }
@@ -361,6 +366,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @param key the key
      * @return the result
      */
+    @Override
     public K ceilingKey(K key) {
         return getMinMax(key, false, false);
     }
@@ -371,6 +377,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @param key the key
      * @return the result
      */
+    @Override
     public K floorKey(K key) {
         return getMinMax(key, true, false);
     }
@@ -382,6 +389,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @param key the key
      * @return the result
      */
+    @Override
     public K lowerKey(K key) {
         return getMinMax(key, true, true);
     }
@@ -513,6 +521,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
         closed = true;
     }
 
+    @Override
     public boolean isClosed() {
         return closed;
     }
@@ -584,6 +593,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @param b the second value
      * @return true if they are equal
      */
+    @Override
     public boolean areValuesEqual(Object a, Object b) {
         if (a == b) {
             return true;
@@ -705,6 +715,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @return the key type
      */
+    @Override
     public DataType getKeyType() {
         return keyType;
     }
@@ -714,6 +725,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @return the value type
      */
+    @Override
     public DataType getValueType() {
         return valueType;
     }
@@ -846,6 +858,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @param from the first key to return
      * @return the cursor
      */
+    @Override
     public Cursor<K, V> cursor(K from) {
         return new Cursor<K, V>(this, root, from);
     }
@@ -932,6 +945,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @return the name
      */
+    @Override
     public String getName() {
         return store.getMapName(id);
     }
@@ -946,6 +960,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @return the map id
      */
+    @Override
     public int getId() {
         return id;
     }
@@ -1002,6 +1017,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @param isVolatile the volatile flag
      */
+    @Override
     public void setVolatile(boolean isVolatile) {
         this.isVolatile = isVolatile;
     }
@@ -1062,6 +1078,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @return the number of entries
      */
+    @Override
     public long sizeAsLong() {
         return root.getTotalCount();
     }
@@ -1097,8 +1114,8 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
             throw DataUtils.newUnsupportedOperationException("This map is read-only; need to call "
                     + "the method on the writable map");
         }
-        DataUtils.checkArgument(version >= createVersion,
-                "Unknown version {0}; this map was created in version is {1}", version, createVersion);
+        DataUtils.checkArgument(version >= createVersion, "Unknown version {0}; this map was created in version is {1}", version,
+                createVersion);
         Page newest = null;
         // need to copy because it can change
         Page r = root;
@@ -1321,4 +1338,8 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
 
     }
 
+    @Override
+    public void remove() {
+        store.removeMap(this);
+    }
 }

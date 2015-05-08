@@ -31,7 +31,7 @@ import com.wiredtiger.db.Connection;
 import com.wiredtiger.db.wiredtiger;
 
 public class WiredTigerStorageEngine extends StorageEngineBase {
-    public static final String NAME = "WT";
+    public static final String NAME = "WT-old";
     private static final HashMap<String, Connection> connections = new HashMap<String, Connection>(1);
 
     //见StorageEngineManager.StorageEngineService中的注释
@@ -54,6 +54,7 @@ public class WiredTigerStorageEngine extends StorageEngineBase {
                 if (connections.get(dbName) == null) {
                     conn = createConnection(dbName);
                     connections.put(dbName, conn);
+                    db.setStorageEngine(this);
                     //TODO
                     //db.setTransactionEngine(store.getTransactionEngine());
                     //db.setLobStorage(new LobStorageMap(db));
@@ -61,6 +62,14 @@ public class WiredTigerStorageEngine extends StorageEngineBase {
             }
         }
         return new WiredTigerTable(data, conn.open_session(null));
+    }
+
+    @Override
+    public void close(Database db) {
+        Connection conn = connections.remove(db.getName());
+        if (conn != null) {
+            conn.close(null);
+        }
     }
 
     private Connection createConnection(String dbName) {

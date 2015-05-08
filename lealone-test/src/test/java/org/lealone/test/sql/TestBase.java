@@ -27,7 +27,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 public class TestBase {
-
+    public static final String test_dir = "./lealone-test-data";
     public static final String db = "test";
 
     protected static Connection conn;

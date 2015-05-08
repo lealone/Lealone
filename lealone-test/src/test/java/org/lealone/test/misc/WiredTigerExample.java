@@ -37,6 +37,7 @@ public class WiredTigerExample {
         Statement stmt = conn.createStatement();
 
         try {
+            stmt.executeUpdate("DROP TABLE IF EXISTS test");
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine wt");
             stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_test_f2 ON test(f2)");
 

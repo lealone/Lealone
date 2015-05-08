@@ -2271,7 +2271,7 @@ public class MVStore {
      *
      * @param map the map to remove
      */
-    public synchronized void removeMap(MVMap<?, ?> map) {
+    public synchronized void removeMap(StorageMap<?, ?> map) {
         checkOpen();
         DataUtils.checkArgument(map != meta, "Removing the meta map is not allowed");
         map.clear();
