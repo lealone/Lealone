@@ -13,13 +13,11 @@
 		<module>lealone-client</module>
 		<module>lealone-sql</module>
 		<module>lealone-server</module>
-		<module>lealone-transaction</module>
+		<module>lealone-transaction2</module>
 		<module>lealone-cluster</module>
 		<module>lealone-bootstrap</module>
-		<module>lealone-transaction2</module>
 		<module>lealone-mvdb</module>
 
-		<module>lealone-storage/mvdb</module>
 		<module>lealone-storage/engine</module>
 		<module>lealone-storage/mvstore</module>
 		<module>lealone-storage/wiredtiger</module>
