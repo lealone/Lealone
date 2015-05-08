@@ -18,8 +18,7 @@
 	<moduleSets>
 		<moduleSet>
 			<includes>
-				<include>org.lealone:lealone-storage-mvdb</include>
-				<include>org.lealone:lealone-storage-wiredtiger</include>
+				<include>org.lealone:lealone-storage-engine</include>
 				<include>org.lealone:lealone-bootstrap</include>
 			</includes>
 			<binaries>
