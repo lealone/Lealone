@@ -24,10 +24,10 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.lealone.engine.DataType;
+import org.lealone.engine.WriteBuffer;
 import org.lealone.mvstore.Cursor;
 import org.lealone.mvstore.StorageMap;
-import org.lealone.mvstore.WriteBuffer;
-import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
 import org.lealone.util.DataUtils;
 

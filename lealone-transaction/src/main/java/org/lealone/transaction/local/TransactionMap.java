@@ -8,9 +8,9 @@ package org.lealone.transaction.local;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.lealone.engine.DataType;
 import org.lealone.mvstore.Cursor;
 import org.lealone.mvstore.MVMap;
-import org.lealone.mvstore.type.DataType;
 import org.lealone.util.DataUtils;
 
 /**

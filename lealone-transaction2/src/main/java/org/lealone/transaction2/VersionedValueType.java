@@ -7,8 +7,8 @@ package org.lealone.transaction2;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.mvstore.WriteBuffer;
-import org.lealone.mvstore.type.DataType;
+import org.lealone.engine.DataType;
+import org.lealone.engine.WriteBuffer;
 import org.lealone.util.DataUtils;
 
 /**

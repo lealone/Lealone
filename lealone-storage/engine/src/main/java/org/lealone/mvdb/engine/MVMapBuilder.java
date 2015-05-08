@@ -17,10 +17,10 @@
  */
 package org.lealone.mvdb.engine;
 
+import org.lealone.engine.DataType;
 import org.lealone.mvstore.StorageMap;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
-import org.lealone.mvstore.type.DataType;
 
 public class MVMapBuilder implements org.lealone.mvstore.StorageMap.Builder {
     private final MVStore store;

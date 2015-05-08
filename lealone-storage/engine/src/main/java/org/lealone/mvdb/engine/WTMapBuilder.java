@@ -17,8 +17,8 @@
  */
 package org.lealone.mvdb.engine;
 
+import org.lealone.engine.DataType;
 import org.lealone.mvstore.StorageMap;
-import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
 
 public class WTMapBuilder implements org.lealone.mvstore.StorageMap.Builder {

@@ -7,8 +7,8 @@ package org.lealone.transaction2;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.mvstore.WriteBuffer;
-import org.lealone.mvstore.type.DataType;
+import org.lealone.engine.DataType;
+import org.lealone.engine.WriteBuffer;
 
 /**
  * A data type that contains an array of objects with the specified data

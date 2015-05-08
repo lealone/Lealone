@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.lealone.compress.CompressDeflate;
 import org.lealone.compress.CompressLZF;
 import org.lealone.compress.Compressor;
+import org.lealone.engine.WriteBuffer;
 import org.lealone.mvstore.Page.PageChildren;
 import org.lealone.mvstore.cache.CacheLongKeyLIRS;
 import org.lealone.mvstore.type.StringDataType;

@@ -21,8 +21,8 @@ package org.lealone.mvdb.engine;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.lealone.engine.DataType;
 import org.lealone.engine.Session;
-import org.lealone.mvstore.type.DataType;
 
 public interface TransactionMap<K, V> {
     /**

@@ -7,9 +7,9 @@ package org.lealone.transaction2;
 
 import java.util.Iterator;
 
+import org.lealone.engine.DataType;
 import org.lealone.engine.Session;
 import org.lealone.mvstore.StorageMap;
-import org.lealone.mvstore.type.DataType;
 import org.lealone.util.DataUtils;
 
 /**

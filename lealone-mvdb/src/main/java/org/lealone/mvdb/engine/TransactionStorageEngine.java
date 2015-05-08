@@ -18,10 +18,10 @@
  */
 package org.lealone.mvdb.engine;
 
+import org.lealone.engine.DataType;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.mvdb.dbobject.table.MVTable;
-import org.lealone.mvstore.type.DataType;
 
 public interface TransactionStorageEngine {
     /**

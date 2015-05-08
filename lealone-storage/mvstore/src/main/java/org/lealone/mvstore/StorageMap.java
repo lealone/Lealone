@@ -20,7 +20,7 @@ package org.lealone.mvstore;
 import java.util.Map;
 import java.util.Set;
 
-import org.lealone.mvstore.type.DataType;
+import org.lealone.engine.DataType;
 
 public interface StorageMap<K, V> {
 

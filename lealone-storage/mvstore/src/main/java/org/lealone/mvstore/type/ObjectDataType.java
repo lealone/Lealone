@@ -18,7 +18,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.UUID;
 
-import org.lealone.mvstore.WriteBuffer;
+import org.lealone.engine.DataType;
+import org.lealone.engine.WriteBuffer;
 import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 

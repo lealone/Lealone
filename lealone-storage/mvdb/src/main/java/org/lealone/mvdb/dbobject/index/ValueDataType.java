@@ -15,9 +15,9 @@ import java.util.Arrays;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.engine.DataHandler;
+import org.lealone.engine.DataType;
+import org.lealone.engine.WriteBuffer;
 import org.lealone.message.DbException;
-import org.lealone.mvstore.WriteBuffer;
-import org.lealone.mvstore.type.DataType;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.result.SortOrder;
 import org.lealone.util.DataUtils;

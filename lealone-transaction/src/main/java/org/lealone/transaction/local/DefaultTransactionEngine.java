@@ -11,11 +11,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.engine.DataType;
 import org.lealone.engine.Session;
 import org.lealone.engine.TransactionEngine;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
-import org.lealone.mvstore.type.DataType;
 import org.lealone.mvstore.type.ObjectDataType;
 import org.lealone.transaction.TransactionManager;
 import org.lealone.transaction.TransactionStatusTable;
