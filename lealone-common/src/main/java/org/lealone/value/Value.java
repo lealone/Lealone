@@ -35,7 +35,7 @@ import org.lealone.util.Utils;
  * This is the base class for all value classes.
  * It provides conversion and comparison methods.
  */
-public abstract class Value {
+public abstract class Value implements Comparable<Value> {
 
     /**
      * The data type is unknown at this time.
@@ -1080,4 +1080,11 @@ public abstract class Value {
     public interface ValueBlob {
         // this is a marker interface
     }
+
+    @Override
+    public int compareTo(Value o) {
+        return compareTo(o, compareMode);
+    }
+
+    private static CompareMode compareMode = CompareMode.getInstance(null, 0, false);
 }
