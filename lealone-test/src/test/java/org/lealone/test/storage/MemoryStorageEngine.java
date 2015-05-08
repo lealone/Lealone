@@ -59,7 +59,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         private final Iterator<Entry<K, V>> iterator;
         private Entry<K, V> e;
 
-        public MemoryCursor(Iterator<Entry<K, V>> iterator, DataType keyType) {
+        public MemoryCursor(Iterator<Entry<K, V>> iterator) {
             this.iterator = iterator;
         }
 
@@ -219,7 +219,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
 
         @Override
         public StorageMap.Cursor<K, V> cursor(K from) {
-            return new MemoryCursor<>(tailMap(from).entrySet().iterator(), keyType);
+            return new MemoryCursor<>(tailMap(from).entrySet().iterator());
         }
 
         @Override
