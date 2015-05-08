@@ -605,8 +605,8 @@ public class DefaultTransactionEngine implements TransactionEngine {
         TransactionStatusTable.commit(t, allLocalTransactionNames);
 
         Session s = t.getSession();
-        TransactionValidator.getInstance().enqueue(s.getDatabase().getShortName(), this, t.getId(), s.getOriginalProperties(),
-                allLocalTransactionNames);
+        TransactionValidator.getInstance().enqueue(s.getDatabase().getShortName(), this, t.getId(),
+                s.getOriginalProperties(), allLocalTransactionNames);
     }
 
     boolean validateTransaction(Session session, int tid, Transaction currentTransaction) {

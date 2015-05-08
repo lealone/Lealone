@@ -104,9 +104,10 @@ public class Session {
     /**
      * @copydoc WT_SESSION::truncate
      */
-    public int truncate(String name, Cursor start, Cursor stop, String config) throws com.wiredtiger.db.WiredTigerException {
-        return wiredtigerJNI.Session_truncate(swigCPtr, this, name, Cursor.getCPtr(start), start, Cursor.getCPtr(stop), stop,
-                config);
+    public int truncate(String name, Cursor start, Cursor stop, String config)
+            throws com.wiredtiger.db.WiredTigerException {
+        return wiredtigerJNI.Session_truncate(swigCPtr, this, name, Cursor.getCPtr(start), start, Cursor.getCPtr(stop),
+                stop, config);
     }
 
     /**

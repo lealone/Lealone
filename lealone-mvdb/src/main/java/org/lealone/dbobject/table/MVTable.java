@@ -255,8 +255,8 @@ public class MVTable extends TableBase {
             Table lock = s.getWaitForLock();
             Thread thread = s.getWaitForLockThread();
             buff.append("\nSession ").append(s.toString()).append(" on thread ").append(thread.getName())
-                    .append(" is waiting to lock ").append(lock.toString()).append(exclusive ? " (exclusive)" : " (shared)")
-                    .append(" while locking ");
+                    .append(" is waiting to lock ").append(lock.toString())
+                    .append(exclusive ? " (exclusive)" : " (shared)").append(" while locking ");
             int i = 0;
             for (Table t : s.getLocks()) {
                 if (i++ > 0) {
@@ -327,8 +327,8 @@ public class MVTable extends TableBase {
 
     private void traceLock(Session session, boolean exclusive, String s) {
         if (traceLock.isDebugEnabled()) {
-            traceLock.debug("{0} {1} {2} {3}", session.getId(), exclusive ? "exclusive write lock" : "shared read lock", s,
-                    getName());
+            traceLock.debug("{0} {1} {2} {3}", session.getId(),
+                    exclusive ? "exclusive write lock" : "shared read lock", s, getName());
         }
     }
 

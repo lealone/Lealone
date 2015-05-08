@@ -48,8 +48,8 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
     private final TransactionMap<Value, Value> dataMap;
     private final TransactionStorageEngine storageEngine;
 
-    public MVSecondaryIndex(TransactionStorageEngine storageEngine, Session session, MVTable table, int id, String indexName,
-            IndexColumn[] columns, IndexType indexType) {
+    public MVSecondaryIndex(TransactionStorageEngine storageEngine, Session session, MVTable table, int id,
+            String indexName, IndexColumn[] columns, IndexType indexType) {
         this.storageEngine = storageEngine;
         Database db = session.getDatabase();
         this.mvTable = table;

@@ -163,10 +163,11 @@ public class PropertyFileSnitch extends AbstractNetworkTopologySnitch {
             }
         }
         if (defaultDCRack == null && !reloadedMap.containsKey(Utils.getBroadcastAddress()))
-            throw new ConfigurationException(String.format(
-                    "Snitch definitions at %s do not define a location for this node's broadcast address %s, "
-                            + "nor does it provides a default", SNITCH_PROPERTIES_FILENAME,
-                    Utils.getBroadcastAddress()));
+            throw new ConfigurationException(
+                    String.format(
+                            "Snitch definitions at %s do not define a location for this node's broadcast address %s, "
+                                    + "nor does it provides a default", SNITCH_PROPERTIES_FILENAME,
+                            Utils.getBroadcastAddress()));
 
         if (logger.isDebugEnabled()) {
             StringBuilder sb = new StringBuilder();

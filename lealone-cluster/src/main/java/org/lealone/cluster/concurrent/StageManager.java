@@ -37,8 +37,7 @@ public class StageManager {
     static {
         stages.put(Stage.REQUEST_RESPONSE,
                 multiThreadedLowSignalStage(Stage.REQUEST_RESPONSE, Utils.getAvailableProcessors()));
-        stages.put(Stage.INTERNAL_RESPONSE,
-                multiThreadedStage(Stage.INTERNAL_RESPONSE, Utils.getAvailableProcessors()));
+        stages.put(Stage.INTERNAL_RESPONSE, multiThreadedStage(Stage.INTERNAL_RESPONSE, Utils.getAvailableProcessors()));
         // the rest are all single-threaded
         stages.put(Stage.GOSSIP, new MetricsEnabledThreadPoolExecutor(Stage.GOSSIP));
     }

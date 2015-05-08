@@ -108,8 +108,8 @@ public class P2PRouter implements Router {
     }
 
     private static int executeInsertOrMerge(InsertOrMerge iom) {
-        final String localDataCenter = DatabaseDescriptor.getEndpointSnitch().getDatacenter(
-                Utils.getBroadcastAddress());
+        final String localDataCenter = DatabaseDescriptor.getEndpointSnitch()
+                .getDatacenter(Utils.getBroadcastAddress());
         String keyspaceName = iom.getTable().getSchema().getName();
         //AbstractReplicationStrategy rs = Keyspace.open(keyspaceName).getReplicationStrategy();
 

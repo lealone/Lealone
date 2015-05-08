@@ -74,7 +74,8 @@ class TransactionStatusTable {
      * @param currentTransaction 当前事务
      * @return true 有效 
      */
-    public static boolean isValid(Session session, String hostAndPort, long oldTid, TransactionInterface currentTransaction) {
+    public static boolean isValid(Session session, String hostAndPort, long oldTid,
+            TransactionInterface currentTransaction) {
         TransactionStatusCache cache = hostAndPortMap.get(hostAndPort);
         if (cache == null) {
             cache = newCache(hostAndPort);
@@ -119,7 +120,8 @@ class TransactionStatusTable {
 
         FrontendSession fs = null;
         try {
-            fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(), createURL(session, a[0], a[1]));
+            fs = FrontendSessionPool
+                    .getFrontendSession(session.getOriginalProperties(), createURL(session, a[0], a[1]));
             return fs.validateTransaction(localTransactionName);
         } catch (Exception e) {
             throw DbException.convert(e);

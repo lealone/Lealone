@@ -60,8 +60,8 @@ public class MVPrimaryIndex extends IndexBase {
     private long lastKey;
     private int mainIndexColumn = -1;
 
-    public MVPrimaryIndex(TransactionStorageEngine storageEngine, Session session, MVTable table, int id, IndexColumn[] columns,
-            IndexType indexType) {
+    public MVPrimaryIndex(TransactionStorageEngine storageEngine, Session session, MVTable table, int id,
+            IndexColumn[] columns, IndexType indexType) {
         Database db = session.getDatabase();
         this.mvTable = table;
         initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
