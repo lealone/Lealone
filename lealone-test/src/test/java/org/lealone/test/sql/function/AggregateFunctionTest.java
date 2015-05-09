@@ -20,7 +20,7 @@ package org.lealone.test.sql.function;
 import static junit.framework.Assert.assertEquals;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 //TODO H2总共支持14个聚合函数，还有group_concat、selectivity、histogram这三个没有实现
 public class AggregateFunctionTest extends TestBase {

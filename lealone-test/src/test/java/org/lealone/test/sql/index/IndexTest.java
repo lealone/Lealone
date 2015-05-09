@@ -24,7 +24,7 @@ import java.sql.Savepoint;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class IndexTest extends TestBase {
     @Test

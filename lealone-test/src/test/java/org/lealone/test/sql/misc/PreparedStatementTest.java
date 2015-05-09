@@ -22,7 +22,7 @@ import static junit.framework.Assert.assertEquals;
 import java.sql.PreparedStatement;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class PreparedStatementTest extends TestBase {
     @Test

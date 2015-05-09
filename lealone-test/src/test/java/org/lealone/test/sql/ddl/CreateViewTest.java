@@ -20,7 +20,7 @@ package org.lealone.test.sql.ddl;
 import java.sql.PreparedStatement;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class CreateViewTest extends TestBase {
     @Test

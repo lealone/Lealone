@@ -18,7 +18,7 @@
 package org.lealone.test.sql.ddl;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class SetCommentTest extends TestBase {
     @Test
@@ -29,7 +29,7 @@ public class SetCommentTest extends TestBase {
         executeUpdate("DROP ROLE IF EXISTS myrole");
         executeUpdate("CREATE ROLE IF NOT EXISTS myrole");
 
-        executeUpdate("COMMENT ON COLUMN " + db + ".public.SetCommentTest.f1 IS 'column comment'");
+        executeUpdate("COMMENT ON COLUMN " + DB_NAME + ".public.SetCommentTest.f1 IS 'column comment'");
         executeUpdate("COMMENT ON TABLE public.SetCommentTest IS 'table comment'");
 
         executeUpdate("COMMENT ON ROLE myrole IS 'role comment'");

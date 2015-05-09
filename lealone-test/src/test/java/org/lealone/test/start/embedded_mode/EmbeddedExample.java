@@ -18,14 +18,18 @@
 package org.lealone.test.start.embedded_mode;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import org.lealone.test.TestBase;
+
 public class EmbeddedExample {
     public static void main(String[] args) throws Exception {
-        String url = "jdbc:lealone:mem:embed:test";
-        Connection conn = DriverManager.getConnection(url, "sa", "");
+        TestBase.setInMemory(true);
+        TestBase.setEmbedded(true);
+        TestBase.printURL();
+
+        Connection conn = TestBase.getConnection();
         Statement stmt = conn.createStatement();
 
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");

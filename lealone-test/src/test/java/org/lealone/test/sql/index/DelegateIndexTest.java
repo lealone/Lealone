@@ -18,7 +18,7 @@
 package org.lealone.test.sql.index;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class DelegateIndexTest extends TestBase {
     @Test

@@ -18,7 +18,7 @@
 package org.lealone.test.sql.function;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class SystemFunctionTest extends TestBase {
     @Test

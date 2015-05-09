@@ -23,7 +23,7 @@ import java.sql.SQLException;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class AlterTableAlterColumnTest extends TestBase {
     @Test

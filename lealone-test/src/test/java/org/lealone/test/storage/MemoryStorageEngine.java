@@ -26,17 +26,28 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.engine.MVStorageEngine;
 import org.lealone.engine.StorageEngineManager;
 import org.lealone.engine.StorageMap;
+import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
 import org.lealone.type.DataType;
 import org.lealone.type.ObjectDataType;
 
 public class MemoryStorageEngine extends MVStorageEngine {
-    public static void main(String[] args) throws Exception {
-        MemoryStorageEngine mse = new MemoryStorageEngine();
-        StorageEngineManager.registerStorageEngine(mse);
+    public static final String NAME = "memory";
 
-        CRUDExample.setStorageEngineName(mse.getName());
+    public static void main(String[] args) throws Exception {
+        //register();
+
+        TestBase.setStorageEngineName(NAME);
+        TestBase.setEmbedded(true);
+        TestBase.printURL();
+
         CRUDExample.main(args);
+    }
+
+    //如果配置了META-INF/services/org.lealone.engine.StorageEngine
+    //就不需要调用这个方法了，会自动注册
+    public static void register() {
+        StorageEngineManager.registerStorageEngine(new MemoryStorageEngine());
     }
 
     public MemoryStorageEngine() {
@@ -45,7 +56,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
 
     @Override
     public String getName() {
-        return "memory";
+        return NAME;
     }
 
     static class MemoryMapBuilder extends StorageMap.BuilderBase {

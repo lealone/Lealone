@@ -20,7 +20,7 @@ package org.lealone.test.sql.function;
 import static junit.framework.Assert.assertEquals;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class StringFunctionTest extends TestBase {
     @Test

@@ -23,7 +23,7 @@ import java.sql.CallableStatement;
 import java.sql.Types;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class CallableStatementTest extends TestBase {
     @Test

@@ -22,20 +22,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.lealone.message.DbException;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 import org.lealone.util.IOUtils;
 import org.lealone.util.ScriptReader;
 import org.lealone.util.Utils;
 
 public class InstallPgCatalog {
     public static void main(String[] args) throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db;
-        Connection conn = DriverManager.getConnection(url, "sa", "");
+        Connection conn = TestBase.getConnection();
         Statement stmt = conn.createStatement();
 
         installPgCatalog(stmt);

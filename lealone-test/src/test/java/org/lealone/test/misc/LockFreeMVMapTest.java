@@ -21,6 +21,7 @@ import java.io.File;
 
 import org.lealone.mvstore.LockFreeMVMap;
 import org.lealone.mvstore.MVStore;
+import org.lealone.test.TestBase;
 import org.lealone.type.StringDataType;
 
 public class LockFreeMVMapTest {
@@ -38,7 +39,7 @@ public class LockFreeMVMapTest {
 
     MVStore store;
     LockFreeMVMap<String, String> map;
-    String fileName = "./lealone-test-data/mvstore/LockFreeMVMapTest.mv.db";
+    String fileName = TestBase.TEST_DIR + "/mvstore/LockFreeMVMapTest.mv.db";
 
     void initMVStore() {
         new File(fileName).getParentFile().mkdirs();

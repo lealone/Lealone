@@ -24,7 +24,7 @@ import static junit.framework.Assert.assertTrue;
 import java.sql.ResultSet;
 
 import org.junit.Test;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class SelectTest extends TestBase {
     @Test

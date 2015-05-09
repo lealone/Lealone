@@ -20,6 +20,7 @@ package org.lealone.test.start.client_server_mode;
 import java.sql.SQLException;
 
 import org.lealone.bootstrap.Lealone;
+import org.lealone.test.TestBase;
 
 public class TcpServerStart {
     public static void main(String[] args) throws SQLException {
@@ -33,7 +34,7 @@ public class TcpServerStart {
         // System.setProperty("DATABASE_TO_UPPER", "false");
         System.setProperty("lealone.lobInDatabase", "false");
         System.setProperty("lealone.lobClientMaxSizeMemory", "1024");
-        System.setProperty("java.io.tmpdir", "./target/test/tmp");
+        System.setProperty("java.io.tmpdir", TestBase.TEST_DIR + "/tmp");
         // System.setProperty("lealone.check2", "true");
     }
 }

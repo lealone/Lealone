@@ -18,9 +18,10 @@
 package org.lealone.test.start.client_server_mode;
 
 import org.lealone.server.TcpServer;
+import org.lealone.test.TestBase;
 
 public class TcpServerStop {
     public static void main(String[] args) throws Exception {
-        TcpServer.shutdown("localhost", 5210, "", false, true);
+        TcpServer.shutdown(TestBase.getHost(), TestBase.getPort(), "", false, true);
     }
 }

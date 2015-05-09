@@ -18,18 +18,17 @@
 package org.lealone.test.misc;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import org.lealone.test.sql.TestBase;
+import org.lealone.engine.WTStorageEngine;
+import org.lealone.test.TestBase;
 
 public class WiredTigerExample {
     static Connection getConnection() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db;
-        url = "jdbc:lealone:embed:./lealone-test-data/" + TestBase.db;
-
-        return DriverManager.getConnection(url, "sa", "");
+        //TestBase.setStorageEngineName(WTStorageEngine.NAME);
+        TestBase.setEmbedded(true);
+        return TestBase.getConnection();
     }
 
     public static void main(String[] args) throws Exception {
@@ -38,7 +37,8 @@ public class WiredTigerExample {
 
         try {
             stmt.executeUpdate("DROP TABLE IF EXISTS test");
-            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine wt");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine "
+                    + WTStorageEngine.NAME);
             stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_test_f2 ON test(f2)");
 
             for (int i = 1; i <= 10; i++) {

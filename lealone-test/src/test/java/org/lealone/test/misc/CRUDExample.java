@@ -18,32 +18,15 @@
 package org.lealone.test.misc;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Assert;
-import org.lealone.test.sql.TestBase;
+import org.lealone.test.TestBase;
 
 public class CRUDExample {
-    static String storageEngineName = "MVStore";
-
-    static Connection getConnection() throws Exception {
-        String url = "jdbc:lealone:tcp://localhost:5210/" + TestBase.db //
-                + ";default_storage_engine=" + storageEngineName + ";ALIAS_COLUMN_NAME=true";
-
-        url = "jdbc:lealone:embed:" + TestBase.test_dir + "/" + TestBase.db + "?default_storage_engine="
-                + storageEngineName;
-        Connection conn = DriverManager.getConnection(url, "sa", "");
-        return conn;
-    }
-
-    public static void setStorageEngineName(String name) {
-        storageEngineName = name;
-    }
-
     public static void main(String[] args) throws Exception {
         crud0();
         //crud();
@@ -51,7 +34,7 @@ public class CRUDExample {
     }
 
     static void crud0() throws Exception {
-        Connection conn = getConnection();
+        Connection conn = TestBase.getConnection();
         Statement stmt = conn.createStatement();
 
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
@@ -72,12 +55,12 @@ public class CRUDExample {
     }
 
     static void crud() throws Exception {
-        Connection conn = getConnection();
+        Connection conn = TestBase.getConnection();
         Statement stmt = conn.createStatement();
         ResultSet rs;
 
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long) engine MVStore");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
         stmt.executeUpdate("CREATE memory TABLE IF NOT EXISTS test2 (f1 int primary key, f2 long)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test3 (f1 int primary key, f2 long)");
 
@@ -115,7 +98,7 @@ public class CRUDExample {
 
         rs.close();
 
-        Connection conn2 = getConnection();
+        Connection conn2 = TestBase.getConnection();
         Statement stmt2 = conn2.createStatement();
 
         rs = stmt2.executeQuery("SELECT count(*) FROM test");
@@ -144,7 +127,7 @@ public class CRUDExample {
 
         MyThread(int start, int count) throws Exception {
             super("MyThread-" + start);
-            conn = getConnection();
+            conn = TestBase.getConnection();
             stmt = conn.createStatement();
             this.start = start;
             this.end = start + count;
@@ -203,7 +186,7 @@ public class CRUDExample {
     }
 
     static void benchmark() throws Exception {
-        Connection conn = getConnection();
+        Connection conn = TestBase.getConnection();
         Statement stmt = conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
