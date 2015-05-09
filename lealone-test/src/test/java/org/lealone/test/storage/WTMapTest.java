@@ -21,14 +21,17 @@ package org.lealone.test.storage;
 import java.util.Map.Entry;
 
 import org.junit.Assert;
-import org.junit.Test;
 import org.lealone.engine.WTMap;
 
 import com.wiredtiger.db.Connection;
 import com.wiredtiger.db.Session;
 
 public class WTMapTest {
-    @Test
+    public static void main(String[] args) {
+        new WTMapTest().run();
+    }
+
+    //@Test
     public void run() {
         Connection wtConnection = WiredTigerTest.getWTConnection();
         Session wtSession = wtConnection.open_session(null);

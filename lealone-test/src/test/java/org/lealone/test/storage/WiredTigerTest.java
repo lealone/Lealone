@@ -20,7 +20,6 @@ package org.lealone.test.storage;
 
 import java.io.File;
 
-import org.junit.Test;
 import org.lealone.test.sql.TestBase;
 
 import com.wiredtiger.db.Connection;
@@ -29,6 +28,10 @@ import com.wiredtiger.db.Session;
 import com.wiredtiger.db.wiredtiger;
 
 public class WiredTigerTest {
+    public static void main(String[] args) {
+        new WiredTigerTest().testCursor();
+    }
+
     public static Connection getWTConnection() {
         String dir = TestBase.test_dir + "/WiredTigerTest";
         if (!new File(dir).exists())
@@ -36,7 +39,7 @@ public class WiredTigerTest {
         return wiredtiger.open(dir, "create");
     }
 
-    @Test
+    //@Test
     public void testCursor() {
         Connection wtConnection = getWTConnection();
         Session wtSession = wtConnection.open_session(null);
