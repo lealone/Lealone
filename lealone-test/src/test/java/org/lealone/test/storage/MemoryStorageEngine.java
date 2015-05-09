@@ -219,7 +219,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
 
         @Override
         public StorageMap.Cursor<K, V> cursor(K from) {
-            return new MemoryCursor<>(tailMap(from).entrySet().iterator());
+            return new MemoryCursor<>(from == null ? entrySet().iterator() : tailMap(from).entrySet().iterator());
         }
 
         @Override
