@@ -102,6 +102,7 @@ public class MVCCTransactionEngine implements TransactionEngine {
      * If the transaction store is corrupt, this method can throw an exception,
      * in which case the store can only be used for reading.
      */
+    @Override
     public synchronized void init(Set<String> storageMapNames) {
         init = true;
 
@@ -177,9 +178,10 @@ public class MVCCTransactionEngine implements TransactionEngine {
      *
      * @return the list of transactions (sorted by id)
      */
-    public List<MVCCTransaction> getOpenTransactions() {
+    @Override
+    public List<Transaction> getOpenTransactions() {
         synchronized (undoLog) {
-            ArrayList<MVCCTransaction> list = New.arrayList();
+            ArrayList<Transaction> list = New.arrayList();
             Long key = undoLog.firstKey();
             while (key != null) {
                 int transactionId = getTransactionId(key);
@@ -338,8 +340,9 @@ public class MVCCTransactionEngine implements TransactionEngine {
      * @param <V> the value type
      * @param map the map
      */
-    public synchronized <K, V> void removeMap(MVCCTransactionMap<K, V> map) {
-        maps.remove(map.mapId);
+    @Override
+    public synchronized <K, V> void removeMap(TransactionMap<K, V> map) {
+        maps.remove(map.getMapId());
         map.removeMap();
         //store.removeMap(map.map);
     }

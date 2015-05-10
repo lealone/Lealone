@@ -53,7 +53,7 @@ public class WTStorageEngine extends MVStorageEngine implements TransactionStora
                     conn = createConnection(dbName);
                     connections.put(dbName, conn);
 
-                    Store store = init(db, new WTMapBuilder(conn.open_session(null)));
+                    Store store = init(db, new WTMapBuilder(conn.open_session(null)), getTransactionEngine());
                     stores.put(db.getName(), store);
                     db.setStorageEngine(this);
                     db.setTransactionEngine(store.getTransactionEngine());

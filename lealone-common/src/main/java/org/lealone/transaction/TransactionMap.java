@@ -196,4 +196,6 @@ public interface TransactionMap<K, V> {
      * @return the result
      */
     public K lowerKey(K key);
+
+    public int getMapId();
 }

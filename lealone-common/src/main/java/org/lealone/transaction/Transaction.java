@@ -21,6 +21,39 @@ import org.lealone.type.DataType;
 
 public interface Transaction {
 
+    /**
+     * The status of a closed transaction (committed or rolled back).
+     */
+    public static final int STATUS_CLOSED = 0;
+
+    /**
+     * The status of an open transaction.
+     */
+    public static final int STATUS_OPEN = 1;
+
+    /**
+     * The status of a prepared transaction.
+     */
+    public static final int STATUS_PREPARED = 2;
+
+    /**
+     * The status of a transaction that is being committed, but possibly not
+     * yet finished. A transactions can go into this state when the store is
+     * closed while the transaction is committing. When opening a store,
+     * such transactions should be committed.
+     */
+    public static final int STATUS_COMMITTING = 3;
+
+    String getName(); //用于2pc
+
+    void setName(String name); //用于2pc
+
+    void prepare(); //用于2pc
+
+    int getStatus();
+
+    void setStatus(int status);
+
     //long getTransactionId();
 
     //long getCommitTimestamp();

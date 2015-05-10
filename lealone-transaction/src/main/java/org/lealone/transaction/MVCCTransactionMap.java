@@ -67,7 +67,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * @return the map
      */
     @Override
-    public TransactionMap<K, V> getInstance(Transaction transaction, long savepoint) {
+    public MVCCTransactionMap<K, V> getInstance(Transaction transaction, long savepoint) {
         MVCCTransactionMap<K, V> m = new MVCCTransactionMap<K, V>((MVCCTransaction) transaction, map, mapId);
         m.setSavepoint(savepoint);
         return m;
@@ -766,5 +766,10 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public void removeMap() {
         map.remove();
+    }
+
+    @Override
+    public int getMapId() {
+        return mapId;
     }
 }

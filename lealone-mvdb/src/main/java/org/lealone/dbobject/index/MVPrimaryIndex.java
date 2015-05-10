@@ -55,7 +55,6 @@ public class MVPrimaryIndex extends IndexBase {
 
     private final MVTable mvTable;
     private final String mapName;
-    //private final TransactionMap<Value, Value> dataMap;
     private final TransactionMap<Value, Value> dataMap;
     private long lastKey;
     private int mainIndexColumn = -1;

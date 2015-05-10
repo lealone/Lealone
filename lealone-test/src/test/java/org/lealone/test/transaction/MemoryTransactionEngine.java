@@ -15,21 +15,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction;
+package org.lealone.test.transaction;
 
 import java.util.List;
 import java.util.Set;
 
-public interface TransactionEngine {
-    Transaction beginTransaction(boolean autoCommit);
+import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
+import org.lealone.transaction.TransactionMap;
 
-    void close();
+//TODO 实现所有API
+public class MemoryTransactionEngine implements TransactionEngine {
 
-    boolean isValid(String localTransactionName);
+    @Override
+    public Transaction beginTransaction(boolean autoCommit) {
+        return new MemoryTransaction();
+    }
 
-    void init(Set<String> storageMapNames);
+    @Override
+    public void close() {
+    }
 
-    List<Transaction> getOpenTransactions();
+    @Override
+    public boolean isValid(String localTransactionName) {
+        return false;
+    }
 
-    <K, V> void removeMap(TransactionMap<K, V> map);
+    @Override
+    public void init(Set<String> storageMapNames) {
+    }
+
+    @Override
+    public List<Transaction> getOpenTransactions() {
+        return java.util.Collections.emptyList();
+    }
+
+    @Override
+    public <K, V> void removeMap(TransactionMap<K, V> map) {
+    }
 }

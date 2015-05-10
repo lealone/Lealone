@@ -89,6 +89,28 @@ public class MVCCTransaction implements Transaction {
     }
 
     @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public void setName(String name) {
+        checkNotClosed();
+        this.name = name;
+        transactionEngine.storeTransaction(this);
+    }
+
+    @Override
+    public int getStatus() {
+        return status;
+    }
+
+    @Override
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
+    @Override
     public boolean isAutoCommit() {
         return autoCommit;
     }
@@ -298,24 +320,6 @@ public class MVCCTransaction implements Transaction {
         checkNotClosed();
         transactionEngine.rollbackTo(this, logId, savepointId);
         logId = savepointId;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    void setStatus(int status) {
-        this.status = status;
-    }
-
-    public void setName(String name) {
-        checkNotClosed();
-        this.name = name;
-        transactionEngine.storeTransaction(this);
-    }
-
-    public String getName() {
-        return name;
     }
 
     long getCommitTimestamp() {

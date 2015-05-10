@@ -52,7 +52,9 @@ public class MemoryStorageEngine extends MVStorageEngine {
     }
 
     public MemoryStorageEngine() {
-        super(new MemoryMapBuilder());
+        super();
+        setMapBuilder(new MemoryMapBuilder());
+        //setTransactionEngine(new MemoryTransactionEngine());
     }
 
     @Override
@@ -124,7 +126,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
 
     }
 
-    static class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements StorageMap<K, V> {
+    public static class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements StorageMap<K, V> {
 
         private static final AtomicInteger counter = new AtomicInteger(0);
 

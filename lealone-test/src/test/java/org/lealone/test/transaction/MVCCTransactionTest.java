@@ -18,25 +18,25 @@
 package org.lealone.test.transaction;
 
 import org.junit.Assert;
+import org.junit.Test;
 import org.lealone.storage.StorageMap;
 import org.lealone.test.TestBase;
 import org.lealone.test.storage.MemoryStorageEngine;
+import org.lealone.transaction.MVCCTransaction;
 import org.lealone.transaction.MVCCTransactionEngine;
-import org.lealone.transaction.TransactionEngine;
-import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.MVCCTransactionMap;
 import org.lealone.type.ObjectDataType;
 
-public class TransactionTest {
-    public static void main(String[] args) {
+public class MVCCTransactionTest {
+    @Test
+    public void run() {
         StorageMap.Builder mapBuilder = new MemoryStorageEngine.MemoryMapBuilder();
         String hostAndPort = TestBase.getHost() + ":" + TestBase.getPort();
         MVCCTransactionEngine e = new MVCCTransactionEngine(new ObjectDataType(), mapBuilder, hostAndPort);
         e.init(null);
-        TransactionEngine te = e;
 
-        Transaction t = te.beginTransaction(false);
-        TransactionMap<String, String> map = t.openMap("test");
+        MVCCTransaction t = e.beginTransaction(false);
+        MVCCTransactionMap<String, String> map = t.openMap("test");
         map.put("1", "a");
         map.put("2", "b");
         Assert.assertEquals("a", map.get("1"));
@@ -44,7 +44,7 @@ public class TransactionTest {
 
         t.rollback();
 
-        t = te.beginTransaction(false);
+        t = e.beginTransaction(false);
 
         Assert.assertNull(map.get("1"));
         Assert.assertNull(map.get("2"));
