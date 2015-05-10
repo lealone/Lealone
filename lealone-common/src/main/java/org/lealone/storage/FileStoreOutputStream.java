@@ -4,11 +4,14 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.io.OutputStream;
 
 import org.lealone.compress.CompressTool;
+import org.lealone.engine.Constants;
+import org.lealone.engine.Data;
+import org.lealone.engine.DataHandler;
 
 /**
  * An output stream that is backed by a file store.

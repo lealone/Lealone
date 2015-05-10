@@ -20,12 +20,12 @@ import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.MVTable;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
-import org.lealone.engine.TransactionMap;
-import org.lealone.engine.TransactionStorageEngine;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
 import org.lealone.result.SortOrder;
+import org.lealone.storage.TransactionStorageEngine;
+import org.lealone.transaction.TransactionMap;
 import org.lealone.util.New;
 import org.lealone.value.CompareMode;
 import org.lealone.value.Value;
@@ -151,8 +151,7 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
         } finally {
             for (String tempMapName : mapNames) {
                 TransactionMap<Value, Value> map = openMap(tempMapName);
-                //map.getStore().removeMap(map);
-                map.removeMap(null);
+                map.removeMap();
             }
         }
     }
@@ -371,7 +370,7 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
     public void remove(Session session) {
         TransactionMap<Value, Value> map = getMap(session);
         if (!map.isClosed()) {
-            map.removeMap(session);
+            map.removeMap();
         }
     }
 
@@ -461,7 +460,7 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
         if (session == null) {
             return dataMap;
         }
-        return dataMap.getInstance(session, Long.MAX_VALUE);
+        return dataMap.getInstance(session.getTransaction(), Long.MAX_VALUE);
     }
 
     /**

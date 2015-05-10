@@ -29,14 +29,9 @@
     <version>1.0.0-SNAPSHOT</version>
 
     <dependencies>
-        <dependency>
+	    <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-mvdb</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-storage-mvstore</artifactId>
+            <artifactId>lealone-common</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

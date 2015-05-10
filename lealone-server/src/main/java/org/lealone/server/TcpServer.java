@@ -23,12 +23,14 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.command.router.Router;
+import org.lealone.command.router.TransactionalRouter;
 import org.lealone.engine.Constants;
 import org.lealone.engine.DatabaseEngine;
+import org.lealone.engine.Session;
 import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
-import org.lealone.transaction.TransactionManager;
 import org.lealone.util.JdbcUtils;
 import org.lealone.util.NetUtils;
 import org.lealone.util.New;
@@ -206,8 +208,11 @@ public class TcpServer implements Server {
         }
         Driver.load();
 
-        TransactionManager.init(baseDir, listenAddress, port);
-        DatabaseEngine.init(baseDir);
+        Router r = Session.getRouter();
+        if (!(r instanceof TransactionalRouter)) {
+            Session.setRouter(new TransactionalRouter(r));
+        }
+        DatabaseEngine.init(baseDir, listenAddress, port);
     }
 
     @Override

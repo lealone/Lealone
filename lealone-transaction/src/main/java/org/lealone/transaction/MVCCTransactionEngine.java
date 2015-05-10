@@ -9,26 +9,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.engine.Session;
-import org.lealone.engine.StorageMap;
-import org.lealone.engine.TransactionEngine;
-import org.lealone.mvstore.MVStore;
+import org.lealone.storage.StorageMap;
 import org.lealone.type.DataType;
 import org.lealone.type.ObjectDataType;
 import org.lealone.util.DataUtils;
 import org.lealone.util.New;
 
 /**
- * The default transaction engine that supports concurrent MVCC read-committed transactions.
+ * The transaction engine that supports concurrent MVCC read-committed transactions.
  */
-public class DefaultTransactionEngine implements TransactionEngine {
+public class MVCCTransactionEngine implements TransactionEngine {
 
     /**
      * The store.
      */
-    public final MVStore store;
+    //public final MVStore store;
 
     /**
      * The persisted map of prepared transactions.
@@ -68,16 +66,25 @@ public class DefaultTransactionEngine implements TransactionEngine {
 
     private final StorageMap.Builder mapBuilder;
 
+    final String hostAndPort;
+
+    private final boolean isClusterMode;
+
     /**
      * Create a new transaction engine.
      *
-     * @param store the store
      * @param dataType the data type for map keys and values
      */
-    public DefaultTransactionEngine(MVStore store, DataType dataType, StorageMap.Builder mapBuilder) {
-        this.store = store;
+    public MVCCTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder, String hostAndPort) {
+        this(dataType, mapBuilder, hostAndPort, false);
+    }
+
+    public MVCCTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder, String hostAndPort,
+            boolean isClusterMode) {
         this.dataType = dataType;
         this.mapBuilder = mapBuilder;
+        this.hostAndPort = hostAndPort;
+        this.isClusterMode = isClusterMode;
         preparedTransactions = mapBuilder.openMap("openTransactions");
 
         VersionedValueType oldValueType = new VersionedValueType(dataType);
@@ -87,6 +94,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
                     "Undo map open with a different value type");
         }
+
     }
 
     /**
@@ -94,14 +102,16 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * If the transaction store is corrupt, this method can throw an exception,
      * in which case the store can only be used for reading.
      */
-    public synchronized void init() {
+    public synchronized void init(Set<String> storageMapNames) {
         init = true;
 
         // remove all temporary maps
-        for (String mapName : store.getMapNames()) {
-            if (mapName.startsWith("temp.")) {
-                StorageMap<Object, Integer> temp = openTempMap(mapName);
-                store.removeMap(temp);
+        if (storageMapNames != null) {
+            for (String mapName : storageMapNames) {
+                if (mapName.startsWith("temp.")) {
+                    StorageMap<Object, Integer> temp = openTempMap(mapName);
+                    temp.remove();
+                }
             }
         }
         synchronized (undoLog) {
@@ -110,6 +120,11 @@ public class DefaultTransactionEngine implements TransactionEngine {
                 lastTransactionId.set(getTransactionId(key));
             }
         }
+
+        TransactionStatusTable.init(mapBuilder);
+
+        if (isClusterMode)
+            TransactionValidator.getInstance().start();
     }
 
     /**
@@ -162,9 +177,9 @@ public class DefaultTransactionEngine implements TransactionEngine {
      *
      * @return the list of transactions (sorted by id)
      */
-    public List<Transaction> getOpenTransactions(Session session) {
+    public List<MVCCTransaction> getOpenTransactions() {
         synchronized (undoLog) {
-            ArrayList<Transaction> list = New.arrayList();
+            ArrayList<MVCCTransaction> list = New.arrayList();
             Long key = undoLog.firstKey();
             while (key != null) {
                 int transactionId = getTransactionId(key);
@@ -175,16 +190,16 @@ public class DefaultTransactionEngine implements TransactionEngine {
                 String name;
                 if (data == null) {
                     if (undoLog.containsKey(getOperationId(transactionId, 0))) {
-                        status = Transaction.STATUS_OPEN;
+                        status = MVCCTransaction.STATUS_OPEN;
                     } else {
-                        status = Transaction.STATUS_COMMITTING;
+                        status = MVCCTransaction.STATUS_COMMITTING;
                     }
                     name = null;
                 } else {
                     status = (Integer) data[0];
                     name = (String) data[1];
                 }
-                Transaction t = new Transaction(session, this, transactionId, status, name, logId);
+                MVCCTransaction t = new MVCCTransaction(this, transactionId, status, name, logId);
                 list.add(t);
                 key = undoLog.ceilingKey(getOperationId(transactionId + 1, 0));
             }
@@ -192,16 +207,9 @@ public class DefaultTransactionEngine implements TransactionEngine {
         }
     }
 
-    /**
-     * Close the transaction store.
-     */
-    public synchronized void close() {
-        store.commit();
-    }
-
-    private int nextTransactionId(Session session) {
+    private int nextTransactionId(boolean autoCommit) {
         //分布式事务使用奇数的事务ID
-        if (!session.isAutoCommit() && Session.isClusterMode()) {
+        if (!autoCommit && isClusterMode) {
             return nextOddTransactionId();
         }
 
@@ -254,11 +262,21 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * @return the transaction
      */
     @Override
-    public Transaction beginTransaction(Session session) {
+    public MVCCTransaction beginTransaction(boolean autoCommit) {
         if (!init) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
-        return new Transaction(session, this, nextTransactionId(session), Transaction.STATUS_OPEN, null, 0);
+        int tid = nextTransactionId(autoCommit);
+        MVCCTransaction t = new MVCCTransaction(this, tid, MVCCTransaction.STATUS_OPEN, null, 0);
+        t.setAutoCommit(autoCommit);
+        return t;
+    }
+
+    @Override
+    public void close() {
+        //store.commit();
+        if (isClusterMode)
+            TransactionValidator.getInstance().close();
     }
 
     /**
@@ -266,10 +284,10 @@ public class DefaultTransactionEngine implements TransactionEngine {
      *
      * @param t the transaction
      */
-    synchronized void storeTransaction(Transaction t) {
-        if (t.getStatus() == Transaction.STATUS_PREPARED || t.getName() != null) {
+    synchronized void storeTransaction(MVCCTransaction t) {
+        if (t.getStatus() == MVCCTransaction.STATUS_PREPARED || t.getName() != null) {
             Object[] v = { t.getStatus(), t.getName() };
-            preparedTransactions.put(t.getId(), v);
+            preparedTransactions.put(t.transactionId, v);
         }
     }
 
@@ -282,14 +300,14 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * @param key the key
      * @param oldValue the old value
      */
-    void log(Transaction t, long logId, int mapId, Object key, Object oldValue) {
-        Long undoKey = getOperationId(t.getId(), logId);
+    void log(MVCCTransaction t, long logId, int mapId, Object key, Object oldValue) {
+        Long undoKey = getOperationId(t.transactionId, logId);
         Object[] log = new Object[] { mapId, key, oldValue };
         synchronized (undoLog) {
             if (logId == 0) {
                 if (undoLog.containsKey(undoKey)) {
                     throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_STILL_OPEN,
-                            "An old transaction with the same id " + "is still open: {0}", t.getId());
+                            "An old transaction with the same id " + "is still open: {0}", t.transactionId);
                 }
             }
             undoLog.put(undoKey, log);
@@ -302,13 +320,13 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * @param t the transaction
      * @param logId the log id
      */
-    public void logUndo(Transaction t, long logId) {
-        Long undoKey = getOperationId(t.getId(), logId);
+    public void logUndo(MVCCTransaction t, long logId) {
+        Long undoKey = getOperationId(t.transactionId, logId);
         synchronized (undoLog) {
             Object[] old = undoLog.remove(undoKey);
             if (old == null) {
                 throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE,
-                        "Transaction {0} was concurrently rolled back", t.getId());
+                        "Transaction {0} was concurrently rolled back", t.transactionId);
             }
         }
     }
@@ -320,9 +338,10 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * @param <V> the value type
      * @param map the map
      */
-    public synchronized <K, V> void removeMap(DefaultTransactionMap<K, V> map) {
+    public synchronized <K, V> void removeMap(MVCCTransactionMap<K, V> map) {
         maps.remove(map.mapId);
-        store.removeMap(map.map);
+        map.removeMap();
+        //store.removeMap(map.map);
     }
 
     /**
@@ -331,23 +350,23 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * @param t the transaction
      * @param maxLogId the last log id
      */
-    void commit(Transaction t, long maxLogId) {
-        if (store.isClosed()) {
-            return;
-        }
+    void commit(MVCCTransaction t, long maxLogId) {
+        //        if (store.isClosed()) {
+        //            return;
+        //        }
 
         //分布式事务推迟删除undoLog
         if (t.transactionId % 2 == 0) {
-            removeUndoLog(t.getId(), maxLogId);
+            removeUndoLog(t.transactionId, maxLogId);
         }
 
         endTransaction(t);
     }
 
     public void commitAfterValidate(int tid) {
-        if (store.isClosed()) {
-            return;
-        }
+        //        if (store.isClosed()) {
+        //            return;
+        //        }
 
         removeUndoLog(tid, Long.MAX_VALUE);
     }
@@ -428,7 +447,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
         if (map != null) {
             return map;
         }
-        String mapName = store.getMapName(mapId);
+        String mapName = mapBuilder.getMapName(mapId);
         if (mapName == null) {
             // the map was removed later on
             return null;
@@ -464,26 +483,26 @@ public class DefaultTransactionEngine implements TransactionEngine {
      *
      * @param t the transaction
      */
-    synchronized void endTransaction(Transaction t) {
-        if (t.getStatus() == Transaction.STATUS_PREPARED) {
-            preparedTransactions.remove(t.getId());
+    synchronized void endTransaction(MVCCTransaction t) {
+        if (t.getStatus() == MVCCTransaction.STATUS_PREPARED) {
+            preparedTransactions.remove(t.transactionId);
         }
-        t.setStatus(Transaction.STATUS_CLOSED);
-        if (store.getAutoCommitDelay() == 0) {
-            store.commit();
-            return;
-        }
-        // to avoid having to store the transaction log,
-        // if there is no open transaction,
-        // and if there have been many changes, store them now
-        if (undoLog.isEmpty()) {
-            int unsaved = store.getUnsavedMemory();
-            int max = store.getAutoCommitMemory();
-            // save at 3/4 capacity
-            if (unsaved * 4 > max * 3) {
-                store.commit();
-            }
-        }
+        t.setStatus(MVCCTransaction.STATUS_CLOSED);
+        //        if (store.getAutoCommitDelay() == 0) {
+        //            store.commit();
+        //            return;
+        //        }
+        //        // to avoid having to store the transaction log,
+        //        // if there is no open transaction,
+        //        // and if there have been many changes, store them now
+        //        if (undoLog.isEmpty()) {
+        //            int unsaved = store.getUnsavedMemory();
+        //            int max = store.getAutoCommitMemory();
+        //            // save at 3/4 capacity
+        //            if (unsaved * 4 > max * 3) {
+        //                store.commit();
+        //            }
+        //        }
     }
 
     /**
@@ -493,16 +512,16 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * @param maxLogId the last log id
      * @param toLogId the log id to roll back to
      */
-    void rollbackTo(Transaction t, long maxLogId, long toLogId) {
+    void rollbackTo(MVCCTransaction t, long maxLogId, long toLogId) {
         // TODO could synchronize on blocks (100 at a time or so)
         synchronized (undoLog) {
             for (long logId = maxLogId - 1; logId >= toLogId; logId--) {
-                Long undoKey = getOperationId(t.getId(), logId);
+                Long undoKey = getOperationId(t.transactionId, logId);
                 Object[] op = undoLog.get(undoKey);
                 if (op == null) {
                     // partially rolled back: load previous
                     undoKey = undoLog.floorKey(undoKey);
-                    if (undoKey == null || getTransactionId(undoKey) != t.getId()) {
+                    if (undoKey == null || getTransactionId(undoKey) != t.transactionId) {
                         break;
                     }
                     logId = getLogId(undoKey) + 1;
@@ -535,7 +554,7 @@ public class DefaultTransactionEngine implements TransactionEngine {
      * @param toLogId the minimum log id
      * @return the changes
      */
-    Iterator<Change> getChanges(final Transaction t, final long maxLogId, final long toLogId) {
+    Iterator<Change> getChanges(final MVCCTransaction t, final long maxLogId, final long toLogId) {
         return new Iterator<Change>() {
 
             private long logId = maxLogId - 1;
@@ -548,13 +567,13 @@ public class DefaultTransactionEngine implements TransactionEngine {
             private void fetchNext() {
                 synchronized (undoLog) {
                     while (logId >= toLogId) {
-                        Long undoKey = getOperationId(t.getId(), logId);
+                        Long undoKey = getOperationId(t.transactionId, logId);
                         Object[] op = undoLog.get(undoKey);
                         logId--;
                         if (op == null) {
                             // partially rolled back: load previous
                             undoKey = undoLog.floorKey(undoKey);
-                            if (undoKey == null || getTransactionId(undoKey) != t.getId()) {
+                            if (undoKey == null || getTransactionId(undoKey) != t.transactionId) {
                                 break;
                             }
                             logId = getLogId(undoKey);
@@ -600,16 +619,18 @@ public class DefaultTransactionEngine implements TransactionEngine {
         };
     }
 
-    void commitTransactionStatusTable(Transaction t, String allLocalTransactionNames) {
+    void commitTransactionStatusTable(MVCCTransaction t, String allLocalTransactionNames) {
         t.setCommitTimestamp(nextOddTransactionId());
         TransactionStatusTable.commit(t, allLocalTransactionNames);
-
-        Session s = t.getSession();
-        TransactionValidator.getInstance().enqueue(s.getDatabase().getShortName(), this, t.getId(),
-                s.getOriginalProperties(), allLocalTransactionNames);
+        TransactionValidator.getInstance().enqueue(this, t, allLocalTransactionNames);
     }
 
-    boolean validateTransaction(Session session, int tid, Transaction currentTransaction) {
-        return TransactionStatusTable.isValid(session, TransactionManager.getHostAndPort(), tid, currentTransaction);
+    boolean validateTransaction(Transaction.Validator validator, int tid, MVCCTransaction currentTransaction) {
+        return TransactionStatusTable.isValid(validator, hostAndPort, tid, currentTransaction);
+    }
+
+    @Override
+    public boolean isValid(String localTransactionName) {
+        return TransactionStatusTable.isValid(localTransactionName);
     }
 }

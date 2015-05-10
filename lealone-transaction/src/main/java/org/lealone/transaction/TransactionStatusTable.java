@@ -19,15 +19,10 @@ package org.lealone.transaction;
 
 import java.util.Map;
 
-import org.lealone.command.router.FrontendSessionPool;
-import org.lealone.engine.FrontendSession;
-import org.lealone.engine.Session;
-import org.lealone.message.DbException;
-import org.lealone.mvstore.MVMap;
-import org.lealone.mvstore.MVStore;
+import org.lealone.storage.StorageMap;
 import org.lealone.util.New;
 
-public class TransactionStatusTable {
+class TransactionStatusTable {
     private TransactionStatusTable() {
     }
 
@@ -39,17 +34,17 @@ public class TransactionStatusTable {
      * The persisted map of transactionStatusTable.
      * Key: transaction_name, value: [ all_local_transaction_names, commit_timestamp ].
      */
-    private static MVMap<String, Object[]> map;
+    private static StorageMap<String, Object[]> map;
 
-    synchronized static void init(MVStore store) {
+    synchronized static void init(StorageMap.Builder mapBuilder) {
         if (map != null)
             return;
-        map = store.openMap("transactionStatusTable", new MVMap.Builder<String, Object[]>());
+        map = mapBuilder.openMap("transactionStatusTable");
     }
 
-    public static void commit(TransactionBase transaction, String allLocalTransactionNames) {
+    public static void commit(MVCCTransaction transaction, String allLocalTransactionNames) {
         Object[] v = { allLocalTransactionNames, transaction.getCommitTimestamp() };
-        map.put(transaction.getTransactionName(), v);
+        map.put(transaction.transactionName, v);
     }
 
     private static TransactionStatusCache newCache(String hostAndPort) {
@@ -72,8 +67,8 @@ public class TransactionStatusTable {
      * @param currentTransaction 当前事务
      * @return true 有效 
      */
-    public static boolean isValid(Session session, String hostAndPort, long oldTid,
-            TransactionInterface currentTransaction) {
+    public static boolean isValid(Transaction.Validator validator, String hostAndPort, long oldTid,
+            MVCCTransaction currentTransaction) {
         TransactionStatusCache cache = hostAndPortMap.get(hostAndPort);
         if (cache == null) {
             cache = newCache(hostAndPort);
@@ -84,9 +79,9 @@ public class TransactionStatusTable {
             return false;
         //2. 是有效的事务记录，再进一步判断是否小于等于当前事务的开始时间戳
         if (commitTimestamp != -1)
-            return commitTimestamp <= currentTransaction.getTransactionId();
+            return commitTimestamp <= currentTransaction.transactionId;
 
-        String oldTransactionName = TransactionBase.getTransactionName(hostAndPort, oldTid);
+        String oldTransactionName = MVCCTransaction.getTransactionName(hostAndPort, oldTid);
 
         Object[] v = map.get(oldTransactionName);
 
@@ -96,7 +91,7 @@ public class TransactionStatusTable {
 
         for (String localTransactionName : allLocalTransactionNames) {
             if (!oldTransactionName.equals(localTransactionName)) {
-                if (!validate(session, localTransactionName)) {
+                if (!validate(validator, localTransactionName)) {
                     isFullSuccessful = false;
                     break;
                 }
@@ -113,20 +108,22 @@ public class TransactionStatusTable {
         }
     }
 
-    private static boolean validate(Session session, String localTransactionName) {
-        String[] a = localTransactionName.split(":");
+    private static boolean validate(Transaction.Validator validator, String localTransactionName) {
+        //        String[] a = localTransactionName.split(":");
+        //
+        //        FrontendSession fs = null;
+        //        try {
+        //            String dbName = session.getDatabase().getShortName();
+        //            String url = TransactionValidator.createURL(dbName, a[0], a[1]);
+        //            fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(), url);
+        //            return fs.validateTransaction(localTransactionName);
+        //        } catch (Exception e) {
+        //            throw DbException.convert(e);
+        //        } finally {
+        //            FrontendSessionPool.release(fs);
+        //        }
 
-        FrontendSession fs = null;
-        try {
-            String dbName = session.getDatabase().getShortName();
-            String url = TransactionValidator.createURL(dbName, a[0], a[1]);
-            fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(), url);
-            return fs.validateTransaction(localTransactionName);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            FrontendSessionPool.release(fs);
-        }
+        return validator.validateTransaction(localTransactionName);
     }
 
     public static boolean isValid(String localTransactionName) {

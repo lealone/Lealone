@@ -21,7 +21,10 @@ import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;
 import org.lealone.message.Trace;
 import org.lealone.message.TraceSystem;
-import org.lealone.transaction.TransactionInterface;
+import org.lealone.storage.FileStore;
+import org.lealone.storage.FrontendLobStorage;
+import org.lealone.storage.LobStorage;
+import org.lealone.transaction.Transaction;
 import org.lealone.util.MathUtils;
 import org.lealone.util.NetUtils;
 import org.lealone.util.SmallLRUCache;
@@ -93,8 +96,8 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     private int lastReconnect;
     private SessionInterface embedded;
     //private DatabaseEventListener eventListener;
-    private LobStorageInterface lobStorage;
-    private TransactionInterface transaction;
+    private LobStorage lobStorage;
+    private Transaction transaction;
 
     public FrontendSession(ConnectionInfo ci) {
         this.connectionInfo = ci;
@@ -601,7 +604,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
     }
 
     @Override
-    public LobStorageInterface getLobStorage() {
+    public LobStorage getLobStorage() {
         if (lobStorage == null) {
             lobStorage = new FrontendLobStorage(this);
         }
@@ -688,11 +691,11 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         }
     }
 
-    public void setTransaction(TransactionInterface transaction) {
+    public void setTransaction(Transaction transaction) {
         this.transaction = transaction;
     }
 
-    public TransactionInterface getTransaction() {
+    public Transaction getTransaction() {
         return transaction;
     }
 

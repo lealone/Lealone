@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.nio.ByteBuffer;
 import java.util.AbstractSet;
@@ -24,7 +24,6 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.lealone.engine.StorageMap;
 import org.lealone.type.DataType;
 import org.lealone.type.ObjectDataType;
 import org.lealone.type.WriteBuffer;

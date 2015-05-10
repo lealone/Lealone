@@ -17,28 +17,10 @@
  */
 package org.lealone.transaction;
 
-public interface TransactionInterface {
-    long getTransactionId();
+public interface TransactionEngine {
+    Transaction beginTransaction(boolean autoCommit);
 
-    long getCommitTimestamp();
+    void close();
 
-    boolean isAutoCommit();
-
-    void addLocalTransactionNames(String localTransactionNames);
-
-    String getLocalTransactionNames();
-
-    void commit();
-
-    void commit(String allLocalTransactionNames);
-
-    void rollback();
-
-    void addSavepoint(String name);
-
-    void rollbackToSavepoint(String name);
-
-    long getSavepointId();
-
-    void rollbackToSavepoint(long savepointId);
+    boolean isValid(String localTransactionName);
 }

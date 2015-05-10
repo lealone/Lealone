@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -21,12 +21,11 @@ import java.util.Map.Entry;
 import org.lealone.api.ErrorCode;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
-import org.lealone.engine.LobStorageInterface;
-import org.lealone.engine.MVStorageEngine.Store;
 import org.lealone.message.DbException;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.StreamStore;
+import org.lealone.storage.MVStorageEngine.Store;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;
 import org.lealone.value.Value;
@@ -36,7 +35,7 @@ import org.lealone.value.ValueLobDb;
  * This class stores LOB objects in the database, in maps. This is the back-end
  * i.e. the server side of the LOB storage.
  */
-public class LobStorageMap implements LobStorageInterface {
+public class LobStorageMap implements LobStorage {
 
     private static final boolean TRACE = false;
 
@@ -206,7 +205,7 @@ public class LobStorageMap implements LobStorageInterface {
         }
         long lobId = generateLobId();
         long length = streamStore.length(streamStoreId);
-        int tableId = LobStorageInterface.TABLE_TEMP;
+        int tableId = LobStorage.TABLE_TEMP;
         Object[] value = new Object[] { streamStoreId, tableId, length, 0 };
         lobMap.put(lobId, value);
         Object[] key = new Object[] { streamStoreId, lobId };
@@ -299,9 +298,9 @@ public class LobStorageMap implements LobStorageInterface {
         for (long lobId : list) {
             removeLob(tableId, lobId);
         }
-        if (tableId == LobStorageInterface.TABLE_ID_SESSION_VARIABLE) {
-            removeAllForTable(LobStorageInterface.TABLE_TEMP);
-            removeAllForTable(LobStorageInterface.TABLE_RESULT);
+        if (tableId == LobStorage.TABLE_ID_SESSION_VARIABLE) {
+            removeAllForTable(LobStorage.TABLE_TEMP);
+            removeAllForTable(LobStorage.TABLE_RESULT);
         }
     }
 

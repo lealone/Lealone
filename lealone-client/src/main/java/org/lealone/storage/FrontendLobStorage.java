@@ -3,14 +3,16 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 
+import org.lealone.engine.DataHandler;
 import org.lealone.message.DbException;
+import org.lealone.storage.LobStorage;
 import org.lealone.value.Value;
 import org.lealone.value.ValueLobDb;
 
@@ -18,7 +20,7 @@ import org.lealone.value.ValueLobDb;
  * This factory creates in-memory objects and temporary files. It is used on the
  * client side.
  */
-public class FrontendLobStorage implements LobStorageInterface {
+public class FrontendLobStorage implements LobStorage {
 
     private final DataHandler handler;
 

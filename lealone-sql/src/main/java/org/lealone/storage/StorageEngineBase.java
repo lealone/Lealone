@@ -15,10 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
-import org.lealone.transaction.TransactionInterface;
+import org.lealone.message.DbException;
 
-public interface TransactionEngine {
-    TransactionInterface beginTransaction(Session session);
+public abstract class StorageEngineBase implements StorageEngine {
+    @Override
+    public LobStorage getLobStorage() {
+        throw DbException.getUnsupportedException("getLobStorage()");
+    }
 }

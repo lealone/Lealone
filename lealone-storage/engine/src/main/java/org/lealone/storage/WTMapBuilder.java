@@ -15,8 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
+import org.lealone.message.DbException;
 import org.lealone.type.DataType;
 
 public class WTMapBuilder extends StorageMap.BuilderBase {
@@ -29,5 +30,11 @@ public class WTMapBuilder extends StorageMap.BuilderBase {
     @Override
     public <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
         return new WTMap<K, V>(wtSession, name, keyType, valueType);
+    }
+
+    @Override
+    public String getMapName(int id) {
+        //TODO
+        throw DbException.getUnsupportedException("getMapName");
     }
 }

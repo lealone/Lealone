@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction;
+package org.lealone.command.router;
 
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
@@ -26,7 +26,6 @@ import org.lealone.command.dml.Merge;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.TransactionCommand;
 import org.lealone.command.dml.Update;
-import org.lealone.command.router.Router;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;

@@ -15,10 +15,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction;
+package org.lealone.storage;
 
-import org.lealone.transaction.TransactionInterface;
+import org.lealone.mvstore.MVMap;
+import org.lealone.mvstore.MVStore;
+import org.lealone.type.DataType;
 
-public interface TransactionEngine {
-    TransactionInterface beginTransaction();
+public class MVMapBuilder extends StorageMap.BuilderBase {
+    private final MVStore store;
+
+    public MVMapBuilder(MVStore store) {
+        this.store = store;
+    }
+
+    @Override
+    public <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
+        MVMap.Builder<K, V> builder = new MVMap.Builder<K, V>().keyType(keyType).valueType(valueType);
+        return store.openMap(name, builder);
+    }
+
+    @Override
+    public String getMapName(int id) {
+        return store.getMapName(id);
+    }
 }

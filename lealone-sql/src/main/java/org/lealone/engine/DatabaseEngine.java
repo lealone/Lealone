@@ -26,6 +26,7 @@ import org.lealone.command.CommandInterface;
 import org.lealone.command.Parser;
 import org.lealone.dbobject.User;
 import org.lealone.message.DbException;
+import org.lealone.storage.StorageEngineManager;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
 
@@ -38,11 +39,19 @@ public class DatabaseEngine implements SessionFactory {
     private static final HashMap<String, Database> DATABASES = New.hashMap();
     private static final DatabaseEngine INSTANCE = new DatabaseEngine();
 
+    private static String hostAndPort;
+
+    public static String getHostAndPort() {
+        return hostAndPort;
+    }
+
     public static DatabaseEngine getInstance() {
         return INSTANCE;
     }
 
-    public static synchronized void init(String baseDir) {
+    public static synchronized void init(String baseDir, String host, int port) {
+        hostAndPort = host + ":" + port;
+
         StorageEngineManager.initStorageEngines();
         SystemDatabase.init(baseDir);
 

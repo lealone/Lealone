@@ -19,16 +19,16 @@ import org.lealone.compress.CompressTool;
 import org.lealone.engine.Constants;
 import org.lealone.engine.DataHandler;
 import org.lealone.engine.Database;
-import org.lealone.engine.FileStore;
-import org.lealone.engine.FileStoreInputStream;
-import org.lealone.engine.FileStoreOutputStream;
-import org.lealone.engine.LobStorageInterface;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.expression.Expression;
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.security.SHA256;
+import org.lealone.storage.FileStore;
+import org.lealone.storage.FileStoreInputStream;
+import org.lealone.storage.FileStoreOutputStream;
+import org.lealone.storage.LobStorage;
 import org.lealone.util.IOUtils;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.util.TempFileDeleter;
@@ -245,7 +245,7 @@ abstract class ScriptBase extends Prepared implements DataHandler {
     }
 
     @Override
-    public LobStorageInterface getLobStorage() {
+    public LobStorage getLobStorage() {
         return null;
     }
 

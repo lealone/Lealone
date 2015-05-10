@@ -27,8 +27,8 @@ class VersionedValue {
         buff.append(", operationId = ").append(operationId);
 
         if (operationId != 0) {
-            buff.append(", transactionId = ").append(DefaultTransactionEngine.getTransactionId(operationId));
-            buff.append(", logId = ").append(DefaultTransactionEngine.getLogId(operationId));
+            buff.append(", transactionId = ").append(MVCCTransactionEngine.getTransactionId(operationId));
+            buff.append(", logId = ").append(MVCCTransactionEngine.getLogId(operationId));
         }
 
         buff.append("]");

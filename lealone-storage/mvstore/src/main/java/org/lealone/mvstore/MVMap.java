@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
-import org.lealone.engine.StorageMap;
+import org.lealone.storage.StorageMap;
 import org.lealone.type.DataType;
 import org.lealone.type.ObjectDataType;
 import org.lealone.util.DataUtils;

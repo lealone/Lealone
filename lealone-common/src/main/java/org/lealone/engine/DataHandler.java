@@ -9,6 +9,8 @@ package org.lealone.engine;
 import java.sql.Connection;
 
 import org.lealone.message.DbException;
+import org.lealone.storage.FileStore;
+import org.lealone.storage.LobStorage;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.util.TempFileDeleter;
 
@@ -91,7 +93,7 @@ public interface DataHandler {
      *
      * @return the lob storage mechanism
      */
-    LobStorageInterface getLobStorage();
+    LobStorage getLobStorage();
 
     /**
      * Get a database connection to be used for LOB access.

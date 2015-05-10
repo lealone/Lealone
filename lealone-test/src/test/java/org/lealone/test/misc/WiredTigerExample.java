@@ -21,7 +21,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import org.lealone.engine.WTStorageEngine;
+import org.lealone.storage.WTStorageEngine;
 import org.lealone.test.TestBase;
 
 public class WiredTigerExample {

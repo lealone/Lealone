@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +15,7 @@ import org.lealone.value.ValueLobDb;
 /**
  * A mechanism to store and retrieve lob data.
  */
-public interface LobStorageInterface {
+public interface LobStorage {
 
     /**
      * The name of the lob data table. If this table exists, then lob storage is

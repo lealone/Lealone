@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.io.File;
 import java.util.HashMap;
@@ -24,8 +24,6 @@ import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.MVTable;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Database;
-import org.lealone.engine.StorageEngineManager;
-import org.lealone.engine.TransactionStorageEngine;
 
 import com.wiredtiger.db.Connection;
 import com.wiredtiger.db.wiredtiger;

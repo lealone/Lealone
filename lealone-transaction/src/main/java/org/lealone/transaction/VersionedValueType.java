@@ -105,5 +105,4 @@ class VersionedValueType implements DataType {
             valueType.write(buff, v.value);
         }
     }
-
 }

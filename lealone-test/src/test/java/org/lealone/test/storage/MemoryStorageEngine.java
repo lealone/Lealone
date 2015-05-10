@@ -20,12 +20,13 @@ package org.lealone.test.storage;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.engine.MVStorageEngine;
-import org.lealone.engine.StorageEngineManager;
-import org.lealone.engine.StorageMap;
+import org.lealone.storage.MVStorageEngine;
+import org.lealone.storage.StorageEngineManager;
+import org.lealone.storage.StorageMap;
 import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
 import org.lealone.type.DataType;
@@ -44,7 +45,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         CRUDExample.main(args);
     }
 
-    //如果配置了META-INF/services/org.lealone.engine.StorageEngine
+    //如果配置了META-INF/services/org.lealone.storage.StorageEngine
     //就不需要调用这个方法了，会自动注册
     public static void register() {
         StorageEngineManager.registerStorageEngine(new MemoryStorageEngine());
@@ -59,10 +60,17 @@ public class MemoryStorageEngine extends MVStorageEngine {
         return NAME;
     }
 
-    static class MemoryMapBuilder extends StorageMap.BuilderBase {
+    private static ConcurrentHashMap<Integer, String> mapNames = new ConcurrentHashMap<>();
+
+    public static class MemoryMapBuilder extends StorageMap.BuilderBase {
         @Override
         public <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
             return new MemoryMap<K, V>(name, keyType, valueType);
+        }
+
+        @Override
+        public String getMapName(int id) {
+            return mapNames.get(id);
         }
     }
 
@@ -135,6 +143,8 @@ public class MemoryStorageEngine extends MVStorageEngine {
             this.keyType = keyType;
             this.valueType = valueType;
             id = counter.incrementAndGet();
+
+            mapNames.put(id, name);
         }
 
         @Override

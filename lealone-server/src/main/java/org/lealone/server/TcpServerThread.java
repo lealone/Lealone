@@ -24,7 +24,6 @@ import org.lealone.command.Command;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Constants;
 import org.lealone.engine.FrontendSession;
-import org.lealone.engine.LobStorageInterface;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.expression.Parameter;
@@ -32,7 +31,7 @@ import org.lealone.message.DbException;
 import org.lealone.message.JdbcSQLException;
 import org.lealone.result.ResultColumn;
 import org.lealone.result.ResultInterface;
-import org.lealone.transaction.TransactionStatusTable;
+import org.lealone.storage.LobStorage;
 import org.lealone.util.IOUtils;
 import org.lealone.util.New;
 import org.lealone.util.SmallLRUCache;
@@ -482,7 +481,7 @@ public class TcpServerThread implements Runnable {
         }
         case FrontendSession.COMMAND_EXECUTE_TRANSACTION_VALIDATE: {
             int old = session.getModificationId();
-            boolean isValid = TransactionStatusTable.isValid(transfer.readString());
+            boolean isValid = session.getDatabase().getTransactionEngine().isValid(transfer.readString());
             int status;
             if (session.isClosed()) {
                 status = FrontendSession.STATUS_CLOSED;
@@ -590,7 +589,7 @@ public class TcpServerThread implements Runnable {
             int length = transfer.readInt();
             transfer.verifyLobMac(hmac, lobId);
             if (in.getPos() != offset) {
-                LobStorageInterface lobStorage = session.getDataHandler().getLobStorage();
+                LobStorage lobStorage = session.getDataHandler().getLobStorage();
                 // only the lob id is used
                 ValueLobDb lob = ValueLobDb.create(Value.BLOB, null, -1, lobId, hmac, -1);
                 InputStream lobIn = lobStorage.getInputStream(lob, hmac, -1);

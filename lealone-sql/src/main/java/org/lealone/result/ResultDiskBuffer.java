@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Data;
 import org.lealone.engine.Database;
-import org.lealone.engine.FileStore;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
+import org.lealone.storage.FileStore;
 import org.lealone.util.New;
 import org.lealone.value.Value;
 

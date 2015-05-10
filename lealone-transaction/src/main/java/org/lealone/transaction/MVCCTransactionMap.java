@@ -8,9 +8,7 @@ package org.lealone.transaction;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.lealone.engine.Session;
-import org.lealone.engine.StorageMap;
-import org.lealone.engine.TransactionMap;
+import org.lealone.storage.StorageMap;
 import org.lealone.type.DataType;
 import org.lealone.util.DataUtils;
 
@@ -20,7 +18,7 @@ import org.lealone.util.DataUtils;
  * @param <K> the key type
  * @param <V> the value type
  */
-public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
+public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
     /**
      * The map id.
@@ -43,9 +41,9 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
      */
     public final StorageMap<K, VersionedValue> map;
 
-    private final Transaction transaction;
+    private final MVCCTransaction transaction;
 
-    DefaultTransactionMap(Transaction transaction, StorageMap<K, VersionedValue> map, int mapId) {
+    MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, VersionedValue> map, int mapId) {
         this.transaction = transaction;
         this.map = map;
         this.mapId = mapId;
@@ -68,8 +66,9 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
      * @param savepoint the savepoint
      * @return the map
      */
-    public DefaultTransactionMap<K, V> getInstance(Transaction transaction, long savepoint) {
-        DefaultTransactionMap<K, V> m = new DefaultTransactionMap<K, V>(transaction, map, mapId);
+    @Override
+    public TransactionMap<K, V> getInstance(Transaction transaction, long savepoint) {
+        MVCCTransactionMap<K, V> m = new MVCCTransactionMap<K, V>((MVCCTransaction) transaction, map, mapId);
         m.setSavepoint(savepoint);
         return m;
     }
@@ -105,7 +104,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
             // the undo log is larger than the map -
             // count the entries of the map
             long size = 0;
-            org.lealone.engine.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(null);
+            org.lealone.storage.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(null);
             while (cursor.hasNext()) {
                 K key = cursor.next();
                 VersionedValue data = cursor.getValue();
@@ -142,7 +141,8 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
                     }
                 }
             } finally {
-                transaction.transactionEngine.store.removeMap(temp);
+                //transaction.transactionEngine.store.removeMap(temp);
+                temp.remove();
             }
             return size;
         }
@@ -251,7 +251,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
         if (onlyIfUnchanged) {
             VersionedValue old = getValue(key, readLogId);
             if (!map.areValuesEqual(old, current)) {
-                long tx = DefaultTransactionEngine.getTransactionId(current.operationId);
+                long tx = MVCCTransactionEngine.getTransactionId(current.operationId);
                 if (tx == transaction.transactionId) {
                     if (value == null) {
                         // ignore removing an entry
@@ -270,7 +270,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
             }
         }
         VersionedValue newValue = new VersionedValue();
-        newValue.operationId = DefaultTransactionEngine.getOperationId(transaction.transactionId, transaction.logId);
+        newValue.operationId = MVCCTransactionEngine.getOperationId(transaction.transactionId, transaction.logId);
         newValue.value = value;
         if (current == null) {
             // a new value
@@ -295,7 +295,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
             }
             return true;
         }
-        int tx = DefaultTransactionEngine.getTransactionId(current.operationId);
+        int tx = MVCCTransactionEngine.getTransactionId(current.operationId);
         if (tx == transaction.transactionId) {
             // added or updated by this transaction
             transaction.log(mapId, key, current);
@@ -309,8 +309,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
         }
 
         if (tx % 2 == 1) {
-            boolean isValid = transaction.transactionEngine.validateTransaction(transaction.getSession(), tx,
-                    transaction);
+            boolean isValid = transaction.transactionEngine.validateTransaction(transaction.validator, tx, transaction);
             if (isValid) {
                 transaction.transactionEngine.commitAfterValidate(tx);
                 return trySet(key, value, onlyIfUnchanged);
@@ -379,7 +378,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
             // doesn't exist or deleted by a committed transaction
             return false;
         }
-        int tx = DefaultTransactionEngine.getTransactionId(data.operationId);
+        int tx = MVCCTransactionEngine.getTransactionId(data.operationId);
         return tx == transaction.transactionId;
     }
 
@@ -407,16 +406,16 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
                 // it is committed
                 return data;
             }
-            int tx = DefaultTransactionEngine.getTransactionId(id);
+            int tx = MVCCTransactionEngine.getTransactionId(id);
             if (tx == transaction.transactionId) {
                 // added by this transaction
-                if (DefaultTransactionEngine.getLogId(id) < maxLog) {
+                if (MVCCTransactionEngine.getLogId(id) < maxLog) {
                     return data;
                 }
             }
 
             if (tx % 2 == 1) {
-                boolean isValid = transaction.transactionEngine.validateTransaction(transaction.getSession(), tx,
+                boolean isValid = transaction.transactionEngine.validateTransaction(transaction.validator, tx,
                         transaction);
                 if (isValid) {
                     transaction.transactionEngine.commitAfterValidate(tx);
@@ -571,7 +570,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
     public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
         return new Iterator<K>() {
             private K currentKey = from;
-            private org.lealone.engine.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
+            private org.lealone.storage.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
 
             {
                 fetchNext();
@@ -641,7 +640,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
         return new Iterator<Entry<K, V>>() {
             private Entry<K, V> current;
             private K currentKey = from;
-            private org.lealone.engine.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
+            private org.lealone.storage.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
 
             {
                 fetchNext();
@@ -765,13 +764,7 @@ public class DefaultTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public TransactionMap<K, V> getInstance(Session session, long savepoint) {
-        return getInstance((Transaction) session.getTransaction(), savepoint);
-    }
-
-    @Override
-    public void removeMap(Session session) {
+    public void removeMap() {
         map.remove();
     }
-
 }

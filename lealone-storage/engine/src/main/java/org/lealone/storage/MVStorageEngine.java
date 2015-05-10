@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.io.InputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
@@ -19,15 +19,21 @@ import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.index.ValueDataType;
 import org.lealone.dbobject.table.MVTable;
 import org.lealone.dbobject.table.Table;
+import org.lealone.engine.Constants;
+import org.lealone.engine.Database;
+import org.lealone.engine.DatabaseEngine;
+import org.lealone.engine.InDoubtTransaction;
+import org.lealone.engine.Session;
 import org.lealone.fs.FileChannelInputStream;
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.MVStoreTool;
-import org.lealone.transaction.DefaultTransactionEngine;
-import org.lealone.transaction.DefaultTransactionMap;
-import org.lealone.transaction.Transaction;
+import org.lealone.transaction.MVCCTransaction;
+import org.lealone.transaction.MVCCTransactionEngine;
+import org.lealone.transaction.MVCCTransactionMap;
+import org.lealone.transaction.TransactionMap;
 import org.lealone.type.DataType;
 import org.lealone.util.BitField;
 import org.lealone.util.DataUtils;
@@ -189,25 +195,23 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
         /**
          * The transaction engine.
          */
-        private final DefaultTransactionEngine transactionEngine;
+        private final MVCCTransactionEngine transactionEngine;
 
         private long statisticsStart;
 
         private int temporaryMapId;
-
-        private final Database db;
 
         public Store(Database db, MVStore.Builder builder) {
             this(db, builder, null);
         }
 
         public Store(Database db, MVStore.Builder builder, StorageMap.Builder mapBuilder) {
-            this.db = db;
             this.store = builder.open();
             if (mapBuilder == null)
                 mapBuilder = new MVMapBuilder(store);
-            this.transactionEngine = new DefaultTransactionEngine(store, new ValueDataType(null, db, null), mapBuilder);
-            transactionEngine.init();
+            this.transactionEngine = new MVCCTransactionEngine(new ValueDataType(null, db, null), mapBuilder,
+                    DatabaseEngine.getHostAndPort());
+            transactionEngine.init(store.getMapNames());
             initTransactions();
         }
 
@@ -215,7 +219,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
             return store;
         }
 
-        public DefaultTransactionEngine getTransactionEngine() {
+        public MVCCTransactionEngine getTransactionEngine() {
             return transactionEngine;
         }
 
@@ -260,11 +264,11 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * rollback all open transactions.
          */
         public void initTransactions() {
-            List<Transaction> list = transactionEngine.getOpenTransactions(db.getSystemSession());
-            for (Transaction t : list) {
-                if (t.getStatus() == Transaction.STATUS_COMMITTING) {
+            List<MVCCTransaction> list = transactionEngine.getOpenTransactions();
+            for (MVCCTransaction t : list) {
+                if (t.getStatus() == MVCCTransaction.STATUS_COMMITTING) {
                     t.commit();
-                } else if (t.getStatus() != Transaction.STATUS_PREPARED) {
+                } else if (t.getStatus() != MVCCTransaction.STATUS_PREPARED) {
                     t.rollback();
                 }
             }
@@ -285,8 +289,8 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
                     if (!objectIds.get(id)) {
                         ValueDataType keyType = new ValueDataType(null, null, null);
                         ValueDataType valueType = new ValueDataType(null, null, null);
-                        Transaction t = transactionEngine.beginTransaction(db.getSystemSession());
-                        DefaultTransactionMap<?, ?> m = t.openMap(mapName, keyType, valueType);
+                        MVCCTransaction t = transactionEngine.beginTransaction(false);
+                        MVCCTransactionMap<?, ?> m = t.openMap(mapName, keyType, valueType);
                         transactionEngine.removeMap(m);
                         t.commit();
                     }
@@ -310,17 +314,17 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * @param transactionName the transaction name (may be null)
          */
         public void prepareCommit(Session session, String transactionName) {
-            Transaction t = (Transaction) session.getTransaction();
+            MVCCTransaction t = (MVCCTransaction) session.getTransaction();
             t.setName(transactionName);
             t.prepare();
             store.commit();
         }
 
         public ArrayList<InDoubtTransaction> getInDoubtTransactions() {
-            List<Transaction> list = transactionEngine.getOpenTransactions(db.getSystemSession());
+            List<MVCCTransaction> list = transactionEngine.getOpenTransactions();
             ArrayList<InDoubtTransaction> result = New.arrayList();
-            for (Transaction t : list) {
-                if (t.getStatus() == Transaction.STATUS_PREPARED) {
+            for (MVCCTransaction t : list) {
+                if (t.getStatus() == MVCCTransaction.STATUS_PREPARED) {
                     result.add(new MVInDoubtTransaction(store, t));
                 }
             }
@@ -439,10 +443,10 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     private static class MVInDoubtTransaction implements InDoubtTransaction {
 
         private final MVStore store;
-        private final Transaction transaction;
+        private final MVCCTransaction transaction;
         private int state = InDoubtTransaction.IN_DOUBT;
 
-        MVInDoubtTransaction(MVStore store, Transaction transaction) {
+        MVInDoubtTransaction(MVStore store, MVCCTransaction transaction) {
             this.store = store;
             this.transaction = transaction;
         }
@@ -501,7 +505,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
 
     @Override
     public <K, V> TransactionMap<K, V> openMap(Session session, String name, DataType keyType, DataType valueType) {
-        return ((Transaction) session.getTransaction()).openMap(name, keyType, valueType);
+        return ((MVCCTransaction) session.getTransaction()).openMap(name, keyType, valueType);
     }
 
 }

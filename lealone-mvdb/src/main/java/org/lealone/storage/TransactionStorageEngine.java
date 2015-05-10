@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import org.lealone.dbobject.table.MVTable;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
+import org.lealone.transaction.TransactionMap;
 import org.lealone.type.DataType;
 
 public interface TransactionStorageEngine {

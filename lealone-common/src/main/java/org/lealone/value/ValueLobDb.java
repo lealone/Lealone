@@ -16,13 +16,13 @@ import java.sql.SQLException;
 
 import org.lealone.engine.Constants;
 import org.lealone.engine.DataHandler;
-import org.lealone.engine.FileStore;
-import org.lealone.engine.FileStoreInputStream;
-import org.lealone.engine.FileStoreOutputStream;
-import org.lealone.engine.LobStorageInterface;
 import org.lealone.engine.SysProperties;
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
+import org.lealone.storage.FileStore;
+import org.lealone.storage.FileStoreInputStream;
+import org.lealone.storage.FileStoreOutputStream;
+import org.lealone.storage.LobStorage;
 import org.lealone.util.DataUtils;
 import org.lealone.util.IOUtils;
 import org.lealone.util.MathUtils;
@@ -195,7 +195,7 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
 
     @Override
     public boolean isLinked() {
-        return tableId != LobStorageInterface.TABLE_ID_SESSION_VARIABLE && small == null;
+        return tableId != LobStorage.TABLE_ID_SESSION_VARIABLE && small == null;
     }
 
     public boolean isStored() {
@@ -221,23 +221,23 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
 
     @Override
     public void unlink(DataHandler database) {
-        if (small == null && tableId != LobStorageInterface.TABLE_ID_SESSION_VARIABLE) {
-            database.getLobStorage().setTable(this, LobStorageInterface.TABLE_ID_SESSION_VARIABLE);
-            tableId = LobStorageInterface.TABLE_ID_SESSION_VARIABLE;
+        if (small == null && tableId != LobStorage.TABLE_ID_SESSION_VARIABLE) {
+            database.getLobStorage().setTable(this, LobStorage.TABLE_ID_SESSION_VARIABLE);
+            tableId = LobStorage.TABLE_ID_SESSION_VARIABLE;
         }
     }
 
     @Override
     public Value link(DataHandler database, int tabId) {
         if (small == null) {
-            if (tableId == LobStorageInterface.TABLE_TEMP) {
+            if (tableId == LobStorage.TABLE_TEMP) {
                 database.getLobStorage().setTable(this, tabId);
                 this.tableId = tabId;
             } else {
                 return handler.getLobStorage().copyLob(this, tabId, getPrecision());
             }
         } else if (small.length > database.getMaxLengthInplaceLob()) {
-            LobStorageInterface s = database.getLobStorage();
+            LobStorage s = database.getLobStorage();
             Value v;
             if (type == Value.BLOB) {
                 v = s.createBlob(getInputStream(), getPrecision());
@@ -473,11 +473,11 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
         if (handler == null) {
             return this;
         }
-        LobStorageInterface s = handler.getLobStorage();
+        LobStorage s = handler.getLobStorage();
         if (s.isReadOnly()) {
             return this;
         }
-        return s.copyLob(this, LobStorageInterface.TABLE_RESULT, getPrecision());
+        return s.copyLob(this, LobStorage.TABLE_RESULT, getPrecision());
     }
 
     public long getLobId() {

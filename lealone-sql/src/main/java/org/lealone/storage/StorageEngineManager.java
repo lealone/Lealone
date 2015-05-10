@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.lealone.engine.DbSettings;
 import org.lealone.message.DbException;
 
 public class StorageEngineManager {

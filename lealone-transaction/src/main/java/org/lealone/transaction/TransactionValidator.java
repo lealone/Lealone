@@ -19,18 +19,14 @@ package org.lealone.transaction;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.lealone.command.router.FrontendSessionPool;
 import org.lealone.engine.Constants;
-import org.lealone.engine.FrontendSession;
-import org.lealone.message.DbException;
 
 class TransactionValidator extends Thread {
 
-    private static final QueuedMessage CLOSE_SENTINEL = new QueuedMessage(null, null, 0, null, null);
+    private static final QueuedMessage CLOSE_SENTINEL = new QueuedMessage(null, null, null);
 
     private static final TransactionValidator INSTANCE = new TransactionValidator();
 
@@ -83,8 +79,8 @@ class TransactionValidator extends Thread {
         boolean isFullSuccessful = true;
 
         for (String localTransactionName : allLocalTransactionNames) {
-            if (!localTransactionName.startsWith(TransactionManager.getHostAndPort())) {
-                if (!validate(qm.dbName, qm.properties, localTransactionName)) {
+            if (!localTransactionName.startsWith(qm.transactionEngine.hostAndPort)) {
+                if (!qm.t.validator.validateTransaction(localTransactionName)) {
                     isFullSuccessful = false;
                     break;
                 }
@@ -92,47 +88,27 @@ class TransactionValidator extends Thread {
         }
 
         if (isFullSuccessful) {
-            qm.transactionEngine.commitAfterValidate(qm.tid);
+            qm.transactionEngine.commitAfterValidate(qm.t.transactionId);
         }
     }
 
-    public void enqueue(String dbName, DefaultTransactionEngine transactionEngine, int tid, Properties properties,
-            String allLocalTransactionNames) {
+    public void enqueue(MVCCTransactionEngine transactionEngine, MVCCTransaction t, String allLocalTransactionNames) {
         try {
-            backlog.put(new QueuedMessage(dbName, transactionEngine, tid, properties, allLocalTransactionNames));
+            backlog.put(new QueuedMessage(transactionEngine, t, allLocalTransactionNames));
         } catch (InterruptedException e) {
             throw new AssertionError(e);
         }
     }
 
     private static class QueuedMessage {
-        final DefaultTransactionEngine transactionEngine;
-        final String dbName;
-        final int tid;
-        final Properties properties;
+        final MVCCTransactionEngine transactionEngine;
+        final MVCCTransaction t;
         final String allLocalTransactionNames;
 
-        QueuedMessage(String dbName, DefaultTransactionEngine transactionEngine, int tid, Properties properties,
-                String allLocalTransactionNames) {
-            this.dbName = dbName;
+        QueuedMessage(MVCCTransactionEngine transactionEngine, MVCCTransaction t, String allLocalTransactionNames) {
             this.transactionEngine = transactionEngine;
-            this.tid = tid;
-            this.properties = properties;
+            this.t = t;
             this.allLocalTransactionNames = allLocalTransactionNames;
-        }
-    }
-
-    private static boolean validate(String dbName, Properties properties, String localTransactionName) {
-        String[] a = localTransactionName.split(":");
-
-        FrontendSession fs = null;
-        try {
-            fs = FrontendSessionPool.getFrontendSession(properties, createURL(dbName, a[0], a[1]));
-            return fs.validateTransaction(localTransactionName);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            FrontendSessionPool.release(fs);
         }
     }
 

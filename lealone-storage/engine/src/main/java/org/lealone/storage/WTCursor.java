@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import org.lealone.util.DataUtils;
 
 @SuppressWarnings("unchecked")
-public class WTCursor<K, V> implements org.lealone.engine.StorageMap.Cursor<K, V> {
+public class WTCursor<K, V> implements org.lealone.storage.StorageMap.Cursor<K, V> {
 
     private final com.wiredtiger.db.Cursor wtCursor;
     private final WTMap<K, V> map;

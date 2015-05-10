@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.lealone.engine;
+package org.lealone.transaction;
 
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.lealone.engine.Session;
 import org.lealone.type.DataType;
 
 public interface TransactionMap<K, V> {
@@ -54,7 +53,7 @@ public interface TransactionMap<K, V> {
      * @param savepoint the savepoint
      * @return the map
      */
-    public TransactionMap<K, V> getInstance(Session session, long savepoint);
+    public TransactionMap<K, V> getInstance(Transaction transaction, long savepoint);
 
     /**
      * Get the most recent value for the given key.
@@ -111,7 +110,7 @@ public interface TransactionMap<K, V> {
      */
     public boolean isClosed();
 
-    public void removeMap(Session session);
+    public void removeMap();
 
     /**
      * Clear the map.

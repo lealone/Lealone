@@ -48,6 +48,10 @@ import org.lealone.message.Trace;
 import org.lealone.message.TraceSystem;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
+import org.lealone.storage.FileStore;
+import org.lealone.storage.LobStorage;
+import org.lealone.storage.StorageEngine;
+import org.lealone.transaction.TransactionEngine;
 import org.lealone.util.BitField;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
@@ -156,7 +160,7 @@ public class Database implements DataHandler {
     private int compactMode;
     private SourceCompiler compiler;
     private volatile boolean metaTablesInitialized;
-    private LobStorageInterface lobStorage;
+    private LobStorage lobStorage;
     private int pageSize;
     private int defaultTableType = Table.TYPE_CACHED;
     private DbSettings dbSettings;
@@ -956,11 +960,11 @@ public class Database implements DataHandler {
         }
         // remove all session variables
         if (persistent) {
-            boolean lobStorageIsUsed = infoSchema.findTableOrView(systemSession, LobStorageInterface.LOB_DATA_TABLE) != null;
+            boolean lobStorageIsUsed = infoSchema.findTableOrView(systemSession, LobStorage.LOB_DATA_TABLE) != null;
             if (lobStorageIsUsed) {
                 try {
                     getLobStorage();
-                    lobStorage.removeAllForTable(LobStorageInterface.TABLE_ID_SESSION_VARIABLE);
+                    lobStorage.removeAllForTable(LobStorage.TABLE_ID_SESSION_VARIABLE);
                 } catch (DbException e) {
                     trace.error(e, "close");
                 }
@@ -1948,11 +1952,11 @@ public class Database implements DataHandler {
     }
 
     @Override
-    public LobStorageInterface getLobStorage() {
+    public LobStorage getLobStorage() {
         return lobStorage;
     }
 
-    public void setLobStorage(LobStorageInterface lobStorage) {
+    public void setLobStorage(LobStorage lobStorage) {
         if (lobStorage == null) {
             this.lobStorage = lobStorage;
         }

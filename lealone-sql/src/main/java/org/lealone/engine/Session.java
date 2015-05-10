@@ -38,7 +38,8 @@ import org.lealone.message.TraceSystem;
 import org.lealone.result.ResultInterface;
 import org.lealone.result.Row;
 import org.lealone.result.SubqueryResult;
-import org.lealone.transaction.TransactionInterface;
+import org.lealone.storage.LobStorage;
+import org.lealone.transaction.Transaction;
 import org.lealone.util.New;
 import org.lealone.util.SmallLRUCache;
 import org.lealone.value.Value;
@@ -149,7 +150,7 @@ public class Session extends SessionWithState {
             old = variables.remove(name);
         } else {
             // link LOB values, to make sure we have our own object
-            value = value.link(database, LobStorageInterface.TABLE_ID_SESSION_VARIABLE);
+            value = value.link(database, LobStorage.TABLE_ID_SESSION_VARIABLE);
             old = variables.put(name, value);
         }
         if (old != null) {
@@ -496,7 +497,7 @@ public class Session extends SessionWithState {
             //                }
             //            }
             //避免重复commit
-            TransactionInterface transaction = this.transaction;
+            Transaction transaction = this.transaction;
             this.transaction = null;
             if (allLocalTransactionNames == null)
                 transaction.commit();
@@ -543,7 +544,7 @@ public class Session extends SessionWithState {
         checkCommitRollback();
         currentTransactionName = null;
         if (transaction != null) {
-            TransactionInterface transaction = this.transaction;
+            Transaction transaction = this.transaction;
             this.transaction = null;
             transaction.rollback();
         }
@@ -1343,11 +1344,11 @@ public class Session extends SessionWithState {
         return buff.toString();
     }
 
-    private volatile TransactionInterface transaction;
+    private volatile Transaction transaction;
 
-    public TransactionInterface getTransaction() {
+    public Transaction getTransaction() {
         if (transaction == null) {
-            transaction = database.getTransactionEngine().beginTransaction(this);
+            transaction = database.getTransactionEngine().beginTransaction(autoCommit);
         }
         return transaction;
     }

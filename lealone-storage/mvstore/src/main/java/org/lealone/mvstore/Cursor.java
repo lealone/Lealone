@@ -7,7 +7,7 @@ package org.lealone.mvstore;
 
 import java.util.Iterator;
 
-import org.lealone.engine.StorageMap;
+import org.lealone.storage.StorageMap;
 import org.lealone.util.DataUtils;
 
 /**

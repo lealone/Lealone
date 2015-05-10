@@ -17,11 +17,11 @@ import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
-import org.lealone.engine.StorageEngine;
 import org.lealone.engine.SysProperties;
-import org.lealone.engine.StorageEngineManager;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
+import org.lealone.storage.StorageEngine;
+import org.lealone.storage.StorageEngineManager;
 import org.lealone.util.New;
 import org.lealone.util.Utils;
 

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.engine;
+package org.lealone.storage;
 
 import java.util.Iterator;
 import java.util.Map;
@@ -32,6 +32,8 @@ public interface StorageMap<K, V> {
         <K, V> StorageMap<K, V> openMap(String name, DataType valueType);
 
         <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType);
+
+        String getMapName(int id);
     }
 
     public abstract class BuilderBase implements Builder {

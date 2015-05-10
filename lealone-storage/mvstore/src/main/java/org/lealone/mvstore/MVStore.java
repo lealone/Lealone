@@ -22,9 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.lealone.compress.CompressDeflate;
 import org.lealone.compress.CompressLZF;
 import org.lealone.compress.Compressor;
-import org.lealone.engine.StorageMap;
 import org.lealone.mvstore.Page.PageChildren;
 import org.lealone.mvstore.cache.CacheLongKeyLIRS;
+import org.lealone.storage.StorageMap;
 import org.lealone.type.StringDataType;
 import org.lealone.type.WriteBuffer;
 import org.lealone.util.DataUtils;
@@ -1185,7 +1185,7 @@ public class MVStore {
         DataUtils.checkArgument(testVersion > 0, "Collect references on version 0");
         long readCount = getFileStore().readCount;
         Set<Integer> referenced = New.hashSet();
-        for (org.lealone.engine.StorageMap.Cursor<String, String> c = meta.cursor("root."); c.hasNext();) {
+        for (org.lealone.storage.StorageMap.Cursor<String, String> c = meta.cursor("root."); c.hasNext();) {
             String key = c.next();
             if (!key.startsWith("root.")) {
                 break;
