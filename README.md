@@ -23,6 +23,8 @@
  
 * 插件化存储引擎架构，内置[WiredTiger](https://github.com/wiredtiger/wiredtiger/tree/develop)和[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
 
+* 插件化事务引擎架构，事务处理逻辑与存储分离，内置一个支持MVCC的事务引擎
+
 * SQL语法类似MySQL、PostgreSQL，支持索引、视图、Join、子查询 <br>
   支持触发器、自定义函数、Order By、Group By、聚合
 
