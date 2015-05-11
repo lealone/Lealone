@@ -46,5 +46,4 @@ request_timeout_in_ms: 100000000
 #auto_bootstrap: false
 num_tokens: 2
 
-# pg_server_enabled: true
 

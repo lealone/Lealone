@@ -17,10 +17,12 @@
  */
 package org.lealone.bootstrap;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
+import org.lealone.cluster.config.TransportServerOptions;
+import org.lealone.cluster.config.TransportServerOptions.TcpServerOptions;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.router.P2PRouter;
 import org.lealone.cluster.service.StorageService;
@@ -31,6 +33,7 @@ import org.lealone.command.router.TransactionalRouter;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.server.PgServer;
+import org.lealone.server.Server;
 import org.lealone.server.TcpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,12 +64,12 @@ public class Lealone {
 
             if (config.isClusterMode()) {
                 Router r = createRouter();
-                startServer(r);
-            } else {
-                startTcpServer();
+                startClusterServer(r);
             }
 
-            if (config.pg_server_enabled)
+            startTcpServer();
+
+            if (config.pg_server_options != null && config.pg_server_options.enabled)
                 startPgServer();
         } catch (Exception e) {
             logger.error("Fatal error; unable to start Lealone.  See log for stacktrace.", e);
@@ -82,84 +85,43 @@ public class Lealone {
         logger.info("Base dir: {}", config.base_dir);
     }
 
-    private static void startServer(Router r) throws Exception {
+    private static void startClusterServer(Router r) throws Exception {
         Session.setClusterMode(true);
         Session.setRouter(new TransactionalRouter(r));
-        startTcpServer();
         StorageService.instance.start();
     }
 
     private static void startTcpServer() throws Exception {
-        ArrayList<String> list = new ArrayList<>();
-        list.add("-baseDir");
-        list.add(config.base_dir);
-        list.add("-tcpListenAddress");
-        list.add(config.listen_address);
-        if (config.tcp_port > 0) {
-            list.add("-tcpPort");
-            list.add(Integer.toString(config.tcp_port));
+        if (config.tcp_server_options == null) {
+            config.tcp_server_options = new TcpServerOptions();
+            logger.warn("Use default TcpServer options");
         }
-
-        if (config.tcp_allow_others)
-            list.add("-tcpAllowOthers");
-
-        if (config.tcp_daemon)
-            list.add("-tcpDaemon");
-
-        TcpServer server = new TcpServer();
-
-        server.init(list.toArray(new String[list.size()]));
-        server.start();
-        addTcpServerShutdownHook(server);
-        logger.info("Lealone TcpServer started, listening address: {}, port: {}", config.listen_address,
-                server.getPort());
+        startTransportServer(new TcpServer(), "Tcp", config.tcp_server_options);
     }
 
     private static void startPgServer() throws Exception {
-        ArrayList<String> list = new ArrayList<>();
-        list.add("-baseDir");
-        list.add(config.base_dir);
-        list.add("-pgListenAddress");
-        list.add(config.listen_address);
-        if (config.pg_port > 0) {
-            list.add("-pgPort");
-            list.add(Integer.toString(config.pg_port));
-        }
+        startTransportServer(new PgServer(), "Pg", config.pg_server_options);
+    }
 
-        if (config.pg_allow_others)
-            list.add("-pgAllowOthers");
+    private static void startTransportServer(final Server server, final String prefix, TransportServerOptions options)
+            throws Exception {
+        List<String> optionList = options.getOptions(config);
+        logger.info(prefix + "Server options: {}", optionList);
 
-        if (config.pg_daemon)
-            list.add("-pgDaemon");
-
-        PgServer server = new PgServer();
-
-        server.init(list.toArray(new String[list.size()]));
+        server.init(optionList.toArray(new String[0]));
         server.start();
-        addPgServerShutdownHook(server);
-        logger.info("Lealone PgServer started, listening address: {}, port: {}", config.listen_address,
+
+        Thread t = new Thread(new WrappedRunnable() {
+            @Override
+            public void runMayThrow() throws Exception {
+                server.stop();
+                logger.info("Lealone " + prefix + "Server stopped");
+            }
+        }, prefix + "ServerShutdownHook");
+        Runtime.getRuntime().addShutdownHook(t);
+
+        logger.info("Lealone " + prefix + "Server started, listening address: {}, port: {}", server.getListenAddress(),
                 server.getPort());
-    }
 
-    private static void addTcpServerShutdownHook(final TcpServer server) {
-        Thread t = new Thread(new WrappedRunnable() {
-            @Override
-            public void runMayThrow() throws Exception {
-                server.stop();
-                logger.info("Lealone TcpServer stopped");
-            }
-        }, "TcpServerShutdownHook");
-        Runtime.getRuntime().addShutdownHook(t);
-    }
-
-    private static void addPgServerShutdownHook(final PgServer server) {
-        Thread t = new Thread(new WrappedRunnable() {
-            @Override
-            public void runMayThrow() throws Exception {
-                server.stop();
-                logger.info("Lealone PgServer stopped");
-            }
-        }, "PgServerShutdownHook");
-        Runtime.getRuntime().addShutdownHook(t);
     }
 }

@@ -19,6 +19,8 @@ package org.lealone.cluster.config;
 
 import org.lealone.cluster.config.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.cluster.config.TransportServerOptions.PgServerOptions;
+import org.lealone.cluster.config.TransportServerOptions.TcpServerOptions;
 
 /**
  * A class that contains configuration properties for the lealone node it runs within.
@@ -71,16 +73,8 @@ public class Config {
 
     public String base_dir;
 
-    //TCP Server
-    public Integer tcp_port = 0;
-    public boolean tcp_daemon = false;
-    public boolean tcp_allow_others = true;
-
-    //PG Server
-    public boolean pg_server_enabled = false;
-    public Integer pg_port = 0;
-    public boolean pg_daemon = false;
-    public boolean pg_allow_others = true;
+    public TcpServerOptions tcp_server_options = new TcpServerOptions();
+    public PgServerOptions pg_server_options;
 
     public RunMode run_mode = RunMode.cluster;
 
