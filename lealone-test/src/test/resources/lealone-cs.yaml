@@ -17,4 +17,4 @@
 base_dir: lealone-test-data/cs
 listen_address: 127.0.0.1
 run_mode: client_server
-pg_server_enabled: true
+# pg_server_enabled: true

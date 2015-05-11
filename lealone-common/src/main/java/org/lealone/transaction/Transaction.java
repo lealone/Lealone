@@ -72,8 +72,26 @@ public interface Transaction {
 
     void addParticipant(Participant participant);
 
+    /**
+     * Open a data map.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param name the name of the map
+     * @return the transaction map
+     */
     <K, V> TransactionMap<K, V> openMap(String name);
 
+    /**
+     * Open the map to store the data.
+     *
+     * @param <K> the key type
+     * @param <V> the value type
+     * @param name the name of the map
+     * @param keyType the key data type
+     * @param valueType the value data type
+     * @return the transaction map
+     */
     <K, V> TransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType);
 
     void addSavepoint(String name);

@@ -27,29 +27,6 @@ import org.lealone.util.New;
  */
 public class MVCCTransaction implements Transaction {
 
-    /**
-     * The status of a closed transaction (committed or rolled back).
-     */
-    public static final int STATUS_CLOSED = 0;
-
-    /**
-     * The status of an open transaction.
-     */
-    public static final int STATUS_OPEN = 1;
-
-    /**
-     * The status of a prepared transaction.
-     */
-    public static final int STATUS_PREPARED = 2;
-
-    /**
-     * The status of a transaction that is being committed, but possibly not
-     * yet finished. A transactions can go into this state when the store is
-     * closed while the transaction is committing. When opening a store,
-     * such transactions should be committed.
-     */
-    public static final int STATUS_COMMITTING = 3;
-
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     final MVCCTransactionEngine transactionEngine;
@@ -172,29 +149,11 @@ public class MVCCTransaction implements Transaction {
         participants.add(participant);
     }
 
-    /**
-     * Open a data map.
-     *
-     * @param <K> the key type
-     * @param <V> the value type
-     * @param name the name of the map
-     * @return the transaction map
-     */
     @Override
     public <K, V> MVCCTransactionMap<K, V> openMap(String name) {
         return openMap(name, null, null);
     }
 
-    /**
-     * Open the map to store the data.
-     *
-     * @param <K> the key type
-     * @param <V> the value type
-     * @param name the name of the map
-     * @param keyType the key data type
-     * @param valueType the value data type
-     * @return the transaction map
-     */
     @Override
     public <K, V> MVCCTransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
         checkNotClosed();
@@ -210,7 +169,7 @@ public class MVCCTransaction implements Transaction {
 
         savepoints.put(name, getSavepointId());
 
-        if (!isAutoCommit() && participants != null)
+        if (participants != null && !isAutoCommit())
             parallelSavepoint(true, name);
     }
 
@@ -224,27 +183,26 @@ public class MVCCTransaction implements Transaction {
      */
     @Override
     public void commit() {
-        if (local)
+        if (local) {
             commitLocal();
-        else
+            endTransaction();
+        } else
             commit(null);
     }
 
     @Override
     public void commit(String allLocalTransactionNames) {
-        try {
-            if (allLocalTransactionNames == null)
-                allLocalTransactionNames = getAllLocalTransactionNames();
-            List<Future<Void>> futures = null;
-            if (!isAutoCommit() && participants != null)
-                futures = parallelCommitOrRollback(allLocalTransactionNames);
+        if (allLocalTransactionNames == null)
+            allLocalTransactionNames = getAllLocalTransactionNames();
+        List<Future<Void>> futures = null;
+        if (participants != null && !isAutoCommit())
+            futures = parallelCommitOrRollback(allLocalTransactionNames);
 
-            commitLocalAndTransactionStatusTable(allLocalTransactionNames);
-            if (futures != null)
-                waitFutures(futures);
-        } finally {
-            endTransaction();
-        }
+        commitLocalAndTransactionStatusTable(allLocalTransactionNames);
+        if (futures != null)
+            waitFutures(futures);
+
+        endTransaction();
     }
 
     private void commitLocal() {
@@ -265,6 +223,29 @@ public class MVCCTransaction implements Transaction {
         } catch (Exception e) {
             throw DbException.convert(e);
         }
+    }
+
+    private void endTransaction() {
+        savepoints = null;
+        status = STATUS_CLOSED;
+    }
+
+    private List<Future<Void>> parallelCommitOrRollback(final String allLocalTransactionNames) {
+        int size = participants.size();
+        List<Future<Void>> futures = New.arrayList(size);
+        for (final Participant participant : participants) {
+            futures.add(executorService.submit(new Callable<Void>() {
+                @Override
+                public Void call() throws Exception {
+                    if (allLocalTransactionNames != null)
+                        participant.commitTransaction(allLocalTransactionNames);
+                    else
+                        participant.rollbackTransaction();
+                    return null;
+                }
+            }));
+        }
+        return futures;
     }
 
     /**
@@ -305,7 +286,7 @@ public class MVCCTransaction implements Transaction {
             }
         }
 
-        if (!isAutoCommit() && participants != null)
+        if (participants != null && !isAutoCommit())
             parallelSavepoint(false, name);
     }
 
@@ -363,6 +344,7 @@ public class MVCCTransaction implements Transaction {
      * Prepare the transaction. Afterwards, the transaction can only be
      * committed or rolled back.
      */
+    @Override
     public void prepare() {
         checkNotClosed();
         status = STATUS_PREPARED;
@@ -432,40 +414,6 @@ public class MVCCTransaction implements Transaction {
     private String getAllLocalTransactionNames() {
         getLocalTransactionNames();
         return localTransactionNamesBuilder.toString();
-    }
-
-    private void endTransaction() {
-        savepoints = null;
-
-        //        if (!session.getFrontendSessionCache().isEmpty()) {
-        //            for (FrontendSession fs : session.getFrontendSessionCache().values()) {
-        //                fs.setTransaction(null);
-        //                FrontendSessionPool.release(fs);
-        //            }
-        //
-        //            session.getFrontendSessionCache().clear();
-        //        }
-        //
-        //        if (!session.isRoot())
-        //            session.setAutoCommit(true);
-    }
-
-    private List<Future<Void>> parallelCommitOrRollback(final String allLocalTransactionNames) {
-        int size = participants.size();
-        List<Future<Void>> futures = New.arrayList(size);
-        for (final Participant participant : participants) {
-            futures.add(executorService.submit(new Callable<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    if (allLocalTransactionNames != null)
-                        participant.commitTransaction(allLocalTransactionNames);
-                    else
-                        participant.rollbackTransaction();
-                    return null;
-                }
-            }));
-        }
-        return futures;
     }
 
     static String getTransactionName(String hostAndPort, long tid) {

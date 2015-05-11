@@ -37,7 +37,8 @@ import org.lealone.value.Value;
  * The client side part of a session when using the server mode. This object
  * communicates with a Session on the server side.
  */
-public class FrontendSession extends SessionWithState implements DataHandler {
+public class FrontendSession extends SessionWithState implements DataHandler, Transaction.Participant,
+        Transaction.Validator {
 
     public static final int SESSION_PREPARE = 0;
     public static final int SESSION_CLOSE = 1;
@@ -639,6 +640,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         return 1;
     }
 
+    @Override
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
@@ -649,6 +651,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         }
     }
 
+    @Override
     public synchronized void rollbackTransaction() {
         checkClosed();
         try {
@@ -659,6 +662,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         }
     }
 
+    @Override
     public synchronized void addSavepoint(String name) {
         checkClosed();
         try {
@@ -669,6 +673,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         }
     }
 
+    @Override
     public synchronized void rollbackToSavepoint(String name) {
         checkClosed();
         try {
@@ -679,6 +684,7 @@ public class FrontendSession extends SessionWithState implements DataHandler {
         }
     }
 
+    @Override
     public synchronized boolean validateTransaction(String localTransactionName) {
         checkClosed();
         try {
@@ -724,15 +730,5 @@ public class FrontendSession extends SessionWithState implements DataHandler {
             }
         }
     }
-
-    //    private boolean distributed;
-    //
-    //    public void setDistributed(boolean distributed) {
-    //        this.distributed = distributed;
-    //    }
-    //
-    //    public boolean isDistributed() {
-    //        return distributed;
-    //    }
 
 }

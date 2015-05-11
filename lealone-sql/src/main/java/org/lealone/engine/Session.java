@@ -503,6 +503,8 @@ public class Session extends SessionWithState {
                 transaction.commit();
             else
                 transaction.commit(allLocalTransactionNames);
+
+            endTransaction();
         }
         if (containsUncommitted()) {
             // need to commit even if rollback is not possible
@@ -531,6 +533,20 @@ public class Session extends SessionWithState {
         unlockAll();
     }
 
+    private void endTransaction() {
+        if (!frontendSessionCache.isEmpty()) {
+            for (FrontendSession fs : frontendSessionCache.values()) {
+                fs.setTransaction(null);
+                FrontendSessionPool.release(fs);
+            }
+
+            frontendSessionCache.clear();
+        }
+
+        if (!isRoot)
+            setAutoCommit(true);
+    }
+
     private void checkCommitRollback() {
         if (commitOrRollbackDisabled && locks.size() > 0) {
             throw DbException.get(ErrorCode.COMMIT_ROLLBACK_NOT_ALLOWED);
@@ -547,6 +563,7 @@ public class Session extends SessionWithState {
             Transaction transaction = this.transaction;
             this.transaction = null;
             transaction.rollback();
+            endTransaction();
         }
         if (locks.size() > 0) {
             database.commit(this);
@@ -1384,6 +1401,8 @@ public class Session extends SessionWithState {
     protected final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
 
     public void addFrontendSession(String url, FrontendSession frontendSession) {
+        if (transaction != null)
+            transaction.addParticipant(frontendSession);
         frontendSessionCache.put(url, frontendSession);
     }
 
