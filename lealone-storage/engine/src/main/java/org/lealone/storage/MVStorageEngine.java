@@ -45,9 +45,6 @@ import org.lealone.util.New;
 public class MVStorageEngine extends StorageEngineBase implements TransactionStorageEngine {
     public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
 
-    private StorageMap.Builder mapBuilder;
-    private TransactionEngine transactionEngine;
-
     //见StorageEngineManager.StorageEngineService中的注释
     public MVStorageEngine() {
         StorageEngineManager.registerStorageEngine(this);
@@ -58,43 +55,13 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
         return NAME;
     }
 
-    public void setMapBuilder(StorageMap.Builder mapBuilder) {
-        this.mapBuilder = mapBuilder;
-    }
-
-    public StorageMap.Builder getMapBuilder() {
-        return mapBuilder;
-    }
-
-    public void setTransactionEngine(TransactionEngine transactionEngine) {
-        this.transactionEngine = transactionEngine;
-    }
-
-    public TransactionEngine getTransactionEngine() {
-        return transactionEngine;
-    }
-
     @Override
-    public Table createTable(CreateTableData data) {
+    public synchronized Table createTable(CreateTableData data) {
         Database db = data.session.getDatabase();
         Store store = stores.get(db.getName());
         if (store == null) {
-            synchronized (stores) {
-                if (stores.get(db.getName()) == null) {
-
-                    store = init(db, mapBuilder, transactionEngine);
-                    stores.put(db.getName(), store);
-
-                    if (mapBuilder == null)
-                        mapBuilder = store.getMapBuilder();
-                    if (transactionEngine == null)
-                        transactionEngine = store.getTransactionEngine();
-
-                    db.setStorageEngine(this);
-                    db.setTransactionEngine(transactionEngine);
-                    db.setLobStorage(new LobStorageMap(db));
-                }
-            }
+            store = init(this, db);
+            stores.put(db.getName(), store);
         }
 
         MVTable table = new MVTable(data, this);
@@ -104,14 +71,25 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     }
 
     @Override
-    public void close(Database db) {
+    public synchronized void close(Database db) {
         stores.remove(db.getName());
     }
 
-    static HashMap<String, Store> stores = new HashMap<String, Store>(1);
+    @Override
+    public synchronized StorageMap.Builder createStorageMapBuilder(String dbName) {
+        return new MVMapBuilder(stores.get(dbName).getStore());
+    }
+
+    @Override
+    public TransactionEngine createTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder,
+            String hostAndPort) {
+        return new MVCCTransactionEngine(dataType, mapBuilder, hostAndPort);
+    }
+
+    static HashMap<String, Store> stores = new HashMap<>(1);
 
     public static Store getStore(Session session) {
-        return stores.get(session.getDatabase().getName());
+        return getStore(session.getDatabase());
     }
 
     public static Store getStore(Database db) {
@@ -124,13 +102,13 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
      * @param db the database
      * @return the store
      */
-    static Store init(final Database db, StorageMap.Builder mapBuilder, TransactionEngine transactionEngine) {
+    static Store init(StorageEngine storageEngine, final Database db) {
         Store store = null;
         byte[] key = db.getFileEncryptionKey();
         String dbPath = db.getDatabasePath();
         MVStore.Builder builder = new MVStore.Builder();
         if (dbPath == null) {
-            store = new Store(db, builder, mapBuilder, transactionEngine);
+            store = new Store(storageEngine, db, builder);
         } else {
             String fileName = dbPath + Constants.SUFFIX_MV_FILE;
             builder.pageSplitSize(db.getPageSize());
@@ -169,7 +147,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
 
             });
             try {
-                store = new Store(db, builder, mapBuilder, transactionEngine);
+                store = new Store(storageEngine, db, builder);
             } catch (IllegalStateException e) {
                 int errorCode = DataUtils.getErrorCode(e.getMessage());
                 if (errorCode == DataUtils.ERROR_FILE_CORRUPT) {
@@ -196,7 +174,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * The map of open tables.
          * Key: the map name, value: the table.
          */
-        final ConcurrentHashMap<String, MVTable> tableMap = new ConcurrentHashMap<String, MVTable>();
+        final ConcurrentHashMap<String, MVTable> tableMap = new ConcurrentHashMap<>();
 
         /**
          * The store.
@@ -207,41 +185,30 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * The transaction engine.
          */
         private final TransactionEngine transactionEngine;
-        private final StorageMap.Builder mapBuilder;
 
         private long statisticsStart;
 
         private int temporaryMapId;
 
-        public Store(Database db, MVStore.Builder builder, StorageMap.Builder mapBuilder,
-                TransactionEngine transactionEngine) {
-            this.store = builder.open();
+        public Store(StorageEngine storageEngine, Database db, MVStore.Builder builder) {
+            store = builder.open();
 
-            if (mapBuilder == null)
-                this.mapBuilder = mapBuilder = new MVMapBuilder(store);
-            else
-                this.mapBuilder = mapBuilder;
+            stores.put(db.getName(), this);
 
-            if (transactionEngine == null)
-                this.transactionEngine = new MVCCTransactionEngine(new ValueDataType(null, db, null), mapBuilder,
-                        DatabaseEngine.getHostAndPort());
-            else
-                this.transactionEngine = transactionEngine;
+            StorageMap.Builder mapBuilder = storageEngine.createStorageMapBuilder(db.getName());
+            transactionEngine = storageEngine.createTransactionEngine(new ValueDataType(null, db, null), mapBuilder,
+                    DatabaseEngine.getHostAndPort());
 
             transactionEngine.init(store.getMapNames());
             initTransactions();
+
+            db.setTransactionEngine(transactionEngine);
+            db.setStorageEngine(storageEngine);
+            db.setLobStorage(new LobStorageMap(db));
         }
 
         public MVStore getStore() {
             return store;
-        }
-
-        public TransactionEngine getTransactionEngine() {
-            return transactionEngine;
-        }
-
-        public StorageMap.Builder getMapBuilder() {
-            return mapBuilder;
         }
 
         public HashMap<String, MVTable> getTables() {

@@ -1957,7 +1957,7 @@ public class Database implements DataHandler {
     }
 
     public void setLobStorage(LobStorage lobStorage) {
-        if (lobStorage == null) {
+        if (lobStorage != null) {
             this.lobStorage = lobStorage;
         }
     }

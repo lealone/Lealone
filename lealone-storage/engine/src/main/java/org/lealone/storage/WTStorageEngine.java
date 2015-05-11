@@ -46,23 +46,15 @@ public class WTStorageEngine extends MVStorageEngine implements TransactionStora
     }
 
     @Override
-    public Table createTable(CreateTableData data) {
+    public synchronized Table createTable(CreateTableData data) {
         Database db = data.session.getDatabase();
         String dbName = db.getName();
         Connection conn = connections.get(dbName);
         if (conn == null) {
-            synchronized (connections) {
-                if (connections.get(dbName) == null) {
-                    conn = createConnection(dbName);
-                    connections.put(dbName, conn);
+            conn = createConnection(dbName);
+            connections.put(dbName, conn);
 
-                    Store store = init(db, new WTMapBuilder(conn.open_session(null)), getTransactionEngine());
-                    stores.put(db.getName(), store);
-                    db.setStorageEngine(this);
-                    db.setTransactionEngine(store.getTransactionEngine());
-                    db.setLobStorage(new LobStorageMap(db));
-                }
-            }
+            init(this, db);
         }
         MVTable table = new MVTable(data, this);
         table.init(data.session);
@@ -70,13 +62,16 @@ public class WTStorageEngine extends MVStorageEngine implements TransactionStora
     }
 
     @Override
-    public void close(Database db) {
+    public synchronized WTMapBuilder createStorageMapBuilder(String dbName) {
+        return new WTMapBuilder(connections.get(dbName).open_session(null));
+    }
+
+    @Override
+    public synchronized void close(Database db) {
         super.close(db);
-        synchronized (connections) {
-            Connection conn = connections.remove(db.getName());
-            if (conn != null) {
-                conn.close(null);
-            }
+        Connection conn = connections.remove(db.getName());
+        if (conn != null) {
+            conn.close(null);
         }
     }
 

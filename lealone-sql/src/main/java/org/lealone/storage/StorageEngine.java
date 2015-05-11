@@ -9,6 +9,8 @@ package org.lealone.storage;
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Database;
+import org.lealone.transaction.TransactionEngine;
+import org.lealone.type.DataType;
 
 /**
  * A class that implements this interface can create custom table
@@ -31,4 +33,8 @@ public interface StorageEngine {
     LobStorage getLobStorage();
 
     void close(Database db);
+
+    StorageMap.Builder createStorageMapBuilder(String dbName);
+
+    TransactionEngine createTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder, String hostAndPort);
 }

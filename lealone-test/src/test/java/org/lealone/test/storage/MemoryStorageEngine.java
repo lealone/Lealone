@@ -29,6 +29,7 @@ import org.lealone.storage.StorageEngineManager;
 import org.lealone.storage.StorageMap;
 import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
+import org.lealone.transaction.TransactionEngine;
 import org.lealone.type.DataType;
 import org.lealone.type.ObjectDataType;
 
@@ -52,9 +53,18 @@ public class MemoryStorageEngine extends MVStorageEngine {
     }
 
     public MemoryStorageEngine() {
-        super();
-        setMapBuilder(new MemoryMapBuilder());
-        //setTransactionEngine(new MemoryTransactionEngine());
+    }
+
+    @Override
+    public StorageMap.Builder createStorageMapBuilder(String dbName) {
+        return new MemoryMapBuilder();
+    }
+
+    @Override
+    public TransactionEngine createTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder,
+            String hostAndPort) {
+        //return new MemoryTransactionEngine();
+        return super.createTransactionEngine(dataType, mapBuilder, hostAndPort);
     }
 
     @Override

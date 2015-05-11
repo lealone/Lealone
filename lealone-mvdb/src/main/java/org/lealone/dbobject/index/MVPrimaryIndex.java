@@ -71,7 +71,6 @@ public class MVPrimaryIndex extends IndexBase {
         ValueDataType keyType = new ValueDataType(null, null, null);
         ValueDataType valueType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         mapName = "table." + getId();
-        //dataMap = mvTable.getTransaction(session).openMap(mapName, keyType, valueType);
         dataMap = storageEngine.openMap(session, mapName, keyType, valueType);
         //Fix bug in MVStore when creating lots of temporary tables, where we could run out of transaction IDs
         session.commit(false);
