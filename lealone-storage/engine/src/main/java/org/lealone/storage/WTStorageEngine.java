@@ -30,7 +30,7 @@ import com.wiredtiger.db.wiredtiger;
 
 public class WTStorageEngine extends MVStorageEngine implements TransactionStorageEngine {
     public static final String NAME = "WT";
-    private static final HashMap<String, Connection> connections = new HashMap<String, Connection>(1);
+    private static final HashMap<String, Connection> connections = new HashMap<>(1);
 
     //见StorageEngineManager.StorageEngineService中的注释
     public WTStorageEngine() {
@@ -69,9 +69,11 @@ public class WTStorageEngine extends MVStorageEngine implements TransactionStora
     @Override
     public void close(Database db) {
         super.close(db);
-        Connection conn = connections.remove(db.getName());
-        if (conn != null) {
-            conn.close(null);
+        synchronized (connections) {
+            Connection conn = connections.remove(db.getName());
+            if (conn != null) {
+                conn.close(null);
+            }
         }
     }
 
