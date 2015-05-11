@@ -20,16 +20,18 @@ package org.lealone.storage;
 
 import org.lealone.util.DataUtils;
 
-@SuppressWarnings("unchecked")
-public class WTCursor<K, V> implements org.lealone.storage.StorageMap.Cursor<K, V> {
+import com.wiredtiger.db.Cursor;
 
-    private final com.wiredtiger.db.Cursor wtCursor;
+@SuppressWarnings("unchecked")
+public class WTCursor<K, V> implements StorageMap.Cursor<K, V> {
+
+    private final Cursor wtCursor;
     private final WTMap<K, V> map;
     private K from;
     private K key;
     private V value;
 
-    public WTCursor(com.wiredtiger.db.Cursor wtCursor, WTMap<K, V> map, K from) {
+    public WTCursor(Cursor wtCursor, WTMap<K, V> map, K from) {
         this.wtCursor = wtCursor;
         this.map = map;
         this.from = from;
@@ -63,21 +65,11 @@ public class WTCursor<K, V> implements org.lealone.storage.StorageMap.Cursor<K, 
         return key;
     }
 
-    /**
-     * Get the last read key if there was one.
-     *
-     * @return the key or null
-     */
     @Override
     public K getKey() {
         return key;
     }
 
-    /**
-     * Get the last read value if there was one.
-     *
-     * @return the value or null
-     */
     @Override
     public V getValue() {
         return value;

@@ -30,11 +30,12 @@ import org.lealone.type.WriteBuffer;
 import org.lealone.util.DataUtils;
 
 import com.wiredtiger.db.SearchStatus;
+import com.wiredtiger.db.Session;
 
 @SuppressWarnings("unchecked")
 public class WTMap<K, V> implements StorageMap<K, V> {
 
-    private final com.wiredtiger.db.Session wtSession;
+    private final Session wtSession;
     private com.wiredtiger.db.Cursor wtCursor;
 
     private final String name;
@@ -45,11 +46,11 @@ public class WTMap<K, V> implements StorageMap<K, V> {
     private WriteBuffer writeBuffer;
     private boolean closed;
 
-    public WTMap(com.wiredtiger.db.Session wtSession, String name) {
+    public WTMap(Session wtSession, String name) {
         this(wtSession, name, new ObjectDataType(), new ObjectDataType());
     }
 
-    public WTMap(com.wiredtiger.db.Session wtSession, String name, DataType keyType, DataType valueType) {
+    public WTMap(Session wtSession, String name, DataType keyType, DataType valueType) {
         this.wtSession = wtSession;
         this.name = name;
         this.keyType = keyType;
@@ -66,7 +67,7 @@ public class WTMap<K, V> implements StorageMap<K, V> {
         wtCursor = wtSession.open_cursor("table:" + name, null, "append");
     }
 
-    private static int getMapId(com.wiredtiger.db.Session wtSession, String name) {
+    private static int getMapId(Session wtSession, String name) {
         wtSession.create("table:lealone_map_id", "key_format=S,value_format=i");
         com.wiredtiger.db.Cursor wtCursor = wtSession.open_cursor("table:lealone_map_id", null, "append");
 

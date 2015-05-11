@@ -28,6 +28,9 @@ import org.lealone.engine.Database;
 import com.wiredtiger.db.Connection;
 import com.wiredtiger.db.wiredtiger;
 
+/**
+ * A storage engine that internally uses the WiredTiger.
+ */
 public class WTStorageEngine extends MVStorageEngine implements TransactionStorageEngine {
     public static final String NAME = "WT";
     private static final HashMap<String, Connection> connections = new HashMap<>(1);

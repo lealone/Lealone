@@ -52,8 +52,18 @@ public interface StorageMap<K, V> {
     }
 
     public interface Cursor<K, V> extends Iterator<K> {
+        /**
+         * Get the last read key if there was one.
+         *
+         * @return the key or null
+         */
         K getKey();
 
+        /**
+         * Get the last read value if there was one.
+         *
+         * @return the value or null
+         */
         V getValue();
     }
 
