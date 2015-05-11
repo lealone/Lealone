@@ -18,13 +18,13 @@
 package org.lealone.engine;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 
-import org.lealone.jdbc.JdbcConnection;
 import org.lealone.message.DbException;
 import org.lealone.util.JdbcUtils;
 import org.lealone.util.New;
@@ -33,7 +33,7 @@ public class SystemDatabase {
 
     public static final String NAME = "system";
 
-    private static JdbcConnection conn;
+    private static Connection conn;
     private static PreparedStatement addDatabase;
     private static PreparedStatement removeDatabase;
     private static PreparedStatement findOne;
@@ -45,17 +45,11 @@ public class SystemDatabase {
                 baseDir = SysProperties.getBaseDir();
             }
 
+            //不需要在URL中加baseDir，最后的实际位置都是baseDir目录或它的子目录
             String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
-            ConnectionInfo ci = new ConnectionInfo(url, NAME);
-            if (baseDir != null)
-                ci.setBaseDir(baseDir);
-            ci.setUserName("DBA");
-            ci.setUserPasswordHash(new byte[0]);
-            ci.setProperty("DEFAULT_STORAGE_ENGINE", Constants.DEFAULT_STORAGE_ENGINE_NAME);
-
             Statement stmt = null;
             try {
-                conn = new JdbcConnection(ci, false);
+                conn = DriverManager.getConnection(url, "DBA", "");
                 stmt = conn.createStatement();
                 stmt.execute("CREATE TABLE IF NOT EXISTS databases" //
                         + "(db_name VARCHAR, storage_engine_name VARCHAR, create_time TIMESTAMP, "//
