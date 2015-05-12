@@ -17,15 +17,12 @@
  */
 package org.lealone.test.sql.ddl;
 
-import static org.junit.Assert.assertTrue;
-
 import java.sql.SQLException;
 
-import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class CreateUserTest extends TestBase {
+public class CreateUserTest extends SqlTestBase {
     @Test
     public void run() {
         executeUpdate("DROP ROLE IF EXISTS sa1");
@@ -54,7 +51,7 @@ public class CreateUserTest extends TestBase {
         executeUpdate("ALTER USER SA2 RENAME TO SA222");
         try {
             stmt.executeUpdate("ALTER USER SA222 ADMIN false");
-            Assert.fail("not throw SQLException");
+            fail("not throw SQLException");
         } catch (SQLException e) {
             assertTrue(e.getMessage().toLowerCase().contains("cannot drop"));
         }

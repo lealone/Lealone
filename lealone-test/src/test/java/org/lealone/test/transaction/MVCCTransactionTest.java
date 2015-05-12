@@ -17,17 +17,17 @@
  */
 package org.lealone.test.transaction;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.lealone.storage.StorageMap;
 import org.lealone.test.TestBase;
+import org.lealone.test.UnitTestBase;
 import org.lealone.test.storage.MemoryStorageEngine;
 import org.lealone.transaction.MVCCTransaction;
 import org.lealone.transaction.MVCCTransactionEngine;
 import org.lealone.transaction.MVCCTransactionMap;
 import org.lealone.type.ObjectDataType;
 
-public class MVCCTransactionTest {
+public class MVCCTransactionTest extends UnitTestBase {
     @Test
     public void run() {
         StorageMap.Builder mapBuilder = new MemoryStorageEngine.MemoryMapBuilder();
@@ -39,20 +39,20 @@ public class MVCCTransactionTest {
         MVCCTransactionMap<String, String> map = t.openMap("test");
         map.put("1", "a");
         map.put("2", "b");
-        Assert.assertEquals("a", map.get("1"));
-        Assert.assertEquals("b", map.get("2"));
+        assertEquals("a", map.get("1"));
+        assertEquals("b", map.get("2"));
 
         t.rollback();
 
         t = e.beginTransaction(false);
 
-        Assert.assertNull(map.get("1"));
-        Assert.assertNull(map.get("2"));
+        assertNull(map.get("1"));
+        assertNull(map.get("2"));
         map = map.getInstance(t, Long.MAX_VALUE);
         map.put("1", "a");
         map.put("2", "b");
         t.commit();
 
-        Assert.assertEquals(2, map.sizeAsLong());
+        assertEquals(2, map.sizeAsLong());
     }
 }

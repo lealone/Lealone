@@ -18,9 +18,9 @@
 package org.lealone.test.sql.ddl;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class CreateAggregateTest extends TestBase {
+public class CreateAggregateTest extends SqlTestBase {
     @Test
     public void run() {
         executeUpdate("DROP AGGREGATE IF EXISTS MEDIAN");

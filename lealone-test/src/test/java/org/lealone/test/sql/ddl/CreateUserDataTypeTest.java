@@ -17,15 +17,12 @@
  */
 package org.lealone.test.sql.ddl;
 
-import static org.junit.Assert.assertTrue;
-
 import java.sql.SQLException;
 
-import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class CreateUserDataTypeTest extends TestBase {
+public class CreateUserDataTypeTest extends SqlTestBase {
     @Test
     public void run() {
         executeUpdate("DROP DOMAIN IF EXISTS EMAIL");
@@ -44,7 +41,7 @@ public class CreateUserDataTypeTest extends TestBase {
         //如CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255)
         try {
             stmt.executeUpdate("CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
-            Assert.fail("not throw SQLException");
+            fail("not throw SQLException");
         } catch (SQLException e) {
             assertTrue(e.getMessage().toLowerCase().contains("user data type"));
         }

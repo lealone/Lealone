@@ -17,16 +17,12 @@
  */
 package org.lealone.test.sql.dml;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertTrue;
-
 import java.sql.ResultSet;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class SelectTest extends TestBase {
+public class SelectTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         createTable("SelectTest");

@@ -17,15 +17,13 @@
  */
 package org.lealone.test.sql.misc;
 
-import static junit.framework.Assert.assertEquals;
-
 import java.sql.CallableStatement;
 import java.sql.Types;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class CallableStatementTest extends TestBase {
+public class CallableStatementTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         init();
@@ -43,7 +41,7 @@ public class CallableStatementTest extends TestBase {
         cs.setDouble(2, 4.0);
         cs.execute();
 
-        assertEquals(2.0, cs.getDouble(1));
+        assertEquals(2.0, cs.getDouble(1), 0.0);
         cs.close();
     }
 }

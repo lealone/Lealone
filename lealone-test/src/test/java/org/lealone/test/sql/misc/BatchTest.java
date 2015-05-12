@@ -17,14 +17,12 @@
  */
 package org.lealone.test.sql.misc;
 
-import static junit.framework.Assert.assertEquals;
-
 import java.sql.PreparedStatement;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class BatchTest extends TestBase {
+public class BatchTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         init();

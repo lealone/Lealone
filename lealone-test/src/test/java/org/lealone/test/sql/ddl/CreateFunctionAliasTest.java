@@ -18,10 +18,10 @@
 package org.lealone.test.sql.ddl;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
 //Ubuntu环境下运行这个测试，如果出现错误找不到javac，需要在~/.profile文件中把$JAVA_HOME/bin加上$PATH中
-public class CreateFunctionAliasTest extends TestBase {
+public class CreateFunctionAliasTest extends SqlTestBase {
     @Test
     public void run() {
         executeUpdate("DROP ALIAS IF EXISTS my_sqrt");

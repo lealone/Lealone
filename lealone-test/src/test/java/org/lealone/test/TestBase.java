@@ -19,34 +19,24 @@ package org.lealone.test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.Assert;
 import org.lealone.engine.Constants;
 
-public class TestBase {
+public class TestBase extends Assert {
     public static final String DEFAULT_STORAGE_ENGINE_NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
     public static final String TEST_DIR = "./lealone-test-data";
     public static final String DB_NAME = "test";
 
     private static final Map<String, String> connectionParameters = new HashMap<>();
     private static String storageEngineName = Constants.DEFAULT_STORAGE_ENGINE_NAME;
-    private static boolean embedded = false;
+    private static boolean embedded = true;
     private static boolean in_memory = false;
 
     private static String host = "localhost";
     private static int port = Constants.DEFAULT_TCP_PORT;
-
-    protected static Connection conn;
-    protected static Statement stmt;
-
-    protected ResultSet rs;
-    protected String sql;
 
     public static void addConnectionParameter(String key, String value) {
         connectionParameters.put(key, value);
@@ -80,10 +70,6 @@ public class TestBase {
         TestBase.port = port;
     }
 
-    public static Connection getConnection() throws Exception {
-        return DriverManager.getConnection(getURL(), "sa", "");
-    }
-
     public static void printURL() {
         System.out.println("JDBC URL: " + getURL());
         System.out.println();
@@ -115,146 +101,8 @@ public class TestBase {
         return url.toString();
     }
 
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-        conn = getConnection();
-        stmt = conn.createStatement();
+    public static Connection getConnection() throws Exception {
+        return DriverManager.getConnection(getURL(), "sa", "");
     }
 
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-        if (stmt != null)
-            stmt.close();
-        if (conn != null)
-            conn.close();
-    }
-
-    public int executeUpdate(String sql) {
-        try {
-            return stmt.executeUpdate(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return -1;
-        }
-    }
-
-    public void createTable(String tableName) {
-        executeUpdate("DROP TABLE IF EXISTS " + tableName);
-        executeUpdate("CREATE TABLE " + tableName + " (pk varchar NOT NULL PRIMARY KEY, " + //
-                "f1 varchar, f2 varchar, f3 int)");
-    }
-
-    private void check() throws Exception {
-        if (rs == null)
-            executeQuery();
-    }
-
-    public int getIntValue(int i) throws Exception {
-        check();
-        return rs.getInt(i);
-    }
-
-    public int getIntValue(int i, boolean closeResultSet) throws Exception {
-        check();
-        try {
-            return rs.getInt(i);
-        } finally {
-            if (closeResultSet)
-                closeResultSet();
-        }
-    }
-
-    public long getLongValue(int i) throws Exception {
-        check();
-        return rs.getLong(i);
-    }
-
-    public long getLongValue(int i, boolean closeResultSet) throws Exception {
-        check();
-        try {
-            return rs.getLong(i);
-        } finally {
-            if (closeResultSet)
-                closeResultSet();
-        }
-    }
-
-    public double getDoubleValue(int i) throws Exception {
-        check();
-        return rs.getDouble(i);
-    }
-
-    public double getDoubleValue(int i, boolean closeResultSet) throws Exception {
-        check();
-        try {
-            return rs.getDouble(i);
-        } finally {
-            if (closeResultSet)
-                closeResultSet();
-        }
-    }
-
-    public String getStringValue(int i) throws Exception {
-        check();
-        return rs.getString(i);
-    }
-
-    public String getStringValue(int i, boolean closeResultSet) throws Exception {
-        check();
-        try {
-            return rs.getString(i);
-        } finally {
-            if (closeResultSet)
-                closeResultSet();
-        }
-    }
-
-    public boolean getBooleanValue(int i) throws Exception {
-        check();
-        return rs.getBoolean(i);
-    }
-
-    public boolean getBooleanValue(int i, boolean closeResultSet) throws Exception {
-        check();
-        try {
-            return rs.getBoolean(i);
-        } finally {
-            if (closeResultSet)
-                closeResultSet();
-        }
-    }
-
-    public void executeQuery() throws Exception {
-        rs = stmt.executeQuery(sql);
-        rs.next();
-    }
-
-    public void closeResultSet() throws Exception {
-        rs.close();
-        rs = null;
-    }
-
-    public boolean next() throws Exception {
-        check();
-        return rs.next();
-    }
-
-    public void printResultSet() {
-        try {
-            rs = stmt.executeQuery(sql);
-
-            int n = rs.getMetaData().getColumnCount();
-            while (rs.next()) {
-                for (int i = 1; i <= n; i++) {
-                    System.out.print(rs.getString(i) + " ");
-                }
-                System.out.println();
-            }
-            rs.close();
-            rs = null;
-            System.out.println();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 }

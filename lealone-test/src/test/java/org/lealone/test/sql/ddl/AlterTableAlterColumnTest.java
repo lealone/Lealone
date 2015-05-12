@@ -17,15 +17,12 @@
  */
 package org.lealone.test.sql.ddl;
 
-import static org.junit.Assert.assertTrue;
-
 import java.sql.SQLException;
 
-import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class AlterTableAlterColumnTest extends TestBase {
+public class AlterTableAlterColumnTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         // stmt.executeUpdate("DROP TABLE IF EXISTS mytable3");
@@ -181,7 +178,7 @@ public class AlterTableAlterColumnTest extends TestBase {
         sql = "ALTER TABLE mytable DROP ch"; //不能删除最后一列
         try {
             stmt.executeUpdate(sql);
-            Assert.fail("not throw SQLException");
+            fail("not throw SQLException");
         } catch (SQLException e) {
             assertTrue(e.getMessage().toLowerCase().contains("cannot drop last column"));
         }

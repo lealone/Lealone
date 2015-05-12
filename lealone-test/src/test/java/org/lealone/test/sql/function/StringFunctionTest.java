@@ -17,12 +17,10 @@
  */
 package org.lealone.test.sql.function;
 
-import static junit.framework.Assert.assertEquals;
-
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class StringFunctionTest extends TestBase {
+public class StringFunctionTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         init();

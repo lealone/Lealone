@@ -17,16 +17,12 @@
  */
 package org.lealone.test.sql.dml;
 
-import static junit.framework.Assert.assertEquals;
-
 import java.sql.PreparedStatement;
 
-import junit.framework.Assert;
-
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class MergeTest extends TestBase {
+public class MergeTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         //stmt.executeUpdate("DROP TABLE IF EXISTS MergeTest");
@@ -51,7 +47,7 @@ public class MergeTest extends TestBase {
         sql = "MERGE INTO MergeTest KEY(id) VALUES()"; //这里会抛异常，但是异常信息很怪，算是H2的一个小bug
         try {
             stmt.executeUpdate(sql);
-            Assert.fail(sql);
+            fail(sql);
         } catch (Exception e) {
             //Syntax error in SQL statement "UPDATE PUBLIC.MERGETEST SET  WHERE[*] ID=?"; expected "identifier"; 
             //SQL statement:UPDATE PUBLIC.MERGETEST SET  WHERE ID=? [42001-172]
@@ -68,7 +64,7 @@ public class MergeTest extends TestBase {
         try {
             sql = "MERGE INTO MergeTest KEY(id) VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')";
             stmt.executeUpdate(sql);
-            Assert.fail(sql);
+            fail(sql);
         } catch (Exception e) {
             //org.lealone.message.JdbcSQLException: Column "ID" contains null values; 
             System.out.println(e.getMessage());
@@ -78,7 +74,7 @@ public class MergeTest extends TestBase {
         sql = "MERGE INTO MergeTest(name) KEY(id) (SELECT * FROM tmpSelectTest)";
         try {
             stmt.executeUpdate(sql);
-            Assert.fail(sql);
+            fail(sql);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -87,7 +83,7 @@ public class MergeTest extends TestBase {
         sql = "MERGE INTO MergeTest(name) KEY(id) VALUES('abc')";
         try {
             stmt.executeUpdate(sql);
-            Assert.fail(sql);
+            fail(sql);
         } catch (Exception e) {
             //Column "ID" contains null values;
             System.out.println(e.getMessage());

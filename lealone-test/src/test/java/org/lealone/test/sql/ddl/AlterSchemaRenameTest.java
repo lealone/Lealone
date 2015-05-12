@@ -18,9 +18,9 @@
 package org.lealone.test.sql.ddl;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class AlterSchemaRenameTest extends TestBase {
+public class AlterSchemaRenameTest extends SqlTestBase {
     @Test
     public void run() {
         //		executeUpdate("DROP TABLE IF EXISTS AlterSchemaRenameTest");

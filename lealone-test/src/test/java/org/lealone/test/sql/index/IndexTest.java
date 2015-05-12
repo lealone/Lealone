@@ -17,16 +17,13 @@
  */
 package org.lealone.test.sql.index;
 
-import static junit.framework.Assert.assertEquals;
-
 import java.sql.SQLException;
 import java.sql.Savepoint;
 
-import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class IndexTest extends TestBase {
+public class IndexTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         init();
@@ -59,21 +56,21 @@ public class IndexTest extends TestBase {
         stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(300, 30, 'c')");
         try {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(400, 20, 'd')");
-            Assert.fail("insert duplicate key: 20");
+            fail("insert duplicate key: 20");
         } catch (SQLException e) {
             //e.printStackTrace();
         }
 
         try {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'e')");
-            Assert.fail("insert duplicate key: 20");
+            fail("insert duplicate key: 20");
         } catch (SQLException e) {
             //e.printStackTrace();
         }
 
         try {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 20, 'f')");
-            Assert.fail("insert duplicate key: 20");
+            fail("insert duplicate key: 20");
         } catch (SQLException e) {
             //e.printStackTrace();
         }

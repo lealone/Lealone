@@ -17,14 +17,12 @@
  */
 package org.lealone.test.sql.transaction;
 
-import static junit.framework.Assert.assertEquals;
-
 import java.sql.Savepoint;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class TransactionTest extends TestBase {
+public class TransactionTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
@@ -67,21 +65,21 @@ public class TransactionTest extends TestBase {
         conn.commit();
         //        try {
         //            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(400, 20, 'd')");
-        //            Assert.fail("insert duplicate key: 20");
+        //            fail("insert duplicate key: 20");
         //        } catch (SQLException e) {
         //            //e.printStackTrace();
         //        }
         //
         //        try {
         //            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(500, 20, 'e')");
-        //            Assert.fail("insert duplicate key: 20");
+        //            fail("insert duplicate key: 20");
         //        } catch (SQLException e) {
         //            //e.printStackTrace();
         //        }
         //
         //        try {
         //            executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(600, 20, 'f')");
-        //            Assert.fail("insert duplicate key: 20");
+        //            fail("insert duplicate key: 20");
         //        } catch (SQLException e) {
         //            //e.printStackTrace();
         //        }

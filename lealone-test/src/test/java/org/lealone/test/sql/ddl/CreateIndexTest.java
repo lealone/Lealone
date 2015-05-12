@@ -18,9 +18,9 @@
 package org.lealone.test.sql.ddl;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class CreateIndexTest extends TestBase {
+public class CreateIndexTest extends SqlTestBase {
     @Test
     public void run() {
         executeUpdate("DROP TABLE IF EXISTS CreateIndexTest");

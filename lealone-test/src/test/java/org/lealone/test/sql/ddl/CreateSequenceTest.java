@@ -17,23 +17,19 @@
  */
 package org.lealone.test.sql.ddl;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.sql.SQLException;
 
-import org.junit.Assert;
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class CreateSequenceTest extends TestBase {
+public class CreateSequenceTest extends SqlTestBase {
     @Test
     public void testSequence() throws Exception {
         try {
             //加了BELONGS_TO_TABLE就删不掉了
             stmt.executeUpdate("CREATE SEQUENCE IF NOT EXISTS myseq1 START WITH 1000 INCREMENT BY 1 CACHE 20 BELONGS_TO_TABLE");
             stmt.executeUpdate("DROP SEQUENCE IF EXISTS myseq1");
-            Assert.fail("not throw SQLException");
+            fail("not throw SQLException");
         } catch (SQLException e) {
             assertTrue(e.getMessage().contains("belongs to a table"));
         }

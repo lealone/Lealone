@@ -18,9 +18,9 @@
 package org.lealone.test.sql.function;
 
 import org.junit.Test;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class SystemFunctionTest extends TestBase {
+public class SystemFunctionTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         test();

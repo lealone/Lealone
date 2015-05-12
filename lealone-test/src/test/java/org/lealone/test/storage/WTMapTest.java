@@ -20,13 +20,13 @@ package org.lealone.test.storage;
 
 import java.util.Map.Entry;
 
-import org.junit.Assert;
 import org.lealone.storage.WTMap;
+import org.lealone.test.UnitTestBase;
 
 import com.wiredtiger.db.Connection;
 import com.wiredtiger.db.Session;
 
-public class WTMapTest {
+public class WTMapTest extends UnitTestBase {
     public static void main(String[] args) {
         new WTMapTest().run();
     }
@@ -44,68 +44,68 @@ public class WTMapTest {
             System.out.println("name = " + map.getName() + ", id = " + map.getId());
 
             String old = map.put(1, "a");
-            Assert.assertNull(old);
+            assertNull(old);
 
-            Assert.assertEquals("a", map.get(1));
+            assertEquals("a", map.get(1));
 
             old = map.putIfAbsent(1, "b");
-            Assert.assertEquals("a", old);
+            assertEquals("a", old);
 
             old = map.putIfAbsent(2, "b");
-            Assert.assertNull(old);
-            Assert.assertEquals("b", map.get(2));
+            assertNull(old);
+            assertEquals("b", map.get(2));
 
             old = map.remove(2);
-            Assert.assertEquals("b", old);
+            assertEquals("b", old);
             old = map.remove(2);
-            Assert.assertNull(old);
+            assertNull(old);
 
-            Assert.assertFalse(map.replace(1, "aa", "a1"));
-            Assert.assertTrue(map.replace(1, "a", "a1"));
-            Assert.assertEquals("a1", map.get(1));
+            assertFalse(map.replace(1, "aa", "a1"));
+            assertTrue(map.replace(1, "a", "a1"));
+            assertEquals("a1", map.get(1));
 
-            Assert.assertFalse(map.containsKey(2));
-            Assert.assertTrue(map.containsKey(1));
+            assertFalse(map.containsKey(2));
+            assertTrue(map.containsKey(1));
 
-            Assert.assertFalse(map.isEmpty());
+            assertFalse(map.isEmpty());
             map.remove(1);
-            Assert.assertTrue(map.isEmpty());
+            assertTrue(map.isEmpty());
 
-            Assert.assertEquals(0, map.size());
+            assertEquals(0, map.size());
             map.put(1, "a");
             map.put(2, "b");
             map.put(3, "c");
-            Assert.assertEquals(3, map.size());
+            assertEquals(3, map.size());
 
-            Assert.assertEquals(1, (int) map.firstKey());
-            Assert.assertEquals(3, (int) map.lastKey());
+            assertEquals(1, (int) map.firstKey());
+            assertEquals(3, (int) map.lastKey());
 
-            Assert.assertEquals(2, (int) map.lowerKey(3));
-            Assert.assertEquals(3, (int) map.floorKey(3)); //<=3
-            Assert.assertEquals(3, (int) map.higherKey(2));
-            Assert.assertEquals(2, (int) map.ceilingKey(2)); //>=2
+            assertEquals(2, (int) map.lowerKey(3));
+            assertEquals(3, (int) map.floorKey(3)); //<=3
+            assertEquals(3, (int) map.higherKey(2));
+            assertEquals(2, (int) map.ceilingKey(2)); //>=2
 
             //索引从0开始
-            Assert.assertEquals(1, map.getKeyIndex(2));
+            assertEquals(1, map.getKeyIndex(2));
             Integer key = map.getKey(2); //索引为2的key是3
-            Assert.assertEquals(3, (int) key);
+            assertEquals(3, (int) key);
             key = map.getKey(-100);
-            Assert.assertNull(key);
+            assertNull(key);
             key = map.getKey(4);
-            Assert.assertNull(key);
+            assertNull(key);
 
-            Assert.assertTrue(map.areValuesEqual("a", "a"));
-            Assert.assertFalse(map.areValuesEqual("a", "b"));
+            assertTrue(map.areValuesEqual("a", "a"));
+            assertFalse(map.areValuesEqual("a", "b"));
 
             org.lealone.storage.StorageMap.Cursor<Integer, String> cursor = map.cursor(2);
-            Assert.assertTrue(cursor.hasNext());
+            assertTrue(cursor.hasNext());
             key = cursor.next();
-            Assert.assertEquals(2, (int) key);
-            Assert.assertEquals(2, (int) cursor.getKey());
-            Assert.assertEquals("b", cursor.getValue());
-            Assert.assertTrue(cursor.hasNext());
+            assertEquals(2, (int) key);
+            assertEquals(2, (int) cursor.getKey());
+            assertEquals("b", cursor.getValue());
+            assertTrue(cursor.hasNext());
             cursor = map.cursor(null);
-            Assert.assertTrue(cursor.hasNext());
+            assertTrue(cursor.hasNext());
 
             for (Entry<Integer, String> e : map.entrySet()) {
                 System.out.println("key = " + e.getKey() + ", value = " + e.getValue());

@@ -17,18 +17,14 @@
  */
 package org.lealone.test.sql.ddl;
 
-import static junit.framework.Assert.assertEquals;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import junit.framework.Assert;
-
 import org.junit.Test;
 import org.lealone.api.Trigger;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class CreateTriggerTest extends TestBase {
+public class CreateTriggerTest extends SqlTestBase {
 
     public static class MyTrigger implements Trigger {
 
@@ -71,7 +67,7 @@ public class CreateTriggerTest extends TestBase {
             stmt.executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger2"
                     + " AFTER INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
                     + " QUEUE 10 NOWAIT CALL \"org.lealone.test.sql.ddl.CreateTriggerTest$MyTrigger\"");
-            Assert.fail("do not throw SQLException");
+            fail("do not throw SQLException");
         } catch (SQLException e) {
             assertEquals(90005, e.getErrorCode());
         }
