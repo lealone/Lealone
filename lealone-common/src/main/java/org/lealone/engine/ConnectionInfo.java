@@ -66,7 +66,6 @@ public class ConnectionInfo implements Cloneable {
     private boolean persistent;
 
     private SessionFactory sessionFactory;
-    private SessionInterface session;
 
     private DbSettings dbSettings;
 
@@ -588,16 +587,6 @@ public class ConnectionInfo implements Cloneable {
         return DbException.get(ErrorCode.URL_FORMAT_ERROR_2, Constants.URL_FORMAT, url);
     }
 
-    /**
-     * Switch to server mode, and set the server name and database key.
-     *
-     * @param serverKey the server name, '/', and the security key
-     */
-    public void setServerKey(String serverKey) {
-        remote = true;
-        dbName = serverKey;
-    }
-
     public DbSettings getDbSettings() {
         if (dbSettings == null) {
             DbSettings defaultSettings = DbSettings.getDefaultSettings();
@@ -614,6 +603,22 @@ public class ConnectionInfo implements Cloneable {
             dbSettings = DbSettings.getInstance(s);
         }
         return dbSettings;
+    }
+
+    public SessionFactory getSessionFactory() {
+        if (sessionFactory == null) {
+            try {
+                sessionFactory = (SessionFactory) Class.forName("org.lealone.engine.DatabaseEngine")
+                        .getMethod("getInstance").invoke(null);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+        return sessionFactory;
+    }
+
+    public boolean isEmbedded() {
+        return embedded;
     }
 
     private static String remapURL(String url) {
@@ -638,29 +643,4 @@ public class ConnectionInfo implements Cloneable {
         }
         return url;
     }
-
-    public SessionFactory getSessionFactory() {
-        if (sessionFactory == null) {
-            try {
-                sessionFactory = (SessionFactory) Class.forName("org.lealone.engine.DatabaseEngine")
-                        .getMethod("getInstance").invoke(null);
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            }
-        }
-        return sessionFactory;
-    }
-
-    public boolean isEmbedded() {
-        return embedded;
-    }
-
-    public void setSession(SessionInterface session) {
-        this.session = session;
-    }
-
-    public SessionInterface getSession() {
-        return session;
-    }
-
 }
