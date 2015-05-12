@@ -18,13 +18,13 @@
 package org.lealone.engine;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 
+import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
 import org.lealone.util.JdbcUtils;
 import org.lealone.util.New;
@@ -45,7 +45,7 @@ public class SystemDatabase {
             String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
             Statement stmt = null;
             try {
-                conn = DriverManager.getConnection(url, "DBA", "");
+                conn = Driver.getConnection(url, "DBA", "");
                 stmt = conn.createStatement();
                 stmt.execute("CREATE TABLE IF NOT EXISTS databases" //
                         + "(db_name VARCHAR, storage_engine_name VARCHAR, create_time TIMESTAMP, "//

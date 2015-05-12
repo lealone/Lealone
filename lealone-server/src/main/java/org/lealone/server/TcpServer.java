@@ -19,7 +19,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
@@ -109,11 +108,8 @@ public class TcpServer implements Server {
     }
 
     protected void initManagementDb() throws SQLException {
-        Properties prop = new Properties();
-        prop.setProperty("user", "");
-        prop.setProperty("password", managementPassword);
         // avoid using the driver manager
-        Connection conn = Driver.load().connect(getManagementDbEmbeddedURL(port), prop);
+        Connection conn = Driver.getConnection(getManagementDbEmbeddedURL(port), "", managementPassword);
         managementDb = conn;
         Statement stat = null;
         try {

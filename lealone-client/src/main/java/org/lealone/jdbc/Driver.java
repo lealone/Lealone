@@ -18,29 +18,14 @@ import org.lealone.engine.Constants;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
 
-/*## Java 1.7 ##
-import java.util.logging.Logger;
-//*/
-
 /**
- * The database driver. An application should not use this class directly. The
- * only thing the application needs to do is load the driver. This can be done
- * using Class.forName. To load the driver and open a database connection, use
- * the following code:
- *
- * <pre>
- * Class.forName(&quot;org.lealone.Driver&quot;);
- * Connection conn = DriverManager.getConnection(
- *      &quot;jdbc:lealone:&tilde;/test&quot;, &quot;sa&quot;, &quot;sa&quot;);
- * </pre>
+ * The database driver. An application should not use this class directly. 
  */
 public class Driver implements java.sql.Driver {
 
     private static final Driver INSTANCE = new Driver();
-    private static final String DEFAULT_URL = "jdbc:default:connection";
-    //private static final String DEFAULT_HBASE_URL = "jdbc:lealone:hbase:";
-    //private static final String DEFAULT_MEM_URL = "jdbc:lealone:mem:";
-    private static final ThreadLocal<Connection> DEFAULT_CONNECTION = new ThreadLocal<Connection>();
+    private static final String DEFAULT_URL = Constants.CONN_URL_INTERNAL;
+    private static final ThreadLocal<Connection> DEFAULT_CONNECTION = new ThreadLocal<>();
 
     private static volatile boolean registered;
 
@@ -144,23 +129,24 @@ public class Driver implements java.sql.Driver {
     /**
      * [Not supported]
      */
-    /*## Java 1.7 ##
-        public Logger getParentLogger() {
-            return null;
-        }
-    //*/
+    //jdk1.7
+    @Override
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+        throw DbException.getUnsupportedException("getParentLogger()");
+    }
 
     /**
      * INTERNAL
      */
     public static synchronized Driver load() {
-        try {
-            if (!registered) {
-                registered = true;
+        if (!registered) {
+            registered = true;
+
+            try {
                 DriverManager.registerDriver(INSTANCE);
+            } catch (SQLException e) {
+                TraceSystem.traceThrowable(e);
             }
-        } catch (SQLException e) {
-            TraceSystem.traceThrowable(e);
         }
         return INSTANCE;
     }
@@ -169,13 +155,14 @@ public class Driver implements java.sql.Driver {
      * INTERNAL
      */
     public static synchronized void unload() {
-        try {
-            if (registered) {
-                registered = false;
+        if (registered) {
+            registered = false;
+
+            try {
                 DriverManager.deregisterDriver(INSTANCE);
+            } catch (SQLException e) {
+                TraceSystem.traceThrowable(e);
             }
-        } catch (SQLException e) {
-            TraceSystem.traceThrowable(e);
         }
     }
 
@@ -203,9 +190,13 @@ public class Driver implements java.sql.Driver {
         }
     }
 
-    //jdk1.7
-    @Override
-    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
-        throw DbException.getUnsupportedException("getParentLogger()");
+    /**
+     * INTERNAL
+     */
+    public static Connection getConnection(String url, String user, String password) throws SQLException {
+        Properties info = new Properties();
+        info.setProperty("user", user);
+        info.setProperty("password", password);
+        return load().connect(url, info);
     }
 }
