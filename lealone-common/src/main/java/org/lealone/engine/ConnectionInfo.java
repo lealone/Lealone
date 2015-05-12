@@ -32,10 +32,9 @@ public class ConnectionInfo implements Cloneable {
         ArrayList<String> list = SetTypes.getTypes();
         HashSet<String> set = KNOWN_SETTINGS;
         set.addAll(list);
-        String[] connectionSettings = { "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "FILE_LOCK",
-                "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER",
-                "AUTO_RECONNECT", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH", "JMX", "ZOOKEEPER_SESSION_TIMEOUT",
-                "IS_LOCAL" };
+        String[] connectionSettings = { "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS",
+                "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "OPEN_NEW", "PAGE_SIZE",
+                "PASSWORD_HASH", "IS_LOCAL" };
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && set.contains(key)) {
                 DbException.throwInternalError(key);

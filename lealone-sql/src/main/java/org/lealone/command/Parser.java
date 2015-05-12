@@ -4619,23 +4619,11 @@ public class Parser {
             readIfEqualOrTo();
             read();
             return new NoOperation(session);
-        } else if (readIf("PAGE_STORE")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
         } else if (readIf("CACHE_TYPE")) {
             readIfEqualOrTo();
             read();
             return new NoOperation(session);
-        } else if (readIf("FILE_LOCK")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
         } else if (readIf("DB_CLOSE_ON_EXIT")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("AUTO_RECONNECT")) {
             readIfEqualOrTo();
             read();
             return new NoOperation(session);
@@ -4648,10 +4636,6 @@ public class Parser {
             read();
             return new NoOperation(session);
         } else if (readIf("OPEN_NEW")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("JMX")) {
             readIfEqualOrTo();
             read();
             return new NoOperation(session);

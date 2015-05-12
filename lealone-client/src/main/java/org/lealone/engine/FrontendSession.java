@@ -287,18 +287,6 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
             traceSystem.setLevelSystemOut(level);
         }
         trace = traceSystem.getTrace(Trace.JDBC);
-        //autoReconnect = Boolean.valueOf(ci.getProperty("AUTO_RECONNECT", "false")).booleanValue();
-        //        if (autoReconnect) {
-        //            String className = ci.getProperty("DATABASE_EVENT_LISTENER");
-        //            if (className != null) {
-        //                className = StringUtils.trim(className, true, true, "'");
-        //                try {
-        //                    eventListener = (DatabaseEventListener) Utils.loadUserClass(className).newInstance();
-        //                } catch (Throwable e) {
-        //                    throw DbException.convert(e);
-        //                }
-        //            }
-        //        }
         cipher = ci.getProperty("CIPHER");
         if (cipher != null) {
             fileEncryptionKey = MathUtils.secureRandomBytes(32);
