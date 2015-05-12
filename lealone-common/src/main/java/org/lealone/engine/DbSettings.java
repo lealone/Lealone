@@ -26,7 +26,6 @@ import org.lealone.util.Utils;
  */
 //可以通过系统属性的方式来设定每个数据库的默认值，比如lealone.x.y.z = 10，
 //还可以通过在URL中指定参数来覆盖默认值，在URL中的参数格式是x_y_z = 10(没有lealone前缀，用下划线替换点号)
-
 class SettingsBase {
     //这个字段需要放在这，在DbSettings的构造函数中可以提前初始化它，
     //如果放在子类中，DbSettings类的其他字段会在执行构造函数中的代码之前执行，此时settings还是null。
@@ -130,7 +129,7 @@ public class DbSettings extends SettingsBase {
      * Database setting <code>DEFRAG_ALWAYS</code> (default: false).<br />
      * Each time the database is closed, it is fully defragmented (SHUTDOWN DEFRAG).
      */
-    public final boolean defragAlways = get("DEFRAG_ALWAYS", false);
+    public final boolean defragAlways = get("DEFRAG_ALWAYS", false); //TODO 这个参数可以用到存储引擎中
 
     /**
      * Database setting <code>DROP_RESTRICT</code> (default: true).<br />
@@ -173,20 +172,13 @@ public class DbSettings extends SettingsBase {
      * Database setting <code>LARGE_TRANSACTIONS</code> (default: true).<br />
      * Support very large transactions
      */
-    public final boolean largeTransactions = get("LARGE_TRANSACTIONS", true);
-
-    /**
-     * Database setting <code>MAX_COMPACT_COUNT</code>
-     * (default: Integer.MAX_VALUE).<br />
-     * The maximum number of pages to move when closing a database.
-     */
-    public final int maxCompactCount = get("MAX_COMPACT_COUNT", Integer.MAX_VALUE);
+    public final boolean largeTransactions = get("LARGE_TRANSACTIONS", true); //TODO 是否考虑用在UndoLog中
 
     /**
      * Database setting <code>MAX_COMPACT_TIME</code> (default: 200).<br />
      * The maximum time in milliseconds used to compact a database when closing.
      */
-    public final int maxCompactTime = get("MAX_COMPACT_TIME", 200);
+    public final int maxCompactTime = get("MAX_COMPACT_TIME", 200); //TODO 这个参数可以用到存储引擎中
 
     /**
      * Database setting <code>MAX_MEMORY_ROWS_DISTINCT</code> (default:
@@ -274,33 +266,6 @@ public class DbSettings extends SettingsBase {
     public final boolean optimizeTwoEquals = get("OPTIMIZE_TWO_EQUALS", true);
 
     /**
-     * Database setting <code>OPTIMIZE_UPDATE</code> (default: true).<br />
-     * Speed up inserts, updates, and deletes by not reading all rows from a
-     * page unless necessary.
-     */
-    public final boolean optimizeUpdate = get("OPTIMIZE_UPDATE", true);
-
-    /**
-     * Database setting <code>PAGE_STORE_MAX_GROWTH</code>
-     * (default: 128 * 1024).<br />
-     * The maximum number of pages the file grows at any time.
-     */
-    public final int pageStoreMaxGrowth = get("PAGE_STORE_MAX_GROWTH", 128 * 1024);
-
-    /**
-     * Database setting <code>PAGE_STORE_INTERNAL_COUNT</code>
-     * (default: false).<br />
-     * Update the row counts on a node level.
-     */
-    public final boolean pageStoreInternalCount = get("PAGE_STORE_INTERNAL_COUNT", false);
-
-    /**
-     * Database setting <code>PAGE_STORE_TRIM</code> (default: true).<br />
-     * Trim the database size when closing.
-     */
-    public final boolean pageStoreTrim = get("PAGE_STORE_TRIM", true);
-
-    /**
      * Database setting <code>QUERY_CACHE_SIZE</code> (default: 8).<br />
      * The size of the query cache, in number of cached statements. Each session
      * has it's own cache with the given size. The cache is only used if the SQL
@@ -318,25 +283,10 @@ public class DbSettings extends SettingsBase {
     public final boolean recompileAlways = get("RECOMPILE_ALWAYS", false);
 
     /**
-     * Database setting <code>RECONNECT_CHECK_DELAY</code> (default: 200).<br />
-     * Check the .lock.db file every this many milliseconds to detect that the
-     * database was changed. The process writing to the database must first
-     * notify a change in the .lock.db file, then wait twice this many
-     * milliseconds before updating the database.
-     */
-    public final int reconnectCheckDelay = get("RECONNECT_CHECK_DELAY", 200);
-
-    /**
      * Database setting <code>ROWID</code> (default: true).<br />
      * If set, each table has a pseudo-column _ROWID_.
      */
     public final boolean rowId = get("ROWID", true);
-
-    /**
-     * Database setting <code>ROWKEY</code> (default: true).<br />
-     * If set, each table has a pseudo-column _ROWKEY_.
-     */
-    public final boolean rowKey = get("ROWKEY", true);
 
     /**
      * Database setting <code>SELECT_FOR_UPDATE_MVCC</code>
@@ -345,15 +295,6 @@ public class DbSettings extends SettingsBase {
      * using MVCC.
      */
     public final boolean selectForUpdateMvcc = get("SELECT_FOR_UPDATE_MVCC", true);
-
-    /**
-     * Database setting <code>SHARE_LINKED_CONNECTIONS</code>
-     * (default: true).<br />
-     * Linked connections should be shared, that means connections to the same
-     * database should be used for all linked tables that connect to the same
-     * database.
-     */
-    public final boolean shareLinkedConnections = get("SHARE_LINKED_CONNECTIONS", true);
 
     /**
      * Database setting <code>DEFAULT_STORAGE_ENGINE</code>
