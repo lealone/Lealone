@@ -46,37 +46,37 @@ public class Lealone {
     private static Config config;
 
     public static void main(String[] args) {
-        start();
-    }
-
-    public static void start() {
+        logger.info("Lealone version: {}", Utils.getReleaseVersionString());
         try {
-            logger.info("Lealone version: {}", Utils.getReleaseVersionString());
-
-            config = DatabaseDescriptor.loadConfig();
-
-            logger.info("Run mode: {}", config.run_mode);
-
-            if (!DatabaseDescriptor.hasLargeAddressSpace())
-                logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
-
-            initBaseDir();
-
-            initDatabaseEngine();
-
-            initRouter();
-
-            if (config.isClusterMode())
-                startClusterServer();
-
-            startTcpServer();
-
-            if (config.pg_server_options != null && config.pg_server_options.enabled)
-                startPgServer();
+            init();
+            start();
         } catch (Exception e) {
             logger.error("Fatal error; unable to start Lealone.  See log for stacktrace.", e);
             System.exit(1);
         }
+    }
+
+    private static void init() {
+        config = DatabaseDescriptor.loadConfig();
+
+        logger.info("Run mode: {}", config.run_mode);
+
+        if (!DatabaseDescriptor.hasLargeAddressSpace())
+            logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
+
+        initBaseDir();
+        initDatabaseEngine();
+        initRouter();
+    }
+
+    private static void start() throws Exception {
+        if (config.isClusterMode())
+            startClusterServer();
+
+        startTcpServer();
+
+        if (config.pg_server_options != null && config.pg_server_options.enabled)
+            startPgServer();
     }
 
     private static void initBaseDir() {
@@ -148,6 +148,5 @@ public class Lealone {
 
         logger.info(prefix + "Server started, listening address: {}, port: {}", server.getListenAddress(),
                 server.getPort());
-
     }
 }
