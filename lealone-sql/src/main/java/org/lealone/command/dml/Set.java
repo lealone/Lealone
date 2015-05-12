@@ -383,10 +383,6 @@ public class Set extends Prepared {
             addOrUpdateSetting(name, null, getIntValue());
             break;
         }
-        case SetTypes.SERVER_TYPE: {
-            //do nothing
-            break;
-        }
         default:
             DbException.throwInternalError("type=" + type);
         }

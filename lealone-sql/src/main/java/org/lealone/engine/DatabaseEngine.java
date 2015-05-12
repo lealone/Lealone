@@ -123,7 +123,6 @@ public class DatabaseEngine implements SessionFactory {
             }
         }
 
-        ci.removeProperty("SERVER_TYPE", false);
         session.setAllowLiterals(true);
         DbSettings defaultSettings = DbSettings.getDefaultSettings();
         for (String setting : ci.getKeys()) {
