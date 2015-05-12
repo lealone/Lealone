@@ -69,6 +69,8 @@ public class ConnectionInfo implements Cloneable {
 
     private DbSettings dbSettings;
 
+    private String server;
+
     /**
      * Create a server connection info object.
      *  
@@ -92,6 +94,10 @@ public class ConnectionInfo implements Cloneable {
         } else {
             persistent = true;
         }
+    }
+
+    public ConnectionInfo(String url) {
+        this(url, (Properties) null);
     }
 
     /**
@@ -143,6 +149,17 @@ public class ConnectionInfo implements Cloneable {
                 persistent = true;
         } else {
             throw getFormatException();
+        }
+
+        if (remote) {
+            if (dbName.startsWith("//")) //在URL中"//"是可选的
+                dbName = dbName.substring("//".length());
+
+            int idx = dbName.indexOf('/');
+            if (idx < 0)
+                throw getFormatException();
+            server = dbName.substring(0, idx);
+            dbName = dbName.substring(idx + 1);
         }
     }
 
@@ -207,6 +224,8 @@ public class ConnectionInfo implements Cloneable {
     }
 
     public void readProperties(Properties info) {
+        if (info == null)
+            return;
         Object[] list = new Object[info.size()];
         info.keySet().toArray(list);
         DbSettings s = null;
@@ -231,19 +250,29 @@ public class ConnectionInfo implements Cloneable {
 
     private void readSettingsFromURL() {
         DbSettings dbSettings = DbSettings.getDefaultSettings();
-        //Lealone的JDBC URL语法:
-        //jdbc:lealone:tcp://[host:port],[host:port].../[database][;propertyName1][=propertyValue1][;propertyName2][=propertyValue2]
+
+        //支持两种风格的JDBC URL参数语法
+        //1. MySQL的JDBC URL参数语法:
+        //.../database[?propertyName1=propertyValue1][&propertyName2=propertyValue2]
+        //数据库名与参数之间用'?'号分隔，不同参数之间用'&'分隔
+
+        //2.Lealone的JDBC URL参数语法:
+        //.../database[;propertyName1=propertyValue1][;propertyName2=propertyValue2]
         //数据库名与参数之间用';'号分隔，不同参数之间也用';'号分隔
-        int idx = url.indexOf(';');
-        char splitChar = ';';
-        if (idx < 0) {
-            //看看是否是MySQL的JDBC URL语法:
-            //jdbc:mysql://[host:port],[host:port].../[database][?propertyName1][=propertyValue1][&propertyName2][=propertyValue2]
-            //数据库名与参数之间用'?'号分隔，不同参数之间用'&'分隔
-            idx = url.indexOf('?');
-            if (idx >= 0)
-                splitChar = '&';
+
+        int idx = url.indexOf('?');
+        char splitChar;
+        if (idx >= 0) {
+            splitChar = '&';
+            if (url.indexOf(';') >= 0)
+                throw getFormatException(); //不能同时出现'&'和';'
+        } else {
+            idx = url.indexOf(';');
+            splitChar = ';';
+            if (url.indexOf('&') >= 0)
+                throw getFormatException(); //不能出现'&'
         }
+
         if (idx >= 0) {
             String settings = url.substring(idx + 1);
             url = url.substring(0, idx); //去掉后面的参数
@@ -583,7 +612,7 @@ public class ConnectionInfo implements Cloneable {
      *
      * @return the exception
      */
-    DbException getFormatException() {
+    private DbException getFormatException() {
         return DbException.get(ErrorCode.URL_FORMAT_ERROR_2, Constants.URL_FORMAT, url);
     }
 
@@ -619,6 +648,10 @@ public class ConnectionInfo implements Cloneable {
 
     public boolean isEmbedded() {
         return embedded;
+    }
+
+    public String getServer() {
+        return server;
     }
 
     private static String remapURL(String url) {

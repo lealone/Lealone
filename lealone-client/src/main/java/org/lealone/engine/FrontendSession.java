@@ -256,16 +256,9 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     }
 
     private void connectServer(ConnectionInfo ci) {
-        String name = ci.getDatabaseName();
-        if (name.startsWith("//")) {
-            name = name.substring("//".length());
-        }
-        int idx = name.indexOf('/');
-        if (idx < 0) {
-            throw ci.getFormatException();
-        }
-        databaseName = name.substring(idx + 1);
-        String server = name.substring(0, idx);
+        databaseName = ci.getDatabaseName();
+        String server = ci.getServer();
+
         traceSystem = new TraceSystem(null);
         String traceLevelFile = ci.getProperty(SetTypes.TRACE_LEVEL_FILE, null);
         if (traceLevelFile != null) {

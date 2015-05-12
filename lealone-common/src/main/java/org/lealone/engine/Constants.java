@@ -433,7 +433,7 @@ public class Constants {
      * The database URL format in simplified Backus-Naur form.
      */
     public static final String URL_FORMAT = URL_PREFIX
-            + "{mem:} { {embed:}[name] | {tcp|ssl}:[//]server[:port][,server2[:port]]/name }[;key=value...]";
+            + "[{mem:}] { {embed:}name | {tcp|ssl}:[//] {server[:port][,server2[:port2]...]}/name } {[;key=value...] | [?key=value][&key2=value2...]}";
 
     /**
      * The package name of user defined classes.
