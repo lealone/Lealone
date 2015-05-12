@@ -124,7 +124,11 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
                 configMap.put(sensitiveKey, "<REDACTED>");
             }
         }
-        logger.info("Node configuration:[{}]", Joiner.on("; ").join(configMap.entrySet()));
+
+        configMap.remove("tcp_server_options");
+        configMap.remove("pg_server_options");
+
+        logger.info("Node configuration: [{}]", Joiner.on("; ").join(configMap.entrySet()));
     }
 
     private static class MissingPropertiesChecker extends PropertyUtils {

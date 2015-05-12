@@ -19,7 +19,7 @@ listen_address: 127.0.0.1
 run_mode: client_server
 
 tcp_server_options:
-    trace: true
+    trace: false
     allow_others: true
     daemon: false
     if_exists: false

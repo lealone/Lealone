@@ -211,6 +211,8 @@ public class Constants {
      */
     public static final int DEFAULT_TCP_PORT = 5210;
 
+    public static final String DEFAULT_HOST = "localhost";
+
     /**
      * The default delay in milliseconds before the transaction log is written.
      */

@@ -23,11 +23,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.command.router.Router;
-import org.lealone.command.router.TransactionalRouter;
 import org.lealone.engine.Constants;
-import org.lealone.engine.DatabaseEngine;
-import org.lealone.engine.Session;
 import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
 import org.lealone.message.TraceSystem;
@@ -179,7 +175,7 @@ public class TcpServer implements Server {
     @Override
     public void init(String... args) {
         port = Constants.DEFAULT_TCP_PORT;
-        listenAddress = "localhost";
+        listenAddress = Constants.DEFAULT_HOST;
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
             if (isOption(a, "-tcpListenAddress")) {
@@ -206,13 +202,6 @@ public class TcpServer implements Server {
                 ifExists = true;
             }
         }
-        Driver.load();
-
-        Router r = Session.getRouter();
-        if (!(r instanceof TransactionalRouter)) {
-            Session.setRouter(new TransactionalRouter(r));
-        }
-        DatabaseEngine.init(baseDir, listenAddress, port);
     }
 
     @Override

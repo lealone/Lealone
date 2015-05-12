@@ -28,8 +28,11 @@ import org.lealone.cluster.router.P2PRouter;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.WrappedRunnable;
+import org.lealone.command.router.LocalRouter;
 import org.lealone.command.router.Router;
 import org.lealone.command.router.TransactionalRouter;
+import org.lealone.engine.Constants;
+import org.lealone.engine.DatabaseEngine;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
 import org.lealone.server.PgServer;
@@ -43,29 +46,28 @@ public class Lealone {
     private static Config config;
 
     public static void main(String[] args) {
-        new Lealone().start();
+        start();
     }
 
-    protected Router createRouter() {
-        return P2PRouter.getInstance();
-    }
-
-    public void start() {
+    public static void start() {
         try {
             logger.info("Lealone version: {}", Utils.getReleaseVersionString());
+
             config = DatabaseDescriptor.loadConfig();
+
+            logger.info("Run mode: {}", config.run_mode);
 
             if (!DatabaseDescriptor.hasLargeAddressSpace())
                 logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
 
             initBaseDir();
 
-            logger.info("Lealone run mode: {}", config.run_mode);
+            initDatabaseEngine();
 
-            if (config.isClusterMode()) {
-                Router r = createRouter();
-                startClusterServer(r);
-            }
+            initRouter();
+
+            if (config.isClusterMode())
+                startClusterServer();
 
             startTcpServer();
 
@@ -77,7 +79,7 @@ public class Lealone {
         }
     }
 
-    private static void initBaseDir() throws Exception {
+    private static void initBaseDir() {
         if (config.base_dir == null)
             throw new ConfigurationException("base_dir must be specified");
         SysProperties.setBaseDir(config.base_dir);
@@ -85,9 +87,33 @@ public class Lealone {
         logger.info("Base dir: {}", config.base_dir);
     }
 
-    private static void startClusterServer(Router r) throws Exception {
-        Session.setClusterMode(true);
+    private static void initDatabaseEngine() {
+        String host = null;
+        Integer port = null;
+
+        if (config.tcp_server_options != null) {
+            host = config.tcp_server_options.listen_address;
+            port = config.tcp_server_options.port;
+        }
+        if (host == null)
+            host = config.listen_address;
+        if (host == null)
+            host = Constants.DEFAULT_HOST;
+        if (port == null)
+            port = Constants.DEFAULT_TCP_PORT;
+
+        DatabaseEngine.init(host, port.intValue());
+    }
+
+    private static void initRouter() {
+        Router r = LocalRouter.getInstance();
+        if (config.isClusterMode())
+            r = P2PRouter.getInstance();
         Session.setRouter(new TransactionalRouter(r));
+    }
+
+    private static void startClusterServer() throws Exception {
+        Session.setClusterMode(true);
         StorageService.instance.start();
     }
 
@@ -115,12 +141,12 @@ public class Lealone {
             @Override
             public void runMayThrow() throws Exception {
                 server.stop();
-                logger.info("Lealone " + prefix + "Server stopped");
+                logger.info(prefix + "Server stopped");
             }
         }, prefix + "ServerShutdownHook");
         Runtime.getRuntime().addShutdownHook(t);
 
-        logger.info("Lealone " + prefix + "Server started, listening address: {}, port: {}", server.getListenAddress(),
+        logger.info(prefix + "Server started, listening address: {}, port: {}", server.getListenAddress(),
                 server.getPort());
 
     }

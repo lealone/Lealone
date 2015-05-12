@@ -87,7 +87,7 @@ public class PgServer implements Server {
     @Override
     public void init(String... args) {
         port = DEFAULT_PORT;
-        listenAddress = "localhost";
+        listenAddress = Constants.DEFAULT_HOST;
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
             if (TcpServer.isOption(a, "-pgListenAddress")) {
@@ -107,9 +107,6 @@ public class PgServer implements Server {
                 ifExists = true;
             }
         }
-        org.lealone.jdbc.Driver.load();
-        // int testing;
-        // trace = true;
     }
 
     boolean getTrace() {

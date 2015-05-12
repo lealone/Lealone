@@ -49,11 +49,11 @@ public class DatabaseEngine implements SessionFactory {
         return INSTANCE;
     }
 
-    public static synchronized void init(String baseDir, String host, int port) {
+    public static synchronized void init(String host, int port) {
         hostAndPort = host + ":" + port;
 
         StorageEngineManager.initStorageEngines();
-        SystemDatabase.init(baseDir);
+        SystemDatabase.init();
 
         for (String dbName : SystemDatabase.findAll())
             DATABASES.put(dbName, new Database(INSTANCE, true));

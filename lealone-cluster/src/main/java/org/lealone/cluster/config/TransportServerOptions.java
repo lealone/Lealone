@@ -41,8 +41,10 @@ public abstract class TransportServerOptions {
         if (listen_address == null)
             listen_address = config.listen_address; //如果没有指定，就用全局的listen_address
 
-        list.add(prefix + "ListenAddress");
-        list.add(listen_address);
+        if (listen_address != null) {
+            list.add(prefix + "ListenAddress");
+            list.add(listen_address);
+        }
 
         //如果没有指定，在初始化TcpServer和PgServer时会自动使用相应的默认值
         if (port != null) {

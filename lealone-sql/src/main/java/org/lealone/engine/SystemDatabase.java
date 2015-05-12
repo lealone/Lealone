@@ -39,13 +39,9 @@ public class SystemDatabase {
     private static PreparedStatement findOne;
     private static PreparedStatement findAll;
 
-    static synchronized void init(String baseDir) {
+    static synchronized void init() {
         if (conn == null) {
-            if (baseDir == null) {
-                baseDir = SysProperties.getBaseDir();
-            }
-
-            //不需要在URL中加baseDir，最后的实际位置都是baseDir目录或它的子目录
+            //不需要在URL中加baseDir，DB文件会放在baseDir目录中
             String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
             Statement stmt = null;
             try {
@@ -131,6 +127,5 @@ public class SystemDatabase {
         } finally {
             JdbcUtils.closeSilently(rs);
         }
-
     }
 }
