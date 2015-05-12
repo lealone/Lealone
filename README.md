@@ -1,18 +1,10 @@
 
-## Lealone是什么
+### Lealone是什么
 
 * 是一个面向[OLTP](http://en.wikipedia.org/wiki/Online_transaction_processing)场景的分布式关系数据库
 
 
-## Lealone名字的由来
-
-* Lealone 发音 ['li:ləʊn] 这是我新造的英文单词， <br>
-  灵感来自于办公桌上那些叫绿萝的室内植物，一直想做个项目以它命名。 <br>
-  绿萝的拼音是lv luo，与Lealone英文发音有点相同，<br>
-  Lealone是lea + lone的组合，反过来念更有意思哦。:)
-
-
-## Lealone有哪些特性
+### Lealone有哪些特性
 
 * 去中心化集群架构，没有单点故障
 
@@ -31,10 +23,20 @@
 * 从[H2数据库](http://www.h2database.com/html/main.html)和[Apache Cassandra](http://cassandra.apache.org/)借鉴了大量成熟的代码和思想
 
 
-## [Lealone文档](https://github.com/codefollower/Lealone/blob/master/docs/README.md)
+### Lealone文档
+
+* [文档首页](https://github.com/codefollower/Lealone/blob/master/docs/README.md)
 
 
-## License
+### Lealone名字的由来
+
+* Lealone 发音 ['li:ləʊn] 这是我新造的英文单词， <br>
+  灵感来自于办公桌上那些叫绿萝的室内植物，一直想做个项目以它命名。 <br>
+  绿萝的拼音是lv luo，与Lealone英文发音有点相同，<br>
+  Lealone是lea + lone的组合，反过来念更有意思哦。:)
+
+
+### Lealone License
 
 * [License](https://github.com/codefollower/Lealone/blob/master/LICENSE.md)
 
