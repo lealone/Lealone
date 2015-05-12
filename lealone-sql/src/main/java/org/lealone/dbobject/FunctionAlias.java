@@ -523,7 +523,7 @@ public class FunctionAlias extends SchemaObjectBase {
             return new JdbcClob(conn, v, 0);
         }
         if (v.getType() == Value.JAVA_OBJECT) {
-            Object o = SysProperties.serializeJavaObject ? Utils.deserialize(v.getBytes()) : v.getObject();
+            Object o = SysProperties.SERIALIZE_JAVA_OBJECT ? Utils.deserialize(v.getBytes()) : v.getObject();
             if (paramClass.isAssignableFrom(o.getClass())) {
                 return o;
             }

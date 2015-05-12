@@ -371,7 +371,7 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
             return new ByteArrayInputStream(small);
         } else if (fileName != null) {
             FileStore store = handler.openFile(fileName, "r", true);
-            boolean alwaysClose = SysProperties.lobCloseBetweenReads;
+            boolean alwaysClose = SysProperties.LOB_CLOSE_BETWEEN_READS;
             return new BufferedInputStream(new FileStoreInputStream(store, handler, false, alwaysClose),
                     Constants.IO_BUFFER_SIZE);
         }

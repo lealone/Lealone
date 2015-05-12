@@ -644,7 +644,7 @@ public class ValueLob extends Value {
             return new ByteArrayInputStream(small);
         }
         FileStore store = handler.openFile(fileName, "r", true);
-        boolean alwaysClose = SysProperties.lobCloseBetweenReads;
+        boolean alwaysClose = SysProperties.LOB_CLOSE_BETWEEN_READS;
         return new BufferedInputStream(new FileStoreInputStream(store, handler, compressed, alwaysClose),
                 Constants.IO_BUFFER_SIZE);
     }

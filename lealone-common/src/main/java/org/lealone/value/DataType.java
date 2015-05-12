@@ -487,7 +487,7 @@ public class DataType {
                 break;
             }
             case Value.JAVA_OBJECT: {
-                if (SysProperties.serializeJavaObject) {
+                if (SysProperties.SERIALIZE_JAVA_OBJECT) {
                     byte[] buff = rs.getBytes(columnIndex);
                     v = buff == null ? ValueNull.INSTANCE : ValueJavaObject.getNoCopy(null, buff);
                 } else {

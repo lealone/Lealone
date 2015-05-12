@@ -130,18 +130,6 @@ public class SysProperties {
     public static final int COLLATOR_CACHE_SIZE = getProperty("collator.cache.size", 32000);
 
     /**
-     * System property <code>console.stream</code> (default: true).<br />
-     * Lealone Console: stream query results.
-     */
-    public static final boolean CONSOLE_STREAM = getProperty("console.stream", true);
-
-    /**
-     * System property <code>consoleTimeout</code> (default: 1800000).<br />
-     * Lealone Console: session timeout in milliseconds. The default is 30 minutes.
-     */
-    public static final int CONSOLE_TIMEOUT = getProperty("consoleTimeout", 30 * 60 * 1000);
-
-    /**
      * System property <code>datasource.trace.level</code> (default: 1).<br />
      * The trace level of the data source implementation. Default is 1 for
      * error.
@@ -171,7 +159,7 @@ public class SysProperties {
      * System property <code>lob.close.between.reads</code> (default: false).<br />
      * Close LOB files between read operations.
      */
-    public static boolean lobCloseBetweenReads = getProperty("lob.close.between.reads", false);
+    public static boolean LOB_CLOSE_BETWEEN_READS = getProperty("lob.close.between.reads", false);
 
     /**
      * System property <code>lob.files.per.directory</code> (default: 256).<br />
@@ -204,25 +192,10 @@ public class SysProperties {
     public static final int MAX_FILE_RETRY = Math.max(1, getProperty("max.file.retry", 16));
 
     /**
-     * System property <code>max.reconnect</code> (default: 3).<br />
-     * The maximum number of tries to reconnect in a row.
-     */
-    public static final int MAX_RECONNECT = getProperty("max.reconnect", 3);
-
-    /**
      * System property <code>max.trace.data.length</code> (default: 65535).<br />
      * The maximum size of a LOB value that is written as data to the trace system.
      */
     public static final long MAX_TRACE_DATA_LENGTH = getProperty("max.trace.data.length", 65535);
-
-    /**
-     * System property <code>modify.on.write</code> (default: false).<br />
-     * Only modify the database file when recovery is necessary, or when writing
-     * to the database. If disabled, opening the database always writes to the
-     * file (except if the database is read-only). When enabled, the serialized
-     * file lock is faster.
-     */
-    public static final boolean MODIFY_ON_WRITE = getProperty("modify.on.write", false);
 
     /**
      * System property <code>nio.load.mapped</code> (default: false).<br />
@@ -274,12 +247,6 @@ public class SysProperties {
      */
     public static final String PREFIX_TEMP_FILE = getProperty("prefix.temp.file", Constants.PROJECT_NAME_PREFIX
             + "temp");
-
-    /**
-     * System property <code>run.finalize</code> (default: true).<br />
-     * Run finalizers to detect unclosed connections.
-     */
-    public static boolean runFinalize = getProperty("run.finalize", true);
 
     /**
      * System property <code>server.cached.objects</code> (default: 64).<br />
@@ -400,7 +367,7 @@ public class SysProperties {
      * defensive copy himself before storing, or ensure that the value object is
      * immutable.
      */
-    public static boolean serializeJavaObject = getProperty("serialize.java.object", true);
+    public static boolean SERIALIZE_JAVA_OBJECT = getProperty("serialize.java.object", true);
 
     /**
      * System property <code>java.object.serializer</code> (default: null).<br />
