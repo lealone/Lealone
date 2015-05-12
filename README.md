@@ -19,7 +19,7 @@
 * 支持分片(Sharding)、复制
 
 * 强一制性，支持ACID、高性能分布式事务<br>
-  使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/wiki/Lealone-transaction-model)
+  使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/blob/master/docs/%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E6%A8%A1%E5%9E%8B.md)
  
 * 插件化存储引擎架构，内置[WiredTiger](https://github.com/wiredtiger/wiredtiger/tree/develop)和[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
 
@@ -31,13 +31,7 @@
 * 从[H2数据库](http://www.h2database.com/html/main.html)和[Apache Cassandra](http://cassandra.apache.org/)借鉴了大量成熟的代码和思想
 
 
-## Lealone文档
-
-* [用户文档](https://github.com/codefollower/Lealone/wiki/Lealone%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3)
-
-* [设计文档](https://github.com/codefollower/Lealone/wiki/Lealone%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3)
-
-* [开发文档](https://github.com/codefollower/Lealone/wiki/Lealone%E5%BC%80%E5%8F%91%E6%96%87%E6%A1%A3)
+## [Lealone文档](https://github.com/codefollower/Lealone/blob/master/docs/README.md)
 
 
 ## License
