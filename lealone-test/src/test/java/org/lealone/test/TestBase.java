@@ -31,12 +31,28 @@ public class TestBase extends Assert {
     public static final String DB_NAME = "test";
 
     private static final Map<String, String> connectionParameters = new HashMap<>();
-    private static String storageEngineName = Constants.DEFAULT_STORAGE_ENGINE_NAME;
-    private static boolean embedded = true;
-    private static boolean in_memory = false;
+    private static String storageEngineName;
+    private static boolean embedded;
+    private static boolean in_memory;
+    private static boolean mysql_url_style;
 
-    private static String host = "localhost";
-    private static int port = Constants.DEFAULT_TCP_PORT;
+    private static String host;
+    private static int port;
+
+    static {
+        reset();
+    }
+
+    public static synchronized void reset() {
+        connectionParameters.clear();
+        storageEngineName = Constants.DEFAULT_STORAGE_ENGINE_NAME;
+        embedded = false;
+        in_memory = false;
+        mysql_url_style = false;
+
+        host = "localhost";
+        port = Constants.DEFAULT_TCP_PORT;
+    }
 
     public static void addConnectionParameter(String key, String value) {
         connectionParameters.put(key, value);
@@ -52,6 +68,10 @@ public class TestBase extends Assert {
 
     public static void setInMemory(boolean in_memory) {
         TestBase.in_memory = in_memory;
+    }
+
+    public static void setMysqlUrlStyle(boolean mysql_url_style) {
+        TestBase.mysql_url_style = mysql_url_style;
     }
 
     public static String getHost() {
@@ -70,6 +90,10 @@ public class TestBase extends Assert {
         TestBase.port = port;
     }
 
+    public static String getHostAndPort() {
+        return host + ":" + port;
+    }
+
     public static void printURL() {
         System.out.println("JDBC URL: " + getURL());
         System.out.println();
@@ -78,6 +102,9 @@ public class TestBase extends Assert {
     public static String getURL() {
         //addConnectionParameter("DATABASE_TO_UPPER", "false");
         //addConnectionParameter("ALIAS_COLUMN_NAME", "true");
+
+        addConnectionParameter("user", "sa");
+        addConnectionParameter("password", "");
 
         StringBuilder url = new StringBuilder(100);
 
@@ -93,10 +120,17 @@ public class TestBase extends Assert {
             url.append(Constants.URL_TCP).append("//").append(host).append(':').append(port).append('/');
         }
 
-        url.append(DB_NAME).append("?default_storage_engine=").append(storageEngineName);
+        char firstSeparatorChar = ';';
+        char separatorChar = ';';
+        if (mysql_url_style) {
+            firstSeparatorChar = '?';
+            separatorChar = '&';
+        }
+
+        url.append(DB_NAME).append(firstSeparatorChar).append("default_storage_engine=").append(storageEngineName);
 
         for (Map.Entry<String, String> e : connectionParameters.entrySet())
-            url.append(';').append(e.getKey()).append('=').append(e.getValue());
+            url.append(separatorChar).append(e.getKey()).append('=').append(e.getValue());
 
         return url.toString();
     }
