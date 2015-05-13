@@ -195,7 +195,6 @@ public class TcpServerThread implements Runnable {
             Session session = (Session) ci.getSessionFactory().createSession(ci);
             session.setOriginalProperties(originalProperties);
             session.setLocal(isLocal);
-            session.setHostAndPort(server.getListenAddress(), server.getPort());
             return session;
         } catch (SQLException e) {
             throw DbException.convert(e);

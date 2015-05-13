@@ -1334,16 +1334,6 @@ public class Session extends SessionWithState {
         this.isRoot = isRoot;
     }
 
-    private String hostAndPort;
-
-    public String getHostAndPort() {
-        return hostAndPort;
-    }
-
-    public void setHostAndPort(String host, int port) {
-        hostAndPort = host + ":" + port;
-    }
-
     public String getURL(InetAddress host) {
         if (connectionInfo == null)
             return null;
