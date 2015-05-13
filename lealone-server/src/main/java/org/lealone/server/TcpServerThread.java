@@ -108,14 +108,8 @@ public class TcpServerThread implements Runnable {
                         // cancel a running statement
                         int statementId = transfer.readInt();
                         server.cancelStatement(targetSessionId, statementId);
-                    } else if (command == FrontendSession.SESSION_CHECK_KEY) {
-                        // check if this is the correct server
-                        db = server.checkKeyAndGetDatabaseName(targetSessionId);
-                        if (!targetSessionId.equals(db)) {
-                            transfer.writeInt(FrontendSession.STATUS_OK);
-                        } else {
-                            transfer.writeInt(FrontendSession.STATUS_ERROR);
-                        }
+                    } else {
+                        throw DbException.throwInternalError();
                     }
                 }
 

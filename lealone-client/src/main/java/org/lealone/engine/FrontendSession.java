@@ -54,7 +54,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     public static final int SESSION_PREPARE_READ_PARAMS = 11;
     public static final int SESSION_SET_ID = 12;
     public static final int SESSION_CANCEL_STATEMENT = 13;
-    public static final int SESSION_CHECK_KEY = 14;
+    //public static final int SESSION_CHECK_KEY = 14; //不再使用
     public static final int SESSION_SET_AUTOCOMMIT = 15;
     public static final int SESSION_UNDO_LOG_POS = 16;
     public static final int LOB_READ = 17;
