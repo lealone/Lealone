@@ -78,20 +78,31 @@ public class DatabaseEngine implements SessionFactory {
         DATABASES.remove(dbName);
     }
 
-    /**
-     * Open a database connection with the given connection information.
-     *
-     * @param ci the connection information
-     * @return the session
-     */
     @Override
     public synchronized Session createSession(ConnectionInfo ci) {
         return createSessionAndValidate(ci);
     }
 
-    protected Session createSessionAndValidate(ConnectionInfo ci) {
+    private Session createSessionAndValidate(ConnectionInfo ci) {
         try {
-            Session session = openSession(ci);
+            boolean ifExists = ci.removeProperty("IFEXISTS", false);
+            String cipher = ci.removeProperty("CIPHER", null);
+            Session session;
+            while (true) {
+                session = createSession(ci, ifExists, cipher);
+                if (session != null) {
+                    break;
+                }
+                // we found a database that is currently closing
+                // wait a bit to avoid a busy loop (the method is synchronized)
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    // ignore
+                }
+            }
+
+            initSession(session, ci);
             validateUserAndPassword(true);
             return session;
         } catch (DbException e) {
@@ -102,61 +113,7 @@ public class DatabaseEngine implements SessionFactory {
         }
     }
 
-    protected Session openSession(ConnectionInfo ci) {
-        boolean ifExists = ci.removeProperty("IFEXISTS", false);
-        boolean ignoreUnknownSetting = ci.removeProperty("IGNORE_UNKNOWN_SETTINGS", false);
-        String cipher = ci.removeProperty("CIPHER", null);
-        String init = ci.removeProperty("INIT", null);
-        Session session;
-        while (true) {
-            session = openSession(ci, ifExists, cipher);
-            if (session != null) {
-                break;
-            }
-            // we found a database that is currently closing
-            // wait a bit to avoid a busy loop (the method is synchronized)
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                // ignore
-            }
-        }
-
-        session.setAllowLiterals(true);
-        DbSettings defaultSettings = DbSettings.getDefaultSettings();
-        for (String setting : ci.getKeys()) {
-            if (defaultSettings.containsKey(setting)) {
-                // database setting are only used when opening the database
-                continue;
-            }
-            String value = ci.getProperty(setting);
-            try {
-                CommandInterface command = session.prepareLocal("SET " + Parser.quoteIdentifier(setting) + " " + value);
-                command.executeUpdate();
-            } catch (DbException e) {
-                if (!ignoreUnknownSetting) {
-                    session.close();
-                    throw e;
-                }
-            }
-        }
-        if (init != null) {
-            try {
-                CommandInterface command = session.prepareCommand(init, Integer.MAX_VALUE);
-                command.executeUpdate();
-            } catch (DbException e) {
-                if (!ignoreUnknownSetting) {
-                    session.close();
-                    throw e;
-                }
-            }
-        }
-        session.setAllowLiterals(false);
-        session.commit(true);
-        return session;
-    }
-
-    protected Session openSession(ConnectionInfo ci, boolean ifExists, String cipher) {
+    private Session createSession(ConnectionInfo ci, boolean ifExists, String cipher) {
         String name = ci.getDatabaseName();
         name = Database.parseDatabaseShortName(ci.getDbSettings(), name);
         Database database;
@@ -227,6 +184,43 @@ public class DatabaseEngine implements SessionFactory {
         }
     }
 
+    private void initSession(Session session, ConnectionInfo ci) {
+        boolean ignoreUnknownSetting = ci.removeProperty("IGNORE_UNKNOWN_SETTINGS", false);
+        String init = ci.removeProperty("INIT", null);
+
+        session.setAllowLiterals(true);
+        DbSettings defaultSettings = DbSettings.getDefaultSettings();
+        for (String setting : ci.getKeys()) {
+            if (defaultSettings.containsKey(setting)) {
+                // database setting are only used when opening the database
+                continue;
+            }
+            String value = ci.getProperty(setting);
+            try {
+                CommandInterface command = session.prepareLocal("SET " + Parser.quoteIdentifier(setting) + " " + value);
+                command.executeUpdate();
+            } catch (DbException e) {
+                if (!ignoreUnknownSetting) {
+                    session.close();
+                    throw e;
+                }
+            }
+        }
+        if (init != null) {
+            try {
+                CommandInterface command = session.prepareCommand(init, Integer.MAX_VALUE);
+                command.executeUpdate();
+            } catch (DbException e) {
+                if (!ignoreUnknownSetting) {
+                    session.close();
+                    throw e;
+                }
+            }
+        }
+        session.setAllowLiterals(false);
+        session.commit(true);
+    }
+
     /**
      * This method is called after validating user name and password. If user
      * name and password were correct, the sleep time is reset, otherwise this
@@ -244,7 +238,7 @@ public class DatabaseEngine implements SessionFactory {
      * @param correct if the user name or the password was correct
      * @throws DbException the exception 'wrong user or password'
      */
-    protected void validateUserAndPassword(boolean correct) {
+    private void validateUserAndPassword(boolean correct) {
         int min = SysProperties.DELAY_WRONG_PASSWORD_MIN;
         if (correct) {
             long delay = wrongPasswordDelay;
