@@ -33,8 +33,8 @@ public class TestBase extends Assert {
     private static final Map<String, String> connectionParameters = new HashMap<>();
     private static String storageEngineName;
     private static boolean embedded;
-    private static boolean in_memory;
-    private static boolean mysql_url_style;
+    private static boolean inMemory;
+    private static boolean mysqlUrlStyle;
 
     private static String host;
     private static int port;
@@ -47,14 +47,14 @@ public class TestBase extends Assert {
         connectionParameters.clear();
         storageEngineName = Constants.DEFAULT_STORAGE_ENGINE_NAME;
         embedded = false;
-        in_memory = false;
-        mysql_url_style = false;
+        inMemory = false;
+        mysqlUrlStyle = false;
 
-        host = "localhost";
+        host = Constants.DEFAULT_HOST;
         port = Constants.DEFAULT_TCP_PORT;
     }
 
-    public static void addConnectionParameter(String key, String value) {
+    public static synchronized void addConnectionParameter(String key, String value) {
         connectionParameters.put(key, value);
     }
 
@@ -66,12 +66,12 @@ public class TestBase extends Assert {
         TestBase.embedded = embedded;
     }
 
-    public static void setInMemory(boolean in_memory) {
-        TestBase.in_memory = in_memory;
+    public static void setInMemory(boolean inMemory) {
+        TestBase.inMemory = inMemory;
     }
 
-    public static void setMysqlUrlStyle(boolean mysql_url_style) {
-        TestBase.mysql_url_style = mysql_url_style;
+    public static void setMysqlUrlStyle(boolean mysqlUrlStyle) {
+        TestBase.mysqlUrlStyle = mysqlUrlStyle;
     }
 
     public static String getHost() {
@@ -99,22 +99,24 @@ public class TestBase extends Assert {
         System.out.println();
     }
 
-    public static String getURL() {
+    public static synchronized String getURL() {
         //addConnectionParameter("DATABASE_TO_UPPER", "false");
         //addConnectionParameter("ALIAS_COLUMN_NAME", "true");
 
-        addConnectionParameter("user", "sa");
-        addConnectionParameter("password", "");
+        if (!connectionParameters.containsKey("user")) {
+            addConnectionParameter("user", "sa");
+            addConnectionParameter("password", "");
+        }
 
         StringBuilder url = new StringBuilder(100);
 
         url.append(Constants.URL_PREFIX);
-        if (in_memory)
+        if (inMemory)
             url.append(Constants.URL_MEM);
 
         if (embedded) {
             url.append(Constants.URL_EMBED);
-            if (!in_memory)
+            if (!inMemory)
                 url.append(TEST_DIR).append('/');
         } else {
             url.append(Constants.URL_TCP).append("//").append(host).append(':').append(port).append('/');
@@ -122,7 +124,7 @@ public class TestBase extends Assert {
 
         char firstSeparatorChar = ';';
         char separatorChar = ';';
-        if (mysql_url_style) {
+        if (mysqlUrlStyle) {
             firstSeparatorChar = '?';
             separatorChar = '&';
         }
@@ -136,7 +138,6 @@ public class TestBase extends Assert {
     }
 
     public static Connection getConnection() throws Exception {
-        return DriverManager.getConnection(getURL(), "sa", "");
+        return DriverManager.getConnection(getURL());
     }
-
 }
