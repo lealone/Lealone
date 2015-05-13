@@ -33,7 +33,7 @@ public class ConnectionInfoTest extends UnitTestBase {
             assertTrue(ci.isPersistent());
             assertFalse(ci.isRemote());
             assertTrue(ci.getDatabaseName() != null && ci.getDatabaseName().endsWith(DB_NAME));
-            assertNull(ci.getServer());
+            assertNull(ci.getServers());
 
             setEmbedded(false);
 
@@ -42,7 +42,7 @@ public class ConnectionInfoTest extends UnitTestBase {
             assertFalse(ci.isPersistent()); //TCP类型的URL在Client端建立连接时无法确定是否是Persistent，所以为false
             assertTrue(ci.isRemote());
             assertEquals(DB_NAME, ci.getDatabaseName());
-            assertEquals(getHostAndPort(), ci.getServer());
+            assertEquals(getHostAndPort(), ci.getServers());
 
             try {
                 new ConnectionInfo("invalid url");

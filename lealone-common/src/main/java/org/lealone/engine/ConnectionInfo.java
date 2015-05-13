@@ -63,7 +63,7 @@ public class ConnectionInfo implements Cloneable {
     private boolean ssl;
     private boolean persistent;
     private boolean embedded;
-    private String server;
+    private String servers;
 
     private SessionFactory sessionFactory;
     private DbSettings dbSettings;
@@ -205,7 +205,7 @@ public class ConnectionInfo implements Cloneable {
             int idx = dbName.indexOf('/');
             if (idx < 0)
                 throw getFormatException();
-            server = dbName.substring(0, idx);
+            servers = dbName.substring(0, idx);
             dbName = dbName.substring(idx + 1);
         }
     }
@@ -274,8 +274,8 @@ public class ConnectionInfo implements Cloneable {
         return embedded;
     }
 
-    public String getServer() {
-        return server;
+    public String getServers() {
+        return servers;
     }
 
     public void readProperties(Properties info) {

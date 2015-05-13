@@ -87,16 +87,13 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     private int nextId;
     private boolean autoCommit = true;
     private final ConnectionInfo connectionInfo;
-    private String databaseName;
     private String cipher;
     private byte[] fileEncryptionKey;
     private final Object lobSyncObject = new Object();
     private String sessionId;
     private int clientVersion;
-    //private boolean autoReconnect;
     private int lastReconnect;
     private SessionInterface embedded;
-    //private DatabaseEventListener eventListener;
     private LobStorage lobStorage;
     private Transaction transaction;
 
@@ -104,14 +101,14 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         this.connectionInfo = ci;
     }
 
-    private Transfer initTransfer(ConnectionInfo ci, String db, String server) throws IOException {
+    private Transfer initTransfer(ConnectionInfo ci, String server) throws IOException {
         Socket socket = NetUtils.createSocket(server, Constants.DEFAULT_TCP_PORT, ci.isSSL());
         Transfer trans = new Transfer(this, socket);
         trans.setSSL(ci.isSSL());
         trans.init();
         trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1);
         trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1);
-        trans.writeString(db);
+        trans.writeString(ci.getDatabaseName());
         trans.writeString(ci.getURL());
         trans.writeString(ci.getUserName());
         trans.writeBytes(ci.getUserPasswordHash());
@@ -204,11 +201,11 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         }
     }
 
-    private String getFilePrefix(String dir) {
+    private String getFilePrefix(String dir, String dbName) {
         StringBuilder buff = new StringBuilder(dir);
         buff.append('/');
-        for (int i = 0; i < databaseName.length(); i++) {
-            char ch = databaseName.charAt(i);
+        for (int i = 0; i < dbName.length(); i++) {
+            char ch = dbName.charAt(i);
             if (Character.isLetterOrDigit(ch)) {
                 buff.append(ch);
             } else {
@@ -256,14 +253,12 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     }
 
     private void connectServer(ConnectionInfo ci) {
-        databaseName = ci.getDatabaseName();
-        String server = ci.getServer();
 
         traceSystem = new TraceSystem(null);
         String traceLevelFile = ci.getProperty(SetTypes.TRACE_LEVEL_FILE, null);
         if (traceLevelFile != null) {
             int level = Integer.parseInt(traceLevelFile);
-            String prefix = getFilePrefix(SysProperties.CLIENT_TRACE_DIRECTORY);
+            String prefix = getFilePrefix(SysProperties.CLIENT_TRACE_DIRECTORY, ci.getDatabaseName());
             try {
                 traceSystem.setLevelFile(level);
                 if (level > 0) {
@@ -285,7 +280,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
             fileEncryptionKey = MathUtils.secureRandomBytes(32);
         }
 
-        String[] servers = StringUtils.arraySplit(server, ',', true);
+        String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
         int len = servers.length;
         transfer = null;
         sessionId = StringUtils.convertBytesToHex(MathUtils.secureRandomBytes(32));
@@ -294,7 +289,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
             for (int i = 0; i < len; i++) {
                 String s = servers[random.nextInt(len)];
                 try {
-                    transfer = initTransfer(ci, databaseName, s);
+                    transfer = initTransfer(ci, s);
                     break;
                 } catch (IOException e) {
                     if (i == len - 1) {
@@ -328,59 +323,6 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         checkClosed();
         return new FrontendCommand(this, transfer, sql, fetchSize);
     }
-
-    //TODO
-    /**
-     * Automatically re-connect if necessary and if configured to do so.
-     *
-     * @param count the retry count index
-     * @return true if reconnected
-     */
-    //    private boolean autoReconnect(int count) {
-    //        if (!isClosed()) {
-    //            return false;
-    //        }
-    //        if (!autoReconnect) {
-    //            return false;
-    //        }
-    //        if (!cluster && !autoCommit) {
-    //            return false;
-    //        }
-    //        if (count > SysProperties.MAX_RECONNECT) {
-    //            return false;
-    //        }
-    //        lastReconnect++;
-    //        while (true) {
-    //            try {
-    //                embedded = connectEmbeddedOrServer(false);
-    //                break;
-    //            } catch (DbException e) {
-    //                if (e.getErrorCode() != ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE) {
-    //                    throw e;
-    //                }
-    //                // exclusive mode: re-try endlessly
-    //                try {
-    //                    Thread.sleep(500);
-    //                } catch (Exception e2) {
-    //                    // ignore
-    //                }
-    //            }
-    //        }
-    //        if (embedded == this) {
-    //            // connected to a server somewhere else
-    //            embedded = null;
-    //        } else {
-    //            // opened an embedded connection now -
-    //            // must connect to this database in server mode
-    //            // unfortunately
-    //            connectEmbeddedOrServer(true);
-    //        }
-    //        recreateSessionState();
-    //        if (eventListener != null) {
-    //            eventListener.setProgress(DatabaseEventListener.STATE_RECONNECTED, databaseName, count, SysProperties.MAX_RECONNECT);
-    //        }
-    //        return true;
-    //    }
 
     /**
      * Check if this session is closed and throws an exception if so.
@@ -711,5 +653,4 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
             }
         }
     }
-
 }
