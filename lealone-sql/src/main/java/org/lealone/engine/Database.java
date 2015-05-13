@@ -93,8 +93,9 @@ public class Database implements DataHandler {
      */
     private static final String SYSTEM_USER_NAME = "DBA";
 
-    protected boolean persistent;
-    protected String databaseName;
+    private final DatabaseEngine dbEngine;
+    private final boolean persistent;
+    private String databaseName;
     private String databaseShortName;
     private String databaseURL;
     private String cipher;
@@ -110,41 +111,41 @@ public class Database implements DataHandler {
     private final HashMap<String, UserAggregate> aggregates = New.hashMap();
     private final HashMap<String, Comment> comments = New.hashMap();
 
-    protected final Set<Session> userSessions = Collections.synchronizedSet(new HashSet<Session>());
-    protected Session exclusiveSession;
-    protected final BitField objectIds = new BitField();
+    private final Set<Session> userSessions = Collections.synchronizedSet(new HashSet<Session>());
+    private Session exclusiveSession;
+    private final BitField objectIds = new BitField();
     private final Object lobSyncObject = new Object();
 
-    protected Schema mainSchema;
+    private Schema mainSchema;
     private Schema infoSchema;
-    protected int nextSessionId;
+    private int nextSessionId;
     private int nextTempTableId;
     private User systemUser;
-    protected Session systemSession;
-    protected Table meta;
-    protected Index metaIdIndex;
-    protected boolean starting;
-    protected TraceSystem traceSystem;
-    protected Trace trace;
+    private Session systemSession;
+    private Table meta;
+    private Index metaIdIndex;
+    private boolean starting;
+    private TraceSystem traceSystem;
+    private Trace trace;
     private Role publicRole;
     private long modificationDataId;
     private long modificationMetaId;
     private CompareMode compareMode;
-    protected boolean readOnly;
-    protected int writeDelay = Constants.DEFAULT_WRITE_DELAY;
-    protected DatabaseEventListener eventListener;
+    private boolean readOnly;
+    private int writeDelay = Constants.DEFAULT_WRITE_DELAY;
+    private DatabaseEventListener eventListener;
     private int maxMemoryRows = Constants.DEFAULT_MAX_MEMORY_ROWS;
     private int maxMemoryUndo = Constants.DEFAULT_MAX_MEMORY_UNDO;
-    protected int lockMode = Constants.DEFAULT_LOCK_MODE;
+    private int lockMode = Constants.DEFAULT_LOCK_MODE;
     private int maxLengthInplaceLob;
     private int allowLiterals = Constants.ALLOW_LITERALS_ALL;
 
     private int powerOffCount = initialPowerOffCount;
     private int closeDelay = -1; //不关闭
-    protected DatabaseCloser delayedCloser;
-    protected volatile boolean closing;
+    private DatabaseCloser delayedCloser;
+    private volatile boolean closing;
     private boolean ignoreCase;
-    protected boolean deleteFilesOnDisconnect;
+    private boolean deleteFilesOnDisconnect;
     private String lobCompressionAlgorithm;
     private boolean optimizeReuseResults = true;
     private boolean referentialIntegrity = true;
@@ -166,8 +167,6 @@ public class Database implements DataHandler {
     private DbSettings dbSettings;
     private int logMode;
     private boolean initialized = false;
-
-    protected final DatabaseEngine dbEngine;
 
     public Database(DatabaseEngine dbEngine, boolean persistent) {
         this.dbEngine = dbEngine;
@@ -259,7 +258,11 @@ public class Database implements DataHandler {
 
     private void openDatabase(int traceLevelFile, int traceLevelSystemOut) {
         if (persistent) {
-            openPersistentDatabase(traceLevelFile, traceLevelSystemOut);
+            traceSystem = new TraceSystem(databaseName + Constants.SUFFIX_TRACE_FILE);
+            traceSystem.setLevelFile(traceLevelFile);
+            traceSystem.setLevelSystemOut(traceLevelSystemOut);
+            trace = traceSystem.getTrace(Trace.DATABASE);
+            trace.info("opening {0} (build {1})", databaseName, Constants.BUILD_ID);
         } else {
             traceSystem = new TraceSystem(null);
             trace = traceSystem.getTrace(Trace.DATABASE);
@@ -295,68 +298,11 @@ public class Database implements DataHandler {
         }
     }
 
-    private void openPersistentDatabase(int traceLevelFile, int traceLevelSystemOut) {
-        //        String mvFileName = databaseName + Constants.SUFFIX_MV_FILE;
-        //        boolean existsMv = FileUtils.exists(mvFileName);
-        //
-        //        if (existsMv && !FileUtils.canWrite(mvFileName)) {
-        //            readOnly = true;
-        //        }
-        //        if (existsPage && !existsMv) {
-        //            dbSettings.mvStore = false;
-        //        }
-        //        if (readOnly) {
-        //            if (traceLevelFile >= TraceSystem.DEBUG) {
-        //                String traceFile = Utils.getProperty("java.io.tmpdir", ".") + "/" 
-        //+ "h2_" + System.currentTimeMillis();
-        //                traceSystem = new TraceSystem(traceFile + Constants.SUFFIX_TRACE_FILE);
-        //            } else {
-        //                traceSystem = new TraceSystem(null);
-        //            }
-        //        } else {
-        //            traceSystem = new TraceSystem(databaseName + Constants.SUFFIX_TRACE_FILE);
-        //        }
-
-        traceSystem = new TraceSystem(databaseName + Constants.SUFFIX_TRACE_FILE);
-
-        traceSystem.setLevelFile(traceLevelFile);
-        traceSystem.setLevelSystemOut(traceLevelSystemOut);
-        trace = traceSystem.getTrace(Trace.DATABASE);
-        trace.info("opening {0} (build {1})", databaseName, Constants.BUILD_ID);
-
-        //        String lockFileName = databaseName + Constants.SUFFIX_LOCK_FILE;
-        //        if (readOnly) {
-        //            if (FileUtils.exists(lockFileName)) {
-        //                throw DbException.get(ErrorCode.DATABASE_ALREADY_OPEN_1, "Lock file exists: " + lockFileName);
-        //            }
-        //        }
-        //        if (!readOnly && fileLockMethod != FileLock.LOCK_NO) {
-        //            if (fileLockMethod != FileLock.LOCK_FS) {
-        //                lock = new FileLock(traceSystem, lockFileName, Constants.LOCK_SLEEP);
-        //                lock.lock(fileLockMethod);
-        //            }
-        //        }
-        //        if (SysProperties.MODIFY_ON_WRITE) {
-        //            while (isReconnectNeeded()) {
-        //                // wait until others stopped writing
-        //            }
-        //        } else {
-        //            while (isReconnectNeeded() && !beforeWriting()) {
-        //                // wait until others stopped writing and
-        //                // until we can write (the file is not yet open -
-        //                // no need to re-connect)
-        //            }
-        //        }
-        //        deleteOldTempFiles();
-        //
-        //        setWriteDelay(writeDelay);
-    }
-
-    protected Session createSystemSession(User user, int id) {
+    private Session createSystemSession(User user, int id) {
         return new Session(this, user, id);
     }
 
-    protected void openMetaTable(boolean create) {
+    private void openMetaTable(boolean create) {
         CreateTableData data = new CreateTableData();
         ArrayList<Column> cols = data.columns;
         Column columnId = new Column("ID", Value.INT);
@@ -400,7 +346,7 @@ public class Database implements DataHandler {
         starting = false;
     }
 
-    protected void recompileInvalidViews(Session session) {
+    private void recompileInvalidViews(Session session) {
         boolean recompileSuccessful;
         do {
             recompileSuccessful = false;
@@ -525,7 +471,7 @@ public class Database implements DataHandler {
         throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
     }
 
-    protected void checkPowerOffInternal() {
+    private void checkPowerOffInternal() {
 
     }
 
@@ -610,7 +556,7 @@ public class Database implements DataHandler {
         }
     }
 
-    protected synchronized void addMeta(Session session, DbObject obj) {
+    private synchronized void addMeta(Session session, DbObject obj) {
         int id = obj.getId();
         if (id > 0 && !starting && !obj.isTemporary()) {
             Row r = meta.getTemplateRow();
@@ -931,7 +877,7 @@ public class Database implements DataHandler {
      * @param fromShutdownHook true if this method is called from the shutdown
      *            hook
      */
-    protected synchronized void close(boolean fromShutdownHook) {
+    synchronized void close(boolean fromShutdownHook) {
         if (closing) {
             return;
         }
@@ -1031,7 +977,7 @@ public class Database implements DataHandler {
      *
      * @param flush whether writing is allowed
      */
-    protected synchronized void closeOpenFilesAndUnlock(boolean flush) {
+    private synchronized void closeOpenFilesAndUnlock(boolean flush) {
         if (persistent) {
             deleteOldTempFiles();
         }
@@ -1041,7 +987,7 @@ public class Database implements DataHandler {
         }
     }
 
-    protected void closeFiles() {
+    private void closeFiles() {
     }
 
     private void checkMetaFree(Session session, int id) {
@@ -1288,7 +1234,7 @@ public class Database implements DataHandler {
         }
     }
 
-    protected void deleteOldTempFiles() {
+    private void deleteOldTempFiles() {
         String path = FileUtils.getParent(databaseName);
         for (String name : FileUtils.newDirectoryStream(path)) {
             if (name.endsWith(Constants.SUFFIX_TEMP_FILE) && name.startsWith(databaseName)) {
@@ -1510,6 +1456,10 @@ public class Database implements DataHandler {
         writeDelay = value;
     }
 
+    public int getWriteDelay() {
+        return writeDelay;
+    }
+
     /**
      * Get the list of in-doubt transactions.
      *
@@ -1691,6 +1641,10 @@ public class Database implements DataHandler {
 
     public synchronized void setDeleteFilesOnDisconnect(boolean b) {
         this.deleteFilesOnDisconnect = b;
+    }
+
+    public boolean getDeleteFilesOnDisconnect() {
+        return deleteFilesOnDisconnect;
     }
 
     @Override
@@ -2032,35 +1986,8 @@ public class Database implements DataHandler {
         throw DbException.throwInternalError();
     }
 
-    public byte[] getFilePasswordHash() {
-        return filePasswordHash;
-    }
-
-    public long getFileWriteCountTotal() {
-        return 0L;
-    }
-
-    public long getFileWriteCount() {
-        return 0L;
-    }
-
-    public long getFileReadCount() {
-        return 0L;
-    }
-
-    public long getFileSize() {
-        return 0;
-    }
-
-    public int getCacheSizeMax() {
-        return 0;
-    }
-
-    public void setCacheSizeMax(int kb) {
-    }
-
     public void backupTo(String fileName) {
-
+        getStorageEngine().backupTo(this, fileName);
     }
 
     public Index createIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols,

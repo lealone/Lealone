@@ -34,6 +34,8 @@ public interface StorageEngine {
 
     void close(Database db);
 
+    void backupTo(Database db, String fileName);
+
     StorageMap.Builder createStorageMapBuilder(String dbName);
 
     TransactionEngine createTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder, String hostAndPort);

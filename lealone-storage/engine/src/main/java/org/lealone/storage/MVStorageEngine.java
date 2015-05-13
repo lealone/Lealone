@@ -496,4 +496,8 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
         return session.getTransaction().openMap(name, keyType, valueType);
     }
 
+    @Override
+    public void backupTo(Database db, String fileName) {
+        // TODO
+    }
 }
