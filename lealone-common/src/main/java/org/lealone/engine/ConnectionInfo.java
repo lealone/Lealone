@@ -432,19 +432,6 @@ public class ConnectionInfo implements Cloneable {
     }
 
     /**
-     * Get the file password hash if it is set.
-     *
-     * @return the password hash or null
-     */
-    byte[] getFilePasswordHash() {
-        return filePasswordHash;
-    }
-
-    byte[] getFileEncryptionKey() {
-        return fileEncryptionKey;
-    }
-
-    /**
      * Get the name of the user.
      *
      * @return the user name
@@ -458,8 +445,21 @@ public class ConnectionInfo implements Cloneable {
      *
      * @return the password hash
      */
-    byte[] getUserPasswordHash() {
+    public byte[] getUserPasswordHash() {
         return userPasswordHash;
+    }
+
+    /**
+     * Get the file password hash if it is set.
+     *
+     * @return the password hash or null
+     */
+    public byte[] getFilePasswordHash() {
+        return filePasswordHash;
+    }
+
+    public byte[] getFileEncryptionKey() {
+        return fileEncryptionKey;
     }
 
     /**

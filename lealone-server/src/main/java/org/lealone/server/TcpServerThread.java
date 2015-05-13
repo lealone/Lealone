@@ -161,6 +161,7 @@ public class TcpServerThread implements Runnable {
         for (int i = 0; i < len; i++) {
             originalProperties.setProperty(transfer.readString(), transfer.readString());
         }
+
         String baseDir = server.getBaseDir();
         if (baseDir == null) {
             baseDir = SysProperties.getBaseDir();
@@ -177,17 +178,10 @@ public class TcpServerThread implements Runnable {
             ci.setProperty("IFEXISTS", "TRUE");
         }
         ci.setUserName(userName);
-
         ci.setUserPasswordHash(userPasswordHash);
         ci.setFilePasswordHash(filePasswordHash);
         ci.setFileEncryptionKey(fileEncryptionKey);
         ci.readProperties(originalProperties);
-
-        originalProperties.setProperty("user", userName);
-        if (userPasswordHash != null)
-            originalProperties.put("_userPasswordHash_", userPasswordHash);
-        if (filePasswordHash != null)
-            originalProperties.put("_filePasswordHash_", filePasswordHash);
 
         try {
             //先删除"IS_LOCAL"，否则在createSession过程中会执行 SET IS_LOCAL命令导致错误

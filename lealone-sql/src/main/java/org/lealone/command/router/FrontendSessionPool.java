@@ -19,7 +19,6 @@ package org.lealone.command.router;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -30,6 +29,7 @@ import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.FrontendSession;
 import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;
+import org.lealone.message.DbException;
 
 public class FrontendSessionPool {
     private static final int QUEUE_SIZE = 3;
@@ -52,29 +52,21 @@ public class FrontendSessionPool {
         return queue;
     }
 
-    public static FrontendSession getFrontendSession(Properties info, String url) {
+    public static FrontendSession getFrontendSession(Session originalSession, String url) {
         FrontendSession fs = getQueue(url).poll();
 
         if (fs == null || fs.isClosed()) {
-            byte[] userPasswordHash = null;
-            byte[] filePasswordHash = null;
-            Properties prop = new Properties();
-            String key;
-            for (Object o : info.keySet()) {
-                key = o.toString();
+            ConnectionInfo oldCi = originalSession.getConnectionInfo();
+            //未来新加的代码如果忘记设置这两个字段，出问题时方便查找原因
+            if (originalSession.getOriginalProperties() == null || oldCi == null)
+                throw DbException.throwInternalError();
 
-                if (key.equalsIgnoreCase("_userPasswordHash_"))
-                    userPasswordHash = (byte[]) info.get(key);
-                else if (key.equalsIgnoreCase("_filePasswordHash_"))
-                    filePasswordHash = (byte[]) info.get(key);
-                else
-                    prop.setProperty(key, info.getProperty(key));
-
-            }
-            prop.setProperty("IS_LOCAL", "true");
-            ConnectionInfo ci = new ConnectionInfo(url, prop);
-            ci.setUserPasswordHash(userPasswordHash);
-            ci.setFilePasswordHash(filePasswordHash);
+            ConnectionInfo ci = new ConnectionInfo(url, originalSession.getOriginalProperties());
+            ci.setProperty("IS_LOCAL", "true");
+            ci.setUserName(oldCi.getUserName());
+            ci.setUserPasswordHash(oldCi.getUserPasswordHash());
+            ci.setFilePasswordHash(oldCi.getFilePasswordHash());
+            ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
             fs = (FrontendSession) new FrontendSession(ci).connectEmbeddedOrServer(false);
         }
 
@@ -100,7 +92,7 @@ public class FrontendSessionPool {
         boolean isNew = false;
         if (fs == null) {
             isNew = true;
-            fs = getFrontendSession(originalSession.getOriginalProperties(), url);
+            fs = getFrontendSession(originalSession, url);
         }
 
         if (fs.getTransaction() == null)
