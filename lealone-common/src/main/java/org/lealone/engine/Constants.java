@@ -139,7 +139,7 @@ public class Constants {
     /**
      * The default cache size in KB.
      */
-    public static final int CACHE_SIZE_DEFAULT = 16 * 1024;
+    public static final int DEFAULT_CACHE_SIZE = 16 * 1024;
 
     /**
      * The database URL used when calling a function if only the column list
