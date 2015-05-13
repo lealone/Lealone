@@ -59,13 +59,23 @@ public class DatabaseEngine implements SessionFactory {
             DATABASES.put(dbName, new Database(INSTANCE, true));
     }
 
+    private volatile long wrongPasswordDelay = SysProperties.DELAY_WRONG_PASSWORD_MIN;
+
     protected DatabaseEngine() {
     }
 
-    private volatile long wrongPasswordDelay = SysProperties.DELAY_WRONG_PASSWORD_MIN;
-
     public Database createDatabase(boolean persistent) {
         return new Database(this, persistent);
+    }
+
+    /**
+     * Called after a database has been closed, to remove the object from the
+     * list of open databases.
+     *
+     * @param dbName the database name
+     */
+    public synchronized void closeDatabase(String dbName) {
+        DATABASES.remove(dbName);
     }
 
     /**
@@ -77,17 +87,6 @@ public class DatabaseEngine implements SessionFactory {
     @Override
     public synchronized Session createSession(ConnectionInfo ci) {
         return createSessionAndValidate(ci);
-    }
-
-    /**
-     * Called after a database has been closed, to remove the object from the
-     * list of open databases.
-     *
-     * @param dbName the database name
-     */
-    public synchronized void closeDatabase(String dbName) {
-        unregisterMBean(dbName);
-        DATABASES.remove(dbName);
     }
 
     protected Session createSessionAndValidate(ConnectionInfo ci) {
@@ -224,15 +223,8 @@ public class DatabaseEngine implements SessionFactory {
             }
             Session session = database.createSession(user);
             session.setConnectionInfo(ci);
-            registerMBean(ci, database, session);
             return session;
         }
-    }
-
-    protected void registerMBean(ConnectionInfo ci, Database database, Session session) {
-    }
-
-    protected void unregisterMBean(String dbName) {
     }
 
     /**
