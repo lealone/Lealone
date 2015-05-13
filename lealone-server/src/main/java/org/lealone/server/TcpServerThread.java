@@ -84,16 +84,16 @@ public class TcpServerThread implements Runnable {
                     throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
                 }
                 int minClientVersion = transfer.readInt();
-                if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_1) {
-                    throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + clientVersion, ""
-                            + Constants.TCP_PROTOCOL_VERSION_1);
-                } else if (minClientVersion > Constants.TCP_PROTOCOL_VERSION_1) {
-                    throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + clientVersion, ""
-                            + Constants.TCP_PROTOCOL_VERSION_1);
+                if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_MIN) {
+                    throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion, ""
+                            + Constants.TCP_PROTOCOL_VERSION_MIN);
+                } else if (minClientVersion > Constants.TCP_PROTOCOL_VERSION_MAX) {
+                    throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion, ""
+                            + Constants.TCP_PROTOCOL_VERSION_MAX);
                 }
                 int maxClientVersion = transfer.readInt();
-                if (maxClientVersion >= Constants.TCP_PROTOCOL_VERSION_1) {
-                    clientVersion = Constants.TCP_PROTOCOL_VERSION_1;
+                if (maxClientVersion >= Constants.TCP_PROTOCOL_VERSION_MAX) {
+                    clientVersion = Constants.TCP_PROTOCOL_VERSION_CURRENT;
                 } else {
                     clientVersion = minClientVersion;
                 }

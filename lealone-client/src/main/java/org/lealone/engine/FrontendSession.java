@@ -106,10 +106,10 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         Transfer trans = new Transfer(this, socket);
         trans.setSSL(ci.isSSL());
         trans.init();
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1);
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1);
+        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); //minClientVersion
+        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); //maxClientVersion
         trans.writeString(ci.getDatabaseName());
-        trans.writeString(ci.getURL());
+        trans.writeString(ci.getURL()); //不带参数的URL
         trans.writeString(ci.getUserName());
         trans.writeBytes(ci.getUserPasswordHash());
         trans.writeBytes(ci.getFilePasswordHash());
@@ -253,7 +253,6 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     }
 
     private void connectServer(ConnectionInfo ci) {
-
         traceSystem = new TraceSystem(null);
         String traceLevelFile = ci.getProperty(SetTypes.TRACE_LEVEL_FILE, null);
         if (traceLevelFile != null) {

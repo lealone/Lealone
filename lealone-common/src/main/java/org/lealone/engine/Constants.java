@@ -56,9 +56,24 @@ public class Constants {
     public static final String BUILD_VENDOR_AND_VERSION = null;
 
     /**
-     * The TCP protocol version number 11.
+     * The TCP protocol version number 1.
      */
     public static final int TCP_PROTOCOL_VERSION_1 = 1;
+
+    /**
+     * The min TCP protocol version number.
+     */
+    public static final int TCP_PROTOCOL_VERSION_MIN = TCP_PROTOCOL_VERSION_1;
+
+    /**
+     * The max TCP protocol version number.
+     */
+    public static final int TCP_PROTOCOL_VERSION_MAX = TCP_PROTOCOL_VERSION_1;
+
+    /**
+     * The current TCP protocol version number.
+     */
+    public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_1;
 
     /**
      * The major version of this database.
