@@ -61,15 +61,12 @@ public class ConnectionInfo implements Cloneable {
     private String nameNormalized;
     private boolean remote;
     private boolean ssl;
-    private boolean embedded;
-
     private boolean persistent;
+    private boolean embedded;
+    private String server;
 
     private SessionFactory sessionFactory;
-
     private DbSettings dbSettings;
-
-    private String server;
 
     /**
      * Create a server connection info object.
@@ -77,22 +74,23 @@ public class ConnectionInfo implements Cloneable {
      * @param url
      * @param dbName
      */
-    public ConnectionInfo(String url, String dbName) { //用于server端, 不需要再解析url了
-        checkURL(url);
-
+    public ConnectionInfo(String url, String dbName) { //用于server端, 不需要再解析URL了
         this.url = url;
         this.dbName = dbName;
 
-        url = url.substring(Constants.URL_PREFIX.length());
+        checkURL();
 
-        if (url.startsWith(Constants.URL_EMBED)) {
-            embedded = true;
-        }
+        persistent = true;
+        embedded = false;
+
+        url = url.substring(Constants.URL_PREFIX.length());
         if (url.startsWith(Constants.URL_MEM)) {
             persistent = false;
-            embedded = true;
-        } else {
-            persistent = true;
+            url = url.substring(Constants.URL_MEM.length());
+        }
+        //server端接收到的URL不可能是嵌入式的
+        if (url.startsWith(Constants.URL_EMBED)) {
+            throw DbException.throwInternalError("Server backend URL: " + this.url);
         }
     }
 
@@ -106,31 +104,80 @@ public class ConnectionInfo implements Cloneable {
      * @param url the database URL
      * @param info the connection properties
      */
-    public ConnectionInfo(String url, Properties info) { //用于client端，需要解析url
-        this.url = url;
-        url = remapURL(url);
+    public ConnectionInfo(String url, Properties info) { //用于client端，需要解析URL
+        this.url = remapURL(url);
 
-        checkURL(url);
-
+        checkURL();
         readProperties(info);
-        readSettingsFromURL();
+        readAndRemoveSettingsFromURL();
+        parseURL();
+
         setUserName(removeProperty("USER", ""));
         convertPasswords();
-        //如果url带参数，在readSettingsFromURL()中会改变this.url的值
-        //所以这里用this.url
-        this.dbName = this.url.substring(Constants.URL_PREFIX.length());
-        parseName();
     }
 
-    private void checkURL(String url) {
+    private void checkURL() {
         if (url == null || !url.startsWith(Constants.URL_PREFIX)) {
             throw getFormatException();
         }
     }
 
-    private void parseName() {
+    //如果URL中有参数先读出来，然后从URL中移除
+    private void readAndRemoveSettingsFromURL() {
+        //支持两种风格的JDBC URL参数语法
+        //1. MySQL的JDBC URL参数语法:
+        //.../database[?propertyName1=propertyValue1][&propertyName2=propertyValue2]
+        //数据库名与参数之间用'?'号分隔，不同参数之间用'&'分隔
+
+        //2.Lealone的JDBC URL参数语法:
+        //.../database[;propertyName1=propertyValue1][;propertyName2=propertyValue2]
+        //数据库名与参数之间用';'号分隔，不同参数之间也用';'号分隔
+        int idx = url.indexOf('?');
+        char splitChar;
+        if (idx >= 0) {
+            splitChar = '&';
+            if (url.indexOf(';') >= 0)
+                throw getFormatException(); //不能同时出现'&'和';'
+        } else {
+            idx = url.indexOf(';');
+            splitChar = ';';
+            if (url.indexOf('&') >= 0)
+                throw getFormatException(); //不能出现'&'
+        }
+
+        if (idx >= 0) {
+            DbSettings dbSettings = DbSettings.getDefaultSettings();
+            String settings = url.substring(idx + 1);
+            url = url.substring(0, idx); //去掉后面的参数
+            String[] list = StringUtils.arraySplit(settings, splitChar, false);
+            for (String setting : list) {
+                if (setting.length() == 0) {
+                    continue;
+                }
+                int equal = setting.indexOf('=');
+                if (equal < 0) {
+                    throw getFormatException();
+                }
+                String value = setting.substring(equal + 1);
+                String key = setting.substring(0, equal);
+                key = StringUtils.toUpperEnglish(key);
+                if (!isKnownSetting(key) && !dbSettings.containsKey(key)) {
+                    throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
+                }
+                String old = prop.getProperty(key);
+                if (old != null && !old.equals(value)) {
+                    throw DbException.get(ErrorCode.DUPLICATE_PROPERTY_1, key);
+                }
+                prop.setProperty(key, value);
+            }
+        }
+    }
+
+    private void parseURL() {
         boolean mem = false;
         remote = true;
+        dbName = url.substring(Constants.URL_PREFIX.length());
+
         if (dbName.startsWith(Constants.URL_MEM)) {
             dbName = dbName.substring(Constants.URL_MEM.length());
             mem = true;
@@ -223,6 +270,14 @@ public class ConnectionInfo implements Cloneable {
         return persistent;
     }
 
+    public boolean isEmbedded() {
+        return embedded;
+    }
+
+    public String getServer() {
+        return server;
+    }
+
     public void readProperties(Properties info) {
         if (info == null)
             return;
@@ -244,58 +299,6 @@ public class ConnectionInfo implements Cloneable {
                 if (s.containsKey(key)) {
                     prop.put(key, value);
                 }
-            }
-        }
-    }
-
-    private void readSettingsFromURL() {
-        DbSettings dbSettings = DbSettings.getDefaultSettings();
-
-        //支持两种风格的JDBC URL参数语法
-        //1. MySQL的JDBC URL参数语法:
-        //.../database[?propertyName1=propertyValue1][&propertyName2=propertyValue2]
-        //数据库名与参数之间用'?'号分隔，不同参数之间用'&'分隔
-
-        //2.Lealone的JDBC URL参数语法:
-        //.../database[;propertyName1=propertyValue1][;propertyName2=propertyValue2]
-        //数据库名与参数之间用';'号分隔，不同参数之间也用';'号分隔
-
-        int idx = url.indexOf('?');
-        char splitChar;
-        if (idx >= 0) {
-            splitChar = '&';
-            if (url.indexOf(';') >= 0)
-                throw getFormatException(); //不能同时出现'&'和';'
-        } else {
-            idx = url.indexOf(';');
-            splitChar = ';';
-            if (url.indexOf('&') >= 0)
-                throw getFormatException(); //不能出现'&'
-        }
-
-        if (idx >= 0) {
-            String settings = url.substring(idx + 1);
-            url = url.substring(0, idx); //去掉后面的参数
-            String[] list = StringUtils.arraySplit(settings, splitChar, false);
-            for (String setting : list) {
-                if (setting.length() == 0) {
-                    continue;
-                }
-                int equal = setting.indexOf('=');
-                if (equal < 0) {
-                    throw getFormatException();
-                }
-                String value = setting.substring(equal + 1);
-                String key = setting.substring(0, equal);
-                key = StringUtils.toUpperEnglish(key);
-                if (!isKnownSetting(key) && !dbSettings.containsKey(key)) {
-                    throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
-                }
-                String old = prop.getProperty(key);
-                if (old != null && !old.equals(value)) {
-                    throw DbException.get(ErrorCode.DUPLICATE_PROPERTY_1, key);
-                }
-                prop.setProperty(key, value);
             }
         }
     }
@@ -644,14 +647,6 @@ public class ConnectionInfo implements Cloneable {
             }
         }
         return sessionFactory;
-    }
-
-    public boolean isEmbedded() {
-        return embedded;
-    }
-
-    public String getServer() {
-        return server;
     }
 
     private static String remapURL(String url) {

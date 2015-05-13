@@ -44,5 +44,8 @@ public class EmbeddedExample {
         stmt.executeUpdate("DELETE FROM test WHERE f1 = 1");
 
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
+
+        stmt.close();
+        conn.close();
     }
 }

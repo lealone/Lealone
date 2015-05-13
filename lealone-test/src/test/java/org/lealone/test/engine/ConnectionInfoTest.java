@@ -63,6 +63,13 @@ public class ConnectionInfoTest extends UnitTestBase {
                 fail();
             } catch (Exception e) {
             }
+
+            setEmbedded(true);
+            try {
+                new ConnectionInfo(getURL(), "mydb"); //传递到Server端构建ConnectionInfo时URL不会是嵌入式的
+                fail();
+            } catch (Exception e) {
+            }
         } finally {
             reset();
         }
