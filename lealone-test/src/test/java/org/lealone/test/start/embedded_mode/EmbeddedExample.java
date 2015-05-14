@@ -25,11 +25,12 @@ import org.lealone.test.TestBase;
 
 public class EmbeddedExample {
     public static void main(String[] args) throws Exception {
-        TestBase.setInMemory(true);
-        TestBase.setEmbedded(true);
-        TestBase.printURL();
+        TestBase test = new TestBase();
+        test.setInMemory(true);
+        test.setEmbedded(true);
+        test.printURL();
 
-        Connection conn = TestBase.getConnection();
+        Connection conn = test.getConnection();
         Statement stmt = conn.createStatement();
 
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");

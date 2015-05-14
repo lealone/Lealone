@@ -26,9 +26,10 @@ import org.lealone.test.TestBase;
 
 public class WiredTigerExample {
     static Connection getConnection() throws Exception {
-        //TestBase.setStorageEngineName(WTStorageEngine.NAME);
-        TestBase.setEmbedded(true);
-        return TestBase.getConnection();
+        TestBase test = new TestBase();
+        test.setEmbedded(true);
+        //test.setStorageEngineName(WTStorageEngine.NAME);
+        return test.getConnection();
     }
 
     public static void main(String[] args) throws Exception {

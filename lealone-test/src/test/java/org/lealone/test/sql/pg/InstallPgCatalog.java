@@ -33,7 +33,7 @@ import org.lealone.util.Utils;
 
 public class InstallPgCatalog {
     public static void main(String[] args) throws Exception {
-        Connection conn = TestBase.getConnection();
+        Connection conn = new TestBase().getConnection();
         Statement stmt = conn.createStatement();
 
         installPgCatalog(stmt);

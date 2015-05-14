@@ -24,28 +24,23 @@ import java.util.ArrayList;
 import org.junit.Test;
 import org.lealone.api.AggregateFunction;
 import org.lealone.dbobject.UserAggregate;
-import org.lealone.engine.Database;
-import org.lealone.engine.Session;
-import org.lealone.test.UnitTestBase;
 
-public class UserAggregateTest extends UnitTestBase {
+public class UserAggregateTest extends DbObjectTestBase {
     @Test
     public void run() {
-        Database db = getDatabase();
         int id = db.allocateObjectId();
         String className = MedianString.class.getName();
         String name = "MEDIAN";
         UserAggregate ua = new UserAggregate(db, id, name, className, true);
         assertEquals(id, ua.getId());
 
-        Session session = db.getSystemSession();
         db.addDatabaseObject(session, ua);
         assertNotNull(db.findAggregate(name));
 
         //ua.removeChildrenAndResources(session); //会触发invalidate
 
         String sql = "SELECT " + name + "(X) FROM SYSTEM_RANGE(1, 5)";
-        assertEquals(3, getInt(session, sql, 1));
+        assertEquals(3, getInt(sql, 1));
 
         db.removeDatabaseObject(session, ua);
         assertNull(db.findAggregate(name));
@@ -53,14 +48,14 @@ public class UserAggregateTest extends UnitTestBase {
         //测试SQL
         //-----------------------------------------------
         sql = "CREATE FORCE AGGREGATE IF NOT EXISTS " + name + " FOR \"" + className + "\"";
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertNotNull(db.findAggregate(name));
 
         sql = "SELECT " + name + "(X) FROM SYSTEM_RANGE(1, 5)";
-        assertEquals(3, getInt(session, sql, 1));
+        assertEquals(3, getInt(sql, 1));
 
         sql = "DROP AGGREGATE " + name;
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertNull(db.findAggregate(name));
     }
 

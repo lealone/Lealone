@@ -28,13 +28,12 @@ import org.lealone.test.TestBase;
 
 public class CRUDExample {
     public static void main(String[] args) throws Exception {
-        crud0();
+        crud(new TestBase().getConnection());
         //crud();
         //benchmark();
     }
 
-    static void crud0() throws Exception {
-        Connection conn = TestBase.getConnection();
+    public static void crud(Connection conn) throws Exception {
         Statement stmt = conn.createStatement();
 
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
@@ -54,8 +53,8 @@ public class CRUDExample {
         conn.close();
     }
 
-    static void crud() throws Exception {
-        Connection conn = TestBase.getConnection();
+    static void crud0() throws Exception {
+        Connection conn = new TestBase().getConnection();
         Statement stmt = conn.createStatement();
         ResultSet rs;
 
@@ -98,7 +97,7 @@ public class CRUDExample {
 
         rs.close();
 
-        Connection conn2 = TestBase.getConnection();
+        Connection conn2 = new TestBase().getConnection();
         Statement stmt2 = conn2.createStatement();
 
         rs = stmt2.executeQuery("SELECT count(*) FROM test");
@@ -127,7 +126,7 @@ public class CRUDExample {
 
         MyThread(int start, int count) throws Exception {
             super("MyThread-" + start);
-            conn = TestBase.getConnection();
+            conn = new TestBase().getConnection();
             stmt = conn.createStatement();
             this.start = start;
             this.end = start + count;
@@ -186,7 +185,7 @@ public class CRUDExample {
     }
 
     static void benchmark() throws Exception {
-        Connection conn = TestBase.getConnection();
+        Connection conn = new TestBase().getConnection();
         Statement stmt = conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");

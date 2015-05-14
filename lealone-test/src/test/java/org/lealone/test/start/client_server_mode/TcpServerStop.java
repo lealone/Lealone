@@ -22,6 +22,7 @@ import org.lealone.test.TestBase;
 
 public class TcpServerStop {
     public static void main(String[] args) throws Exception {
-        TcpServer.shutdown(TestBase.getHost(), TestBase.getPort(), "", false, true);
+        TestBase test = new TestBase();
+        TcpServer.shutdown(test.getHost(), test.getPort(), "", false, true);
     }
 }

@@ -24,54 +24,50 @@ import org.lealone.test.UnitTestBase;
 public class ConnectionInfoTest extends UnitTestBase {
     @Test
     public void run() {
+        setEmbedded(true);
+
+        ConnectionInfo ci = new ConnectionInfo(getURL());
+
+        assertTrue(ci.isEmbedded());
+        assertTrue(ci.isPersistent());
+        assertFalse(ci.isRemote());
+        assertTrue(ci.getDatabaseName() != null && ci.getDatabaseName().endsWith(DB_NAME));
+        assertNull(ci.getServers());
+
+        setEmbedded(false);
+
+        ci = new ConnectionInfo(getURL());
+        assertFalse(ci.isEmbedded());
+        assertFalse(ci.isPersistent()); //TCP类型的URL在Client端建立连接时无法确定是否是Persistent，所以为false
+        assertTrue(ci.isRemote());
+        assertEquals(DB_NAME, ci.getDatabaseName());
+        assertEquals(getHostAndPort(), ci.getServers());
+
         try {
-            setEmbedded(true);
+            new ConnectionInfo("invalid url");
+            fail();
+        } catch (Exception e) {
+        }
 
-            ConnectionInfo ci = new ConnectionInfo(getURL());
+        setMysqlUrlStyle(true);
+        try {
+            new ConnectionInfo(getURL() + ";a=b"); //MySQL风格的URL中不能出现';'
+            fail();
+        } catch (Exception e) {
+        }
 
-            assertTrue(ci.isEmbedded());
-            assertTrue(ci.isPersistent());
-            assertFalse(ci.isRemote());
-            assertTrue(ci.getDatabaseName() != null && ci.getDatabaseName().endsWith(DB_NAME));
-            assertNull(ci.getServers());
+        setMysqlUrlStyle(false);
+        try {
+            new ConnectionInfo(getURL() + "&a=b"); //默认风格的URL中不能出现'&'
+            fail();
+        } catch (Exception e) {
+        }
 
-            setEmbedded(false);
-
-            ci = new ConnectionInfo(getURL());
-            assertFalse(ci.isEmbedded());
-            assertFalse(ci.isPersistent()); //TCP类型的URL在Client端建立连接时无法确定是否是Persistent，所以为false
-            assertTrue(ci.isRemote());
-            assertEquals(DB_NAME, ci.getDatabaseName());
-            assertEquals(getHostAndPort(), ci.getServers());
-
-            try {
-                new ConnectionInfo("invalid url");
-                fail();
-            } catch (Exception e) {
-            }
-
-            setMysqlUrlStyle(true);
-            try {
-                new ConnectionInfo(getURL() + ";a=b"); //MySQL风格的URL中不能出现';'
-                fail();
-            } catch (Exception e) {
-            }
-
-            setMysqlUrlStyle(false);
-            try {
-                new ConnectionInfo(getURL() + "&a=b"); //默认风格的URL中不能出现'&'
-                fail();
-            } catch (Exception e) {
-            }
-
-            setEmbedded(true);
-            try {
-                new ConnectionInfo(getURL(), "mydb"); //传递到Server端构建ConnectionInfo时URL不会是嵌入式的
-                fail();
-            } catch (Exception e) {
-            }
-        } finally {
-            reset();
+        setEmbedded(true);
+        try {
+            new ConnectionInfo(getURL(), "mydb"); //传递到Server端构建ConnectionInfo时URL不会是嵌入式的
+            fail();
+        } catch (Exception e) {
         }
     }
 }

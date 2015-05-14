@@ -39,11 +39,12 @@ public class MemoryStorageEngine extends MVStorageEngine {
     public static void main(String[] args) throws Exception {
         //register();
 
-        TestBase.setStorageEngineName(NAME);
-        TestBase.setEmbedded(true);
-        TestBase.printURL();
+        TestBase test = new TestBase();
+        test.setStorageEngineName(NAME);
+        test.setEmbedded(true);
+        test.printURL();
 
-        CRUDExample.main(args);
+        CRUDExample.crud(test.getConnection());
     }
 
     //如果配置了META-INF/services/org.lealone.storage.StorageEngine

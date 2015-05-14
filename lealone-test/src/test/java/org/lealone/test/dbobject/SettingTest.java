@@ -19,19 +19,13 @@ package org.lealone.test.dbobject;
 
 import org.junit.Test;
 import org.lealone.dbobject.Setting;
-import org.lealone.engine.Database;
-import org.lealone.engine.Session;
-import org.lealone.test.UnitTestBase;
 
-public class SettingTest extends UnitTestBase {
+public class SettingTest extends DbObjectTestBase {
     @Test
     public void run() {
-        Database db = getDatabase();
-        Session session = db.getSystemSession();
-
         String name = "CACHE_SIZE";
         String sql = "SET " + name + " 1024";
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertEquals(1024, db.getCacheSize());
 
         Setting s = db.findSetting(name);

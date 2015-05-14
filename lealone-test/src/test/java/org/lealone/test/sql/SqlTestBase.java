@@ -36,7 +36,7 @@ public class SqlTestBase extends TestBase {
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        conn = getConnection();
+        conn = new TestBase().getConnection();
         stmt = conn.createStatement();
     }
 

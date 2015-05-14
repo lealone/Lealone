@@ -23,88 +23,72 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Assert;
-import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Constants;
-import org.lealone.engine.Database;
-import org.lealone.engine.DatabaseEngine;
-import org.lealone.engine.Session;
-import org.lealone.result.ResultInterface;
 
 public class TestBase extends Assert {
     public static final String DEFAULT_STORAGE_ENGINE_NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
     public static final String TEST_DIR = "./lealone-test-data";
     public static final String DB_NAME = "test";
 
-    private static final Map<String, String> connectionParameters = new HashMap<>();
-    private static String storageEngineName;
-    private static boolean embedded;
-    private static boolean inMemory;
-    private static boolean mysqlUrlStyle;
+    private final Map<String, String> connectionParameters = new HashMap<>();
+    private String storageEngineName = Constants.DEFAULT_STORAGE_ENGINE_NAME;
+    private boolean embedded = false;
+    private boolean inMemory = false;
+    private boolean mysqlUrlStyle = false;
 
-    private static String host;
-    private static int port;
+    private String host = Constants.DEFAULT_HOST;
+    private int port = Constants.DEFAULT_TCP_PORT;
 
-    static {
-        reset();
-    }
-
-    public static synchronized void reset() {
-        connectionParameters.clear();
-        storageEngineName = Constants.DEFAULT_STORAGE_ENGINE_NAME;
-        embedded = false;
-        inMemory = false;
-        mysqlUrlStyle = false;
-
-        host = Constants.DEFAULT_HOST;
-        port = Constants.DEFAULT_TCP_PORT;
-    }
-
-    public static synchronized void addConnectionParameter(String key, String value) {
+    public synchronized void addConnectionParameter(String key, String value) {
         connectionParameters.put(key, value);
     }
 
-    public static void setStorageEngineName(String name) {
+    public void setStorageEngineName(String name) {
         storageEngineName = name;
     }
 
-    public static void setEmbedded(boolean embedded) {
-        TestBase.embedded = embedded;
+    public void setEmbedded(boolean embedded) {
+        this.embedded = embedded;
     }
 
-    public static void setInMemory(boolean inMemory) {
-        TestBase.inMemory = inMemory;
+    public void setInMemory(boolean inMemory) {
+        this.inMemory = inMemory;
     }
 
-    public static void setMysqlUrlStyle(boolean mysqlUrlStyle) {
-        TestBase.mysqlUrlStyle = mysqlUrlStyle;
+    public void setMysqlUrlStyle(boolean mysqlUrlStyle) {
+        this.mysqlUrlStyle = mysqlUrlStyle;
     }
 
-    public static String getHost() {
+    public String getHost() {
         return host;
     }
 
-    public static void setHost(String host) {
-        TestBase.host = host;
+    public void setHost(String host) {
+        this.host = host;
     }
 
-    public static int getPort() {
+    public int getPort() {
         return port;
     }
 
-    public static void setPort(int port) {
-        TestBase.port = port;
+    public void setPort(int port) {
+        this.port = port;
     }
 
-    public static String getHostAndPort() {
+    public String getHostAndPort() {
         return host + ":" + port;
     }
 
-    public static void printURL() {
+    public void printURL() {
         System.out.println("JDBC URL: " + getURL());
         System.out.println();
     }
 
-    public static synchronized String getURL() {
+    public synchronized String getURL() {
+        return getURL(DB_NAME);
+    }
+
+    public synchronized String getURL(String dbName) {
         //addConnectionParameter("DATABASE_TO_UPPER", "false");
         //addConnectionParameter("ALIAS_COLUMN_NAME", "true");
         //addConnectionParameter("IGNORE_UNKNOWN_SETTINGS", "true");
@@ -135,7 +119,7 @@ public class TestBase extends Assert {
             separatorChar = '&';
         }
 
-        url.append(DB_NAME).append(firstSeparatorChar).append("default_storage_engine=").append(storageEngineName);
+        url.append(dbName).append(firstSeparatorChar).append("default_storage_engine=").append(storageEngineName);
 
         for (Map.Entry<String, String> e : connectionParameters.entrySet())
             url.append(separatorChar).append(e.getKey()).append('=').append(e.getValue());
@@ -143,34 +127,7 @@ public class TestBase extends Assert {
         return url.toString();
     }
 
-    public static Connection getConnection() throws Exception {
+    public Connection getConnection() throws Exception {
         return DriverManager.getConnection(getURL());
-    }
-
-    public static Database getDatabase() {
-        Database db = DatabaseEngine.getInstance().createDatabase(false);
-        ConnectionInfo ci = new ConnectionInfo(getURL());
-        db.init(ci, DB_NAME);
-        return db;
-    }
-
-    public static int executeUpdate(Session session, String sql) {
-        return session.prepareLocal(sql).executeUpdate();
-    }
-
-    public static ResultInterface executeQuery(Session session, String sql) {
-        return session.prepareLocal(sql).executeQuery(0, false);
-    }
-
-    //index从1开始
-    public static int getInt(ResultInterface result, int index) {
-        if (result.next())
-            return result.currentRow()[index - 1].getInt();
-        else
-            return -1;
-    }
-
-    public static int getInt(Session session, String sql, int index) {
-        return getInt(executeQuery(session, sql), index);
     }
 }

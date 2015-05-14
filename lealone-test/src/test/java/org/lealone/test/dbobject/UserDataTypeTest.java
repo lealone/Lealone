@@ -20,14 +20,11 @@ package org.lealone.test.dbobject;
 import org.junit.Test;
 import org.lealone.dbobject.UserDataType;
 import org.lealone.dbobject.table.Column;
-import org.lealone.engine.Database;
-import org.lealone.engine.Session;
-import org.lealone.test.UnitTestBase;
 
-public class UserDataTypeTest extends UnitTestBase {
+public class UserDataTypeTest extends DbObjectTestBase {
+
     @Test
     public void run() {
-        Database db = getDatabase();
         int id = db.allocateObjectId();
         String udtName = "EMAIL";
         UserDataType udt = new UserDataType(db, id, udtName);
@@ -35,8 +32,6 @@ public class UserDataTypeTest extends UnitTestBase {
 
         Column column = new Column("c", 0);
         udt.setColumn(column);
-
-        Session session = db.getSystemSession();
 
         db.addDatabaseObject(session, udt);
         assertNotNull(db.findUserDataType(udtName));
@@ -53,24 +48,24 @@ public class UserDataTypeTest extends UnitTestBase {
         //-----------------------------------------------
         //VALUE是CREATE DOMAIN语句的默认临时列名
         String sql = "CREATE DOMAIN IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertNotNull(db.findUserDataType(udtName));
         sql = "DROP DOMAIN " + udtName;
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertNull(db.findUserDataType(udtName));
 
         sql = "CREATE TYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertNotNull(db.findUserDataType(udtName));
         sql = "DROP TYPE " + udtName;
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertNull(db.findUserDataType(udtName));
 
         sql = "CREATE DATATYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertNotNull(db.findUserDataType(udtName));
         sql = "DROP DATATYPE " + udtName;
-        executeUpdate(session, sql);
+        executeUpdate(sql);
         assertNull(db.findUserDataType(udtName));
 
         //从第二个名称开始的都是隐藏类型的，如下面的int
@@ -80,15 +75,22 @@ public class UserDataTypeTest extends UnitTestBase {
         //但是非隐藏类型就不能覆盖
         //如CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255)
         sql = "CREATE DATATYPE IF NOT EXISTS int AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
-        executeUpdate(session, sql);
-        assertNotNull(db.findUserDataType("INT")); //默认都转成大写
+        executeUpdate(sql);
+        udtName = "int";
+        if (db.getSettings().databaseToUpper)
+            udtName = udtName.toUpperCase();
+        assertNotNull(db.findUserDataType(udtName));
         sql = "DROP DATATYPE int";
-        executeUpdate(session, sql);
-        assertNull(db.findUserDataType("INT"));
+        executeUpdate(sql);
+        assertNull(db.findUserDataType(udtName));
 
         try {
-            sql = "CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
-            executeUpdate(session, sql);
+            udtName = "integer";
+            //如果DATABASE_TO_UPPER是false就用大写INTEGER
+            if (!db.getSettings().databaseToUpper)
+                udtName = udtName.toUpperCase();
+            sql = "CREATE DATATYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
+            executeUpdate(sql);
             fail();
         } catch (Exception e) {
             assertTrue(e.getMessage().toLowerCase().contains("user data type"));

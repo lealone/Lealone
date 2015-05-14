@@ -19,7 +19,6 @@ package org.lealone.test.transaction;
 
 import org.junit.Test;
 import org.lealone.storage.StorageMap;
-import org.lealone.test.TestBase;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.storage.MemoryStorageEngine;
 import org.lealone.transaction.MVCCTransaction;
@@ -31,7 +30,7 @@ public class MVCCTransactionTest extends UnitTestBase {
     @Test
     public void run() {
         StorageMap.Builder mapBuilder = new MemoryStorageEngine.MemoryMapBuilder();
-        String hostAndPort = TestBase.getHost() + ":" + TestBase.getPort();
+        String hostAndPort = getHost() + ":" + getPort();
         MVCCTransactionEngine e = new MVCCTransactionEngine(new ObjectDataType(), mapBuilder, hostAndPort);
         e.init(null);
 
