@@ -35,7 +35,7 @@ public class DbObjectTestBase extends UnitTestBase {
     public DbObjectTestBase() {
         setInMemory(true);
         setEmbedded(true);
-        //addConnectionParameter("DATABASE_TO_UPPER", "false"); //不转成大写
+        addConnectionParameter("DATABASE_TO_UPPER", "false"); //不转成大写
         ConnectionInfo ci = new ConnectionInfo(getURL(DB_NAME));
         session = DatabaseEngine.getInstance().createSession(ci);
         db = session.getDatabase();
