@@ -203,7 +203,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
             initTransactions();
 
             db.setTransactionEngine(transactionEngine);
-            db.setStorageEngine(storageEngine);
+            db.addStorageEngine(storageEngine);
             db.setLobStorage(new LobStorageMap(db));
         }
 

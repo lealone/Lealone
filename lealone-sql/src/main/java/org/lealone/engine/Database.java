@@ -13,8 +13,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
@@ -275,7 +277,7 @@ public class Database implements DataHandler {
         publicRole = new Role(this, 0, Constants.PUBLIC_ROLE_NAME, true);
         roles.put(Constants.PUBLIC_ROLE_NAME, publicRole);
         systemUser.setAdmin(true);
-        systemSession = createSystemSession(systemUser, ++nextSessionId);
+        systemSession = new Session(this, systemUser, ++nextSessionId);
 
         openMetaTable();
 
@@ -296,10 +298,6 @@ public class Database implements DataHandler {
         if (checkpointAllowed > 0) {
             afterWriting();
         }
-    }
-
-    private Session createSystemSession(User user, int id) {
-        return new Session(this, user, id);
     }
 
     private void openMetaTable() {
@@ -337,7 +335,6 @@ public class Database implements DataHandler {
 
         Collections.sort(records);
         for (MetaRecord rec : records) {
-            objectIds.set(rec.getId());
             rec.execute(this, systemSession, eventListener);
         }
 
@@ -345,6 +342,7 @@ public class Database implements DataHandler {
         starting = false;
     }
 
+    //TODO session参数就是systemSession，另外是否有必要来来回回recompile
     private void recompileInvalidViews(Session session) {
         boolean recompileSuccessful;
         do {
@@ -836,14 +834,14 @@ public class Database implements DataHandler {
                 trace.info("disconnecting session #{0}", session.getId());
             }
         }
-        if (userSessions.size() == 0 && session != systemSession) {
+        if (userSessions.isEmpty() && session != systemSession) {
             if (closeDelay == 0) {
                 close(false);
             } else if (closeDelay < 0) {
                 return;
             } else {
                 delayedCloser = new DatabaseCloser(this, closeDelay * 1000, false);
-                delayedCloser.setName("H2 Close Delay " + getShortName());
+                delayedCloser.setName(getShortName() + " database close delay");
                 delayedCloser.setDaemon(true);
                 delayedCloser.start();
             }
@@ -968,7 +966,8 @@ public class Database implements DataHandler {
         }
         getDatabaseEngine().closeDatabase(databaseName);
 
-        getStorageEngine().close(this);
+        for (StorageEngine se : getStorageEngines())
+            se.close(this);
     }
 
     /**
@@ -1986,7 +1985,8 @@ public class Database implements DataHandler {
     }
 
     public void backupTo(String fileName) {
-        getStorageEngine().backupTo(this, fileName);
+        for (StorageEngine se : getStorageEngines())
+            se.backupTo(this, fileName);
     }
 
     public Index createIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols,
@@ -2006,6 +2006,20 @@ public class Database implements DataHandler {
         }
     }
 
+    //每个数据库会有多个表，每个表有可能使用不同的存储引擎
+    private final List<StorageEngine> storageEngines = new CopyOnWriteArrayList<>();
+
+    public void addStorageEngine(StorageEngine storageEngine) {
+        storageEngines.add(storageEngine);
+    }
+
+    public List<StorageEngine> getStorageEngines() {
+        if (storageEngines.isEmpty())
+            throw new IllegalStateException("StorageEngine not init");
+        return storageEngines;
+    }
+
+    //每个数据库只有一个事务引擎
     private TransactionEngine transactionEngine;
 
     public void setTransactionEngine(TransactionEngine transactionEngine) {
@@ -2016,17 +2030,5 @@ public class Database implements DataHandler {
         if (transactionEngine == null)
             throw new IllegalStateException("TransactionEngine not init");
         return transactionEngine;
-    }
-
-    private StorageEngine storageEngine;
-
-    public void setStorageEngine(StorageEngine storageEngine) {
-        this.storageEngine = storageEngine;
-    }
-
-    public StorageEngine getStorageEngine() {
-        if (storageEngine == null)
-            throw new IllegalStateException("StorageEngine not init");
-        return storageEngine;
     }
 }
