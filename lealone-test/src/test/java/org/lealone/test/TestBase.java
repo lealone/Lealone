@@ -23,7 +23,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Assert;
+import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.Constants;
+import org.lealone.engine.Database;
+import org.lealone.engine.DatabaseEngine;
+import org.lealone.engine.Session;
 
 public class TestBase extends Assert {
     public static final String DEFAULT_STORAGE_ENGINE_NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
@@ -140,5 +144,16 @@ public class TestBase extends Assert {
 
     public static Connection getConnection() throws Exception {
         return DriverManager.getConnection(getURL());
+    }
+
+    public static Database getDatabase() {
+        Database db = DatabaseEngine.getInstance().createDatabase(false);
+        ConnectionInfo ci = new ConnectionInfo(getURL());
+        db.init(ci, DB_NAME);
+        return db;
+    }
+
+    public static int executeUpdate(Session session, String sql) {
+        return session.prepareLocal(sql).executeUpdate();
     }
 }
