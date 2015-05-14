@@ -364,7 +364,7 @@ public class Profiler implements Runnable {
         StringBuilder buff = new StringBuilder();
         buff.append("Profiler: top ").append(count).append(" stack trace(s) of ").append(time).append(" ms:")
                 .append(LINE_SEPARATOR);
-        if (counts.size() == 0) {
+        if (counts.isEmpty()) {
             buff.append("(none)").append(LINE_SEPARATOR);
         }
         HashMap<String, Integer> copy = new HashMap<String, Integer>(counts);

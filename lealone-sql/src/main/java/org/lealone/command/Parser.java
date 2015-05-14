@@ -492,7 +492,7 @@ public class Parser {
     }
 
     protected DbException getSyntaxError() {
-        if (expectedList == null || expectedList.size() == 0) {
+        if (expectedList == null || expectedList.isEmpty()) {
             return DbException.getSyntaxError(sqlCommand, parseIndex);
         }
         StatementBuilder buff = new StatementBuilder();
@@ -4011,7 +4011,7 @@ public class Parser {
                 int scale, displaySize;
                 Column column;
                 String columnName = "C" + (i + 1);
-                if (rows.size() == 0) {
+                if (rows.isEmpty()) {
                     if (type == Value.UNKNOWN) {
                         type = Value.STRING;
                     }

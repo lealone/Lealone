@@ -161,7 +161,7 @@ public class TableFilter implements ColumnResolver {
      */
     public PlanItem getBestPlanItem(Session s, int level) {
         PlanItem item;
-        if (indexConditions.size() == 0) {
+        if (indexConditions.isEmpty()) {
             item = new PlanItem();
             item.setIndex(table.getScanIndex(s));
             item.cost = item.getIndex().getCost(s, null, null);

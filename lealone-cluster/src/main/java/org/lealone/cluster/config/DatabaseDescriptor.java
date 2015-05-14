@@ -170,7 +170,7 @@ public class DatabaseDescriptor {
             throw new ConfigurationException(e.getMessage()
                     + "\nFatal configuration error; unable to start server.  See log for stacktrace.");
         }
-        if (seedProvider.getSeeds().size() == 0)
+        if (seedProvider.getSeeds().isEmpty())
             throw new ConfigurationException("The seed provider lists no seeds.");
 
         initDefaultReplicationStrategy();

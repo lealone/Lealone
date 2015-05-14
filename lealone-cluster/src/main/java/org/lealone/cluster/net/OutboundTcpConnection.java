@@ -121,7 +121,7 @@ class OutboundTcpConnection extends Thread {
                     if (qm.isTimedOut(m.getTimeout()))
                         dropped.incrementAndGet();
                     else if (socket != null || connect())
-                        writeConnected(qm, count == 1 && backlog.size() == 0);
+                        writeConnected(qm, count == 1 && backlog.isEmpty());
                     else
                         // clear out the queue, else gossip messages back up.
                         backlog.clear();

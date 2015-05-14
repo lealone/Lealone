@@ -212,7 +212,7 @@ class ResultDiskBuffer implements ResultExternal {
 
     private Value[] nextUnsorted() {
         file.seek(mainTape.pos);
-        if (mainTape.buffer.size() == 0) {
+        if (mainTape.buffer.isEmpty()) {
             for (int j = 0; mainTape.pos < mainTape.end && j < READ_AHEAD; j++) {
                 readRow(mainTape);
             }
@@ -226,7 +226,7 @@ class ResultDiskBuffer implements ResultExternal {
         int next = -1;
         for (int i = 0, size = tapes.size(); i < size; i++) {
             ResultDiskTape tape = tapes.get(i);
-            if (tape.buffer.size() == 0 && tape.pos < tape.end) {
+            if (tape.buffer.isEmpty() && tape.pos < tape.end) {
                 file.seek(tape.pos);
                 for (int j = 0; tape.pos < tape.end && j < READ_AHEAD; j++) {
                     readRow(tape);

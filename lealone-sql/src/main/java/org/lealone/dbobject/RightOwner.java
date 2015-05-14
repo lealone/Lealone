@@ -106,7 +106,7 @@ public abstract class RightOwner extends DbObjectBase {
             return;
         }
         grantedRights.remove(table);
-        if (grantedRights.size() == 0) {
+        if (grantedRights.isEmpty()) {
             grantedRights = null;
         }
     }
@@ -138,7 +138,7 @@ public abstract class RightOwner extends DbObjectBase {
             return;
         }
         grantedRoles.remove(role);
-        if (grantedRoles.size() == 0) {
+        if (grantedRoles.isEmpty()) {
             grantedRoles = null;
         }
     }

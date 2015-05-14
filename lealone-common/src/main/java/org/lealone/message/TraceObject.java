@@ -352,7 +352,7 @@ public class TraceObject {
         if (map == null) {
             return "null";
         }
-        if (map.size() == 0) {
+        if (map.isEmpty()) {
             return "new Map()";
         }
         return "new Map() /* " + map.toString() + " */";

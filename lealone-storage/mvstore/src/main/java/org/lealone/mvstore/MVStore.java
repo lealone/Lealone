@@ -1373,7 +1373,7 @@ public class MVStore {
             for (Chunk c : modified) {
                 meta.put(Chunk.getMetaKey(c.id), c.asString());
             }
-            if (modified.size() == 0) {
+            if (modified.isEmpty()) {
                 break;
             }
         }
@@ -1662,7 +1662,7 @@ public class MVStore {
             synchronized (this) {
                 old = compactGetOldChunks(targetFillRate, write);
             }
-            if (old == null || old.size() == 0) {
+            if (old == null || old.isEmpty()) {
                 return false;
             }
             compactRewrite(old);
@@ -1718,7 +1718,7 @@ public class MVStore {
             c.collectPriority = (int) (c.getFillRate() * 1000 / age);
             old.add(c);
         }
-        if (old.size() == 0) {
+        if (old.isEmpty()) {
             return null;
         }
 
@@ -1996,7 +1996,7 @@ public class MVStore {
         if (version > currentVersion || version < 0) {
             return false;
         }
-        if (version == currentVersion || chunks.size() == 0) {
+        if (version == currentVersion || chunks.isEmpty()) {
             // no stored data
             return true;
         }
@@ -2122,7 +2122,7 @@ public class MVStore {
             m.rollbackTo(version);
         }
         for (long v = currentVersion; v >= version; v--) {
-            if (freedPageSpace.size() == 0) {
+            if (freedPageSpace.isEmpty()) {
                 break;
             }
             freedPageSpace.remove(v);

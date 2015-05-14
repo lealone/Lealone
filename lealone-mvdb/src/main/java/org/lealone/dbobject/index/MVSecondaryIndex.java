@@ -138,7 +138,7 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
                 Iterator<Value> it = s.next;
                 if (!it.hasNext()) {
                     sources.remove(s);
-                    if (sources.size() == 0) {
+                    if (sources.isEmpty()) {
                         break;
                     }
                 } else {

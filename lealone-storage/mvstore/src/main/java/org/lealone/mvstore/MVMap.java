@@ -305,7 +305,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      */
     @Override
     public long getKeyIndex(K key) {
-        if (size() == 0) {
+        if (isEmpty()) {
             return -1;
         }
         Page p = root;
@@ -338,7 +338,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      */
     @SuppressWarnings("unchecked")
     protected K getFirstLast(boolean first) {
-        if (size() == 0) {
+        if (isEmpty()) {
             return null;
         }
         Page p = root;

@@ -338,7 +338,7 @@ public class Aggregate extends Expression {
         Value v = data.getValue(session.getDatabase(), distinct);
         if (type == GROUP_CONCAT) {
             ArrayList<Value> list = data.getList();
-            if (list == null || list.size() == 0) {
+            if (list == null || list.isEmpty()) {
                 return ValueNull.INSTANCE;
             }
             if (orderList != null) {
@@ -412,7 +412,7 @@ public class Aggregate extends Expression {
         Value v = data.getMergedValue(session.getDatabase(), distinct);
         if (type == GROUP_CONCAT) {
             ArrayList<Value> list = data.getList();
-            if (list == null || list.size() == 0) {
+            if (list == null || list.isEmpty()) {
                 return ValueNull.INSTANCE;
             }
             if (orderList != null) {

@@ -307,7 +307,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 return;
             }
 
-            if (liveEndpoints.size() == 0) {
+            if (liveEndpoints.isEmpty()) {
                 sendGossip(prod, seeds);
             } else {
                 /* Gossip with the seed with some probability. */

@@ -35,7 +35,7 @@ public class ResultRemoteCursor extends ResultRemote {
             remapIfOld();
             if (rowId - rowOffset >= result.size()) {
                 fetchRows(true);
-                if (isEnd && result.size() == 0) {
+                if (isEnd && result.isEmpty()) {
                     currentRow = null;
                     return false;
                 }
