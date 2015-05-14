@@ -28,6 +28,7 @@ import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.DatabaseEngine;
 import org.lealone.engine.Session;
+import org.lealone.result.ResultInterface;
 
 public class TestBase extends Assert {
     public static final String DEFAULT_STORAGE_ENGINE_NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
@@ -155,5 +156,21 @@ public class TestBase extends Assert {
 
     public static int executeUpdate(Session session, String sql) {
         return session.prepareLocal(sql).executeUpdate();
+    }
+
+    public static ResultInterface executeQuery(Session session, String sql) {
+        return session.prepareLocal(sql).executeQuery(0, false);
+    }
+
+    //index从1开始
+    public static int getInt(ResultInterface result, int index) {
+        if (result.next())
+            return result.currentRow()[index - 1].getInt();
+        else
+            return -1;
+    }
+
+    public static int getInt(Session session, String sql, int index) {
+        return getInt(executeQuery(session, sql), index);
     }
 }
