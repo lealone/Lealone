@@ -321,7 +321,7 @@ public class Database implements DataHandler {
         meta = mainSchema.createTable(data);
 
         IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
-        IndexType indexType = IndexType.createPrimaryKey(false, false);
+        IndexType indexType = IndexType.createDelegate(); //重用原有的primary index
         metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, indexType, true, null);
 
         ArrayList<MetaRecord> records = New.arrayList();

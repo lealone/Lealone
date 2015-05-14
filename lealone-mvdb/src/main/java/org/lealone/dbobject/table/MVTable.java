@@ -29,10 +29,6 @@ import org.lealone.dbobject.index.MVIndex;
 import org.lealone.dbobject.index.MVPrimaryIndex;
 import org.lealone.dbobject.index.MVSecondaryIndex;
 import org.lealone.dbobject.index.NonUniqueHashIndex;
-import org.lealone.dbobject.table.Column;
-import org.lealone.dbobject.table.IndexColumn;
-import org.lealone.dbobject.table.Table;
-import org.lealone.dbobject.table.TableBase;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
@@ -407,29 +403,31 @@ public class MVTable extends TableBase {
             database.lockMeta(session);
         }
         Index index;
-        int mainIndexColumn;
-        mainIndexColumn = getMainIndexColumn(indexType, cols);
-        if (database.isStarting()) {
-            if (storageEngine.hasMap(getSchema().getDatabase(), "index." + indexId)) {
+        int mainIndexColumn = getMainIndexColumn(indexType, cols);
+        if (indexType.isDelegate()) {
+            index = createMVDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
+        } else {
+            if (database.isStarting()) {
+                if (storageEngine.hasMap(getSchema().getDatabase(), "index." + indexId)) {
+                    mainIndexColumn = -1;
+                }
+            } else if (primaryIndex.getRowCountMax() != 0) {
                 mainIndexColumn = -1;
             }
-        } else if (primaryIndex.getRowCountMax() != 0) {
-            mainIndexColumn = -1;
-        }
-        if (mainIndexColumn != -1) {
-            primaryIndex.setMainIndexColumn(mainIndexColumn);
-            index = new MVDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
-        } else if (indexType.isHash() && cols.length <= 1) { //TODO 是否要支持多版本
-            if (indexType.isUnique()) {
-                index = new HashIndex(this, indexId, indexName, cols, indexType);
+            if (mainIndexColumn != -1) {
+                index = createMVDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
+            } else if (indexType.isHash() && cols.length <= 1) { //TODO 是否要支持多版本
+                if (indexType.isUnique()) {
+                    index = new HashIndex(this, indexId, indexName, cols, indexType);
+                } else {
+                    index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
+                }
             } else {
-                index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
+                index = new MVSecondaryIndex(storageEngine, session, this, indexId, indexName, cols, indexType);
             }
-        } else {
-            index = new MVSecondaryIndex(storageEngine, session, this, indexId, indexName, cols, indexType);
-        }
-        if (index instanceof MVIndex && index.needRebuild()) {
-            rebuildIndex(session, (MVIndex) index, indexName);
+            if (index instanceof MVIndex && index.needRebuild()) {
+                rebuildIndex(session, (MVIndex) index, indexName);
+            }
         }
         index.setTemporary(isTemporary());
         if (index.getCreateSQL() != null) {
@@ -443,6 +441,12 @@ public class MVTable extends TableBase {
         indexes.add(index);
         setModified();
         return index;
+    }
+
+    private MVDelegateIndex createMVDelegateIndex(int indexId, String indexName, IndexType indexType,
+            int mainIndexColumn) {
+        primaryIndex.setMainIndexColumn(mainIndexColumn);
+        return new MVDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
     }
 
     private void rebuildIndex(Session session, MVIndex index, String indexName) {

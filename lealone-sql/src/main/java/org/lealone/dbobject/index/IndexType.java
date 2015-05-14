@@ -13,6 +13,7 @@ public class IndexType {
 
     private boolean primaryKey, persistent, unique, hash, scan;
     private boolean belongsToConstraint;
+    private boolean delegate;
 
     /**
      * Create a primary key index.
@@ -27,6 +28,13 @@ public class IndexType {
         type.persistent = persistent;
         type.hash = hash;
         type.unique = true;
+        return type;
+    }
+
+    public static IndexType createDelegate() {
+        IndexType type = new IndexType();
+        type.primaryKey = true;
+        type.delegate = true;
         return type;
     }
 
@@ -168,6 +176,10 @@ public class IndexType {
      */
     public boolean isScan() {
         return scan;
+    }
+
+    public boolean isDelegate() {
+        return delegate;
     }
 
 }
