@@ -29,8 +29,8 @@ public class MetaRecord implements Comparable<MetaRecord> {
 
     public MetaRecord(SearchRow r) {
         id = r.getValue(0).getInt();
-        objectType = r.getValue(2).getInt();
-        sql = r.getValue(3).getString();
+        objectType = r.getValue(1).getInt();
+        sql = r.getValue(2).getString();
     }
 
     public MetaRecord(DbObject obj) {
@@ -41,9 +41,8 @@ public class MetaRecord implements Comparable<MetaRecord> {
 
     public void setRecord(SearchRow r) {
         r.setValue(0, ValueInt.get(id));
-        r.setValue(1, ValueInt.get(0));
-        r.setValue(2, ValueInt.get(objectType));
-        r.setValue(3, ValueString.get(sql));
+        r.setValue(1, ValueInt.get(objectType));
+        r.setValue(2, ValueString.get(sql));
     }
 
     /**
@@ -56,7 +55,6 @@ public class MetaRecord implements Comparable<MetaRecord> {
     public void execute(Database db, Session systemSession, DatabaseEventListener listener) {
         try {
             Prepared command = systemSession.prepare(sql);
-            //System.out.println("execute id: " + id + ", sql=" + sql);
             command.setObjectId(id);
             command.setLocal(true);
             command.update();

@@ -277,7 +277,7 @@ public class Database implements DataHandler {
         systemUser.setAdmin(true);
         systemSession = createSystemSession(systemUser, ++nextSessionId);
 
-        openMetaTable(true);
+        openMetaTable();
 
         if (!readOnly) {
             // set CREATE_BUILD in a new database
@@ -302,13 +302,12 @@ public class Database implements DataHandler {
         return new Session(this, user, id);
     }
 
-    private void openMetaTable(boolean create) {
+    private void openMetaTable() {
         CreateTableData data = new CreateTableData();
         ArrayList<Column> cols = data.columns;
         Column columnId = new Column("ID", Value.INT);
         columnId.setNullable(false);
         cols.add(columnId);
-        cols.add(new Column("HEAD", Value.INT));
         cols.add(new Column("TYPE", Value.INT));
         cols.add(new Column("SQL", Value.STRING));
         data.tableName = "SYS";
@@ -316,17 +315,17 @@ public class Database implements DataHandler {
         data.temporary = false;
         data.persistData = persistent;
         data.persistIndexes = persistent;
-        data.create = create;
+        data.create = true;
         data.isHidden = true;
         data.session = systemSession;
         meta = mainSchema.createTable(data);
-        IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
-        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, IndexType.createPrimaryKey(false, false), true,
-                null);
 
-        Cursor cursor = metaIdIndex.find(systemSession, null, null);
+        IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
+        IndexType indexType = IndexType.createPrimaryKey(false, false);
+        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, indexType, true, null);
 
         ArrayList<MetaRecord> records = New.arrayList();
+        Cursor cursor = metaIdIndex.find(systemSession, null, null);
         while (cursor.next()) {
             MetaRecord rec = new MetaRecord(cursor.get());
             objectIds.set(rec.getId());
