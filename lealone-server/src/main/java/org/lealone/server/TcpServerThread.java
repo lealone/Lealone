@@ -184,11 +184,9 @@ public class TcpServerThread implements Runnable {
         ci.readProperties(originalProperties);
 
         try {
-            //先删除"IS_LOCAL"，否则在createSession过程中会执行 SET IS_LOCAL命令导致错误
-            boolean isLocal = ci.removeProperty("IS_LOCAL", false);
             Session session = (Session) ci.getSessionFactory().createSession(ci);
             session.setOriginalProperties(originalProperties);
-            session.setLocal(isLocal);
+            session.setLocal(ci.getProperty("IS_LOCAL", false));
             return session;
         } catch (SQLException e) {
             throw DbException.convert(e);

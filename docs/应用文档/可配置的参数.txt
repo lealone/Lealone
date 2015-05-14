@@ -1,6 +1,5 @@
 ConnectionSettings
 -----------------------
-	AUTOCOMMIT
 	CACHE_TYPE
 	CIPHER
 	CREATE
@@ -18,6 +17,7 @@ ConnectionSettings
 
 SetTypes
 -----------------------
+	AUTOCOMMIT
 	CLUSTER
 	COLLATION
 	COMPRESS_LOB

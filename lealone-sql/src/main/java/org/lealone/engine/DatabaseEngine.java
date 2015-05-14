@@ -85,11 +85,10 @@ public class DatabaseEngine implements SessionFactory {
 
     private Session createSessionAndValidate(ConnectionInfo ci) {
         try {
-            boolean ifExists = ci.removeProperty("IFEXISTS", false);
-            String cipher = ci.removeProperty("CIPHER", null);
+            boolean ifExists = ci.getProperty("IFEXISTS", false);
             Session session;
             while (true) {
-                session = createSession(ci, ifExists, cipher);
+                session = createSession(ci, ifExists);
                 if (session != null) {
                     break;
                 }
@@ -113,7 +112,7 @@ public class DatabaseEngine implements SessionFactory {
         }
     }
 
-    private Session createSession(ConnectionInfo ci, boolean ifExists, String cipher) {
+    private Session createSession(ConnectionInfo ci, boolean ifExists) {
         String name = ci.getDatabaseName();
         name = Database.parseDatabaseShortName(ci.getDbSettings(), name);
         Database database;
@@ -130,7 +129,7 @@ public class DatabaseEngine implements SessionFactory {
                 throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, name);
             }
             database = createDatabase(ci.isPersistent());
-            database.init(ci, name, cipher);
+            database.init(ci, name);
             opened = true;
             if (database.getAllUsers().isEmpty()) {
                 // users is the last thing we add, so if no user is around,
@@ -146,7 +145,7 @@ public class DatabaseEngine implements SessionFactory {
                 SystemDatabase.addDatabase(database.getShortName(), database.getStorageEngineName());
         } else {
             if (!database.isInitialized())
-                database.init(ci, name, cipher);
+                database.init(ci, name);
         }
 
         synchronized (database) {
@@ -160,7 +159,7 @@ public class DatabaseEngine implements SessionFactory {
                 return null;
             }
             if (user == null) {
-                if (database.validateFilePasswordHash(cipher, ci.getFilePasswordHash())) {
+                if (database.validateFilePasswordHash(ci.getProperty("CIPHER", null), ci.getFilePasswordHash())) {
                     user = database.findUser(ci.getUserName());
                     if (user != null) {
                         if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
@@ -185,30 +184,28 @@ public class DatabaseEngine implements SessionFactory {
     }
 
     private void initSession(Session session, ConnectionInfo ci) {
-        boolean ignoreUnknownSetting = ci.removeProperty("IGNORE_UNKNOWN_SETTINGS", false);
-        String init = ci.removeProperty("INIT", null);
+        boolean ignoreUnknownSetting = ci.getProperty("IGNORE_UNKNOWN_SETTINGS", false);
+        String init = ci.getProperty("INIT", null);
 
         session.setAllowLiterals(true);
-        DbSettings defaultSettings = DbSettings.getDefaultSettings();
+        CommandInterface command;
         for (String setting : ci.getKeys()) {
-            if (defaultSettings.containsKey(setting)) {
-                // database setting are only used when opening the database
-                continue;
-            }
-            String value = ci.getProperty(setting);
-            try {
-                CommandInterface command = session.prepareLocal("SET " + Parser.quoteIdentifier(setting) + " " + value);
-                command.executeUpdate();
-            } catch (DbException e) {
-                if (!ignoreUnknownSetting) {
-                    session.close();
-                    throw e;
+            if (SetTypes.contains(setting)) {
+                String value = ci.getProperty(setting);
+                try {
+                    command = session.prepareLocal("SET " + Parser.quoteIdentifier(setting) + " " + value);
+                    command.executeUpdate();
+                } catch (DbException e) {
+                    if (!ignoreUnknownSetting) {
+                        session.close();
+                        throw e;
+                    }
                 }
             }
         }
         if (init != null) {
             try {
-                CommandInterface command = session.prepareCommand(init, Integer.MAX_VALUE);
+                command = session.prepareCommand(init, Integer.MAX_VALUE);
                 command.executeUpdate();
             } catch (DbException e) {
                 if (!ignoreUnknownSetting) {

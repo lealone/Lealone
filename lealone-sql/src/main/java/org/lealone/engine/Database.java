@@ -187,7 +187,7 @@ public class Database implements DataHandler {
         return initialized;
     }
 
-    public synchronized void init(ConnectionInfo ci, String databaseShortName, String cipher) {
+    public synchronized void init(ConnectionInfo ci, String databaseShortName) {
         if (initialized)
             return;
         this.dbSettings = ci.getDbSettings();
@@ -198,11 +198,11 @@ public class Database implements DataHandler {
         this.databaseShortName = databaseShortName;
         this.maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
                 : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
-        this.cipher = cipher;
+        this.cipher = ci.getProperty("CIPHER", null);
         this.cacheSize = ci.getProperty("CACHE_SIZE", Constants.DEFAULT_CACHE_SIZE);
         this.pageSize = ci.getProperty("PAGE_SIZE", Constants.DEFAULT_PAGE_SIZE);
         this.databaseURL = ci.getURL();
-        String listener = ci.removeProperty("DATABASE_EVENT_LISTENER", null);
+        String listener = ci.getProperty("DATABASE_EVENT_LISTENER", null);
         if (listener != null) {
             listener = StringUtils.trim(listener, true, true, "'");
             setEventListenerClass(listener);

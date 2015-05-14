@@ -7,6 +7,7 @@
 package org.lealone.engine;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import org.lealone.util.New;
 
@@ -205,7 +206,14 @@ public class SetTypes {
      */
     public static final int BINARY_COLLATION = 38;
 
+    /**
+     * The type of a SET AUTOCOMMIT statement.
+     */
+    public static final int AUTOCOMMIT = 39;
+
     private static final ArrayList<String> TYPES = New.arrayList();
+
+    private static final HashSet<String> TYPE_NAMES = New.hashSet();
 
     private SetTypes() {
         // utility class
@@ -252,6 +260,9 @@ public class SetTypes {
         list.add(QUERY_TIMEOUT, "QUERY_TIMEOUT");
         list.add(REDO_LOG_BINARY, "REDO_LOG_BINARY");
         list.add(BINARY_COLLATION, "BINARY_COLLATION");
+        list.add(AUTOCOMMIT, "AUTOCOMMIT");
+
+        TYPE_NAMES.addAll(TYPES);
     }
 
     /**
@@ -283,4 +294,7 @@ public class SetTypes {
         return getTypes().get(type);
     }
 
+    public static boolean contains(String name) {
+        return TYPE_NAMES.contains(name);
+    }
 }

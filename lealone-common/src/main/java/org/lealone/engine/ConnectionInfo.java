@@ -7,7 +7,6 @@
 package org.lealone.engine;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,17 +28,17 @@ public class ConnectionInfo implements Cloneable {
     private static final HashSet<String> KNOWN_SETTINGS = New.hashSet();
 
     static {
-        ArrayList<String> list = SetTypes.getTypes();
-        HashSet<String> set = KNOWN_SETTINGS;
-        set.addAll(list);
-        String[] connectionSettings = { "AUTOCOMMIT", "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS",
-                "IFEXISTS", "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "OPEN_NEW", "PAGE_SIZE",
-                "PASSWORD_HASH", "IS_LOCAL" };
+        KNOWN_SETTINGS.addAll(SetTypes.getTypes());
+
+        String[] connectionSettings = { "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS",
+                "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH",
+                "IS_LOCAL" };
+
         for (String key : connectionSettings) {
-            if (SysProperties.CHECK && set.contains(key)) {
+            if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
                 DbException.throwInternalError(key);
             }
-            set.add(key);
+            KNOWN_SETTINGS.add(key);
         }
     }
 
@@ -362,7 +361,7 @@ public class ConnectionInfo implements Cloneable {
      * @param defaultValue the default value
      * @return the value
      */
-    boolean getProperty(String key, boolean defaultValue) {
+    public boolean getProperty(String key, boolean defaultValue) {
         String x = getProperty(key, null);
         if (x == null) {
             return defaultValue;

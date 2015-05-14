@@ -102,6 +102,7 @@ public class TestBase extends Assert {
     public static synchronized String getURL() {
         //addConnectionParameter("DATABASE_TO_UPPER", "false");
         //addConnectionParameter("ALIAS_COLUMN_NAME", "true");
+        //addConnectionParameter("IGNORE_UNKNOWN_SETTINGS", "true");
 
         if (!connectionParameters.containsKey("user")) {
             addConnectionParameter("user", "sa");
