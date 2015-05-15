@@ -183,7 +183,7 @@ public abstract class Command implements CommandInterface {
         startTime = 0;
         long start = 0;
         Database database = session.getDatabase();
-        Object sync = database.isMultiThreaded() ? (Object) session : (Object) database;
+        Object sync = database.isMultiThreaded() ? session : database;
         session.waitIfExclusiveModeEnabled();
         boolean writing = !isReadOnly();
         if (writing) {
@@ -221,7 +221,7 @@ public abstract class Command implements CommandInterface {
     public int executeUpdate() {
         long start = 0;
         Database database = session.getDatabase();
-        Object sync = database.isMultiThreaded() ? (Object) session : (Object) database;
+        Object sync = database.isMultiThreaded() ? session : database;
         session.waitIfExclusiveModeEnabled();
         boolean callStop = true;
         boolean writing = !isReadOnly();
