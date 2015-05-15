@@ -54,7 +54,7 @@ public interface Transaction {
 
     void setStatus(int status);
 
-    //long getTransactionId();
+    long getTransactionId();
 
     //long getCommitTimestamp();
 

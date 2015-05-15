@@ -169,6 +169,7 @@ public class Database implements DataHandler {
     private DbSettings dbSettings;
     private int logMode;
     private boolean initialized = false;
+    private DbException backgroundException;
 
     public Database(DatabaseEngine dbEngine, boolean persistent) {
         this.dbEngine = dbEngine;
@@ -1485,10 +1486,30 @@ public class Database implements DataHandler {
      * @param session the session
      */
     synchronized void commit(Session session) {
-        if (readOnly) {
-            return;
+        throwLastBackgroundException();
+    }
+
+    private void throwLastBackgroundException() {
+        if (backgroundException != null) {
+            // we don't care too much about concurrency here,
+            // we just want to make sure the exception is _normally_
+            // not just logged to the .trace.db file
+            DbException b = backgroundException;
+            backgroundException = null;
+            if (b != null) {
+                throw b;
+            }
         }
-        session.setAllCommitted();
+    }
+
+    public void setBackgroundException(DbException e) {
+        if (backgroundException == null) {
+            backgroundException = e;
+            TraceSystem t = getTraceSystem();
+            if (t != null) {
+                t.getTrace(Trace.DATABASE).error(e, "flush");
+            }
+        }
     }
 
     /**
@@ -1992,18 +2013,6 @@ public class Database implements DataHandler {
     public Index createIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols,
             IndexType indexType, boolean create, Session session) {
         throw DbException.throwInternalError();
-    }
-
-    private DbException backgroundException;
-
-    public void setBackgroundException(DbException e) {
-        if (backgroundException == null) {
-            backgroundException = e;
-            TraceSystem t = getTraceSystem();
-            if (t != null) {
-                t.getTrace(Trace.DATABASE).error(e, "flush");
-            }
-        }
     }
 
     //每个数据库会有多个表，每个表有可能使用不同的存储引擎

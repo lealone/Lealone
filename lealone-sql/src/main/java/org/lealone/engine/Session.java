@@ -78,8 +78,6 @@ public class Session extends SessionWithState {
     private int lockTimeout;
     private Value lastIdentity = ValueLong.get(0);
     private Value lastScopeIdentity = ValueLong.get(0);
-    private int firstUncommittedLog = Session.LOG_WRITTEN;
-    private int firstUncommittedPos = Session.LOG_WRITTEN;
     private HashMap<String, Table> localTempTables;
     private HashMap<String, Index> localTempTableIndexes;
     private HashMap<String, Constraint> localTempTableConstraints;
@@ -506,11 +504,6 @@ public class Session extends SessionWithState {
 
             endTransaction();
         }
-        if (containsUncommitted()) {
-            // need to commit even if rollback is not possible
-            // (create/drop table and so on)
-            database.commit(this);
-        }
         if (!ddl) {
             // do not clean the temp tables if the last command was a
             // create/drop
@@ -807,45 +800,12 @@ public class Session extends SessionWithState {
     }
 
     /**
-     * Called when a log entry for this session is added. The session keeps
-     * track of the first entry in the transaction log that is not yet committed.
-     *
-     * @param logId the transaction log id
-     * @param pos the position of the log entry in the transaction log
-     */
-    public void addLogPos(int logId, int pos) {
-        if (firstUncommittedLog == Session.LOG_WRITTEN) {
-            firstUncommittedLog = logId;
-            firstUncommittedPos = pos;
-        }
-    }
-
-    public int getFirstUncommittedLog() {
-        return firstUncommittedLog;
-    }
-
-    /**
-     * This method is called after the transaction log has written the commit
-     * entry for this session.
-     */
-    void setAllCommitted() {
-        firstUncommittedLog = Session.LOG_WRITTEN;
-        firstUncommittedPos = Session.LOG_WRITTEN;
-    }
-
-    private boolean containsUncommitted() {
-        return firstUncommittedLog != Session.LOG_WRITTEN;
-    }
-
-    /**
      * Prepare the given transaction.
      *
      * @param transactionName the name of the transaction
      */
     public void prepareCommit(String transactionName) {
-        if (containsUncommitted()) {
-            // need to commit even if rollback is not possible (create/drop
-            // table and so on)
+        if (transaction != null) {
             database.prepareCommit(this, transactionName);
         }
         currentTransactionName = transactionName;
@@ -1289,10 +1249,10 @@ public class Session extends SessionWithState {
     }
 
     public Value getTransactionId() {
-        if (!database.isPersistent()) {
+        if (transaction == null) {
             return ValueNull.INSTANCE;
         }
-        return ValueString.get(firstUncommittedLog + "-" + firstUncommittedPos + "-" + id);
+        return ValueString.get(Long.toString(transaction.getTransactionId()));
     }
 
     /**

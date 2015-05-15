@@ -88,6 +88,11 @@ public class MVCCTransaction implements Transaction {
     }
 
     @Override
+    public long getTransactionId() {
+        return transactionId;
+    }
+
+    @Override
     public boolean isAutoCommit() {
         return autoCommit;
     }

@@ -52,6 +52,11 @@ public class MemoryTransaction implements Transaction {
     }
 
     @Override
+    public long getTransactionId() {
+        return 0;
+    }
+
+    @Override
     public boolean isAutoCommit() {
 
         return false;
