@@ -87,4 +87,9 @@ public class WTStorageEngine extends MVStorageEngine implements TransactionStora
     public void flush(Database db) {
         connections.get(db.getName()).async_flush();
     }
+
+    @Override
+    public void sync(Database db) {
+        flush(db);
+    }
 }

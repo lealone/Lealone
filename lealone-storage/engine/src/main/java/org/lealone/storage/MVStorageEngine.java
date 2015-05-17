@@ -505,4 +505,9 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     public void flush(Database db) {
         getStore(db).flush();
     }
+
+    @Override
+    public void sync(Database db) {
+        getStore(db).sync();
+    }
 }

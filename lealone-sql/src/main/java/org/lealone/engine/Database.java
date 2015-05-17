@@ -1516,6 +1516,16 @@ public class Database implements DataHandler {
      * Flush all pending changes to the transaction log.
      */
     public synchronized void flush() {
+        if (readOnly) {
+            return;
+        }
+        try {
+            for (StorageEngine se : getStorageEngines())
+                se.flush(this);
+        } catch (RuntimeException e) {
+            backgroundException = DbException.convert(e);
+            throw e;
+        }
     }
 
     public void setEventListener(DatabaseEventListener eventListener) {
@@ -1579,7 +1589,13 @@ public class Database implements DataHandler {
      * Synchronize the files with the file system. This method is called when
      * executing the SQL statement CHECKPOINT SYNC.
      */
-    public void sync() {
+    public synchronized void sync() {
+        if (readOnly) {
+            return;
+        }
+
+        for (StorageEngine se : getStorageEngines())
+            se.flush(this);
     }
 
     public int getMaxMemoryRows() {
@@ -1881,8 +1897,10 @@ public class Database implements DataHandler {
      * Flush all changes and open a new transaction log.
      */
     public void checkpoint() {
-        for (StorageEngine se : getStorageEngines())
-            se.flush(this);
+        if (persistent) {
+            for (StorageEngine se : getStorageEngines())
+                se.flush(this);
+        }
         getTempFileDeleter().deleteUnused();
     }
 
