@@ -500,4 +500,9 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     public void backupTo(Database db, String fileName) {
         // TODO
     }
+
+    @Override
+    public void flush(Database db) {
+        getStore(db).flush();
+    }
 }

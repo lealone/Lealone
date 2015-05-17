@@ -82,4 +82,9 @@ public class WTStorageEngine extends MVStorageEngine implements TransactionStora
 
         return wiredtiger.open(dbName, "create");
     }
+
+    @Override
+    public void flush(Database db) {
+        connections.get(db.getName()).async_flush();
+    }
 }

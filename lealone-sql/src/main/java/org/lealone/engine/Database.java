@@ -1881,6 +1881,8 @@ public class Database implements DataHandler {
      * Flush all changes and open a new transaction log.
      */
     public void checkpoint() {
+        for (StorageEngine se : getStorageEngines())
+            se.flush(this);
         getTempFileDeleter().deleteUnused();
     }
 
@@ -2023,8 +2025,6 @@ public class Database implements DataHandler {
     }
 
     public List<StorageEngine> getStorageEngines() {
-        if (storageEngines.isEmpty())
-            throw new IllegalStateException("StorageEngine not init");
         return storageEngines;
     }
 
