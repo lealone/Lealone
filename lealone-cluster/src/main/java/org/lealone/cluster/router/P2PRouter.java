@@ -49,6 +49,7 @@ import org.lealone.command.router.MergedResult;
 import org.lealone.command.router.Router;
 import org.lealone.command.router.SerializedResult;
 import org.lealone.command.router.SortedResult;
+import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
@@ -110,9 +111,7 @@ public class P2PRouter implements Router {
     private static int executeInsertOrMerge(InsertOrMerge iom) {
         final String localDataCenter = DatabaseDescriptor.getEndpointSnitch()
                 .getDatacenter(Utils.getBroadcastAddress());
-        String keyspaceName = iom.getTable().getSchema().getName();
-        //AbstractReplicationStrategy rs = Keyspace.open(keyspaceName).getReplicationStrategy();
-
+        Schema schema = iom.getTable().getSchema();
         List<Row> localRows = null;
         Map<InetAddress, List<Row>> localDataCenterRows = null;
         Map<InetAddress, List<Row>> remoteDataCenterRows = null;
@@ -124,9 +123,9 @@ public class P2PRouter implements Router {
             if (partitionKey == null)
                 partitionKey = ValueUuid.getNewRandom();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
-            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
+            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(schema, tk);
             Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetaData().pendingEndpointsFor(
-                    tk, keyspaceName);
+                    tk, schema.getFullName());
 
             Iterable<InetAddress> targets = Iterables.concat(naturalEndpoints, pendingEndpoints);
             for (InetAddress destination : targets) {
@@ -350,11 +349,11 @@ public class P2PRouter implements Router {
         Value endPK = getPartitionKey(endRow);
 
         if (startPK != null && endPK != null && startPK == endPK) {
-            String keyspaceName = tableFilter.getTable().getSchema().getName();
+            Schema schema = tableFilter.getTable().getSchema();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(startPK.getBytesNoCopy()));
-            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(keyspaceName, tk);
+            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(schema, tk);
             Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetaData().pendingEndpointsFor(
-                    tk, keyspaceName);
+                    tk, schema.getFullName());
 
             naturalEndpoints.addAll(pendingEndpoints);
             return naturalEndpoints;

@@ -69,6 +69,7 @@ import org.lealone.cluster.utils.FileUtils;
 import org.lealone.cluster.utils.Pair;
 import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.WrappedRunnable;
+import org.lealone.dbobject.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -484,8 +485,8 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         setMode(Mode.NORMAL, false);
     }
 
-    public Collection<Range<Token>> getLocalRanges(String keyspaceName) {
-        return getRangesForEndpoint(keyspaceName, Utils.getBroadcastAddress());
+    public Collection<Range<Token>> getLocalRanges(Schema schema) {
+        return getRangesForEndpoint(schema, Utils.getBroadcastAddress());
     }
 
     public void register(IEndpointLifecycleSubscriber subscriber) {
@@ -1135,8 +1136,8 @@ public class StorageService implements IEndpointStateChangeSubscriber {
      * @param ep endpoint we are interested in.
      * @return ranges for the specified endpoint.
      */
-    Collection<Range<Token>> getRangesForEndpoint(String keyspaceName, InetAddress ep) {
-        return Keyspace.open(keyspaceName).getReplicationStrategy().getAddressRanges().get(ep);
+    Collection<Range<Token>> getRangesForEndpoint(Schema schema, InetAddress ep) {
+        return Keyspace.getReplicationStrategy(schema).getAddressRanges().get(ep);
     }
 
     /**
@@ -1163,36 +1164,36 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         return ranges;
     }
 
-    public List<InetAddress> getNaturalEndpoints(String keyspaceName, ByteBuffer key) {
-        return getNaturalEndpoints(keyspaceName, getPartitioner().getToken(key));
+    public List<InetAddress> getNaturalEndpoints(Schema schema, ByteBuffer key) {
+        return getNaturalEndpoints(schema, getPartitioner().getToken(key));
     }
 
     /**
      * This method returns the N endpoints that are responsible for storing the
      * specified key i.e for replication.
      *
-     * @param keyspaceName keyspace name also known as keyspace
+     * @param schema the schema
      * @param pos position for which we need to find the endpoint
      * @return the endpoint responsible for this token
      */
-    public List<InetAddress> getNaturalEndpoints(String keyspaceName, RingPosition<?> pos) {
-        return Keyspace.open(keyspaceName).getReplicationStrategy().getNaturalEndpoints(pos);
+    public List<InetAddress> getNaturalEndpoints(Schema schema, RingPosition<?> pos) {
+        return Keyspace.getReplicationStrategy(schema).getNaturalEndpoints(pos);
     }
 
     /**
      * This method attempts to return N endpoints that are responsible for storing the
      * specified key i.e for replication.
      *
-     * @param keyspace keyspace name also known as keyspace
+     * @param schema the schema
      * @param key key for which we need to find the endpoint
      * @return the endpoint responsible for this key
      */
-    public List<InetAddress> getLiveNaturalEndpoints(Keyspace keyspace, ByteBuffer key) {
-        return getLiveNaturalEndpoints(keyspace, getPartitioner().decorateKey(key));
+    public List<InetAddress> getLiveNaturalEndpoints(Schema schema, ByteBuffer key) {
+        return getLiveNaturalEndpoints(schema, getPartitioner().decorateKey(key));
     }
 
-    public List<InetAddress> getLiveNaturalEndpoints(Keyspace keyspace, RingPosition<?> pos) {
-        List<InetAddress> endpoints = keyspace.getReplicationStrategy().getNaturalEndpoints(pos);
+    public List<InetAddress> getLiveNaturalEndpoints(Schema schema, RingPosition<?> pos) {
+        List<InetAddress> endpoints = Keyspace.getReplicationStrategy(schema).getNaturalEndpoints(pos);
         List<InetAddress> liveEps = new ArrayList<>(endpoints.size());
 
         for (InetAddress endpoint : endpoints) {

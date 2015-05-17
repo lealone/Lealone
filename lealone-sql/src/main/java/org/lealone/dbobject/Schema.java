@@ -9,6 +9,7 @@ package org.lealone.dbobject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.command.ddl.CreateTableData;
@@ -23,6 +24,7 @@ import org.lealone.message.Trace;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageEngineManager;
 import org.lealone.util.New;
+import org.lealone.util.StatementBuilder;
 import org.lealone.util.Utils;
 
 /**
@@ -41,6 +43,10 @@ public class Schema extends DbObjectBase {
     private final HashMap<String, Constraint> constraints;
     private final HashMap<String, Constant> constants;
     private final HashMap<String, FunctionAlias> functions;
+
+    private final String fullName;
+    private Map<String, String> replicationProperties;
+    private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
 
     /**
      * The set of returned unique names that are not yet stored. It is used to
@@ -70,6 +76,30 @@ public class Schema extends DbObjectBase {
         initDbObjectBase(database, id, schemaName, Trace.SCHEMA);
         this.owner = owner;
         this.system = system;
+
+        fullName = database.getShortName() + "." + schemaName;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public Map<String, String> getReplicationProperties() {
+        return replicationProperties;
+    }
+
+    public void setReplicationProperties(Map<String, String> replicationProperties) {
+        this.replicationProperties = replicationProperties;
+        if (replicationPropertiesChangeListener != null)
+            replicationPropertiesChangeListener.replicationPropertiesChanged(this);
+    }
+
+    public void setReplicationPropertiesChangeListener(ReplicationPropertiesChangeListener listener) {
+        replicationPropertiesChangeListener = listener;
+    }
+
+    public static interface ReplicationPropertiesChangeListener {
+        void replicationPropertiesChanged(Schema schema);
     }
 
     /**
@@ -96,7 +126,18 @@ public class Schema extends DbObjectBase {
         if (system) {
             return null;
         }
-        return "CREATE SCHEMA IF NOT EXISTS " + getSQL() + " AUTHORIZATION " + owner.getSQL();
+
+        StatementBuilder sql = new StatementBuilder();
+        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ").append(owner.getSQL());
+        if (replicationProperties != null && !replicationProperties.isEmpty()) {
+            sql.append(" WITH REPLICATION = (");
+            for (Map.Entry<String, String> e : replicationProperties.entrySet()) {
+                sql.appendExceptFirst(",");
+                sql.append('\'').append(e.getKey()).append("':'").append(e.getValue()).append('\'');
+            }
+            sql.append(')');
+        }
+        return sql.toString();
     }
 
     @Override

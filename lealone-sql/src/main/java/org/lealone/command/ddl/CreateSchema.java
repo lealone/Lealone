@@ -6,6 +6,8 @@
  */
 package org.lealone.command.ddl;
 
+import java.util.Map;
+
 import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
 import org.lealone.dbobject.Schema;
@@ -24,6 +26,8 @@ public class CreateSchema extends DefineCommand {
     private String authorization;
     private boolean ifNotExists;
 
+    private Map<String, String> replicationProperties;
+
     public CreateSchema(Session session) {
         super(session);
     }
@@ -32,6 +36,7 @@ public class CreateSchema extends DefineCommand {
         this.ifNotExists = ifNotExists;
     }
 
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
@@ -46,6 +51,7 @@ public class CreateSchema extends DefineCommand {
         }
         int id = getObjectId();
         Schema schema = new Schema(db, id, schemaName, user, false);
+        schema.setReplicationProperties(replicationProperties);
         db.addDatabaseObject(session, schema);
         return 0;
     }
@@ -58,8 +64,13 @@ public class CreateSchema extends DefineCommand {
         this.authorization = userName;
     }
 
+    @Override
     public int getType() {
         return CommandInterface.CREATE_SCHEMA;
+    }
+
+    public void setReplicationProperties(Map<String, String> replicationProperties) {
+        this.replicationProperties = replicationProperties;
     }
 
 }

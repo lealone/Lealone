@@ -23,6 +23,13 @@ import org.lealone.test.sql.SqlTestBase;
 public class InsertTest extends SqlTestBase {
     @Test
     public void run() {
+        String schemaName = "SCHEMA_FOR_INSERT";
+        schemaName = "PUBLIC";
+
+        executeUpdate("CREATE SCHEMA IF NOT EXISTS " + schemaName //
+                + " WITH REPLICATION = ('class': 'SimpleStrategy', 'replication_factor':1)");
+        //executeUpdate("SET SCHEMA " + schemaName);
+
         createTable("InsertTest");
         createTable("InsertTest2");
         testInsert();

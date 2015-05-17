@@ -11,12 +11,15 @@ import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.text.Collator;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
 import org.lealone.command.ddl.AlterIndexRename;
 import org.lealone.command.ddl.AlterSchemaRename;
+import org.lealone.command.ddl.AlterSchemaWithReplication;
 import org.lealone.command.ddl.AlterSequence;
 import org.lealone.command.ddl.AlterTableAddConstraint;
 import org.lealone.command.ddl.AlterTableAlterColumn;
@@ -4093,7 +4096,29 @@ public class Parser {
         } else {
             command.setAuthorization(session.getUser().getName());
         }
+
+        if (readIf("WITH")) {
+            read("REPLICATION");
+            read("=");
+            Map<String, String> replicationProperties = parseMap();
+            command.setReplicationProperties(replicationProperties);
+            checkReplicationProperties(replicationProperties);
+        }
+
         return command;
+    }
+
+    private Map<String, String> parseMap() {
+        Map<String, String> map = new HashMap<>();
+        read("(");
+        while (!readIf(")")) {
+            String k = readString();
+            read(":");
+            String v = readString();
+            readIf(",");
+            map.put(k, v);
+        }
+        return map;
     }
 
     private CreateSequence parseCreateSequence() {
@@ -4431,8 +4456,27 @@ public class Parser {
         return command;
     }
 
-    private AlterSchemaRename parseAlterSchema() {
+    private DefineCommand parseAlterSchema() {
         String schemaName = readIdentifierWithSchema();
+        if (readIf("WITH")) {
+            read("REPLICATION");
+            read("=");
+            AlterSchemaWithReplication command = new AlterSchemaWithReplication(session);
+            command.setSchema(getSchema(schemaName));
+            Map<String, String> replicationProperties = parseMap();
+            command.setReplicationProperties(replicationProperties);
+            checkReplicationProperties(replicationProperties);
+            return command;
+        }
+        return parseAlterSchemaRename(schemaName);
+    }
+
+    private void checkReplicationProperties(Map<String, String> replicationProperties) {
+        if (replicationProperties != null && !replicationProperties.containsKey("class"))
+            throw DbException.get(ErrorCode.SYNTAX_ERROR_1, sqlCommand + ", missing replication strategy class");
+    }
+
+    private AlterSchemaRename parseAlterSchemaRename(String schemaName) {
         Schema old = getSchema();
         AlterSchemaRename command = new AlterSchemaRename(session);
         command.setOldSchema(getSchema(schemaName));

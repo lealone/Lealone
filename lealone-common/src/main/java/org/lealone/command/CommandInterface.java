@@ -449,6 +449,11 @@ public interface CommandInterface {
     int SHUTDOWN_DEFRAG = 84;
 
     /**
+     * The type of a ALTER SCHEMA WTIH REPLICATION statement.
+     */
+    int ALTER_SCHEMA_WTIH_REPLICATION = 85;
+
+    /**
      * Get command type.
      *
      * @return one of the constants above
