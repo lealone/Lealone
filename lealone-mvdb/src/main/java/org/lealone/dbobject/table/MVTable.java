@@ -37,6 +37,7 @@ import org.lealone.message.Trace;
 import org.lealone.result.Row;
 import org.lealone.result.SortOrder;
 import org.lealone.storage.TransactionStorageEngine;
+import org.lealone.transaction.Transaction;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
 import org.lealone.value.DataType;
@@ -53,13 +54,13 @@ public class MVTable extends TableBase {
     private volatile Session lockExclusiveSession;
 
     // using a ConcurrentHashMap as a set
-    private final ConcurrentHashMap<Session, Session> lockSharedSessions = new ConcurrentHashMap<Session, Session>();
+    private final ConcurrentHashMap<Session, Session> lockSharedSessions = new ConcurrentHashMap<>();
 
     /**
      * The queue of sessions waiting to lock the table. It is a FIFO queue to
      * prevent starvation, since Java's synchronized locking is biased.
      */
-    private final ArrayDeque<Session> waitingSessions = new ArrayDeque<Session>();
+    private final ArrayDeque<Session> waitingSessions = new ArrayDeque<>();
     private final Trace traceLock;
     private int changesSinceAnalyze;
     private int nextAnalyze;
@@ -105,7 +106,7 @@ public class MVTable extends TableBase {
         if (!forceLockEvenInMvcc && database.isMultiVersion()) {
             // MVCC: update, delete, and insert use a shared lock.
             // Select doesn't lock except when using FOR UPDATE and
-            // the system property h2.selectForUpdateMvcc
+            // the system property selectForUpdateMvcc
             // is not enabled
             if (exclusive) {
                 exclusive = false;
@@ -586,15 +587,15 @@ public class MVTable extends TableBase {
     @Override
     public void removeRow(Session session, Row row) {
         lastModificationId = database.getNextModificationDataId();
-        //LocalTransaction t = getTransaction(session);
-        //long savepoint = t.setSavepoint();
+        Transaction t = session.getTransaction();
+        long savepointId = t.getSavepointId();
         try {
             for (int i = indexes.size() - 1; i >= 0; i--) {
                 Index index = indexes.get(i);
                 index.remove(session, row);
             }
         } catch (Throwable e) {
-            //t.rollbackToSavepoint(savepoint);
+            t.rollbackToSavepoint(savepointId);
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
@@ -613,28 +614,16 @@ public class MVTable extends TableBase {
     @Override
     public void addRow(Session session, Row row) {
         lastModificationId = database.getNextModificationDataId();
-        //LocalTransaction t = getTransaction(session);
-        //long savepoint = t.setSavepoint();
+        Transaction t = session.getTransaction();
+        long savepointId = t.getSavepointId();
         try {
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
                 index.add(session, row);
             }
         } catch (Throwable e) {
-            //t.rollbackToSavepoint(savepoint);
-            DbException de = DbException.convert(e);
-            //            if (de.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
-            //                for (int j = 0; j < indexes.size(); j++) {
-            //                    Index index = indexes.get(j);
-            //                    if (index.getIndexType().isUnique() && index instanceof MultiVersionIndex) {
-            //                        MultiVersionIndex mv = (MultiVersionIndex) index;
-            //                        if (mv.isUncommittedFromOtherSession(session, row)) {
-            //                            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, index.getName());
-            //                        }
-            //                    }
-            //                }
-            //            }
-            throw de;
+            t.rollbackToSavepoint(savepointId);
+            throw DbException.convert(e);
         }
         analyzeIfRequired(session);
     }
@@ -711,7 +700,6 @@ public class MVTable extends TableBase {
             database.getLobStorage().removeAllForTable(getId());
             database.lockMeta(session);
         }
-        //database.getMvStore().removeTable(this);
         storageEngine.removeTable(this);
         super.removeChildrenAndResources(session);
         // go backwards because database.removeIndex will
