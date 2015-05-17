@@ -26,26 +26,13 @@ class TransactionStatusTable {
     private TransactionStatusTable() {
     }
 
-    //HBase默认情况下只有当前region server的hostAndPort，
-    //但是当发生split时原有记录的hostAndPort没变，只不过记录被移到了当前region server，
-    //为了使得事务状态表中的记录仍然有效，所以还是用原有记录的hostAndPort
     private final static Map<String, TransactionStatusCache> hostAndPortMap = New.hashMap();
+
     /**
      * The persisted map of transactionStatusTable.
-     * Key: transaction_name, value: [ all_local_transaction_names, commit_timestamp ].
+     * Key: transactionName, value: [ allLocalTransactionNames, commitTimestamp ].
      */
     private static StorageMap<String, Object[]> map;
-
-    synchronized static void init(StorageMap.Builder mapBuilder) {
-        if (map != null)
-            return;
-        map = mapBuilder.openMap("transactionStatusTable");
-    }
-
-    public static void commit(MVCCTransaction transaction, String allLocalTransactionNames) {
-        Object[] v = { allLocalTransactionNames, transaction.getCommitTimestamp() };
-        map.put(transaction.transactionName, v);
-    }
 
     private static TransactionStatusCache newCache(String hostAndPort) {
         synchronized (TransactionStatusTable.class) {
@@ -59,16 +46,29 @@ class TransactionStatusTable {
         }
     }
 
+    static synchronized void init(StorageMap.Builder mapBuilder) {
+        if (map == null)
+            map = mapBuilder.openMap("transactionStatusTable");
+    }
+
+    static void commit(MVCCTransaction transaction, String allLocalTransactionNames) {
+        Object[] v = { allLocalTransactionNames, transaction.getCommitTimestamp() };
+        map.put(transaction.transactionName, v);
+    }
+
+    static boolean validateTransaction(String localTransactionName) {
+        return map.containsKey(localTransactionName);
+    }
+
     /**
      * 检查事务是否有效
      * 
-     * @param hostAndPort 所要检查的行所在的主机名和端口号
-     * @param oldTid 所要检查的行存入数据库的旧事务id
+     * @param hostAndPort 要检查的行所在的主机名和端口号
+     * @param oldTid 要检查的行存入数据库的旧事务id
      * @param currentTransaction 当前事务
      * @return true 有效 
      */
-    public static boolean isValid(Transaction.Validator validator, String hostAndPort, long oldTid,
-            MVCCTransaction currentTransaction) {
+    static boolean validateTransaction(String hostAndPort, long oldTid, MVCCTransaction currentTransaction) {
         TransactionStatusCache cache = hostAndPortMap.get(hostAndPort);
         if (cache == null) {
             cache = newCache(hostAndPort);
@@ -91,7 +91,7 @@ class TransactionStatusTable {
 
         for (String localTransactionName : allLocalTransactionNames) {
             if (!oldTransactionName.equals(localTransactionName)) {
-                if (!validate(validator, localTransactionName)) {
+                if (!currentTransaction.validator.validateTransaction(localTransactionName)) {
                     isFullSuccessful = false;
                     break;
                 }
@@ -106,27 +106,5 @@ class TransactionStatusTable {
             cache.set(oldTid, -2);
             return false;
         }
-    }
-
-    private static boolean validate(Transaction.Validator validator, String localTransactionName) {
-        //        String[] a = localTransactionName.split(":");
-        //
-        //        FrontendSession fs = null;
-        //        try {
-        //            String dbName = session.getDatabase().getShortName();
-        //            String url = TransactionValidator.createURL(dbName, a[0], a[1]);
-        //            fs = FrontendSessionPool.getFrontendSession(session.getOriginalProperties(), url);
-        //            return fs.validateTransaction(localTransactionName);
-        //        } catch (Exception e) {
-        //            throw DbException.convert(e);
-        //        } finally {
-        //            FrontendSessionPool.release(fs);
-        //        }
-
-        return validator.validateTransaction(localTransactionName);
-    }
-
-    public static boolean isValid(String localTransactionName) {
-        return map.containsKey(localTransactionName);
     }
 }

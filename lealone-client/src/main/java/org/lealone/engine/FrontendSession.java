@@ -37,9 +37,7 @@ import org.lealone.value.Value;
  * The client side part of a session when using the server mode. This object
  * communicates with a Session on the server side.
  */
-public class FrontendSession extends SessionWithState implements DataHandler, Transaction.Participant,
-        Transaction.Validator {
-
+public class FrontendSession extends SessionWithState implements DataHandler, Transaction.Participant {
     public static final int SESSION_PREPARE = 0;
     public static final int SESSION_CLOSE = 1;
     public static final int COMMAND_EXECUTE_QUERY = 2;
@@ -593,7 +591,6 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         }
     }
 
-    @Override
     public synchronized boolean validateTransaction(String localTransactionName) {
         checkClosed();
         try {

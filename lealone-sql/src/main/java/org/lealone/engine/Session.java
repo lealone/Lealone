@@ -51,7 +51,7 @@ import org.lealone.value.ValueString;
  * mode, this object resides on the server side and communicates with a
  * FrontendSession object on the client side.
  */
-public class Session extends SessionWithState {
+public class Session extends SessionWithState implements Transaction.Validator {
     /**
      * The prefix of generated identifiers. It may not have letters, because
      * they are case sensitive.
@@ -1248,6 +1248,7 @@ public class Session extends SessionWithState {
     public Transaction getTransaction() {
         if (transaction == null) {
             transaction = database.getTransactionEngine().beginTransaction(autoCommit);
+            transaction.setValidator(this);
         }
         return transaction;
     }
@@ -1302,5 +1303,29 @@ public class Session extends SessionWithState {
 
     public Map<String, FrontendSession> getFrontendSessionCache() {
         return frontendSessionCache;
+    }
+
+    @Override
+    public boolean validateTransaction(String localTransactionName) {
+        String[] a = localTransactionName.split(":");
+        FrontendSession fs = null;
+        try {
+            String dbName = getDatabase().getShortName();
+            String url = createURL(dbName, a[0], a[1]);
+            fs = FrontendSessionPool.getFrontendSession(this, url);
+            return fs.validateTransaction(localTransactionName);
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        } finally {
+            FrontendSessionPool.release(fs);
+        }
+    }
+
+    private static String createURL(String dbName, String host, String port) {
+        StringBuilder url = new StringBuilder(100);
+        url.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//");
+        url.append(host).append(":").append(port);
+        url.append("/").append(dbName);
+        return url.toString();
     }
 }

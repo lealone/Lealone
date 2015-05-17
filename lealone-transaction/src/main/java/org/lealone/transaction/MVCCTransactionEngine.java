@@ -625,15 +625,15 @@ public class MVCCTransactionEngine implements TransactionEngine {
     void commitTransactionStatusTable(MVCCTransaction t, String allLocalTransactionNames) {
         t.setCommitTimestamp(nextOddTransactionId());
         TransactionStatusTable.commit(t, allLocalTransactionNames);
-        TransactionValidator.getInstance().enqueue(this, t, allLocalTransactionNames);
+        TransactionValidator.enqueue(t, allLocalTransactionNames);
     }
 
-    boolean validateTransaction(Transaction.Validator validator, int tid, MVCCTransaction currentTransaction) {
-        return TransactionStatusTable.isValid(validator, hostAndPort, tid, currentTransaction);
+    boolean validateTransaction(int tid, MVCCTransaction currentTransaction) {
+        return TransactionStatusTable.validateTransaction(hostAndPort, tid, currentTransaction);
     }
 
     @Override
-    public boolean isValid(String localTransactionName) {
-        return TransactionStatusTable.isValid(localTransactionName);
+    public boolean validateTransaction(String localTransactionName) {
+        return TransactionStatusTable.validateTransaction(localTransactionName);
     }
 }

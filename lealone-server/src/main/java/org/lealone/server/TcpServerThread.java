@@ -466,7 +466,7 @@ public class TcpServerThread implements Runnable {
         }
         case FrontendSession.COMMAND_EXECUTE_TRANSACTION_VALIDATE: {
             int old = session.getModificationId();
-            boolean isValid = session.getDatabase().getTransactionEngine().isValid(transfer.readString());
+            boolean isValid = session.getDatabase().getTransactionEngine().validateTransaction(transfer.readString());
             int status;
             if (session.isClosed()) {
                 status = FrontendSession.STATUS_CLOSED;

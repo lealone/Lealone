@@ -309,7 +309,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         }
 
         if (tx % 2 == 1) {
-            boolean isValid = transaction.transactionEngine.validateTransaction(transaction.validator, tx, transaction);
+            boolean isValid = transaction.transactionEngine.validateTransaction(tx, transaction);
             if (isValid) {
                 transaction.transactionEngine.commitAfterValidate(tx);
                 return trySet(key, value, onlyIfUnchanged);
@@ -415,8 +415,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             }
 
             if (tx % 2 == 1) {
-                boolean isValid = transaction.transactionEngine.validateTransaction(transaction.validator, tx,
-                        transaction);
+                boolean isValid = transaction.transactionEngine.validateTransaction(tx, transaction);
                 if (isValid) {
                     transaction.transactionEngine.commitAfterValidate(tx);
                     return getValue(key, maxLog, map.get(key));

@@ -37,7 +37,7 @@ public class MemoryTransactionEngine implements TransactionEngine {
     }
 
     @Override
-    public boolean isValid(String localTransactionName) {
+    public boolean validateTransaction(String localTransactionName) {
         return false;
     }
 

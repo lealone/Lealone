@@ -25,7 +25,7 @@ public interface TransactionEngine {
 
     void close();
 
-    boolean isValid(String localTransactionName);
+    boolean validateTransaction(String localTransactionName);
 
     void init(Set<String> storageMapNames);
 
