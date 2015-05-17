@@ -56,7 +56,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     public static final int SESSION_CANCEL_STATEMENT = 13;
     //public static final int SESSION_CHECK_KEY = 14; //不再使用
     public static final int SESSION_SET_AUTOCOMMIT = 15;
-    public static final int SESSION_UNDO_LOG_POS = 16;
+    //public static final int SESSION_UNDO_LOG_POS = 16; //不再使用
     public static final int LOB_READ = 17;
 
     public static final int COMMAND_EXECUTE_DISTRIBUTED_QUERY = 100;
@@ -132,19 +132,6 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         }
         autoCommit = true;
         return trans;
-    }
-
-    @Override
-    public int getUndoLogPos() {
-        try {
-            traceOperation("SESSION_UNDO_LOG_POS", 0);
-            transfer.writeInt(FrontendSession.SESSION_UNDO_LOG_POS);
-            done(transfer);
-            return transfer.readInt();
-        } catch (IOException e) {
-            handleException(e);
-        }
-        return 1;
     }
 
     @Override

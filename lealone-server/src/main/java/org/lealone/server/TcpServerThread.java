@@ -558,10 +558,6 @@ public class TcpServerThread implements Runnable {
             transfer.writeInt(FrontendSession.STATUS_OK).flush();
             break;
         }
-        case FrontendSession.SESSION_UNDO_LOG_POS: {
-            transfer.writeInt(FrontendSession.STATUS_OK).writeInt(session.getUndoLogPos()).flush();
-            break;
-        }
         case FrontendSession.LOB_READ: {
             long lobId = transfer.readLong();
             byte[] hmac = transfer.readBytes();

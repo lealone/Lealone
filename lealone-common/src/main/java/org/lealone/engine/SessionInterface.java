@@ -28,6 +28,7 @@ public interface SessionInterface extends Closeable {
     /**
      * Roll back pending transactions and close the session.
      */
+    @Override
     void close();
 
     /**
@@ -66,13 +67,6 @@ public interface SessionInterface extends Closeable {
      * @return the data handler
      */
     DataHandler getDataHandler();
-
-    /**
-     * Get the undo log position.
-     *
-     * @return the position (0 means no pending transaction)
-     */
-    int getUndoLogPos();
 
     /**
      * Cancel the current or next command (called when closing a connection).

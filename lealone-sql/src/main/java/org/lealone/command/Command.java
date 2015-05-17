@@ -231,7 +231,7 @@ public abstract class Command implements CommandInterface {
             }
         }
         synchronized (sync) {
-            int rollback = session.getUndoLogPos();
+            long savepointId = session.getTransaction().getSavepointId();
             session.setCurrentCommand(this);
             try {
                 while (true) {
@@ -260,7 +260,7 @@ public abstract class Command implements CommandInterface {
                     database.shutdownImmediately();
                     throw e;
                 } else {
-                    session.rollbackTo(rollback, false);
+                    session.rollbackTo(savepointId, false);
                 }
                 throw e;
             } finally {

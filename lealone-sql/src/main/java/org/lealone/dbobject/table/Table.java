@@ -434,7 +434,7 @@ public abstract class Table extends SchemaObjectBase {
      */
     public void updateRows(Prepared prepared, Session session, RowList rows) {
         // in case we need to undo the update
-        int rollback = session.getUndoLogPos();
+        long savepointId = session.getTransaction().getSavepointId();
         // remove the old rows
         int rowScanCount = 0;
         for (rows.reset(); rows.hasNext();) {
@@ -456,7 +456,7 @@ public abstract class Table extends SchemaObjectBase {
                 addRow(session, n);
             } catch (DbException e) {
                 if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
-                    session.rollbackTo(rollback, false);
+                    session.rollbackTo(savepointId, false);
                 }
                 throw e;
             }

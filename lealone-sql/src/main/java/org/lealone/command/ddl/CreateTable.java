@@ -104,6 +104,7 @@ public class CreateTable extends SchemaCommand {
         this.dynamicTable = dynamicTable;
     }
 
+    @Override
     public int update() {
         if (!transactional) {
             session.commit(true);
@@ -179,20 +180,14 @@ public class CreateTable extends SchemaCommand {
                 command.update();
             }
             if (asQuery != null) {
-                boolean old = session.isUndoLogEnabled();
-                try {
-                    session.setUndoLogEnabled(false);
-                    Insert insert = null;
-                    insert = session.createInsert();
-                    insert.setSortedInsertMode(sortedInsertMode);
-                    insert.setQuery(asQuery);
-                    insert.setTable(table);
-                    insert.setInsertFromSelect(true);
-                    insert.prepare();
-                    insert.update();
-                } finally {
-                    session.setUndoLogEnabled(old);
-                }
+                Insert insert = null;
+                insert = session.createInsert();
+                insert.setSortedInsertMode(sortedInsertMode);
+                insert.setQuery(asQuery);
+                insert.setTable(table);
+                insert.setInsertFromSelect(true);
+                insert.prepare();
+                insert.update();
             }
         } catch (DbException e) {
             db.checkPowerOff();
@@ -305,6 +300,7 @@ public class CreateTable extends SchemaCommand {
         data.isHidden = isHidden;
     }
 
+    @Override
     public int getType() {
         return CommandInterface.CREATE_TABLE;
     }

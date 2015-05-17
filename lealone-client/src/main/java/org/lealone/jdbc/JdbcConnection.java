@@ -353,21 +353,6 @@ public class JdbcConnection extends TraceObject implements Connection {
                 try {
                     if (!session.isClosed()) {
                         try {
-                            if (session.getUndoLogPos() != 0) {
-                                // roll back unless that would require to re-connect
-                                // (the transaction can't be rolled back after re-connecting)
-                                if (!session.isReconnectNeeded(true)) {
-                                    try {
-                                        rollbackInternal();
-                                    } catch (DbException e) {
-                                        // ignore if the connection is broken right now
-                                        if (e.getErrorCode() != ErrorCode.CONNECTION_BROKEN_1) {
-                                            throw e;
-                                        }
-                                    }
-                                }
-                                session.afterWriting();
-                            }
                             closePreparedCommands();
                         } finally {
                             session.close();

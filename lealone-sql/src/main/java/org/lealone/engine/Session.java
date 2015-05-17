@@ -36,7 +36,6 @@ import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.message.TraceSystem;
 import org.lealone.result.ResultInterface;
-import org.lealone.result.Row;
 import org.lealone.result.SubqueryResult;
 import org.lealone.storage.LobStorage;
 import org.lealone.transaction.Transaction;
@@ -91,8 +90,6 @@ public class Session extends SessionWithState {
     private HashMap<String, Value> unlinkLobMap;
     private int systemIdentifier;
     private HashMap<String, Procedure> procedures;
-    private boolean undoLogEnabled = true;
-    private boolean redoLogBinary = true;
     private boolean autoCommitAtTransactionEnd;
     private String currentTransactionName;
     private volatile long cancelAt;
@@ -575,18 +572,11 @@ public class Session extends SessionWithState {
      * @param index the position to which should be rolled back
      * @param trimToSize if the list should be trimmed
      */
-    public void rollbackTo(int index, boolean trimToSize) {
+    public void rollbackTo(long index, boolean trimToSize) {
         if (transaction != null) {
             checkCommitRollback();
             transaction.rollbackToSavepoint(index);
         }
-    }
-
-    @Override
-    public int getUndoLogPos() {
-        if (transaction != null)
-            return (int) transaction.getSavepointId();
-        return 0;
     }
 
     /**
@@ -645,41 +635,6 @@ public class Session extends SessionWithState {
             }
         }
         locks.add(table);
-    }
-
-    /**
-     * Add an undo log entry to this session.
-     *
-     * @param table the table
-     * @param operation the operation type (see {@link UndoLogRecord})
-     * @param row the row
-     */
-    public void log(Table table, short operation, Row row) {
-        //        if (undoLogEnabled) {
-        //            UndoLogRecord log = new UndoLogRecord(table, operation, row);
-        //            // called _after_ the row was inserted successfully into the table,
-        //            // otherwise rollback will try to rollback a not-inserted row
-        //            if (SysProperties.CHECK) {
-        //                int lockMode = database.getLockMode();
-        //                if (lockMode != Constants.LOCK_MODE_OFF && !database.isMultiVersion()) {
-        //                    String tableType = log.getTable().getTableType();
-        //                    if (locks.indexOf(log.getTable()) < 0 && !Table.TABLE_LINK.equals(tableType)
-        //                            && !Table.EXTERNAL_STORAGE_ENGINE.equals(tableType)) {
-        //                        DbException.throwInternalError();
-        //                    }
-        //                }
-        //            }
-        //            undoLog.add(log);
-        //        } else {
-        //        if (database.isMultiVersion()) {
-        //            // see also UndoLogRecord.commit
-        //            ArrayList<Index> indexes = table.getIndexes();
-        //            for (int i = 0, size = indexes.size(); i < size; i++) {
-        //                Index index = indexes.get(i);
-        //                index.commit(operation, row);
-        //            }
-        //            row.commit();
-        //        }
     }
 
     /**
@@ -1061,18 +1016,6 @@ public class Session extends SessionWithState {
         return "#" + serialId + " (user: " + user.getName() + ")";
     }
 
-    public void setUndoLogEnabled(boolean b) {
-        this.undoLogEnabled = b;
-    }
-
-    public void setRedoLogBinary(boolean b) {
-        this.redoLogBinary = b;
-    }
-
-    public boolean isUndoLogEnabled() {
-        return undoLogEnabled;
-    }
-
     /**
      * Begin a transaction.
      */
@@ -1262,10 +1205,6 @@ public class Session extends SessionWithState {
      */
     public int nextObjectId() {
         return objectId++;
-    }
-
-    public boolean isRedoLogBinaryEnabled() {
-        return redoLogBinary;
     }
 
     public SubqueryResult createSubqueryResult(Query query, int maxrows) {
