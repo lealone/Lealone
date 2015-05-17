@@ -49,16 +49,9 @@ import org.lealone.value.ValueString;
 /**
  * A session represents an embedded database connection. When using the server
  * mode, this object resides on the server side and communicates with a
- * SessionRemote object on the client side.
+ * FrontendSession object on the client side.
  */
-//TODO 合并MVStore的更新(2013-04-09、2013-05-04)
 public class Session extends SessionWithState {
-
-    /**
-     * This special log position means that the log entry has been written.
-     */
-    public static final int LOG_WRITTEN = -1;
-
     /**
      * The prefix of generated identifiers. It may not have letters, because
      * they are case sensitive.
@@ -67,7 +60,7 @@ public class Session extends SessionWithState {
     private static int nextSerialId;
 
     private final int serialId = nextSerialId++;
-    protected final Database database;
+    private final Database database;
     private ConnectionInfo connectionInfo;
     private final User user;
     private final int id;
@@ -93,7 +86,7 @@ public class Session extends SessionWithState {
     private boolean autoCommitAtTransactionEnd;
     private String currentTransactionName;
     private volatile long cancelAt;
-    protected boolean closed;
+    private boolean closed;
     private final long sessionStart = System.currentTimeMillis();
     private long transactionStart;
     private long currentCommandStart;
@@ -105,8 +98,8 @@ public class Session extends SessionWithState {
     private Thread waitForLockThread;
     private int modificationId;
     private int objectId;
-    protected final int queryCacheSize;
-    protected SmallLRUCache<String, Command> queryCache;
+    private final int queryCacheSize;
+    private SmallLRUCache<String, Command> queryCache;
 
     public Session(Database database, User user, int id) {
         this.database = database;
