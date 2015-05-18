@@ -40,6 +40,7 @@ import org.lealone.command.dml.Delete;
 import org.lealone.command.dml.Insert;
 import org.lealone.command.dml.InsertOrMerge;
 import org.lealone.command.dml.Merge;
+import org.lealone.command.dml.Query;
 import org.lealone.command.dml.Select;
 import org.lealone.command.dml.Update;
 import org.lealone.command.router.CommandParallel;
@@ -97,6 +98,9 @@ public class P2PRouter implements Router {
         if (insert.isLocal())
             return insert.updateLocal();
 
+        if (insert.getQuery() != null)
+            return executeInsertFromQuery(insert);
+
         return executeInsertOrMerge(insert);
     }
 
@@ -106,6 +110,46 @@ public class P2PRouter implements Router {
             return merge.updateLocal();
 
         return executeInsertOrMerge(merge);
+    }
+
+    private static int executeInsertFromQuery(Insert insert) {
+        Query query = insert.getQuery();
+        List<InetAddress> targetEndpoints = getTargetEndpointsIfEqual(query.getTopFilters().get(0));
+        if (targetEndpoints != null) {
+            boolean isLocal = targetEndpoints.contains(Utils.getBroadcastAddress());
+            if (isLocal) {
+                insert.setLocal(true);
+                return insert.call();
+            }
+
+            int size = targetEndpoints.size();
+            InetAddress endpoint;
+            if (size == 1)
+                endpoint = targetEndpoints.get(0);
+            else
+                endpoint = targetEndpoints.get(random.nextInt(size));
+
+            try {
+                return createFrontendCommand(endpoint, insert).executeUpdate();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        } else {
+            Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+            List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
+            liveMembers.remove(Utils.getBroadcastAddress());
+            commands.add(insert);
+            String sql = insert.getSQL();
+            insert.setLocal(true);
+            try {
+                for (InetAddress endpoint : liveMembers) {
+                    commands.add(createUpdateCallable(endpoint, insert, sql));
+                }
+                return CommandParallel.executeUpdateCallable(commands);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
     }
 
     private static int executeInsertOrMerge(InsertOrMerge iom) {

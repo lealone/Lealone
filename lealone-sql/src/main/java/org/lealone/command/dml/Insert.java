@@ -105,12 +105,16 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
 
     @Override
     public int update() {
-        createRows();
+        //在集群模式下使用query时先不创建行，这会导致从其他表中把记录取过来
+        if (query == null || isLocal())
+            createRows();
         return Session.getRouter().executeInsert(this);
     }
 
     @Override
     public int updateLocal() {
+        if (rows == null)
+            createRows();
         Index index = null;
         if (sortedInsertMode) {
             index = table.getScanIndex(session);
@@ -376,5 +380,16 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
 
     public boolean isBatch() {
         return query != null || list.size() > 1; // || table.doesSecondaryIndexExist();
+    }
+
+    public Query getQuery() {
+        return query;
+    }
+
+    @Override
+    public void setLocal(boolean local) {
+        super.setLocal(local);
+        if (query != null)
+            query.setLocal(local);
     }
 }

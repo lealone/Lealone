@@ -82,5 +82,14 @@ public class InsertTest extends SqlTestBase {
 
         sql = "INSERT INTO InsertTest(pk, f1, f2, f3) " + "DIRECT SELECT pk, f1, f2, f3 FROM InsertTest2";
         assertEquals(12, executeUpdate(sql));
+
+        sql = "DELETE FROM InsertTest";
+        assertEquals(12, executeUpdate(sql));
+
+        sql = "INSERT INTO InsertTest(pk, f1, f2, f3) " + " SELECT pk, f1, f2, f3 FROM InsertTest2 WHERE pk='01'";
+        assertEquals(1, executeUpdate(sql));
+
+        sql = "DELETE FROM InsertTest";
+        assertEquals(1, executeUpdate(sql));
     }
 }
