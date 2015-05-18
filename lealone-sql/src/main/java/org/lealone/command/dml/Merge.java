@@ -27,6 +27,7 @@ import org.lealone.result.Row;
 import org.lealone.util.New;
 import org.lealone.util.StatementBuilder;
 import org.lealone.value.Value;
+import org.lealone.value.ValueString;
 
 /**
  * This class represents the statement
@@ -97,7 +98,9 @@ public class Merge extends Prepared implements InsertOrMerge {
 
     @Override
     public int update() {
-        createRows();
+        //在集群模式下使用query时先不创建行，这会导致从其他表中把记录取过来
+        if (query == null || isLocal())
+            createRows();
         return Session.getRouter().executeMerge(this);
     }
 
@@ -144,6 +147,8 @@ public class Merge extends Prepared implements InsertOrMerge {
     }
 
     private int mergeRows() {
+        if (rows == null)
+            createRows();
         session.getUser().checkRight(table, Right.INSERT);
         session.getUser().checkRight(table, Right.UPDATE);
 
@@ -276,7 +281,7 @@ public class Merge extends Prepared implements InsertOrMerge {
         }
         buff.append('\n');
         if (list.size() > 0) {
-            buff.append("VALUES ");
+            buff.append(" VALUES ");
             int row = 0;
             for (Expression[] expr : list) {
                 if (row++ > 0) {
@@ -320,7 +325,7 @@ public class Merge extends Prepared implements InsertOrMerge {
         }
         buff.resetCount();
         if (rows.size() > 0) {
-            buff.append("VALUES ");
+            buff.append(" VALUES ");
             int i = 0;
             for (Row row : rows) {
                 if (i++ > 0) {
@@ -328,12 +333,16 @@ public class Merge extends Prepared implements InsertOrMerge {
                 }
                 buff.append('(');
                 buff.resetCount();
-                for (Value v : row.getValueList()) {
+                for (Column c : columns) {
                     buff.appendExceptFirst(", ");
+                    Value v = row.getValue(c.getColumnId());
                     if (v == null) {
                         buff.append("DEFAULT");
                     } else {
-                        buff.append(v.getString());
+                        if (v instanceof ValueString)
+                            buff.append('\'').append(v.getString()).append('\'');
+                        else
+                            buff.append(v.getString());
                     }
                 }
                 buff.append(')');
@@ -415,5 +424,16 @@ public class Merge extends Prepared implements InsertOrMerge {
 
     public boolean isBatch() {
         return query != null || list.size() > 1; // || table.doesSecondaryIndexExist();
+    }
+
+    public Query getQuery() {
+        return query;
+    }
+
+    @Override
+    public void setLocal(boolean local) {
+        super.setLocal(local);
+        if (query != null)
+            query.setLocal(local);
     }
 }

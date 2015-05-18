@@ -28,6 +28,7 @@ import org.lealone.command.Prepared;
 import org.lealone.engine.ConnectionInfo;
 import org.lealone.engine.FrontendSession;
 import org.lealone.engine.Session;
+import org.lealone.engine.SysProperties;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
 
@@ -111,8 +112,13 @@ public class FrontendSessionPool {
         //传递最初的参数值到新的FrontendCommand
         if (parameters != null) {
             ArrayList<? extends ParameterInterface> newParams = fc.getParameters();
-            for (int i = 0, size = parameters.size(); i < size; i++) {
-                newParams.get(i).setValue(parameters.get(i).getParamValue(), true);
+            //SQL重写后可能没有占位符了
+            if (!newParams.isEmpty()) {
+                if (SysProperties.CHECK && newParams.size() != parameters.size())
+                    throw DbException.throwInternalError();
+                for (int i = 0, size = parameters.size(); i < size; i++) {
+                    newParams.get(i).setValue(parameters.get(i).getParamValue(), true);
+                }
             }
         }
 
