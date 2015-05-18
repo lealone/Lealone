@@ -603,7 +603,8 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         }
     }
 
-    public void setTransaction(Transaction transaction) {
+    //要加synchronized，避免FrontendCommand在执行更新和查询时其他线程把transaction置null
+    public synchronized void setTransaction(Transaction transaction) {
         this.transaction = transaction;
     }
 
