@@ -40,9 +40,10 @@ public class ConditionInSelect extends Condition {
         this.compareType = compareType;
     }
 
+    @Override
     public Value getValue(Session session) {
         query.setSession(session);
-        SubqueryResult rows = session.createSubqueryResult(query, 0); //query.query(0);
+        SubqueryResult rows = session.createSubqueryResult(query, 0); // query.query(0);
         session.addTemporaryResult(rows);
         Value l = left.getValue(session);
         if (rows.getRowCount() == 0) {
@@ -98,12 +99,14 @@ public class ConditionInSelect extends Condition {
         return ValueBoolean.get(result);
     }
 
+    @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         left.mapColumns(resolver, level);
         query.mapColumns(resolver, level + 1);
         this.queryLevel = Math.max(level, this.queryLevel);
     }
 
+    @Override
     public Expression optimize(Session session) {
         left = left.optimize(session);
         query.setRandomAccessResult(true);
@@ -115,36 +118,45 @@ public class ConditionInSelect extends Condition {
         return this;
     }
 
+    @Override
     public void setEvaluatable(TableFilter tableFilter, boolean b) {
         left.setEvaluatable(tableFilter, b);
         query.setEvaluatable(tableFilter, b);
     }
 
+    @Override
     public String getSQL(boolean isDistributed) {
         StringBuilder buff = new StringBuilder();
         buff.append('(').append(left.getSQL(isDistributed)).append(' ');
         if (all) {
             buff.append(Comparison.getCompareOperator(compareType)).append(" ALL");
         } else {
-            buff.append("IN");
+            if (compareType != Comparison.EQUAL)
+                buff.append(Comparison.getCompareOperator(compareType)).append(" SOME");
+            else
+                buff.append("IN");
         }
         buff.append("(\n").append(StringUtils.indent(query.getPlanSQL(), 4, false)).append("))");
         return buff.toString();
     }
 
+    @Override
     public void updateAggregate(Session session) {
         left.updateAggregate(session);
         query.updateAggregate(session);
     }
 
+    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         return left.isEverything(visitor) && query.isEverything(visitor);
     }
 
+    @Override
     public int getCost() {
         return left.getCost() + query.getCostAsExpression();
     }
 
+    @Override
     public void createIndexConditions(Session session, TableFilter filter) {
         if (!session.getDatabase().getSettings().optimizeInList) {
             return;

@@ -1,6 +1,4 @@
 /*
- * Copyright 2011 The Apache Software Foundation
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -19,8 +17,10 @@
  */
 package org.lealone.result;
 
+import java.util.ArrayList;
+
 import org.lealone.command.dml.Query;
-import org.lealone.result.LocalResult;
+import org.lealone.util.New;
 import org.lealone.util.ValueHashMap;
 import org.lealone.value.Value;
 import org.lealone.value.ValueArray;
@@ -33,6 +33,7 @@ public class SubqueryResult extends DelegatedResult {
     }
 
     public SubqueryResult(Query query, int maxrows) {
+        query.setLocal(false);
         result = query.query(maxrows);
     }
 
@@ -54,6 +55,7 @@ public class SubqueryResult extends DelegatedResult {
 
             distinctRows = ValueHashMap.newInstance();
             int visibleColumnCount = getVisibleColumnCount();
+            ArrayList<Value[]> rowList = New.arrayList();
             while (next()) {
                 rowCount++;
                 Value[] row = currentRow();
@@ -64,7 +66,10 @@ public class SubqueryResult extends DelegatedResult {
                 }
                 ValueArray array = ValueArray.get(row);
                 distinctRows.put(array, row);
+                rowList.add(row);
             }
+
+            result = new SubqueryRowList(rowList, result);
         }
 
         return rowCount;
@@ -79,5 +84,38 @@ public class SubqueryResult extends DelegatedResult {
         }
 
         return rowCount;
+    }
+
+    private static class SubqueryRowList extends DelegatedResult {
+        final ArrayList<Value[]> rowList;
+        final int size;
+        int index;
+
+        SubqueryRowList(ArrayList<Value[]> rowList, ResultInterface result) {
+            this.result = result;
+            this.rowList = rowList;
+            index = -1;
+            size = rowList.size();
+        }
+
+        @Override
+        public void reset() {
+            index = -1;
+        }
+
+        @Override
+        public Value[] currentRow() {
+            return rowList.get(index);
+        }
+
+        @Override
+        public boolean next() {
+            return ++index < size;
+        }
+
+        @Override
+        public int getRowCount() {
+            return size;
+        }
     }
 }

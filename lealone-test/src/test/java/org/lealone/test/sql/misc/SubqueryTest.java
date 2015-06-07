@@ -40,7 +40,7 @@ public class SubqueryTest extends SqlTestBase {
     }
 
     void testSelect() throws Exception {
-        //scalar subquery
+        // scalar subquery
         sql = "SELECT count(*) FROM SubqueryTest WHERE pk>='01'" //
                 + " AND f2 >= (SELECT f2 FROM SubqueryTest WHERE pk='01')";
         assertEquals(6, getIntValue(1, true));
