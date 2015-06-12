@@ -102,18 +102,18 @@ public class SelectTest extends SqlTestBase {
     private void limit() throws Exception {
         sql = "SELECT f1, f2, f3 FROM SelectTest ORDER BY f2 desc LIMIT 2 OFFSET 1";
         assertEquals("k", getStringValue(2, true));
-        //printResultSet();
+        // printResultSet();
 
         sql = "SELECT f1, f2, f3 FROM SelectTest ORDER BY f2 desc LIMIT 2";
         assertEquals("l", getStringValue(2, true));
-        //printResultSet();
+        // printResultSet();
 
-        //TODO H2数据库不支持LIMIT和聚合函数一起用，会忽略lIMIT
+        // TODO H2数据库不支持LIMIT和聚合函数一起用，会忽略lIMIT
         sql = "SELECT count(*) FROM SelectTest LIMIT 1";
-        //assertEquals(1, getIntValue(1, true));
+        // assertEquals(1, getIntValue(1, true));
 
         sql = "SELECT * FROM SelectTest LIMIT 1";
-        //printResultSet();
+        // printResultSet();
         ResultSet rs = stmt.executeQuery(sql);
         assertTrue(rs.next());
         assertFalse(rs.next());
@@ -129,7 +129,7 @@ public class SelectTest extends SqlTestBase {
         sql = "select sum(f3) from SelectTest";
         assertEquals(418, getIntValue(1, true));
         sql = "select avg(f3) from SelectTest";
-        //因为f3是int，所以内部已进行4舍5入
+        // 因为f3是int，所以内部已进行4舍5入
         assertEquals(34.0, getDoubleValue(1, true), 0.2);
     }
 }

@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.expression;
@@ -108,14 +107,24 @@ public class Aggregate extends Expression {
     static final int BOOL_AND = 12;
 
     /**
+     * The aggregate type for BOOL_OR(expression).
+     */
+    static final int BIT_OR = 13;
+
+    /**
+     * The aggregate type for BOOL_AND(expression).
+     */
+    static final int BIT_AND = 14;
+
+    /**
      * The aggregate type for SELECTIVITY(expression).
      */
-    static final int SELECTIVITY = 13;
+    static final int SELECTIVITY = 15;
 
     /**
      * The aggregate type for HISTOGRAM(expression).
      */
-    static final int HISTOGRAM = 14;
+    static final int HISTOGRAM = 16;
 
     private static final HashMap<String, Integer> AGGREGATES = New.hashMap();
 
@@ -220,6 +229,7 @@ public class Aggregate extends Expression {
         return new SortOrder(session.getDatabase(), index, sortType);
     }
 
+    @Override
     public void updateAggregate(Session session) {
         // TODO aggregates: check nested MIN(MAX(ID)) and so on
         // if(on != null) {
@@ -262,6 +272,7 @@ public class Aggregate extends Expression {
         data.add(session.getDatabase(), distinct, v);
     }
 
+    @Override
     public void mergeAggregate(Session session, Value v) {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
@@ -299,6 +310,7 @@ public class Aggregate extends Expression {
         data.merge(session.getDatabase(), distinct, v);
     }
 
+    @Override
     public Value getValue(Session session) {
         if (select.isQuickAggregateQuery()) {
             switch (type) {
@@ -344,6 +356,7 @@ public class Aggregate extends Expression {
             if (orderList != null) {
                 final SortOrder sortOrder = sort;
                 Collections.sort(list, new Comparator<Value>() {
+                    @Override
                     public int compare(Value v1, Value v2) {
                         Value[] a1 = ((ValueArray) v1).getList();
                         Value[] a2 = ((ValueArray) v2).getList();
@@ -373,34 +386,37 @@ public class Aggregate extends Expression {
         return v;
     }
 
+    @Override
     public Value getMergedValue(Session session) {
-        if (select.isQuickAggregateQuery()) {
-            switch (type) {
-            case COUNT:
-            case COUNT_ALL:
-                Table table = select.getTopTableFilter().getTable();
-                return ValueLong.get(table.getRowCount(session));
-            case MIN:
-            case MAX:
-                boolean first = type == MIN;
-                Index index = getColumnIndex();
-                int sortType = index.getIndexColumns()[0].sortType;
-                if ((sortType & SortOrder.DESCENDING) != 0) {
-                    first = !first;
-                }
-                Cursor cursor = index.findFirstOrLast(session, first);
-                SearchRow row = cursor.getSearchRow();
-                Value v;
-                if (row == null) {
-                    v = ValueNull.INSTANCE;
-                } else {
-                    v = row.getValue(index.getColumns()[0].getColumnId());
-                }
-                return v;
-            default:
-                DbException.throwInternalError("type=" + type);
-            }
-        }
+        // if (select.isQuickAggregateQuery()) {
+        // switch (type) {
+        // case COUNT:
+        // case COUNT_ALL:
+        // // Table table = select.getTopTableFilter().getTable();
+        // // return ValueLong.get(table.getRowCount(session));
+        // return
+        // ValueLong.get(select.getTopTableFilter().getIndex().getRowCount(session));
+        // case MIN:
+        // case MAX:
+        // boolean first = type == MIN;
+        // Index index = getColumnIndex();
+        // int sortType = index.getIndexColumns()[0].sortType;
+        // if ((sortType & SortOrder.DESCENDING) != 0) {
+        // first = !first;
+        // }
+        // Cursor cursor = index.findFirstOrLast(session, first);
+        // SearchRow row = cursor.getSearchRow();
+        // Value v;
+        // if (row == null) {
+        // v = ValueNull.INSTANCE;
+        // } else {
+        // v = row.getValue(index.getColumns()[0].getColumnId());
+        // }
+        // return v;
+        // default:
+        // DbException.throwInternalError("type=" + type);
+        // }
+        // }
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             throw DbException.get(ErrorCode.INVALID_USE_OF_AGGREGATE_FUNCTION_1, getSQL());
@@ -418,6 +434,7 @@ public class Aggregate extends Expression {
             if (orderList != null) {
                 final SortOrder sortOrder = sort;
                 Collections.sort(list, new Comparator<Value>() {
+                    @Override
                     public int compare(Value v1, Value v2) {
                         Value[] a1 = ((ValueArray) v1).getList();
                         Value[] a2 = ((ValueArray) v2).getList();
@@ -447,6 +464,7 @@ public class Aggregate extends Expression {
         return v;
     }
 
+    @Override
     public void calculate(Calculator calculator) {
         switch (type) {
         case Aggregate.COUNT_ALL:
@@ -460,8 +478,8 @@ public class Aggregate extends Expression {
 
         case Aggregate.AVG: {
             int i = calculator.getIndex();
-            double avg = calculator.getValue(i + 1).getDouble() / calculator.getValue(i).getDouble();
-            calculator.addResultValue(ValueDouble.get(avg));
+            Value v = AggregateData.divide(calculator.getValue(i + 1), calculator.getValue(i).getLong());
+            calculator.addResultValue(v);
             calculator.addIndex(2);
             break;
         }
@@ -475,7 +493,7 @@ public class Aggregate extends Expression {
             calculator.addIndex(3);
             break;
         }
-        case Aggregate.STDDEV_SAMP: { //见:http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+        case Aggregate.STDDEV_SAMP: { // 见:http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
             int i = calculator.getIndex();
             long count = calculator.getValue(i).getLong();
             double sum1 = calculator.getValue(i + 1).getDouble();
@@ -514,10 +532,12 @@ public class Aggregate extends Expression {
         }
     }
 
+    @Override
     public int getType() {
         return dataType;
     }
 
+    @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         if (on != null) {
             on.mapColumns(resolver, level);
@@ -532,6 +552,7 @@ public class Aggregate extends Expression {
         }
     }
 
+    @Override
     public Expression optimize(Session session) {
         if (on != null) {
             on = on.optimize(session);
@@ -613,6 +634,7 @@ public class Aggregate extends Expression {
         return this;
     }
 
+    @Override
     public void setEvaluatable(TableFilter tableFilter, boolean b) {
         if (on != null) {
             on.setEvaluatable(tableFilter, b);
@@ -627,14 +649,17 @@ public class Aggregate extends Expression {
         }
     }
 
+    @Override
     public int getScale() {
         return scale;
     }
 
+    @Override
     public long getPrecision() {
         return precision;
     }
 
+    @Override
     public int getDisplaySize() {
         return displaySize;
     }
@@ -661,6 +686,7 @@ public class Aggregate extends Expression {
         return buff.append(')').toString();
     }
 
+    @Override
     public String getSQL(boolean isDistributed) {
         String text;
         switch (type) {
@@ -756,6 +782,7 @@ public class Aggregate extends Expression {
         return null;
     }
 
+    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         if (visitor.getType() == ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL) {
             switch (type) {
@@ -791,6 +818,7 @@ public class Aggregate extends Expression {
         return true;
     }
 
+    @Override
     public int getCost() {
         return (on == null) ? 1 : on.getCost() + 1;
     }

@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.expression;
@@ -220,7 +219,7 @@ class AggregateData {
             if (value == null) {
                 value = v.convertTo(DataType.getAddProofType(dataType));
             } else {
-                //AVG聚合函数merge的次数不会超过1
+                // AVG聚合函数merge的次数不会超过1
                 DbException.throwInternalError("type=" + aggregateType);
             }
             break;
@@ -249,7 +248,7 @@ class AggregateData {
             if (value == null) {
                 value = v;
             } else {
-                //这4种聚合函数merge的次数不会超过1
+                // 这4种聚合函数merge的次数不会超过1
                 DbException.throwInternalError("type=" + aggregateType);
             }
             break;
@@ -362,6 +361,7 @@ class AggregateData {
             }
             final CompareMode compareMode = database.getCompareMode();
             Arrays.sort(values, new Comparator<ValueArray>() {
+                @Override
                 public int compare(ValueArray v1, ValueArray v2) {
                     Value a1 = v1.getList()[0];
                     Value a2 = v2.getList()[0];
@@ -420,6 +420,7 @@ class AggregateData {
             }
             final CompareMode compareMode = database.getCompareMode();
             Arrays.sort(values, new Comparator<ValueArray>() {
+                @Override
                 public int compare(ValueArray v1, ValueArray v2) {
                     Value a1 = v1.getList()[0];
                     Value a2 = v2.getList()[0];
@@ -434,7 +435,7 @@ class AggregateData {
         return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
     }
 
-    private static Value divide(Value a, long by) {
+    static Value divide(Value a, long by) {
         if (by == 0) {
             return ValueNull.INSTANCE;
         }
@@ -457,5 +458,4 @@ class AggregateData {
             }
         }
     }
-
 }

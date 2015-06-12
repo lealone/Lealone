@@ -19,6 +19,7 @@ package org.lealone.cluster.router;
 
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,7 @@ import org.lealone.command.router.SerializedResult;
 import org.lealone.command.router.SortedResult;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.table.TableFilter;
+import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 import org.lealone.result.Row;
@@ -169,7 +171,7 @@ public class P2PRouter implements Router {
         Value partitionKey;
         for (Row row : iom.getRows()) {
             partitionKey = row.getRowKey();
-            //不存在PRIMARY KEY时，随机生成一个
+            // 不存在PRIMARY KEY时，随机生成一个
             if (partitionKey == null)
                 partitionKey = ValueUuid.getNewRandom();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
@@ -316,20 +318,17 @@ public class P2PRouter implements Router {
                 throw DbException.convert(e);
             }
         } else {
-            //TODO 处理有多副本的情况
+            // TODO 处理有多副本的情况
             Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+            String sql = getSelectPlanSQL(select);
 
             try {
                 if (!select.isGroupQuery() && select.getSortOrder() == null) {
                     List<CommandInterface> commands = New.arrayList(liveMembers.size());
 
-                    //在本地节点执行
+                    // 在本地节点执行
                     liveMembers.remove(Utils.getBroadcastAddress());
-                    String sql = getSelectPlanSQL(select);
-                    Prepared p = select.getSession().prepare(sql, true);
-                    p.setLocal(true);
-                    p.setFetchSize(select.getFetchSize());
-                    commands.add(new CommandWrapper(p));
+                    commands.add(new CommandWrapper(createNewLocalSelect(select, sql)));
 
                     for (InetAddress endpoint : liveMembers) {
                         commands.add(createFrontendCommand(endpoint, select, sql));
@@ -340,9 +339,9 @@ public class P2PRouter implements Router {
                     List<Callable<ResultInterface>> commands = New.arrayList(liveMembers.size());
                     for (InetAddress endpoint : liveMembers) {
                         if (endpoint.equals(Utils.getBroadcastAddress())) {
-                            commands.add(select);
+                            commands.add(createNewLocalSelect(select, sql));
                         } else {
-                            commands.add(createSelectCallable(endpoint, select, maxRows, scrollable));
+                            commands.add(createSelectCallable(endpoint, select, sql, maxRows, scrollable));
                         }
                     }
 
@@ -364,16 +363,33 @@ public class P2PRouter implements Router {
         }
     }
 
+    private static Select createNewLocalSelect(Select oldSelect, String sql) {
+        if (!oldSelect.isGroupQuery() && oldSelect.getLimit() == null && oldSelect.getOffset() == null) {
+            oldSelect.setLocal(true);
+            return oldSelect;
+        }
+
+        Prepared p = oldSelect.getSession().prepare(sql, true);
+        p.setLocal(true);
+        p.setFetchSize(oldSelect.getFetchSize());
+        ArrayList<Parameter> oldParams = oldSelect.getParameters();
+        ArrayList<Parameter> newParams = p.getParameters();
+        for (int i = 0, size = newParams.size(); i < size; i++) {
+            newParams.get(i).setValue(oldParams.get(i).getParamValue());
+        }
+        return (Select) p;
+    }
+
     private static String getSelectPlanSQL(Select select) {
-        if (select.isGroupQuery() || select.getLimit() != null)
+        if (select.isGroupQuery() || select.getLimit() != null || select.getOffset() != null)
             return select.getPlanSQL(true);
         else
             return select.getSQL();
     }
 
-    private static Callable<ResultInterface> createSelectCallable(InetAddress endpoint, Select select,
+    private static Callable<ResultInterface> createSelectCallable(InetAddress endpoint, Select select, String sql,
             final int maxRows, final boolean scrollable) throws Exception {
-        final FrontendCommand c = createFrontendCommand(endpoint, select, getSelectPlanSQL(select));
+        final FrontendCommand c = createFrontendCommand(endpoint, select, sql);
 
         Callable<ResultInterface> call = new Callable<ResultInterface>() {
             @Override

@@ -35,7 +35,6 @@ import org.lealone.expression.Expression;
 import org.lealone.expression.ExpressionColumn;
 import org.lealone.expression.ExpressionVisitor;
 import org.lealone.expression.Parameter;
-import org.lealone.expression.Wildcard;
 import org.lealone.message.DbException;
 import org.lealone.result.LocalResult;
 import org.lealone.result.ResultInterface;
@@ -125,8 +124,8 @@ public class Select extends Query implements Callable<ResultInterface> {
         // Oracle doesn't check on duplicate aliases
         // String alias = filter.getAlias();
         // if(filterNames.contains(alias)) {
-        //     throw Message.getSQLException(
-        //         ErrorCode.DUPLICATE_TABLE_ALIAS, alias);
+        // throw Message.getSQLException(
+        // ErrorCode.DUPLICATE_TABLE_ALIAS, alias);
         // }
         // filterNames.add(alias);
         filters.add(filter);
@@ -155,8 +154,8 @@ public class Select extends Query implements Callable<ResultInterface> {
         this.group = group;
     }
 
-    public ArrayList<Expression> getGroupBy() {
-        return group;
+    public void setHaving(Expression having) {
+        this.having = having;
     }
 
     public HashMap<Expression, Object> getCurrentGroup() {
@@ -362,7 +361,7 @@ public class Select extends Query implements Callable<ResultInterface> {
     }
 
     public ResultInterface queryGroupMerge() {
-        //columnCount = visibleColumnCount;
+        // columnCount = visibleColumnCount;
         int columnCount = expressions.size();
         LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount);
         ValueHashMap<HashMap<Expression, Object>> groups = ValueHashMap.newInstance();
@@ -372,7 +371,8 @@ public class Select extends Query implements Callable<ResultInterface> {
         topTableFilter.reset();
         while (topTableFilter.next()) {
             setCurrentRowNumber(rowNumber + 1);
-            //if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
+            // if (condition == null ||
+            // Boolean.TRUE.equals(condition.getBooleanValue(session))) {
             Value key;
             rowNumber++;
             if (groupIndex == null) {
@@ -382,8 +382,8 @@ public class Select extends Query implements Callable<ResultInterface> {
                 // update group
                 for (int i = 0; i < groupIndex.length; i++) {
                     int idx = groupIndex[i];
-                    //Expression expr = expressions.get(idx);
-                    keyValues[i] = topTableFilter.getValue(idx);//expr.getValue(session);
+                    // Expression expr = expressions.get(idx);
+                    keyValues[i] = topTableFilter.getValue(idx);// expr.getValue(session);
                 }
                 key = ValueArray.get(keyValues);
             }
@@ -407,7 +407,7 @@ public class Select extends Query implements Callable<ResultInterface> {
                 break;
             }
         }
-        //}
+        // }
         if (groupIndex == null && groups.size() == 0) {
             groups.put(defaultGroup, new HashMap<Expression, Object>());
         }
@@ -428,9 +428,9 @@ public class Select extends Query implements Callable<ResultInterface> {
                 Expression expr = expressions.get(j);
                 row[j] = expr.getMergedValue(session);
             }
-            //if (isHavingNullOrFalse(row)) {
-            //    continue;
-            //}
+            // if (isHavingNullOrFalse(row)) {
+            // continue;
+            // }
             row = keepOnlyDistinct(row, columnCount);
             result.addRow(row);
         }
@@ -791,13 +791,11 @@ public class Select extends Query implements Callable<ResultInterface> {
             String schemaName = expr.getSchemaName();
             String tableAlias = expr.getTableAlias();
             if (tableAlias == null) {
-                int temp = i;
                 expressions.remove(i);
                 for (TableFilter filter : filters) {
-                    Wildcard c2 = new Wildcard(filter.getTable().getSchema().getName(), filter.getTableAlias());
-                    expressions.add(i++, c2);
+                    i = expandColumnList(filter, i);
                 }
-                i = temp - 1;
+                i--;
             } else {
                 TableFilter filter = null;
                 for (TableFilter f : filters) {
@@ -811,21 +809,25 @@ public class Select extends Query implements Callable<ResultInterface> {
                 if (filter == null) {
                     throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableAlias);
                 }
-                Table t = filter.getTable();
-                String alias = filter.getTableAlias();
                 expressions.remove(i);
-                Column[] columns = t.getColumns();
-                for (Column c : columns) {
-                    if (filter.isNaturalJoinColumn(c)) {
-                        continue;
-                    }
-                    ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), null, alias,
-                            c.getColumnFamilyName(), c.getName());
-                    expressions.add(i++, ec);
-                }
+                i = expandColumnList(filter, i);
                 i--;
             }
         }
+    }
+
+    private int expandColumnList(TableFilter filter, int index) {
+        Table t = filter.getTable();
+        String alias = filter.getTableAlias();
+        Column[] columns = t.getColumns();
+        for (Column c : columns) {
+            if (filter.isNaturalJoinColumn(c)) {
+                continue;
+            }
+            ExpressionColumn ec = new ExpressionColumn(session.getDatabase(), null, alias, c.getName());
+            expressions.add(index++, ec);
+        }
+        return index;
     }
 
     @Override
@@ -947,7 +949,7 @@ public class Select extends Query implements Callable<ResultInterface> {
             DbException.throwInternalError("not initialized");
         }
         if (orderList != null) {
-            sort = prepareOrder(orderList, expressions.size());
+            sort = prepareOrder(session, orderList, expressions.size());
             orderList = null;
         }
         for (int i = 0; i < expressions.size(); i++) {
@@ -958,15 +960,18 @@ public class Select extends Query implements Callable<ResultInterface> {
             condition = condition.optimize(session);
             prepareCondition();
         }
-        if (isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1) {
-            if (condition == null) {
-                Table t = filters.get(0).getTable();
-                ExpressionVisitor optimizable = ExpressionVisitor.getOptimizableVisitor(t);
-                isQuickAggregateQuery = isEverything(optimizable);
-            }
-        }
-        cost = preparePlan();
 
+        // 对min、max、count三个聚合函数的特殊优化
+        if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1) {
+            Table t = filters.get(0).getTable();
+            ExpressionVisitor optimizable = ExpressionVisitor.getOptimizableVisitor(t);
+            isQuickAggregateQuery = isEverything(optimizable);
+        }
+
+        cost = preparePlan(); // 选择合适的索引
+
+        // 以下3个if为特殊的distinct、sort、group by选择更合适的索引
+        // 1. distinct
         if (distinct && session.getDatabase().getSettings().optimizeDistinct && !isGroupQuery && filters.size() == 1
                 && expressions.size() == 1 && condition == null) {
             Expression expr = expressions.get(0);
@@ -983,7 +988,8 @@ public class Select extends Query implements Callable<ResultInterface> {
                     if (columnIndex.canFindNext() && ascending
                             && (current == null || current.getIndexType().isScan() || columnIndex == current)) {
                         IndexType type = columnIndex.getIndexType();
-                        // hash indexes don't work, and unique single column indexes don't work
+                        // hash indexes don't work, and unique single column
+                        // indexes don't work
                         if (!type.isHash() && (!type.isUnique() || columnIndex.getColumns().length > 1)) {
                             topTableFilter.setIndex(columnIndex);
                             isDistinctQuery = true;
@@ -992,6 +998,7 @@ public class Select extends Query implements Callable<ResultInterface> {
                 }
             }
         }
+        // 2. sort
         if (sort != null && !isQuickAggregateQuery && !isGroupQuery) {
             Index index = getSortIndex();
             if (index != null) {
@@ -999,7 +1006,8 @@ public class Select extends Query implements Callable<ResultInterface> {
                 if (current.getIndexType().isScan() || current == index) {
                     topTableFilter.setIndex(index);
                     if (!topTableFilter.hasInComparisons()) {
-                        // in(select ...) and in(1,2,3) my return the key in another order
+                        // in(select ...) and in(1,2,3) my return the key in
+                        // another order
                         sortUsingIndex = true;
                     }
                 } else if (index.getIndexColumns().length >= current.getIndexColumns().length) {
@@ -1022,6 +1030,7 @@ public class Select extends Query implements Callable<ResultInterface> {
                 }
             }
         }
+        // 3. group by
         if (!isQuickAggregateQuery && isGroupQuery && getGroupByExpressionCount() > 0) {
             Index index = getGroupSortedIndex();
             Index current = topTableFilter.getIndex();
@@ -1100,7 +1109,8 @@ public class Select extends Query implements Callable<ResultInterface> {
                         }
                     } else {
                         if (f.isJoinOuter()) {
-                            // this will check if all columns exist - it may or may not throw an exception
+                            // this will check if all columns exist - it may or
+                            // may not throw an exception
                             on = on.optimize(session);
                             // it is not supported even if the columns exist
                             throw DbException.get(ErrorCode.UNSUPPORTED_OUTER_JOIN_CONDITION_1, on.getSQL());
@@ -1249,14 +1259,6 @@ public class Select extends Query implements Callable<ResultInterface> {
         }
         // buff.append("\n/* cost: " + cost + " */");
         return buff.toString();
-    }
-
-    public void setHaving(Expression having) {
-        this.having = having;
-    }
-
-    public Expression getHaving() {
-        return having;
     }
 
     @Override

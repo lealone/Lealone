@@ -296,7 +296,7 @@ public class SelectUnion extends Query {
         }
         if (orderList != null) {
             initOrder(session, expressions, null, orderList, getColumnCount(), true, null);
-            sort = prepareOrder(orderList, expressions.size());
+            sort = prepareOrder(session, orderList, expressions.size());
             orderList = null;
         }
         expressionArray = new Expression[expressions.size()];
@@ -406,7 +406,8 @@ public class SelectUnion extends Query {
 
     @Override
     public LocalResult query(int limit, ResultTarget target) {
-        // union doesn't always know the parameter list of the left and right queries
+        // union doesn't always know the parameter list of the left and right
+        // queries
         return queryWithoutCache(limit, target);
     }
 
