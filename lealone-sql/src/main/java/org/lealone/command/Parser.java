@@ -3852,34 +3852,29 @@ public class Parser {
             return parseCreateAggregate(force);
         }
         // tables or linked tables
-        boolean memory = false, cached = false, dynamicTable = true;
+        boolean memory = false, cached = false;
         if (readIf("MEMORY")) {
             memory = true;
         } else if (readIf("CACHED")) {
             cached = true;
         }
 
-        if (readIf("STATIC")) {
-            dynamicTable = false;
-        } else if (readIf("DYNAMIC")) {
-            dynamicTable = true;
-        }
         if (readIf("LOCAL")) {
             read("TEMPORARY");
             read("TABLE");
-            return parseCreateTable(true, false, cached, dynamicTable);
+            return parseCreateTable(true, false, cached);
         } else if (readIf("GLOBAL")) {
             read("TEMPORARY");
             read("TABLE");
-            return parseCreateTable(true, true, cached, dynamicTable);
+            return parseCreateTable(true, true, cached);
         } else if (readIf("TEMP") || readIf("TEMPORARY")) {
             read("TABLE");
-            return parseCreateTable(true, true, cached, dynamicTable);
+            return parseCreateTable(true, true, cached);
         } else if (readIf("TABLE")) {
             if (!cached && !memory) {
                 cached = database.getDefaultTableType() == Table.TYPE_CACHED;
             }
-            return parseCreateTable(false, false, cached, dynamicTable);
+            return parseCreateTable(false, false, cached);
         } else {
             boolean hash = false, primaryKey = false, unique = false;
             String indexName = null;
@@ -5356,8 +5351,7 @@ public class Parser {
         } while (readIfMore());
     }
 
-    protected CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes,
-            boolean dynamicTable) {
+    protected CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes) {
         boolean ifNotExists = readIfNoExists();
         String tableName = readIdentifierWithSchema();
         if (temp && globalTemp && equalsToken("SESSION", schemaName)) {
@@ -5374,7 +5368,6 @@ public class Parser {
         command.setIfNotExists(ifNotExists);
         command.setTableName(tableName);
         command.setComment(readCommentIf());
-        command.setDynamicTable(dynamicTable);
         if (readIf("(")) {
             if (!readIf(")")) {
                 parseTableDefinition(schema, command, tableName);

@@ -33,7 +33,6 @@ public class CreateTable extends SchemaCommand {
     protected final CreateTableData data = new CreateTableData();
     protected IndexColumn[] pkColumns;
     protected boolean ifNotExists;
-    protected boolean dynamicTable;
 
     private final ArrayList<DefineCommand> constraintCommands = New.arrayList();
     private boolean onCommitDrop;
@@ -94,14 +93,6 @@ public class CreateTable extends SchemaCommand {
 
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
-    }
-
-    public boolean isDynamicTable() {
-        return dynamicTable;
-    }
-
-    public void setDynamicTable(boolean dynamicTable) {
-        this.dynamicTable = dynamicTable;
     }
 
     @Override
