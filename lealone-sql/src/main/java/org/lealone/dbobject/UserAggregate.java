@@ -45,22 +45,27 @@ public class UserAggregate extends DbObjectBase {
         }
     }
 
+    @Override
     public String getCreateSQLForCopy(Table table, String quotedName) {
         throw DbException.throwInternalError();
     }
 
+    @Override
     public String getDropSQL() {
         return "DROP AGGREGATE IF EXISTS " + getSQL();
     }
 
+    @Override
     public String getCreateSQL() {
         return "CREATE FORCE AGGREGATE " + getSQL() + " FOR " + Parser.quoteIdentifier(className);
     }
 
+    @Override
     public int getType() {
         return DbObject.AGGREGATE;
     }
 
+    @Override
     public synchronized void removeChildrenAndResources(Session session) {
         database.removeMeta(session, getId());
         className = null;
@@ -68,6 +73,7 @@ public class UserAggregate extends DbObjectBase {
         invalidate();
     }
 
+    @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("AGGREGATE");
     }

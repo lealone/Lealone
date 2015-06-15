@@ -36,6 +36,7 @@ public class JavaAggregate extends Expression {
     private int dataType;
     private Connection userConnection;
     private int lastGroupRowId;
+    private AggregateFunction aggregateFunction;
 
     public JavaAggregate(UserAggregate userAggregate, Expression[] args, Select select) {
         this.userAggregate = userAggregate;
@@ -43,6 +44,7 @@ public class JavaAggregate extends Expression {
         this.select = select;
     }
 
+    @Override
     public int getCost() {
         int cost = 5;
         for (Expression e : args) {
@@ -51,18 +53,22 @@ public class JavaAggregate extends Expression {
         return cost;
     }
 
+    @Override
     public long getPrecision() {
         return Integer.MAX_VALUE;
     }
 
+    @Override
     public int getDisplaySize() {
         return Integer.MAX_VALUE;
     }
 
+    @Override
     public int getScale() {
         return DataType.getDataType(dataType).defaultScale;
     }
 
+    @Override
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder();
         buff.append(Parser.quoteIdentifier(userAggregate.getName())).append('(');
@@ -73,10 +79,12 @@ public class JavaAggregate extends Expression {
         return buff.append(')').toString();
     }
 
+    @Override
     public int getType() {
         return dataType;
     }
 
+    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         switch (visitor.getType()) {
         case ExpressionVisitor.DETERMINISTIC:
@@ -98,12 +106,14 @@ public class JavaAggregate extends Expression {
         return true;
     }
 
+    @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         for (Expression arg : args) {
             arg.mapColumns(resolver, level);
         }
     }
 
+    @Override
     public Expression optimize(Session session) {
         userConnection = session.createConnection(false);
         int len = args.length;
@@ -125,6 +135,7 @@ public class JavaAggregate extends Expression {
         return this;
     }
 
+    @Override
     public void setEvaluatable(TableFilter tableFilter, boolean b) {
         for (Expression e : args) {
             e.setEvaluatable(tableFilter, b);
@@ -132,11 +143,14 @@ public class JavaAggregate extends Expression {
     }
 
     private AggregateFunction getInstance() throws SQLException {
-        AggregateFunction agg = userAggregate.getInstance();
-        agg.init(userConnection);
-        return agg;
+        if (aggregateFunction == null) {
+            aggregateFunction = userAggregate.getInstance();
+            aggregateFunction.init(userConnection);
+        }
+        return aggregateFunction;
     }
 
+    @Override
     public Value getValue(Session session) {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
@@ -157,6 +171,7 @@ public class JavaAggregate extends Expression {
         }
     }
 
+    @Override
     public void updateAggregate(Session session) {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {

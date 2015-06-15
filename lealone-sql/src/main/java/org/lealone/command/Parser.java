@@ -4877,12 +4877,12 @@ public class Parser {
                 }
             }
         }
-        //TODO 在分布式环境下，如果先在一个JVM上执行create table，再执行insert这样的dml，
-        //或者执行create table和insert的是不同JVM，这时由于表的元数据未及时更新到执行insert的JVM，
-        //所以有可能出现此异常，因为不同JVM上的表元数据通过zookeeper异步更新，
-        //有可能执行create table的线程很快结束了，但是zookeeper还未通知，这时insert时就找不到表。
-        //对于这种情况，client重视即可解决，不过还有没有更好的办法呢?
-        //client在使用h2作为内存数据库对SQL预解析时也会碰到这样的情况。
+        // TODO 在分布式环境下，如果先在一个JVM上执行create table，再执行insert这样的dml，
+        // 或者执行create table和insert的是不同JVM，这时由于表的元数据未及时更新到执行insert的JVM，
+        // 所以有可能出现此异常，因为不同JVM上的表元数据通过zookeeper异步更新，
+        // 有可能执行create table的线程很快结束了，但是zookeeper还未通知，这时insert时就找不到表。
+        // 对于这种情况，client重视即可解决，不过还有没有更好的办法呢?
+        // client在使用h2作为内存数据库对SQL预解析时也会碰到这样的情况。
         throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
     }
 
