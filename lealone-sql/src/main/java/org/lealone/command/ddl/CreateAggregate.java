@@ -22,7 +22,7 @@ public class CreateAggregate extends DefineCommand {
 
     private Schema schema;
     private String name;
-    private String javaClassMethod;
+    private String javaClassName;
     private boolean ifNotExists;
     private boolean force;
 
@@ -40,7 +40,7 @@ public class CreateAggregate extends DefineCommand {
             }
         } else {
             int id = getObjectId();
-            UserAggregate aggregate = new UserAggregate(db, id, name, javaClassMethod, force);
+            UserAggregate aggregate = new UserAggregate(db, id, name, javaClassName, force);
             db.addDatabaseObject(session, aggregate);
         }
         return 0;
@@ -54,8 +54,8 @@ public class CreateAggregate extends DefineCommand {
         this.name = name;
     }
 
-    public void setJavaClassMethod(String string) {
-        this.javaClassMethod = string;
+    public void setJavaClassName(String string) {
+        this.javaClassName = string;
     }
 
     public void setIfNotExists(boolean ifNotExists) {

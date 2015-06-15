@@ -4182,7 +4182,7 @@ public class Parser {
         command.setSchema(getSchema());
         command.setIfNotExists(ifNotExists);
         read("FOR");
-        command.setJavaClassMethod(readUniqueIdentifier());
+        command.setJavaClassName(readUniqueIdentifier());
         return command;
     }
 
