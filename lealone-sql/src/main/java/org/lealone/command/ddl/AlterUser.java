@@ -13,8 +13,6 @@ import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.expression.Expression;
 import org.lealone.message.DbException;
-import org.lealone.security.SHA256;
-import org.lealone.util.StringUtils;
 
 /**
  * This class represents the statements
@@ -64,14 +62,7 @@ public class AlterUser extends DefineCommand {
         this.password = password;
     }
 
-    private char[] getCharArray(Expression e) {
-        return e.optimize(session).getValue(session).getString().toCharArray();
-    }
-
-    private byte[] getByteArray(Expression e) {
-        return StringUtils.convertHexToBytes(e.optimize(session).getValue(session).getString());
-    }
-
+    @Override
     public int update() {
         session.commit(true);
         Database db = session.getDatabase();
@@ -81,12 +72,9 @@ public class AlterUser extends DefineCommand {
                 session.getUser().checkAdmin();
             }
             if (hash != null && salt != null) {
-                user.setSaltAndHash(getByteArray(salt), getByteArray(hash));
+                CreateUser.setSaltAndHash(user, session, salt, hash);
             } else {
-                String name = newName == null ? user.getName() : newName;
-                char[] passwordChars = getCharArray(password);
-                byte[] userPasswordHash = SHA256.getKeyPasswordHash(name, passwordChars);
-                user.setUserPasswordHash(userPasswordHash);
+                CreateUser.setPassword(user, session, password);
             }
             break;
         case CommandInterface.ALTER_USER_RENAME:
@@ -110,6 +98,7 @@ public class AlterUser extends DefineCommand {
         return 0;
     }
 
+    @Override
     public int getType() {
         return type;
     }
