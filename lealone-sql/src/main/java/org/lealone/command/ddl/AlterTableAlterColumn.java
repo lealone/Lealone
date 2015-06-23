@@ -79,6 +79,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
         this.addAfter = after;
     }
 
+    @Override
     public int update() {
         session.commit(true);
         Database db = session.getDatabase();
@@ -132,7 +133,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
                 oldColumn.copy(newColumn);
                 db.update(session, table);
             } else {
-                if (table.supportsAlterColumnWithCopyData()) { //TODO
+                if (table.supportsAlterColumnWithCopyData()) { // TODO
                     oldColumn.setSequence(null);
                     oldColumn.setDefaultExpression(session, null);
                     oldColumn.setConvertNullToDefault(false);
@@ -155,7 +156,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             for (Column column : columnsToAdd) {
                 convertAutoIncrementColumn(column);
             }
-            if (table.supportsAlterColumnWithCopyData()) { //TODO
+            if (table.supportsAlterColumnWithCopyData()) { // TODO
                 copyData();
             } else {
                 for (Column c : columnsToAdd)
@@ -169,7 +170,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
                 throw DbException.get(ErrorCode.CANNOT_DROP_LAST_COLUMN, oldColumn.getSQL());
             }
             table.dropSingleColumnConstraintsAndIndexes(session, oldColumn);
-            if (table.supportsAlterColumnWithCopyData()) { //TODO
+            if (table.supportsAlterColumnWithCopyData()) { // TODO
                 copyData();
             } else {
                 table.dropColumn(oldColumn);
@@ -454,6 +455,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
 
     private void execute(String sql, boolean ddl) {
         Prepared command = session.prepare(sql);
+        command.setLocal(true);
         command.update();
         if (ddl) {
             session.commit(true);
@@ -498,6 +500,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
         this.newColumn = newColumn;
     }
 
+    @Override
     public int getType() {
         return type;
     }
