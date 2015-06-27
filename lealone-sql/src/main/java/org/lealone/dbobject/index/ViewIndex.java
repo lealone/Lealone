@@ -222,6 +222,11 @@ public class ViewIndex extends IndexBase {
                 }
                 r.reset();
                 view.setRecursiveResult(r);
+
+                // 避免死循环，因为此时union all的右边子句不是当前view
+                if (!right.getTables().contains(view)) {
+                    break;
+                }
             }
             view.setRecursiveResult(null);
             result.done();
@@ -247,20 +252,15 @@ public class ViewIndex extends IndexBase {
         int idx = originalParameters == null ? 0 : originalParameters.size();
         idx += view.getParameterOffset();
         for (int i = 0; i < len; i++) {
-            if (first != null) {
-                Value v = first.getValue(i);
-                if (v != null) {
-                    int x = idx++;
-                    setParameter(paramList, x, v);
-                }
+            int mask = indexMasks[i];
+            if ((mask & IndexCondition.EQUALITY) != 0) {
+                setParameter(paramList, idx++, first.getValue(i));
             }
-            // for equality, only one parameter is used (first == last)
-            if (last != null && indexMasks[i] != IndexCondition.EQUALITY) {
-                Value v = last.getValue(i);
-                if (v != null) {
-                    int x = idx++;
-                    setParameter(paramList, x, v);
-                }
+            if ((mask & IndexCondition.START) != 0) {
+                setParameter(paramList, idx++, first.getValue(i));
+            }
+            if ((mask & IndexCondition.END) != 0) {
+                setParameter(paramList, idx++, last.getValue(i));
             }
         }
         ResultInterface result = query.query(0);
