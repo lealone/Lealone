@@ -61,12 +61,12 @@ public class CommandParallel {
     }
 
     private static ThreadPoolExecutor initPool() {
-        //        int corePoolSize = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_CORE_POOL_SIZE,
-        //                DEFAULT_COMMAND_PARALLEL_CORE_POOL_SIZE);
-        //        int maxPoolSize = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_MAX_POOL_SIZE,
-        //                DEFAULT_COMMAND_PARALLEL_MAX_POOL_SIZE);
-        //        int keepAliveTime = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_KEEP_ALIVE_TIME,
-        //                DEFAULT_COMMAND_PARALLEL_KEEP_ALIVE_TIME);
+        // int corePoolSize = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_CORE_POOL_SIZE,
+        // DEFAULT_COMMAND_PARALLEL_CORE_POOL_SIZE);
+        // int maxPoolSize = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_MAX_POOL_SIZE,
+        // DEFAULT_COMMAND_PARALLEL_MAX_POOL_SIZE);
+        // int keepAliveTime = HBaseUtils.getConfiguration().getInt(COMMAND_PARALLEL_KEEP_ALIVE_TIME,
+        // DEFAULT_COMMAND_PARALLEL_KEEP_ALIVE_TIME);
 
         int corePoolSize = 3;
         int maxPoolSize = Integer.MAX_VALUE;

@@ -40,14 +40,17 @@ public class Setting extends DbObjectBase {
         return stringValue;
     }
 
+    @Override
     public String getCreateSQLForCopy(Table table, String quotedName) {
         throw DbException.throwInternalError();
     }
 
+    @Override
     public String getDropSQL() {
         return null;
     }
 
+    @Override
     public String getCreateSQL() {
         StringBuilder buff = new StringBuilder("SET ");
         buff.append(getSQL()).append(' ');
@@ -59,15 +62,18 @@ public class Setting extends DbObjectBase {
         return buff.toString();
     }
 
+    @Override
     public int getType() {
         return DbObject.SETTING;
     }
 
+    @Override
     public void removeChildrenAndResources(Session session) {
         database.removeMeta(session, getId());
         invalidate();
     }
 
+    @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("RENAME");
     }

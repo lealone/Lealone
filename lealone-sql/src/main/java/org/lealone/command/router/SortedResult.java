@@ -137,9 +137,9 @@ public class SortedResult extends DelegatedResult {
 
     @Override
     public int getRowCount() {
-        if (rowCount == -2) //前一次调用getRowCount()计算得出results中至少有一个是无法确定rowCount的
+        if (rowCount == -2) // 前一次调用getRowCount()计算得出results中至少有一个是无法确定rowCount的
             return -1;
-        if (rowCount == -1) { //第一次调用getRowCount()
+        if (rowCount == -1) { // 第一次调用getRowCount()
             int c = 0;
             for (int i = 0; i < size; i++) {
                 if (results[i].getRowCount() == -1) {

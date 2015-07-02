@@ -53,6 +53,7 @@ public class Sequence extends SchemaObjectBase {
         this.increment = inc;
     }
 
+    @Override
     public String getDropSQL() {
         if (getBelongsToTable()) {
             return null;
@@ -60,10 +61,12 @@ public class Sequence extends SchemaObjectBase {
         return "DROP SEQUENCE IF EXISTS " + getSQL();
     }
 
+    @Override
     public String getCreateSQLForCopy(Table table, String quotedName) {
         throw DbException.throwInternalError();
     }
 
+    @Override
     public synchronized String getCreateSQL() {
         StringBuilder buff = new StringBuilder("CREATE SEQUENCE ");
         buff.append(getSQL()).append(" START WITH ").append(value);
@@ -142,15 +145,18 @@ public class Sequence extends SchemaObjectBase {
         flushWithoutMargin();
     }
 
+    @Override
     public int getType() {
         return DbObject.SEQUENCE;
     }
 
+    @Override
     public void removeChildrenAndResources(Session session) {
         database.removeMeta(session, getId());
         invalidate();
     }
 
+    @Override
     public void checkRename() {
         // nothing to do
     }

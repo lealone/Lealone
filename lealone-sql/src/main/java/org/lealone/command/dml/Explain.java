@@ -7,8 +7,8 @@
 package org.lealone.command.dml;
 
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
@@ -40,6 +40,7 @@ public class Explain extends Prepared {
         this.command = command;
     }
 
+    @Override
     public void prepare() {
         command.prepare();
     }
@@ -48,10 +49,12 @@ public class Explain extends Prepared {
         this.executeCommand = executeCommand;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         return query(-1);
     }
 
+    @Override
     public ResultInterface query(int maxrows) {
         Column column = new Column("PLAN", Value.STRING);
         Database db = session.getDatabase();
@@ -101,18 +104,22 @@ public class Explain extends Prepared {
         result.addRow(row);
     }
 
+    @Override
     public boolean isQuery() {
         return true;
     }
 
+    @Override
     public boolean isTransactional() {
         return true;
     }
 
+    @Override
     public boolean isReadOnly() {
         return command.isReadOnly();
     }
 
+    @Override
     public int getType() {
         return CommandInterface.EXPLAIN;
     }

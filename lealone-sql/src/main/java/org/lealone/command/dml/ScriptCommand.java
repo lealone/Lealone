@@ -207,7 +207,7 @@ public class ScriptCommand extends ScriptBase {
                 }
             });
 
-            // Generate the DROP XXX  ... IF EXISTS
+            // Generate the DROP XXX ... IF EXISTS
             for (Table table : tables) {
                 if (excludeSchema(table.getSchema())) {
                     continue;

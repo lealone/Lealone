@@ -28,32 +28,32 @@ import org.lealone.result.ResultInterface;
 
 public class MergedResult extends DelegatedResult {
     public MergedResult(List<ResultInterface> results, Select newSelect, Select oldSelect) {
-        //1. 结果集串行化，为合并做准备
+        // 1. 结果集串行化，为合并做准备
         SerializedResult serializedResult = new SerializedResult(results, oldSelect);
         Table table = newSelect.getTopTableFilter().getTable();
         newSelect.getTopTableFilter().setIndex(
                 new MergedIndex(serializedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType
                         .createScan(false)));
 
-        //2. 把多个结果集合并
+        // 2. 把多个结果集合并
         ResultInterface mergedResult = newSelect.queryGroupMerge();
 
-        //3. 计算合并后的结果集,
-        //例如oldSelect="select avg"时，在分布式环境要转成newSelect="select count, sum"，
-        //此时就由count, sum来算出avg
+        // 3. 计算合并后的结果集,
+        // 例如oldSelect="select avg"时，在分布式环境要转成newSelect="select count, sum"，
+        // 此时就由count, sum来算出avg
         ResultInterface calculatedResult = oldSelect.calculate(mergedResult, newSelect);
 
-        //4. 如果不存在avg、stddev这类需要拆分为count、sum的计算，此时mergedResult和calculatedResult是同一个实例
-        //否则就是不同实例，需要再一次按oldSelect合并结果集
+        // 4. 如果不存在avg、stddev这类需要拆分为count、sum的计算，此时mergedResult和calculatedResult是同一个实例
+        // 否则就是不同实例，需要再一次按oldSelect合并结果集
         if (mergedResult != calculatedResult) {
             table = oldSelect.getTopTableFilter().getTable();
             oldSelect.getTopTableFilter().setIndex(
                     new MergedIndex(calculatedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType
                             .createScan(false)));
-            //5. 最终结果集
+            // 5. 最终结果集
             result = oldSelect.queryGroupMerge();
 
-            //6. 立刻关闭中间结果集
+            // 6. 立刻关闭中间结果集
             serializedResult.close();
             mergedResult.close();
             calculatedResult.close();

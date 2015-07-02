@@ -42,6 +42,7 @@ public class CreateUserDataType extends DefineCommand {
         this.ifNotExists = ifNotExists;
     }
 
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
@@ -71,6 +72,7 @@ public class CreateUserDataType extends DefineCommand {
         return 0;
     }
 
+    @Override
     public int getType() {
         return CommandInterface.CREATE_DOMAIN;
     }

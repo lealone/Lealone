@@ -69,6 +69,7 @@ public class Operation extends Expression {
         this.right = right;
     }
 
+    @Override
     public String getSQL(boolean isDistributed) {
         String sql;
         if (opType == NEGATE) {
@@ -104,6 +105,7 @@ public class Operation extends Expression {
         }
     }
 
+    @Override
     public Value getValue(Session session) {
         Value l = left.getValue(session).convertTo(dataType);
         Value r;
@@ -166,6 +168,7 @@ public class Operation extends Expression {
         }
     }
 
+    @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         left.mapColumns(resolver, level);
         if (right != null) {
@@ -173,6 +176,7 @@ public class Operation extends Expression {
         }
     }
 
+    @Override
     public Expression optimize(Session session) {
         left = left.optimize(session);
         switch (opType) {
@@ -194,7 +198,7 @@ public class Operation extends Expression {
         case MULTIPLY:
         case DIVIDE:
         case MODULUS:
-            dataType = Value.DECIMAL; //我加上的
+            dataType = Value.DECIMAL; // 我加上的
             right = right.optimize(session);
             int l = left.getType();
             int r = right.getType();
@@ -308,7 +312,7 @@ public class Operation extends Expression {
                     opType = CONCAT;
                 }
             }
-            dataType = Value.DECIMAL; //我加上的
+            dataType = Value.DECIMAL; // 我加上的
             break;
         default:
             DbException.throwInternalError("type=" + opType);
@@ -325,6 +329,7 @@ public class Operation extends Expression {
         right = temp;
     }
 
+    @Override
     public void setEvaluatable(TableFilter tableFilter, boolean b) {
         left.setEvaluatable(tableFilter, b);
         if (right != null) {
@@ -332,10 +337,12 @@ public class Operation extends Expression {
         }
     }
 
+    @Override
     public int getType() {
         return dataType;
     }
 
+    @Override
     public long getPrecision() {
         if (right != null) {
             switch (opType) {
@@ -348,6 +355,7 @@ public class Operation extends Expression {
         return left.getPrecision();
     }
 
+    @Override
     public int getDisplaySize() {
         if (right != null) {
             switch (opType) {
@@ -360,6 +368,7 @@ public class Operation extends Expression {
         return left.getDisplaySize();
     }
 
+    @Override
     public int getScale() {
         if (right != null) {
             return Math.max(left.getScale(), right.getScale());
@@ -367,6 +376,7 @@ public class Operation extends Expression {
         return left.getScale();
     }
 
+    @Override
     public void updateAggregate(Session session) {
         left.updateAggregate(session);
         if (right != null) {
@@ -374,10 +384,12 @@ public class Operation extends Expression {
         }
     }
 
+    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         return left.isEverything(visitor) && (right == null || right.isEverything(visitor));
     }
 
+    @Override
     public int getCost() {
         return left.getCost() + 1 + (right == null ? 0 : right.getCost());
     }

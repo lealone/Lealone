@@ -35,13 +35,13 @@ import org.lealone.message.DbException;
 public class FrontendSessionPool {
     private static final int QUEUE_SIZE = 3;
 
-    //key是集群中每个节点的URL
+    // key是集群中每个节点的URL
     private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<FrontendSession>> pool = new ConcurrentHashMap<>();
 
     private static ConcurrentLinkedQueue<FrontendSession> getQueue(String url) {
         ConcurrentLinkedQueue<FrontendSession> queue = pool.get(url);
         if (queue == null) {
-            //避免多个线程生成不同的ConcurrentLinkedQueue实例
+            // 避免多个线程生成不同的ConcurrentLinkedQueue实例
             synchronized (FrontendSessionPool.class) {
                 queue = pool.get(url);
                 if (queue == null) {
@@ -58,7 +58,7 @@ public class FrontendSessionPool {
 
         if (fs == null || fs.isClosed()) {
             ConnectionInfo oldCi = originalSession.getConnectionInfo();
-            //未来新加的代码如果忘记设置这两个字段，出问题时方便查找原因
+            // 未来新加的代码如果忘记设置这两个字段，出问题时方便查找原因
             if (originalSession.getOriginalProperties() == null || oldCi == null)
                 throw DbException.throwInternalError();
 
@@ -109,10 +109,10 @@ public class FrontendSessionPool {
             List<Parameter> parameters, int fetchSize) {
         FrontendCommand fc = (FrontendCommand) fs.prepareCommand(sql, fetchSize);
 
-        //传递最初的参数值到新的FrontendCommand
+        // 传递最初的参数值到新的FrontendCommand
         if (parameters != null) {
             ArrayList<? extends ParameterInterface> newParams = fc.getParameters();
-            //SQL重写后可能没有占位符了
+            // SQL重写后可能没有占位符了
             if (!newParams.isEmpty()) {
                 if (SysProperties.CHECK && newParams.size() != parameters.size())
                     throw DbException.throwInternalError();

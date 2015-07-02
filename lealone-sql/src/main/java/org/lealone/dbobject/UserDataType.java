@@ -24,14 +24,17 @@ public class UserDataType extends DbObjectBase {
         initDbObjectBase(database, id, name, Trace.DATABASE);
     }
 
+    @Override
     public String getCreateSQLForCopy(Table table, String quotedName) {
         throw DbException.throwInternalError();
     }
 
+    @Override
     public String getDropSQL() {
         return "DROP DOMAIN IF EXISTS " + getSQL();
     }
 
+    @Override
     public String getCreateSQL() {
         return "CREATE DOMAIN " + getSQL() + " AS " + column.getCreateSQL();
     }
@@ -40,14 +43,17 @@ public class UserDataType extends DbObjectBase {
         return column;
     }
 
+    @Override
     public int getType() {
         return DbObject.USER_DATATYPE;
     }
 
+    @Override
     public void removeChildrenAndResources(Session session) {
         database.removeMeta(session, getId());
     }
 
+    @Override
     public void checkRename() {
         // ok
     }

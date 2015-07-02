@@ -180,7 +180,7 @@ public abstract class Table extends SchemaObjectBase {
     public abstract void removeRow(Session session, Row row);
 
     public void removeRow(final Session session, final Row row, boolean isUndo) {
-        //TODO
+        // TODO
     }
 
     /**

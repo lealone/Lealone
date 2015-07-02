@@ -37,8 +37,8 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
 
     protected Table table;
     protected Column[] columns;
-    //TODO
-    //protected Expression[] first; //大多数情况下每次都只有一条记录
+    // TODO
+    // protected Expression[] first; //大多数情况下每次都只有一条记录
     protected ArrayList<Expression[]> list = New.arrayList();
     protected Query query;
     protected boolean sortedInsertMode;
@@ -92,20 +92,20 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
      * @param expr the list of values
      */
     public void addRow(Expression[] expr) {
-        //        if (first == null)
-        //            first = expr;
-        //        else {
-        //            if (list == null)
-        //                list = New.arrayList();
-        //            list.add(expr);
-        //        }
+        // if (first == null)
+        // first = expr;
+        // else {
+        // if (list == null)
+        // list = New.arrayList();
+        // list.add(expr);
+        // }
 
         list.add(expr);
     }
 
     @Override
     public int update() {
-        //在集群模式下使用query时先不创建行，这会导致从其他表中把记录取过来
+        // 在集群模式下使用query时先不创建行，这会导致从其他表中把记录取过来
         if (query == null || isLocal())
             createRows();
         return Session.getRouter().executeInsert(this);
@@ -205,7 +205,7 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
         return rowNumber;
     }
 
-    //子类有可能要用rowId
+    // 子类有可能要用rowId
     protected Row createRow(Expression[] expr, int rowId) {
         Row row = table.getTemplateRow();
         for (int i = 0, len = columns.length; i < len; i++) {

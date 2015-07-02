@@ -31,14 +31,17 @@ public class CommandContainer extends Command {
         this.prepared = prepared;
     }
 
+    @Override
     public ArrayList<? extends ParameterInterface> getParameters() {
         return prepared.getParameters();
     }
 
+    @Override
     public boolean isTransactional() {
         return prepared.isTransactional();
     }
 
+    @Override
     public boolean isQuery() {
         return prepared.isQuery();
     }
@@ -67,6 +70,7 @@ public class CommandContainer extends Command {
         }
     }
 
+    @Override
     public int update() {
         recompileIfRequired();
         setProgress(DatabaseEventListener.STATE_STATEMENT_START);
@@ -83,6 +87,7 @@ public class CommandContainer extends Command {
         return prepared.update();
     }
 
+    @Override
     public ResultInterface query(int maxrows) {
         recompileIfRequired();
         setProgress(DatabaseEventListener.STATE_STATEMENT_START);
@@ -98,6 +103,7 @@ public class CommandContainer extends Command {
         return prepared.query(maxrows);
     }
 
+    @Override
     public boolean isReadOnly() {
         if (!readOnlyKnown) {
             readOnly = prepared.isReadOnly();
@@ -106,14 +112,17 @@ public class CommandContainer extends Command {
         return readOnly;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         return prepared.queryMeta();
     }
 
+    @Override
     public boolean isCacheable() {
         return prepared.isCacheable();
     }
 
+    @Override
     public int getCommandType() {
         return prepared.getType();
     }

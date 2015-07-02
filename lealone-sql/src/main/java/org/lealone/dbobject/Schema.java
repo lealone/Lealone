@@ -585,11 +585,11 @@ public class Schema extends DbObjectBase {
             }
             data.schema = this;
 
-            //先看看是否在连接参数中指定了
+            // 先看看是否在连接参数中指定了
             if (data.storageEngine == null && data.session.getConnectionInfo() != null) {
                 data.storageEngine = data.session.getConnectionInfo().getDbSettings().defaultStorageEngine;
             }
-            //再用默认的数据库参数
+            // 再用默认的数据库参数
             if (data.storageEngine == null) {
                 data.storageEngine = database.getStorageEngineName();
             }

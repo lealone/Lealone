@@ -25,6 +25,7 @@ class CommandList extends Command {
         this.remaining = remaining;
     }
 
+    @Override
     public ArrayList<? extends ParameterInterface> getParameters() {
         return command.getParameters();
     }
@@ -39,34 +40,41 @@ class CommandList extends Command {
         }
     }
 
+    @Override
     public int update() {
         int updateCount = command.executeUpdate();
         updateCount += executeRemaining();
         return updateCount;
     }
 
+    @Override
     public ResultInterface query(int maxrows) {
         ResultInterface result = command.query(maxrows);
         executeRemaining();
         return result;
     }
 
+    @Override
     public boolean isQuery() {
         return command.isQuery();
     }
 
+    @Override
     public boolean isTransactional() {
         return true;
     }
 
+    @Override
     public boolean isReadOnly() {
         return false;
     }
 
+    @Override
     public ResultInterface queryMeta() {
         return command.queryMeta();
     }
 
+    @Override
     public int getCommandType() {
         return command.getCommandType();
     }

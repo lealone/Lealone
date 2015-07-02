@@ -112,7 +112,7 @@ public class TransactionalRouter implements Router {
             if (isTopTransaction)
                 session.rollback();
 
-            //嵌套事务出错时提前rollback
+            // 嵌套事务出错时提前rollback
             if (isNestedTransaction)
                 session.rollbackToSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
 

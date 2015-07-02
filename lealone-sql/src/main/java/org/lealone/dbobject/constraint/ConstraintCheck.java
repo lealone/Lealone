@@ -36,6 +36,7 @@ public class ConstraintCheck extends Constraint {
         super(schema, id, name, table);
     }
 
+    @Override
     public String getConstraintType() {
         return Constraint.CHECK;
     }
@@ -48,6 +49,7 @@ public class ConstraintCheck extends Constraint {
         this.expr = expr;
     }
 
+    @Override
     public String getCreateSQLForCopy(Table forTable, String quotedName) {
         StringBuilder buff = new StringBuilder("ALTER TABLE ");
         buff.append(forTable.getSQL()).append(" ADD CONSTRAINT ");
@@ -66,14 +68,17 @@ public class ConstraintCheck extends Constraint {
         return getName() + ": " + expr.getSQL();
     }
 
+    @Override
     public String getCreateSQLWithoutIndexes() {
         return getCreateSQL();
     }
 
+    @Override
     public String getCreateSQL() {
         return getCreateSQLForCopy(table, getSQL());
     }
 
+    @Override
     public void removeChildrenAndResources(Session session) {
         table.removeConstraint(this);
         database.removeMeta(session, getId());
@@ -83,6 +88,7 @@ public class ConstraintCheck extends Constraint {
         invalidate();
     }
 
+    @Override
     public void checkRow(Session session, Table t, Row oldRow, Row newRow) {
         if (newRow == null) {
             return;
@@ -94,14 +100,17 @@ public class ConstraintCheck extends Constraint {
         }
     }
 
+    @Override
     public boolean usesIndex(Index index) {
         return false;
     }
 
+    @Override
     public void setIndexOwner(Index index) {
         DbException.throwInternalError();
     }
 
+    @Override
     public HashSet<Column> getReferencedColumns(Table table) {
         HashSet<Column> columns = New.hashSet();
         expr.isEverything(ExpressionVisitor.getColumnsVisitor(columns));
@@ -117,10 +126,12 @@ public class ConstraintCheck extends Constraint {
         return expr;
     }
 
+    @Override
     public boolean isBefore() {
         return true;
     }
 
+    @Override
     public void checkExistingData(Session session) {
         if (session.getDatabase().isStarting()) {
             // don't check at startup
@@ -133,14 +144,17 @@ public class ConstraintCheck extends Constraint {
         }
     }
 
+    @Override
     public Index getUniqueIndex() {
         return null;
     }
 
+    @Override
     public void rebuild() {
         // nothing to do
     }
 
+    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         return expr.isEverything(visitor);
     }

@@ -28,10 +28,12 @@ public class PrepareProcedure extends DefineCommand {
         super(session);
     }
 
+    @Override
     public void checkParameters() {
         // no not check parameters
     }
 
+    @Override
     public int update() {
         Procedure proc = new Procedure(procedureName, prepared);
         prepared.setParameterList(parameters);
@@ -49,10 +51,12 @@ public class PrepareProcedure extends DefineCommand {
         this.prepared = prep;
     }
 
+    @Override
     public ArrayList<Parameter> getParameters() {
         return New.arrayList();
     }
 
+    @Override
     public int getType() {
         return CommandInterface.PREPARE;
     }

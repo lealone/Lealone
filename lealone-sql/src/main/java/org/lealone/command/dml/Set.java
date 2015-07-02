@@ -303,9 +303,9 @@ public class Set extends Prepared {
             session.setQueryTimeout(value);
             break;
         }
-        case SetTypes.REDO_LOG_BINARY: { //这个参数已不再使用
-            //            int value = getIntValue();
-            //            session.setRedoLogBinary(value == 1);
+        case SetTypes.REDO_LOG_BINARY: { // 这个参数已不再使用
+            // int value = getIntValue();
+            // session.setRedoLogBinary(value == 1);
             break;
         }
         case SetTypes.REFERENTIAL_INTEGRITY: {
@@ -361,12 +361,12 @@ public class Set extends Prepared {
             session.setThrottle(getIntValue());
             break;
         }
-        case SetTypes.UNDO_LOG: { //这个参数已不再使用
-            //            int value = getIntValue();
-            //            if (value < 0 || value > 1) {
-            //                throw DbException.getInvalidValueException("UNDO_LOG", getIntValue());
-            //            }
-            //            session.setUndoLogEnabled(value == 1);
+        case SetTypes.UNDO_LOG: { // 这个参数已不再使用
+            // int value = getIntValue();
+            // if (value < 0 || value > 1) {
+            // throw DbException.getInvalidValueException("UNDO_LOG", getIntValue());
+            // }
+            // session.setUndoLogEnabled(value == 1);
             break;
         }
         case SetTypes.VARIABLE: {

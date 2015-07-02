@@ -74,6 +74,7 @@ public class GrantRevoke extends DefineCommand {
         }
     }
 
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
@@ -164,6 +165,7 @@ public class GrantRevoke extends DefineCommand {
         db.removeDatabaseObject(session, right);
     }
 
+    @Override
     public boolean isTransactional() {
         return false;
     }
@@ -177,6 +179,7 @@ public class GrantRevoke extends DefineCommand {
         tables.add(table);
     }
 
+    @Override
     public int getType() {
         return operationType;
     }

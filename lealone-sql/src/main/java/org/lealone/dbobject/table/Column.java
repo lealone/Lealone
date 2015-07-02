@@ -150,7 +150,7 @@ public class Column {
             this.name = name.substring(pos + 1);
         } else
             this.name = name;
-        this.type = Value.UNKNOWN; //先设为Value.UNKNOWN，根据表达式的类型动态确定
+        this.type = Value.UNKNOWN; // 先设为Value.UNKNOWN，根据表达式的类型动态确定
     }
 
     public Column(String name, boolean isRowKeyColumn) {
@@ -181,6 +181,7 @@ public class Column {
         this.displaySize = displaySize;
     }
 
+    @Override
     public boolean equals(Object o) {
         if (o == this) {
             return true;
@@ -203,6 +204,7 @@ public class Column {
         return name.equals(other.name) && columnFamilyName.equals(other.columnFamilyName);
     }
 
+    @Override
     public int hashCode() {
         if (table == null || name == null) {
             return 0;
@@ -752,8 +754,9 @@ public class Column {
         return primaryKey;
     }
 
+    @Override
     public String toString() {
-        return getFullName(); //return name;
+        return getFullName(); // return name;
     }
 
     /**

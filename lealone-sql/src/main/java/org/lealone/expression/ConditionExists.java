@@ -26,23 +26,27 @@ public class ConditionExists extends Condition {
         this.query = query;
     }
 
+    @Override
     public Value getValue(Session session) {
         query.setSession(session);
-        ResultInterface result = session.createSubqueryResult(query, 1); //query.query(1);
+        ResultInterface result = session.createSubqueryResult(query, 1); // query.query(1);
         session.addTemporaryResult(result);
         boolean r = result.getRowCount() > 0;
         return ValueBoolean.get(r);
     }
 
+    @Override
     public Expression optimize(Session session) {
         query.prepare();
         return this;
     }
 
+    @Override
     public String getSQL(boolean isDistributed) {
         return "EXISTS(\n" + StringUtils.indent(query.getPlanSQL(), 4, false) + ")";
     }
 
+    @Override
     public void updateAggregate(Session session) {
         // TODO exists: is it allowed that the subquery contains aggregates?
         // probably not
@@ -50,18 +54,22 @@ public class ConditionExists extends Condition {
         // where id=count(test.id))
     }
 
+    @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         query.mapColumns(resolver, level + 1);
     }
 
+    @Override
     public void setEvaluatable(TableFilter tableFilter, boolean b) {
         query.setEvaluatable(tableFilter, b);
     }
 
+    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         return query.isEverything(visitor);
     }
 
+    @Override
     public int getCost() {
         return query.getCostAsExpression();
     }

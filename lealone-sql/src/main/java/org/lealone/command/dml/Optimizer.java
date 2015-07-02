@@ -28,16 +28,16 @@ class Optimizer {
     private long start;
     private BitField switched;
 
-    //  possible plans for filters, if using brute force:
-    //  1 filter 1 plan
-    //  2 filters 2 plans
-    //  3 filters 6 plans
-    //  4 filters 24 plans
-    //  5 filters 120 plans
-    //  6 filters 720 plans
-    //  7 filters 5040 plans
-    //  8 filters 40320 plan
-    //  9 filters 362880 plans
+    // possible plans for filters, if using brute force:
+    // 1 filter 1 plan
+    // 2 filters 2 plans
+    // 3 filters 6 plans
+    // 4 filters 24 plans
+    // 5 filters 120 plans
+    // 6 filters 720 plans
+    // 7 filters 5040 plans
+    // 8 filters 40320 plan
+    // 9 filters 362880 plans
     // 10 filters 3628800 filters
 
     private final TableFilter[] filters;

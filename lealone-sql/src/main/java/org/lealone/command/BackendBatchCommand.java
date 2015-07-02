@@ -22,7 +22,6 @@ package org.lealone.command;
 import java.util.ArrayList;
 
 import org.lealone.api.ParameterInterface;
-import org.lealone.command.CommandInterface;
 import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
@@ -31,8 +30,8 @@ import org.lealone.value.Value;
 
 public class BackendBatchCommand implements CommandInterface {
     private Session session;
-    private ArrayList<String> batchCommands; //对应JdbcStatement.executeBatch()
-    private ArrayList<Value[]> batchParameters; //对应JdbcPreparedStatement.executeBatch()
+    private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
+    private ArrayList<Value[]> batchParameters; // 对应JdbcPreparedStatement.executeBatch()
     private Command preparedCommand;
     private int[] result;
 
