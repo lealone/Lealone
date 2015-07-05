@@ -30,33 +30,15 @@ public class BackupCommand extends Prepared {
 
     @Override
     public int update() {
-        String name = fileNameExpr.getValue(session).getString();
+        String fileName = fileNameExpr.getValue(session).getString();
         session.getUser().checkAdmin();
-        backupTo(name);
-        return 0;
-    }
-
-    private void backupTo(String fileName) {
         session.getDatabase().backupTo(fileName);
+        return 0;
     }
 
     @Override
     public boolean isTransactional() {
         return true;
-    }
-
-    /**
-     * Fix the file name, replacing backslash with slash.
-     *
-     * @param f the file name
-     * @return the corrected file name
-     */
-    public static String correctFileName(String f) {
-        f = f.replace('\\', '/');
-        if (f.startsWith("/")) {
-            f = f.substring(1);
-        }
-        return f;
     }
 
     @Override

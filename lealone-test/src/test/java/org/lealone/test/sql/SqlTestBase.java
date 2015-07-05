@@ -143,9 +143,13 @@ public class SqlTestBase extends TestBase {
         }
     }
 
-    public void executeQuery() throws Exception {
-        rs = stmt.executeQuery(sql);
-        rs.next();
+    public void executeQuery() {
+        try {
+            rs = stmt.executeQuery(sql);
+            rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public void closeResultSet() throws Exception {

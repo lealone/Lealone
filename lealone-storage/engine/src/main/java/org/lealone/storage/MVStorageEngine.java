@@ -5,7 +5,9 @@
  */
 package org.lealone.storage;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -13,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.command.ddl.CreateTableData;
@@ -37,6 +41,7 @@ import org.lealone.transaction.TransactionMap;
 import org.lealone.type.DataType;
 import org.lealone.util.BitField;
 import org.lealone.util.DataUtils;
+import org.lealone.util.IOUtils;
 import org.lealone.util.New;
 
 /**
@@ -45,7 +50,7 @@ import org.lealone.util.New;
 public class MVStorageEngine extends StorageEngineBase implements TransactionStorageEngine {
     public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
 
-    //见StorageEngineManager.StorageEngineService中的注释
+    // 见StorageEngineManager.StorageEngineService中的注释
     public MVStorageEngine() {
         StorageEngineManager.registerStorageEngine(this);
     }
@@ -498,7 +503,140 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
 
     @Override
     public void backupTo(Database db, String fileName) {
-        // TODO
+        if (!db.isPersistent()) {
+            throw DbException.get(ErrorCode.DATABASE_IS_NOT_PERSISTENT);
+        }
+        try {
+            Store mvStore = getStore(db);
+            if (mvStore != null) {
+                mvStore.flush();
+            }
+            // 生成fileName表示的文件，如果已存在则覆盖原有的，也就是文件为空
+            OutputStream zip = FileUtils.newOutputStream(fileName, false);
+            ZipOutputStream out = new ZipOutputStream(zip);
+
+            // synchronize on the database, to avoid concurrent temp file
+            // creation / deletion / backup
+            String base = FileUtils.getParent(db.getName());
+            synchronized (db.getLobSyncObject()) {
+                String prefix = db.getDatabasePath(); // 返回E:/H2/baseDir/mydb
+                String dir = FileUtils.getParent(prefix); // 返回E:/H2/baseDir
+                dir = getDir(dir); // 返回E:/H2/baseDir
+                String name = db.getName(); // 返回E:/H2/baseDir/mydb
+                name = FileUtils.getName(name); // 返回mydb(也就是只取简单文件名)
+                ArrayList<String> fileList = getDatabaseFiles(dir, name, true);
+
+                // 把".lob.db"和".mv.db"文件备份到fileName表示的文件中(是一个zip文件)
+                for (String n : fileList) {
+                    if (n.endsWith(Constants.SUFFIX_LOB_FILE)) { // 备份".lob.db"文件
+                        backupFile(out, base, n);
+                    } else if (n.endsWith(Constants.SUFFIX_MV_FILE) && mvStore != null) { // 备份".mv.db"文件
+                        MVStore s = mvStore.getStore();
+                        boolean before = s.getReuseSpace();
+                        s.setReuseSpace(false);
+                        try {
+                            InputStream in = mvStore.getInputStream();
+                            backupFile(out, base, n, in);
+                        } finally {
+                            s.setReuseSpace(before);
+                        }
+                    }
+                }
+            }
+            out.close();
+            zip.close();
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, fileName);
+        }
+    }
+
+    private static void backupFile(ZipOutputStream out, String base, String fn) throws IOException {
+        InputStream in = FileUtils.newInputStream(fn);
+        backupFile(out, base, fn, in);
+    }
+
+    private static void backupFile(ZipOutputStream out, String base, String fn, InputStream in) throws IOException {
+        String f = FileUtils.toRealPath(fn); // 返回E:/H2/baseDir/mydb.mv.db
+        base = FileUtils.toRealPath(base); // 返回E:/H2/baseDir
+        if (!f.startsWith(base)) {
+            DbException.throwInternalError(f + " does not start with " + base);
+        }
+        f = f.substring(base.length()); // 返回/mydb.mv.db
+        f = correctFileName(f); // 返回mydb.mv.db
+        out.putNextEntry(new ZipEntry(f));
+        IOUtils.copyAndCloseInput(in, out);
+        out.closeEntry();
+    }
+
+    /**
+     * Fix the file name, replacing backslash with slash.
+     *
+     * @param f the file name
+     * @return the corrected file name
+     */
+    private static String correctFileName(String f) {
+        f = f.replace('\\', '/');
+        if (f.startsWith("/")) {
+            f = f.substring(1);
+        }
+        return f;
+    }
+
+    /**
+     * Normalize the directory name.
+     *
+     * @param dir the directory (null for the current directory)
+     * @return the normalized directory name
+     */
+    private static String getDir(String dir) {
+        if (dir == null || dir.equals("")) {
+            return ".";
+        }
+        return FileUtils.toRealPath(dir);
+    }
+
+    /**
+     * Get the list of database files.
+     *
+     * @param dir the directory (must be normalized)
+     * @param db the database name (null for all databases)
+     * @param all if true, files such as the lock, trace, and lob
+     *            files are included. If false, only data, index, log,
+     *            and lob files are returned
+     * @return the list of files
+     */
+    private static ArrayList<String> getDatabaseFiles(String dir, String db, boolean all) {
+        ArrayList<String> files = New.arrayList();
+        // for Windows, File.getCanonicalPath("...b.") returns just "...b"
+        String start = db == null ? null : (FileUtils.toRealPath(dir + "/" + db) + ".");
+        for (String f : FileUtils.newDirectoryStream(dir)) {
+            boolean ok = false;
+            if (f.endsWith(Constants.SUFFIX_LOBS_DIRECTORY)) {
+                if (start == null || f.startsWith(start)) {
+                    files.addAll(getDatabaseFiles(f, null, all));
+                    ok = true;
+                }
+            } else if (f.endsWith(Constants.SUFFIX_LOB_FILE)) {
+                ok = true;
+            } else if (f.endsWith(Constants.SUFFIX_MV_FILE)) {
+                ok = true;
+            } else if (all) {
+                if (f.endsWith(Constants.SUFFIX_LOCK_FILE)) {
+                    ok = true;
+                } else if (f.endsWith(Constants.SUFFIX_TEMP_FILE)) {
+                    ok = true;
+                } else if (f.endsWith(Constants.SUFFIX_TRACE_FILE)) {
+                    ok = true;
+                }
+            }
+            if (ok) {
+                if (db == null || f.startsWith(start)) {
+                    String fileName = f;
+                    files.add(fileName);
+                }
+            }
+        }
+        return files;
     }
 
     @Override
