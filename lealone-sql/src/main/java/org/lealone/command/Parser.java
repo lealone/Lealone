@@ -1040,96 +1040,6 @@ public class Parser {
         return command;
     }
 
-    private TableFilter readTableFilter(boolean fromOuter) {
-        Table table;
-        String alias = null;
-        if (readIf("(")) {
-            if (isSelect()) {
-                Query query = parseSelectUnion();
-                read(")");
-                query.setParameterList(New.arrayList(parameters));
-                query.init();
-                Session s;
-                if (createView != null) {
-                    s = database.getSystemSession();
-                } else {
-                    s = session;
-                }
-                alias = session.getNextSystemIdentifier(sqlCommand);
-                table = TableView.createTempView(s, session.getUser(), alias, query, currentSelect);
-            } else {
-                TableFilter top;
-                if (database.getSettings().nestedJoins) {
-                    top = readTableFilter(false);
-                    top = readJoin(top, currentSelect, false, false);
-                    top = getNested(top);
-                } else {
-                    top = readTableFilter(fromOuter);
-                    top = readJoin(top, currentSelect, false, fromOuter);
-                }
-                read(")");
-                alias = readFromAlias(null);
-                if (alias != null) {
-                    top.setAlias(alias);
-                }
-                return top;
-            }
-        } else if (readIf("VALUES")) {
-            table = parseValuesTable().getTable();
-        } else {
-            String tableName = readIdentifierWithSchema(null);
-            Schema schema = getSchema();
-            boolean foundLeftBracket = readIf("(");
-            if (foundLeftBracket && readIf("INDEX")) {
-                // Sybase compatibility with "select * from test (index table1_index)"
-                readIdentifierWithSchema(null);
-                read(")");
-                foundLeftBracket = false;
-            }
-            if (foundLeftBracket) {
-                Schema mainSchema = database.getSchema(Constants.SCHEMA_MAIN);
-                if (equalsToken(tableName, RangeTable.NAME)) {
-                    Expression min = readExpression();
-                    read(",");
-                    Expression max = readExpression();
-                    read(")");
-                    table = new RangeTable(mainSchema, min, max, false);
-                } else {
-                    Expression expr = readFunction(schema, tableName);
-                    if (!(expr instanceof FunctionCall)) {
-                        throw getSyntaxError();
-                    }
-                    FunctionCall call = (FunctionCall) expr;
-                    if (!call.isDeterministic()) {
-                        recompileAlways = true;
-                    }
-                    table = new FunctionTable(mainSchema, session, expr, call);
-                }
-            } else if (equalsToken("DUAL", tableName)) {
-                table = getDualTable(false);
-            } else if (database.getMode().sysDummy1 && equalsToken("SYSDUMMY1", tableName)) {
-                table = getDualTable(false);
-            } else {
-                table = readTableOrView(tableName);
-            }
-        }
-        alias = readFromAlias(alias);
-        return new TableFilter(session, table, alias, rightsChecked, currentSelect);
-    }
-
-    private String readFromAlias(String alias) {
-        if (readIf("AS")) {
-            alias = readAliasIdentifier();
-        } else if (currentTokenType == IDENTIFIER) {
-            // left and right are not keywords (because they are functions as
-            // well)
-            if (!isToken("LEFT") && !isToken("RIGHT") && !isToken("FULL")) {
-                alias = readAliasIdentifier();
-            }
-        }
-        return alias;
-    }
-
     private Prepared parseTruncate() {
         read("TABLE");
         Table table = readTableOrView();
@@ -1352,6 +1262,472 @@ public class Parser {
         return command;
     }
 
+    private Prepared parseExecute() {
+        ExecuteProcedure command = new ExecuteProcedure(session);
+        String procedureName = readAliasIdentifier();
+        Procedure p = session.getProcedure(procedureName);
+        if (p == null) {
+            throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, procedureName);
+        }
+        command.setProcedure(p);
+        if (readIf("(")) {
+            for (int i = 0;; i++) {
+                command.setExpression(i, readExpression());
+                if (readIf(")")) {
+                    break;
+                }
+                read(",");
+            }
+        }
+        return command;
+    }
+
+    private DeallocateProcedure parseDeallocate() {
+        readIf("PLAN");
+        String procedureName = readAliasIdentifier();
+        DeallocateProcedure command = new DeallocateProcedure(session);
+        command.setProcedureName(procedureName);
+        return command;
+    }
+
+    private Explain parseExplain() {
+        Explain command = new Explain(session);
+        if (readIf("ANALYZE")) {
+            command.setExecuteCommand(true);
+        } else {
+            if (readIf("PLAN")) {
+                readIf("FOR");
+            }
+        }
+        if (isToken("SELECT") || isToken("FROM") || isToken("(")) {
+            command.setCommand(parseSelect());
+        } else if (readIf("DELETE")) {
+            command.setCommand(parseDelete());
+        } else if (readIf("UPDATE")) {
+            command.setCommand(parseUpdate());
+        } else if (readIf("INSERT")) {
+            command.setCommand(parseInsert());
+        } else if (readIf("MERGE")) {
+            command.setCommand(parseMerge());
+        } else if (readIf("WITH")) {
+            command.setCommand(parseWith());
+        } else {
+            throw getSyntaxError();
+        }
+        return command;
+    }
+
+    private Query parseSelect() {
+        int paramIndex = parameters.size();
+        Query command = parseSelectUnion();
+        ArrayList<Parameter> params = New.arrayList();
+        for (int i = paramIndex, size = parameters.size(); i < size; i++) {
+            params.add(parameters.get(i));
+        }
+        command.setParameterList(params);
+        command.init();
+        return command;
+    }
+
+    private Query parseSelectUnion() {
+        int start = lastParseIndex;
+        Query command = parseSelectSub();
+        return parseSelectUnionExtension(command, start);
+    }
+
+    private Query parseSelectSub() {
+        if (readIf("(")) {
+            Query command = parseSelectUnion();
+            read(")");
+            return command;
+        }
+        Select select = parseSelectSimple();
+        return select;
+    }
+
+    private Select parseSelectSimple() {
+        boolean fromFirst;
+        if (readIf("SELECT")) {
+            fromFirst = false;
+        } else if (readIf("FROM")) {
+            fromFirst = true;
+        } else {
+            throw getSyntaxError();
+        }
+        Select command = createSelect(session);
+        int start = lastParseIndex;
+        Select oldSelect = currentSelect;
+        currentSelect = command;
+        currentPrepared = command;
+        if (fromFirst) {
+            parseSelectSimpleFromPart(command);
+            read("SELECT");
+            parseSelectSimpleSelectPart(command);
+        } else {
+            parseSelectSimpleSelectPart(command);
+            if (!readIf("FROM")) {
+                // select without FROM: convert to SELECT ... FROM
+                // SYSTEM_RANGE(1,1)
+                Table dual = getDualTable(false);
+                TableFilter filter = new TableFilter(session, dual, null, rightsChecked, currentSelect);
+                command.addTableFilter(filter, true);
+            } else {
+                parseSelectSimpleFromPart(command);
+            }
+        }
+        if (readIf("WHERE")) {
+            Expression condition = readExpression();
+            command.addCondition(condition);
+        }
+        // the group by is read for the outer select (or not a select)
+        // so that columns that are not grouped can be used
+        currentSelect = oldSelect;
+        if (readIf("GROUP")) {
+            read("BY");
+            command.setGroupQuery();
+            ArrayList<Expression> list = New.arrayList();
+            do {
+                Expression expr = readExpression();
+                list.add(expr);
+            } while (readIf(","));
+            command.setGroupBy(list);
+        }
+        currentSelect = command;
+        if (readIf("HAVING")) {
+            command.setGroupQuery();
+            Expression condition = readExpression();
+            command.setHaving(condition);
+        }
+        command.setParameterList(parameters);
+        currentSelect = oldSelect;
+        setSQL(command, "SELECT", start);
+        return command;
+    }
+
+    private Query parseSelectUnionExtension(Query command, int start) {
+        while (true) {
+            if (readIf("UNION")) {
+                SelectUnion union = new SelectUnion(session, command);
+                if (readIf("ALL")) {
+                    union.setUnionType(SelectUnion.UNION_ALL);
+                } else {
+                    readIf("DISTINCT");
+                    union.setUnionType(SelectUnion.UNION);
+                }
+                union.setRight(parseSelectSub());
+                command = union;
+            } else if (readIf("MINUS") || readIf("EXCEPT")) {
+                SelectUnion union = new SelectUnion(session, command);
+                union.setUnionType(SelectUnion.EXCEPT);
+                union.setRight(parseSelectSub());
+                command = union;
+            } else if (readIf("INTERSECT")) {
+                SelectUnion union = new SelectUnion(session, command);
+                union.setUnionType(SelectUnion.INTERSECT);
+                union.setRight(parseSelectSub());
+                command = union;
+            } else {
+                break;
+            }
+        }
+        parseEndOfQuery(command);
+        setSQL(command, null, start);
+        return command;
+    }
+
+    private void parseEndOfQuery(Query command) {
+        if (readIf("ORDER")) {
+            read("BY");
+            Select oldSelect = currentSelect;
+            if (command instanceof Select) {
+                currentSelect = (Select) command;
+            }
+            ArrayList<SelectOrderBy> orderList = New.arrayList();
+            do {
+                boolean canBeNumber = true;
+                if (readIf("=")) {
+                    canBeNumber = false;
+                }
+                SelectOrderBy order = new SelectOrderBy();
+                Expression expr = readExpression();
+                if (canBeNumber && expr instanceof ValueExpression && expr.getType() == Value.INT) {
+                    order.columnIndexExpr = expr;
+                } else if (expr instanceof Parameter) {
+                    recompileAlways = true;
+                    order.columnIndexExpr = expr;
+                } else {
+                    order.expression = expr;
+                }
+                if (readIf("DESC")) {
+                    order.descending = true;
+                } else {
+                    readIf("ASC");
+                }
+                if (readIf("NULLS")) {
+                    if (readIf("FIRST")) {
+                        order.nullsFirst = true;
+                    } else {
+                        read("LAST");
+                        order.nullsLast = true;
+                    }
+                }
+                orderList.add(order);
+            } while (readIf(","));
+            command.setOrder(orderList);
+            currentSelect = oldSelect;
+        }
+        if (database.getMode().supportOffsetFetch) {
+            // make sure aggregate functions will not work here
+            Select temp = currentSelect;
+            currentSelect = null;
+
+            // http://sqlpro.developpez.com/SQL2008/
+            if (readIf("OFFSET")) {
+                command.setOffset(readExpression().optimize(session));
+                if (!readIf("ROW")) {
+                    read("ROWS");
+                }
+            }
+            if (readIf("FETCH")) {
+                if (!readIf("FIRST")) {
+                    read("NEXT");
+                }
+                if (readIf("ROW")) {
+                    command.setLimit(ValueExpression.get(ValueInt.get(1)));
+                } else {
+                    Expression limit = readExpression().optimize(session);
+                    command.setLimit(limit);
+                    if (!readIf("ROW")) {
+                        read("ROWS");
+                    }
+                }
+                read("ONLY");
+            }
+
+            currentSelect = temp;
+        }
+        if (readIf("LIMIT")) {
+            Select temp = currentSelect;
+            // make sure aggregate functions will not work here
+            currentSelect = null;
+            Expression limit = readExpression().optimize(session);
+            command.setLimit(limit);
+            if (readIf("OFFSET")) {
+                Expression offset = readExpression().optimize(session);
+                command.setOffset(offset);
+            } else if (readIf(",")) {
+                // MySQL: [offset, ] rowcount
+                Expression offset = limit;
+                limit = readExpression().optimize(session);
+                command.setOffset(offset);
+                command.setLimit(limit);
+            }
+            if (readIf("SAMPLE_SIZE")) {
+                command.setSampleSize(getPositiveInt());
+            }
+            currentSelect = temp;
+        }
+        if (readIf("FOR")) {
+            if (readIf("UPDATE")) {
+                if (readIf("OF")) {
+                    do {
+                        readIdentifierWithSchema();
+                    } while (readIf(","));
+                } else if (readIf("NOWAIT")) {
+                    // TODO parser: select for update nowait: should not wait
+                } else if (readIf("WITH")) {
+                    // Hibernate / Derby support
+                    read("RR");
+                }
+                command.setForUpdate(true);
+            } else if (readIf("READ") || readIf("FETCH")) {
+                read("ONLY");
+                if (readIf("WITH")) {
+                    read("RS");
+                }
+            }
+        }
+    }
+
+    private void parseSelectSimpleSelectPart(Select command) {
+        Select temp = currentSelect;
+        // make sure aggregate functions will not work in TOP and LIMIT
+        currentSelect = null;
+        if (readIf("TOP")) {
+            // can't read more complex expressions here because
+            // SELECT TOP 1 +? A FROM TEST could mean
+            // SELECT TOP (1+?) A FROM TEST or
+            // SELECT TOP 1 (+?) AS A FROM TEST
+            Expression limit = readTerm().optimize(session);
+            command.setLimit(limit);
+        } else if (readIf("LIMIT")) {
+            Expression offset = readTerm().optimize(session);
+            command.setOffset(offset);
+            Expression limit = readTerm().optimize(session);
+            command.setLimit(limit);
+        }
+        currentSelect = temp;
+        if (readIf("DISTINCT")) {
+            command.setDistinct(true);
+        } else {
+            readIf("ALL");
+        }
+        ArrayList<Expression> expressions = New.arrayList();
+        do {
+            if (readIf("*")) {
+                expressions.add(new Wildcard(null, null));
+            } else {
+                Expression expr = readExpression();
+                if (readIf("AS") || currentTokenType == IDENTIFIER) {
+                    String alias = readAliasIdentifier();
+                    boolean aliasColumnName = database.getSettings().aliasColumnName;
+                    aliasColumnName |= database.getMode().aliasColumnName;
+                    expr = new Alias(expr, alias, aliasColumnName);
+                }
+                expressions.add(expr);
+            }
+        } while (readIf(","));
+        command.setExpressions(expressions);
+    }
+
+    private void parseSelectSimpleFromPart(Select command) {
+        do {
+            TableFilter filter = readTableFilter(false);
+            parseJoinTableFilter(filter, command);
+        } while (readIf(","));
+    }
+
+    private TableFilter readTableFilter(boolean fromOuter) {
+        Table table;
+        String alias = null;
+        if (readIf("(")) {
+            if (isSelect()) {
+                Query query = parseSelectUnion();
+                read(")");
+                query.setParameterList(New.arrayList(parameters));
+                query.init();
+                Session s;
+                if (createView != null) {
+                    s = database.getSystemSession();
+                } else {
+                    s = session;
+                }
+                alias = session.getNextSystemIdentifier(sqlCommand);
+                table = TableView.createTempView(s, session.getUser(), alias, query, currentSelect);
+            } else {
+                TableFilter top;
+                if (database.getSettings().nestedJoins) {
+                    top = readTableFilter(false);
+                    top = readJoin(top, currentSelect, false, false);
+                    top = getNested(top);
+                } else {
+                    top = readTableFilter(fromOuter);
+                    top = readJoin(top, currentSelect, false, fromOuter);
+                }
+                read(")");
+                alias = readFromAlias(null);
+                if (alias != null) {
+                    top.setAlias(alias);
+                }
+                return top;
+            }
+        } else if (readIf("VALUES")) {
+            table = parseValuesTable().getTable();
+        } else {
+            String tableName = readIdentifierWithSchema(null);
+            Schema schema = getSchema();
+            boolean foundLeftBracket = readIf("(");
+            if (foundLeftBracket && readIf("INDEX")) {
+                // Sybase compatibility with "select * from test (index table1_index)"
+                readIdentifierWithSchema(null);
+                read(")");
+                foundLeftBracket = false;
+            }
+            if (foundLeftBracket) {
+                Schema mainSchema = database.getSchema(Constants.SCHEMA_MAIN);
+                if (equalsToken(tableName, RangeTable.NAME)) {
+                    Expression min = readExpression();
+                    read(",");
+                    Expression max = readExpression();
+                    read(")");
+                    table = new RangeTable(mainSchema, min, max, false);
+                } else {
+                    Expression expr = readFunction(schema, tableName);
+                    if (!(expr instanceof FunctionCall)) {
+                        throw getSyntaxError();
+                    }
+                    FunctionCall call = (FunctionCall) expr;
+                    if (!call.isDeterministic()) {
+                        recompileAlways = true;
+                    }
+                    table = new FunctionTable(mainSchema, session, expr, call);
+                }
+            } else if (equalsToken("DUAL", tableName)) {
+                table = getDualTable(false);
+            } else if (database.getMode().sysDummy1 && equalsToken("SYSDUMMY1", tableName)) {
+                table = getDualTable(false);
+            } else {
+                table = readTableOrView(tableName);
+            }
+        }
+        alias = readFromAlias(alias);
+        return new TableFilter(session, table, alias, rightsChecked, currentSelect);
+    }
+
+    private Table getDualTable(boolean noColumns) {
+        Schema main = database.findSchema(Constants.SCHEMA_MAIN);
+        Expression one = ValueExpression.get(ValueLong.get(1));
+        return new RangeTable(main, one, one, noColumns);
+    }
+
+    private String readFromAlias(String alias) {
+        if (readIf("AS")) {
+            alias = readAliasIdentifier();
+        } else if (currentTokenType == IDENTIFIER) {
+            // left and right are not keywords (because they are functions as
+            // well)
+            if (!isToken("LEFT") && !isToken("RIGHT") && !isToken("FULL")) {
+                alias = readAliasIdentifier();
+            }
+        }
+        return alias;
+    }
+
+    private void parseJoinTableFilter(TableFilter top, final Select command) {
+        top = readJoin(top, command, false, top.isJoinOuter());
+        command.addTableFilter(top, true);
+        boolean isOuter = false;
+        while (true) {
+            TableFilter n = top.getNestedJoin();
+            if (n != null) {
+                n.visit(new TableFilterVisitor() {
+                    @Override
+                    public void accept(TableFilter f) {
+                        command.addTableFilter(f, false);
+                    }
+                });
+            }
+            TableFilter join = top.getJoin();
+            if (join == null) {
+                break;
+            }
+            isOuter = isOuter | join.isJoinOuter();
+            if (isOuter) {
+                command.addTableFilter(join, false);
+            } else {
+                // make flat so the optimizer can work better
+                Expression on = join.getJoinCondition();
+                if (on != null) {
+                    command.addCondition(on);
+                }
+                join.removeJoinCondition();
+                top.removeJoin();
+                command.addTableFilter(join, true);
+            }
+            top = join;
+        }
+    }
+
     private TableFilter readJoin(TableFilter top, Select command, boolean nested, boolean fromOuter) {
         boolean joined = false;
         TableFilter last = top;
@@ -1482,384 +1858,6 @@ public class Parser {
         TableFilter top = new TableFilter(session, getDualTable(true), joinTable, rightsChecked, currentSelect);
         top.addJoin(n, false, true, null);
         return top;
-    }
-
-    private Prepared parseExecute() {
-        ExecuteProcedure command = new ExecuteProcedure(session);
-        String procedureName = readAliasIdentifier();
-        Procedure p = session.getProcedure(procedureName);
-        if (p == null) {
-            throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, procedureName);
-        }
-        command.setProcedure(p);
-        if (readIf("(")) {
-            for (int i = 0;; i++) {
-                command.setExpression(i, readExpression());
-                if (readIf(")")) {
-                    break;
-                }
-                read(",");
-            }
-        }
-        return command;
-    }
-
-    private DeallocateProcedure parseDeallocate() {
-        readIf("PLAN");
-        String procedureName = readAliasIdentifier();
-        DeallocateProcedure command = new DeallocateProcedure(session);
-        command.setProcedureName(procedureName);
-        return command;
-    }
-
-    private Explain parseExplain() {
-        Explain command = new Explain(session);
-        if (readIf("ANALYZE")) {
-            command.setExecuteCommand(true);
-        } else {
-            if (readIf("PLAN")) {
-                readIf("FOR");
-            }
-        }
-        if (isToken("SELECT") || isToken("FROM") || isToken("(")) {
-            command.setCommand(parseSelect());
-        } else if (readIf("DELETE")) {
-            command.setCommand(parseDelete());
-        } else if (readIf("UPDATE")) {
-            command.setCommand(parseUpdate());
-        } else if (readIf("INSERT")) {
-            command.setCommand(parseInsert());
-        } else if (readIf("MERGE")) {
-            command.setCommand(parseMerge());
-        } else if (readIf("WITH")) {
-            command.setCommand(parseWith());
-        } else {
-            throw getSyntaxError();
-        }
-        return command;
-    }
-
-    private Query parseSelect() {
-        int paramIndex = parameters.size();
-        Query command = parseSelectUnion();
-        ArrayList<Parameter> params = New.arrayList();
-        for (int i = paramIndex, size = parameters.size(); i < size; i++) {
-            params.add(parameters.get(i));
-        }
-        command.setParameterList(params);
-        command.init();
-        return command;
-    }
-
-    private Query parseSelectUnion() {
-        int start = lastParseIndex;
-        Query command = parseSelectSub();
-        return parseSelectUnionExtension(command, start, false);
-    }
-
-    private Query parseSelectUnionExtension(Query command, int start, boolean unionOnly) {
-        while (true) {
-            if (readIf("UNION")) {
-                SelectUnion union = new SelectUnion(session, command);
-                if (readIf("ALL")) {
-                    union.setUnionType(SelectUnion.UNION_ALL);
-                } else {
-                    readIf("DISTINCT");
-                    union.setUnionType(SelectUnion.UNION);
-                }
-                union.setRight(parseSelectSub());
-                command = union;
-            } else if (readIf("MINUS") || readIf("EXCEPT")) {
-                SelectUnion union = new SelectUnion(session, command);
-                union.setUnionType(SelectUnion.EXCEPT);
-                union.setRight(parseSelectSub());
-                command = union;
-            } else if (readIf("INTERSECT")) {
-                SelectUnion union = new SelectUnion(session, command);
-                union.setUnionType(SelectUnion.INTERSECT);
-                union.setRight(parseSelectSub());
-                command = union;
-            } else {
-                break;
-            }
-        }
-        if (!unionOnly) {
-            parseEndOfQuery(command);
-        }
-        setSQL(command, null, start);
-        return command;
-    }
-
-    private void parseEndOfQuery(Query command) {
-        if (readIf("ORDER")) {
-            read("BY");
-            Select oldSelect = currentSelect;
-            if (command instanceof Select) {
-                currentSelect = (Select) command;
-            }
-            ArrayList<SelectOrderBy> orderList = New.arrayList();
-            do {
-                boolean canBeNumber = true;
-                if (readIf("=")) {
-                    canBeNumber = false;
-                }
-                SelectOrderBy order = new SelectOrderBy();
-                Expression expr = readExpression();
-                if (canBeNumber && expr instanceof ValueExpression && expr.getType() == Value.INT) {
-                    order.columnIndexExpr = expr;
-                } else if (expr instanceof Parameter) {
-                    recompileAlways = true;
-                    order.columnIndexExpr = expr;
-                } else {
-                    order.expression = expr;
-                }
-                if (readIf("DESC")) {
-                    order.descending = true;
-                } else {
-                    readIf("ASC");
-                }
-                if (readIf("NULLS")) {
-                    if (readIf("FIRST")) {
-                        order.nullsFirst = true;
-                    } else {
-                        read("LAST");
-                        order.nullsLast = true;
-                    }
-                }
-                orderList.add(order);
-            } while (readIf(","));
-            command.setOrder(orderList);
-            currentSelect = oldSelect;
-        }
-        if (database.getMode().supportOffsetFetch) {
-            // make sure aggregate functions will not work here
-            Select temp = currentSelect;
-            currentSelect = null;
-
-            // http://sqlpro.developpez.com/SQL2008/
-            if (readIf("OFFSET")) {
-                command.setOffset(readExpression().optimize(session));
-                if (!readIf("ROW")) {
-                    read("ROWS");
-                }
-            }
-            if (readIf("FETCH")) {
-                if (!readIf("FIRST")) {
-                    read("NEXT");
-                }
-                if (readIf("ROW")) {
-                    command.setLimit(ValueExpression.get(ValueInt.get(1)));
-                } else {
-                    Expression limit = readExpression().optimize(session);
-                    command.setLimit(limit);
-                    if (!readIf("ROW")) {
-                        read("ROWS");
-                    }
-                }
-                read("ONLY");
-            }
-
-            currentSelect = temp;
-        }
-        if (readIf("LIMIT")) {
-            Select temp = currentSelect;
-            // make sure aggregate functions will not work here
-            currentSelect = null;
-            Expression limit = readExpression().optimize(session);
-            command.setLimit(limit);
-            if (readIf("OFFSET")) {
-                Expression offset = readExpression().optimize(session);
-                command.setOffset(offset);
-            } else if (readIf(",")) {
-                // MySQL: [offset, ] rowcount
-                Expression offset = limit;
-                limit = readExpression().optimize(session);
-                command.setOffset(offset);
-                command.setLimit(limit);
-            }
-            if (readIf("SAMPLE_SIZE")) {
-                command.setSampleSize(getPositiveInt());
-            }
-            currentSelect = temp;
-        }
-        if (readIf("FOR")) {
-            if (readIf("UPDATE")) {
-                if (readIf("OF")) {
-                    do {
-                        readIdentifierWithSchema();
-                    } while (readIf(","));
-                } else if (readIf("NOWAIT")) {
-                    // TODO parser: select for update nowait: should not wait
-                } else if (readIf("WITH")) {
-                    // Hibernate / Derby support
-                    read("RR");
-                }
-                command.setForUpdate(true);
-            } else if (readIf("READ") || readIf("FETCH")) {
-                read("ONLY");
-                if (readIf("WITH")) {
-                    read("RS");
-                }
-            }
-        }
-    }
-
-    private Query parseSelectSub() {
-        if (readIf("(")) {
-            Query command = parseSelectUnion();
-            read(")");
-            return command;
-        }
-        Select select = parseSelectSimple();
-        return select;
-    }
-
-    private void parseSelectSimpleFromPart(Select command) {
-        do {
-            TableFilter filter = readTableFilter(false);
-            parseJoinTableFilter(filter, command);
-        } while (readIf(","));
-    }
-
-    private void parseJoinTableFilter(TableFilter top, final Select command) {
-        top = readJoin(top, command, false, top.isJoinOuter());
-        command.addTableFilter(top, true);
-        boolean isOuter = false;
-        while (true) {
-            TableFilter n = top.getNestedJoin();
-            if (n != null) {
-                n.visit(new TableFilterVisitor() {
-                    @Override
-                    public void accept(TableFilter f) {
-                        command.addTableFilter(f, false);
-                    }
-                });
-            }
-            TableFilter join = top.getJoin();
-            if (join == null) {
-                break;
-            }
-            isOuter = isOuter | join.isJoinOuter();
-            if (isOuter) {
-                command.addTableFilter(join, false);
-            } else {
-                // make flat so the optimizer can work better
-                Expression on = join.getJoinCondition();
-                if (on != null) {
-                    command.addCondition(on);
-                }
-                join.removeJoinCondition();
-                top.removeJoin();
-                command.addTableFilter(join, true);
-            }
-            top = join;
-        }
-    }
-
-    private void parseSelectSimpleSelectPart(Select command) {
-        Select temp = currentSelect;
-        // make sure aggregate functions will not work in TOP and LIMIT
-        currentSelect = null;
-        if (readIf("TOP")) {
-            // can't read more complex expressions here because
-            // SELECT TOP 1 +? A FROM TEST could mean
-            // SELECT TOP (1+?) A FROM TEST or
-            // SELECT TOP 1 (+?) AS A FROM TEST
-            Expression limit = readTerm().optimize(session);
-            command.setLimit(limit);
-        } else if (readIf("LIMIT")) {
-            Expression offset = readTerm().optimize(session);
-            command.setOffset(offset);
-            Expression limit = readTerm().optimize(session);
-            command.setLimit(limit);
-        }
-        currentSelect = temp;
-        if (readIf("DISTINCT")) {
-            command.setDistinct(true);
-        } else {
-            readIf("ALL");
-        }
-        ArrayList<Expression> expressions = New.arrayList();
-        do {
-            if (readIf("*")) {
-                expressions.add(new Wildcard(null, null));
-            } else {
-                Expression expr = readExpression();
-                if (readIf("AS") || currentTokenType == IDENTIFIER) {
-                    String alias = readAliasIdentifier();
-                    boolean aliasColumnName = database.getSettings().aliasColumnName;
-                    aliasColumnName |= database.getMode().aliasColumnName;
-                    expr = new Alias(expr, alias, aliasColumnName);
-                }
-                expressions.add(expr);
-            }
-        } while (readIf(","));
-        command.setExpressions(expressions);
-    }
-
-    private Select parseSelectSimple() {
-        boolean fromFirst;
-        if (readIf("SELECT")) {
-            fromFirst = false;
-        } else if (readIf("FROM")) {
-            fromFirst = true;
-        } else {
-            throw getSyntaxError();
-        }
-        Select command = createSelect(session);
-        int start = lastParseIndex;
-        Select oldSelect = currentSelect;
-        currentSelect = command;
-        currentPrepared = command;
-        if (fromFirst) {
-            parseSelectSimpleFromPart(command);
-            read("SELECT");
-            parseSelectSimpleSelectPart(command);
-        } else {
-            parseSelectSimpleSelectPart(command);
-            if (!readIf("FROM")) {
-                // select without FROM: convert to SELECT ... FROM
-                // SYSTEM_RANGE(1,1)
-                Table dual = getDualTable(false);
-                TableFilter filter = new TableFilter(session, dual, null, rightsChecked, currentSelect);
-                command.addTableFilter(filter, true);
-            } else {
-                parseSelectSimpleFromPart(command);
-            }
-        }
-        if (readIf("WHERE")) {
-            Expression condition = readExpression();
-            command.addCondition(condition);
-        }
-        // the group by is read for the outer select (or not a select)
-        // so that columns that are not grouped can be used
-        currentSelect = oldSelect;
-        if (readIf("GROUP")) {
-            read("BY");
-            command.setGroupQuery();
-            ArrayList<Expression> list = New.arrayList();
-            do {
-                Expression expr = readExpression();
-                list.add(expr);
-            } while (readIf(","));
-            command.setGroupBy(list);
-        }
-        currentSelect = command;
-        if (readIf("HAVING")) {
-            command.setGroupQuery();
-            Expression condition = readExpression();
-            command.setHaving(condition);
-        }
-        command.setParameterList(parameters);
-        currentSelect = oldSelect;
-        setSQL(command, "SELECT", start);
-        return command;
-    }
-
-    private Table getDualTable(boolean noColumns) {
-        Schema main = database.findSchema(Constants.SCHEMA_MAIN);
-        Expression one = ValueExpression.get(ValueLong.get(1));
-        return new RangeTable(main, one, one, noColumns);
     }
 
     private void setSQL(Prepared command, String start, int startIndex) {
