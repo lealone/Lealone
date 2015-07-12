@@ -7,6 +7,7 @@
 package org.lealone.result;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.lealone.command.ddl.CreateTableData;
 import org.lealone.dbobject.Schema;
@@ -15,12 +16,13 @@ import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
-import org.lealone.dbobject.table.TableBase;
+import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
+import org.lealone.expression.Expression;
 import org.lealone.value.Value;
-import org.lealone.value.ValueArray;
+import org.lealone.value.ValueNull;
 
 /**
  * This class implements the temp table buffer for the LocalResult class.
@@ -28,54 +30,87 @@ import org.lealone.value.ValueArray;
 public class ResultTempTable implements ResultExternal {
 
     private static final String COLUMN_NAME = "DATA";
+    private final boolean distinct;
     private final SortOrder sort;
+    private Index index;
     private final Session session;
-    private final Index index;
-    private TableBase table;
+    private Table table;
     private Cursor resultCursor;
+    private int rowCount;
+    private final int columnCount;
 
     private final ResultTempTable parent;
     private boolean closed;
     private int childCount;
+    private boolean containsLob;
 
-    ResultTempTable(Session session, SortOrder sort) {
+    ResultTempTable(Session session, Expression[] expressions, boolean distinct, SortOrder sort) {
         this.session = session;
+        this.distinct = distinct;
         this.sort = sort;
-        Database db = session.getDatabase();
-        Schema schema = db.getSchema(Constants.SCHEMA_MAIN);
-        Column column = new Column(COLUMN_NAME, Value.ARRAY);
-        column.setNullable(false);
+        this.columnCount = expressions.length;
+        Schema schema = session.getDatabase().getSchema(Constants.SCHEMA_MAIN);
         CreateTableData data = new CreateTableData();
-        data.columns.add(column);
-        data.id = db.allocateObjectId();
+        for (int i = 0; i < expressions.length; i++) {
+            int type = expressions[i].getType();
+            Column col = new Column(COLUMN_NAME + i, type);
+            if (type == Value.CLOB || type == Value.BLOB) {
+                containsLob = true;
+            }
+            data.columns.add(col);
+        }
+        data.id = session.getDatabase().allocateObjectId();
         data.tableName = "TEMP_RESULT_SET_" + data.id;
         data.temporary = true;
         data.persistIndexes = false;
         data.persistData = true;
         data.create = true;
         data.session = session;
-        table = (TableBase) schema.createTable(data);
-        int indexId = db.allocateObjectId();
-        IndexColumn indexColumn = new IndexColumn();
-        indexColumn.column = column;
-        indexColumn.columnName = COLUMN_NAME;
-        IndexType indexType;
-        indexType = IndexType.createPrimaryKey(true, false);
-        IndexColumn[] indexCols = { indexColumn };
-        index = db.createIndex(table, indexId, data.tableName, indexCols, indexType, true, session);
-        index.setTemporary(true);
-        table.getIndexes().add(index);
+        table = schema.createTable(data);
+        if (sort != null || distinct) {
+            createIndex();
+        }
         parent = null;
     }
 
     private ResultTempTable(ResultTempTable parent) {
         this.parent = parent;
+        this.columnCount = parent.columnCount;
+        this.distinct = parent.distinct;
         this.session = parent.session;
         this.table = parent.table;
         this.index = parent.index;
-        // sort is only used when adding rows
-        this.sort = null;
+        this.rowCount = parent.rowCount;
+        this.sort = parent.sort;
+        this.containsLob = parent.containsLob;
         reset();
+    }
+
+    private void createIndex() {
+        IndexColumn[] indexCols = null;
+        if (sort != null) {
+            int[] colIndex = sort.getQueryColumnIndexes();
+            indexCols = new IndexColumn[colIndex.length];
+            for (int i = 0; i < colIndex.length; i++) {
+                IndexColumn indexColumn = new IndexColumn();
+                indexColumn.column = table.getColumn(colIndex[i]);
+                indexColumn.sortType = sort.getSortTypes()[i];
+                indexColumn.columnName = COLUMN_NAME + i;
+                indexCols[i] = indexColumn;
+            }
+        } else {
+            indexCols = new IndexColumn[columnCount];
+            for (int i = 0; i < columnCount; i++) {
+                IndexColumn indexColumn = new IndexColumn();
+                indexColumn.column = table.getColumn(i);
+                indexColumn.columnName = COLUMN_NAME + i;
+                indexCols[i] = indexColumn;
+            }
+        }
+        String indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_INDEX);
+        int indexId = session.getDatabase().allocateObjectId();
+        IndexType indexType = IndexType.createNonUnique(true);
+        index = table.addIndex(session, indexName, indexId, indexCols, indexType, true, null);
     }
 
     @Override
@@ -97,8 +132,9 @@ public class ResultTempTable implements ResultExternal {
         if (cursor != null) {
             row = cursor.get();
             table.removeRow(session, row);
+            rowCount--;
         }
-        return (int) table.getRowCount(session);
+        return rowCount;
     }
 
     @Override
@@ -109,22 +145,29 @@ public class ResultTempTable implements ResultExternal {
     @Override
     public int addRow(Value[] values) {
         Row row = convertToRow(values);
-        Cursor cursor = find(row);
-        if (cursor == null) {
+        if (distinct) {
+            Cursor cursor = find(row);
+            if (cursor == null) {
+                table.addRow(session, row);
+                rowCount++;
+            }
+        } else {
             table.addRow(session, row);
+            rowCount++;
         }
-        return (int) table.getRowCount(session);
+        return rowCount;
     }
 
     @Override
     public int addRows(ArrayList<Value[]> rows) {
+        // speeds up inserting, but not really needed:
         if (sort != null) {
             sort.sort(rows);
         }
         for (Value[] values : rows) {
             addRow(values);
         }
-        return (int) table.getRowCount(session);
+        return rowCount;
     }
 
     private synchronized void closeChild() {
@@ -152,23 +195,41 @@ public class ResultTempTable implements ResultExternal {
         if (table == null) {
             return;
         }
+        if (containsLob) {
+            // contains BLOB or CLOB: can not truncate now,
+            // otherwise the BLOB and CLOB entries are removed
+            return;
+        }
         try {
-            table.truncate(session);
             Database database = session.getDatabase();
-            synchronized (database) {
+            // Need to lock because not all of the code-paths
+            // that reach here have already taken this lock,
+            // notably via the close() paths.
+            synchronized (session) {
+                synchronized (database) {
+                    table.truncate(session);
+                }
+            }
+            // This session may not lock the sys table (except if it already has
+            // locked it) because it must be committed immediately, otherwise
+            // other threads can not access the sys table. If the table is not
+            // removed now, it will be when the database is opened the next
+            // time. (the table is truncated, so this is just one record)
+            if (!database.isSysTableLocked()) {
                 Session sysSession = database.getSystemSession();
-                if (!database.isSysTableLocked()) {
-                    // this session may not lock the sys table (except if it already has locked it)
-                    // because it must be committed immediately
-                    // otherwise other threads can not access the sys table.
-                    // if the table is not removed now, it will be when the database
-                    // is opened the next time
-                    // (the table is truncated, so this is just one record)
+                table.removeChildrenAndResources(sysSession);
+                if (index != null) {
+                    // need to explicitly do this,
+                    // as it's not registered in the system session
+                    session.removeLocalTempTableIndex(index);
+                }
+                // the transaction must be committed immediately
+                // TODO this synchronization cascade is very ugly
+                synchronized (session) {
                     synchronized (sysSession) {
-                        index.removeChildrenAndResources(sysSession);
-                        table.removeChildrenAndResources(sysSession);
-                        // the transaction must be committed immediately
-                        sysSession.commit(false);
+                        synchronized (database) {
+                            sysSession.commit(false);
+                        }
                     }
                 }
             }
@@ -184,32 +245,65 @@ public class ResultTempTable implements ResultExternal {
 
     @Override
     public Value[] next() {
+        if (resultCursor == null) {
+            Index idx;
+            if (distinct || sort != null) {
+                idx = index;
+            } else {
+                idx = table.getScanIndex(session);
+            }
+            // sometimes the transaction is already committed,
+            // in which case we can't use the session
+            if (idx.getRowCount(session) == 0 && rowCount > 0) {
+                // this means querying is not transactional
+                resultCursor = idx.find((Session) null, null, null);
+            } else {
+                // the transaction is still open
+                resultCursor = idx.find(session, null, null);
+            }
+        }
         if (!resultCursor.next()) {
             return null;
         }
         Row row = resultCursor.get();
-        ValueArray data = (ValueArray) row.getValue(0);
-        return data.getList();
+        return row.getValueList();
     }
 
     @Override
     public void reset() {
-        resultCursor = index.find(session, null, null);
+        resultCursor = null;
     }
 
-    private static Row convertToRow(Value[] values) {
-        ValueArray data = ValueArray.get(values);
-        return new Row(new Value[] { data }, Row.MEMORY_CALCULATE);
+    private Row convertToRow(Value[] values) {
+        if (values.length < columnCount) {
+            Value[] v2 = Arrays.copyOf(values, columnCount);
+            for (int i = values.length; i < columnCount; i++) {
+                v2[i] = ValueNull.INSTANCE;
+            }
+            values = v2;
+        }
+        return new Row(values, Row.MEMORY_CALCULATE);
     }
 
     private Cursor find(Row row) {
+        if (index == null) {
+            // for the case "in(select ...)", the query might
+            // use an optimization and not create the index
+            // up front
+            createIndex();
+        }
         Cursor cursor = index.find(session, row, row);
-        Value a = row.getValue(0);
         while (cursor.next()) {
-            SearchRow found;
-            found = cursor.getSearchRow();
-            Value b = found.getValue(0);
-            if (session.getDatabase().areEqual(a, b)) {
+            SearchRow found = cursor.getSearchRow();
+            boolean ok = true;
+            Database db = session.getDatabase();
+            for (int i = 0; i < row.getColumnCount(); i++) {
+                if (!db.areEqual(row.getValue(i), found.getValue(i))) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) {
                 return cursor;
             }
         }

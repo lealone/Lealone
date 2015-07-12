@@ -10,11 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.expression.Expression;
 import org.lealone.message.DbException;
-import org.lealone.result.ResultInterface;
 import org.lealone.util.New;
 import org.lealone.util.ValueHashMap;
 import org.lealone.value.DataType;
@@ -207,6 +205,7 @@ public class LocalResult implements ResultInterface, ResultTarget {
         return distinctRows.get(array) != null;
     }
 
+    @Override
     public void reset() {
         rowId = -1;
         if (external != null) {
@@ -219,10 +218,12 @@ public class LocalResult implements ResultInterface, ResultTarget {
         }
     }
 
+    @Override
     public Value[] currentRow() {
         return currentRow;
     }
 
+    @Override
     public boolean next() {
         if (rowId < rowCount) {
             rowId++;
@@ -239,6 +240,7 @@ public class LocalResult implements ResultInterface, ResultTarget {
         return false;
     }
 
+    @Override
     public int getRowId() {
         return rowId;
     }
@@ -248,15 +250,15 @@ public class LocalResult implements ResultInterface, ResultTarget {
      *
      * @param values the row to add
      */
+    @Override
     public void addRow(Value[] values) {
         if (distinct) {
             if (distinctRows != null) {
                 ValueArray array = ValueArray.get(values);
-                distinctRows.put(array, values);
+                distinctRows.put(array, values); // 会触发ValueArray的hashCode方法
                 rowCount = distinctRows.size();
-                Database db = session.getDatabase();
-                if (rowCount > db.getSettings().maxMemoryRowsDistinct && db.isPersistent() && !db.isReadOnly()) {
-                    external = new ResultTempTable(session, sort);
+                if (rowCount > maxMemoryRows) {
+                    external = new ResultTempTable(session, expressions, true, sort);
                     rowCount = external.addRows(distinctRows.values());
                     distinctRows = null;
                 }
@@ -267,16 +269,9 @@ public class LocalResult implements ResultInterface, ResultTarget {
         }
         rows.add(values);
         rowCount++;
-        if (rows.size() > maxMemoryRows && session.getDatabase().isPersistent()) {
+        if (rows.size() > maxMemoryRows) {
             if (external == null) {
-                if (randomAccess) {
-                    Database db = session.getDatabase();
-                    if (!db.isReadOnly()) {
-                        external = new ResultTempTable(session, sort);
-                    }
-                } else {
-                    external = new ResultDiskBuffer(session, sort, values.length);
-                }
+                external = new ResultTempTable(session, expressions, false, sort);
             }
             addRowsToDisk();
         }
@@ -287,6 +282,7 @@ public class LocalResult implements ResultInterface, ResultTarget {
         rows.clear();
     }
 
+    @Override
     public int getVisibleColumnCount() {
         return visibleColumnCount;
     }
@@ -312,14 +308,7 @@ public class LocalResult implements ResultInterface, ResultTarget {
                             break;
                         }
                         if (external == null) {
-                            if (randomAccess) {
-                                Database db = session.getDatabase();
-                                if (!db.isReadOnly()) {
-                                    external = new ResultTempTable(session, sort);
-                                }
-                            } else {
-                                external = new ResultDiskBuffer(session, sort, list.length);
-                            }
+                            external = new ResultTempTable(session, expressions, true, sort);
                         }
                         rows.add(list);
                         if (rows.size() > maxMemoryRows) {
@@ -328,7 +317,8 @@ public class LocalResult implements ResultInterface, ResultTarget {
                         }
                     }
                     temp.close();
-                    // the remaining data in rows is written in the following lines
+                    // the remaining data in rows is written in the following
+                    // lines
                 }
             }
         }
@@ -349,6 +339,7 @@ public class LocalResult implements ResultInterface, ResultTarget {
         reset();
     }
 
+    @Override
     public int getRowCount() {
         return rowCount;
     }
@@ -378,10 +369,12 @@ public class LocalResult implements ResultInterface, ResultTarget {
         }
     }
 
+    @Override
     public boolean needToClose() {
         return external != null;
     }
 
+    @Override
     public void close() {
         if (external != null) {
             external.close();
@@ -390,42 +383,52 @@ public class LocalResult implements ResultInterface, ResultTarget {
         }
     }
 
+    @Override
     public String getAlias(int i) {
         return expressions[i].getAlias();
     }
 
+    @Override
     public String getTableName(int i) {
         return expressions[i].getTableName();
     }
 
+    @Override
     public String getSchemaName(int i) {
         return expressions[i].getSchemaName();
     }
 
+    @Override
     public int getDisplaySize(int i) {
         return expressions[i].getDisplaySize();
     }
 
+    @Override
     public String getColumnName(int i) {
         return expressions[i].getColumnName();
     }
 
+    @Override
     public int getColumnType(int i) {
         return expressions[i].getType();
     }
 
+    @Override
     public long getColumnPrecision(int i) {
         return expressions[i].getPrecision();
     }
 
+    @Override
     public int getNullable(int i) {
         return expressions[i].getNullable();
     }
 
+    @Override
     public boolean isAutoIncrement(int i) {
         return expressions[i].isAutoIncrement();
     }
 
+    @Override
     public int getColumnScale(int i) {
         return expressions[i].getScale();
     }
@@ -463,6 +466,7 @@ public class LocalResult implements ResultInterface, ResultTarget {
         }
     }
 
+    @Override
     public String toString() {
         return super.toString() + " columns: " + visibleColumnCount + " rows: " + rowCount + " pos: " + rowId;
     }
@@ -476,10 +480,12 @@ public class LocalResult implements ResultInterface, ResultTarget {
         return closed;
     }
 
+    @Override
     public int getFetchSize() {
         return 0;
     }
 
+    @Override
     public void setFetchSize(int fetchSize) {
         // ignore
     }

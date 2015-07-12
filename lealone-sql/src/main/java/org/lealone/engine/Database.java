@@ -41,7 +41,6 @@ import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.MetaTable;
 import org.lealone.dbobject.table.Table;
-import org.lealone.dbobject.table.TableBase;
 import org.lealone.dbobject.table.TableView;
 import org.lealone.fs.FileUtils;
 import org.lealone.jdbc.JdbcConnection;
@@ -143,7 +142,7 @@ public class Database implements DataHandler {
     private int allowLiterals = Constants.ALLOW_LITERALS_ALL;
 
     private int powerOffCount = initialPowerOffCount;
-    private int closeDelay = -1; //不关闭
+    private int closeDelay = -1; // 不关闭
     private DatabaseCloser delayedCloser;
     private volatile boolean closing;
     private boolean ignoreCase;
@@ -154,7 +153,7 @@ public class Database implements DataHandler {
     private boolean multiVersion;
     private DatabaseCloser closeOnExit;
     private Mode mode = Mode.getInstance(Mode.REGULAR);
-    private boolean multiThreaded = true; //如果是false，整个数据库是串行的
+    private boolean multiThreaded = true; // 如果是false，整个数据库是串行的
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
     private SmallLRUCache<String, String[]> lobFileListCache;
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
@@ -292,7 +291,7 @@ public class Database implements DataHandler {
                 addDatabaseObject(systemSession, setting);
             }
         }
-        //getLobStorage().init();
+        // getLobStorage().init();
         systemSession.commit(true);
 
         trace.info("opened {0}", databaseName);
@@ -320,7 +319,7 @@ public class Database implements DataHandler {
         meta = mainSchema.createTable(data);
 
         IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
-        IndexType indexType = IndexType.createDelegate(); //重用原有的primary index
+        IndexType indexType = IndexType.createDelegate(); // 重用原有的primary index
         metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, indexType, true, null);
 
         ArrayList<MetaRecord> records = New.arrayList();
@@ -343,7 +342,7 @@ public class Database implements DataHandler {
         starting = false;
     }
 
-    //TODO session参数就是systemSession，另外是否有必要来来回回recompile
+    // TODO session参数就是systemSession，另外是否有必要来来回回recompile
     private void recompileInvalidViews(Session session) {
         boolean recompileSuccessful;
         do {
@@ -1390,7 +1389,7 @@ public class Database implements DataHandler {
         return traceSystem;
     }
 
-    //TODO 传递到存储引擎
+    // TODO 传递到存储引擎
     public synchronized void setCacheSize(int kb) {
         if (starting) {
             int max = MathUtils.convertLongToInt(Utils.getMemoryMax()) / 2;
@@ -2030,12 +2029,7 @@ public class Database implements DataHandler {
             se.backupTo(this, fileName);
     }
 
-    public Index createIndex(TableBase table, int indexId, String indexName, IndexColumn[] indexCols,
-            IndexType indexType, boolean create, Session session) {
-        throw DbException.throwInternalError();
-    }
-
-    //每个数据库会有多个表，每个表有可能使用不同的存储引擎
+    // 每个数据库会有多个表，每个表有可能使用不同的存储引擎
     private final List<StorageEngine> storageEngines = new CopyOnWriteArrayList<>();
 
     public void addStorageEngine(StorageEngine storageEngine) {
@@ -2046,7 +2040,7 @@ public class Database implements DataHandler {
         return storageEngines;
     }
 
-    //每个数据库只有一个事务引擎
+    // 每个数据库只有一个事务引擎
     private TransactionEngine transactionEngine;
 
     public void setTransactionEngine(TransactionEngine transactionEngine) {
