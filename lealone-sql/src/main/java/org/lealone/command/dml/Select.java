@@ -506,90 +506,6 @@ public class Select extends Query implements Callable<ResultInterface> {
         }
     }
 
-    /**
-     * Get the index that matches the ORDER BY list, if one exists. This is to
-     * avoid running a separate ORDER BY if an index can be used. This is
-     * specially important for large result sets, if only the first few rows are
-     * important (LIMIT is used)
-     *
-     * @return the index if one is found
-     */
-    private Index getSortIndex() {
-        if (sort == null) {
-            return null;
-        }
-        ArrayList<Column> sortColumns = New.arrayList();
-        for (int idx : sort.getIndexes()) {
-            if (idx < 0 || idx >= expressions.size()) {
-                throw DbException.getInvalidValueException("ORDER BY", idx + 1);
-            }
-            Expression expr = expressions.get(idx);
-            expr = expr.getNonAliasExpression();
-            if (expr.isConstant()) {
-                continue;
-            }
-            if (!(expr instanceof ExpressionColumn)) {
-                return null;
-            }
-            ExpressionColumn exprCol = (ExpressionColumn) expr;
-            if (exprCol.getTableFilter() != topTableFilter) {
-                return null;
-            }
-            sortColumns.add(exprCol.getColumn());
-        }
-        Column[] sortCols = sortColumns.toArray(new Column[sortColumns.size()]);
-        int[] sortTypes = sort.getSortTypes();
-        if (sortCols.length == 0) {
-            // sort just on constants - can use scan index
-            return topTableFilter.getTable().getScanIndex(session);
-        }
-        ArrayList<Index> list = topTableFilter.getTable().getIndexes();
-        if (list != null) {
-            for (int i = 0, size = list.size(); i < size; i++) {
-                Index index = list.get(i);
-                if (index.getCreateSQL() == null) {
-                    // can't use the scan index
-                    continue;
-                }
-                if (index.getIndexType().isHash()) {
-                    continue;
-                }
-                IndexColumn[] indexCols = index.getIndexColumns();
-                if (indexCols.length < sortCols.length) {
-                    continue;
-                }
-                boolean ok = true;
-                for (int j = 0; j < sortCols.length; j++) {
-                    // the index and the sort order must start
-                    // with the exact same columns
-                    IndexColumn idxCol = indexCols[j];
-                    Column sortCol = sortCols[j];
-                    if (idxCol.column != sortCol) {
-                        ok = false;
-                        break;
-                    }
-                    if (idxCol.sortType != sortTypes[j]) {
-                        // NULL FIRST for ascending and NULLS LAST
-                        // for descending would actually match the default
-                        ok = false;
-                        break;
-                    }
-                }
-                if (ok) {
-                    return index;
-                }
-            }
-        }
-        if (sortCols.length == 1 && sortCols[0].getColumnId() == -1) {
-            // special case: order by _ROWID_
-            Index index = topTableFilter.getTable().getScanIndex(session);
-            if (index.isRowIdIndex()) {
-                return index;
-            }
-        }
-        return null;
-    }
-
     private void queryDistinct(ResultTarget result, long limitRows) {
         // limitRows must be long, otherwise we get an int overflow
         // if limitRows is at or near Integer.MAX_VALUE
@@ -1046,6 +962,90 @@ public class Select extends Query implements Callable<ResultInterface> {
             f.setPrepared(this);
         }
         isPrepared = true;
+    }
+
+    /**
+     * Get the index that matches the ORDER BY list, if one exists. This is to
+     * avoid running a separate ORDER BY if an index can be used. This is
+     * specially important for large result sets, if only the first few rows are
+     * important (LIMIT is used)
+     *
+     * @return the index if one is found
+     */
+    private Index getSortIndex() {
+        if (sort == null) {
+            return null;
+        }
+        ArrayList<Column> sortColumns = New.arrayList();
+        for (int idx : sort.getQueryColumnIndexes()) {
+            if (idx < 0 || idx >= expressions.size()) {
+                throw DbException.getInvalidValueException("ORDER BY", idx + 1);
+            }
+            Expression expr = expressions.get(idx);
+            expr = expr.getNonAliasExpression();
+            if (expr.isConstant()) {
+                continue;
+            }
+            if (!(expr instanceof ExpressionColumn)) {
+                return null;
+            }
+            ExpressionColumn exprCol = (ExpressionColumn) expr;
+            if (exprCol.getTableFilter() != topTableFilter) {
+                return null;
+            }
+            sortColumns.add(exprCol.getColumn());
+        }
+        Column[] sortCols = sortColumns.toArray(new Column[sortColumns.size()]);
+        int[] sortTypes = sort.getSortTypes();
+        if (sortCols.length == 0) {
+            // sort just on constants - can use scan index
+            return topTableFilter.getTable().getScanIndex(session);
+        }
+        ArrayList<Index> list = topTableFilter.getTable().getIndexes();
+        if (list != null) {
+            for (int i = 0, size = list.size(); i < size; i++) {
+                Index index = list.get(i);
+                if (index.getCreateSQL() == null) {
+                    // can't use the scan index
+                    continue;
+                }
+                if (index.getIndexType().isHash()) {
+                    continue;
+                }
+                IndexColumn[] indexCols = index.getIndexColumns();
+                if (indexCols.length < sortCols.length) {
+                    continue;
+                }
+                boolean ok = true;
+                for (int j = 0; j < sortCols.length; j++) {
+                    // the index and the sort order must start
+                    // with the exact same columns
+                    IndexColumn idxCol = indexCols[j];
+                    Column sortCol = sortCols[j];
+                    if (idxCol.column != sortCol) {
+                        ok = false;
+                        break;
+                    }
+                    if (idxCol.sortType != sortTypes[j]) {
+                        // NULL FIRST for ascending and NULLS LAST
+                        // for descending would actually match the default
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    return index;
+                }
+            }
+        }
+        if (sortCols.length == 1 && sortCols[0].getColumnId() == -1) {
+            // special case: order by _ROWID_
+            Index index = topTableFilter.getTable().getScanIndex(session);
+            if (index.isRowIdIndex()) {
+                return index;
+            }
+        }
+        return null;
     }
 
     @Override

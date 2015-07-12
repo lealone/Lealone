@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.MetaTable;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
@@ -53,11 +54,11 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         if (scan) {
             return 10 * MetaTable.ROW_COUNT_APPROXIMATION;
         }
-        return getCostRangeIndex(masks, MetaTable.ROW_COUNT_APPROXIMATION, sortOrder);
+        return getCostRangeIndex(masks, MetaTable.ROW_COUNT_APPROXIMATION, filter, sortOrder);
     }
 
     @Override

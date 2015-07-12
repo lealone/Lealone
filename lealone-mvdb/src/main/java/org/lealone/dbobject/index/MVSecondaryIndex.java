@@ -12,12 +12,10 @@ import java.util.List;
 import java.util.TreeSet;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.dbobject.index.Cursor;
-import org.lealone.dbobject.index.IndexBase;
-import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.MVTable;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
@@ -69,7 +67,7 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
         ValueDataType keyType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
         dataMap = storageEngine.openMap(session, mapName, keyType, valueType);
-        //Fix bug in MVStore when creating lots of temporary tables, where we could run out of transaction IDs
+        // Fix bug in MVStore when creating lots of temporary tables, where we could run out of transaction IDs
         session.commit(false);
         if (!keyType.equals(dataMap.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
@@ -156,7 +154,7 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
         }
     }
 
-    //TODO 不考虑事务
+    // TODO 不考虑事务
     private TransactionMap<Value, Value> openMap(String mapName) {
         int[] sortTypes = new int[keyColumns];
         for (int i = 0; i < indexColumns.length; i++) {
@@ -348,19 +346,10 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
         return mvTable;
     }
 
-    //    @Override
-    //    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
-    //        try {
-    //            return 10 * getCostRangeIndex(masks, dataMap.sizeAsLongMax(), filter, sortOrder);
-    //        } catch (IllegalStateException e) {
-    //            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
-    //        }
-    //    }
-
     @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         try {
-            return 10 * getCostRangeIndex(masks, dataMap.sizeAsLongMax(), sortOrder);
+            return 10 * getCostRangeIndex(masks, dataMap.sizeAsLongMax(), filter, sortOrder);
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }

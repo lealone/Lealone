@@ -64,7 +64,7 @@ public class MergedIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         return 0;
     }
 

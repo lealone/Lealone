@@ -12,12 +12,10 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.dbobject.index.Cursor;
-import org.lealone.dbobject.index.IndexBase;
-import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.MVTable;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Constants;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
@@ -72,7 +70,7 @@ public class MVPrimaryIndex extends IndexBase {
         ValueDataType valueType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         mapName = "table." + getId();
         dataMap = storageEngine.openMap(session, mapName, keyType, valueType);
-        //Fix bug in MVStore when creating lots of temporary tables, where we could run out of transaction IDs
+        // Fix bug in MVStore when creating lots of temporary tables, where we could run out of transaction IDs
         session.commit(false);
         if (!table.isPersistData()) {
             dataMap.setVolatile(true);
@@ -215,18 +213,8 @@ public class MVPrimaryIndex extends IndexBase {
         return row;
     }
 
-    //    @Override
-    //    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
-    //        try {
-    //            long cost = 10 * (dataMap.sizeAsLongMax() + Constants.COST_ROW_OFFSET);
-    //            return cost;
-    //        } catch (IllegalStateException e) {
-    //            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
-    //        }
-    //    }
-
     @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         try {
             long cost = 10 * (dataMap.sizeAsLongMax() + Constants.COST_ROW_OFFSET);
             return cost;

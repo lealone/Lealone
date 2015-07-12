@@ -6,13 +6,10 @@
  */
 package org.lealone.dbobject.index;
 
-import org.lealone.dbobject.index.IndexBase;
-import org.lealone.dbobject.index.Cursor;
-import org.lealone.dbobject.index.IndexCondition;
-import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.TableBase;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
@@ -108,7 +105,7 @@ public class HashIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         for (Column column : columns) {
             int index = column.getColumnId();
             int mask = masks[index];

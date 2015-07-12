@@ -146,10 +146,11 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
      *
      * @param masks the search mask
      * @param rowCount the number of rows in the index
+     * @param filter the table filter
      * @param sortOrder the sort order
      * @return the estimated cost
      */
-    protected long getCostRangeIndex(int[] masks, long rowCount, SortOrder sortOrder) {
+    protected long getCostRangeIndex(int[] masks, long rowCount, TableFilter filter, SortOrder sortOrder) {
         rowCount += Constants.COST_ROW_OFFSET;
         long cost = rowCount;
         long rows = rowCount;
@@ -161,25 +162,33 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
             Column column = columns[i];
             int index = column.getColumnId();
             int mask = masks[index];
+            // 代价比较:
+            // EQUALITY < RANGE < END < START
+            // 如果索引字段列表的第一个字段在Where中是RANGE、START、END，那么索引字段列表中的其他字段就不需要再计算cost了，
+            // 如果是EQUALITY，则还可以继续计算cost，rows变量的值会变小，cost也会变小
             if ((mask & IndexCondition.EQUALITY) == IndexCondition.EQUALITY) {
+                // 索引字段列表中的最后一个在where当中是EQUALITY，且此索引是唯一索引时，cost直接是3
+                // 因为如果最后一个索引字段是EQUALITY，说明前面的字段全是EQUALITY，
+                // 如果是唯一索引则rowCount / distinctRows是1，所以rows = Math.max(rowCount / distinctRows, 1)=1
+                // 所以cost = 2 + rows = 3
                 if (i == columns.length - 1 && getIndexType().isUnique()) {
                     cost = 3;
                     break;
                 }
                 totalSelectivity = 100 - ((100 - totalSelectivity) * (100 - column.getSelectivity()) / 100);
-                long distinctRows = rowCount * totalSelectivity / 100;
+                long distinctRows = rowCount * totalSelectivity / 100; // totalSelectivity变大时distinctRows变大
                 if (distinctRows <= 0) {
                     distinctRows = 1;
                 }
-                rows = Math.max(rowCount / distinctRows, 1);
-                cost = 2 + rows;
-            } else if ((mask & IndexCondition.RANGE) == IndexCondition.RANGE) {
+                rows = Math.max(rowCount / distinctRows, 1); // distinctRows变大，则rowCount / distinctRows变小，rows也变小
+                cost = 2 + rows; // rows也变小，所以cost也变小
+            } else if ((mask & IndexCondition.RANGE) == IndexCondition.RANGE) { // 见TableFilter.getBestPlanItem中的注释
                 cost = 2 + rows / 4;
                 break;
             } else if ((mask & IndexCondition.START) == IndexCondition.START) {
                 cost = 2 + rows / 3;
                 break;
-            } else if ((mask & IndexCondition.END) == IndexCondition.END) {
+            } else if ((mask & IndexCondition.END) == IndexCondition.END) { // "<="的代价要小于">="
                 cost = rows / 3;
                 break;
             } else {
@@ -189,21 +198,29 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         // if the ORDER BY clause matches the ordering of this index,
         // it will be cheaper than another index, so adjust the cost accordingly
         if (sortOrder != null) {
-            int[] columnIndexes = new int[indexColumns.length];
-            int[] columnSortTypes = new int[indexColumns.length];
-            for (int i = 0, len = indexColumns.length; i < len; i++) {
-                columnIndexes[i] = indexColumns[i].column.getColumnId();
-                columnSortTypes[i] = indexColumns[i].sortType;
-            }
             boolean sortOrderMatches = true;
-            int[] sortOrderIndexes = sortOrder.getIndexes();
             int coveringCount = 0;
-            for (int i = 0, len = sortOrderIndexes.length; i < len; i++) {
-                if (i >= columnIndexes.length) {
-                    // we can still use this index if we are sorting by more than it's columns
+            int[] sortTypes = sortOrder.getSortTypes();
+            for (int i = 0, len = sortTypes.length; i < len; i++) {
+                if (i >= indexColumns.length) {
+                    // we can still use this index if we are sorting by more
+                    // than it's columns, it's just that the coveringCount
+                    // is lower than with an index that contains
+                    // more of the order by columns
                     break;
                 }
-                if (columnIndexes[i] != sortOrderIndexes[i] || columnSortTypes[i] != sortOrder.getSortTypes()[i]) {
+                Column col = sortOrder.getColumn(i, filter);
+                if (col == null) {
+                    sortOrderMatches = false;
+                    break;
+                }
+                IndexColumn indexCol = indexColumns[i];
+                if (col != indexCol.column) {
+                    sortOrderMatches = false;
+                    break;
+                }
+                int sortType = sortTypes[i];
+                if (sortType != indexCol.sortType) {
                     sortOrderMatches = false;
                     break;
                 }

@@ -7,12 +7,10 @@ package org.lealone.dbobject.index;
 
 import java.util.List;
 
-import org.lealone.dbobject.index.IndexBase;
-import org.lealone.dbobject.index.Cursor;
-import org.lealone.dbobject.index.IndexType;
 import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.MVTable;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
@@ -83,14 +81,9 @@ public class MVDelegateIndex extends IndexBase implements MVIndex {
         return -1;
     }
 
-    //    @Override
-    //    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
-    //        return 10 * getCostRangeIndex(masks, mainIndex.getRowCountApproximation(), filter, sortOrder);
-    //    }
-
     @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
-        return 10 * getCostRangeIndex(masks, mainIndex.getRowCountApproximation(), sortOrder);
+    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+        return 10 * getCostRangeIndex(masks, mainIndex.getRowCountApproximation(), filter, sortOrder);
     }
 
     @Override

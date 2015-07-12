@@ -12,6 +12,7 @@ import java.sql.SQLException;
 
 import org.lealone.dbobject.table.FunctionTable;
 import org.lealone.dbobject.table.IndexColumn;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
@@ -58,7 +59,7 @@ public class FunctionIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         if (masks != null) {
             throw DbException.getUnsupportedException("ALIAS");
         }

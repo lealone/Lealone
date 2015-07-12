@@ -640,15 +640,15 @@ public abstract class Table extends SchemaObjectBase {
      * @param sortOrder the sort order
      * @return the plan item
      */
-    public PlanItem getBestPlanItem(Session session, int[] masks, SortOrder sortOrder) {
+    public PlanItem getBestPlanItem(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         PlanItem item = new PlanItem();
         item.setIndex(getScanIndex(session));
-        item.cost = item.getIndex().getCost(session, null, null);
+        item.cost = item.getIndex().getCost(session, null, null, null);
         ArrayList<Index> indexes = getIndexes();
         if (indexes != null && masks != null) {
             for (int i = 1, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                double cost = index.getCost(session, masks, sortOrder);
+                double cost = index.getCost(session, masks, filter, sortOrder);
                 if (cost < item.cost) {
                     item.cost = cost;
                     item.setIndex(index);

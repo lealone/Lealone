@@ -8,6 +8,7 @@ package org.lealone.dbobject.index;
 
 import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.RangeTable;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.result.Row;
@@ -62,7 +63,7 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, SortOrder sortOrder) {
+    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         return 1;
     }
 

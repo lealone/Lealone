@@ -118,7 +118,7 @@ public class ViewIndex extends IndexBase {
     }
 
     @Override
-    public synchronized double getCost(Session session, int[] masks, SortOrder sortOrder) {
+    public synchronized double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         if (recursive) {
             return 1000;
         }
