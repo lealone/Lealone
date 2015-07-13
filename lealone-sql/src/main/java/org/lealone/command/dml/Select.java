@@ -424,7 +424,7 @@ public class Select extends Query implements Callable<ResultInterface> {
             }
         }
         // 3. group by
-        if (!isQuickAggregateQuery && isGroupQuery) {
+        if (groupIndex != null) {
             Index index = getGroupSortedIndex();
             if (index != null) {
                 Index current = topTableFilter.getIndex();
@@ -591,38 +591,23 @@ public class Select extends Query implements Callable<ResultInterface> {
     }
 
     private Index getGroupSortedIndex() {
-        if (containsGroupByExpression()) {
-            ArrayList<Index> indexes = topTableFilter.getTable().getIndexes();
-            if (indexes != null) {
-                for (int i = 0, size = indexes.size(); i < size; i++) {
-                    Index index = indexes.get(i);
-                    if (index.getIndexType().isScan()) {
-                        continue;
-                    }
-                    if (index.getIndexType().isHash()) {
-                        // does not allow scanning entries
-                        continue;
-                    }
-                    if (isGroupSortedIndex(topTableFilter, index)) {
-                        return index;
-                    }
+        ArrayList<Index> indexes = topTableFilter.getTable().getIndexes();
+        if (indexes != null) {
+            for (int i = 0, size = indexes.size(); i < size; i++) {
+                Index index = indexes.get(i);
+                if (index.getIndexType().isScan()) {
+                    continue;
+                }
+                if (index.getIndexType().isHash()) {
+                    // does not allow scanning entries
+                    continue;
+                }
+                if (isGroupSortedIndex(topTableFilter, index)) {
+                    return index;
                 }
             }
         }
         return null;
-    }
-
-    // GroupBy表达式中的字段是否出现在Select表达式列表中，只要包含一个就够了
-    private boolean containsGroupByExpression() {
-        if (groupByExpression == null) {
-            return false;
-        }
-        for (boolean b : groupByExpression) {
-            if (b) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private boolean isGroupSortedIndex(TableFilter tableFilter, Index index) {
