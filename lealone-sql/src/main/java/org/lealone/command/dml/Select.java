@@ -275,17 +275,21 @@ public class Select extends Query implements Callable<ResultInterface> {
                 continue;
             }
             String schemaName = expr.getSchemaName();
-            String tableAlias = expr.getTableAlias();
-            if (tableAlias == null) {
+            // select mytable.* from mytable as t这种用法是错的，MySQL也报错
+            // 必须这样select t.* from mytable as t或者select mytable.* from mytable
+            // 这里的tableName有可能是mytable也可能是t
+            String tableName = expr.getTableName();
+            if (tableName == null) { // select *，展开所有表中的字段
                 expressions.remove(i);
                 for (TableFilter filter : filters) {
                     i = expandColumnList(filter, i);
                 }
                 i--;
-            } else {
+            } else { // select s.t.*或select t.*，展开指定模式和指定表中的字段
                 TableFilter filter = null;
                 for (TableFilter f : filters) {
-                    if (db.equalsIdentifiers(tableAlias, f.getTableAlias())) {
+                    // 如果没有指定别名，f.getTableAlias()就返回最初的表名
+                    if (db.equalsIdentifiers(tableName, f.getTableAlias())) {
                         if (schemaName == null || db.equalsIdentifiers(schemaName, f.getSchemaName())) {
                             filter = f;
                             break;
@@ -293,7 +297,7 @@ public class Select extends Query implements Callable<ResultInterface> {
                     }
                 }
                 if (filter == null) {
-                    throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableAlias);
+                    throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
                 }
                 expressions.remove(i);
                 i = expandColumnList(filter, i);
@@ -303,10 +307,11 @@ public class Select extends Query implements Callable<ResultInterface> {
     }
 
     private int expandColumnList(TableFilter filter, int index) {
-        Table t = filter.getTable();
         String alias = filter.getTableAlias();
-        Column[] columns = t.getColumns();
+        Column[] columns = filter.getTable().getColumns();
         for (Column c : columns) {
+            // 跳过Natural Join列，
+            // 右边的表对应的TableFilter有Natural Join列，而左边没有
             if (filter.isNaturalJoinColumn(c)) {
                 continue;
             }
@@ -971,8 +976,7 @@ public class Select extends Query implements Callable<ResultInterface> {
                 }
                 currentGroup = values;
                 currentGroupRowId++;
-                int len = columnCount;
-                for (int i = 0; i < len; i++) {
+                for (int i = 0; i < columnCount; i++) {
                     if (groupByExpression == null || !groupByExpression[i]) {
                         Expression expr = expressions.get(i);
                         expr.updateAggregate(session);

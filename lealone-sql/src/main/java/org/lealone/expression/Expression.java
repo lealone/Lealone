@@ -232,16 +232,6 @@ public abstract class Expression {
     }
 
     /**
-     * Get the table alias name or null
-     * if this expression does not represent a column.
-     *
-     * @return the table alias name
-     */
-    public String getTableAlias() {
-        return null;
-    }
-
-    /**
      * Get the alias name of a column or SQL expression
      * if it is not an aliased expression.
      *

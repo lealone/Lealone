@@ -74,13 +74,13 @@ public class Wildcard extends Expression {
     }
 
     @Override
-    public String getTableAlias() {
-        return table;
+    public String getSchemaName() {
+        return schema;
     }
 
     @Override
-    public String getSchemaName() {
-        return schema;
+    public String getTableName() {
+        return table;
     }
 
     @Override
