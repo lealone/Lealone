@@ -419,12 +419,14 @@ public class Select extends Query implements Callable<ResultInterface> {
             }
         }
         // 3. group by
-        if (!isQuickAggregateQuery && isGroupQuery && containsGroupByExpression()) {
+        if (!isQuickAggregateQuery && isGroupQuery) {
             Index index = getGroupSortedIndex();
-            Index current = topTableFilter.getIndex();
-            if (index != null && (current.getIndexType().isScan() || current == index)) {
-                topTableFilter.setIndex(index);
-                isGroupSortedQuery = true;
+            if (index != null) {
+                Index current = topTableFilter.getIndex();
+                if (current.getIndexType().isScan() || current == index) {
+                    topTableFilter.setIndex(index);
+                    isGroupSortedQuery = true;
+                }
             }
         }
         expressionArray = new Expression[expressions.size()];
@@ -583,6 +585,28 @@ public class Select extends Query implements Callable<ResultInterface> {
         return null;
     }
 
+    private Index getGroupSortedIndex() {
+        if (containsGroupByExpression()) {
+            ArrayList<Index> indexes = topTableFilter.getTable().getIndexes();
+            if (indexes != null) {
+                for (int i = 0, size = indexes.size(); i < size; i++) {
+                    Index index = indexes.get(i);
+                    if (index.getIndexType().isScan()) {
+                        continue;
+                    }
+                    if (index.getIndexType().isHash()) {
+                        // does not allow scanning entries
+                        continue;
+                    }
+                    if (isGroupSortedIndex(topTableFilter, index)) {
+                        return index;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
     // GroupBy表达式中的字段是否出现在Select表达式列表中，只要包含一个就够了
     private boolean containsGroupByExpression() {
         if (groupByExpression == null) {
@@ -594,29 +618,6 @@ public class Select extends Query implements Callable<ResultInterface> {
             }
         }
         return false;
-    }
-
-    private Index getGroupSortedIndex() {
-        if (groupIndex == null || groupByExpression == null) {
-            return null;
-        }
-        ArrayList<Index> indexes = topTableFilter.getTable().getIndexes();
-        if (indexes != null) {
-            for (int i = 0, size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                if (index.getIndexType().isScan()) {
-                    continue;
-                }
-                if (index.getIndexType().isHash()) {
-                    // does not allow scanning entries
-                    continue;
-                }
-                if (isGroupSortedIndex(topTableFilter, index)) {
-                    return index;
-                }
-            }
-        }
-        return null;
     }
 
     private boolean isGroupSortedIndex(TableFilter tableFilter, Index index) {
@@ -937,6 +938,8 @@ public class Select extends Query implements Callable<ResultInterface> {
         return r2;
     }
 
+    // 除了QuickAggregateQuery和GroupSortedQuery外，其他场景的聚合函数、group by、having都在这里处理
+    // groupIndex和groupByExpression为null的时候，表示没有group by
     private void queryGroup(int columnCount, LocalResult result) {
         ValueHashMap<HashMap<Expression, Object>> groups = ValueHashMap.newInstance();
         int rowNumber = 0;
