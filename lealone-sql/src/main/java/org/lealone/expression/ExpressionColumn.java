@@ -240,10 +240,6 @@ public class ExpressionColumn extends Expression {
         Value v = (Value) values.get(this);
         if (v == null) {
             values.put(this, now);
-        } else {
-            if (!database.areEqual(now, v)) {
-                throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
-            }
         }
     }
 

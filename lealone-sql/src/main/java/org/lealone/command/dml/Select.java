@@ -945,6 +945,9 @@ public class Select extends Query implements Callable<ResultInterface> {
                 if (groupIndex == null) {
                     key = defaultGroup;
                 } else {
+                    // 避免在ExpressionColumn.getValue中取到旧值
+                    // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
+                    currentGroup = null;
                     Value[] keyValues = new Value[groupIndex.length];
                     // update group
                     for (int i = 0; i < groupIndex.length; i++) {
