@@ -147,7 +147,6 @@ public class ExpressionColumn extends Expression {
 
             if (t.doesColumnExist(fullColumnName)) {
                 Column c = t.getColumn(fullColumnName);
-                resolver.getSelect().addColumn(resolver.getTableFilter(), c);
                 mapColumn(resolver, c, level);
                 return;
             }
@@ -326,7 +325,13 @@ public class ExpressionColumn extends Expression {
 
     @Override
     public String getAlias() {
-        return column == null ? null : column.getName();
+        if (column != null) {
+            return column.getName();
+        }
+        if (tableAlias != null) {
+            return tableAlias + "." + columnName;
+        }
+        return columnName;
     }
 
     @Override

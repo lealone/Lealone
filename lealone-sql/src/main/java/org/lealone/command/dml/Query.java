@@ -49,9 +49,9 @@ public abstract class Query extends Prepared {
     protected Expression offsetExpr;
 
     /**
-     * The sample size
+     * The sample size expression as specified in the SAMPLE_SIZE clause.
      */
-    protected int sampleSize;
+    protected Expression sampleSizeExpr;
 
     /**
      * Whether the result must only contain distinct rows.
@@ -392,9 +392,7 @@ public abstract class Query extends Prepared {
                         if (ec2 instanceof ExpressionColumn) {
                             ExpressionColumn c2 = (ExpressionColumn) ec2;
                             String ta = exprCol.getSQL();
-                            // exprCol.getTableAlias();
                             String tb = c2.getSQL();
-                            // getTableAlias();
                             String s2 = c2.getColumnName();
                             found = db.equalsIdentifiers(col, s2);
                             if (!db.equalsIdentifiers(ta, tb)) {
@@ -430,6 +428,8 @@ public abstract class Query extends Prepared {
                 expressionSQL.add(sql);
             }
             o.columnIndexExpr = ValueExpression.get(ValueInt.get(idx + 1));
+            Expression expr = expressions.get(idx).getNonAliasExpression();
+            o.expression = expr;
         }
     }
 
@@ -510,8 +510,25 @@ public abstract class Query extends Prepared {
         parameters.add(param);
     }
 
-    public void setSampleSize(int sampleSize) {
-        this.sampleSize = sampleSize;
+    public void setSampleSize(Expression sampleSize) {
+        this.sampleSizeExpr = sampleSize;
+    }
+
+    /**
+     * Get the sample size, if set.
+     *
+     * @param session the session
+     * @return the sample size
+     */
+    int getSampleSizeValue(Session session) {
+        if (sampleSizeExpr == null) {
+            return 0;
+        }
+        Value v = sampleSizeExpr.optimize(session).getValue(session);
+        if (v == ValueNull.INSTANCE) {
+            return 0;
+        }
+        return v.getInt();
     }
 
     public final long getMaxDataModificationId() {
