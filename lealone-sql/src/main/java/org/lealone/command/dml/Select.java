@@ -204,13 +204,12 @@ public class Select extends Query implements Callable<ResultInterface> {
             havingIndex = -1;
         }
 
-        Database db = session.getDatabase();
-
         // first the select list (visible columns),
         // then 'ORDER BY' expressions,
         // then 'HAVING' expressions,
         // and 'GROUP BY' expressions at the end
         if (group != null) {
+            Database db = session.getDatabase();
             int size = group.size();
             int expSize = expressionSQL.size();
             groupIndex = new int[size];
@@ -420,7 +419,7 @@ public class Select extends Query implements Callable<ResultInterface> {
             }
         }
         // 3. group by
-        if (!isQuickAggregateQuery && isGroupQuery && getGroupByExpressionCount() > 0) {
+        if (!isQuickAggregateQuery && isGroupQuery && containsGroupByExpression()) {
             Index index = getGroupSortedIndex();
             Index current = topTableFilter.getIndex();
             if (index != null && (current.getIndexType().isScan() || current == index)) {
@@ -430,10 +429,6 @@ public class Select extends Query implements Callable<ResultInterface> {
         }
         expressionArray = new Expression[expressions.size()];
         expressions.toArray(expressionArray);
-        topTableFilter.setPrepared(this);
-        for (TableFilter f : filters) {
-            f.setPrepared(this);
-        }
         isPrepared = true;
     }
 
@@ -588,17 +583,17 @@ public class Select extends Query implements Callable<ResultInterface> {
         return null;
     }
 
-    private int getGroupByExpressionCount() {
+    // GroupBy表达式中的字段是否出现在Select表达式列表中，只要包含一个就够了
+    private boolean containsGroupByExpression() {
         if (groupByExpression == null) {
-            return 0;
+            return false;
         }
-        int count = 0;
         for (boolean b : groupByExpression) {
             if (b) {
-                ++count;
+                return true;
             }
         }
-        return count;
+        return false;
     }
 
     private Index getGroupSortedIndex() {
@@ -888,7 +883,7 @@ public class Select extends Query implements Callable<ResultInterface> {
                 currentGroupRowId++;
 
                 for (int i = 0; i < columnCount; i++) {
-                    if (groupByExpression == null || !groupByExpression[i]) {
+                    if (!groupByExpression[i]) {
                         Expression expr = expressions.get(i);
                         expr.updateAggregate(session);
                     }
@@ -902,11 +897,11 @@ public class Select extends Query implements Callable<ResultInterface> {
 
     private void addGroupSortedRow(Value[] keyValues, int columnCount, ResultTarget result) {
         Value[] row = new Value[columnCount];
-        for (int j = 0; groupIndex != null && j < groupIndex.length; j++) {
+        for (int j = 0; j < groupIndex.length; j++) {
             row[groupIndex[j]] = keyValues[j];
         }
         for (int j = 0; j < columnCount; j++) {
-            if (groupByExpression != null && groupByExpression[j]) {
+            if (groupByExpression[j]) {
                 continue;
             }
             Expression expr = expressions.get(j);
@@ -1457,9 +1452,5 @@ public class Select extends Query implements Callable<ResultInterface> {
 
     public SortOrder getSortOrder() {
         return sort;
-    }
-
-    public Table getTable() {
-        return topTableFilter.getTable();
     }
 }

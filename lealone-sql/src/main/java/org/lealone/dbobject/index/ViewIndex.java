@@ -172,15 +172,6 @@ public class ViewIndex extends IndexBase {
     }
 
     @Override
-    public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        if (query != null) {
-            for (TableFilter f : query.getTopFilters())
-                f.setPrepared(filter.getPrepared());
-        }
-        return find(filter.getSession(), first, last);
-    }
-
-    @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         if (recursive) {
             ResultInterface recResult = view.getRecursiveResult();

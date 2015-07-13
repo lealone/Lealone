@@ -9,7 +9,6 @@ package org.lealone.dbobject.table;
 import java.util.ArrayList;
 
 import org.lealone.command.Parser;
-import org.lealone.command.Prepared;
 import org.lealone.command.dml.Select;
 import org.lealone.dbobject.Right;
 import org.lealone.dbobject.index.Index;
@@ -104,8 +103,6 @@ public class TableFilter implements ColumnResolver {
     private boolean foundOne;
     private Expression fullCondition;
     private final int hashCode;
-
-    private Prepared prepared;
 
     /**
      * Create a new table filter object.
@@ -1076,13 +1073,5 @@ public class TableFilter implements ColumnResolver {
             cursor.parseIndexConditions(session, indexConditions);
         }
         return cursor.getEndSearchRow();
-    }
-
-    public Prepared getPrepared() {
-        return prepared;
-    }
-
-    public void setPrepared(Prepared prepared) {
-        this.prepared = prepared;
     }
 }
