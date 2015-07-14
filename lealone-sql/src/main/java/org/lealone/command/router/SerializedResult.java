@@ -20,7 +20,6 @@ package org.lealone.command.router;
 import java.util.List;
 
 import org.lealone.command.CommandInterface;
-import org.lealone.command.dml.Select;
 import org.lealone.result.DelegatedResult;
 import org.lealone.result.ResultInterface;
 
@@ -36,21 +35,21 @@ public class SerializedResult extends DelegatedResult {
     private int index = 0;
     private int count = 0;
 
-    public SerializedResult(List<? extends CommandInterface> commands, int maxRows, boolean scrollable, Select select) {
+    public SerializedResult(List<? extends CommandInterface> commands, int maxRows, boolean scrollable, int limitRows) {
         this.results = null;
         this.commands = commands;
         this.maxRows = maxRows;
-        this.limitRows = select.getLimitRows();
+        this.limitRows = limitRows;
         this.scrollable = scrollable;
         this.size = commands.size();
         nextResult();
     }
 
-    public SerializedResult(List<ResultInterface> results, Select select) {
+    public SerializedResult(List<ResultInterface> results, int limitRows) {
         this.results = results;
         this.commands = null;
         this.maxRows = -1;
-        this.limitRows = select.getLimitRows();
+        this.limitRows = limitRows;
         this.scrollable = false;
         this.size = results.size();
         nextResult();

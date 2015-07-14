@@ -334,7 +334,7 @@ public class P2PRouter implements Router {
                         commands.add(createFrontendCommand(endpoint, select, sql));
                     }
 
-                    return new SerializedResult(commands, maxRows, scrollable, select);
+                    return new SerializedResult(commands, maxRows, scrollable, select.getLimitRows());
                 } else {
                     List<Callable<ResultInterface>> commands = New.arrayList(liveMembers.size());
                     for (InetAddress endpoint : liveMembers) {
@@ -350,7 +350,7 @@ public class P2PRouter implements Router {
                     if (!select.isGroupQuery() && select.getSortOrder() != null)
                         return new SortedResult(maxRows, select.getSession(), select, results);
 
-                    String newSQL = select.getPlanSQL(true);
+                    String newSQL = select.getPlanSQL(true, true);
                     Select newSelect = (Select) select.getSession().prepare(newSQL, true);
                     newSelect.setLocal(true);
 

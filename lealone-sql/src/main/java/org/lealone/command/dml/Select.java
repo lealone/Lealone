@@ -998,9 +998,8 @@ public class Select extends Query implements Callable<ResultInterface> {
     }
 
     public ResultInterface queryGroupMerge() {
-        // columnCount = visibleColumnCount;
         int columnCount = expressions.size();
-        LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount);
+        LocalResult result = new LocalResult(session, expressionArray, columnCount);
         ValueHashMap<HashMap<Expression, Object>> groups = ValueHashMap.newInstance();
         int rowNumber = 0;
         setCurrentRowNumber(0);
@@ -1009,8 +1008,6 @@ public class Select extends Query implements Callable<ResultInterface> {
         int sampleSize = getSampleSizeValue(session);
         while (topTableFilter.next()) {
             setCurrentRowNumber(rowNumber + 1);
-            // if (condition == null ||
-            // Boolean.TRUE.equals(condition.getBooleanValue(session))) {
             Value key;
             rowNumber++;
             if (groupIndex == null) {
@@ -1020,8 +1017,7 @@ public class Select extends Query implements Callable<ResultInterface> {
                 // update group
                 for (int i = 0; i < groupIndex.length; i++) {
                     int idx = groupIndex[i];
-                    // Expression expr = expressions.get(idx);
-                    keyValues[i] = topTableFilter.getValue(idx);// expr.getValue(session);
+                    keyValues[i] = topTableFilter.getValue(idx);
                 }
                 key = ValueArray.get(keyValues);
             }
@@ -1032,10 +1028,7 @@ public class Select extends Query implements Callable<ResultInterface> {
             }
             currentGroup = values;
             currentGroupRowId++;
-            int len = columnCount;
-            if (topTableFilter.getCurrentSearchRowLength() < len)
-                len = topTableFilter.getCurrentSearchRowLength();
-            for (int i = 0; i < len; i++) {
+            for (int i = 0; i < columnCount; i++) {
                 if (groupByExpression == null || !groupByExpression[i]) {
                     Expression expr = expressions.get(i);
                     expr.mergeAggregate(session, topTableFilter.getValue(i));
@@ -1045,11 +1038,9 @@ public class Select extends Query implements Callable<ResultInterface> {
                 break;
             }
         }
-        // }
         if (groupIndex == null && groups.size() == 0) {
             groups.put(defaultGroup, new HashMap<Expression, Object>());
         }
-        columnCount = expressions.size();
         ArrayList<Value> keys = groups.keys();
         for (Value v : keys) {
             ValueArray key = (ValueArray) v;
@@ -1066,10 +1057,6 @@ public class Select extends Query implements Callable<ResultInterface> {
                 Expression expr = expressions.get(j);
                 row[j] = expr.getMergedValue(session);
             }
-            // if (isHavingNullOrFalse(row)) {
-            // continue;
-            // }
-            row = keepOnlyDistinct(row, columnCount);
             result.addRow(row);
         }
 
@@ -1077,9 +1064,13 @@ public class Select extends Query implements Callable<ResultInterface> {
     }
 
     public ResultInterface calculate(ResultInterface result, Select select) {
-        int columnCount = expressions.size();
-        if (select.expressions.size() == columnCount)
+        int size = expressions.size();
+        if (havingIndex >= 0)
+            size--;
+        if (size == select.expressions.size())
             return result;
+
+        int columnCount = visibleColumnCount;
         LocalResult lr = new LocalResult(session, expressionArray, columnCount);
 
         Calculator calculator;
@@ -1133,10 +1124,14 @@ public class Select extends Query implements Callable<ResultInterface> {
 
     @Override
     public String getPlanSQL() {
-        return getPlanSQL(false);
+        return getPlanSQL(false, false);
     }
 
     public String getPlanSQL(boolean isDistributed) {
+        return getPlanSQL(isDistributed, false);
+    }
+
+    public String getPlanSQL(boolean isDistributed, boolean isMerged) {
         // can not use the field sqlStatement because the parameter
         // indexes may be incorrect: ? may be in fact ?2 for a subquery
         // but indexes may be set manually as well
@@ -1150,6 +1145,8 @@ public class Select extends Query implements Callable<ResultInterface> {
         if (isDistributed)
             columnCount = expressions.size();
         for (int i = 0; i < columnCount; i++) {
+            if (isDistributed && havingIndex >= 0 && i == havingIndex)
+                continue;
             buff.appendExceptFirst(",");
             buff.append('\n');
             buff.append(StringUtils.indent(exprList[i].getSQL(isDistributed), 4, false));
@@ -1175,8 +1172,11 @@ public class Select extends Query implements Callable<ResultInterface> {
                 } while (f != null);
             }
         }
-        if (condition != null) {
-            buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
+        // 合并时可以忽略WHERE子句
+        if (!isMerged) {
+            if (condition != null) {
+                buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
+            }
         }
         if (groupIndex != null) {
             buff.append("\nGROUP BY ");
@@ -1196,6 +1196,11 @@ public class Select extends Query implements Callable<ResultInterface> {
                 buff.append(StringUtils.unEnclose(g.getSQL(isDistributed)));
             }
         }
+
+        // 合并时可以忽略HAVING、ORDER BY等等子句
+        if (isMerged)
+            return buff.toString();
+
         if (having != null) {
             // could be set in addGlobalCondition
             // in this case the query is not run directly, just getPlanSQL is

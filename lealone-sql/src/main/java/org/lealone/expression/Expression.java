@@ -342,9 +342,6 @@ public abstract class Expression {
     public void mergeAggregate(Session session, Value v) {
     }
 
-    public void mergeAggregate(Session session, TableFilter tableFilter) {
-    }
-
     public void calculate(Calculator calculator) {
     }
 

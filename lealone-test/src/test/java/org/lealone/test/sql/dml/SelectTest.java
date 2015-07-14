@@ -132,6 +132,8 @@ public class SelectTest extends SqlTestBase {
         // having中出现列别名
         sql = "SELECT f3 AS A, COUNT(*) FROM SelectTest GROUP BY A HAVING A>12";
         printResultSet();
+        sql = "SELECT f3 AS A, avg(f3) FROM SelectTest GROUP BY A HAVING A>12";
+        printResultSet();
     }
 
     void testAggregate() throws Exception {
