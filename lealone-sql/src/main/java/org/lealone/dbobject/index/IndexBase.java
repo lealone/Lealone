@@ -437,4 +437,53 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         }
     }
 
+    @Override
+    public void close(Session session) {
+        // nothing to do
+    }
+
+    @Override
+    public void add(Session session, Row row) {
+        throw DbException.getUnsupportedException("add row");
+    }
+
+    @Override
+    public void remove(Session session, Row row) {
+        throw DbException.getUnsupportedException("remove row");
+    }
+
+    @Override
+    public void truncate(Session session) {
+        throw DbException.getUnsupportedException("truncate index");
+    }
+
+    @Override
+    public void remove(Session session) {
+        throw DbException.getUnsupportedException("remove index");
+    }
+
+    @Override
+    public void checkRename() {
+        throw DbException.getUnsupportedException("checkRename");
+    }
+
+    @Override
+    public boolean canGetFirstOrLast() {
+        return false;
+    }
+
+    @Override
+    public Cursor findFirstOrLast(Session session, boolean first) {
+        throw DbException.getUnsupportedException("findFirstOrLast");
+    }
+
+    @Override
+    public boolean needRebuild() {
+        return false;
+    }
+
+    @Override
+    public long getDiskSpaceUsed() {
+        return 0;
+    }
 }

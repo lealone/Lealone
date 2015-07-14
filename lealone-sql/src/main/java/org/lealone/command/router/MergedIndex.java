@@ -24,7 +24,6 @@ import org.lealone.dbobject.table.IndexColumn;
 import org.lealone.dbobject.table.Table;
 import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Session;
-import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 import org.lealone.result.Row;
 import org.lealone.result.SearchRow;
@@ -50,45 +49,8 @@ public class MergedIndex extends IndexBase {
     }
 
     @Override
-    public void add(Session session, Row row) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public void remove(Session session, Row row) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public void close(Session session) {
-    }
-
-    @Override
     public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         return 0;
-    }
-
-    @Override
-    public void remove(Session session) {
-    }
-
-    @Override
-    public void truncate(Session session) {
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return false;
-    }
-
-    @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
-        return null;
-    }
-
-    @Override
-    public boolean needRebuild() {
-        return false;
     }
 
     @Override
@@ -99,15 +61,6 @@ public class MergedIndex extends IndexBase {
     @Override
     public long getRowCountApproximation() {
         return 0;
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
-    }
-
-    @Override
-    public void checkRename() {
     }
 
     private static class MergedCursor implements Cursor {

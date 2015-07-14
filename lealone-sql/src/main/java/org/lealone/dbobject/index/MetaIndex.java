@@ -33,21 +33,6 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
-    public void close(Session session) {
-        // nothing to do
-    }
-
-    @Override
-    public void add(Session session, Row row) {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public void remove(Session session, Row row) {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         ArrayList<Row> rows = meta.generateRows(session, first, last);
         return new MetaCursor(rows);
@@ -62,16 +47,6 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
-    public void truncate(Session session) {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public void remove(Session session) {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
     public int getColumnIndex(Column col) {
         if (scan) {
             // the scan index cannot use any columns
@@ -81,28 +56,8 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
-    public void checkRename() {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public boolean needRebuild() {
-        return false;
-    }
-
-    @Override
     public String getCreateSQL() {
         return null;
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return false;
-    }
-
-    @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
-        throw DbException.getUnsupportedException("META");
     }
 
     @Override

@@ -31,21 +31,6 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public void close(Session session) {
-        // nothing to do
-    }
-
-    @Override
-    public void add(Session session, Row row) {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public void remove(Session session, Row row) {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         long min = rangeTable.getMin(session), start = min;
         long max = rangeTable.getMax(session), end = max;
@@ -73,26 +58,6 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public void remove(Session session) {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public void truncate(Session session) {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public boolean needRebuild() {
-        return false;
-    }
-
-    @Override
-    public void checkRename() {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
     public boolean canGetFirstOrLast() {
         return true;
     }
@@ -111,11 +76,6 @@ public class RangeIndex extends IndexBase {
     @Override
     public long getRowCountApproximation() {
         return rangeTable.getRowCountApproximation();
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
     }
 
     /**

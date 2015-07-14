@@ -86,21 +86,6 @@ public class ViewIndex extends IndexBase {
         return planSQL;
     }
 
-    @Override
-    public void close(Session session) {
-        // nothing to do
-    }
-
-    @Override
-    public void add(Session session, Row row) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public void remove(Session session, Row row) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
     /**
      * A calculated cost value.
      */
@@ -350,36 +335,6 @@ public class ViewIndex extends IndexBase {
         return q;
     }
 
-    @Override
-    public void remove(Session session) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public void truncate(Session session) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public void checkRename() {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public boolean needRebuild() {
-        return false;
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return false;
-    }
-
-    @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
     public void setRecursive(boolean value) {
         this.recursive = value;
     }
@@ -391,11 +346,6 @@ public class ViewIndex extends IndexBase {
 
     @Override
     public long getRowCountApproximation() {
-        return 0;
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
         return 0;
     }
 

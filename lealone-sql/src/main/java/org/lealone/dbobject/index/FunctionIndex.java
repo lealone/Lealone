@@ -36,21 +36,6 @@ public class FunctionIndex extends IndexBase {
     }
 
     @Override
-    public void close(Session session) {
-        // nothing to do
-    }
-
-    @Override
-    public void add(Session session, Row row) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public void remove(Session session, Row row) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         if (functionTable.isFast()) {
             return new FunctionCursorResultSet(session, functionTable.getResultSet(session));
@@ -73,36 +58,6 @@ public class FunctionIndex extends IndexBase {
     }
 
     @Override
-    public void remove(Session session) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public void truncate(Session session) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public boolean needRebuild() {
-        return false;
-    }
-
-    @Override
-    public void checkRename() {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return false;
-    }
-
-    @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
     public long getRowCount(Session session) {
         return functionTable.getRowCount(session);
     }
@@ -110,11 +65,6 @@ public class FunctionIndex extends IndexBase {
     @Override
     public long getRowCountApproximation() {
         return functionTable.getRowCountApproximation();
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
     }
 
     @Override
