@@ -257,11 +257,6 @@ public class Select extends Query implements Callable<ResultInterface> {
         for (TableFilter f : filters) {
             mapColumns(f, 0);
         }
-        if (havingIndex >= 0) {
-            Expression expr = expressions.get(havingIndex);
-            SelectListColumnResolver res = new SelectListColumnResolver(this);
-            expr.mapColumns(res, 0);
-        }
         checkInit = true;
     }
 

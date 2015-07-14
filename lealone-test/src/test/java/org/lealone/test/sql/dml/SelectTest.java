@@ -74,7 +74,7 @@ public class SelectTest extends SqlTestBase {
         groupBy();
         limit();
 
-        tableAlias();
+        testAlias();
     }
 
     private void where() throws Exception {
@@ -120,8 +120,17 @@ public class SelectTest extends SqlTestBase {
         rs.close();
     }
 
-    private void tableAlias() throws Exception {
+    private void testAlias() throws Exception {
+        // 表别名
         sql = "SELECT st.f1 FROM SelectTest st";
+        printResultSet();
+
+        // where中出现列别名
+        sql = "SELECT pk AS A FROM SelectTest where A='01'";
+        printResultSet();
+
+        // having中出现列别名
+        sql = "SELECT f3 AS A, COUNT(*) FROM SelectTest GROUP BY A HAVING A>12";
         printResultSet();
     }
 

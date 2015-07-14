@@ -11,7 +11,6 @@ import java.util.HashMap;
 import org.lealone.api.ErrorCode;
 import org.lealone.command.Parser;
 import org.lealone.command.dml.Select;
-import org.lealone.command.dml.SelectListColumnResolver;
 import org.lealone.dbobject.Constant;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.index.IndexCondition;
@@ -39,6 +38,8 @@ public class ExpressionColumn extends Expression {
     private int queryLevel;
     private Column column;
     private boolean evaluatable;
+
+    private Select select;
 
     public ExpressionColumn(Database database, Column column) {
         this.database = database;
@@ -87,6 +88,9 @@ public class ExpressionColumn extends Expression {
 
     @Override
     public void mapColumns(ColumnResolver resolver, int level) {
+        if (select == null)
+            select = resolver.getSelect();
+
         if (resolver instanceof TableFilter && resolver.getTableFilter().getTable().supportsColumnFamily()) {
             Table t = resolver.getTableFilter().getTable();
 
@@ -151,7 +155,7 @@ public class ExpressionColumn extends Expression {
                 return;
             }
         } else {
-            if (!(resolver instanceof SelectListColumnResolver) && columnFamilyName != null) {
+            if (columnFamilyName != null) {
                 schemaName = tableAlias;
                 tableAlias = columnFamilyName;
                 columnFamilyName = null;
@@ -194,11 +198,7 @@ public class ExpressionColumn extends Expression {
             column = col;
             this.columnResolver = resolver;
         } else if (queryLevel == level && this.columnResolver != resolver) {
-            if (resolver instanceof SelectListColumnResolver) {
-                // ignore - already mapped, that's ok
-            } else {
-                throw DbException.get(ErrorCode.AMBIGUOUS_COLUMN_NAME_1, columnName);
-            }
+            throw DbException.get(ErrorCode.AMBIGUOUS_COLUMN_NAME_1, columnName);
         }
     }
 
@@ -213,6 +213,17 @@ public class ExpressionColumn extends Expression {
                     return constant.getValue();
                 }
             }
+
+            // 处理在where和having中出现别名的情况，如:
+            // SELECT id AS A FROM mytable where A>=0
+            // SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
+            if (select != null) {
+                for (Expression e : select.getExpressions()) {
+                    if (database.equalsIdentifiers(columnName, e.getAlias()))
+                        return e.getNonAliasExpression().optimize(session);
+                }
+            }
+
             String name = columnName;
             if (tableAlias != null) {
                 name = tableAlias + "." + name;
