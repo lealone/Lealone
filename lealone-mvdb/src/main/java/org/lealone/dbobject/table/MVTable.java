@@ -21,6 +21,7 @@ import org.lealone.dbobject.SchemaObject;
 import org.lealone.dbobject.constraint.Constraint;
 import org.lealone.dbobject.constraint.ConstraintReferential;
 import org.lealone.dbobject.index.Cursor;
+import org.lealone.dbobject.index.GlobalUniqueIndex;
 import org.lealone.dbobject.index.HashIndex;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
@@ -417,7 +418,9 @@ public class MVTable extends TableBase {
             }
             if (mainIndexColumn != -1) {
                 index = createMVDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
-            } else if (indexType.isHash() && cols.length <= 1) { //TODO 是否要支持多版本
+            } else if (isGlobalUniqueIndex(session, indexType)) {
+                index = new GlobalUniqueIndex(session, this, indexId, indexName, cols, indexType);
+            } else if (indexType.isHash() && cols.length <= 1) { // TODO 是否要支持多版本
                 if (indexType.isUnique()) {
                     index = new HashIndex(this, indexId, indexName, cols, indexType);
                 } else {
@@ -442,6 +445,12 @@ public class MVTable extends TableBase {
         indexes.add(index);
         setModified();
         return index;
+    }
+
+    private boolean isGlobalUniqueIndex(Session session, IndexType indexType) {
+        return indexType.isUnique() && !indexType.isPrimaryKey() && Session.isClusterMode()
+                && session.getConnectionInfo() != null && !session.getConnectionInfo().isEmbedded(); // &&
+                                                                                                     // !session.isLocal();
     }
 
     private MVDelegateIndex createMVDelegateIndex(int indexId, String indexName, IndexType indexType,

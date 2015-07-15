@@ -31,15 +31,19 @@ public class IndexTest extends SqlTestBase {
         select();
         testCommit();
         testRollback();
-        //testSavepoint(); //TODO
+        // testSavepoint(); //TODO
     }
 
     void init() throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS IndexTest");
+        // stmt.executeUpdate("CREATE local temporary TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
+        // stmt.executeUpdate("CREATE global temporary TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS IndexTest (f1 int NOT NULL, f2 int, f3 varchar)");
         stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS IndexTest_idx0 ON IndexTest(f1)");
         stmt.executeUpdate("CREATE UNIQUE HASH INDEX IF NOT EXISTS IndexTest_idx1 ON IndexTest(f2)");
         stmt.executeUpdate("CREATE INDEX IF NOT EXISTS IndexTest_idx2 ON IndexTest(f3, f2)");
+
+        stmt.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS IndexTest_idx3 ON IndexTest(f2, f3)");
     }
 
     void delete() throws Exception {
@@ -57,22 +61,24 @@ public class IndexTest extends SqlTestBase {
         try {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(400, 20, 'd')");
             fail("insert duplicate key: 20");
-        } catch (SQLException e) {
-            //e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
 
         try {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'e')");
             fail("insert duplicate key: 20");
         } catch (SQLException e) {
-            //e.printStackTrace();
+            // e.printStackTrace();
+            System.out.println(e.getMessage());
         }
 
         try {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 20, 'f')");
             fail("insert duplicate key: 20");
         } catch (SQLException e) {
-            //e.printStackTrace();
+            // e.printStackTrace();
+            System.out.println(e.getMessage());
         }
 
         sql = "SELECT f1, f2, f3 FROM IndexTest";
@@ -190,7 +196,7 @@ public class IndexTest extends SqlTestBase {
         try {
             conn.setAutoCommit(false);
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 10, 'a')");
-            //stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'b')");
+            // stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'b')");
             Savepoint savepoint = conn.setSavepoint();
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(300, 30, 'c')");
             sql = "SELECT f1, f2, f3 FROM IndexTest";
@@ -198,12 +204,12 @@ public class IndexTest extends SqlTestBase {
             sql = "SELECT count(*) FROM IndexTest";
             assertEquals(3, getIntValue(1, true));
             conn.rollback(savepoint);
-            //调用rollback(savepoint)后还是需要调用commit
+            // 调用rollback(savepoint)后还是需要调用commit
             conn.commit();
-            //或调用rollback也能撤消之前的操作
-            //conn.rollback();
+            // 或调用rollback也能撤消之前的操作
+            // conn.rollback();
         } finally {
-            //这个内部也会触发commit
+            // 这个内部也会触发commit
             conn.setAutoCommit(true);
         }
 

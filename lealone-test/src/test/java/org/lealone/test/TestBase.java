@@ -36,7 +36,7 @@ public class TestBase extends Assert {
     private boolean inMemory = false;
     private boolean mysqlUrlStyle = false;
 
-    private String host = Constants.DEFAULT_HOST;
+    private String host = "127.0.0.2";// Constants.DEFAULT_HOST;
     private int port = Constants.DEFAULT_TCP_PORT;
 
     public synchronized void addConnectionParameter(String key, String value) {
@@ -89,9 +89,9 @@ public class TestBase extends Assert {
     }
 
     public synchronized String getURL(String dbName) {
-        //addConnectionParameter("DATABASE_TO_UPPER", "false");
-        //addConnectionParameter("ALIAS_COLUMN_NAME", "true");
-        //addConnectionParameter("IGNORE_UNKNOWN_SETTINGS", "true");
+        // addConnectionParameter("DATABASE_TO_UPPER", "false");
+        // addConnectionParameter("ALIAS_COLUMN_NAME", "true");
+        // addConnectionParameter("IGNORE_UNKNOWN_SETTINGS", "true");
 
         if (!connectionParameters.containsKey("user")) {
             addConnectionParameter("user", "sa");
