@@ -53,6 +53,8 @@ import org.lealone.command.router.SerializedResult;
 import org.lealone.command.router.SortedResult;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.table.TableFilter;
+import org.lealone.engine.FrontendSession;
+import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
@@ -80,18 +82,41 @@ public class P2PRouter implements Router {
         if (defineCommand.isLocal())
             return defineCommand.updateLocal();
 
-        Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
-        List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
+        InetAddress seedEndpoint = Gossiper.instance.getFirstLiveSeedEndpoint();
+        if (seedEndpoint == null)
+            throw new RuntimeException("no live seed endpoint");
 
-        liveMembers.remove(Utils.getBroadcastAddress());
-        commands.add(defineCommand);
-        try {
-            for (InetAddress endpoint : liveMembers) {
-                commands.add(createUpdateCallable(endpoint, defineCommand));
+        if (!seedEndpoint.equals(Utils.getBroadcastAddress())) {
+            Session session = defineCommand.getSession();
+            FrontendSession fs = null;
+            try {
+                fs = FrontendSessionPool.getSeedEndpointFrontendSession(session, session.getURL(seedEndpoint));
+                FrontendCommand fc = FrontendSessionPool.getFrontendCommand(fs, defineCommand.getSQL(),
+                        defineCommand.getParameters(), defineCommand.getFetchSize());
+                return fc.executeUpdate();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            } finally {
+                if (fs != null)
+                    fs.close();
             }
-            return CommandParallel.executeUpdateCallable(commands);
-        } catch (Exception e) {
-            throw DbException.convert(e);
+        }
+
+        // 在seed节点上串行执行所有的defineCommand
+        synchronized (this) {
+            Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+            List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
+
+            liveMembers.remove(Utils.getBroadcastAddress());
+            commands.add(defineCommand);
+            try {
+                for (InetAddress endpoint : liveMembers) {
+                    commands.add(createUpdateCallable(endpoint, defineCommand));
+                }
+                return CommandParallel.executeUpdateCallable(commands);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
         }
     }
 

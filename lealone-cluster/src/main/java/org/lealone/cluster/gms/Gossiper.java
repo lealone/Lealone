@@ -88,7 +88,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private static final List<String> DEAD_STATES = Arrays.asList(VersionedValue.REMOVING_TOKEN,
             VersionedValue.REMOVED_TOKEN, VersionedValue.STATUS_LEFT, VersionedValue.HIBERNATE);
 
-    //Maximum difference in generation and version values we are willing to accept about a peer
+    // Maximum difference in generation and version values we are willing to accept about a peer
     private static final long MAX_GENERATION_DIFFERENCE = 86400 * 365;
     private static final int QUARANTINE_DELAY = StorageService.RING_DELAY * 2;
     // half of QUARATINE_DELAY, to ensure justRemovedEndpoints has enough leeway to prevent re-gossip
@@ -140,7 +140,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         @Override
         public void run() {
             try {
-                //wait on messaging service to start listening
+                // wait on messaging service to start listening
                 MessagingService.instance().waitUntilListening();
 
                 taskLock.lock();
@@ -222,7 +222,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         for (Map.Entry<ApplicationState, VersionedValue> entry : preloadLocalStates.entrySet())
             localState.addApplicationState(entry.getKey(), entry.getValue());
 
-        //notify snitches that Gossiper is about to start
+        // notify snitches that Gossiper is about to start
         DatabaseDescriptor.getEndpointSnitch().gossiperStarting();
         if (logger.isTraceEnabled())
             logger.trace("gossip started with generation {}", localState.getHeartBeatState().getGeneration());
@@ -353,7 +353,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
             // if some new messages just arrived, give the executor some time to work on them
             Uninterruptibles.sleepUninterruptibly(100, TimeUnit.MILLISECONDS);
 
-            // still behind?  something's broke
+            // still behind? something's broke
             if (lastProcessedMessageAt < now - 1000) {
                 logger.warn("Gossip stage has {} pending tasks; skipping status check (no nodes will be marked down)",
                         pending);
@@ -370,7 +370,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
             EndpointState epState = endpointStateMap.get(endpoint);
             if (epState != null) {
                 // check if this is a fat client. fat clients are removed automatically from
-                // gossip after FatClientTimeout.  Do not remove dead states here.
+                // gossip after FatClientTimeout. Do not remove dead states here.
                 if (isGossipOnlyMember(endpoint) && !justRemovedEndpoints.containsKey(endpoint)
                         && TimeUnit.NANOSECONDS.toMillis(nowNano - epState.getUpdateTimestamp()) > FAT_CLIENT_TIMEOUT) {
                     logger.info("FatClient {} has been silent for {}ms, removing from gossip", endpoint,
@@ -871,7 +871,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         if (logger.isTraceEnabled())
             logger.trace("marking as alive {}", addr);
         localState.markAlive();
-        localState.updateTimestamp(); // prevents doStatusCheck from racing us and evicting if it was down > aVeryLongTime
+        localState.updateTimestamp(); // prevents doStatusCheck from racing us and evicting if it was down >
+                                      // aVeryLongTime
         liveEndpoints.add(addr);
         unreachableEndpoints.remove(addr);
         expireTimeEndpointMap.remove(addr);
@@ -965,7 +966,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                     logger.trace("{} local generation {}, remote generation {}", ep, localGeneration, remoteGeneration);
 
                 if (localGeneration != 0 && remoteGeneration > localGeneration + MAX_GENERATION_DIFFERENCE) {
-                    // assume some peer has corrupted memory 
+                    // assume some peer has corrupted memory
                     // and is broadcasting an unbelievable generation about another peer (or itself)
                     logger.warn("received an invalid gossip generation for peer {}; "
                             + "local generation = {}, received generation = {}", ep, localGeneration, remoteGeneration);
@@ -992,7 +993,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                         logger.trace("Ignoring remote generation {} < {}", remoteGeneration, localGeneration);
                 }
             } else {
-                // this is a new node, report it to the FD in case it is the first time we are seeing it AND it's not alive
+                // this is a new node, report it to the FD in case it is the first time we are seeing it AND it's not
+                // alive
                 FailureDetector.instance.report(ep);
                 handleMajorStateChange(ep, remoteState);
             }
@@ -1154,7 +1156,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
             return;
         }
 
-        //preserve any previously known, in-memory data about the endpoint (such as DC, RACK, and so on)
+        // preserve any previously known, in-memory data about the endpoint (such as DC, RACK, and so on)
         EndpointState epState = endpointStateMap.get(ep);
         if (epState != null) {
             logger.debug("not replacing a previous epState for {}, but reusing it: {}", ep, epState);
@@ -1258,5 +1260,13 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     public static long computeExpireTime() {
         return System.currentTimeMillis() + Gossiper.A_VERY_LONG_TIME;
+    }
+
+    public InetAddress getFirstLiveSeedEndpoint() {
+        for (InetAddress seed : DatabaseDescriptor.getSeedList()) {
+            if (FailureDetector.instance.isAlive(seed))
+                return seed;
+        }
+        return null;
     }
 }

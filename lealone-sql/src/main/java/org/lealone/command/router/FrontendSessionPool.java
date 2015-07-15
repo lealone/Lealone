@@ -54,6 +54,14 @@ public class FrontendSessionPool {
     }
 
     public static FrontendSession getFrontendSession(Session originalSession, String url) {
+        return getFrontendSession(originalSession, url, true);
+    }
+
+    public static FrontendSession getSeedEndpointFrontendSession(Session originalSession, String url) {
+        return getFrontendSession(originalSession, url, false);
+    }
+
+    private static FrontendSession getFrontendSession(Session originalSession, String url, boolean isLocal) {
         FrontendSession fs = getQueue(url).poll();
 
         if (fs == null || fs.isClosed()) {
@@ -63,7 +71,7 @@ public class FrontendSessionPool {
                 throw DbException.throwInternalError();
 
             ConnectionInfo ci = new ConnectionInfo(url, originalSession.getOriginalProperties());
-            ci.setProperty("IS_LOCAL", "true");
+            ci.setProperty("IS_LOCAL", isLocal ? "true" : "false");
             ci.setUserName(oldCi.getUserName());
             ci.setUserPasswordHash(oldCi.getUserPasswordHash());
             ci.setFilePasswordHash(oldCi.getFilePasswordHash());

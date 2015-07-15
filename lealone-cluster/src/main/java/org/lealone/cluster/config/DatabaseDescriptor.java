@@ -376,6 +376,10 @@ public class DatabaseDescriptor {
         return ImmutableSet.<InetAddress> builder().addAll(seedProvider.getSeeds()).build();
     }
 
+    public static List<InetAddress> getSeedList() {
+        return seedProvider.getSeeds();
+    }
+
     public static InetAddress getListenAddress() {
         return listenAddress;
     }
