@@ -205,8 +205,9 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
                     DatabaseEngine.getHostAndPort());
 
             transactionEngine.init(store.getMapNames());
-            initTransactions();
-
+            // 不能过早初始化，需要等执行完MetaRecord之后生成所有Map了才行，
+            // 否则在执行undo log时对应map的sortTypes是null，在执行ValueDataType.compare(Object, Object)时出现空指针异常
+            // initTransactions();
             db.setTransactionEngine(transactionEngine);
             db.addStorageEngine(storageEngine);
             db.setLobStorage(new LobStorageMap(db));
@@ -647,5 +648,15 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     @Override
     public void sync(Database db) {
         getStore(db).sync();
+    }
+
+    @Override
+    public void initTransactions(Database db) {
+        getStore(db).initTransactions();
+    }
+
+    @Override
+    public void removeTemporaryMaps(Database db, BitField objectIds) {
+        getStore(db).removeTemporaryMaps(objectIds);
     }
 }

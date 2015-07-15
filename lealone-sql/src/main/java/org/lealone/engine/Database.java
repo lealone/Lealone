@@ -338,6 +338,11 @@ public class Database implements DataHandler {
             rec.execute(this, systemSession, eventListener);
         }
 
+        for (StorageEngine se : getStorageEngines()) {
+            se.initTransactions(this);
+            se.removeTemporaryMaps(this, objectIds);
+        }
+
         recompileInvalidViews(systemSession);
         starting = false;
     }
@@ -588,6 +593,12 @@ public class Database implements DataHandler {
         if (meta == null) {
             return true;
         }
+        // 从seed节点上转发命令到其他节点时会携带一个"TOKEN"参数，
+        // 如果在其他节点上又转发另一条命令过来，那么会构成一个循环，
+        // 此时就不用再调用meta.lcok，否则会超时。
+        if (session.getOriginalProperties() != null && session.getOriginalProperties().getProperty("TOKEN") != null)
+            return true;
+
         boolean wasLocked = meta.isLockedExclusivelyBy(session);
         meta.lock(session, true, true);
         return wasLocked;
