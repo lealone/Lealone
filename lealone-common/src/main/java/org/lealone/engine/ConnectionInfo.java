@@ -32,7 +32,7 @@ public class ConnectionInfo implements Cloneable {
 
         String[] connectionSettings = { "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS",
                 "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH",
-                "IS_LOCAL" };
+                "IS_LOCAL", "TOKEN" };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
@@ -47,7 +47,7 @@ public class ConnectionInfo implements Cloneable {
     }
 
     private final Properties prop = new Properties();
-    private String url; //不包含后面的参数
+    private String url; // 不包含后面的参数
     private String user;
     private byte[] filePasswordHash;
     private byte[] fileEncryptionKey;
@@ -73,7 +73,7 @@ public class ConnectionInfo implements Cloneable {
      * @param url
      * @param dbName
      */
-    public ConnectionInfo(String url, String dbName) { //用于server端, 不需要再解析URL了
+    public ConnectionInfo(String url, String dbName) { // 用于server端, 不需要再解析URL了
         this.url = url;
         this.dbName = dbName;
 
@@ -87,7 +87,7 @@ public class ConnectionInfo implements Cloneable {
             persistent = false;
             url = url.substring(Constants.URL_MEM.length());
         }
-        //server端接收到的URL不可能是嵌入式的
+        // server端接收到的URL不可能是嵌入式的
         if (url.startsWith(Constants.URL_EMBED)) {
             throw DbException.throwInternalError("Server backend URL: " + this.url);
         }
@@ -103,7 +103,7 @@ public class ConnectionInfo implements Cloneable {
      * @param url the database URL
      * @param info the connection properties
      */
-    public ConnectionInfo(String url, Properties info) { //用于client端，需要解析URL
+    public ConnectionInfo(String url, Properties info) { // 用于client端，需要解析URL
         this.url = remapURL(url);
 
         checkURL();
@@ -121,33 +121,33 @@ public class ConnectionInfo implements Cloneable {
         }
     }
 
-    //如果URL中有参数先读出来，然后从URL中移除
+    // 如果URL中有参数先读出来，然后从URL中移除
     private void readAndRemoveSettingsFromURL() {
-        //支持两种风格的JDBC URL参数语法
-        //1. MySQL的JDBC URL参数语法:
-        //.../database[?propertyName1=propertyValue1][&propertyName2=propertyValue2]
-        //数据库名与参数之间用'?'号分隔，不同参数之间用'&'分隔
+        // 支持两种风格的JDBC URL参数语法
+        // 1. MySQL的JDBC URL参数语法:
+        // .../database[?propertyName1=propertyValue1][&propertyName2=propertyValue2]
+        // 数据库名与参数之间用'?'号分隔，不同参数之间用'&'分隔
 
-        //2.Lealone的JDBC URL参数语法:
-        //.../database[;propertyName1=propertyValue1][;propertyName2=propertyValue2]
-        //数据库名与参数之间用';'号分隔，不同参数之间也用';'号分隔
+        // 2.Lealone的JDBC URL参数语法:
+        // .../database[;propertyName1=propertyValue1][;propertyName2=propertyValue2]
+        // 数据库名与参数之间用';'号分隔，不同参数之间也用';'号分隔
         int idx = url.indexOf('?');
         char splitChar;
         if (idx >= 0) {
             splitChar = '&';
             if (url.indexOf(';') >= 0)
-                throw getFormatException(); //不能同时出现'&'和';'
+                throw getFormatException(); // 不能同时出现'&'和';'
         } else {
             idx = url.indexOf(';');
             splitChar = ';';
             if (url.indexOf('&') >= 0)
-                throw getFormatException(); //不能出现'&'
+                throw getFormatException(); // 不能出现'&'
         }
 
         if (idx >= 0) {
             DbSettings dbSettings = DbSettings.getDefaultSettings();
             String settings = url.substring(idx + 1);
-            url = url.substring(0, idx); //去掉后面的参数
+            url = url.substring(0, idx); // 去掉后面的参数
             String[] list = StringUtils.arraySplit(settings, splitChar, false);
             for (String setting : list) {
                 if (setting.length() == 0) {
@@ -198,7 +198,7 @@ public class ConnectionInfo implements Cloneable {
         }
 
         if (remote) {
-            if (dbName.startsWith("//")) //在URL中"//"是可选的
+            if (dbName.startsWith("//")) // 在URL中"//"是可选的
                 dbName = dbName.substring("//".length());
 
             int idx = dbName.indexOf('/');
@@ -404,19 +404,19 @@ public class ConnectionInfo implements Cloneable {
         if (persistent) {
             String name = dbName;
             if (nameNormalized == null) {
-                //                if (!SysProperties.IMPLICIT_RELATIVE_PATH) {
-                //                    if (!FileUtils.isAbsolute(name)) {
-                //                        if (name.indexOf("./") < 0 && name.indexOf(".\\") < 0 && name.indexOf(":/") < 0
-                //                                && name.indexOf(":\\") < 0) {
-                //                            // the name could start with "./", or
-                //                            // it could start with a prefix such as "nio:./"
-                //                            // for Windows, the path "\test" is not considered
-                //                            // absolute as the drive letter is missing,
-                //                            // but we consider it absolute
-                //                            throw DbException.get(ErrorCode.URL_RELATIVE_TO_CWD, url);
-                //                        }
-                //                    }
-                //                }
+                // if (!SysProperties.IMPLICIT_RELATIVE_PATH) {
+                // if (!FileUtils.isAbsolute(name)) {
+                // if (name.indexOf("./") < 0 && name.indexOf(".\\") < 0 && name.indexOf(":/") < 0
+                // && name.indexOf(":\\") < 0) {
+                // // the name could start with "./", or
+                // // it could start with a prefix such as "nio:./"
+                // // for Windows, the path "\test" is not considered
+                // // absolute as the drive letter is missing,
+                // // but we consider it absolute
+                // throw DbException.get(ErrorCode.URL_RELATIVE_TO_CWD, url);
+                // }
+                // }
+                // }
                 String suffix = Constants.SUFFIX_MV_FILE;
                 String n = FileUtils.toRealPath(name + suffix);
                 String fileName = FileUtils.getName(n);

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -102,8 +103,18 @@ public class P2PRouter implements Router {
             }
         }
 
+        // 从seed节点上转发命令到其他节点时会携带一个"TOKEN"参数，
+        // 如果在其他节点上又转发另一条命令过来，那么会构成一个循环，
+        // 此时就不能用this当同步对象，会产生死锁。
+        Object lock = this;
+        Properties properties = defineCommand.getSession().getOriginalProperties();
+        if (properties != null && properties.getProperty("TOKEN") != null)
+            lock = properties;
+
         // 在seed节点上串行执行所有的defineCommand
-        synchronized (this) {
+        synchronized (lock) {
+            properties.setProperty("TOKEN", "1");
+
             Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
             List<Callable<Integer>> commands = New.arrayList(liveMembers.size());
 
@@ -116,6 +127,8 @@ public class P2PRouter implements Router {
                 return CommandParallel.executeUpdateCallable(commands);
             } catch (Exception e) {
                 throw DbException.convert(e);
+            } finally {
+                properties.remove("TOKEN");
             }
         }
     }
