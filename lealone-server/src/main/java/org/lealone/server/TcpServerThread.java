@@ -197,7 +197,7 @@ public class TcpServerThread implements Runnable {
         if (session != null) {
             RuntimeException closeError = null;
             try {
-                Command rollback = session.prepareLocal("ROLLBACK");
+                Command rollback = session.prepareCommandLocal("ROLLBACK");
                 rollback.executeUpdate();
             } catch (RuntimeException e) {
                 closeError = e;

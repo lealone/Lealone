@@ -43,11 +43,11 @@ public class DbObjectTestBase extends UnitTestBase {
     }
 
     public int executeUpdate(String sql) {
-        return session.prepareLocal(sql).executeUpdate();
+        return session.prepareCommandLocal(sql).executeUpdate();
     }
 
     public ResultInterface executeQuery(String sql) {
-        return session.prepareLocal(sql).executeQuery(0, false);
+        return session.prepareCommandLocal(sql).executeQuery(0, false);
     }
 
     //index从1开始

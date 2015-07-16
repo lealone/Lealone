@@ -198,7 +198,7 @@ public class DatabaseEngine implements SessionFactory {
             if (SetTypes.contains(setting)) {
                 String value = ci.getProperty(setting);
                 try {
-                    command = session.prepareLocal("SET " + Parser.quoteIdentifier(setting) + " " + value);
+                    command = session.prepareCommandLocal("SET " + Parser.quoteIdentifier(setting) + " " + value);
                     command.executeUpdate();
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {

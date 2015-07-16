@@ -31,7 +31,7 @@ class CommandList extends Command {
     }
 
     private int executeRemaining() {
-        Command remainingCommand = session.prepareLocal(remaining);
+        Command remainingCommand = session.prepareCommand(remaining);
         if (remainingCommand.isQuery()) {
             remainingCommand.query(0);
             return 0;
