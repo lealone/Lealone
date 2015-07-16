@@ -57,7 +57,6 @@ public class TcpServerThread implements Runnable {
     private Session session;
     private boolean stop;
     private Thread thread;
-    //private Command commit;
     private int clientVersion;
     private String sessionId;
 
@@ -326,15 +325,6 @@ public class TcpServerThread implements Runnable {
             close();
             break;
         }
-        //        case FrontendSession.COMMAND_COMMIT: {
-        //            if (commit == null) {
-        //                commit = session.prepareLocal("COMMIT");
-        //            }
-        //            int old = session.getModificationId();
-        //            commit.executeUpdate();
-        //            transfer.writeInt(getState(old)).flush();
-        //            break;
-        //        }
         case FrontendSession.COMMAND_GET_META_DATA: {
             int id = transfer.readInt();
             int objectId = transfer.readInt();
@@ -550,6 +540,8 @@ public class TcpServerThread implements Runnable {
         case FrontendSession.SESSION_SET_ID: {
             sessionId = transfer.readString();
             transfer.writeInt(FrontendSession.STATUS_OK).flush();
+            transfer.writeBoolean(session.isAutoCommit());
+            transfer.flush();
             break;
         }
         case FrontendSession.SESSION_SET_AUTOCOMMIT: {
@@ -619,9 +611,9 @@ public class TcpServerThread implements Runnable {
                 }
             }
         } catch (Throwable e) {
-            //如果取结果集的下一行记录时发生了异常，
-            //比如在HBase环境一个结果集可能涉及多个region，当切换到下一个region时此region有可能在进行split，
-            //此时就会抛异常，所以结果集包必须加一个结束标记，结果集包后面跟一个异常包。
+            // 如果取结果集的下一行记录时发生了异常，
+            // 比如在HBase环境一个结果集可能涉及多个region，当切换到下一个region时此region有可能在进行split，
+            // 此时就会抛异常，所以结果集包必须加一个结束标记，结果集包后面跟一个异常包。
             transfer.writeBoolean(false);
             throw DbException.convert(e);
         }

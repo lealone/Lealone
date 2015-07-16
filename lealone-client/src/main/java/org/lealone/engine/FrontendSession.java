@@ -46,15 +46,15 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     public static final int RESULT_FETCH_ROWS = 5;
     public static final int RESULT_RESET = 6;
     public static final int RESULT_CLOSE = 7;
-    //public static final int COMMAND_COMMIT = 8; //不再使用
+    // public static final int COMMAND_COMMIT = 8; //不再使用
     public static final int CHANGE_ID = 9;
     public static final int COMMAND_GET_META_DATA = 10;
     public static final int SESSION_PREPARE_READ_PARAMS = 11;
     public static final int SESSION_SET_ID = 12;
     public static final int SESSION_CANCEL_STATEMENT = 13;
-    //public static final int SESSION_CHECK_KEY = 14; //不再使用
+    // public static final int SESSION_CHECK_KEY = 14; //不再使用
     public static final int SESSION_SET_AUTOCOMMIT = 15;
-    //public static final int SESSION_UNDO_LOG_POS = 16; //不再使用
+    // public static final int SESSION_UNDO_LOG_POS = 16; //不再使用
     public static final int LOB_READ = 17;
 
     public static final int COMMAND_EXECUTE_DISTRIBUTED_QUERY = 100;
@@ -104,10 +104,10 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         Transfer trans = new Transfer(this, socket);
         trans.setSSL(ci.isSSL());
         trans.init();
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); //minClientVersion
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); //maxClientVersion
+        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
+        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
         trans.writeString(ci.getDatabaseName());
-        trans.writeString(ci.getURL()); //不带参数的URL
+        trans.writeString(ci.getURL()); // 不带参数的URL
         trans.writeString(ci.getUserName());
         trans.writeBytes(ci.getUserPasswordHash());
         trans.writeBytes(ci.getFilePasswordHash());
@@ -124,11 +124,11 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
             trans.writeInt(FrontendSession.SESSION_SET_ID);
             trans.writeString(sessionId);
             done(trans);
+            autoCommit = trans.readBoolean();
         } catch (DbException e) {
             trans.close();
             throw e;
         }
-        autoCommit = true;
         return trans;
     }
 
@@ -297,7 +297,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         }
     }
 
-    //TODO
+    // TODO
     public void handleException(Exception e) {
         checkClosed();
     }
@@ -372,7 +372,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
      *             and server
      */
     public void done(Transfer transfer) throws IOException {
-        //正常来讲不会出现这种情况，如果出现了，说明存在bug，找出为什么transfer的输入流没正常读完的原因
+        // 正常来讲不会出现这种情况，如果出现了，说明存在bug，找出为什么transfer的输入流没正常读完的原因
         if (transfer.available() > 0) {
             throw DbException.throwInternalError("before transfer flush, the available bytes was "
                     + transfer.available());
@@ -603,7 +603,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         }
     }
 
-    //要加synchronized，避免FrontendCommand在执行更新和查询时其他线程把transaction置null
+    // 要加synchronized，避免FrontendCommand在执行更新和查询时其他线程把transaction置null
     public synchronized void setTransaction(Transaction transaction) {
         this.transaction = transaction;
     }
