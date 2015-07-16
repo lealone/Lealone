@@ -298,7 +298,7 @@ public class TraceObject {
         if (x == null) {
             return "null";
         }
-        return "org.h2.util.StringUtils.convertHexToBytes(\"" + StringUtils.convertBytesToHex(x) + "\")";
+        return "org.lealone.util.StringUtils.convertHexToBytes(\"" + StringUtils.convertBytesToHex(x) + "\")";
     }
 
     /**

@@ -93,7 +93,7 @@ public class UserAggregate extends DbObjectBase {
 
     /**
      * Wrap {@link AggregateFunction} in order to behave as
-     * {@link org.h2.api.Aggregate}
+     * {@link org.lealone.api.Aggregate}
      **/
     private static class AggregateWrapper implements Aggregate {
         private final AggregateFunction aggregateFunction;

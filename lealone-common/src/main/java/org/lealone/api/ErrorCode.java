@@ -525,7 +525,7 @@ public class ErrorCode {
      * are used. Instead, use "jdbc:h2:~/name" (relative to the current user
      * home directory), use an absolute path, set the base directory (baseDir),
      * use "jdbc:h2:./name" (explicit relative path), or set the system property
-     * "h2.implicitRelativePath" to "true" (to prevent this check). For Windows,
+     * "lealone.implicitRelativePath" to "true" (to prevent this check). For Windows,
      * an absolute path also needs to include the drive ("C:/..."). Please see
      * the documentation on the supported URL format. Example:
      * <pre>
@@ -730,7 +730,7 @@ public class ErrorCode {
      * The error with code <code>90030</code> is thrown when
      * the database engine has detected a checksum mismatch in the data
      * or index. To solve this problem, restore a backup or use the
-     * Recovery tool (org.h2.tools.Recover).
+     * Recovery tool (org.lealone.tools.Recover).
      */
     public static final int FILE_CORRUPTED_1 = 90030;
 
@@ -834,9 +834,9 @@ public class ErrorCode {
      * <pre>
      * CREATE TABLE TEST(ID INT);
      * CREATE TRIGGER TRIGGER_A AFTER INSERT ON TEST
-     *      CALL "org.h2.samples.TriggerSample$MyTrigger";
+     *      CALL "org.lealone.samples.TriggerSample$MyTrigger";
      * CREATE TRIGGER TRIGGER_A AFTER INSERT ON TEST
-     *      CALL "org.h2.samples.TriggerSample$MyTrigger";
+     *      CALL "org.lealone.samples.TriggerSample$MyTrigger";
      * </pre>
      */
     public static final int TRIGGER_ALREADY_EXISTS_1 = 90041;
@@ -1645,7 +1645,7 @@ public class ErrorCode {
      * connections are not allowed. To allow remote connections,
      * start the TCP server using the option -tcpAllowOthers as in:
      * <pre>
-     * java org.h2.tools.Server -tcp -tcpAllowOthers
+     * java org.lealone.tools.Server -tcp -tcpAllowOthers
      * </pre>
      * Or, when starting the server from an application, use:
      * <pre>
@@ -1715,7 +1715,7 @@ public class ErrorCode {
     /**
      * The error with code <code>90125</code> is thrown when
      * PreparedStatement.setBigDecimal is called with object that extends the
-     * class BigDecimal, and the system property h2.allowBigDecimalExtensions is
+     * class BigDecimal, and the system property lealone.allowBigDecimalExtensions is
      * not set. Using extensions of BigDecimal is dangerous because the database
      * relies on the behavior of BigDecimal. Example of wrong usage:
      * <pre>
@@ -1835,7 +1835,7 @@ public class ErrorCode {
      * The error with code <code>90134</code> is thrown when
      * trying to load a Java class that is not part of the allowed classes. By
      * default, all classes are allowed, but this can be changed using the
-     * system property h2.allowedClasses.
+     * system property lealone.allowedClasses.
      */
     public static final int ACCESS_DENIED_TO_CLASS_1 = 90134;
 
