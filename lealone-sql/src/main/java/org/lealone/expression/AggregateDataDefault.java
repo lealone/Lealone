@@ -213,14 +213,6 @@ class AggregateDataDefault extends AggregateData {
                 value = value.add(v);
             }
             break;
-        case Aggregate.AVG:
-            if (value == null) {
-                value = v.convertTo(DataType.getAddProofType(dataType));
-            } else {
-                // AVG聚合函数merge的次数不会超过1
-                DbException.throwInternalError("type=" + aggregateType);
-            }
-            break;
         case Aggregate.MIN:
             if (value == null || database.compare(v, value) < 0) {
                 value = v;
@@ -231,19 +223,6 @@ class AggregateDataDefault extends AggregateData {
                 value = v;
             }
             break;
-        case Aggregate.STDDEV_POP:
-        case Aggregate.STDDEV_SAMP:
-        case Aggregate.VAR_POP:
-        case Aggregate.VAR_SAMP: {
-            v = v.convertTo(Value.DOUBLE);
-            if (value == null) {
-                value = v;
-            } else {
-                // 这4种聚合函数merge的次数不会超过1
-                DbException.throwInternalError("type=" + aggregateType);
-            }
-            break;
-        }
         case Aggregate.BOOL_AND:
             v = v.convertTo(Value.BOOLEAN);
             if (value == null) {
@@ -274,6 +253,12 @@ class AggregateDataDefault extends AggregateData {
                 value = ValueLong.get(value.getLong() | v.getLong()).convertTo(dataType);
             }
             break;
+        // 这5个在分布式环境下会进行重写，所以合并时是不会出现的
+        case Aggregate.AVG:
+        case Aggregate.STDDEV_POP:
+        case Aggregate.STDDEV_SAMP:
+        case Aggregate.VAR_POP:
+        case Aggregate.VAR_SAMP:
         default:
             DbException.throwInternalError("type=" + aggregateType);
         }
@@ -290,10 +275,10 @@ class AggregateDataDefault extends AggregateData {
         case Aggregate.SUM:
         case Aggregate.MIN:
         case Aggregate.MAX:
-        case Aggregate.BOOL_OR:
         case Aggregate.BOOL_AND:
-        case Aggregate.BIT_OR:
+        case Aggregate.BOOL_OR:
         case Aggregate.BIT_AND:
+        case Aggregate.BIT_OR:
             v = value;
             break;
         case Aggregate.AVG:
@@ -301,7 +286,6 @@ class AggregateDataDefault extends AggregateData {
         case Aggregate.STDDEV_SAMP:
         case Aggregate.VAR_POP:
         case Aggregate.VAR_SAMP:
-            return value == null ? ValueNull.INSTANCE : value;
         default:
             DbException.throwInternalError("type=" + aggregateType);
         }
