@@ -100,6 +100,11 @@ public class Mode {
     public boolean uniqueIndexSingleNullExceptAllColumnsAreNull;
 
     /**
+     * Empty strings are treated like NULL values. Useful for Oracle emulation.
+     */
+    public boolean treatEmptyStringsAsNull;
+
+    /**
      * Support the pseudo-table SYSIBM.SYSDUMMY1.
      */
     public boolean sysDummy1;
@@ -123,6 +128,11 @@ public class Mode {
      * Swap the parameters of the CONVERT function.
      */
     public boolean swapConvertFunctionParameters;
+
+    /**
+     * Support the # for column names
+     */
+    public boolean supportPoundSymbolForColumnNames;
 
     private final String name;
 
@@ -158,6 +168,7 @@ public class Mode {
         mode.uniqueIndexSingleNull = true;
         mode.allowPlusForStringConcat = true;
         mode.swapConvertFunctionParameters = true;
+        mode.supportPoundSymbolForColumnNames = true;
         add(mode);
 
         mode = new Mode("MySQL");
@@ -169,6 +180,8 @@ public class Mode {
         mode = new Mode("Oracle");
         mode.aliasColumnName = true;
         mode.uniqueIndexSingleNullExceptAllColumnsAreNull = true;
+        mode.treatEmptyStringsAsNull = true;
+        mode.supportPoundSymbolForColumnNames = true;
         add(mode);
 
         mode = new Mode("PostgreSQL");

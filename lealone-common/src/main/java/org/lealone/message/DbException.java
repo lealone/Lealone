@@ -8,7 +8,9 @@ package org.lealone.message;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.Locale;
@@ -16,6 +18,7 @@ import java.util.Map.Entry;
 import java.util.Properties;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.engine.Constants;
 import org.lealone.util.SortedProperties;
 import org.lealone.util.StringUtils;
 import org.lealone.util.Utils;
@@ -45,7 +48,7 @@ public class DbException extends RuntimeException {
                 // message: translated message + english
                 // (otherwise certain applications don't work)
                 if (translations != null) {
-                    Properties p = SortedProperties.fromLines(new String(translations, "UTF-8"));
+                    Properties p = SortedProperties.fromLines(new String(translations, Constants.UTF8));
                     for (Entry<Object, Object> e : p.entrySet()) {
                         String key = (String) e.getKey();
                         String translation = (String) e.getValue();
@@ -57,8 +60,10 @@ public class DbException extends RuntimeException {
                     }
                 }
             }
+        } catch (OutOfMemoryError e) {
+            DbException.traceThrowable(e);
         } catch (IOException e) {
-            TraceSystem.traceThrowable(e);
+            DbException.traceThrowable(e);
         }
     }
 
@@ -186,12 +191,12 @@ public class DbException extends RuntimeException {
      *
      * @param sql the SQL statement
      * @param index the position of the error in the SQL statement
-     * @param expected the expected keyword at the given position
+     * @param message the message
      * @return the exception
      */
-    public static DbException getSyntaxError(String sql, int index, String expected) {
+    public static DbException getSyntaxError(String sql, int index, String message) {
         sql = StringUtils.addAsterisk(sql, index);
-        return get(ErrorCode.SYNTAX_ERROR_2, sql, expected);
+        return new DbException(getJdbcSQLException(ErrorCode.SYNTAX_ERROR_2, null, sql, message));
     }
 
     /**
@@ -226,7 +231,7 @@ public class DbException extends RuntimeException {
      */
     public static RuntimeException throwInternalError(String s) {
         RuntimeException e = new RuntimeException(s);
-        TraceSystem.traceThrowable(e);
+        DbException.traceThrowable(e);
         throw e;
     }
 
@@ -345,9 +350,7 @@ public class DbException extends RuntimeException {
                 e = e2.getOriginalCause();
             }
         }
-        IOException io = new IOException(e.toString());
-        io.initCause(e);
-        return io;
+        return new IOException(e.toString(), e);
     }
 
     public Object getSource() {
@@ -356,6 +359,18 @@ public class DbException extends RuntimeException {
 
     public void setSource(Object source) {
         this.source = source;
+    }
+
+    /**
+     * Write the exception to the driver manager log writer if configured.
+     *
+     * @param e the exception
+     */
+    public static void traceThrowable(Throwable e) {
+        PrintWriter writer = DriverManager.getLogWriter();
+        if (writer != null) {
+            e.printStackTrace(writer);
+        }
     }
 
 }

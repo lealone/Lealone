@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.command.ddl;
@@ -10,9 +9,11 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.command.CommandInterface;
+import org.lealone.dbobject.DbObject;
 import org.lealone.dbobject.Right;
 import org.lealone.dbobject.RightOwner;
 import org.lealone.dbobject.Role;
+import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
@@ -32,6 +33,7 @@ public class GrantRevoke extends DefineCommand {
     private int operationType;
     private int rightMask;
     private final ArrayList<Table> tables = New.arrayList();
+    private Schema schema;
     private RightOwner grantee;
 
     public GrantRevoke(Session session) {
@@ -106,17 +108,25 @@ public class GrantRevoke extends DefineCommand {
     }
 
     private void grantRight() {
-        Database db = session.getDatabase();
+        if (schema != null) {
+            grantRight(schema);
+        }
         for (Table table : tables) {
-            Right right = grantee.getRightForTable(table);
-            if (right == null) {
-                int id = getObjectId();
-                right = new Right(db, id, grantee, rightMask, table);
-                grantee.grantRight(table, right);
-                db.addDatabaseObject(session, right);
-            } else {
-                right.setRightMask(right.getRightMask() | rightMask);
-            }
+            grantRight(table);
+        }
+    }
+
+    private void grantRight(DbObject object) {
+        Database db = session.getDatabase();
+        Right right = grantee.getRightForObject(object);
+        if (right == null) {
+            int id = getObjectId();
+            right = new Right(db, id, grantee, rightMask, object);
+            grantee.grantRight(object, right);
+            db.addDatabaseObject(session, right);
+        } else {
+            right.setRightMask(right.getRightMask() | rightMask);
+            db.updateMeta(session, right);
         }
     }
 
@@ -139,20 +149,27 @@ public class GrantRevoke extends DefineCommand {
     }
 
     private void revokeRight() {
+        if (schema != null) {
+            revokeRight(schema);
+        }
         for (Table table : tables) {
-            Right right = grantee.getRightForTable(table);
-            if (right == null) {
-                continue;
-            }
-            int mask = right.getRightMask();
-            int newRight = mask & ~rightMask;
-            Database db = session.getDatabase();
-            if (newRight == 0) {
-                db.removeDatabaseObject(session, right);
-            } else {
-                right.setRightMask(newRight);
-                db.update(session, right);
-            }
+            revokeRight(table);
+        }
+    }
+
+    private void revokeRight(DbObject object) {
+        Right right = grantee.getRightForObject(object);
+        if (right == null) {
+            return;
+        }
+        int mask = right.getRightMask();
+        int newRight = mask & ~rightMask;
+        Database db = session.getDatabase();
+        if (newRight == 0) {
+            db.removeDatabaseObject(session, right);
+        } else {
+            right.setRightMask(newRight);
+            db.updateMeta(session, right);
         }
     }
 
@@ -179,9 +196,31 @@ public class GrantRevoke extends DefineCommand {
         tables.add(table);
     }
 
+    /**
+     * Set the specified schema
+     *
+     * @param schema the schema
+     */
+    public void setSchema(Schema schema) {
+        this.schema = schema;
+    }
+
     @Override
     public int getType() {
         return operationType;
     }
 
+    /**
+     * @return true if this command is using Roles
+     */
+    public boolean isRoleMode() {
+        return roleNames != null;
+    }
+
+    /**
+     * @return true if this command is using Rights
+     */
+    public boolean isRightMode() {
+        return rightMask != 0;
+    }
 }

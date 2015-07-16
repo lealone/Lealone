@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.dbobject.table;
@@ -30,7 +29,8 @@ import org.lealone.value.ValueNull;
 import org.lealone.value.ValueResultSet;
 
 /**
- * A table backed by a system or user-defined function that returns a result set.
+ * A table backed by a system or user-defined function that returns a result
+ * set.
  */
 public class FunctionTable extends Table {
 
@@ -54,10 +54,10 @@ public class FunctionTable extends Table {
         if (type != Value.RESULT_SET) {
             throw DbException.get(ErrorCode.FUNCTION_MUST_RETURN_RESULT_SET_1, function.getName());
         }
-        int params = function.getParameterCount();
-        Expression[] columnListArgs = new Expression[params];
         Expression[] args = function.getArgs();
-        for (int i = 0; i < params; i++) {
+        int numParams = args.length;
+        Expression[] columnListArgs = new Expression[numParams];
+        for (int i = 0; i < numParams; i++) {
             args[i] = args[i].optimize(session);
             columnListArgs[i] = args[i];
         }
@@ -71,9 +71,8 @@ public class FunctionTable extends Table {
             int columnCount = meta.getColumnCount();
             Column[] cols = new Column[columnCount];
             for (int i = 0; i < columnCount; i++) {
-                cols[i] = new Column(meta.getColumnName(i + 1), DataType.convertSQLTypeToValueType(meta
-                        .getColumnType(i + 1)), meta.getPrecision(i + 1), meta.getScale(i + 1),
-                        meta.getColumnDisplaySize(i + 1));
+                cols[i] = new Column(meta.getColumnName(i + 1), DataType.getValueTypeFromResultSet(meta, i + 1),
+                        meta.getPrecision(i + 1), meta.getScale(i + 1), meta.getColumnDisplaySize(i + 1));
             }
             setColumns(cols);
         } catch (SQLException e) {
@@ -83,6 +82,7 @@ public class FunctionTable extends Table {
 
     @Override
     public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+        // nothing to do
         return false;
     }
 
@@ -173,7 +173,8 @@ public class FunctionTable extends Table {
     }
 
     /**
-     * Read the result from the function. This method caches the result.
+     * Read the result from the function. This method buffers the result in a
+     * temporary file.
      *
      * @param session the session
      * @return the result
@@ -215,8 +216,8 @@ public class FunctionTable extends Table {
         return (ValueResultSet) v;
     }
 
-    public boolean isFast() {
-        return function.isFast();
+    public boolean isBufferResultSetToLocalTemp() {
+        return function.isBufferResultSetToLocalTemp();
     }
 
     @Override

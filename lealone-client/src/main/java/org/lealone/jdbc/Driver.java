@@ -16,7 +16,6 @@ import java.util.logging.Logger;
 
 import org.lealone.engine.Constants;
 import org.lealone.message.DbException;
-import org.lealone.message.TraceSystem;
 
 /**
  * The database driver. An application should not use this class directly. 
@@ -129,7 +128,7 @@ public class Driver implements java.sql.Driver {
     /**
      * [Not supported]
      */
-    //jdk1.7
+    // jdk1.7
     @Override
     public Logger getParentLogger() throws SQLFeatureNotSupportedException {
         throw DbException.getUnsupportedException("getParentLogger()");
@@ -145,7 +144,7 @@ public class Driver implements java.sql.Driver {
             try {
                 DriverManager.registerDriver(INSTANCE);
             } catch (SQLException e) {
-                TraceSystem.traceThrowable(e);
+                DbException.traceThrowable(e);
             }
         }
         return INSTANCE;
@@ -161,7 +160,7 @@ public class Driver implements java.sql.Driver {
             try {
                 DriverManager.deregisterDriver(INSTANCE);
             } catch (SQLException e) {
-                TraceSystem.traceThrowable(e);
+                DbException.traceThrowable(e);
             }
         }
     }

@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.dbobject;
@@ -108,12 +107,12 @@ public class User extends RightOwner {
     /**
      * See if this user has the given rights for this database object.
      *
-     * @param table the database object
+     * @param table the database object, or null for schema-only check
      * @param rightMask the rights required
      * @return true if the user has the rights
      */
     public boolean hasRight(Table table, int rightMask) {
-        if (rightMask != Right.SELECT && !systemUser) {
+        if (rightMask != Right.SELECT && !systemUser && table != null) {
             table.checkWritingAllowed();
         }
         if (admin) {
@@ -127,21 +126,26 @@ public class User extends RightOwner {
             // everybody has access to the metadata information
             return true;
         }
-        String tableType = table.getTableType();
-        if (Table.VIEW.equals(tableType)) {
-            TableView v = (TableView) table;
-            if (v.getOwner() == this) {
-                // the owner of a view has access:
-                // SELECT * FROM (SELECT * FROM ...)
+        if (table != null) {
+            if (hasRight(null, Right.ALTER_ANY_SCHEMA)) {
                 return true;
             }
-        } else if (tableType == null) {
-            // function table
-            return true;
-        }
-        if (table.isTemporary() && !table.isGlobalTemporary()) {
-            // the owner has all rights on local temporary tables
-            return true;
+            String tableType = table.getTableType();
+            if (Table.VIEW.equals(tableType)) {
+                TableView v = (TableView) table;
+                if (v.getOwner() == this) {
+                    // the owner of a view has access:
+                    // SELECT * FROM (SELECT * FROM ...)
+                    return true;
+                }
+            } else if (tableType == null) {
+                // function table
+                return true;
+            }
+            if (table.isTemporary() && !table.isGlobalTemporary()) {
+                // the owner has all rights on local temporary tables
+                return true;
+            }
         }
         if (isRightGrantedRecursive(table, rightMask)) {
             return true;
@@ -203,6 +207,18 @@ public class User extends RightOwner {
         }
     }
 
+    /**
+     * Check if this user has schema admin rights. An exception is thrown if he
+     * does not have them.
+     *
+     * @throws DbException if this user is not a schema admin
+     */
+    public void checkSchemaAdmin() {
+        if (!hasRight(null, Right.ALTER_ANY_SCHEMA)) {
+            throw DbException.get(ErrorCode.ADMIN_RIGHTS_REQUIRED);
+        }
+    }
+
     @Override
     public int getType() {
         return DbObject.USER;
@@ -244,8 +260,8 @@ public class User extends RightOwner {
     }
 
     /**
-     * Check that this user does not own any schema. An exception is thrown if he
-     * owns one or more schemas.
+     * Check that this user does not own any schema. An exception is thrown if
+     * he owns one or more schemas.
      *
      * @throws DbException if this user owns a schema
      */

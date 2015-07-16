@@ -30,44 +30,54 @@ public class ValueString extends Value {
         this.value = value;
     }
 
+    @Override
     public String getSQL() {
         return StringUtils.quoteStringSQL(value);
     }
 
+    @Override
     public boolean equals(Object other) {
         return other instanceof ValueString && value.equals(((ValueString) other).value);
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         // compatibility: the other object could be another type
         ValueString v = (ValueString) o;
         return mode.compareString(value, v.value, false);
     }
 
+    @Override
     public String getString() {
         return value;
     }
 
+    @Override
     public long getPrecision() {
         return value.length();
     }
 
+    @Override
     public Object getObject() {
         return value;
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setString(parameterIndex, value);
     }
 
+    @Override
     public int getDisplaySize() {
         return value.length();
     }
 
+    @Override
     public int getMemory() {
         return value.length() * 2 + 48;
     }
 
+    @Override
     public Value convertPrecision(long precision, boolean force) {
         if (precision == 0 || value.length() <= precision) {
             return this;
@@ -76,37 +86,39 @@ public class ValueString extends Value {
         return getNew(value.substring(0, p));
     }
 
+    @Override
     public int hashCode() {
         // TODO hash performance: could build a quicker hash
         // by hashing the size and a few characters
         return value.hashCode();
 
         // proposed code:
-        //        private int hash = 0;
+        // private int hash = 0;
         //
-        //        public int hashCode() {
-        //            int h = hash;
-        //            if (h == 0) {
-        //                String s = value;
-        //                int l = s.length();
-        //                if (l > 0) {
-        //                    if (l < 16)
-        //                        h = s.hashCode();
-        //                    else {
-        //                        h = l;
-        //                        for (int i = 1; i <= l; i <<= 1)
-        //                            h = 31 *
-        //                                (31 * h + s.charAt(i - 1)) +
-        //                                s.charAt(l - i);
-        //                    }
-        //                    hash = h;
-        //                }
-        //            }
-        //            return h;
-        //        }
+        // public int hashCode() {
+        // int h = hash;
+        // if (h == 0) {
+        // String s = value;
+        // int l = s.length();
+        // if (l > 0) {
+        // if (l < 16)
+        // h = s.hashCode();
+        // else {
+        // h = l;
+        // for (int i = 1; i <= l; i <<= 1)
+        // h = 31 *
+        // (31 * h + s.charAt(i - 1)) +
+        // s.charAt(l - i);
+        // }
+        // hash = h;
+        // }
+        // }
+        // return h;
+        // }
 
     }
 
+    @Override
     public int getType() {
         return Value.STRING;
     }
@@ -126,6 +138,27 @@ public class ValueString extends Value {
             return obj;
         }
         return (ValueString) Value.cache(obj);
+        // this saves memory, but is really slow
+        // return new ValueString(s.intern());
+    }
+
+    /**
+     * Get or create a string value for the given string.
+     *
+     * @param s the string
+     * @param treatEmptyStringsAsNull whether or not to treat empty strings as
+     *            NULL
+     * @return the value
+     */
+    public static Value get(String s, boolean treatEmptyStringsAsNull) {
+        if (s.isEmpty()) {
+            return treatEmptyStringsAsNull ? ValueNull.INSTANCE : EMPTY;
+        }
+        ValueString obj = new ValueString(StringUtils.cache(s));
+        if (s.length() > SysProperties.OBJECT_CACHE_MAX_PER_ELEMENT_SIZE) {
+            return obj;
+        }
+        return Value.cache(obj);
         // this saves memory, but is really slow
         // return new ValueString(s.intern());
     }

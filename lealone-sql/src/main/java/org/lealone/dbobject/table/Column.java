@@ -431,9 +431,9 @@ public class Column {
                 update = true;
             }
             if (update) {
-                sequence.setStartValue(now + inc);
+                sequence.modify(now + inc, null, null, null);
                 session.setLastIdentity(ValueLong.get(now));
-                sequence.flush(session);
+                sequence.flush(session, 0);
             }
         }
     }
@@ -467,10 +467,10 @@ public class Column {
                 break;
             }
         }
-        Sequence seq = session.createSequence(schema, id, sequenceName, true);
-        seq.setStartValue(start);
-        seq.setIncrement(increment);
-        if (!temporary) {
+        Sequence seq = new Sequence(schema, id, sequenceName, start, increment);
+        if (temporary) {
+            seq.setTemporary(true);
+        } else {
             session.getDatabase().addSchemaObject(session, seq);
         }
         setAutoIncrement(false, 0, 0);
@@ -645,6 +645,9 @@ public class Column {
      * @param expr the (additional) constraint
      */
     public void addCheckConstraint(Session session, Expression expr) {
+        if (expr == null) {
+            return;
+        }
         resolver = new SingleColumnResolver(this);
         synchronized (this) {
             String oldName = name;
@@ -666,6 +669,14 @@ public class Column {
             checkConstraint = new ConditionAndOr(ConditionAndOr.AND, checkConstraint, expr);
         }
         checkConstraintSQL = getCheckConstraintSQL(session, name);
+    }
+
+    /**
+     * Remove the check constraint if there is one.
+     */
+    public void removeCheckConstraint() {
+        checkConstraint = null;
+        checkConstraintSQL = null;
     }
 
     /**

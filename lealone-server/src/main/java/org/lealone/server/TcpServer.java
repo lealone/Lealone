@@ -25,7 +25,6 @@ import org.lealone.api.ErrorCode;
 import org.lealone.engine.Constants;
 import org.lealone.jdbc.Driver;
 import org.lealone.message.DbException;
-import org.lealone.message.TraceSystem;
 import org.lealone.util.JdbcUtils;
 import org.lealone.util.NetUtils;
 import org.lealone.util.New;
@@ -139,7 +138,7 @@ public class TcpServer implements Server {
             managementDbAdd.setString(3, user);
             managementDbAdd.execute();
         } catch (SQLException e) {
-            TraceSystem.traceThrowable(e);
+            DbException.traceThrowable(e);
         }
     }
 
@@ -153,7 +152,7 @@ public class TcpServer implements Server {
             managementDbRemove.setInt(1, id);
             managementDbRemove.execute();
         } catch (SQLException e) {
-            TraceSystem.traceThrowable(e);
+            DbException.traceThrowable(e);
         }
     }
 
@@ -162,7 +161,7 @@ public class TcpServer implements Server {
             try {
                 managementDb.close();
             } catch (SQLException e) {
-                TraceSystem.traceThrowable(e);
+                DbException.traceThrowable(e);
             }
             managementDb = null;
         }
@@ -271,7 +270,7 @@ public class TcpServer implements Server {
             serverSocket = NetUtils.closeSilently(serverSocket);
         } catch (Exception e) {
             if (!stop) {
-                TraceSystem.traceThrowable(e);
+                DbException.traceThrowable(e);
             }
         }
         stopManagementDb();
@@ -311,7 +310,7 @@ public class TcpServer implements Server {
                 try {
                     serverSocket.close();
                 } catch (IOException e) {
-                    TraceSystem.traceThrowable(e);
+                    DbException.traceThrowable(e);
                 } catch (NullPointerException e) {
                     // ignore
                 }
@@ -321,7 +320,7 @@ public class TcpServer implements Server {
                 try {
                     listenerThread.join(1000);
                 } catch (InterruptedException e) {
-                    TraceSystem.traceThrowable(e);
+                    DbException.traceThrowable(e);
                 }
             }
         }
@@ -332,7 +331,7 @@ public class TcpServer implements Server {
                 try {
                     c.getThread().join(100);
                 } catch (Exception e) {
-                    TraceSystem.traceThrowable(e);
+                    DbException.traceThrowable(e);
                 }
             }
         }
@@ -535,7 +534,7 @@ public class TcpServer implements Server {
         try {
             listen();
         } catch (Exception e) {
-            TraceSystem.traceThrowable(e);
+            DbException.traceThrowable(e);
         }
     }
 }

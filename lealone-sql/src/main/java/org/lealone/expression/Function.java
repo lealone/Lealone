@@ -380,7 +380,7 @@ public class Function extends Expression implements FunctionCall {
     }
 
     private static void addFunction(String name, int type, int parameterCount, int dataType,
-            boolean nullIfParameterIsNull, boolean deterministic, boolean fast) {
+            boolean nullIfParameterIsNull, boolean deterministic, boolean bufferResultSetToLocalTemp) {
         FunctionInfo info = new FunctionInfo();
         info.name = name;
         info.type = type;
@@ -388,7 +388,7 @@ public class Function extends Expression implements FunctionCall {
         info.dataType = dataType;
         info.nullIfParameterIsNull = nullIfParameterIsNull;
         info.deterministic = deterministic;
-        info.fast = fast;
+        info.bufferResultSetToLocalTemp = bufferResultSetToLocalTemp;
         FUNCTIONS.put(name, info);
     }
 
@@ -2131,11 +2131,6 @@ public class Function extends Expression implements FunctionCall {
     }
 
     @Override
-    public int getParameterCount() {
-        return args.length;
-    }
-
-    @Override
     public ValueResultSet getValueForColumnList(Session session, Expression[] argList) {
         switch (info.type) {
         case CSVREAD: {
@@ -2240,8 +2235,8 @@ public class Function extends Expression implements FunctionCall {
     }
 
     @Override
-    public boolean isFast() {
-        return info.fast;
+    public boolean isBufferResultSetToLocalTemp() {
+        return info.bufferResultSetToLocalTemp;
     }
 
 }

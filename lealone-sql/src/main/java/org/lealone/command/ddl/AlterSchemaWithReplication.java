@@ -41,9 +41,9 @@ public class AlterSchemaWithReplication extends DefineCommand {
     public int update() {
         session.commit(true);
         Database db = session.getDatabase();
-        session.getUser().checkAdmin();
+        session.getUser().checkSchemaAdmin();
         schema.setReplicationProperties(replicationProperties);
-        db.update(session, schema);
+        db.updateMeta(session, schema);
         return 0;
     }
 

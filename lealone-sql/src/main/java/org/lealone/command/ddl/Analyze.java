@@ -1,10 +1,11 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.command.ddl;
+
+import java.util.ArrayList;
 
 import org.lealone.command.CommandInterface;
 import org.lealone.command.Prepared;
@@ -13,9 +14,12 @@ import org.lealone.dbobject.table.Column;
 import org.lealone.dbobject.table.Table;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
+import org.lealone.expression.Parameter;
 import org.lealone.result.ResultInterface;
 import org.lealone.util.StatementBuilder;
 import org.lealone.value.Value;
+import org.lealone.value.ValueInt;
+import org.lealone.value.ValueNull;
 
 /**
  * This class represents the statement
@@ -77,43 +81,58 @@ public class Analyze extends DefineCommand {
             // if the connection is closed and there is something to undo
             return;
         }
+        Column[] columns = table.getColumns();
+        if (columns.length == 0) {
+            return;
+        }
         Database db = session.getDatabase();
         StatementBuilder buff = new StatementBuilder("SELECT ");
-        Column[] columns = table.getColumns();
         for (Column col : columns) {
             buff.appendExceptFirst(", ");
             int type = col.getType();
             if (type == Value.BLOB || type == Value.CLOB) {
                 // can not index LOB columns, so calculating
                 // the selectivity is not required
-                buff.append("100");
+                buff.append("MAX(NULL)");
             } else {
                 buff.append("SELECTIVITY(").append(col.getSQL()).append(')');
             }
         }
         buff.append(" FROM ").append(table.getSQL());
         if (sample > 0) {
-            buff.append(" LIMIT 1 SAMPLE_SIZE ").append(sample);
+            buff.append(" LIMIT ? SAMPLE_SIZE ? ");
         }
         String sql = buff.toString();
         Prepared command = session.prepare(sql);
+        if (sample > 0) {
+            ArrayList<Parameter> params = command.getParameters();
+            params.get(0).setValue(ValueInt.get(1));
+            params.get(1).setValue(ValueInt.get(sample));
+        }
         ResultInterface result = command.query(0);
         result.next();
         for (int j = 0; j < columns.length; j++) {
-            int selectivity = result.currentRow()[j].getInt();
-            columns[j].setSelectivity(selectivity);
+            Value v = result.currentRow()[j];
+            if (v != ValueNull.INSTANCE) {
+                int selectivity = v.getInt();
+                columns[j].setSelectivity(selectivity);
+            }
         }
         if (manual) {
-            db.update(session, table);
+            db.updateMeta(session, table);
         } else {
-            Session s = db.getSystemSession();
-            if (s != session) {
+            Session sysSession = db.getSystemSession();
+            if (sysSession != session) {
                 // if the current session is the system session
                 // (which is the case if we are within a trigger)
                 // then we can't update the statistics because
                 // that would unlock all locked objects
-                db.update(s, table);
-                s.commit(true);
+                synchronized (sysSession) {
+                    synchronized (db) {
+                        db.updateMeta(sysSession, table);
+                        sysSession.commit(true);
+                    }
+                }
             }
         }
     }

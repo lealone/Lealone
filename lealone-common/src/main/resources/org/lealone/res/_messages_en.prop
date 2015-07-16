@@ -15,6 +15,7 @@
 23506=Referential integrity constraint violation: {0}
 23507=No default value is set for column {0}
 23513=Check constraint violation: {0}
+23514=Check constraint invalid: {0}
 28000=Wrong user name or password
 40001=Deadlock detected. The current transaction was rolled back. Details: {0}
 42000=Syntax error in SQL statement {0}
@@ -32,9 +33,12 @@
 90002=Method is only allowed for a query. Use execute or executeUpdate instead of executeQuery
 90003=Hexadecimal string with odd number of characters: {0}
 90004=Hexadecimal string contains non-hex character: {0}
-90005=Trigger {0}, the combination of SELECT and FOR EACH ROW is not supported
+90006=Sequence {0} has run out of numbers
 90007=The object is already closed
 90008=Invalid value {0} for parameter {1}
+90009=Unable to create or alter sequence {0} because of invalid attributes (start value {1}, min value {2}, max value {3}, increment {4})
+90010=Invalid TO_CHAR format {0}
+90011=A file path that is implicitly relative to the current working directory is not allowed in the database URL {0}. Use an absolute path, ~/name, ./name, or the baseDir setting instead.
 90012=Parameter {0} is not set
 90013=Database {0} not found
 90014=Error parsing {0}
@@ -44,6 +48,7 @@
 90018=The connection was not closed by the application and is garbage collected
 90019=Cannot drop the current user
 90020=Database may be already in use: {0}. Possible solutions: close all other connection(s); use the server mode
+90021=This combination of database settings is not supported: {0}
 90022=Function {0} not found
 90023=Column {0} must not be nullable
 90024=Error while renaming file {0} to {1}
@@ -61,6 +66,7 @@
 90036=Sequence {0} not found
 90037=View {0} not found
 90038=View {0} already exists
+90039=This CLOB or BLOB reference timed out: {0}
 90040=Admin rights are required for this operation
 90041=Trigger {0} already exists
 90042=Trigger {0} not found
@@ -104,14 +110,13 @@
 90082=Sequence {0} belongs to a table
 90083=Column may be referenced by {0}
 90084=Cannot drop last column {0}
-90085=Index {0} belongs to a constraint
+90085=Index {0} belongs to constraint {1}
 90086=Class {0} not found
 90087=Method {0} not found
 90088=Unknown mode {0}
 90089=Collation cannot be changed because there is a data table: {0}
 90090=Schema {0} cannot be dropped
 90091=Role {0} cannot be dropped
-90092=This Java version is not supported (Java 1.4 is required)
 90093=Clustering error - database currently runs in standalone mode
 90094=Clustering error - database currently runs in cluster mode, server list: {0}
 90095=String format error: {0}
@@ -119,7 +124,6 @@
 90097=The database is read only
 90098=The database has been closed
 90099=Error setting database event listener {0}, cause: {1}
-90100=No disk space available
 90101=Wrong XID format: {0}
 90102=Unsupported compression options: {0}
 90103=Unsupported compression algorithm: {0}
@@ -159,6 +163,8 @@
 90138=Invalid database name: {0}
 90139=The public static Java method was not found: {0}
 90140=The result set is readonly. You may need to use conn.createStatement(.., ResultSet.CONCUR_UPDATABLE).
+90141=Serializer cannot be changed because there is a data table: {0}
+90142=Step size must not be zero
 HY000=General error: {0}
 HY004=Unknown data type: {0}
 HYC00=Feature not supported: {0}

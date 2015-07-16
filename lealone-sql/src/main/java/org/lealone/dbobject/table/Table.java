@@ -359,7 +359,7 @@ public abstract class Table extends SchemaObjectBase {
         }
         ArrayList<Right> rights = database.getAllRights();
         for (Right right : rights) {
-            if (right.getGrantedTable() == this) {
+            if (right.getGrantedObject() == this) {
                 children.add(right);
             }
         }
@@ -485,7 +485,7 @@ public abstract class Table extends SchemaObjectBase {
             database.removeSchemaObject(session, constraint);
         }
         for (Right right : database.getAllRights()) {
-            if (right.getGrantedTable() == this) {
+            if (right.getGrantedObject() == this) {
                 database.removeDatabaseObject(session, right);
             }
         }
@@ -1004,7 +1004,7 @@ public abstract class Table extends SchemaObjectBase {
             for (Constraint cons : constraints) {
                 if (cons.usesIndex(index)) {
                     cons.setIndexOwner(index);
-                    database.update(session, cons);
+                    database.updateMeta(session, cons);
                     stillNeeded = true;
                 }
             }
@@ -1109,7 +1109,7 @@ public abstract class Table extends SchemaObjectBase {
         return false;
     }
 
-    public boolean supportsAlterColumnWithCopyData() {
+    public boolean supportsAlterColumnWithCopyData() { // TODO
         return true;
     }
 

@@ -94,7 +94,7 @@ public class AlterUser extends DefineCommand {
         default:
             DbException.throwInternalError("type=" + type);
         }
-        db.update(session, user);
+        db.updateMeta(session, user);
         return 0;
     }
 

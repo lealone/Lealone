@@ -51,6 +51,7 @@ public class AlterTableAddConstraint extends SchemaCommand {
     private boolean checkExisting;
     private boolean primaryKeyHash;
     private final boolean ifNotExists;
+    private final ArrayList<Index> createdIndexes = New.arrayList();
 
     public AlterTableAddConstraint(Session session, Schema schema, boolean ifNotExists) {
         super(session, schema);
@@ -68,6 +69,11 @@ public class AlterTableAddConstraint extends SchemaCommand {
     public int update() {
         try {
             return tryUpdate();
+        } catch (DbException e) {
+            for (Index index : createdIndexes) {
+                session.getDatabase().removeSchemaObject(session, index);
+            }
+            throw e;
         } finally {
             getSchema().freeUniqueName(constraintName);
         }
@@ -177,15 +183,15 @@ public class AlterTableAddConstraint extends SchemaCommand {
             Table refTable = refSchema.getTableOrView(session, refTableName);
             session.getUser().checkRight(refTable, Right.ALL);
             if (!refTable.canReference()) {
-                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, "Reference " + refTable.getSQL());
+                throw DbException.getUnsupportedException("Reference " + refTable.getSQL());
             }
             boolean isOwner = false;
             IndexColumn.mapColumns(indexColumns, table);
-            if (index != null && canUseIndex(index, table, indexColumns)) {
+            if (index != null && canUseIndex(index, table, indexColumns, false)) {
                 isOwner = true;
                 index.getIndexType().setBelongsToConstraint(true);
             } else {
-                index = getIndex(table, indexColumns);
+                index = getIndex(table, indexColumns, true);
                 if (index == null) {
                     index = createIndex(table, indexColumns, false);
                     isOwner = true;
@@ -201,14 +207,15 @@ public class AlterTableAddConstraint extends SchemaCommand {
                 throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
             }
             boolean isRefOwner = false;
-            if (refIndex != null && refIndex.getTable() == refTable && canUseIndex(refIndex, refTable, refIndexColumns)) {
+            if (refIndex != null && refIndex.getTable() == refTable
+                    && canUseIndex(refIndex, refTable, refIndexColumns, false)) {
                 isRefOwner = true;
                 refIndex.getIndexType().setBelongsToConstraint(true);
             } else {
                 refIndex = null;
             }
             if (refIndex == null) {
-                refIndex = getIndex(refTable, refIndexColumns);
+                refIndex = getIndex(refTable, refIndexColumns, false);
                 if (refIndex == null) {
                     refIndex = createIndex(refTable, refIndexColumns, true);
                     isRefOwner = true;
@@ -259,7 +266,9 @@ public class AlterTableAddConstraint extends SchemaCommand {
         String prefix = constraintName == null ? "CONSTRAINT" : constraintName;
         String indexName = t.getSchema().getUniqueIndexName(session, t, prefix + "_INDEX_");
         try {
-            return t.addIndex(session, indexName, indexId, cols, indexType, true, null);
+            Index index = t.addIndex(session, indexName, indexId, cols, indexType, true, null);
+            createdIndexes.add(index);
+            return index;
         } finally {
             getSchema().freeUniqueName(indexName);
         }
@@ -282,9 +291,9 @@ public class AlterTableAddConstraint extends SchemaCommand {
         return null;
     }
 
-    private static Index getIndex(Table t, IndexColumn[] cols) {
+    private static Index getIndex(Table t, IndexColumn[] cols, boolean moreColumnOk) {
         for (Index idx : t.getIndexes()) {
-            if (canUseIndex(idx, t, cols)) {
+            if (canUseIndex(idx, t, cols, moreColumnOk)) {
                 return idx;
             }
         }
@@ -313,23 +322,37 @@ public class AlterTableAddConstraint extends SchemaCommand {
         return true;
     }
 
-    private static boolean canUseIndex(Index existingIndex, Table table, IndexColumn[] cols) {
+    private static boolean canUseIndex(Index existingIndex, Table table, IndexColumn[] cols, boolean moreColumnsOk) {
         if (existingIndex.getTable() != table || existingIndex.getCreateSQL() == null) {
             // can't use the scan index or index of another table
             return false;
         }
         Column[] indexCols = existingIndex.getColumns();
-        if (indexCols.length < cols.length) {
-            return false;
-        }
-        for (IndexColumn col : cols) {
-            // all columns of the list must be part of the index,
-            // but not all columns of the index need to be part of the list
-            // holes are not allowed (index=a,b,c & list=a,b is ok; but list=a,c
-            // is not)
-            int idx = existingIndex.getColumnIndex(col.column);
-            if (idx < 0 || idx >= cols.length) {
+
+        if (moreColumnsOk) {
+            if (indexCols.length < cols.length) {
                 return false;
+            }
+            for (IndexColumn col : cols) {
+                // all columns of the list must be part of the index,
+                // but not all columns of the index need to be part of the list
+                // holes are not allowed (index=a,b,c & list=a,b is ok;
+                // but list=a,c is not)
+                int idx = existingIndex.getColumnIndex(col.column);
+                if (idx < 0 || idx >= cols.length) {
+                    return false;
+                }
+            }
+        } else {
+            if (indexCols.length != cols.length) {
+                return false;
+            }
+            for (IndexColumn col : cols) {
+                // all columns of the list must be part of the index
+                int idx = existingIndex.getColumnIndex(col.column);
+                if (idx < 0) {
+                    return false;
+                }
             }
         }
         return true;

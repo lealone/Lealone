@@ -37,10 +37,10 @@ public class FunctionIndex extends IndexBase {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        if (functionTable.isFast()) {
-            return new FunctionCursorResultSet(session, functionTable.getResultSet(session));
+        if (functionTable.isBufferResultSetToLocalTemp()) {
+            return new FunctionCursor(functionTable.getResult(session));
         }
-        return new FunctionCursor(functionTable.getResult(session));
+        return new FunctionCursorResultSet(session, functionTable.getResultSet(session));
     }
 
     @Override
@@ -168,7 +168,7 @@ public class FunctionIndex extends IndexBase {
                     int columnCount = meta.getColumnCount();
                     values = new Value[columnCount];
                     for (int i = 0; i < columnCount; i++) {
-                        int type = DataType.convertSQLTypeToValueType(meta.getColumnType(i + 1));
+                        int type = DataType.getValueTypeFromResultSet(meta, i + 1);
                         values[i] = DataType.readValue(session, result, i + 1, type);
                     }
                 } else {

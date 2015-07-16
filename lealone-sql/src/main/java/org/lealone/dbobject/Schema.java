@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.dbobject;
@@ -155,10 +154,26 @@ public class Schema extends DbObjectBase {
             Constraint obj = (Constraint) constraints.values().toArray()[0];
             database.removeSchemaObject(session, obj);
         }
-        while (tablesAndViews != null && tablesAndViews.size() > 0) {
-            Table obj = (Table) tablesAndViews.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
+        // There can be dependencies between tables e.g. using computed columns,
+        // so we might need to loop over them multiple times.
+        boolean runLoopAgain = false;
+        do {
+            runLoopAgain = false;
+            if (tablesAndViews != null) {
+                // Loop over a copy because the map is modified underneath us.
+                for (Table obj : New.arrayList(tablesAndViews.values())) {
+                    // Check for null because multiple tables might be deleted
+                    // in one go underneath us.
+                    if (obj.getName() != null) {
+                        if (database.getDependentTable(obj, obj) == null) {
+                            database.removeSchemaObject(session, obj);
+                        } else {
+                            runLoopAgain = true;
+                        }
+                    }
+                }
+            }
+        } while (runLoopAgain);
         while (indexes != null && indexes.size() > 0) {
             Index obj = (Index) indexes.values().toArray()[0];
             database.removeSchemaObject(session, obj);

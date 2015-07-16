@@ -22,7 +22,6 @@ import java.util.Set;
 
 import org.lealone.engine.Constants;
 import org.lealone.message.DbException;
-import org.lealone.message.TraceSystem;
 import org.lealone.util.NetUtils;
 import org.lealone.util.New;
 
@@ -527,7 +526,7 @@ public class PgServer implements Server {
         try {
             listen();
         } catch (Exception e) {
-            TraceSystem.traceThrowable(e);
+            DbException.traceThrowable(e);
         }
     }
 }

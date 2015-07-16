@@ -98,7 +98,7 @@ public class SysProperties {
      * System property <code>check</code> (default: true).<br />
      * Assertions in the database engine.
      */
-    //## CHECK ##
+    // ## CHECK ##
     public static final boolean CHECK = getProperty("check", true);
     /*/
     public static final boolean CHECK = false;
@@ -108,7 +108,7 @@ public class SysProperties {
      * System property <code>check2</code> (default: true).<br />
      * Additional assertions in the database engine.
      */
-    //## CHECK ##
+    // ## CHECK ##
     public static final boolean CHECK2 = getProperty("check2", false);
     /*/
     public static final boolean CHECK2 = false;
@@ -328,8 +328,8 @@ public class SysProperties {
      * If disabled, relative paths in database URLs need to be written as
      * jdbc:h2:./test instead of jdbc:h2:test.
      */
-    //    public static final boolean IMPLICIT_RELATIVE_PATH = getProperty("implicit.relative.path",
-    //            Constants.VERSION_MINOR >= 4 ? false : true);
+    // public static final boolean IMPLICIT_RELATIVE_PATH = getProperty("implicit.relative.path",
+    // Constants.VERSION_MINOR >= 4 ? false : true);
     /**
      * System property <code>use.thread.context.classloader</code>
      * (default: false).<br />
@@ -376,6 +376,13 @@ public class SysProperties {
      * correctly.
      */
     public static final String JAVA_OBJECT_SERIALIZER = getProperty("java.object.serializer", null);
+
+    /**
+     * System property <code>old.style.outer.join</code>
+     * (default: false).<br />
+     * Limited support for the old-style Oracle outer join with "(+)".
+     */
+    public static final boolean OLD_STYLE_OUTER_JOIN = Utils.getProperty("old.style.outer.join", false);
 
     private static final String BASE_DIR = "base.dir";
 

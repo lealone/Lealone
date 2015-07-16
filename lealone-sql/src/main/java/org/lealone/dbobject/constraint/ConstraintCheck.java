@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.dbobject.constraint;
@@ -94,8 +93,14 @@ public class ConstraintCheck extends Constraint {
             return;
         }
         filter.set(newRow);
+        Boolean b;
+        try {
+            b = expr.getValue(session).getBoolean();
+        } catch (DbException ex) {
+            throw DbException.get(ErrorCode.CHECK_CONSTRAINT_INVALID, ex, getShortDescription());
+        }
         // Both TRUE and NULL are ok
-        if (Boolean.FALSE.equals(expr.getValue(session).getBoolean())) {
+        if (Boolean.FALSE.equals(b)) {
             throw DbException.get(ErrorCode.CHECK_CONSTRAINT_VIOLATED_1, getShortDescription());
         }
     }

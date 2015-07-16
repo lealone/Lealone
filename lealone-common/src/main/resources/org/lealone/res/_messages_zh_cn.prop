@@ -15,6 +15,7 @@
 23506=违反引用完整性约束: {0}
 23507=没有为字段{0}设置缺省值
 23513=违反检查约束: {0}
+23514=#Check constraint invalid: {0}
 28000=用户名或口令错误
 40001=检测到死锁.当前事务已回滚.详情: {0}
 42000=SQL语法错误 {0}
@@ -32,9 +33,12 @@
 90002=只允许在查询内使用的方法. 使用 execute 或 executeUpdate 代替 executeQuery
 90003=十六进制字符串包含奇数个数字字符: {0}
 90004=十六进制字符串包含非十六进制字符: {0}
-90005=触发器 {0}, 不支持SELECT和FOR EACH ROW的组合
+90006=#Sequence {0} has run out of numbers
 90007=对象已关闭
 90008=被发现非法的数值 {0} 在参数  {1}
+90009=#Unable to create or alter sequence {0} because of invalid attributes (start value {1}, min value {2}, max value {3}, increment {4})
+90010=#Invalid TO_CHAR format {0}
+90011=#A file path that is implicitly relative to the current working directory is not allowed in the database URL {0}. Use an absolute path, ~/name, ./name, or the baseDir setting instead.
 90012=参数 {0} 的值还没有设置
 90013=找不到数据库 {0}
 90014=解析 {0} 时发生错误
@@ -44,6 +48,7 @@
 90018=连接未被关闭但已被垃圾回收器回收
 90019=不能移除当前用户
 90020=数据可可能当前已正被使用: {0}. 解决方案有：关闭所有其他连接; 使用服务器模式(server mode)
+90021=#This combination of database settings is not supported: {0}
 90022=未找到函数 {0}
 90023=字段 {0} 不能为空
 90024=将文件 {0} 命名为 {1} 发生错误
@@ -61,6 +66,7 @@
 90036=找不到序列 {0}
 90037=视图 {0} 已存在
 90038=找不到 {0} 视图
+90039=#This CLOB or BLOB reference timed out: {0}
 90040=此操作需要管理员权限
 90041=触发器  {0}已存在
 90042=找不到触发器 {0}
@@ -104,14 +110,13 @@
 90082=序列 {0} 属于一个表
 90083=字段可能已被 {0} 引用
 90084=不能移除最后一个字段 {0}
-90085=索引 {0} 属于一个约束
+90085=索引 {0} 属于一个约束 {1}
 90086=找不到类 {0}
 90087=找不到方法 {0}
 90088=未知模式 {0}
 90089=不能变更整理(Collation),因为存在一个数据表: {0}
 90090=不能删除方案(schema) {0}
 90091=不能删除角色 {0}
-90092=不支持这个 Java 版本 (至少需要Java 1.4 )
 90093=集群错误 - 数据库现在运行在独立运行模式
 90094=集群错误 - 数据库现在运行在集群模式, 服务器列表: {0}
 90095=字符串格式错误: {0}
@@ -119,7 +124,6 @@
 90097=数据库为只读
 90098=数据库已关闭
 90099=设立数据库事件监听器错误 {0}, 原因: {1}
-90100=磁盘没有有效空间
 90101=错误的 XID 格式: {0}
 90102=不支持的压缩选项: {0}
 90103=不支持的压缩算法: {0}
@@ -159,6 +163,8 @@
 90138=无效数据库名称: {0}
 90139=找不到公用Java静态方法: {0}
 90140=结果集是只读的. 你可以使用 conn.createStatement(.., ResultSet.CONCUR_UPDATABLE).
+90141=#Serializer cannot be changed because there is a data table: {0}
+90142=#Step size must not be zero
 HY000=常规错误: {0}
 HY004=位置数据类型: {0}
 HYC00=不支持的特性: {0}

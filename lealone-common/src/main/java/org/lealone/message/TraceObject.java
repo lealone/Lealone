@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.message;
@@ -53,11 +52,6 @@ public class TraceObject {
     protected static final int SAVEPOINT = 6;
 
     /**
-     * The trace type id  for sql exceptions.
-     */
-    protected static final int SQL_EXCEPTION = 7;
-
-    /**
      * The trace type id  for statements.
      */
     protected static final int STATEMENT = 8;
@@ -86,11 +80,6 @@ public class TraceObject {
      * The trace type id  for XA data sources.
      */
     protected static final int XA_DATA_SOURCE = 13;
-
-    /**
-     * The trace type id  for XA resources.
-     */
-    protected static final int XA_RESOURCE = 14;
 
     /**
      * The trace type id  for transaction ids.
@@ -126,15 +115,6 @@ public class TraceObject {
         this.trace = trace;
         this.traceType = type;
         this.id = id;
-    }
-
-    /**
-     * Get the trace object.
-     *
-     * @return the trace object
-     */
-    protected Trace getTrace() {
-        return trace;
     }
 
     /**
@@ -318,7 +298,7 @@ public class TraceObject {
         if (x == null) {
             return "null";
         }
-        return "org.lealone.util.StringUtils.convertHexToBytes(\"" + StringUtils.convertBytesToHex(x) + "\")";
+        return "org.h2.util.StringUtils.convertHexToBytes(\"" + StringUtils.convertBytesToHex(x) + "\")";
     }
 
     /**
@@ -367,7 +347,7 @@ public class TraceObject {
     protected SQLException logAndConvert(Exception ex) {
         SQLException e = DbException.toSQLException(ex);
         if (trace == null) {
-            TraceSystem.traceThrowable(e);
+            DbException.traceThrowable(e);
         } else {
             int errorCode = e.getErrorCode();
             if (errorCode >= 23000 && errorCode < 24000) {
@@ -390,7 +370,7 @@ public class TraceObject {
         try {
             throw DbException.getUnsupportedException(message);
         } catch (Exception e) {
-            throw logAndConvert(e);
+            return logAndConvert(e);
         }
     }
 

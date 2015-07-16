@@ -466,7 +466,7 @@ public class Database implements DataHandler {
                     traceSystem.close();
                 }
             } catch (DbException e) {
-                TraceSystem.traceThrowable(e);
+                DbException.traceThrowable(e);
             }
         }
         getDatabaseEngine().closeDatabase(databaseName);
@@ -488,13 +488,13 @@ public class Database implements DataHandler {
     }
 
     /**
-     * Get the trace object for the given module.
+     * Get the trace object for the given module id.
      *
-     * @param module the module name
+     * @param moduleId the module id
      * @return the trace object
      */
-    public Trace getTrace(String module) {
-        return traceSystem.getTrace(module);
+    public Trace getTrace(int moduleId) {
+        return traceSystem.getTrace(moduleId);
     }
 
     @Override
@@ -602,6 +602,10 @@ public class Database implements DataHandler {
         boolean wasLocked = meta.isLockedExclusivelyBy(session);
         meta.lock(session, true, true);
         return wasLocked;
+    }
+
+    public void unlockMeta(Session session) {
+        meta.unlock(session);
     }
 
     /**
@@ -1159,7 +1163,7 @@ public class Database implements DataHandler {
      * @param session the session
      * @param obj the database object
      */
-    public synchronized void update(Session session, DbObject obj) {
+    public synchronized void updateMeta(Session session, DbObject obj) {
         lockMeta(session);
         int id = obj.getId();
         removeMeta(session, id);
@@ -1176,21 +1180,21 @@ public class Database implements DataHandler {
     public synchronized void renameSchemaObject(Session session, SchemaObject obj, String newName) {
         checkWritingAllowed();
         obj.getSchema().rename(obj, newName);
-        updateWithChildren(session, obj);
+        updateMetaAndFirstLevelChildren(session, obj);
     }
 
-    private synchronized void updateWithChildren(Session session, DbObject obj) {
+    private synchronized void updateMetaAndFirstLevelChildren(Session session, DbObject obj) {
         ArrayList<DbObject> list = obj.getChildren();
         Comment comment = findComment(obj);
         if (comment != null) {
             DbException.throwInternalError();
         }
-        update(session, obj);
+        updateMeta(session, obj);
         // remember that this scans only one level deep!
         if (list != null) {
             for (DbObject o : list) {
                 if (o.getCreateSQL() != null) {
-                    update(session, o);
+                    updateMeta(session, o);
                 }
             }
         }
@@ -1222,7 +1226,7 @@ public class Database implements DataHandler {
         map.remove(obj.getName());
         obj.rename(newName);
         map.put(newName, obj);
-        updateWithChildren(session, obj);
+        updateMetaAndFirstLevelChildren(session, obj);
     }
 
     /**
@@ -1828,6 +1832,10 @@ public class Database implements DataHandler {
      */
     public boolean isSysTableLocked() {
         return meta == null || meta.isLockedExclusively();
+    }
+
+    public boolean isSysTableLockedBy(Session session) {
+        return meta == null || meta.isLockedExclusivelyBy(session);
     }
 
     public void isSysTableLockedThenUnlock(Session session) {

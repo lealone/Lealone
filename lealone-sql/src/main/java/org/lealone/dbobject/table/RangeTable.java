@@ -8,6 +8,7 @@ package org.lealone.dbobject.table;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.dbobject.Schema;
 import org.lealone.dbobject.index.Index;
 import org.lealone.dbobject.index.IndexType;
@@ -29,7 +30,12 @@ public class RangeTable extends Table {
      */
     public static final String NAME = "SYSTEM_RANGE";
 
-    private Expression min, max;
+    /**
+     * The PostgreSQL alias for the range table.
+     */
+    public static final String ALIAS = "GENERATE_SERIES";
+
+    private Expression min, max, step;
     private boolean optimized;
 
     /**
@@ -48,6 +54,11 @@ public class RangeTable extends Table {
         setColumns(cols);
     }
 
+    public RangeTable(Schema schema, Expression min, Expression max, Expression step, boolean noColumns) {
+        this(schema, min, max, noColumns);
+        this.step = step;
+    }
+
     @Override
     public String getDropSQL() {
         return null;
@@ -60,11 +71,16 @@ public class RangeTable extends Table {
 
     @Override
     public String getSQL() {
-        return NAME + "(" + min.getSQL() + ", " + max.getSQL() + ")";
+        String sql = NAME + "(" + min.getSQL() + ", " + max.getSQL();
+        if (step != null) {
+            sql += ", " + step.getSQL();
+        }
+        return sql + ")";
     }
 
     @Override
     public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+        // nothing to do
         return false;
     }
 
@@ -131,6 +147,9 @@ public class RangeTable extends Table {
 
     @Override
     public Index getScanIndex(Session session) {
+        if (getStep(session) == 0) {
+            throw DbException.get(ErrorCode.STEP_SIZE_MUST_NOT_BE_ZERO);
+        }
         return new RangeIndex(this, IndexColumn.wrap(columns));
     }
 
@@ -156,10 +175,27 @@ public class RangeTable extends Table {
         return max.getValue(session).getLong();
     }
 
+    /**
+     * Get the increment.
+     *
+     * @param session the session
+     * @return the increment (1 by default)
+     */
+    public long getStep(Session session) {
+        optimize(session);
+        if (step == null) {
+            return 1;
+        }
+        return step.getValue(session).getLong();
+    }
+
     private void optimize(Session s) {
         if (!optimized) {
             min = min.optimize(s);
             max = max.optimize(s);
+            if (step != null) {
+                step = step.optimize(s);
+            }
             optimized = true;
         }
     }

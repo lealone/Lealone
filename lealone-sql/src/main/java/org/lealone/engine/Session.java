@@ -25,7 +25,6 @@ import org.lealone.command.router.LocalRouter;
 import org.lealone.command.router.Router;
 import org.lealone.dbobject.Procedure;
 import org.lealone.dbobject.Schema;
-import org.lealone.dbobject.Sequence;
 import org.lealone.dbobject.Setting;
 import org.lealone.dbobject.User;
 import org.lealone.dbobject.constraint.Constraint;
@@ -728,11 +727,11 @@ public class Session extends SessionWithState implements Transaction.Validator {
         if (trace != null && !closed) {
             return trace;
         }
-        String traceModuleName = Trace.JDBC + "[" + id + "]";
+        String traceModuleName = "jdbc[" + id + "]";
         if (closed) {
             return new TraceSystem(null).getTrace(traceModuleName);
         }
-        trace = database.getTrace(traceModuleName);
+        trace = database.getTraceSystem().getTrace(traceModuleName);
         return trace;
     }
 
@@ -1216,10 +1215,6 @@ public class Session extends SessionWithState implements Transaction.Validator {
 
     public Insert createInsert() {
         return new Insert(this);
-    }
-
-    public Sequence createSequence(Schema schema, int id, String name, boolean belongsToTable) {
-        return new Sequence(schema, id, name, belongsToTable);
     }
 
     private boolean isRoot = true;

@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.expression;
@@ -21,13 +20,6 @@ public interface FunctionCall {
      * @return the name
      */
     String getName();
-
-    /**
-     * Get the number of parameters.
-     *
-     * @return the number of parameters
-     */
-    int getParameterCount();
 
     /**
      * Get an empty result set with the column names set.
@@ -68,17 +60,18 @@ public interface FunctionCall {
     String getSQL();
 
     /**
-     * Whether the function always returns the same result for the same parameters.
+     * Whether the function always returns the same result for the same
+     * parameters.
      *
      * @return true if it does
      */
     boolean isDeterministic();
 
     /**
-     * Whether the function is fast, meaning the result shouldn't be cached.
+     * Should the return value ResultSet be buffered in a local temporary file?
      *
-     * @return true if it is
+     * @return true if it should be.
      */
-    boolean isFast();
+    boolean isBufferResultSetToLocalTemp();
 
 }

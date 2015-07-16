@@ -65,12 +65,13 @@ public interface Trigger {
      * The row arrays contain all columns of the table, in the same order
      * as defined in the table.
      * </p>
+     * <p>
+     * The trigger itself may change the data in the newRow array.
+     * </p>
      *
      * @param conn a connection to the database
-     * @param oldRow the old row, or null if no old row is available (for
-     *            INSERT)
-     * @param newRow the new row, or null if no new row is available (for
-     *            DELETE)
+     * @param oldRow the old row, or null if no old row is available (for INSERT)
+     * @param newRow the new row, or null if no new row is available (for DELETE)
      * @throws SQLException if the operation must be undone
      */
     void fire(Connection conn, Object[] oldRow, Object[] newRow) throws SQLException;
@@ -79,15 +80,11 @@ public interface Trigger {
      * This method is called when the database is closed.
      * If the method throws an exception, it will be logged, but
      * closing the database will continue.
-     *
-     * @throws SQLException
      */
     void close() throws SQLException;
 
     /**
      * This method is called when the trigger is dropped.
-     *
-     * @throws SQLException
      */
     void remove() throws SQLException;
 

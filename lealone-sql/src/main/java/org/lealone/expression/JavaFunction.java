@@ -120,11 +120,6 @@ public class JavaFunction extends Expression implements FunctionCall {
     }
 
     @Override
-    public int getParameterCount() {
-        return javaMethod.getParameterCount();
-    }
-
-    @Override
     public ValueResultSet getValueForColumnList(Session session, Expression[] argList) {
         Value v = javaMethod.getValue(session, argList, true);
         return v == ValueNull.INSTANCE ? null : (ValueResultSet) v;
@@ -184,8 +179,8 @@ public class JavaFunction extends Expression implements FunctionCall {
     }
 
     @Override
-    public boolean isFast() {
-        return false;
+    public boolean isBufferResultSetToLocalTemp() {
+        return functionAlias.isBufferResultSetToLocalTemp();
     }
 
 }

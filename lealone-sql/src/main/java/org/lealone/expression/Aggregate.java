@@ -133,6 +133,8 @@ public class Aggregate extends Expression {
     private final boolean distinct;
 
     private Expression on;
+    private Expression groupConcatSeparator;
+    private ArrayList<SelectOrderBy> groupConcatOrderList;
     private Expression separator;
     private ArrayList<SelectOrderBy> orderList;
     private SortOrder sort;
@@ -214,6 +216,24 @@ public class Aggregate extends Expression {
      */
     public void setSeparator(Expression separator) {
         this.separator = separator;
+    }
+
+    /**
+     * Set the order for GROUP_CONCAT() aggregate.
+     *
+     * @param orderBy the order by list
+     */
+    public void setGroupConcatOrder(ArrayList<SelectOrderBy> orderBy) {
+        this.groupConcatOrderList = orderBy;
+    }
+
+    /**
+     * Set the separator for the GROUP_CONCAT() aggregate.
+     *
+     * @param separator the separator expression
+     */
+    public void setGroupConcatSeparator(Expression separator) {
+        this.groupConcatSeparator = separator;
     }
 
     private SortOrder initOrder(Session session) {

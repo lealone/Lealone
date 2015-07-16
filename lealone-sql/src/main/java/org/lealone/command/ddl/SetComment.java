@@ -100,7 +100,7 @@ public class SetComment extends DefineCommand {
         }
         if (column || objectType == DbObject.TABLE_OR_VIEW || objectType == DbObject.USER
                 || objectType == DbObject.INDEX || objectType == DbObject.CONSTRAINT) {
-            db.update(session, object);
+            db.updateMeta(session, object);
         } else {
             Comment comment = db.findComment(object);
             if (comment == null) {
@@ -117,7 +117,7 @@ public class SetComment extends DefineCommand {
                     db.removeDatabaseObject(session, comment);
                 } else {
                     comment.setCommentText(text);
-                    db.update(session, comment);
+                    db.updateMeta(session, comment);
                 }
             }
         }

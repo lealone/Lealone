@@ -1,11 +1,11 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.dbobject;
 
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
 
@@ -13,11 +13,14 @@ import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
 import org.lealone.command.Parser;
 import org.lealone.dbobject.table.Table;
+import org.lealone.engine.Constants;
 import org.lealone.engine.Session;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.result.Row;
+import org.lealone.util.SourceCompiler;
 import org.lealone.util.StatementBuilder;
+import org.lealone.util.StringUtils;
 import org.lealone.util.Utils;
 import org.lealone.value.DataType;
 import org.lealone.value.Value;
@@ -43,6 +46,7 @@ public class TriggerObject extends SchemaObjectBase {
     private boolean noWait;
     private Table table;
     private String triggerClassName;
+    private String triggerSource;
     private Trigger triggerCallback;
 
     public TriggerObject(Schema schema, int id, String name, Table table) {
@@ -64,29 +68,68 @@ public class TriggerObject extends SchemaObjectBase {
             return;
         }
         try {
-            Session session = database.getSystemSession();
-            Connection c2 = session.createConnection(false);
-            Object obj = Utils.loadUserClass(triggerClassName).newInstance();
+            Session sysSession = database.getSystemSession();
+            Connection c2 = sysSession.createConnection(false);
+            Object obj;
+            if (triggerClassName != null) {
+                obj = Utils.loadUserClass(triggerClassName).newInstance();
+            } else {
+                obj = loadFromSource();
+            }
             triggerCallback = (Trigger) obj;
             triggerCallback.init(c2, getSchema().getName(), getName(), table.getName(), before, typeMask);
         } catch (Throwable e) {
             // try again later
             triggerCallback = null;
-            throw DbException.get(ErrorCode.ERROR_CREATING_TRIGGER_OBJECT_3, e, getName(), triggerClassName,
-                    e.toString());
+            throw DbException.get(ErrorCode.ERROR_CREATING_TRIGGER_OBJECT_3, e, getName(),
+                    triggerClassName != null ? triggerClassName : "..source..", e.toString());
+        }
+    }
+
+    private Trigger loadFromSource() {
+        SourceCompiler compiler = database.getCompiler();
+        synchronized (compiler) {
+            String fullClassName = Constants.USER_PACKAGE + ".trigger." + getName();
+            compiler.setSource(fullClassName, triggerSource);
+            try {
+                Method m = compiler.getMethod(fullClassName);
+                if (m.getParameterTypes().length > 0) {
+                    throw new IllegalStateException("No parameters are allowed for a trigger");
+                }
+                return (Trigger) m.invoke(null);
+            } catch (DbException e) {
+                throw e;
+            } catch (Exception e) {
+                throw DbException.get(ErrorCode.SYNTAX_ERROR_1, e, triggerSource);
+            }
         }
     }
 
     /**
      * Set the trigger class name and load the class if possible.
      *
-     * @param session the session
      * @param triggerClassName the name of the trigger class
      * @param force whether exceptions (due to missing class or access rights)
      *            should be ignored
      */
     public void setTriggerClassName(String triggerClassName, boolean force) {
+        this.setTriggerAction(triggerClassName, null, force);
+    }
+
+    /**
+     * Set the trigger source code and compile it if possible.
+     *
+     * @param source the source code of a method returning a {@link Trigger}
+     * @param force whether exceptions (due to syntax error)
+     *            should be ignored
+     */
+    public void setTriggerSource(String source, boolean force) {
+        this.setTriggerAction(null, source, force);
+    }
+
+    private void setTriggerAction(String triggerClassName, String source, boolean force) {
         this.triggerClassName = triggerClassName;
+        this.triggerSource = source;
         try {
             load();
         } catch (DbException e) {
@@ -119,7 +162,8 @@ public class TriggerObject extends SchemaObjectBase {
         try {
             triggerCallback.fire(c2, null, null);
         } catch (Throwable e) {
-            throw DbException.get(ErrorCode.ERROR_EXECUTING_TRIGGER_3, e, getName(), triggerClassName, e.toString());
+            throw DbException.get(ErrorCode.ERROR_EXECUTING_TRIGGER_3, e, getName(),
+                    triggerClassName != null ? triggerClassName : "..source..", e.toString());
         } finally {
             session.setLastScopeIdentity(identity);
             if (type != Trigger.SELECT) {
@@ -281,7 +325,11 @@ public class TriggerObject extends SchemaObjectBase {
         } else {
             buff.append(" QUEUE ").append(queueSize);
         }
-        buff.append(" CALL ").append(Parser.quoteIdentifier(triggerClassName));
+        if (triggerClassName != null) {
+            buff.append(" CALL ").append(Parser.quoteIdentifier(triggerClassName));
+        } else {
+            buff.append(" AS ").append(StringUtils.quoteStringSQL(triggerSource));
+        }
         return buff.toString();
     }
 
@@ -333,6 +381,7 @@ public class TriggerObject extends SchemaObjectBase {
         }
         table = null;
         triggerClassName = null;
+        triggerSource = null;
         triggerCallback = null;
         invalidate();
     }
@@ -367,6 +416,10 @@ public class TriggerObject extends SchemaObjectBase {
      */
     public String getTriggerClassName() {
         return triggerClassName;
+    }
+
+    public String getTriggerSource() {
+        return triggerSource;
     }
 
     /**

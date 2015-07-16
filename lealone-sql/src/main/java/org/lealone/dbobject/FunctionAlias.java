@@ -52,6 +52,7 @@ public class FunctionAlias extends SchemaObjectBase {
     private String source;
     private JavaMethod[] javaMethods;
     private boolean deterministic;
+    private boolean bufferResultSetToLocalTemp = true;
 
     private FunctionAlias(Schema schema, int id, String name) {
         initSchemaObjectBase(schema, id, name, Trace.FUNCTION);
@@ -65,9 +66,11 @@ public class FunctionAlias extends SchemaObjectBase {
      * @param name the name
      * @param javaClassMethod the class and method name
      * @param force create the object even if the class or method does not exist
+     * @param bufferResultSetToLocalTemp whether the result should be buffered
      * @return the database object
      */
-    public static FunctionAlias newInstance(Schema schema, int id, String name, String javaClassMethod, boolean force) {
+    public static FunctionAlias newInstance(Schema schema, int id, String name, String javaClassMethod, boolean force,
+            boolean bufferResultSetToLocalTemp) {
         FunctionAlias alias = new FunctionAlias(schema, id, name);
         int paren = javaClassMethod.indexOf('(');
         int lastDot = javaClassMethod.lastIndexOf('.', paren < 0 ? javaClassMethod.length() : paren);
@@ -76,6 +79,7 @@ public class FunctionAlias extends SchemaObjectBase {
         }
         alias.className = javaClassMethod.substring(0, lastDot);
         alias.methodName = javaClassMethod.substring(lastDot + 1);
+        alias.bufferResultSetToLocalTemp = bufferResultSetToLocalTemp;
         alias.init(force);
         return alias;
     }
@@ -88,11 +92,14 @@ public class FunctionAlias extends SchemaObjectBase {
      * @param name the name
      * @param source the source code
      * @param force create the object even if the class or method does not exist
+     * @param bufferResultSetToLocalTemp whether the result should be buffered
      * @return the database object
      */
-    public static FunctionAlias newInstanceFromSource(Schema schema, int id, String name, String source, boolean force) {
+    public static FunctionAlias newInstanceFromSource(Schema schema, int id, String name, String source, boolean force,
+            boolean bufferResultSetToLocalTemp) {
         FunctionAlias alias = new FunctionAlias(schema, id, name);
         alias.source = source;
+        alias.bufferResultSetToLocalTemp = bufferResultSetToLocalTemp;
         alias.init(force);
         return alias;
     }
@@ -211,6 +218,9 @@ public class FunctionAlias extends SchemaObjectBase {
         if (deterministic) {
             buff.append(" DETERMINISTIC");
         }
+        if (!bufferResultSetToLocalTemp) {
+            buff.append(" NOBUFFER");
+        }
         if (source != null) {
             buff.append(" AS ").append(StringUtils.quoteStringSQL(source));
         } else {
@@ -254,7 +264,7 @@ public class FunctionAlias extends SchemaObjectBase {
                 return m;
             }
         }
-        throw DbException.get(ErrorCode.METHOD_NOT_FOUND_1, methodName + " (" + className + ", parameter count: "
+        throw DbException.get(ErrorCode.METHOD_NOT_FOUND_1, getName() + " (" + className + ", parameter count: "
                 + parameterCount + ")");
     }
 
@@ -274,6 +284,50 @@ public class FunctionAlias extends SchemaObjectBase {
     public JavaMethod[] getJavaMethods() {
         load();
         return javaMethods;
+    }
+
+    public void setDeterministic(boolean deterministic) {
+        this.deterministic = deterministic;
+    }
+
+    public boolean isDeterministic() {
+        return deterministic;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    /**
+     * Checks if the given method takes a variable number of arguments. For Java
+     * 1.4 and older, false is returned. Example:
+     * <pre>
+     * public static double mean(double... values)
+     * </pre>
+     *
+     * @param m the method to test
+     * @return true if the method takes a variable number of arguments.
+     */
+    static boolean isVarArgs(Method m) {
+        if ("1.5".compareTo(SysProperties.JAVA_SPECIFICATION_VERSION) > 0) {
+            return false;
+        }
+        try {
+            Method isVarArgs = m.getClass().getMethod("isVarArgs");
+            Boolean result = (Boolean) isVarArgs.invoke(m);
+            return result.booleanValue();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Should the return value ResultSet be buffered in a local temporary file?
+     *
+     * @return true if yes
+     */
+    public boolean isBufferResultSetToLocalTemp() {
+        return bufferResultSetToLocalTemp;
     }
 
     /**
@@ -380,9 +434,8 @@ public class FunctionAlias extends SchemaObjectBase {
                 if (o == null) {
                     if (paramClass.isPrimitive()) {
                         if (columnList) {
-                            // if the column list is requested, the parameters may
-                            // be null
-                            // need to set to default value,
+                            // if the column list is requested,
+                            // the parameters may be null,
                             // otherwise the function can't be called at all
                             o = DataType.getDefaultForPrimitiveType(paramClass);
                         } else {
@@ -471,41 +524,6 @@ public class FunctionAlias extends SchemaObjectBase {
             return id - m.id;
         }
 
-    }
-
-    public void setDeterministic(boolean deterministic) {
-        this.deterministic = deterministic;
-    }
-
-    public boolean isDeterministic() {
-        return deterministic;
-    }
-
-    public String getSource() {
-        return source;
-    }
-
-    /**
-     * Checks if the given method takes a variable number of arguments. For Java
-     * 1.4 and older, false is returned. Example:
-     * <pre>
-     * public static double mean(double... values)
-     * </pre>
-     *
-     * @param m the method to test
-     * @return true if the method takes a variable number of arguments.
-     */
-    static boolean isVarArgs(Method m) {
-        if ("1.5".compareTo(SysProperties.JAVA_SPECIFICATION_VERSION) > 0) {
-            return false;
-        }
-        try {
-            Method isVarArgs = m.getClass().getMethod("isVarArgs");
-            Boolean result = (Boolean) isVarArgs.invoke(m);
-            return result.booleanValue();
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     /**

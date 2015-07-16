@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.message;
@@ -10,16 +9,13 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Writer;
-import java.sql.DriverManager;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.engine.Constants;
 import org.lealone.fs.FileUtils;
 import org.lealone.util.IOUtils;
-import org.lealone.util.New;
 
 /**
  * The trace mechanism is the logging facility of this database. There is
@@ -78,14 +74,14 @@ public class TraceSystem implements TraceWriter {
      */
     private static final int DEFAULT_MAX_FILE_SIZE = 64 * 1024 * 1024;
 
-    private static final int CHECK_SIZE_EACH_WRITES = 128;
+    private static final int CHECK_SIZE_EACH_WRITES = 4096;
 
     private int levelSystemOut = DEFAULT_TRACE_LEVEL_SYSTEM_OUT;
     private int levelFile = DEFAULT_TRACE_LEVEL_FILE;
     private int levelMax;
     private int maxFileSize = DEFAULT_MAX_FILE_SIZE;
     private String fileName;
-    private HashMap<String, Trace> traces;
+    private final AtomicReferenceArray<Trace> traces = new AtomicReferenceArray<Trace>(Trace.MODULE_NAMES.length);
     private SimpleDateFormat dateFormat;
     private Writer fileWriter;
     private PrintWriter printWriter;
@@ -119,38 +115,32 @@ public class TraceSystem implements TraceWriter {
     }
 
     /**
-     * Write the exception to the driver manager log writer if configured.
+     * Get or create a trace object for this module id. Trace modules with id
+     * are cached.
      *
-     * @param e the exception
+     * @param moduleId module id
+     * @return the trace object
      */
-    public static void traceThrowable(Throwable e) {
-        PrintWriter writer = DriverManager.getLogWriter();
-        if (writer != null) {
-            e.printStackTrace(writer);
+    public Trace getTrace(int moduleId) {
+        Trace t = traces.get(moduleId);
+        if (t == null) {
+            t = new Trace(writer, moduleId);
+            if (!traces.compareAndSet(moduleId, null, t)) {
+                t = traces.get(moduleId);
+            }
         }
+        return t;
     }
 
     /**
-     * Get or create a trace object for this module. Trace modules with names
-     * such as "JDBC[1]" are not cached (modules where the name ends with "]").
-     * All others are cached.
+     * Create a trace object for this module. Trace modules with names are not
+     * cached.
      *
      * @param module the module name
      * @return the trace object
      */
-    public synchronized Trace getTrace(String module) {
-        if (module.endsWith("]")) {
-            return new Trace(writer, module);
-        }
-        if (traces == null) {
-            traces = New.hashMap(16);
-        }
-        Trace t = traces.get(module);
-        if (t == null) {
-            t = new Trace(writer, module);
-            traces.put(module, t);
-        }
-        return t;
+    public Trace getTrace(String module) {
+        return new Trace(writer, module);
     }
 
     @Override
@@ -193,7 +183,7 @@ public class TraceSystem implements TraceWriter {
      */
     public void setLevelFile(int level) {
         if (level == ADAPTER) {
-            String adapterClass = "org.lealone.message.TraceWriterAdapter";
+            String adapterClass = "org.h2.message.TraceWriterAdapter";
             try {
                 writer = (TraceWriter) Class.forName(adapterClass).newInstance();
             } catch (Throwable e) {
@@ -223,9 +213,14 @@ public class TraceSystem implements TraceWriter {
 
     private synchronized String format(String module, String s) {
         if (dateFormat == null) {
-            dateFormat = new SimpleDateFormat("MM-dd HH:mm:ss ");
+            dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss ");
         }
-        return dateFormat.format(new Date()) + module + ": " + s;
+        return dateFormat.format(System.currentTimeMillis()) + module + ": " + s;
+    }
+
+    @Override
+    public void write(int level, int moduleId, String s, Throwable t) {
+        write(level, Trace.MODULE_NAMES[moduleId], s, t);
     }
 
     @Override

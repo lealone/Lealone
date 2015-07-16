@@ -18,14 +18,13 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TreeMap;
 import java.util.Vector;
-import java.util.Map.Entry;
 
 import org.lealone.fs.FileUtils;
 import org.lealone.message.DbException;
-import org.lealone.message.TraceSystem;
 
 /**
  * Sorted properties file.
@@ -35,6 +34,7 @@ public class SortedProperties extends Properties {
 
     private static final long serialVersionUID = 1L;
 
+    @Override
     public synchronized Enumeration<Object> keys() {
         Vector<String> v = new Vector<String>();
         for (Object o : keySet()) {
@@ -57,7 +57,7 @@ public class SortedProperties extends Properties {
         try {
             return Boolean.parseBoolean(value);
         } catch (Exception e) {
-            TraceSystem.traceThrowable(e);
+            DbException.traceThrowable(e);
             return def;
         }
     }
@@ -75,7 +75,7 @@ public class SortedProperties extends Properties {
         try {
             return Integer.decode(value);
         } catch (Exception e) {
-            TraceSystem.traceThrowable(e);
+            DbException.traceThrowable(e);
             return def;
         }
     }

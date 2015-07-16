@@ -25,7 +25,6 @@ import org.lealone.api.ErrorCode;
 import org.lealone.engine.Data;
 import org.lealone.engine.SessionInterface;
 import org.lealone.message.DbException;
-import org.lealone.message.TraceSystem;
 import org.lealone.result.SimpleResultSet;
 import org.lealone.security.SHA256;
 import org.lealone.util.DataUtils;
@@ -314,7 +313,7 @@ public class Transfer {
                     socket.close();
                 }
             } catch (IOException e) {
-                TraceSystem.traceThrowable(e);
+                DbException.traceThrowable(e);
             } finally {
                 socket = null;
             }

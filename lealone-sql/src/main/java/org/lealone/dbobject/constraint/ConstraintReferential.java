@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.dbobject.constraint;
@@ -94,7 +93,8 @@ public class ConstraintReferential extends Constraint {
     }
 
     /**
-     * Create the SQL statement of this object so a copy of the table can be made.
+     * Create the SQL statement of this object so a copy of the table can be
+     * made.
      *
      * @param forTable the table to create the object for
      * @param quotedName the name of this object (quoted if necessary)
@@ -106,7 +106,8 @@ public class ConstraintReferential extends Constraint {
     }
 
     /**
-     * Create the SQL statement of this object so a copy of the table can be made.
+     * Create the SQL statement of this object so a copy of the table can be
+     * made.
      *
      * @param forTable the table to create the object for
      * @param forRefTable the referenced table
@@ -636,6 +637,7 @@ public class ConstraintReferential extends Constraint {
             // don't check at startup
             return;
         }
+        // session.startStatementWithinTransaction(); //TODO
         StatementBuilder buff = new StatementBuilder("SELECT 1 FROM (SELECT ");
         for (IndexColumn c : columns) {
             buff.appendExceptFirst(", ");
