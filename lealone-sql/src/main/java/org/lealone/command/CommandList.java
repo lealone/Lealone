@@ -9,6 +9,7 @@ package org.lealone.command;
 import java.util.ArrayList;
 
 import org.lealone.api.ParameterInterface;
+import org.lealone.engine.Session;
 import org.lealone.result.ResultInterface;
 
 /**
@@ -19,8 +20,8 @@ class CommandList extends Command {
     private final Command command;
     private final String remaining;
 
-    CommandList(Parser parser, String sql, Command c, String remaining) {
-        super(parser, sql);
+    CommandList(Session session, String sql, Command c, String remaining) {
+        super(session, sql);
         this.command = c;
         this.remaining = remaining;
     }

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ParameterInterface;
+import org.lealone.engine.Session;
 import org.lealone.expression.Parameter;
 import org.lealone.result.ResultInterface;
 import org.lealone.value.Value;
@@ -25,8 +26,8 @@ public class CommandContainer extends Command {
     private boolean readOnlyKnown;
     private boolean readOnly;
 
-    protected CommandContainer(Parser parser, String sql, Prepared prepared) {
-        super(parser, sql);
+    protected CommandContainer(Session session, String sql, Prepared prepared) {
+        super(session, sql);
         prepared.setCommand(this);
         this.prepared = prepared;
     }

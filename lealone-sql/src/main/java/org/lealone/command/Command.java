@@ -54,10 +54,6 @@ public abstract class Command implements CommandInterface {
         trace = session.getDatabase().getTrace(Trace.COMMAND);
     }
 
-    protected Command(Parser parser, String sql) {
-        this(parser.getSession(), sql);
-    }
-
     /**
      * Check if this command is transactional.
      * If it is not, then it forces the current transaction to commit.
