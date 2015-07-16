@@ -100,6 +100,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
     private int objectId;
     private final int queryCacheSize;
     private SmallLRUCache<String, Command> queryCache;
+    private long modificationMetaID = -1;
 
     public Session(Database database, User user, int id) {
         this.database = database;
@@ -419,7 +420,13 @@ public class Session extends SessionWithState implements Transaction.Validator {
         if (queryCacheSize > 0) {
             if (queryCache == null) {
                 queryCache = SmallLRUCache.newInstance(queryCacheSize);
+                modificationMetaID = database.getModificationMetaId();
             } else {
+                long newModificationMetaID = database.getModificationMetaId();
+                if (newModificationMetaID != modificationMetaID) {
+                    queryCache.clear();
+                    modificationMetaID = newModificationMetaID;
+                }
                 command = queryCache.get(sql);
                 if (command != null && command.canReuse()) {
                     command.reuse();
