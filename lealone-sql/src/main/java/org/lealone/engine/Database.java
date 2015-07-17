@@ -460,7 +460,8 @@ public class Database implements DataHandler {
         if (powerOffCount != -1) {
             try {
                 powerOffCount = -1;
-                checkPowerOffInternal();
+                for (StorageEngine se : getStorageEngines())
+                    se.closeImmediately(this);
                 if (traceSystem != null) {
                     traceSystem.close();
                 }
@@ -470,10 +471,6 @@ public class Database implements DataHandler {
         }
         getDatabaseEngine().closeDatabase(databaseName);
         throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
-    }
-
-    private void checkPowerOffInternal() {
-
     }
 
     /**

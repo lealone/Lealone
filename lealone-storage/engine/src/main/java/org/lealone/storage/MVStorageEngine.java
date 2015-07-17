@@ -659,4 +659,9 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     public void removeTemporaryMaps(Database db, BitField objectIds) {
         getStore(db).removeTemporaryMaps(objectIds);
     }
+
+    @Override
+    public void closeImmediately(Database db) {
+        getStore(db).closeImmediately();
+    }
 }

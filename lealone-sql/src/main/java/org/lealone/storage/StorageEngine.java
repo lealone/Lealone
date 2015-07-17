@@ -48,4 +48,6 @@ public interface StorageEngine {
     void initTransactions(Database db);
 
     void removeTemporaryMaps(Database db, BitField objectIds);
+
+    void closeImmediately(Database db);
 }
