@@ -1144,43 +1144,6 @@ public class Session extends SessionWithState implements Transaction.Validator {
         return modificationId;
     }
 
-    @Override
-    public boolean isReconnectNeeded(boolean write) {
-        while (true) {
-            boolean reconnect = database.isReconnectNeeded();
-            if (reconnect) {
-                return true;
-            }
-            if (write) {
-                if (database.beforeWriting()) {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-    }
-
-    @Override
-    public void afterWriting() {
-        database.afterWriting();
-    }
-
-    @Override
-    public SessionInterface reconnect(boolean write) {
-        readSessionState();
-        close();
-        Session newSession = database.getDatabaseEngine().createSession(connectionInfo);
-        newSession.sessionState = sessionState;
-        newSession.recreateSessionState();
-        if (write) {
-            while (!newSession.database.beforeWriting()) {
-                // wait until we are allowed to write
-            }
-        }
-        return newSession;
-    }
-
     public void setConnectionInfo(ConnectionInfo ci) {
         connectionInfo = ci;
     }

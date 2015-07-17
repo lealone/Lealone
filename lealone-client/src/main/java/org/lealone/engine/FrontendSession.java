@@ -497,21 +497,6 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     }
 
     @Override
-    public boolean isReconnectNeeded(boolean write) {
-        return false;
-    }
-
-    @Override
-    public SessionInterface reconnect(boolean write) {
-        return this;
-    }
-
-    @Override
-    public void afterWriting() {
-        // nothing to do
-    }
-
-    @Override
     public LobStorage getLobStorage() {
         if (lobStorage == null) {
             lobStorage = new FrontendLobStorage(this);

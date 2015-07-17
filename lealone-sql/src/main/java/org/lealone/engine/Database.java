@@ -157,7 +157,6 @@ public class Database implements DataHandler {
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
     private SmallLRUCache<String, String[]> lobFileListCache;
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
-    private volatile int checkpointAllowed;
     private int cacheSize;
     private int compactMode;
     private SourceCompiler compiler;
@@ -298,9 +297,6 @@ public class Database implements DataHandler {
         systemSession.commit(true);
 
         trace.info("opened {0}", databaseName);
-        if (checkpointAllowed > 0) {
-            afterWriting();
-        }
     }
 
     private void openMetaTable() {
@@ -1915,31 +1911,6 @@ public class Database implements DataHandler {
     }
 
     /**
-     * Check if the contents of the database was changed and therefore it is
-     * required to re-connect. This method waits until pending changes are
-     * completed. If a pending change takes too long (more than 2 seconds), the
-     * pending change is broken (removed from the properties file).
-     *
-     * @return true if reconnecting is required
-     */
-    public boolean isReconnectNeeded() {
-        return false;
-    }
-
-    /**
-     * Flush all changes when using the serialized mode, and if there are
-     * pending changes, and some time has passed. This switches to a new
-     * transaction log and resets the change pending flag in
-     * the .lock.db file.
-     */
-    public void checkpointIfRequired() {
-    }
-
-    public boolean isFileLockSerialized() {
-        return false;
-    }
-
-    /**
      * Flush all changes and open a new transaction log.
      */
     public void checkpoint() {
@@ -1948,22 +1919,6 @@ public class Database implements DataHandler {
                 se.flush(this);
         }
         getTempFileDeleter().deleteUnused();
-    }
-
-    /**
-     * This method is called before writing to the transaction log.
-     *
-     * @return true if the call was successful and writing is allowed,
-     *          false if another connection was faster
-     */
-    public boolean beforeWriting() {
-        return true;
-    }
-
-    /**
-     * This method is called after updates are finished.
-     */
-    public void afterWriting() {
     }
 
     /**

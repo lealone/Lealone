@@ -182,12 +182,6 @@ public abstract class Command implements CommandInterface {
         Object sync = database.isMultiThreaded() ? session : database;
         session.waitIfExclusiveModeEnabled();
         boolean callStop = true;
-        boolean writing = !isReadOnly();
-        if (writing) {
-            while (!database.beforeWriting()) {
-                // wait
-            }
-        }
         synchronized (sync) {
             session.setCurrentCommand(this);
             try {
@@ -224,9 +218,6 @@ public abstract class Command implements CommandInterface {
                 if (callStop) {
                     stop();
                 }
-                if (writing) {
-                    database.afterWriting();
-                }
             }
         }
     }
@@ -238,12 +229,6 @@ public abstract class Command implements CommandInterface {
         Object sync = database.isMultiThreaded() ? session : database;
         session.waitIfExclusiveModeEnabled();
         boolean callStop = true;
-        boolean writing = !isReadOnly();
-        if (writing) {
-            while (!database.beforeWriting()) {
-                // wait
-            }
-        }
         synchronized (sync) {
             long savepointId = session.getTransaction().getSavepointId();
             session.setCurrentCommand(this);
@@ -279,14 +264,8 @@ public abstract class Command implements CommandInterface {
                 }
                 throw e;
             } finally {
-                try {
-                    if (callStop) {
-                        stop();
-                    }
-                } finally {
-                    if (writing) {
-                        database.afterWriting();
-                    }
+                if (callStop) {
+                    stop();
                 }
             }
         }

@@ -436,12 +436,8 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             debugCodeCall("commit");
             checkClosedForWrite();
-            try {
-                commit = prepareCommand("COMMIT", commit);
-                commit.executeUpdate();
-            } finally {
-                afterWriting();
-            }
+            commit = prepareCommand("COMMIT", commit);
+            commit.executeUpdate();
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -458,11 +454,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             debugCodeCall("rollback");
             checkClosedForWrite();
-            try {
-                rollbackInternal();
-            } finally {
-                afterWriting();
-            }
+            rollbackInternal();
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -987,11 +979,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             JdbcSavepoint sp = convertSavepoint(savepoint);
             debugCode("rollback(" + sp.getTraceObjectName() + ");");
             checkClosedForWrite();
-            try {
-                sp.rollback();
-            } finally {
-                afterWriting();
-            }
+            sp.rollback();
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1315,7 +1303,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                     chars[i] = ' ';
                 }
 
-                //对于WITH replication = {'class':'SimpleStrategy'会有bug，漏掉{后的单引号
+                // 对于WITH replication = {'class':'SimpleStrategy'会有bug，漏掉{后的单引号
                 if (sql.charAt(i) == '\'')
                     i--;
                 break;
@@ -1412,22 +1400,6 @@ public class JdbcConnection extends TraceObject implements Connection {
         if (session.isClosed()) {
             throw DbException.get(ErrorCode.DATABASE_CALLED_AT_SHUTDOWN);
         }
-        if (session.isReconnectNeeded(write)) {
-            trace.debug("reconnect");
-            closePreparedCommands();
-            session = session.reconnect(write);
-            trace = session.getTrace();
-        }
-    }
-
-    /**
-     * INTERNAL.
-     * Called after executing a command that could have written something.
-     */
-    protected void afterWriting() {
-        if (session != null) {
-            session.afterWriting();
-        }
     }
 
     String getURL() {
@@ -1490,13 +1462,9 @@ public class JdbcConnection extends TraceObject implements Connection {
             int id = getNextId(TraceObject.CLOB);
             debugCodeAssign("Clob", TraceObject.CLOB, id, "createClob()");
             checkClosedForWrite();
-            try {
-                Value v = session.getDataHandler().getLobStorage()
-                        .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
-                return new JdbcClob(this, v, id);
-            } finally {
-                afterWriting();
-            }
+            Value v = session.getDataHandler().getLobStorage()
+                    .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
+            return new JdbcClob(this, v, id);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1513,13 +1481,9 @@ public class JdbcConnection extends TraceObject implements Connection {
             int id = getNextId(TraceObject.BLOB);
             debugCodeAssign("Blob", TraceObject.BLOB, id, "createClob()");
             checkClosedForWrite();
-            try {
-                Value v = session.getDataHandler().getLobStorage()
-                        .createBlob(new ByteArrayInputStream(Utils.EMPTY_BYTES), 0);
-                return new JdbcBlob(this, v, id);
-            } finally {
-                afterWriting();
-            }
+            Value v = session.getDataHandler().getLobStorage()
+                    .createBlob(new ByteArrayInputStream(Utils.EMPTY_BYTES), 0);
+            return new JdbcBlob(this, v, id);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1530,59 +1494,55 @@ public class JdbcConnection extends TraceObject implements Connection {
      *
      * @return the object
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public NClob createNClob() throws SQLException {
         try {
             int id = getNextId(TraceObject.CLOB);
             debugCodeAssign("NClob", TraceObject.CLOB, id, "createNClob()");
             checkClosedForWrite();
-            try {
-                Value v = session.getDataHandler().getLobStorage()
-                        .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
-                return new JdbcClob(this, v, id);
-            } finally {
-                afterWriting();
-            }
+            Value v = session.getDataHandler().getLobStorage()
+                    .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
+            return new JdbcClob(this, v, id);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
     }
 
-    //*/
+    // */
 
     /**
      * [Not supported] Create a new empty SQLXML object.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public SQLXML createSQLXML() throws SQLException {
         throw unsupported("SQLXML");
     }
 
-    //*/
+    // */
 
     /**
      * [Not supported] Create a new empty Array object.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         throw unsupported("createArray");
     }
 
-    //*/
+    // */
 
     /**
      * [Not supported] Create a new empty Struct object.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
         throw unsupported("Struct");
     }
 
-    //*/
+    // */
 
     /**
      * Returns true if this connection is still valid.
@@ -1611,72 +1571,72 @@ public class JdbcConnection extends TraceObject implements Connection {
     /**
      * [Not supported] Set a client property.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public void setClientInfo(String name, String value) throws SQLClientInfoException {
         throw new SQLClientInfoException();
     }
 
-    //*/
+    // */
 
     /**
      * [Not supported] Set the client properties.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public void setClientInfo(Properties properties) throws SQLClientInfoException {
         throw new SQLClientInfoException();
     }
 
-    //*/
+    // */
 
     /**
      * [Not supported] Get the client properties.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public Properties getClientInfo() throws SQLClientInfoException {
         throw new SQLClientInfoException();
     }
 
-    //*/
+    // */
 
     /**
      * [Not supported] Set a client property.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public String getClientInfo(String name) throws SQLException {
         throw unsupported("clientInfo");
     }
 
-    //*/
+    // */
 
     /**
      * [Not supported] Return an object of this class if possible.
      *
      * @param iface the class
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
         throw unsupported("unwrap");
     }
 
-    //*/
+    // */
 
     /**
      * [Not supported] Checks if unwrap can return an object of this class.
      *
      * @param iface the class
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         throw unsupported("isWrapperFor");
     }
 
-    //*/
+    // */
 
     /**
      * Create a Clob value from this reader.
@@ -1824,31 +1784,31 @@ public class JdbcConnection extends TraceObject implements Connection {
         trace.setLevel(level);
     }
 
-    //jdk1.7
+    // jdk1.7
     @Override
     public void setSchema(String schema) throws SQLException {
         throw DbException.getUnsupportedException("setSchema(String)");
     }
 
-    //jdk1.7
+    // jdk1.7
     @Override
     public String getSchema() throws SQLException {
         throw DbException.getUnsupportedException("getSchema()");
     }
 
-    //jdk1.7
+    // jdk1.7
     @Override
     public void abort(Executor executor) throws SQLException {
         throw DbException.getUnsupportedException("abort(Executor)");
     }
 
-    //jdk1.7
+    // jdk1.7
     @Override
     public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
         throw DbException.getUnsupportedException("setNetworkTimeout(Executor, int)");
     }
 
-    //jdk1.7
+    // jdk1.7
     @Override
     public int getNetworkTimeout() throws SQLException {
         throw DbException.getUnsupportedException("getNetworkTimeout()");
