@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.engine;
@@ -15,7 +14,7 @@ import org.lealone.message.Trace;
  * close a connection. A database closer object only exists if there is no user
  * connected to the database.
  */
-public class DatabaseCloser extends Thread {
+class DatabaseCloser extends Thread {
 
     private final boolean shutdownHook;
     private final Trace trace;
@@ -33,12 +32,13 @@ public class DatabaseCloser extends Thread {
      * Stop and disable the database closer. This method is called after the
      * database has been closed, or after a session has been created.
      */
-    public void reset() {
+    void reset() {
         synchronized (this) {
             databaseRef = null;
         }
     }
 
+    @Override
     public void run() {
         while (delayInMillis > 0) {
             try {

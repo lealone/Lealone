@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.engine;
@@ -58,7 +57,6 @@ public class Csv implements SimpleRowSource {
     private String lineSeparator = SysProperties.LINE_SEPARATOR;
     private String nullString = "";
 
-    private String rowSeparatorWrite;
     private String fileName;
     private Reader input;
     private char[] inputBuffer;
@@ -67,17 +65,6 @@ public class Csv implements SimpleRowSource {
     private int inputBufferEnd;
     private Writer output;
     private boolean endOfLine, endOfFile;
-
-    /**
-     * Get a new object of this class.
-     *
-     * @deprecated use the public constructor instead
-     *
-     * @return the new instance
-     */
-    public static Csv getInstance() {
-        return new Csv();
-    }
 
     private int writeResultSet(ResultSet rs) throws SQLException {
         try {
@@ -130,7 +117,6 @@ public class Csv implements SimpleRowSource {
      * @param writer the writer
      * @param rs the result set
      * @return the number of rows written
-     * @throws SQLException
      */
     public int write(Writer writer, ResultSet rs) throws SQLException {
         this.output = writer;
@@ -153,7 +139,6 @@ public class Csv implements SimpleRowSource {
      * @param charset the charset or null to use the system default charset
      *          (see system property file.encoding)
      * @return the number of rows written
-     * @throws SQLException
      */
     public int write(String outputFileName, ResultSet rs, String charset) throws SQLException {
         init(outputFileName, charset);
@@ -174,7 +159,6 @@ public class Csv implements SimpleRowSource {
      * @param charset the charset or null to use the system default charset
      *          (see system property file.encoding)
      * @return the number of rows written
-     * @throws SQLException
      */
     public int write(Connection conn, String outputFileName, String sql, String charset) throws SQLException {
         Statement stat = conn.createStatement();
@@ -201,7 +185,6 @@ public class Csv implements SimpleRowSource {
      * @param charset the charset or null to use the system default charset
      *          (see system property file.encoding)
      * @return the result set
-     * @throws SQLException
      */
     public ResultSet read(String inputFileName, String[] colNames, String charset) throws SQLException {
         init(inputFileName, charset);
@@ -218,9 +201,9 @@ public class Csv implements SimpleRowSource {
      * until all rows are read or the result set is closed.
      *
      * @param reader the reader
-     * @param colNames or null if the column names should be read from the CSV file
+     * @param colNames or null if the column names should be read from the CSV
+     *            file
      * @return the result set
-     * @throws IOException
      */
     public ResultSet read(Reader reader, String[] colNames) throws IOException {
         init(null, null);
@@ -302,9 +285,6 @@ public class Csv implements SimpleRowSource {
             } else if (nullString != null && nullString.length() > 0) {
                 output.write(nullString);
             }
-        }
-        if (rowSeparatorWrite != null) {
-            output.write(rowSeparatorWrite);
         }
         output.write(lineSeparator);
     }
@@ -574,6 +554,7 @@ public class Csv implements SimpleRowSource {
     /**
      * INTERNAL
      */
+    @Override
     public Object[] readRow() throws SQLException {
         if (input == null) {
             return null;
@@ -615,6 +596,7 @@ public class Csv implements SimpleRowSource {
     /**
      * INTERNAL
      */
+    @Override
     public void close() {
         IOUtils.closeSilently(input);
         input = null;
@@ -625,6 +607,7 @@ public class Csv implements SimpleRowSource {
     /**
      * INTERNAL
      */
+    @Override
     public void reset() throws SQLException {
         throw new SQLException("Method is not supported", "CSV");
     }
@@ -682,26 +665,6 @@ public class Csv implements SimpleRowSource {
      */
     public char getFieldSeparatorRead() {
         return fieldSeparatorRead;
-    }
-
-    /**
-     * Get the current row separator for writing.
-     *
-     * @return the row separator
-     */
-    public String getRowSeparatorWrite() {
-        return rowSeparatorWrite;
-    }
-
-    /**
-     * Override the end-of-row marker for writing. The default is null. After
-     * writing the end-of-row marker, a line feed is written (\n or \r\n
-     * depending on the system settings).
-     *
-     * @param rowSeparatorWrite the row separator
-     */
-    public void setRowSeparatorWrite(String rowSeparatorWrite) {
-        this.rowSeparatorWrite = rowSeparatorWrite;
     }
 
     /**
@@ -782,7 +745,10 @@ public class Csv implements SimpleRowSource {
     }
 
     /**
-     * Set the line separator.
+     * Set the line separator used for writing. This is usually a line feed (\n
+     * or \r\n depending on the system settings). The line separator is written
+     * after each row (including the last row), so this option can include an
+     * end-of-row marker if needed.
      *
      * @param lineSeparator the line separator
      */
@@ -791,7 +757,7 @@ public class Csv implements SimpleRowSource {
     }
 
     /**
-     * Get the current line separator.
+     * Get the line separator used for writing.
      *
      * @return the line separator
      */
@@ -885,8 +851,6 @@ public class Csv implements SimpleRowSource {
                 setLineSeparator(value);
             } else if (isParam(key, "null", "nullString")) {
                 setNullString(value);
-            } else if (isParam(key, "rowSeparator", "rowSep")) {
-                setRowSeparatorWrite(value);
             } else if (isParam(key, "charset", "characterSet")) {
                 charset = value;
             } else if (isParam(key, "preserveWhitespace")) {
@@ -896,7 +860,7 @@ public class Csv implements SimpleRowSource {
             } else if (isParam(key, "caseSensitiveColumnNames")) {
                 setCaseSensitiveColumnNames(Boolean.parseBoolean(value));
             } else {
-                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, key);
+                throw DbException.getUnsupportedException(key);
             }
         }
         return charset;

@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.command;
@@ -44,7 +43,7 @@ public abstract class Command implements CommandInterface {
      */
     private volatile boolean cancel;
 
-    protected final String sql;
+    private final String sql;
 
     private boolean canReuse;
 
@@ -93,7 +92,8 @@ public abstract class Command implements CommandInterface {
     public abstract ResultInterface queryMeta();
 
     /**
-     * Execute an updating statement, if this is possible.
+     * Execute an updating statement (for example insert, delete, or update), if
+     * this is possible.
      *
      * @return the update count
      * @throws DbException if the command is not an updating statement
@@ -181,6 +181,7 @@ public abstract class Command implements CommandInterface {
         Database database = session.getDatabase();
         Object sync = database.isMultiThreaded() ? session : database;
         session.waitIfExclusiveModeEnabled();
+        boolean callStop = true;
         boolean writing = !isReadOnly();
         if (writing) {
             while (!database.beforeWriting()) {
@@ -196,16 +197,33 @@ public abstract class Command implements CommandInterface {
                         return query(maxRows);
                     } catch (DbException e) {
                         start = filterConcurrentUpdate(e, start);
+                    } catch (OutOfMemoryError e) {
+                        callStop = false;
+                        // there is a serious problem:
+                        // the transaction may be applied partially
+                        // in this case we need to panic:
+                        // close the database
+                        database.shutdownImmediately();
+                        throw DbException.convert(e);
                     } catch (Throwable e) {
                         throw DbException.convert(e);
                     }
                 }
             } catch (DbException e) {
-                e.addSQL(sql);
-                database.exceptionThrown(e.getSQLException(), sql);
+                e = e.addSQL(sql);
+                SQLException s = e.getSQLException();
+                database.exceptionThrown(s, sql);
+                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
+                    callStop = false;
+                    database.shutdownImmediately();
+                    throw e;
+                }
+                database.checkPowerOff();
                 throw e;
             } finally {
-                stop();
+                if (callStop) {
+                    stop();
+                }
                 if (writing) {
                     database.afterWriting();
                 }
@@ -236,6 +254,10 @@ public abstract class Command implements CommandInterface {
                         return update();
                     } catch (DbException e) {
                         start = filterConcurrentUpdate(e, start);
+                    } catch (OutOfMemoryError e) {
+                        callStop = false;
+                        database.shutdownImmediately();
+                        throw DbException.convert(e);
                     } catch (Throwable e) {
                         throw DbException.convert(e);
                     }
@@ -244,17 +266,14 @@ public abstract class Command implements CommandInterface {
                 e = e.addSQL(sql);
                 SQLException s = e.getSQLException();
                 database.exceptionThrown(s, sql);
-                database.checkPowerOff();
-                if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
-                    session.rollback();
-                } else if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-                    // there is a serious problem:
-                    // the transaction may be applied partially
-                    // in this case we need to panic:
-                    // close the database
+                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
                     callStop = false;
                     database.shutdownImmediately();
                     throw e;
+                }
+                database.checkPowerOff();
+                if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
+                    session.rollback();
                 } else {
                     session.rollbackTo(savepointId, false);
                 }

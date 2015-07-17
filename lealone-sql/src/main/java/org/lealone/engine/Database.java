@@ -170,6 +170,9 @@ public class Database implements DataHandler {
     private boolean initialized = false;
     private DbException backgroundException;
 
+    private boolean queryStatistics;
+    private QueryStatisticsData queryStatisticsData;
+
     public Database(DatabaseEngine dbEngine, boolean persistent) {
         this.dbEngine = dbEngine;
         this.persistent = persistent;
@@ -1735,6 +1738,31 @@ public class Database implements DataHandler {
 
     public boolean getReferentialIntegrity() {
         return referentialIntegrity;
+    }
+
+    public void setQueryStatistics(boolean b) {
+        queryStatistics = b;
+        synchronized (this) {
+            queryStatisticsData = null;
+        }
+    }
+
+    public boolean getQueryStatistics() {
+        return queryStatistics;
+    }
+
+    public QueryStatisticsData getQueryStatisticsData() {
+        if (!queryStatistics) {
+            return null;
+        }
+        if (queryStatisticsData == null) {
+            synchronized (this) {
+                if (queryStatisticsData == null) {
+                    queryStatisticsData = new QueryStatisticsData();
+                }
+            }
+        }
+        return queryStatisticsData;
     }
 
     /**

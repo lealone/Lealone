@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.engine;
@@ -79,7 +78,7 @@ public class Mode {
      * [OFFSET .. ROW|ROWS] [FETCH FIRST .. ROW|ROWS ONLY]
      * as an alternative for LIMIT .. OFFSET.
      */
-    public boolean supportOffsetFetch;
+    public boolean supportOffsetFetch = true;
 
     /**
      * The system columns 'CTID' and 'OID' are supported.
@@ -130,6 +129,16 @@ public class Mode {
     public boolean swapConvertFunctionParameters;
 
     /**
+     * can set the isolation level using WITH {RR|RS|CS|UR}
+     */
+    public boolean isolationLevelInSelectOrInsertStatement;
+
+    /**
+     * MySQL style INSERT ... ON DUPLICATE KEY UPDATE ...
+     */
+    public boolean onDuplicateKeyUpdate;
+
+    /**
      * Support the # for column names
      */
     public boolean supportPoundSymbolForColumnNames;
@@ -145,6 +154,7 @@ public class Mode {
         mode.aliasColumnName = true;
         mode.supportOffsetFetch = true;
         mode.sysDummy1 = true;
+        mode.isolationLevelInSelectOrInsertStatement = true;
         add(mode);
 
         mode = new Mode("Derby");
@@ -152,6 +162,7 @@ public class Mode {
         mode.uniqueIndexSingleNull = true;
         mode.supportOffsetFetch = true;
         mode.sysDummy1 = true;
+        mode.isolationLevelInSelectOrInsertStatement = true;
         add(mode);
 
         mode = new Mode("HSQLDB");
@@ -175,10 +186,12 @@ public class Mode {
         mode.convertInsertNullToZero = true;
         mode.indexDefinitionInCreateTable = true;
         mode.lowerCaseIdentifiers = true;
+        mode.onDuplicateKeyUpdate = true;
         add(mode);
 
         mode = new Mode("Oracle");
         mode.aliasColumnName = true;
+        mode.convertOnlyToSmallerScale = true;
         mode.uniqueIndexSingleNullExceptAllColumnsAreNull = true;
         mode.treatEmptyStringsAsNull = true;
         mode.supportPoundSymbolForColumnNames = true;

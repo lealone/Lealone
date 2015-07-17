@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.command;
@@ -20,13 +19,13 @@ import org.lealone.value.ValueNull;
  * Represents a single SQL statements.
  * It wraps a prepared statement.
  */
-public class CommandContainer extends Command {
+class CommandContainer extends Command {
 
-    protected Prepared prepared;
+    private Prepared prepared;
     private boolean readOnlyKnown;
     private boolean readOnly;
 
-    protected CommandContainer(Session session, String sql, Prepared prepared) {
+    CommandContainer(Session session, String sql, Prepared prepared) {
         super(session, sql);
         prepared.setCommand(this);
         this.prepared = prepared;
@@ -78,14 +77,10 @@ public class CommandContainer extends Command {
         start();
         session.setLastScopeIdentity(ValueNull.INSTANCE);
         prepared.checkParameters();
-        int updateCount = updateInternal();
+        int updateCount = prepared.update();
         prepared.trace(startTime, updateCount);
         setProgress(DatabaseEventListener.STATE_STATEMENT_END);
         return updateCount;
-    }
-
-    protected int updateInternal() {
-        return prepared.update();
     }
 
     @Override
@@ -94,14 +89,10 @@ public class CommandContainer extends Command {
         setProgress(DatabaseEventListener.STATE_STATEMENT_START);
         start();
         prepared.checkParameters();
-        ResultInterface result = queryInternal(maxrows);
+        ResultInterface result = prepared.query(maxrows);
         prepared.trace(startTime, result.getRowCount());
         setProgress(DatabaseEventListener.STATE_STATEMENT_END);
         return result;
-    }
-
-    protected ResultInterface queryInternal(int maxrows) {
-        return prepared.query(maxrows);
     }
 
     @Override
