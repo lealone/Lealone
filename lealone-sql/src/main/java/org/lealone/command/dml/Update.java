@@ -242,4 +242,9 @@ public class Update extends Prepared implements Callable<Integer> {
     public Table getTable() {
         return tableFilter.getTable();
     }
+
+    @Override
+    public boolean isBatch() {
+        return !containsEqualPartitionKeyComparisonType(tableFilter);
+    }
 }

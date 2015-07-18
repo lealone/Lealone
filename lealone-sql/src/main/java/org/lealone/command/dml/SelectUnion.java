@@ -460,4 +460,9 @@ public class SelectUnion extends Query {
         filters.addAll(right.getTopFilters());
         return filters;
     }
+
+    @Override
+    public boolean isBatchForInsert() {
+        return left.isBatchForInsert() || right.isBatchForInsert();
+    }
 }

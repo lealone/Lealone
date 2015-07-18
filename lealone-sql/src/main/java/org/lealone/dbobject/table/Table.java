@@ -1164,4 +1164,8 @@ public abstract class Table extends SchemaObjectBase {
     public void setColumnsModified(boolean modified) {
         this.isColumnsModified = modified;
     }
+
+    public boolean containsGlobalUniqueIndex() {
+        return false;
+    }
 }

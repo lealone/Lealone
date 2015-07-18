@@ -26,7 +26,7 @@ public class MVCCTransactionEngine implements TransactionEngine {
     /**
      * The store.
      */
-    //public final MVStore store;
+    // public final MVStore store;
 
     /**
      * The persisted map of prepared transactions.
@@ -75,10 +75,6 @@ public class MVCCTransactionEngine implements TransactionEngine {
      *
      * @param dataType the data type for map keys and values
      */
-    public MVCCTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder, String hostAndPort) {
-        this(dataType, mapBuilder, hostAndPort, false);
-    }
-
     public MVCCTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder, String hostAndPort,
             boolean isClusterMode) {
         this.dataType = dataType;
@@ -210,7 +206,7 @@ public class MVCCTransactionEngine implements TransactionEngine {
     }
 
     private int nextTransactionId(boolean autoCommit) {
-        //分布式事务使用奇数的事务ID
+        // 分布式事务使用奇数的事务ID
         if (!autoCommit && isClusterMode) {
             return nextOddTransactionId();
         }
@@ -276,7 +272,7 @@ public class MVCCTransactionEngine implements TransactionEngine {
 
     @Override
     public void close() {
-        //store.commit();
+        // store.commit();
         if (isClusterMode)
             TransactionValidator.getInstance().close();
     }
@@ -344,7 +340,7 @@ public class MVCCTransactionEngine implements TransactionEngine {
     public synchronized <K, V> void removeMap(TransactionMap<K, V> map) {
         maps.remove(map.getMapId());
         map.removeMap();
-        //store.removeMap(map.map);
+        // store.removeMap(map.map);
     }
 
     /**
@@ -354,11 +350,11 @@ public class MVCCTransactionEngine implements TransactionEngine {
      * @param maxLogId the last log id
      */
     void commit(MVCCTransaction t, long maxLogId) {
-        //        if (store.isClosed()) {
-        //            return;
-        //        }
+        // if (store.isClosed()) {
+        // return;
+        // }
 
-        //分布式事务推迟删除undoLog
+        // 分布式事务推迟删除undoLog
         if (t.transactionId % 2 == 0) {
             removeUndoLog(t.transactionId, maxLogId);
         }
@@ -367,9 +363,9 @@ public class MVCCTransactionEngine implements TransactionEngine {
     }
 
     public void commitAfterValidate(int tid) {
-        //        if (store.isClosed()) {
-        //            return;
-        //        }
+        // if (store.isClosed()) {
+        // return;
+        // }
 
         removeUndoLog(tid, Long.MAX_VALUE);
     }
@@ -491,21 +487,21 @@ public class MVCCTransactionEngine implements TransactionEngine {
             preparedTransactions.remove(t.transactionId);
         }
         t.setStatus(MVCCTransaction.STATUS_CLOSED);
-        //        if (store.getAutoCommitDelay() == 0) {
-        //            store.commit();
-        //            return;
-        //        }
-        //        // to avoid having to store the transaction log,
-        //        // if there is no open transaction,
-        //        // and if there have been many changes, store them now
-        //        if (undoLog.isEmpty()) {
-        //            int unsaved = store.getUnsavedMemory();
-        //            int max = store.getAutoCommitMemory();
-        //            // save at 3/4 capacity
-        //            if (unsaved * 4 > max * 3) {
-        //                store.commit();
-        //            }
-        //        }
+        // if (store.getAutoCommitDelay() == 0) {
+        // store.commit();
+        // return;
+        // }
+        // // to avoid having to store the transaction log,
+        // // if there is no open transaction,
+        // // and if there have been many changes, store them now
+        // if (undoLog.isEmpty()) {
+        // int unsaved = store.getUnsavedMemory();
+        // int max = store.getAutoCommitMemory();
+        // // save at 3/4 capacity
+        // if (unsaved * 4 > max * 3) {
+        // store.commit();
+        // }
+        // }
     }
 
     /**

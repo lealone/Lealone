@@ -230,7 +230,7 @@ public abstract class Command implements CommandInterface {
         session.waitIfExclusiveModeEnabled();
         boolean callStop = true;
         synchronized (sync) {
-            long savepointId = session.getTransaction().getSavepointId();
+            long savepointId = session.getTransaction(getPrepared()).getSavepointId();
             session.setCurrentCommand(this);
             try {
                 while (true) {

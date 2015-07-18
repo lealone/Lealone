@@ -37,30 +37,14 @@ public class TransactionalRouter implements Router {
         this.nestedRouter = nestedRouter;
     }
 
+    private void beginTransaction(Prepared p) {
+        p.getSession().getTransaction(p);
+    }
+
     @Override
     public int executeDefineCommand(DefineCommand defineCommand) {
         beginTransaction(defineCommand);
         return nestedRouter.executeDefineCommand(defineCommand);
-    }
-
-    @Override
-    public int executeInsert(Insert insert) {
-        return execute(insert.isBatch(), insert);
-    }
-
-    @Override
-    public int executeMerge(Merge merge) {
-        return execute(merge.isBatch(), merge);
-    }
-
-    @Override
-    public int executeDelete(Delete delete) {
-        return execute(true, delete);
-    }
-
-    @Override
-    public int executeUpdate(Update update) {
-        return execute(true, update);
     }
 
     @Override
@@ -69,11 +53,27 @@ public class TransactionalRouter implements Router {
         return nestedRouter.executeSelect(select, maxRows, scrollable);
     }
 
-    private void beginTransaction(Prepared p) {
-        p.getSession().getTransaction();
+    @Override
+    public int executeInsert(Insert insert) {
+        return execute(insert);
     }
 
-    private int execute(boolean isBatch, Prepared p) {
+    @Override
+    public int executeMerge(Merge merge) {
+        return execute(merge);
+    }
+
+    @Override
+    public int executeDelete(Delete delete) {
+        return execute(delete);
+    }
+
+    @Override
+    public int executeUpdate(Update update) {
+        return execute(update);
+    }
+
+    private int execute(Prepared p) {
         beginTransaction(p);
 
         boolean isTopTransaction = false;
@@ -81,7 +81,7 @@ public class TransactionalRouter implements Router {
         Session session = p.getSession();
 
         try {
-            if (isBatch) {
+            if (!p.isLocal() && p.isBatch()) {
                 if (session.isAutoCommit()) {
                     session.setAutoCommit(false);
                     isTopTransaction = true;

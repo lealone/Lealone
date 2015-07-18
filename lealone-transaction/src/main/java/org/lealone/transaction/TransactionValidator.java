@@ -34,6 +34,7 @@ class TransactionValidator extends Thread {
     }
 
     private volatile boolean isStopped = false;
+    private volatile boolean isStarted = false;
 
     private TransactionValidator() {
         super("TransactionValidator");
@@ -68,6 +69,14 @@ class TransactionValidator extends Thread {
             }
             drainedMessages.clear();
         }
+    }
+
+    @Override
+    public synchronized void start() {
+        if (isStarted)
+            return;
+        isStarted = true;
+        super.start();
     }
 
     private static void validateTransaction(QueuedMessage qm) {

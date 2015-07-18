@@ -69,6 +69,7 @@ public class MVTable extends TableBase {
     private Column rowIdColumn;
 
     private final TransactionStorageEngine storageEngine;
+    private boolean containsGlobalUniqueIndex;
 
     public MVTable(CreateTableData data, TransactionStorageEngine storageEngine) {
         super(data);
@@ -420,6 +421,7 @@ public class MVTable extends TableBase {
                 index = createMVDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
             } else if (isGlobalUniqueIndex(session, indexType)) {
                 index = new GlobalUniqueIndex(session, this, indexId, indexName, cols, indexType);
+                containsGlobalUniqueIndex = true;
             } else if (indexType.isHash() && cols.length <= 1) { // TODO 是否要支持多版本
                 if (indexType.isUnique()) {
                     index = new HashIndex(this, indexId, indexName, cols, indexType);
@@ -784,4 +786,8 @@ public class MVTable extends TableBase {
         }
     }
 
+    @Override
+    public boolean containsGlobalUniqueIndex() {
+        return containsGlobalUniqueIndex;
+    }
 }

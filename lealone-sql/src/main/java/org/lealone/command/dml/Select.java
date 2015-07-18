@@ -1448,4 +1448,9 @@ public class Select extends Query implements Callable<ResultInterface> {
     public SortOrder getSortOrder() {
         return sort;
     }
+
+    @Override
+    public boolean isBatchForInsert() {
+        return !containsEqualPartitionKeyComparisonType(topTableFilter);
+    }
 }

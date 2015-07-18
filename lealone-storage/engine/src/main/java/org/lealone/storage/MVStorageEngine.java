@@ -88,7 +88,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     @Override
     public TransactionEngine createTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder,
             String hostAndPort) {
-        return new MVCCTransactionEngine(dataType, mapBuilder, hostAndPort);
+        return new MVCCTransactionEngine(dataType, mapBuilder, hostAndPort, Session.isClusterMode());
     }
 
     static HashMap<String, Store> stores = new HashMap<>(1);

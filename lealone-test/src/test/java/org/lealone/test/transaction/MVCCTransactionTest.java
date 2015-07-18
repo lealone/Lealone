@@ -31,7 +31,7 @@ public class MVCCTransactionTest extends UnitTestBase {
     public void run() {
         StorageMap.Builder mapBuilder = new MemoryStorageEngine.MemoryMapBuilder();
         String hostAndPort = getHost() + ":" + getPort();
-        MVCCTransactionEngine e = new MVCCTransactionEngine(new ObjectDataType(), mapBuilder, hostAndPort);
+        MVCCTransactionEngine e = new MVCCTransactionEngine(new ObjectDataType(), mapBuilder, hostAndPort, false);
         e.init(null);
 
         MVCCTransaction t = e.beginTransaction(false);

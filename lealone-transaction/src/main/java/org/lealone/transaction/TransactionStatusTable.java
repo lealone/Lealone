@@ -74,16 +74,18 @@ class TransactionStatusTable {
             cache = newCache(hostAndPort);
         }
         long commitTimestamp = cache.get(oldTid);
-        //1.上一次已经查过了，已确认过是条无效的记录
+        // 1.上一次已经查过了，已确认过是条无效的记录
         if (commitTimestamp == -2)
             return false;
-        //2. 是有效的事务记录，再进一步判断是否小于等于当前事务的开始时间戳
+        // 2. 是有效的事务记录，再进一步判断是否小于等于当前事务的开始时间戳
         if (commitTimestamp != -1)
             return commitTimestamp <= currentTransaction.transactionId;
 
         String oldTransactionName = MVCCTransaction.getTransactionName(hostAndPort, oldTid);
 
         Object[] v = map.get(oldTransactionName);
+        if (v == null) // TODO
+            return true;
 
         commitTimestamp = (long) v[1];
         String[] allLocalTransactionNames = ((String) v[0]).split(",");
@@ -98,7 +100,7 @@ class TransactionStatusTable {
             }
         }
 
-        //TODO 如果前一个事务没有结束，如何让它结束或是等它结束。
+        // TODO 如果前一个事务没有结束，如何让它结束或是等它结束。
         if (isFullSuccessful) {
             cache.set(oldTid, commitTimestamp);
             return true;

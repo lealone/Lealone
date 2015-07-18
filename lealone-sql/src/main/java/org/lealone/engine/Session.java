@@ -1210,10 +1210,22 @@ public class Session extends SessionWithState implements Transaction.Validator {
     private volatile Transaction transaction;
 
     public Transaction getTransaction() {
-        if (transaction == null) {
-            transaction = database.getTransactionEngine().beginTransaction(autoCommit);
-            transaction.setValidator(this);
+        return getTransaction(null);
+    }
+
+    public Transaction getTransaction(Prepared p) {
+        if (transaction != null)
+            return transaction;
+
+        boolean autoCommit = this.autoCommit;
+        if (autoCommit && p != null && !p.isLocal() && p.isBatch()) { // 批量操作会当成一个分布式事务处理
+            autoCommit = false;
         }
+
+        transaction = database.getTransactionEngine().beginTransaction(autoCommit);
+        transaction.setValidator(this);
+        if (isRoot && !autoCommit && p != null && !p.isLocal())
+            transaction.setLocal(false);
         return transaction;
     }
 

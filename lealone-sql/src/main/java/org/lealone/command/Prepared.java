@@ -9,6 +9,7 @@ import java.util.ArrayList;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
+import org.lealone.dbobject.table.TableFilter;
 import org.lealone.engine.Database;
 import org.lealone.engine.Session;
 import org.lealone.engine.SysProperties;
@@ -17,6 +18,7 @@ import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
 import org.lealone.message.Trace;
 import org.lealone.result.ResultInterface;
+import org.lealone.result.SearchRow;
 import org.lealone.util.StatementBuilder;
 import org.lealone.value.Value;
 
@@ -471,5 +473,33 @@ public abstract class Prepared {
 
     public boolean isDDL() {
         return false;
+    }
+
+    // 多值insert、不带等号PartitionKey条件的delete/update都是一种批量操作，
+    // 这类批量操作会当成一个分布式事务处理
+    public boolean isBatch() {
+        return false;
+    }
+
+    public static boolean containsEqualPartitionKeyComparisonType(TableFilter tableFilter) {
+        return getPartitionKey(tableFilter) != null;
+    }
+
+    public static Value getPartitionKey(TableFilter tableFilter) {
+        SearchRow startRow = tableFilter.getStartSearchRow();
+        SearchRow endRow = tableFilter.getEndSearchRow();
+
+        Value startPK = getPartitionKey(startRow);
+        Value endPK = getPartitionKey(endRow);
+        if (startPK != null && endPK != null && startPK == endPK)
+            return startPK;
+
+        return null;
+    }
+
+    public static Value getPartitionKey(SearchRow row) {
+        if (row == null)
+            return null;
+        return row.getRowKey();
     }
 }

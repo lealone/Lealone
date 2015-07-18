@@ -60,7 +60,6 @@ import org.lealone.expression.Parameter;
 import org.lealone.message.DbException;
 import org.lealone.result.ResultInterface;
 import org.lealone.result.Row;
-import org.lealone.result.SearchRow;
 import org.lealone.util.New;
 import org.lealone.value.Value;
 import org.lealone.value.ValueUuid;
@@ -439,22 +438,12 @@ public class P2PRouter implements Router {
         return call;
     }
 
-    private static Value getPartitionKey(SearchRow row) {
-        if (row == null)
-            return null;
-        return row.getRowKey();
-    }
-
     private static List<InetAddress> getTargetEndpointsIfEqual(TableFilter tableFilter) {
-        SearchRow startRow = tableFilter.getStartSearchRow();
-        SearchRow endRow = tableFilter.getEndSearchRow();
+        Value pk = Prepared.getPartitionKey(tableFilter);
 
-        Value startPK = getPartitionKey(startRow);
-        Value endPK = getPartitionKey(endRow);
-
-        if (startPK != null && endPK != null && startPK == endPK) {
+        if (pk != null) {
             Schema schema = tableFilter.getTable().getSchema();
-            Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(startPK.getBytesNoCopy()));
+            Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(pk.getBytesNoCopy()));
             List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(schema, tk);
             Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetaData().pendingEndpointsFor(
                     tk, schema.getFullName());
