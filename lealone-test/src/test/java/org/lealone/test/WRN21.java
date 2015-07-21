@@ -45,7 +45,7 @@ public class WRN21 {
         }
     }
 
-    static class Node extends Thread {
+    static class Node {
         private final String name; // 节点名
         private ArrayList<Record> historyRecords = new ArrayList<>(); // 保存记录的历史修改版本
 
