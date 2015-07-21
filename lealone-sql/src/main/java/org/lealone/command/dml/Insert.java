@@ -395,4 +395,14 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
         if (query != null)
             query.setLocal(local);
     }
+
+    @Override
+    public List<Long> getRowVersions() {
+        if (rows == null)
+            return null;
+        ArrayList<Long> list = new ArrayList<>(rows.size());
+        for (Row row : rows)
+            list.add(table.getRowVersion(row.getKey()));
+        return list;
+    }
 }

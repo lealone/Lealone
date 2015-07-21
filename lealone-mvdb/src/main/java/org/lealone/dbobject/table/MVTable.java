@@ -39,6 +39,8 @@ import org.lealone.result.Row;
 import org.lealone.result.SortOrder;
 import org.lealone.storage.TransactionStorageEngine;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionMap;
+import org.lealone.type.ObjectDataType;
 import org.lealone.util.MathUtils;
 import org.lealone.util.New;
 import org.lealone.value.DataType;
@@ -71,6 +73,8 @@ public class MVTable extends TableBase {
     private final TransactionStorageEngine storageEngine;
     private boolean containsGlobalUniqueIndex;
 
+    private final TransactionMap<Long, Long> rowVersionMap;
+
     public MVTable(CreateTableData data, TransactionStorageEngine storageEngine) {
         super(data);
         nextAnalyze = database.getSettings().analyzeAuto;
@@ -82,6 +86,9 @@ public class MVTable extends TableBase {
             }
         }
         traceLock = database.getTrace(Trace.LOCK);
+
+        rowVersionMap = storageEngine.openMap(data.session, getName() + "_row_version", new ObjectDataType(),
+                new ObjectDataType());
     }
 
     /**
@@ -610,6 +617,7 @@ public class MVTable extends TableBase {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
+        rowVersionMap.remove(row.getKey());
     }
 
     @Override
@@ -620,6 +628,7 @@ public class MVTable extends TableBase {
             index.truncate(session);
         }
         changesSinceAnalyze = 0;
+        rowVersionMap.clear();
     }
 
     @Override
@@ -637,6 +646,7 @@ public class MVTable extends TableBase {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
+        rowVersionMap.put(row.getKey(), (long) 1);
     }
 
     @Override
@@ -789,5 +799,15 @@ public class MVTable extends TableBase {
     @Override
     public boolean containsGlobalUniqueIndex() {
         return containsGlobalUniqueIndex;
+    }
+
+    @Override
+    public long getRowVersion(long rowKey) {
+        return rowVersionMap.get(rowKey);
+    }
+
+    @Override
+    public TransactionMap<Long, Long> getRowVersionMap() {
+        return rowVersionMap;
     }
 }

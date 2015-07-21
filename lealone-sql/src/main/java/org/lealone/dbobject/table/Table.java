@@ -9,6 +9,7 @@ package org.lealone.dbobject.table;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
@@ -34,6 +35,7 @@ import org.lealone.result.SearchRow;
 import org.lealone.result.SimpleRow;
 import org.lealone.result.SimpleRowValue;
 import org.lealone.result.SortOrder;
+import org.lealone.transaction.TransactionMap;
 import org.lealone.util.New;
 import org.lealone.value.CompareMode;
 import org.lealone.value.Value;
@@ -433,6 +435,17 @@ public abstract class Table extends SchemaObjectBase {
      *            new row,...
      */
     public void updateRows(Prepared prepared, Session session, RowList rows) {
+        List<Long> rowVersionList = null;
+        TransactionMap<Long, Long> rowVersionMap = getRowVersionMap();
+        if (rowVersionMap != null) {
+            rowVersionList = New.arrayList();
+            for (rows.reset(); rows.hasNext();) {
+                Row o = rows.next();
+                rows.next();
+                rowVersionList.add(rowVersionMap.get(o.getKey()));
+            }
+        }
+
         // in case we need to undo the update
         long savepointId = session.getTransaction().getSavepointId();
         // remove the old rows
@@ -459,6 +472,15 @@ public abstract class Table extends SchemaObjectBase {
                     session.rollbackTo(savepointId, false);
                 }
                 throw e;
+            }
+        }
+
+        if (rowVersionMap != null) {
+            int i = 0;
+            for (rows.reset(); rows.hasNext();) {
+                Row o = rows.next();
+                rows.next();
+                rowVersionMap.put(o.getKey(), rowVersionList.get(i++) + 1);
             }
         }
     }
@@ -1167,5 +1189,13 @@ public abstract class Table extends SchemaObjectBase {
 
     public boolean containsGlobalUniqueIndex() {
         return false;
+    }
+
+    public long getRowVersion(long rowKey) {
+        return -1;
+    }
+
+    public TransactionMap<Long, Long> getRowVersionMap() {
+        return null;
     }
 }

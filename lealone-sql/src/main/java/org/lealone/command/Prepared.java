@@ -6,6 +6,7 @@
 package org.lealone.command;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
@@ -501,5 +502,9 @@ public abstract class Prepared {
         if (row == null)
             return null;
         return row.getRowKey();
+    }
+
+    public List<Long> getRowVersions() {
+        return null;
     }
 }

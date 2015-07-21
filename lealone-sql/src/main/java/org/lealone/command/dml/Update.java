@@ -8,6 +8,7 @@ package org.lealone.command.dml;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 import org.lealone.api.ErrorCode;
@@ -47,6 +48,7 @@ public class Update extends Prepared implements Callable<Integer> {
 
     protected final ArrayList<Column> columns = New.arrayList();
     protected final HashMap<Column, Expression> expressionMap = New.hashMap();
+    private final List<Row> rows = New.arrayList();
 
     public Update(Session session) {
         super(session);
@@ -149,6 +151,7 @@ public class Update extends Prepared implements Callable<Integer> {
                     if (!done) {
                         rows.add(oldRow);
                         rows.add(newRow);
+                        this.rows.add(newRow);
                     }
                     count++;
                 }
@@ -246,5 +249,14 @@ public class Update extends Prepared implements Callable<Integer> {
     @Override
     public boolean isBatch() {
         return !containsEqualPartitionKeyComparisonType(tableFilter);
+    }
+
+    @Override
+    public List<Long> getRowVersions() {
+        ArrayList<Long> list = new ArrayList<>(rows.size());
+        Table table = getTable();
+        for (Row row : rows)
+            list.add(table.getRowVersion(row.getKey()));
+        return list;
     }
 }
