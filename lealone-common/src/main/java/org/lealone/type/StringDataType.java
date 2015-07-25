@@ -17,7 +17,7 @@ public class StringDataType implements DataType {
     public static final StringDataType INSTANCE = new StringDataType();
 
     protected StringDataType() {
-        //只允许子类继承
+        // 只允许子类继承
     }
 
     @Override
@@ -27,6 +27,8 @@ public class StringDataType implements DataType {
 
     @Override
     public int getMemory(Object obj) {
+        if (obj == null)
+            return 4;
         return 24 + 2 * obj.toString().length();
     }
 
@@ -47,11 +49,17 @@ public class StringDataType implements DataType {
     @Override
     public String read(ByteBuffer buff) {
         int len = DataUtils.readVarInt(buff);
+        if (len == -1)
+            return null;
         return DataUtils.readString(buff, len);
     }
 
     @Override
     public void write(WriteBuffer buff, Object obj) {
+        if (obj == null) {
+            buff.putVarInt(-1);
+            return;
+        }
         String s = obj.toString();
         int len = s.length();
         buff.putVarInt(len).putStringData(s, len);
