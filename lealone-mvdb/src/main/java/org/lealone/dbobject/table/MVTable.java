@@ -617,7 +617,7 @@ public class MVTable extends TableBase {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        rowVersionMap.remove(row.getKey());
+        // rowVersionMap.remove(row.getKey());
     }
 
     @Override
@@ -628,7 +628,7 @@ public class MVTable extends TableBase {
             index.truncate(session);
         }
         changesSinceAnalyze = 0;
-        rowVersionMap.clear();
+        // rowVersionMap.clear();
     }
 
     @Override
@@ -646,7 +646,8 @@ public class MVTable extends TableBase {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        rowVersionMap.put(row.getKey(), (long) 1);
+        // rowVersionMap = rowVersionMap.getInstance(session.getTransaction(), Long.MAX_VALUE);
+        // rowVersionMap.put(row.getKey(), (long) 1);
     }
 
     @Override

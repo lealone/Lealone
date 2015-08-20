@@ -9,7 +9,6 @@ package org.lealone.dbobject.table;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
@@ -435,16 +434,16 @@ public abstract class Table extends SchemaObjectBase {
      *            new row,...
      */
     public void updateRows(Prepared prepared, Session session, RowList rows) {
-        List<Long> rowVersionList = null;
-        TransactionMap<Long, Long> rowVersionMap = getRowVersionMap();
-        if (rowVersionMap != null) {
-            rowVersionList = New.arrayList();
-            for (rows.reset(); rows.hasNext();) {
-                Row o = rows.next();
-                rows.next();
-                rowVersionList.add(rowVersionMap.get(o.getKey()));
-            }
-        }
+        // List<Long> rowVersionList = null;
+        // TransactionMap<Long, Long> rowVersionMap = getRowVersionMap();
+        // if (rowVersionMap != null) {
+        // rowVersionList = New.arrayList();
+        // for (rows.reset(); rows.hasNext();) {
+        // Row o = rows.next();
+        // rows.next();
+        // rowVersionList.add(rowVersionMap.get(o.getKey()));
+        // }
+        // }
 
         // in case we need to undo the update
         long savepointId = session.getTransaction().getSavepointId();
@@ -475,14 +474,14 @@ public abstract class Table extends SchemaObjectBase {
             }
         }
 
-        if (rowVersionMap != null) {
-            int i = 0;
-            for (rows.reset(); rows.hasNext();) {
-                Row o = rows.next();
-                rows.next();
-                rowVersionMap.put(o.getKey(), rowVersionList.get(i++) + 1);
-            }
-        }
+        // if (rowVersionMap != null) {
+        // int i = 0;
+        // for (rows.reset(); rows.hasNext();) {
+        // Row o = rows.next();
+        // rows.next();
+        // rowVersionMap.put(o.getKey(), rowVersionList.get(i++) + 1);
+        // }
+        // }
     }
 
     public ArrayList<TableView> getViews() {
