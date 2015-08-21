@@ -421,8 +421,8 @@ public class Database implements DataHandler {
      * @return 0 if both values are equal, -1 if the first value is smaller, and
      *         1 otherwise
      */
-    public int compareTypeSave(Value a, Value b) {
-        return a.compareTypeSave(b, compareMode);
+    public int compareTypeSafe(Value a, Value b) {
+        return a.compareTypeSafe(b, compareMode);
     }
 
     public long getModificationDataId() {
