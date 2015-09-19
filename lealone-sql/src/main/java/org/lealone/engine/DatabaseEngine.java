@@ -19,6 +19,7 @@
  */
 package org.lealone.engine;
 
+import java.util.Collection;
 import java.util.HashMap;
 
 import org.lealone.api.ErrorCode;
@@ -47,6 +48,10 @@ public class DatabaseEngine implements SessionFactory {
 
     public static DatabaseEngine getInstance() {
         return INSTANCE;
+    }
+
+    public static Collection<Database> getDatabases() {
+        return DATABASES.values();
     }
 
     public static synchronized void init(String host, int port) {

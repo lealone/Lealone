@@ -23,14 +23,22 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
+import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.exceptions.ConfigurationException;
+import org.lealone.cluster.gms.FailureDetector;
+import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.TokenMetaData;
 import org.lealone.cluster.service.StorageService;
+import org.lealone.dbobject.Schema;
+import org.lealone.engine.Database;
+import org.lealone.engine.DatabaseEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class BootStrapper {
     private static final Logger logger = LoggerFactory.getLogger(BootStrapper.class);
+    private static final boolean useStrictConsistency = Boolean.valueOf(System.getProperty(
+            "lealone.consistent.rangemovement", "true"));
 
     /* endpoint that needs to be bootstrapped */
     protected final InetAddress address;
@@ -50,6 +58,20 @@ public class BootStrapper {
     public void bootstrap() {
         if (logger.isDebugEnabled())
             logger.debug("Beginning bootstrap process");
+        RangeStreamer streamer = new RangeStreamer(tokenMetaData, tokens, address, "Bootstrap", useStrictConsistency,
+                DatabaseDescriptor.getEndpointSnitch());
+        streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
+
+        for (Database db : DatabaseEngine.getDatabases()) {
+            if (!db.isPersistent())
+                continue;
+
+            for (Schema schema : db.getAllSchemas()) {
+                AbstractReplicationStrategy strategy = Keyspace.getReplicationStrategy(schema);
+                streamer.addRanges(schema, strategy.getPendingAddressRanges(tokenMetaData, tokens, address));
+            }
+        }
+
         StorageService.instance.finishBootstrapping();
     }
 
