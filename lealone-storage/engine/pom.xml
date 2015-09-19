@@ -45,10 +45,5 @@
             <artifactId>lealone-storage-mvstore</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-storage-wiredtiger</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
 </project>

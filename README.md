@@ -13,7 +13,7 @@
 * 强一致性，支持ACID、高性能分布式事务<br>
   使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/blob/master/docs/%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E6%A8%A1%E5%9E%8B.md)
  
-* 插件化存储引擎架构，内置[WiredTiger](https://github.com/wiredtiger/wiredtiger/tree/develop)和[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
+* 插件化存储引擎架构，内置[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
 
 * 插件化事务引擎架构，事务处理逻辑与存储分离，内置一个支持MVCC的事务引擎
 
@@ -24,6 +24,8 @@
 
 
 ### Lealone文档
+
+* [Getting started](https://github.com/codefollower/Lealone/blob/master/docs/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3.md#1-%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)
 
 * [文档首页](https://github.com/codefollower/Lealone/blob/master/docs/README.md)
 

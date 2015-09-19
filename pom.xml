@@ -37,7 +37,6 @@
 
         <module>lealone-storage/engine</module>
         <module>lealone-storage/mvstore</module>
-        <module>lealone-storage/wiredtiger</module>
 
         <module>lealone-test</module>
     </modules>
