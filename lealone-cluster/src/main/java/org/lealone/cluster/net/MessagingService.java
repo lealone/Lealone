@@ -52,9 +52,14 @@ import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.EchoMessage;
+import org.lealone.cluster.gms.EchoVerbHandler;
 import org.lealone.cluster.gms.GossipDigestAck;
 import org.lealone.cluster.gms.GossipDigestAck2;
+import org.lealone.cluster.gms.GossipDigestAck2VerbHandler;
+import org.lealone.cluster.gms.GossipDigestAckVerbHandler;
 import org.lealone.cluster.gms.GossipDigestSyn;
+import org.lealone.cluster.gms.GossipDigestSynVerbHandler;
+import org.lealone.cluster.gms.GossipShutdownVerbHandler;
 import org.lealone.cluster.io.DataOutputPlus;
 import org.lealone.cluster.io.IVersionedSerializer;
 import org.lealone.cluster.locator.ILatencySubscriber;
@@ -204,7 +209,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
-    // dropped count when last requested for the Recent api.  high concurrency isn't necessary here.
+    // dropped count when last requested for the Recent api. high concurrency isn't necessary here.
     private final Map<Verb, Integer> lastDroppedInternal = new EnumMap<>(Verb.class);
 
     private final List<ILatencySubscriber> subscribers = new ArrayList<>();
@@ -220,7 +225,19 @@ public final class MessagingService implements MessagingServiceMBean {
         return MSHandle.instance;
     }
 
+    private void registerDefaultVerbHandlers() {
+        registerVerbHandler(Verb.REQUEST_RESPONSE, new ResponseVerbHandler());
+        registerVerbHandler(Verb.INTERNAL_RESPONSE, new ResponseVerbHandler());
+        registerVerbHandler(Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler());
+        registerVerbHandler(Verb.GOSSIP_DIGEST_SYN, new GossipDigestSynVerbHandler());
+        registerVerbHandler(Verb.GOSSIP_DIGEST_ACK, new GossipDigestAckVerbHandler());
+        registerVerbHandler(Verb.GOSSIP_DIGEST_ACK2, new GossipDigestAck2VerbHandler());
+        registerVerbHandler(Verb.ECHO, new EchoVerbHandler());
+    }
+
     private MessagingService() {
+        registerDefaultVerbHandlers();
+
         for (Verb verb : DROPPABLE_VERBS) {
             droppedMessages.put(verb, new DroppedMessageMetrics(verb));
             lastDroppedInternal.put(verb, 0);
@@ -438,7 +455,7 @@ public final class MessagingService implements MessagingServiceMBean {
      * @param verb
      * @param verbHandler handler for the specified verb
      */
-    public void registerVerbHandlers(Verb verb, IVerbHandler verbHandler) {
+    public void registerVerbHandler(Verb verb, IVerbHandler verbHandler) {
         assert !verbHandlers.containsKey(verb);
         verbHandlers.put(verb, verbHandler);
     }
@@ -620,7 +637,7 @@ public final class MessagingService implements MessagingServiceMBean {
         return versions.containsKey(endpoint);
     }
 
-    //--------------以下是MessagingServiceMBean的API实现-------------
+    // --------------以下是MessagingServiceMBean的API实现-------------
 
     @Override
     public int getVersion(String endpoint) throws UnknownHostException {

@@ -49,21 +49,16 @@ import org.lealone.cluster.dht.RingPosition;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.ApplicationState;
-import org.lealone.cluster.gms.EchoVerbHandler;
 import org.lealone.cluster.gms.EndpointState;
 import org.lealone.cluster.gms.FailureDetector;
-import org.lealone.cluster.gms.GossipDigestAck2VerbHandler;
-import org.lealone.cluster.gms.GossipDigestAckVerbHandler;
-import org.lealone.cluster.gms.GossipDigestSynVerbHandler;
-import org.lealone.cluster.gms.GossipShutdownVerbHandler;
 import org.lealone.cluster.gms.Gossiper;
 import org.lealone.cluster.gms.IEndpointStateChangeSubscriber;
 import org.lealone.cluster.gms.TokenSerializer;
 import org.lealone.cluster.gms.VersionedValue;
+import org.lealone.cluster.gms.VersionedValue.VersionedValueFactory;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.locator.TokenMetaData;
 import org.lealone.cluster.net.MessagingService;
-import org.lealone.cluster.net.ResponseVerbHandler;
 import org.lealone.cluster.utils.BackgroundActivityMonitor;
 import org.lealone.cluster.utils.FileUtils;
 import org.lealone.cluster.utils.Pair;
@@ -90,12 +85,20 @@ public class StorageService implements IEndpointStateChangeSubscriber {
     public static final StorageService instance = new StorageService();
 
     private static int getRingDelay() {
-        String newdelay = System.getProperty("lealone.ring_delay_ms");
+        String newdelay = getProperty("ring_delay_ms");
         if (newdelay != null) {
             logger.info("Overriding RING_DELAY to {}ms", newdelay);
             return Integer.parseInt(newdelay);
         } else
             return 30 * 1000;
+    }
+
+    private static String getProperty(String key) {
+        return getProperty("" + key);
+    }
+
+    private static String getProperty(String key, String def) {
+        return getProperty("" + key, def);
     }
 
     public static IPartitioner getPartitioner() {
@@ -115,14 +118,13 @@ public class StorageService implements IEndpointStateChangeSubscriber {
 
     private Mode operationMode = Mode.STARTING;
 
-    public final VersionedValue.VersionedValueFactory valueFactory = new VersionedValue.VersionedValueFactory(
-            getPartitioner());
+    public final VersionedValueFactory valueFactory = new VersionedValueFactory(getPartitioner());
     /* This abstraction maintains the token/endpoint metadata information */
     private final TokenMetaData tokenMetaData = new TokenMetaData();
     private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
 
     /* we bootstrap but do NOT join the ring unless told to do so */
-    private boolean isSurveyMode = Boolean.parseBoolean(System.getProperty("lealone.write_survey", "false"));
+    private boolean isSurveyMode = Boolean.parseBoolean(getProperty("write_survey", "false"));
     private boolean initialized;
     private volatile boolean joined = false;
     /* Are we starting this node in bootstrap mode? */
@@ -132,30 +134,12 @@ public class StorageService implements IEndpointStateChangeSubscriber {
     private Thread drainOnShutdown;
 
     public StorageService() {
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.REQUEST_RESPONSE, //
-                new ResponseVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.INTERNAL_RESPONSE, //
-                new ResponseVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_SHUTDOWN, //
-                new GossipShutdownVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_SYN, //
-                new GossipDigestSynVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK, //
-                new GossipDigestAckVerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.GOSSIP_DIGEST_ACK2, //
-                new GossipDigestAck2VerbHandler());
-        MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ECHO, //
-                new EchoVerbHandler());
     }
 
     public synchronized void start() throws ConfigurationException {
-        start(RING_DELAY);
-    }
-
-    public synchronized void start(int delay) throws ConfigurationException {
         initialized = true;
 
-        if (Boolean.parseBoolean(System.getProperty("lealone.load_ring_state", "true"))) {
+        if (Boolean.parseBoolean(getProperty("load_ring_state", "true"))) {
             logger.info("Loading persisted ring state");
             Multimap<InetAddress, Token> loadedTokens = ClusterMetaData.loadTokens();
             Map<InetAddress, UUID> loadedHostIds = ClusterMetaData.loadHostIds();
@@ -175,13 +159,13 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         addShutdownHook();
         prepareToJoin();
 
-        if (Boolean.parseBoolean(System.getProperty("lealone.join_ring", "true"))) {
-            joinTokenRing(delay);
+        if (Boolean.parseBoolean(getProperty("join_ring", "true"))) {
+            joinTokenRing(RING_DELAY);
         } else {
             Collection<Token> tokens = ClusterMetaData.getSavedTokens();
             if (!tokens.isEmpty()) {
                 tokenMetaData.updateNormalTokens(tokens, Utils.getBroadcastAddress());
-                // order is important here, the gossiper can fire in between adding these two states.  
+                // order is important here, the gossiper can fire in between adding these two states.
                 // It's ok to send TOKENS without STATUS, but *not* vice versa.
                 List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<>();
                 states.add(Pair.create(ApplicationState.TOKENS, valueFactory.tokens(tokens)));
@@ -212,8 +196,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         if (!joined) {
             Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
 
-            if (DatabaseDescriptor.isReplacing()
-                    && !(Boolean.parseBoolean(System.getProperty("lealone.join_ring", "true"))))
+            if (DatabaseDescriptor.isReplacing() && !(Boolean.parseBoolean(getProperty("join_ring", "true"))))
                 throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
             if (DatabaseDescriptor.getReplaceTokens().size() > 0 || DatabaseDescriptor.getReplaceNode() != null)
                 throw new RuntimeException("Replace method removed; use lealone.replace_address instead");
@@ -230,7 +213,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
                 checkForEndpointCollision();
             }
 
-            // have to start the gossip service before we can see any info on other nodes.  
+            // have to start the gossip service before we can see any info on other nodes.
             // this is necessary for bootstrap to get the load info it needs.
             // (we won't be part of the storage ring though until we add a counterId to our state, below.)
             // Seed the host ID-to-endpoint map with our own ID.
@@ -249,7 +232,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
 
             if (!MessagingService.instance().isListening())
                 MessagingService.instance().listen(Utils.getLocalAddress());
-            //LoadBroadcaster.instance.startBroadcasting(); //TODO
+            // LoadBroadcaster.instance.startBroadcasting(); //TODO
         }
     }
 
@@ -326,7 +309,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         // which is useful for both new users and testing.
         //
         // We attempted to replace this with a schema-presence check, but you need a meaningful sleep
-        // to get schema info from gossip which defeats the purpose.  See lealone-4427 for the gory details.
+        // to get schema info from gossip which defeats the purpose. See lealone-4427 for the gory details.
         Set<InetAddress> current = new HashSet<>();
         if (logger.isDebugEnabled())
             logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(), ClusterMetaData
@@ -344,7 +327,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
             if (logger.isDebugEnabled())
                 logger.debug("... got ring + schema info");
 
-            if (Boolean.parseBoolean(System.getProperty("lealone.consistent.rangemovement", "true"))
+            if (Boolean.parseBoolean(getProperty("consistent.rangemovement", "true"))
                     && (tokenMetaData.getBootstrapTokens().valueSet().size() > 0 //
                             || tokenMetaData.getLeavingEndpoints().size() > 0 //
                     || tokenMetaData.getMovingEndpoints().size() > 0))
@@ -445,13 +428,13 @@ public class StorageService implements IEndpointStateChangeSubscriber {
             ClusterMetaData.removeEndpoint(DatabaseDescriptor.getReplaceAddress());
         }
 
-        //GossipTask是在另一个线程中异步执行的，
-        //执行bootstrap的线程运行到这里时GossipTask可能还在与seed节点交换信息的过程中，
-        //虽然在执行doShadowRound时与seed节点通信过一次，
-        //但执行完doShadowRound后就在checkForEndpointCollision中马上就调用resetEndpointStateMap把endpointStateMap清空了，
-        //所以seenAnySeed()会返回false，
-        //这里没有像上面那样使用Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS)，
-        //是不想在执行bootstrap时暂停太久，因为RING_DELAY的默认值是30秒!
+        // GossipTask是在另一个线程中异步执行的，
+        // 执行bootstrap的线程运行到这里时GossipTask可能还在与seed节点交换信息的过程中，
+        // 虽然在执行doShadowRound时与seed节点通信过一次，
+        // 但执行完doShadowRound后就在checkForEndpointCollision中马上就调用resetEndpointStateMap把endpointStateMap清空了，
+        // 所以seenAnySeed()会返回false，
+        // 这里没有像上面那样使用Uninterruptibles.sleepUninterruptibly(RING_DELAY, TimeUnit.MILLISECONDS)，
+        // 是不想在执行bootstrap时暂停太久，因为RING_DELAY的默认值是30秒!
         int delay = 0;
         while (true) {
             if (Gossiper.instance.seenAnySeed())
@@ -748,7 +731,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
      */
     private void handleStateBootstrap(InetAddress endpoint) {
         Collection<Token> tokens;
-        // explicitly check for TOKENS, because a bootstrapping node might be bootstrapping in legacy mode; that is, 
+        // explicitly check for TOKENS, because a bootstrapping node might be bootstrapping in legacy mode; that is,
         // not using vnodes and no token specified
         tokens = getTokensFor(endpoint);
 
@@ -845,7 +828,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
                 tokensToUpdateInTokenMetaData.add(token);
                 tokensToUpdateInClusterMetaData.add(token);
 
-                // currentOwner is no longer current, endpoint is.  Keep track of these moves, because when
+                // currentOwner is no longer current, endpoint is. Keep track of these moves, because when
                 // a host no longer has any tokens, we'll want to remove it.
                 Multimap<InetAddress, Token> epToTokenCopy = getTokenMetaData().getEndpointToTokenMapForReading();
                 epToTokenCopy.get(currentOwner).remove(token);
@@ -864,7 +847,8 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         for (InetAddress ep : endpointsToRemove) {
             removeEndpoint(ep);
             if (DatabaseDescriptor.isReplacing() && DatabaseDescriptor.getReplaceAddress().equals(ep))
-                Gossiper.instance.replacementQuarantine(ep); // quarantine locally longer than normally; see Cassandra-8260
+                Gossiper.instance.replacementQuarantine(ep); // quarantine locally longer than normally; see
+                                                             // Cassandra-8260
         }
         if (!tokensToUpdateInClusterMetaData.isEmpty())
             ClusterMetaData.updateTokens(endpoint, tokensToUpdateInClusterMetaData);
@@ -955,7 +939,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         if (endpoint.equals(Utils.getBroadcastAddress())) {
             logger.info("Received removenode gossip about myself. Is this node rejoining after an explicit removenode?");
             try {
-                //drain();
+                // drain();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -976,7 +960,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
 
                 // find the endpoint coordinating this removal that we need to notify when we're done
                 // String[] coordinator = Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(
-                //    ApplicationState.REMOVAL_COORDINATOR).value.split(VersionedValue.DELIMITER_STR, -1);
+                // ApplicationState.REMOVAL_COORDINATOR).value.split(VersionedValue.DELIMITER_STR, -1);
                 // UUID hostId = UUID.fromString(coordinator[1]);
             }
         } else // now that the gossiper has told us about this nonexistent member, notify the gossiper to remove it
@@ -1054,7 +1038,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
 
     /** raw load value */
     public double getLoad() {
-        //TODO 看看硬盘使用情况
+        // TODO 看看硬盘使用情况
         return 0.0;
     }
 
