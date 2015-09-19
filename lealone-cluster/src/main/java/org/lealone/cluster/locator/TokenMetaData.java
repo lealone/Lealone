@@ -808,38 +808,40 @@ public class TokenMetaData {
         try {
             Set<InetAddress> eps = tokenToEndpointMap.inverse().keySet();
 
+			String lineSeparator = System.getProperty("line.separator");
+
             if (!eps.isEmpty()) {
                 sb.append("Normal Tokens:");
-                sb.append(System.getProperty("line.separator"));
+                sb.append(lineSeparator);
                 for (InetAddress ep : eps) {
                     sb.append(ep);
                     sb.append(":");
                     sb.append(tokenToEndpointMap.inverse().get(ep));
-                    sb.append(System.getProperty("line.separator"));
+                    sb.append(lineSeparator);
                 }
             }
 
             if (!bootstrapTokens.isEmpty()) {
                 sb.append("Bootstrapping Tokens:");
-                sb.append(System.getProperty("line.separator"));
+                sb.append(lineSeparator);
                 for (Map.Entry<Token, InetAddress> entry : bootstrapTokens.entrySet()) {
                     sb.append(entry.getValue()).append(":").append(entry.getKey());
-                    sb.append(System.getProperty("line.separator"));
+                    sb.append(lineSeparator);
                 }
             }
 
             if (!leavingEndpoints.isEmpty()) {
                 sb.append("Leaving Endpoints:");
-                sb.append(System.getProperty("line.separator"));
+                sb.append(lineSeparator);
                 for (InetAddress ep : leavingEndpoints) {
                     sb.append(ep);
-                    sb.append(System.getProperty("line.separator"));
+                    sb.append(lineSeparator);
                 }
             }
 
             if (!pendingRanges.isEmpty()) {
                 sb.append("Pending Ranges:");
-                sb.append(System.getProperty("line.separator"));
+                sb.append(lineSeparator);
                 sb.append(printPendingRanges());
             }
         } finally {

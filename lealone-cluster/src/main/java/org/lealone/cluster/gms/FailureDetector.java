@@ -37,6 +37,7 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.apache.commons.lang3.StringUtils;
+import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.io.FSWriteError;
 import org.lealone.cluster.utils.BoundedStatsDeque;
@@ -78,7 +79,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     private static long getInitialValue() {
-        String newvalue = System.getProperty("lealone.fd_initial_value_ms");
+        String newvalue = Config.getProperty("fd.initial.value.ms");
         if (newvalue == null) {
             return Gossiper.INTERVAL_IN_MILLIS * 2;
         } else {
@@ -183,7 +184,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);
         // we could assert not-null, but having isAlive fail screws a node over so badly that
         // it's worth being defensive here so minor bugs don't cause disproportionate
-        // badness.  (See lealone-1463 for an example).
+        // badness. (See lealone-1463 for an example).
         if (epState == null)
             logger.error("unknown endpoint {}", ep);
         return epState != null && epState.isAlive();
@@ -273,7 +274,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
         // because everyone seems pretty accustomed to the default of 8, and users who have
         // already tuned their phi_convict_threshold for their own environments won't need to
         // change.
-        //private final double PHI_FACTOR = 1.0 / Math.log(10.0);
+        // private final double PHI_FACTOR = 1.0 / Math.log(10.0);
 
         // in the event of a long partition, never record an interval longer than the rpc timeout,
         // since if a host is regularly experiencing connectivity problems lasting this long we'd
@@ -286,7 +287,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
         }
 
         private static long getMaxInterval() {
-            String newvalue = System.getProperty("lealone.fd_max_interval_ms");
+            String newvalue = Config.getProperty("fd.max.interval.ms");
             if (newvalue == null) {
                 return FailureDetector.INITIAL_VALUE_NANOS;
             } else {

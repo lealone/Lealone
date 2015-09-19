@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.dht.IPartitioner;
 import org.lealone.cluster.exceptions.ConfigurationException;
@@ -60,8 +61,8 @@ public class Utils {
     }
 
     public static int getAvailableProcessors() {
-        if (System.getProperty("lealone.available_processors") != null)
-            return Integer.parseInt(System.getProperty("lealone.available_processors"));
+        if (Config.getProperty("available.processors") != null)
+            return Integer.parseInt(Config.getProperty("available.processors"));
         else
             return Runtime.getRuntime().availableProcessors();
     }
@@ -150,7 +151,7 @@ public class Utils {
         try {
             in = Utils.class.getClassLoader().getResourceAsStream("org/lealone/res/version.properties");
             if (in == null) {
-                return System.getProperty("lealone.releaseVersion", "Unknown");
+                return Config.getProperty("release.version", "Unknown");
             }
             Properties props = new Properties();
             props.load(in);
@@ -223,7 +224,8 @@ public class Utils {
             throw new ConfigurationException(
                     String.format("Cannot use abstract class '%s' as %s.", classname, readable));
         } catch (Exception e) {
-            // Catch-all because Class.newInstance() "propagates any exception thrown by the nullary constructor, including a checked exception".
+            // Catch-all because Class.newInstance()
+            // "propagates any exception thrown by the nullary constructor, including a checked exception".
             if (e.getCause() instanceof ConfigurationException)
                 throw (ConfigurationException) e.getCause();
             throw new ConfigurationException(String.format("Error instantiating %s class '%s'.", readable, classname),

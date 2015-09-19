@@ -50,7 +50,7 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
      * Inspect the classpath to find storage configuration file
      */
     private URL getStorageConfigURL() throws ConfigurationException {
-        String configUrl = System.getProperty("lealone.config");
+        String configUrl = Config.getProperty("config");
         if (configUrl == null)
             configUrl = DEFAULT_CONFIGURATION;
 

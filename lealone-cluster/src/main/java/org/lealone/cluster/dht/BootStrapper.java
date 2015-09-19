@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.exceptions.ConfigurationException;
@@ -37,8 +38,8 @@ import org.slf4j.LoggerFactory;
 
 public class BootStrapper {
     private static final Logger logger = LoggerFactory.getLogger(BootStrapper.class);
-    private static final boolean useStrictConsistency = Boolean.valueOf(System.getProperty(
-            "lealone.consistent.rangemovement", "true"));
+    private static final boolean useStrictConsistency = Boolean.valueOf(Config.getProperty("consistent.rangemovement",
+            "true"));
 
     /* endpoint that needs to be bootstrapped */
     protected final InetAddress address;

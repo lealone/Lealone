@@ -83,7 +83,7 @@ public class DatabaseDescriptor {
         if (conf != null)
             return conf;
 
-        String loaderClass = System.getProperty("lealone.config.loader");
+        String loaderClass = Config.getProperty("config.loader");
         ConfigurationLoader loader = loaderClass == null ? new YamlConfigurationLoader() : Utils
                 .<ConfigurationLoader> construct(loaderClass, "configuration loading");
         Config conf = loader.loadConfig();
@@ -117,7 +117,7 @@ public class DatabaseDescriptor {
             throw new ConfigurationException("Missing directive: partitioner");
         }
         try {
-            partitioner = Utils.newPartitioner(System.getProperty("lealone.partitioner", conf.partitioner));
+            partitioner = Utils.newPartitioner(Config.getProperty("partitioner", conf.partitioner));
         } catch (Exception e) {
             throw new ConfigurationException("Invalid partitioner class " + conf.partitioner);
         }
@@ -309,10 +309,10 @@ public class DatabaseDescriptor {
 
     public static InetAddress getReplaceAddress() {
         try {
-            if (System.getProperty("lealone.replace_address", null) != null)
-                return InetAddress.getByName(System.getProperty("lealone.replace_address", null));
-            else if (System.getProperty("lealone.replace_address_first_boot", null) != null)
-                return InetAddress.getByName(System.getProperty("lealone.replace_address_first_boot", null));
+            if (Config.getProperty("replace.address", null) != null)
+                return InetAddress.getByName(Config.getProperty("replace.address", null));
+            else if (Config.getProperty("replace.address.first.boot", null) != null)
+                return InetAddress.getByName(Config.getProperty("replace.address.first.boot", null));
             return null;
         } catch (UnknownHostException e) {
             return null;
@@ -320,19 +320,18 @@ public class DatabaseDescriptor {
     }
 
     public static Collection<String> getReplaceTokens() {
-        return tokensFromString(System.getProperty("lealone.replace_token", null));
+        return tokensFromString(Config.getProperty("replace.token", null));
     }
 
     public static UUID getReplaceNode() {
-        String replaceNode = System.getProperty("lealone.replace_node", null);
+        String replaceNode = Config.getProperty("replace.node", null);
         if (replaceNode != null)
             return UUID.fromString(replaceNode);
         return null;
     }
 
     public static boolean isReplacing() {
-        if (System.getProperty("lealone.replace_address_first_boot", null) != null
-                && ClusterMetaData.bootstrapComplete()) {
+        if (Config.getProperty("replace.address.first.boot", null) != null && ClusterMetaData.bootstrapComplete()) {
             logger.info("Replace address on first boot requested; this node is already bootstrapped");
             return false;
         }
@@ -344,11 +343,11 @@ public class DatabaseDescriptor {
     }
 
     public static int getStoragePort() {
-        return Integer.parseInt(System.getProperty("lealone.storage_port", conf.storage_port.toString()));
+        return Integer.parseInt(Config.getProperty("storage.port", conf.storage_port.toString()));
     }
 
     public static int getSSLStoragePort() {
-        return Integer.parseInt(System.getProperty("lealone.ssl_storage_port", conf.ssl_storage_port.toString()));
+        return Integer.parseInt(Config.getProperty("ssl.storage.port", conf.ssl_storage_port.toString()));
     }
 
     public static long getRpcTimeout() {
@@ -413,7 +412,7 @@ public class DatabaseDescriptor {
     }
 
     public static boolean isAutoBootstrap() {
-        return Boolean.parseBoolean(System.getProperty("lealone.auto_bootstrap", conf.auto_bootstrap.toString()));
+        return Boolean.parseBoolean(Config.getProperty("lealone.auto.bootstrap", conf.auto_bootstrap.toString()));
     }
 
     public static int getDynamicUpdateInterval() {

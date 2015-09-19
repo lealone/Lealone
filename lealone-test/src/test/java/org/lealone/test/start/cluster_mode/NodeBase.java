@@ -28,11 +28,11 @@ public class NodeBase extends YamlConfigurationLoader {
         System.setProperty("lealone.config", yaml);
         System.setProperty("lealone-foreground", "true"); // 打印输出到控制台
 
-        //System.setProperty("lealone.load_ring_state", "false"); // 不从system.peers表加载ring状态信息
+        //System.setProperty("lealone.load.ring.state", "false"); // 不从system.peers表加载ring状态信息
 
         //见StorageService.getRingDelay()
         //默认30秒，等太久了
-        System.setProperty("lealone.ring_delay_ms", "5000");
+        System.setProperty("lealone.ring.delay.ms", "5000");
     }
 
     protected String listen_address;

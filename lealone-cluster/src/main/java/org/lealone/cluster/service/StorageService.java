@@ -39,6 +39,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.StringUtils;
+import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.db.Keyspace;
@@ -85,20 +86,12 @@ public class StorageService implements IEndpointStateChangeSubscriber {
     public static final StorageService instance = new StorageService();
 
     private static int getRingDelay() {
-        String newdelay = getProperty("ring_delay_ms");
+        String newdelay = Config.getProperty("ring.delay.ms");
         if (newdelay != null) {
             logger.info("Overriding RING_DELAY to {}ms", newdelay);
             return Integer.parseInt(newdelay);
         } else
             return 30 * 1000;
-    }
-
-    private static String getProperty(String key) {
-        return getProperty("" + key);
-    }
-
-    private static String getProperty(String key, String def) {
-        return getProperty("" + key, def);
     }
 
     public static IPartitioner getPartitioner() {
@@ -124,7 +117,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
     private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
 
     /* we bootstrap but do NOT join the ring unless told to do so */
-    private boolean isSurveyMode = Boolean.parseBoolean(getProperty("write_survey", "false"));
+    private boolean isSurveyMode = Boolean.parseBoolean(Config.getProperty("write.survey", "false"));
     private boolean initialized;
     private volatile boolean joined = false;
     /* Are we starting this node in bootstrap mode? */
@@ -139,7 +132,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
     public synchronized void start() throws ConfigurationException {
         initialized = true;
 
-        if (Boolean.parseBoolean(getProperty("load_ring_state", "true"))) {
+        if (Boolean.parseBoolean(Config.getProperty("load.ring.state", "true"))) {
             logger.info("Loading persisted ring state");
             Multimap<InetAddress, Token> loadedTokens = ClusterMetaData.loadTokens();
             Map<InetAddress, UUID> loadedHostIds = ClusterMetaData.loadHostIds();
@@ -159,7 +152,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         addShutdownHook();
         prepareToJoin();
 
-        if (Boolean.parseBoolean(getProperty("join_ring", "true"))) {
+        if (Boolean.parseBoolean(Config.getProperty("join.ring", "true"))) {
             joinTokenRing(RING_DELAY);
         } else {
             Collection<Token> tokens = ClusterMetaData.getSavedTokens();
@@ -196,7 +189,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
         if (!joined) {
             Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
 
-            if (DatabaseDescriptor.isReplacing() && !(Boolean.parseBoolean(getProperty("join_ring", "true"))))
+            if (DatabaseDescriptor.isReplacing() && !(Boolean.parseBoolean(Config.getProperty("join.ring", "true"))))
                 throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
             if (DatabaseDescriptor.getReplaceTokens().size() > 0 || DatabaseDescriptor.getReplaceNode() != null)
                 throw new RuntimeException("Replace method removed; use lealone.replace_address instead");
@@ -327,7 +320,7 @@ public class StorageService implements IEndpointStateChangeSubscriber {
             if (logger.isDebugEnabled())
                 logger.debug("... got ring + schema info");
 
-            if (Boolean.parseBoolean(getProperty("consistent.rangemovement", "true"))
+            if (Boolean.parseBoolean(Config.getProperty("consistent.rangemovement", "true"))
                     && (tokenMetaData.getBootstrapTokens().valueSet().size() > 0 //
                             || tokenMetaData.getLeavingEndpoints().size() > 0 //
                     || tokenMetaData.getMovingEndpoints().size() > 0))

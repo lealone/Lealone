@@ -26,6 +26,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.cluster.concurrent.DebuggableScheduledThreadPoolExecutor;
+import org.lealone.cluster.config.Config;
 import org.lealone.cluster.gms.ApplicationState;
 import org.lealone.cluster.gms.EndpointState;
 import org.lealone.cluster.gms.Gossiper;
@@ -66,7 +67,7 @@ public class BackgroundActivityMonitor {
                 logger.warn("Couldn't open /proc/stats");
             statsFile = null;
         }
-        if (System.getProperty("lealone.background.activity.monitor.enabled", null) == null)
+        if (Config.getProperty("background.activity.monitor.enabled", null) == null)
             reportThread = null;
         else {
             reportThread = new DebuggableScheduledThreadPoolExecutor("Background_Reporter");

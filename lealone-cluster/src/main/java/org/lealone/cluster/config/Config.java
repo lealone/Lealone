@@ -97,9 +97,17 @@ public class Config {
     }
 
     public static enum RunMode {
-        //embedded,
+        // embedded,
         client_server,
-        //standalone,
+        // standalone,
         cluster,
+    }
+
+    public static String getProperty(String key) {
+        return getProperty(key, null);
+    }
+
+    public static String getProperty(String key, String def) {
+        return System.getProperty("lealone." + key, def);
     }
 }
