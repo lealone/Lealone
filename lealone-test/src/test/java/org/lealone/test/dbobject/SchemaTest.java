@@ -18,7 +18,7 @@
 package org.lealone.test.dbobject;
 
 import org.junit.Test;
-import org.lealone.dbobject.Schema;
+import org.lealone.db.schema.Schema;
 
 public class SchemaTest extends DbObjectTestBase {
     @Test

@@ -24,8 +24,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.lealone.type.DataType;
-import org.lealone.type.ObjectDataType;
+import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.ObjectDataType;
 
 public class LockFreeMVMap<K, V> extends MVMap<K, V> implements Callable<Void> {
 

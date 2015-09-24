@@ -17,7 +17,7 @@
  */
 package org.lealone.transaction;
 
-import org.lealone.type.DataType;
+import org.lealone.storage.type.DataType;
 
 public interface Transaction {
 

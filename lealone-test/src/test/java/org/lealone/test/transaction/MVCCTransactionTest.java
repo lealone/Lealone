@@ -19,12 +19,12 @@ package org.lealone.test.transaction;
 
 import org.junit.Test;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.type.ObjectDataType;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.storage.MemoryStorageEngine;
 import org.lealone.transaction.MVCCTransaction;
 import org.lealone.transaction.MVCCTransactionEngine;
 import org.lealone.transaction.MVCCTransactionMap;
-import org.lealone.type.ObjectDataType;
 
 public class MVCCTransactionTest extends UnitTestBase {
     @Test

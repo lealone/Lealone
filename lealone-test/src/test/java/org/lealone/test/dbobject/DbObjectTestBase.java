@@ -17,11 +17,11 @@
  */
 package org.lealone.test.dbobject;
 
-import org.lealone.engine.ConnectionInfo;
-import org.lealone.engine.Database;
-import org.lealone.engine.DatabaseEngine;
-import org.lealone.engine.Session;
-import org.lealone.result.ResultInterface;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Database;
+import org.lealone.db.DatabaseEngine;
+import org.lealone.db.Session;
+import org.lealone.db.result.ResultInterface;
 import org.lealone.test.UnitTestBase;
 
 public class DbObjectTestBase extends UnitTestBase {

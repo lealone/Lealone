@@ -10,7 +10,7 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import org.lealone.util.DataUtils;
+import org.lealone.common.util.DataUtils;
 
 /**
  * A storage mechanism that "persists" data in the off-heap area of the main

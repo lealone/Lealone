@@ -19,17 +19,17 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.compress.CompressDeflate;
-import org.lealone.compress.CompressLZF;
-import org.lealone.compress.Compressor;
+import org.lealone.common.compress.CompressDeflate;
+import org.lealone.common.compress.CompressLZF;
+import org.lealone.common.compress.Compressor;
+import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.MathUtils;
+import org.lealone.common.util.New;
 import org.lealone.mvstore.Page.PageChildren;
 import org.lealone.mvstore.cache.CacheLongKeyLIRS;
 import org.lealone.storage.StorageMap;
-import org.lealone.type.StringDataType;
-import org.lealone.type.WriteBuffer;
-import org.lealone.util.DataUtils;
-import org.lealone.util.MathUtils;
-import org.lealone.util.New;
+import org.lealone.storage.type.StringDataType;
+import org.lealone.storage.type.WriteBuffer;
 
 /*
 

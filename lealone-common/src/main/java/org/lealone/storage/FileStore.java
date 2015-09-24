@@ -13,13 +13,13 @@ import java.nio.channels.FileChannel;
 import java.util.Arrays;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.engine.Constants;
-import org.lealone.engine.DataHandler;
-import org.lealone.engine.SysProperties;
-import org.lealone.fs.FileUtils;
-import org.lealone.message.DbException;
-import org.lealone.security.SecureFileStore;
-import org.lealone.util.TempFileDeleter;
+import org.lealone.common.message.DbException;
+import org.lealone.common.security.SecureFileStore;
+import org.lealone.common.util.TempFileDeleter;
+import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
+import org.lealone.db.SysProperties;
+import org.lealone.storage.fs.FileUtils;
 
 /**
  * This class is an abstraction of a random access file.

@@ -18,8 +18,8 @@
 package org.lealone.test.dbobject;
 
 import org.junit.Test;
-import org.lealone.dbobject.UserDataType;
-import org.lealone.dbobject.table.Column;
+import org.lealone.db.UserDataType;
+import org.lealone.db.table.Column;
 
 public class UserDataTypeTest extends DbObjectTestBase {
 

@@ -25,11 +25,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import org.lealone.message.DbException;
+import org.lealone.common.message.DbException;
+import org.lealone.common.util.IOUtils;
+import org.lealone.common.util.Utils;
+import org.lealone.db.util.ScriptReader;
 import org.lealone.test.TestBase;
-import org.lealone.util.IOUtils;
-import org.lealone.util.ScriptReader;
-import org.lealone.util.Utils;
 
 public class InstallPgCatalog {
     public static void main(String[] args) throws Exception {

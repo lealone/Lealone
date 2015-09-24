@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.lealone.util.DataUtils;
+import org.lealone.common.util.DataUtils;
 
 /**
  * A scan resistant cache that uses keys of type long. It is meant to cache

@@ -23,7 +23,7 @@ import java.util.ArrayList;
 
 import org.junit.Test;
 import org.lealone.api.AggregateFunction;
-import org.lealone.dbobject.UserAggregate;
+import org.lealone.db.UserAggregate;
 
 public class UserAggregateTest extends DbObjectTestBase {
     @Test

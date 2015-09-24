@@ -19,7 +19,7 @@ package org.lealone.storage;
 
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
-import org.lealone.type.DataType;
+import org.lealone.storage.type.DataType;
 
 public class MVMapBuilder extends StorageMap.BuilderBase {
     private final MVStore store;

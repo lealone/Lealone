@@ -32,7 +32,7 @@
     <dependencies>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-common</artifactId>
+            <artifactId>lealone-storage-api</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

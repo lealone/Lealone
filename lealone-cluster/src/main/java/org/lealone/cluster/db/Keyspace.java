@@ -23,8 +23,8 @@ import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.dbobject.Schema;
-import org.lealone.dbobject.Schema.ReplicationPropertiesChangeListener;
+import org.lealone.db.schema.Schema;
+import org.lealone.db.schema.Schema.ReplicationPropertiesChangeListener;
 
 public class Keyspace implements ReplicationPropertiesChangeListener {
     private static final Keyspace INSTANCE = new Keyspace();

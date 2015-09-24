@@ -15,11 +15,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
+import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.New;
 import org.lealone.storage.StorageMap;
-import org.lealone.type.DataType;
-import org.lealone.type.ObjectDataType;
-import org.lealone.util.DataUtils;
-import org.lealone.util.New;
+import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.ObjectDataType;
 
 /**
  * A stored map.

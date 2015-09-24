@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Assert;
-import org.lealone.engine.Constants;
+import org.lealone.db.Constants;
 
 public class TestBase extends Assert {
     public static final String DEFAULT_STORAGE_ENGINE_NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;

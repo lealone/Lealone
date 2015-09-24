@@ -17,9 +17,9 @@
  */
 package org.lealone.test.transaction;
 
+import org.lealone.storage.type.DataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.type.DataType;
 
 //TODO 实现所有API
 public class MemoryTransaction implements Transaction {

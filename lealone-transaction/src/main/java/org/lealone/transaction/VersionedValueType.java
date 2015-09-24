@@ -7,9 +7,9 @@ package org.lealone.transaction;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.type.DataType;
-import org.lealone.type.WriteBuffer;
-import org.lealone.util.DataUtils;
+import org.lealone.common.util.DataUtils;
+import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.WriteBuffer;
 
 /**
  * The value type for a versioned value.

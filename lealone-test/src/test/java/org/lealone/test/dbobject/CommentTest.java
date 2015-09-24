@@ -18,10 +18,10 @@
 package org.lealone.test.dbobject;
 
 import org.junit.Test;
-import org.lealone.dbobject.Comment;
-import org.lealone.dbobject.Role;
-import org.lealone.dbobject.table.Table;
-import org.lealone.engine.Constants;
+import org.lealone.db.Comment;
+import org.lealone.db.Constants;
+import org.lealone.db.Role;
+import org.lealone.db.table.Table;
 
 public class CommentTest extends DbObjectTestBase {
     @Test

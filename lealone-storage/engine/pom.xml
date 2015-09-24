@@ -45,5 +45,10 @@
             <artifactId>lealone-storage-mvstore</artifactId>
             <version>${project.version}</version>
         </dependency>
+		<dependency>
+            <groupId>org.lealone</groupId>
+            <artifactId>lealone-storage-aostore</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>

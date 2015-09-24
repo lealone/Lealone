@@ -9,12 +9,12 @@ package org.lealone.storage;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.lealone.compress.CompressTool;
-import org.lealone.engine.Constants;
-import org.lealone.engine.Data;
-import org.lealone.engine.DataHandler;
-import org.lealone.message.DbException;
-import org.lealone.util.DataUtils;
+import org.lealone.common.compress.CompressTool;
+import org.lealone.common.message.DbException;
+import org.lealone.common.util.DataUtils;
+import org.lealone.db.Constants;
+import org.lealone.db.Data;
+import org.lealone.db.DataHandler;
 
 /**
  * An input stream that is backed by a file store.

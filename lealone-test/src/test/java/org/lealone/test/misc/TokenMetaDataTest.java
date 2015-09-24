@@ -35,7 +35,7 @@ import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.locator.SimpleStrategy;
 import org.lealone.cluster.locator.TokenMetaData;
-import org.lealone.dbobject.Schema;
+import org.lealone.db.schema.Schema;
 import org.lealone.test.dbobject.DbObjectTestBase;
 
 public class TokenMetaDataTest extends DbObjectTestBase {

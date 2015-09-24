@@ -22,12 +22,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.engine.Constants;
-import org.lealone.jdbc.Driver;
-import org.lealone.message.DbException;
-import org.lealone.util.JdbcUtils;
-import org.lealone.util.NetUtils;
-import org.lealone.util.New;
+import org.lealone.client.jdbc.Driver;
+import org.lealone.common.message.DbException;
+import org.lealone.common.util.JdbcUtils;
+import org.lealone.common.util.NetUtils;
+import org.lealone.common.util.New;
+import org.lealone.db.Constants;
 
 /**
  * The TCP server implements the native H2 database server protocol.

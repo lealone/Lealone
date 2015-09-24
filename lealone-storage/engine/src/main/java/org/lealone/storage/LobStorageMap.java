@@ -19,17 +19,17 @@ import java.util.Arrays;
 import java.util.Map.Entry;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.engine.Constants;
-import org.lealone.engine.Database;
-import org.lealone.message.DbException;
+import org.lealone.common.message.DbException;
+import org.lealone.common.util.IOUtils;
+import org.lealone.common.util.New;
+import org.lealone.common.value.Value;
+import org.lealone.common.value.ValueLobDb;
+import org.lealone.db.Constants;
+import org.lealone.db.Database;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.StreamStore;
 import org.lealone.storage.MVStorageEngine.Store;
-import org.lealone.util.IOUtils;
-import org.lealone.util.New;
-import org.lealone.value.Value;
-import org.lealone.value.ValueLobDb;
 
 /**
  * This class stores LOB objects in the database, in maps. This is the back-end

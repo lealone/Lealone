@@ -18,7 +18,7 @@
 package org.lealone.test.dbobject;
 
 import org.junit.Test;
-import org.lealone.dbobject.Setting;
+import org.lealone.db.Setting;
 
 public class SettingTest extends DbObjectTestBase {
     @Test

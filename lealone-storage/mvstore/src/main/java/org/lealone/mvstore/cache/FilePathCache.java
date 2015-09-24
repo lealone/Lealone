@@ -10,8 +10,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
-import org.lealone.fs.FileBase;
-import org.lealone.fs.FilePathWrapper;
+import org.lealone.storage.fs.FileBase;
+import org.lealone.storage.fs.FilePathWrapper;
 
 /**
  * A file with a read cache.

@@ -8,10 +8,10 @@ package org.lealone.storage;
 
 import java.io.OutputStream;
 
-import org.lealone.compress.CompressTool;
-import org.lealone.engine.Constants;
-import org.lealone.engine.Data;
-import org.lealone.engine.DataHandler;
+import org.lealone.common.compress.CompressTool;
+import org.lealone.db.Constants;
+import org.lealone.db.Data;
+import org.lealone.db.DataHandler;
 
 /**
  * An output stream that is backed by a file store.

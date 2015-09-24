@@ -20,10 +20,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.lealone.engine.Constants;
-import org.lealone.message.DbException;
-import org.lealone.util.NetUtils;
-import org.lealone.util.New;
+import org.lealone.common.message.DbException;
+import org.lealone.common.util.NetUtils;
+import org.lealone.common.util.New;
+import org.lealone.db.Constants;
 
 /**
  * This class implements a subset of the PostgreSQL protocol as described here:

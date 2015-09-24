@@ -19,7 +19,7 @@ package org.lealone.transaction;
 
 import java.util.Arrays;
 
-import org.lealone.engine.Constants;
+import org.lealone.db.Constants;
 
 /**
  * 

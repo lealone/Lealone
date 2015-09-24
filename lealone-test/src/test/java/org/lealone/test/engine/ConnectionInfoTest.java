@@ -18,7 +18,7 @@
 package org.lealone.test.engine;
 
 import org.junit.Test;
-import org.lealone.engine.ConnectionInfo;
+import org.lealone.db.ConnectionInfo;
 import org.lealone.test.UnitTestBase;
 
 public class ConnectionInfoTest extends UnitTestBase {

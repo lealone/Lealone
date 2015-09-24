@@ -19,30 +19,28 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.command.ddl.CreateTableData;
-import org.lealone.dbobject.index.ValueDataType;
-import org.lealone.dbobject.table.MVTable;
-import org.lealone.dbobject.table.Table;
-import org.lealone.engine.Constants;
-import org.lealone.engine.Database;
-import org.lealone.engine.DatabaseEngine;
-import org.lealone.engine.InDoubtTransaction;
-import org.lealone.engine.Session;
-import org.lealone.fs.FileChannelInputStream;
-import org.lealone.fs.FileUtils;
-import org.lealone.message.DbException;
+import org.lealone.common.message.DbException;
+import org.lealone.common.util.BitField;
+import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.IOUtils;
+import org.lealone.common.util.New;
+import org.lealone.db.Constants;
+import org.lealone.db.DatabaseEngine;
+import org.lealone.db.InDoubtTransaction;
+import org.lealone.db.Session;
+import org.lealone.db.index.ValueDataType;
+import org.lealone.db.table.MVTable;
+import org.lealone.db.table.Table;
 import org.lealone.mvstore.MVMap;
 import org.lealone.mvstore.MVStore;
 import org.lealone.mvstore.MVStoreTool;
+import org.lealone.storage.fs.FileChannelInputStream;
+import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.type.DataType;
 import org.lealone.transaction.MVCCTransactionEngine;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.type.DataType;
-import org.lealone.util.BitField;
-import org.lealone.util.DataUtils;
-import org.lealone.util.IOUtils;
-import org.lealone.util.New;
 
 /**
  * A storage engine that internally uses the MVStore.
@@ -61,8 +59,9 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     }
 
     @Override
-    public synchronized Table createTable(CreateTableData data) {
-        Database db = data.session.getDatabase();
+    public synchronized Table createTable(CreateTableData data0) {
+        org.lealone.sql.ddl.CreateTableData data = (org.lealone.sql.ddl.CreateTableData) data0;
+        org.lealone.db.Database db = data.session.getDatabase();
         Store store = stores.get(db.getName());
         if (store == null) {
             store = init(this, db);
@@ -76,7 +75,8 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     }
 
     @Override
-    public synchronized void close(Database db) {
+    public synchronized void close(Database db0) {
+        org.lealone.db.Database db = (org.lealone.db.Database) db0;
         stores.remove(db.getName());
     }
 
@@ -97,7 +97,8 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
         return getStore(session.getDatabase());
     }
 
-    public static Store getStore(Database db) {
+    public static Store getStore(Database db0) {
+        org.lealone.db.Database db = (org.lealone.db.Database) db0;
         return stores.get(db.getName());
     }
 
@@ -107,7 +108,8 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
      * @param db the database
      * @return the store
      */
-    static Store init(StorageEngine storageEngine, final Database db) {
+    static Store init(StorageEngine storageEngine, final Database db0) {
+        final org.lealone.db.Database db = (org.lealone.db.Database) db0;
         Store store = null;
         byte[] key = db.getFileEncryptionKey();
         String dbPath = db.getDatabasePath();
@@ -195,7 +197,8 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
 
         private int temporaryMapId;
 
-        public Store(StorageEngine storageEngine, Database db, MVStore.Builder builder) {
+        public Store(StorageEngine storageEngine, Database db0, MVStore.Builder builder) {
+            org.lealone.db.Database db = (org.lealone.db.Database) db0;
             store = builder.open();
 
             stores.put(db.getName(), this);
@@ -478,12 +481,12 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     }
 
     @Override
-    public boolean hasMap(Database db, String name) {
+    public boolean hasMap(org.lealone.db.Database db, String name) {
         return getStore(db).getStore().hasMap(name);
     }
 
     @Override
-    public boolean isInMemory(Database db) {
+    public boolean isInMemory(org.lealone.db.Database db) {
         return getStore(db) == null;
     }
 
@@ -493,7 +496,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     }
 
     @Override
-    public String nextTemporaryMapName(Database db) {
+    public String nextTemporaryMapName(org.lealone.db.Database db) {
         return getStore(db).nextTemporaryMapName();
     }
 
@@ -503,7 +506,8 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     }
 
     @Override
-    public void backupTo(Database db, String fileName) {
+    public void backupTo(Database db0, String fileName) {
+        org.lealone.db.Database db = (org.lealone.db.Database) db0;
         if (!db.isPersistent()) {
             throw DbException.get(ErrorCode.DATABASE_IS_NOT_PERSISTENT);
         }

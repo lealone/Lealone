@@ -30,9 +30,9 @@ import org.lealone.cluster.gms.FailureDetector;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.TokenMetaData;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.dbobject.Schema;
-import org.lealone.engine.Database;
-import org.lealone.engine.DatabaseEngine;
+import org.lealone.db.Database;
+import org.lealone.db.DatabaseEngine;
+import org.lealone.db.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

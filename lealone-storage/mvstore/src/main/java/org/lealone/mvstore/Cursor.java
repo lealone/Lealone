@@ -7,8 +7,8 @@ package org.lealone.mvstore;
 
 import java.util.Iterator;
 
+import org.lealone.common.util.DataUtils;
 import org.lealone.storage.StorageMap;
-import org.lealone.util.DataUtils;
 
 /**
  * A cursor to iterate over elements in ascending order.

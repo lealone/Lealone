@@ -20,9 +20,9 @@ package org.lealone.test.transaction;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.lealone.storage.type.DataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.type.DataType;
 
 //TODO 实现所有API
 public class MemoryTransactionMap<K, V> implements TransactionMap<K, V> {

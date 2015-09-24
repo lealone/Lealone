@@ -16,11 +16,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.message.DbException;
+import org.lealone.common.message.DbException;
+import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.New;
 import org.lealone.storage.StorageMap;
-import org.lealone.type.DataType;
-import org.lealone.util.DataUtils;
-import org.lealone.util.New;
+import org.lealone.storage.type.DataType;
 
 /**
  * A transaction.

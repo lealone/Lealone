@@ -9,11 +9,11 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.lealone.compress.Compressor;
-import org.lealone.type.DataType;
-import org.lealone.type.WriteBuffer;
-import org.lealone.util.DataUtils;
-import org.lealone.util.New;
+import org.lealone.common.compress.Compressor;
+import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.New;
+import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.WriteBuffer;
 
 /**
  * A page (a node or a leaf).

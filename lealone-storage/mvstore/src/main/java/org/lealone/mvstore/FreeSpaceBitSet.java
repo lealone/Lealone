@@ -7,7 +7,7 @@ package org.lealone.mvstore;
 
 import java.util.BitSet;
 
-import org.lealone.util.MathUtils;
+import org.lealone.common.util.MathUtils;
 
 /**
  * A free space bit set.

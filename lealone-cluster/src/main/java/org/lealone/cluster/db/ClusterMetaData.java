@@ -37,7 +37,7 @@ import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.dht.TokenFactory;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Utils;
-import org.lealone.engine.SystemDatabase;
+import org.lealone.db.SystemDatabase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

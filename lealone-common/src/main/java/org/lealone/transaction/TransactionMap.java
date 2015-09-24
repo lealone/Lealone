@@ -21,7 +21,7 @@ package org.lealone.transaction;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.lealone.type.DataType;
+import org.lealone.storage.type.DataType;
 
 public interface TransactionMap<K, V> {
     /**

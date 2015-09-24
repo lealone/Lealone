@@ -12,11 +12,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.New;
 import org.lealone.storage.StorageMap;
-import org.lealone.type.DataType;
-import org.lealone.type.ObjectDataType;
-import org.lealone.util.DataUtils;
-import org.lealone.util.New;
+import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.ObjectDataType;
 
 /**
  * The transaction engine that supports concurrent MVCC read-committed transactions.

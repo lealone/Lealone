@@ -8,9 +8,9 @@ package org.lealone.transaction;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.lealone.common.util.DataUtils;
 import org.lealone.storage.StorageMap;
-import org.lealone.type.DataType;
-import org.lealone.util.DataUtils;
+import org.lealone.storage.type.DataType;
 
 /**
  * A map that supports transactions.

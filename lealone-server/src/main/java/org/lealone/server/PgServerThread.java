@@ -29,21 +29,21 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
 
-import org.lealone.command.CommandInterface;
-import org.lealone.engine.ConnectionInfo;
-import org.lealone.engine.Constants;
-import org.lealone.engine.SysProperties;
-import org.lealone.jdbc.JdbcConnection;
-import org.lealone.jdbc.JdbcPreparedStatement;
-import org.lealone.jdbc.JdbcStatement;
-import org.lealone.message.DbException;
-import org.lealone.util.DataUtils;
-import org.lealone.util.IOUtils;
-import org.lealone.util.JdbcUtils;
-import org.lealone.util.ScriptReader;
-import org.lealone.util.StringUtils;
-import org.lealone.util.Utils;
-import org.lealone.value.CaseInsensitiveMap;
+import org.lealone.client.jdbc.JdbcConnection;
+import org.lealone.client.jdbc.JdbcPreparedStatement;
+import org.lealone.client.jdbc.JdbcStatement;
+import org.lealone.common.message.DbException;
+import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.IOUtils;
+import org.lealone.common.util.JdbcUtils;
+import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.Utils;
+import org.lealone.common.value.CaseInsensitiveMap;
+import org.lealone.db.CommandInterface;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Constants;
+import org.lealone.db.SysProperties;
+import org.lealone.db.util.ScriptReader;
 
 /**
  * One server thread is opened for each client.

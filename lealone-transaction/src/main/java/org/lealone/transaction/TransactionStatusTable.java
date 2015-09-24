@@ -19,8 +19,8 @@ package org.lealone.transaction;
 
 import java.util.Map;
 
+import org.lealone.common.util.New;
 import org.lealone.storage.StorageMap;
-import org.lealone.util.New;
 
 class TransactionStatusTable {
     private TransactionStatusTable() {

@@ -27,11 +27,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.storage.MVStorageEngine;
 import org.lealone.storage.StorageEngineManager;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.ObjectDataType;
 import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
 import org.lealone.transaction.TransactionEngine;
-import org.lealone.type.DataType;
-import org.lealone.type.ObjectDataType;
 
 public class MemoryStorageEngine extends MVStorageEngine {
     public static final String NAME = "memory";
