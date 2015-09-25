@@ -22,7 +22,7 @@ import org.lealone.db.result.ResultInterface;
 /**
  * Represents a SQL statement. This object is only used on the server side.
  */
-public abstract class Command implements CommandInterface {
+public abstract class Command implements CommandInterface, org.lealone.sql.BackendCommand {
 
     /**
      * The session.
@@ -67,6 +67,7 @@ public abstract class Command implements CommandInterface {
      *
      * @return true if it is
      */
+
     @Override
     public abstract boolean isQuery();
 
@@ -75,6 +76,7 @@ public abstract class Command implements CommandInterface {
      *
      * @return the list of parameters
      */
+
     @Override
     public abstract ArrayList<? extends ParameterInterface> getParameters();
 
@@ -175,6 +177,7 @@ public abstract class Command implements CommandInterface {
      * @param scrollable if the result set must be scrollable (ignored)
      * @return the result set
      */
+
     @Override
     public ResultInterface executeQuery(int maxRows, boolean scrollable) {
         startTime = 0;
@@ -315,6 +318,7 @@ public abstract class Command implements CommandInterface {
         return sql + Trace.formatParams(getParameters());
     }
 
+    @Override
     public boolean isCacheable() {
         return false;
     }
@@ -324,6 +328,8 @@ public abstract class Command implements CommandInterface {
      *
      * @return true if it can be re-used
      */
+
+    @Override
     public boolean canReuse() {
         return canReuse;
     }
@@ -332,6 +338,8 @@ public abstract class Command implements CommandInterface {
      * The command is now re-used, therefore reset the canReuse flag, and the
      * parameter values.
      */
+
+    @Override
     public void reuse() {
         canReuse = false;
         ArrayList<? extends ParameterInterface> parameters = getParameters();
@@ -341,5 +349,6 @@ public abstract class Command implements CommandInterface {
         }
     }
 
+    @Override
     public abstract Prepared getPrepared();
 }

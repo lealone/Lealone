@@ -13,6 +13,7 @@ import org.lealone.common.value.ValueBoolean;
 import org.lealone.common.value.ValueNull;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;

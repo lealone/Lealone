@@ -35,7 +35,7 @@ public class DefineCommandWrapper extends DefineCommand {
 
     @Override
     public int update() {
-        return Session.getRouter().executeDefineCommand(dc);
+        return org.lealone.sql.RouterHolder.getRouter().executeDefineCommand(dc);
     }
 
     @Override

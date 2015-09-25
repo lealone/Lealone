@@ -14,8 +14,8 @@ import org.lealone.common.value.ValueBoolean;
 import org.lealone.common.value.ValueNull;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
-import org.lealone.db.result.SubqueryResult;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
 import org.lealone.sql.dml.Query;
@@ -43,7 +43,7 @@ public class ConditionInSelect extends Condition {
     @Override
     public Value getValue(Session session) {
         query.setSession(session);
-        SubqueryResult rows = session.createSubqueryResult(query, 0); // query.query(0);
+        SubqueryResult rows = new SubqueryResult(query, 0); // query.query(0);
         session.addTemporaryResult(rows);
         Value l = left.getValue(session);
         if (rows.getRowCount() == 0) {

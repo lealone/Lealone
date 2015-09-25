@@ -49,7 +49,7 @@ public class AlterTableRenameColumn extends DefineCommand {
         table.checkSupportAlter();
         // we need to update CHECK constraint
         // since it might reference the name of the column
-        Expression newCheckExpr = column.getCheckConstraint(session, newName);
+        Expression newCheckExpr = (Expression) column.getCheckConstraint(session, newName);
         table.renameColumn(column, newName);
         column.removeCheckConstraint();
         column.addCheckConstraint(session, newCheckExpr);

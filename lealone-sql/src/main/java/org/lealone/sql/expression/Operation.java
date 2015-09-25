@@ -15,6 +15,7 @@ import org.lealone.common.value.ValueNull;
 import org.lealone.common.value.ValueString;
 import org.lealone.db.Mode;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
 

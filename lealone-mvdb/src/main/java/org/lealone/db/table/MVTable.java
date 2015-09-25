@@ -39,12 +39,6 @@ import org.lealone.db.index.NonUniqueHashIndex;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObject;
-import org.lealone.db.table.Column;
-import org.lealone.db.table.IndexColumn;
-import org.lealone.db.table.Table;
-import org.lealone.db.table.TableBase;
-import org.lealone.sql.ddl.Analyze;
-import org.lealone.sql.ddl.CreateTableData;
 import org.lealone.storage.TransactionStorageEngine;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.transaction.Transaction;
@@ -664,8 +658,9 @@ public class MVTable extends TableBase {
         if (n > 0) {
             nextAnalyze = n;
         }
-        int rows = session.getDatabase().getSettings().analyzeSample / 10;
-        Analyze.analyzeTable(session, this, rows, false);
+        // TODO
+        // int rows = session.getDatabase().getSettings().analyzeSample / 10;
+        // Analyze.analyzeTable(session, this, rows, false);
     }
 
     @Override

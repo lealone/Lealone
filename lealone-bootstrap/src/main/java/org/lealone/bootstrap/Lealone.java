@@ -35,6 +35,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.server.PgServer;
 import org.lealone.server.Server;
 import org.lealone.server.TcpServer;
+import org.lealone.sql.RouterHolder;
 import org.lealone.sql.router.LocalRouter;
 import org.lealone.sql.router.Router;
 import org.lealone.sql.router.TransactionalRouter;
@@ -109,7 +110,7 @@ public class Lealone {
         Router r = LocalRouter.getInstance();
         if (config.isClusterMode())
             r = P2PRouter.getInstance();
-        Session.setRouter(new TransactionalRouter(r));
+        RouterHolder.setRouter(new TransactionalRouter(r));
     }
 
     private static void startClusterServer() throws Exception {
@@ -146,7 +147,7 @@ public class Lealone {
         }, prefix + "ServerShutdownHook");
         Runtime.getRuntime().addShutdownHook(t);
 
-        logger.info(prefix + "Server started, listening address: {}, port: {}", server.getListenAddress(),
+        logger.info(prefix + "Server started, listen address: {}, port: {}", server.getListenAddress(),
                 server.getPort());
     }
 }

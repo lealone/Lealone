@@ -30,6 +30,7 @@
         <module>lealone-client</module>
         <module>lealone-sql</module>
         <module>lealone-mvdb</module>
+		<module>lealone-db</module>
         <module>lealone-server</module>
         <module>lealone-transaction</module>
         <module>lealone-cluster</module>

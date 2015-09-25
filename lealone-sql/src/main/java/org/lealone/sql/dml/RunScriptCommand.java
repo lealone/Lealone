@@ -73,7 +73,7 @@ public class RunScriptCommand extends ScriptBase {
 
     private void execute(String sql) {
         try {
-            Prepared command = session.prepare(sql);
+            Prepared command = (Prepared) session.prepare(sql);
             if (command.isQuery()) {
                 command.query(0);
             } else {

@@ -58,11 +58,11 @@ import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.Mode;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
-import org.lealone.db.table.LinkSchema;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.util.AutoCloseInputStream;
@@ -947,7 +947,7 @@ public class Function extends Expression implements FunctionCall {
         Session[] sessions = session.getDatabase().getSessions(false);
         for (Session s : sessions) {
             if (s.getId() == targetSessionId) {
-                Command c = s.getCurrentCommand();
+                Command c = (Command) s.getCurrentCommand();
                 if (c == null) {
                     return false;
                 }
@@ -1233,12 +1233,14 @@ public class Function extends Expression implements FunctionCall {
             break;
         }
         case LINK_SCHEMA: {
-            session.getUser().checkAdmin();
-            Connection conn = session.createConnection(false);
-            ResultSet rs = LinkSchema.linkSchema(conn, v0.getString(), v1.getString(), v2.getString(), v3.getString(),
-                    v4.getString(), v5.getString());
-            result = ValueResultSet.get(rs);
-            break;
+            // session.getUser().checkAdmin();
+            // Connection conn = session.createConnection(false);
+            // ResultSet rs = LinkSchema.linkSchema(conn, v0.getString(), v1.getString(), v2.getString(),
+            // v3.getString(),
+            // v4.getString(), v5.getString());
+            // result = ValueResultSet.get(rs);
+
+            throw DbException.getUnsupportedException("LINK_SCHEMA");
         }
         case CSVWRITE: {
             session.getUser().checkAdmin();
@@ -1319,7 +1321,7 @@ public class Function extends Expression implements FunctionCall {
     private Sequence getSequence(Session session, Value v0, Value v1) {
         String schemaName, sequenceName;
         if (v1 == null) {
-            Parser p = session.createParser();
+            Parser p = (Parser) session.getParser();
             String sql = v0.getString();
             Expression expr = p.parseExpression(sql);
             if (expr instanceof ExpressionColumn) {

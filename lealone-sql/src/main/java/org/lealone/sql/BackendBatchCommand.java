@@ -72,7 +72,7 @@ public class BackendBatchCommand implements CommandInterface {
             int size = batchCommands.size();
             result = new int[size];
             for (int i = 0; i < size; i++) {
-                Command c = session.prepareCommand(batchCommands.get(i));
+                Command c = (Command) session.prepareCommand(batchCommands.get(i));
                 result[i] = c.executeUpdate();
                 c.close();
             }

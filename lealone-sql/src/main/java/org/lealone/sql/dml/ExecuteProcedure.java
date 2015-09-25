@@ -45,7 +45,7 @@ public class ExecuteProcedure extends Prepared {
     }
 
     private void setParameters() {
-        Prepared prepared = procedure.getPrepared();
+        Prepared prepared = (Prepared) procedure.getPrepared();
         ArrayList<Parameter> params = prepared.getParameters();
         for (int i = 0; params != null && i < params.size() && i < expressions.size(); i++) {
             Expression expr = expressions.get(i);
@@ -56,21 +56,21 @@ public class ExecuteProcedure extends Prepared {
 
     @Override
     public boolean isQuery() {
-        Prepared prepared = procedure.getPrepared();
+        Prepared prepared = (Prepared) procedure.getPrepared();
         return prepared.isQuery();
     }
 
     @Override
     public int update() {
         setParameters();
-        Prepared prepared = procedure.getPrepared();
+        Prepared prepared = (Prepared) procedure.getPrepared();
         return prepared.update();
     }
 
     @Override
     public ResultInterface query(int limit) {
         setParameters();
-        Prepared prepared = procedure.getPrepared();
+        Prepared prepared = (Prepared) procedure.getPrepared();
         return prepared.query(limit);
     }
 
@@ -81,7 +81,7 @@ public class ExecuteProcedure extends Prepared {
 
     @Override
     public ResultInterface queryMeta() {
-        Prepared prepared = procedure.getPrepared();
+        Prepared prepared = (Prepared) procedure.getPrepared();
         return prepared.queryMeta();
     }
 

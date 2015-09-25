@@ -14,6 +14,7 @@ import org.lealone.common.value.ValueNull;
 import org.lealone.common.value.ValueResultSet;
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;

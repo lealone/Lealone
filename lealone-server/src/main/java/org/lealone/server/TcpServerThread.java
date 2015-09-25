@@ -38,11 +38,15 @@ import org.lealone.db.result.ResultInterface;
 import org.lealone.db.util.SmallMap;
 import org.lealone.sql.BackendBatchCommand;
 import org.lealone.sql.Command;
+import org.lealone.sql.Parser;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.storage.LobStorage;
 
 /**
  * One server thread is opened per client connection.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class TcpServerThread implements Runnable {
 
@@ -196,7 +200,7 @@ public class TcpServerThread implements Runnable {
         if (session != null) {
             RuntimeException closeError = null;
             try {
-                Command rollback = session.prepareCommandLocal("ROLLBACK");
+                Command rollback = (Command) session.prepareCommandLocal("ROLLBACK");
                 rollback.executeUpdate();
             } catch (RuntimeException e) {
                 closeError = e;
@@ -304,7 +308,8 @@ public class TcpServerThread implements Runnable {
             int id = transfer.readInt();
             String sql = transfer.readString();
             int old = session.getModificationId();
-            Command command = session.prepareCommand(sql);
+            session.setParser(new Parser(session));
+            Command command = (Command) session.prepareCommand(sql);
             boolean readonly = command.isReadOnly();
             cache.addObject(id, command);
             boolean isQuery = command.isQuery();

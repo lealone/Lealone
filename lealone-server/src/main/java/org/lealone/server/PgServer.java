@@ -33,6 +33,7 @@ import org.lealone.db.Constants;
  *
  * @author Thomas Mueller
  * @author Sergi Vladykin 2009-07-03 (convertType)
+ * @author zhh
  */
 public class PgServer implements Server {
 
@@ -71,22 +72,23 @@ public class PgServer implements Server {
 
     private final HashSet<Integer> typeSet = New.hashSet();
 
-    private String listenAddress;
-    private int port = PgServer.DEFAULT_PORT;
-    private boolean portIsSet;
-    private boolean stop;
-    private boolean trace;
     private ServerSocket serverSocket;
     private final Set<PgServerThread> running = Collections.synchronizedSet(new HashSet<PgServerThread>());
+
+    private String listenAddress = Constants.DEFAULT_HOST;
+    private int port = PgServer.DEFAULT_PORT;
+
     private String baseDir;
+
+    private boolean trace;
     private boolean allowOthers;
     private boolean isDaemon;
     private boolean ifExists;
 
+    private boolean stop;
+
     @Override
     public void init(String... args) {
-        port = DEFAULT_PORT;
-        listenAddress = Constants.DEFAULT_HOST;
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
             if (TcpServer.isOption(a, "-pgListenAddress")) {
@@ -95,7 +97,6 @@ public class PgServer implements Server {
                 trace = true;
             } else if (TcpServer.isOption(a, "-pgPort")) {
                 port = Integer.decode(args[++i]);
-                portIsSet = true;
             } else if (TcpServer.isOption(a, "-baseDir")) {
                 baseDir = args[++i];
             } else if (TcpServer.isOption(a, "-pgAllowOthers")) {
@@ -172,16 +173,7 @@ public class PgServer implements Server {
 
     @Override
     public void start() {
-        try {
-            serverSocket = NetUtils.createServerSocket(listenAddress, port, false);
-        } catch (DbException e) {
-            if (!portIsSet) {
-                serverSocket = NetUtils.createServerSocket(0, false);
-            } else {
-                throw e;
-            }
-        }
-        port = serverSocket.getLocalPort();
+        serverSocket = NetUtils.createServerSocket(listenAddress, port, false);
 
         String name = getName() + " (" + getURL() + ")";
         Thread t = new Thread(this, name);

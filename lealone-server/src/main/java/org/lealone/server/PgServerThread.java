@@ -47,6 +47,9 @@ import org.lealone.db.util.ScriptReader;
 
 /**
  * One server thread is opened for each client.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class PgServerThread implements Runnable {
     private final PgServer server;
@@ -202,23 +205,23 @@ public class PgServerThread implements Runnable {
             server.trace("PasswordMessage");
             String password = readString();
             try {
-                //                Properties info = new Properties();
-                //                info.put("MODE", "PostgreSQL");
-                //                info.put("USER", userName);
-                //                info.put("PASSWORD", password);
-                //                String url = "jdbc:lealone:" + databaseName;
-                //                ConnectionInfo ci = new ConnectionInfo(url, info);
-                //                String baseDir = server.getBaseDir();
-                //                if (baseDir == null) {
-                //                    baseDir = SysProperties.getBaseDir();
-                //                }
-                //                if (baseDir != null) {
-                //                    ci.setBaseDir(baseDir);
-                //                }
-                //                if (server.getIfExists()) {
-                //                    ci.setProperty("IFEXISTS", "TRUE");
-                //                }
-                //                conn = new JdbcConnection(ci, false);
+                // Properties info = new Properties();
+                // info.put("MODE", "PostgreSQL");
+                // info.put("USER", userName);
+                // info.put("PASSWORD", password);
+                // String url = "jdbc:lealone:" + databaseName;
+                // ConnectionInfo ci = new ConnectionInfo(url, info);
+                // String baseDir = server.getBaseDir();
+                // if (baseDir == null) {
+                // baseDir = SysProperties.getBaseDir();
+                // }
+                // if (baseDir != null) {
+                // ci.setBaseDir(baseDir);
+                // }
+                // if (server.getIfExists()) {
+                // ci.setProperty("IFEXISTS", "TRUE");
+                // }
+                // conn = new JdbcConnection(ci, false);
                 conn = createJdbcConnection(password);
                 // can not do this because when called inside
                 // DriverManager.getConnection, a deadlock occurs
@@ -581,8 +584,8 @@ public class PgServerThread implements Runnable {
                 // the ODBC client needs the column pg_catalog.pg_index
                 // to be of type 'int2vector'
                 // if (name.equalsIgnoreCase("indkey") &&
-                //         "pg_index".equalsIgnoreCase(meta.getTableName(i + 1))) {
-                //     type = PgServer.PG_TYPE_INT2VECTOR;
+                // "pg_index".equalsIgnoreCase(meta.getTableName(i + 1))) {
+                // type = PgServer.PG_TYPE_INT2VECTOR;
                 // }
                 precision[i] = meta.getColumnDisplaySize(i + 1);
                 server.checkType(type);

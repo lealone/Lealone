@@ -52,7 +52,7 @@ class CommandContainer extends Command {
             prepared.setModificationMetaId(0);
             String sql = prepared.getSQL();
             ArrayList<Parameter> oldParams = prepared.getParameters();
-            Parser parser = session.createParser();
+            Parser parser = new Parser(session);
             prepared = parser.parse(sql);
             long mod = prepared.getModificationMetaId();
             prepared.setModificationMetaId(0);

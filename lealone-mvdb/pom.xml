@@ -31,7 +31,7 @@
     <dependencies>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-sql</artifactId>
+            <artifactId>lealone-db</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

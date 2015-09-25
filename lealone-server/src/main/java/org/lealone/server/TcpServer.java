@@ -30,12 +30,15 @@ import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 
 /**
- * The TCP server implements the native H2 database server protocol.
- * It supports multiple client connections to multiple databases
- * (many to many). The same database may be opened by multiple clients.
+ * The TCP server implements the native database server protocol.
+ * It supports multiple client connections to multiple databases(many to many). 
+ * The same database may be opened by multiple clients.
  * Also supported is the mixed mode: opening databases in embedded mode,
  * and at the same time start a TCP server to allow clients to connect to
  * the same database over the network.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class TcpServer implements Server {
 
@@ -51,26 +54,30 @@ public class TcpServer implements Server {
     private static final Map<Integer, TcpServer> SERVERS = Collections
             .synchronizedMap(new HashMap<Integer, TcpServer>());
 
-    private String listenAddress;
-    private int port;
-    private boolean portIsSet;
-    private boolean trace;
-    private boolean ssl;
-    private boolean stop;
     private ServerSocket serverSocket;
     private final Set<TcpServerThread> running = Collections.synchronizedSet(new HashSet<TcpServerThread>());
+
+    private String listenAddress = Constants.DEFAULT_HOST;
+    private int port = Constants.DEFAULT_TCP_PORT;
+
     private String baseDir;
+    private String key;
+    private String keyDatabase;
+
+    private boolean trace;
+    private boolean ssl;
     private boolean allowOthers;
     private boolean isDaemon;
     private boolean ifExists;
+
+    private boolean stop;
+
     private Connection managementDb;
     private PreparedStatement managementDbAdd;
     private PreparedStatement managementDbRemove;
     private String managementPassword = "";
     private Thread listenerThread;
     private int nextThreadId;
-    private String key;
-    private String keyDatabase;
 
     /**
      * Check if the argument matches the option.
@@ -106,22 +113,38 @@ public class TcpServer implements Server {
         return buff.toString();
     }
 
-    protected void initManagementDb() throws SQLException {
-        // avoid using the driver manager
-        Connection conn = Driver.getConnection(getManagementDbEmbeddedURL(port), "", managementPassword);
-        managementDb = conn;
+    private void initManagementDb() {
         Statement stat = null;
         try {
+            // avoid using the driver manager
+            Connection conn = Driver.getConnection(getManagementDbEmbeddedURL(port), "", managementPassword);
             stat = conn.createStatement();
             stat.execute("CREATE ALIAS IF NOT EXISTS STOP_SERVER FOR \"" + TcpServer.class.getName() + ".stopServer\"");
             stat.execute("CREATE TABLE IF NOT EXISTS SESSIONS"
                     + "(ID INT PRIMARY KEY, URL VARCHAR, USER VARCHAR, CONNECTED TIMESTAMP)");
+
             managementDbAdd = conn.prepareStatement("INSERT INTO SESSIONS VALUES(?, ?, ?, NOW())");
             managementDbRemove = conn.prepareStatement("DELETE FROM SESSIONS WHERE ID=?");
+            managementDb = conn;
+            SERVERS.put(port, this);
+        } catch (SQLException e) {
+            DbException.convert(e);
         } finally {
             JdbcUtils.closeSilently(stat);
         }
+
         SERVERS.put(port, this);
+    }
+
+    private synchronized void stopManagementDb() {
+        if (managementDb != null) {
+            try {
+                managementDb.close();
+            } catch (SQLException e) {
+                DbException.traceThrowable(e);
+            }
+            managementDb = null;
+        }
     }
 
     /**
@@ -131,7 +154,7 @@ public class TcpServer implements Server {
      * @param url the database URL
      * @param user the user name
      */
-    protected synchronized void addConnection(int id, String url, String user) {
+    synchronized void addConnection(int id, String url, String user) {
         try {
             managementDbAdd.setInt(1, id);
             managementDbAdd.setString(2, url);
@@ -147,7 +170,7 @@ public class TcpServer implements Server {
      *
      * @param id the connection id
      */
-    protected synchronized void removeConnection(int id) {
+    synchronized void removeConnection(int id) {
         try {
             managementDbRemove.setInt(1, id);
             managementDbRemove.execute();
@@ -156,21 +179,8 @@ public class TcpServer implements Server {
         }
     }
 
-    protected synchronized void stopManagementDb() {
-        if (managementDb != null) {
-            try {
-                managementDb.close();
-            } catch (SQLException e) {
-                DbException.traceThrowable(e);
-            }
-            managementDb = null;
-        }
-    }
-
     @Override
     public void init(String... args) {
-        port = Constants.DEFAULT_TCP_PORT;
-        listenAddress = Constants.DEFAULT_HOST;
         for (int i = 0; args != null && i < args.length; i++) {
             String a = args[i];
             if (isOption(a, "-tcpListenAddress")) {
@@ -181,7 +191,6 @@ public class TcpServer implements Server {
                 ssl = true;
             } else if (isOption(a, "-tcpPort")) {
                 port = Integer.decode(args[++i]);
-                portIsSet = true;
             } else if (isOption(a, "-tcpPassword")) {
                 managementPassword = args[++i];
             } else if (isOption(a, "-baseDir")) {
@@ -195,63 +204,31 @@ public class TcpServer implements Server {
                 isDaemon = true;
             } else if (isOption(a, "-ifExists")) {
                 ifExists = true;
-            }
-        }
-    }
-
-    @Override
-    public String getURL() {
-        return (ssl ? "ssl" : "tcp") + "://" + getListenAddress() + ":" + port;
-    }
-
-    @Override
-    public int getPort() {
-        return port;
-    }
-
-    @Override
-    public String getListenAddress() {
-        return listenAddress;
-    }
-
-    /**
-     * Check if this socket may connect to this server. Remote connections are
-     * not allowed if the flag allowOthers is set.
-     *
-     * @param socket the socket
-     * @return true if this client may connect
-     */
-    boolean allow(Socket socket) {
-        if (allowOthers) {
-            return true;
-        }
-        try {
-            return NetUtils.isLocalAddress(socket);
-        } catch (UnknownHostException e) {
-            traceError(e);
-            return false;
-        }
-    }
-
-    @Override
-    public synchronized void start() throws SQLException {
-        stop = false;
-        try {
-            serverSocket = NetUtils.createServerSocket(listenAddress, port, ssl);
-        } catch (DbException e) {
-            if (!portIsSet) {
-                serverSocket = NetUtils.createServerSocket(0, ssl);
             } else {
-                throw e;
+                throw DbException.getUnsupportedException("unsupported tcp server option: " + a);
             }
         }
-        port = serverSocket.getLocalPort();
+
         initManagementDb();
+    }
+
+    @Override
+    public synchronized void start() {
+        serverSocket = NetUtils.createServerSocket(listenAddress, port, ssl);
 
         String name = getName() + " (" + getURL() + ")";
         Thread t = new Thread(this, name);
         t.setDaemon(isDaemon());
         t.start();
+    }
+
+    @Override
+    public void run() {
+        try {
+            listen();
+        } catch (Exception e) {
+            DbException.traceThrowable(e);
+        }
     }
 
     private void listen() {
@@ -260,7 +237,7 @@ public class TcpServer implements Server {
         try {
             while (!stop) {
                 Socket s = serverSocket.accept();
-                TcpServerThread c = createTcpServerThread(s, nextThreadId++);
+                TcpServerThread c = new TcpServerThread(s, this, nextThreadId++);
                 running.add(c);
                 Thread thread = new Thread(c, threadName + " thread");
                 thread.setDaemon(isDaemon);
@@ -274,27 +251,6 @@ public class TcpServer implements Server {
             }
         }
         stopManagementDb();
-    }
-
-    protected TcpServerThread createTcpServerThread(Socket socket, int threadId) {
-        return new TcpServerThread(socket, this, threadId);
-    }
-
-    @Override
-    public synchronized boolean isRunning(boolean traceError) {
-        if (serverSocket == null) {
-            return false;
-        }
-        try {
-            Socket s = NetUtils.createLoopbackSocket(port, ssl);
-            s.close();
-            return true;
-        } catch (Exception e) {
-            if (traceError) {
-                traceError(e);
-            }
-            return false;
-        }
     }
 
     @Override
@@ -337,41 +293,74 @@ public class TcpServer implements Server {
         }
     }
 
+    @Override
+    public synchronized boolean isRunning(boolean traceError) {
+        if (serverSocket == null) {
+            return false;
+        }
+        try {
+            Socket s = NetUtils.createLoopbackSocket(port, ssl);
+            s.close();
+            return true;
+        } catch (Exception e) {
+            if (traceError) {
+                traceError(e);
+            }
+            return false;
+        }
+    }
+
+    @Override
+    public String getURL() {
+        return (ssl ? "ssl" : "tcp") + "://" + getListenAddress() + ":" + port;
+    }
+
+    @Override
+    public int getPort() {
+        return port;
+    }
+
+    @Override
+    public String getListenAddress() {
+        return listenAddress;
+    }
+
+    @Override
+    public String getName() {
+        return "TCP Server";
+    }
+
+    @Override
+    public String getType() {
+        return "TCP";
+    }
+
+    @Override
+    public boolean getAllowOthers() {
+        return allowOthers;
+    }
+
+    @Override
+    public boolean isDaemon() {
+        return isDaemon;
+    }
+
     /**
-     * Stop a running server. This method is called via reflection from the
-     * STOP_SERVER function.
+     * Check if this socket may connect to this server. Remote connections are
+     * not allowed if the flag allowOthers is set.
      *
-     * @param port the port where the server runs, or 0 for all running servers
-     * @param password the password (or null)
-     * @param shutdownMode the shutdown mode, SHUTDOWN_NORMAL or SHUTDOWN_FORCE.
+     * @param socket the socket
+     * @return true if this client may connect
      */
-    public static void stopServer(int port, String password, int shutdownMode) {
-        if (port == 0) {
-            for (int p : SERVERS.keySet().toArray(new Integer[0])) {
-                if (p != 0) {
-                    stopServer(p, password, shutdownMode);
-                }
-            }
-            return;
+    boolean allow(Socket socket) {
+        if (allowOthers) {
+            return true;
         }
-        TcpServer server = SERVERS.get(port);
-        if (server == null) {
-            return;
-        }
-        if (!server.managementPassword.equals(password)) {
-            return;
-        }
-        if (shutdownMode == SHUTDOWN_NORMAL) {
-            server.stopManagementDb();
-            server.stop = true;
-            try {
-                Socket s = NetUtils.createLoopbackSocket(port, false);
-                s.close();
-            } catch (Exception e) {
-                // try to connect - so that accept returns
-            }
-        } else if (shutdownMode == SHUTDOWN_FORCE) {
-            server.stop();
+        try {
+            return NetUtils.isLocalAddress(socket);
+        } catch (UnknownHostException e) {
+            traceError(e);
+            return false;
         }
     }
 
@@ -389,7 +378,7 @@ public class TcpServer implements Server {
      *
      * @return the base directory
      */
-    public String getBaseDir() {
+    String getBaseDir() {
         return baseDir;
     }
 
@@ -419,23 +408,41 @@ public class TcpServer implements Server {
         }
     }
 
-    @Override
-    public boolean getAllowOthers() {
-        return allowOthers;
-    }
-
-    @Override
-    public String getType() {
-        return "TCP";
-    }
-
-    @Override
-    public String getName() {
-        return "TCP Server";
-    }
-
     public boolean getIfExists() {
         return ifExists;
+    }
+
+    /**
+     * Cancel a running statement.
+     *
+     * @param sessionId the session id
+     * @param statementId the statement id
+     */
+    void cancelStatement(String sessionId, int statementId) {
+        for (TcpServerThread c : New.arrayList(running)) {
+            if (c != null) {
+                c.cancelStatement(sessionId, statementId);
+            }
+        }
+    }
+
+    /**
+     * If no key is set, return the original database name. If a key is set,
+     * check if the key matches. If yes, return the correct database name. If
+     * not, throw an exception.
+     *
+     * @param db the key to test (or database name if no key is used)
+     * @return the database name
+     * @throws DbException if a key is set but doesn't match
+     */
+    String checkKeyAndGetDatabaseName(String db) {
+        if (key == null) {
+            return db;
+        }
+        if (key.equals(db)) {
+            return keyDatabase;
+        }
+        throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
     }
 
     /**
@@ -492,49 +499,41 @@ public class TcpServer implements Server {
     }
 
     /**
-     * Cancel a running statement.
+     * Stop a running server. This method is called via reflection from the
+     * STOP_SERVER function.
      *
-     * @param sessionId the session id
-     * @param statementId the statement id
+     * @param port the port where the server runs, or 0 for all running servers
+     * @param password the password (or null)
+     * @param shutdownMode the shutdown mode, SHUTDOWN_NORMAL or SHUTDOWN_FORCE.
      */
-    void cancelStatement(String sessionId, int statementId) {
-        for (TcpServerThread c : New.arrayList(running)) {
-            if (c != null) {
-                c.cancelStatement(sessionId, statementId);
+    public static void stopServer(int port, String password, int shutdownMode) {
+        if (port == 0) {
+            for (int p : SERVERS.keySet().toArray(new Integer[0])) {
+                if (p != 0) {
+                    stopServer(p, password, shutdownMode);
+                }
             }
+            return;
+        }
+        TcpServer server = SERVERS.get(port);
+        if (server == null) {
+            return;
+        }
+        if (!server.managementPassword.equals(password)) {
+            return;
+        }
+        if (shutdownMode == SHUTDOWN_NORMAL) {
+            server.stopManagementDb();
+            server.stop = true;
+            try {
+                Socket s = NetUtils.createLoopbackSocket(port, false);
+                s.close();
+            } catch (Exception e) {
+                // try to connect - so that accept returns
+            }
+        } else if (shutdownMode == SHUTDOWN_FORCE) {
+            server.stop();
         }
     }
 
-    /**
-     * If no key is set, return the original database name. If a key is set,
-     * check if the key matches. If yes, return the correct database name. If
-     * not, throw an exception.
-     *
-     * @param db the key to test (or database name if no key is used)
-     * @return the database name
-     * @throws DbException if a key is set but doesn't match
-     */
-    public String checkKeyAndGetDatabaseName(String db) {
-        if (key == null) {
-            return db;
-        }
-        if (key.equals(db)) {
-            return keyDatabase;
-        }
-        throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
-    }
-
-    @Override
-    public boolean isDaemon() {
-        return isDaemon;
-    }
-
-    @Override
-    public void run() {
-        try {
-            listen();
-        } catch (Exception e) {
-            DbException.traceThrowable(e);
-        }
-    }
 }

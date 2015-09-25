@@ -25,16 +25,17 @@ import org.lealone.common.value.ValueLong;
 import org.lealone.common.value.ValueNull;
 import org.lealone.common.value.ValueString;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.SearchRow;
+import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.sql.dml.Select;
-import org.lealone.sql.dml.SelectOrderBy;
 
 /**
  * Implements the integrated aggregate functions, such as COUNT, MAX, SUM.

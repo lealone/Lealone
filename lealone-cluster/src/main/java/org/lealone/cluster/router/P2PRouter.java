@@ -406,7 +406,7 @@ public class P2PRouter implements Router {
             return oldSelect;
         }
 
-        Prepared p = oldSelect.getSession().prepare(sql, true);
+        Prepared p = (Prepared) oldSelect.getSession().prepare(sql, true);
         p.setLocal(true);
         p.setFetchSize(oldSelect.getFetchSize());
         ArrayList<Parameter> oldParams = oldSelect.getParameters();

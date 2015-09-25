@@ -26,7 +26,7 @@ import org.lealone.sql.expression.Parameter;
 /**
  * A prepared statement.
  */
-public abstract class Prepared {
+public abstract class Prepared implements PreparedInterface {
 
     /**
      * The session.
@@ -150,6 +150,7 @@ public abstract class Prepared {
      *
      * @return the parameter list
      */
+    @Override
     public ArrayList<Parameter> getParameters() {
         return parameters;
     }
@@ -199,6 +200,7 @@ public abstract class Prepared {
      * @return the update count
      * @throws DbException if it is a query
      */
+    @Override
     public int update() {
         throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_QUERY);
     }
@@ -214,6 +216,7 @@ public abstract class Prepared {
      * @return the result set
      * @throws DbException if it is not a query
      */
+    @Override
     public ResultInterface query(int maxrows) {
         throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
     }
@@ -281,9 +284,10 @@ public abstract class Prepared {
      *
      * @throws DbException if it was canceled
      */
+    @Override
     public void checkCanceled() {
         session.checkCanceled();
-        Command c = command != null ? command : session.getCurrentCommand();
+        Command c = (Command) (command != null ? command : session.getCurrentCommand());
         if (c != null) {
             c.checkCanceled();
         }
@@ -294,6 +298,7 @@ public abstract class Prepared {
      *
      * @param i the object id
      */
+    @Override
     public void setObjectId(int i) {
         this.objectId = i;
         this.create = false;
@@ -444,20 +449,24 @@ public abstract class Prepared {
 
     private boolean local = true;
 
+    @Override
     public boolean isLocal() {
         return local;
     }
 
+    @Override
     public void setLocal(boolean local) {
         this.local = local;
     }
 
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
+    @Override
     public int getFetchSize() {
         return fetchSize;
     }
 
+    @Override
     public void setFetchSize(int fetchSize) {
         if (fetchSize < 0) {
             throw DbException.getInvalidValueException("fetchSize", fetchSize);
@@ -478,6 +487,7 @@ public abstract class Prepared {
 
     // 多值insert、不带等号PartitionKey条件的delete/update都是一种批量操作，
     // 这类批量操作会当成一个分布式事务处理
+    @Override
     public boolean isBatch() {
         return false;
     }

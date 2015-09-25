@@ -14,6 +14,7 @@ import org.lealone.common.value.Value;
 import org.lealone.common.value.ValueArray;
 import org.lealone.common.value.ValueNull;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
@@ -35,7 +36,7 @@ public class Subquery extends Expression {
     @Override
     public Value getValue(Session session) {
         query.setSession(session);
-        ResultInterface result = session.createSubqueryResult(query, 2); // query.query(2);
+        ResultInterface result = query.query(2);// session.createSubqueryResult(query, 2); // query.query(2);
         try {
             int rowcount = result.getRowCount();
             if (rowcount > 1) {

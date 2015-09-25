@@ -24,8 +24,10 @@ import org.lealone.common.value.ValueNull;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
+import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
@@ -34,6 +36,7 @@ import org.lealone.db.result.ResultInterface;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
+import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
@@ -46,7 +49,6 @@ import org.lealone.sql.expression.Comparison;
 import org.lealone.sql.expression.ConditionAndOr;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 
 /**
@@ -62,7 +64,7 @@ import org.lealone.sql.expression.Parameter;
  * @author Thomas Mueller
  * @author Joel Turkel (Group sorted query)
  */
-public class Select extends Query implements Callable<ResultInterface> {
+public class Select extends Query implements Callable<ResultInterface>, org.lealone.db.expression.Select {
     private TableFilter topTableFilter;
     private final ArrayList<TableFilter> filters = New.arrayList();
     private final ArrayList<TableFilter> topFilters = New.arrayList();
@@ -461,7 +463,7 @@ public class Select extends Query implements Callable<ResultInterface> {
             if (n != null) {
                 setEvaluatableRecursive(n);
             }
-            Expression on = f.getJoinCondition();
+            Expression on = (Expression) f.getJoinCondition();
             if (on != null) {
                 if (!on.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
                     if (session.getDatabase().getSettings().nestedJoins) {
@@ -486,7 +488,7 @@ public class Select extends Query implements Callable<ResultInterface> {
                     }
                 }
             }
-            on = f.getFilterCondition();
+            on = (Expression) f.getFilterCondition();
             if (on != null) {
                 if (!on.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
                     f.removeFilterCondition();
@@ -646,7 +648,7 @@ public class Select extends Query implements Callable<ResultInterface> {
     public ResultInterface query(int limit, ResultTarget target) {
         queryLimit = limit;
         resultTarget = target;
-        return Session.getRouter().executeSelect(this, limit, false);
+        return org.lealone.sql.RouterHolder.getRouter().executeSelect(this, limit, false);
     }
 
     @Override
@@ -1445,6 +1447,7 @@ public class Select extends Query implements Callable<ResultInterface> {
         return false;
     }
 
+    @Override
     public SortOrder getSortOrder() {
         return sort;
     }
@@ -1452,5 +1455,10 @@ public class Select extends Query implements Callable<ResultInterface> {
     @Override
     public boolean isBatchForInsert() {
         return !containsEqualPartitionKeyComparisonType(topTableFilter);
+    }
+
+    @Override
+    public void addGlobalCondition(ParameterInterface param, int columnId, int comparisonType) {
+        this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }
 }

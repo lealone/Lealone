@@ -24,11 +24,11 @@ import org.lealone.common.util.Utils;
  * backward compatible.
  * </p>
  */
-//可以通过系统属性的方式来设定每个数据库的默认值，比如lealone.x.y.z = 10，
-//还可以通过在URL中指定参数来覆盖默认值，在URL中的参数格式是x_y_z = 10(没有lealone前缀，用下划线替换点号)
+// 可以通过系统属性的方式来设定每个数据库的默认值，比如lealone.x.y.z = 10，
+// 还可以通过在URL中指定参数来覆盖默认值，在URL中的参数格式是x_y_z = 10(没有lealone前缀，用下划线替换点号)
 class SettingsBase {
-    //这个字段需要放在这，在DbSettings的构造函数中可以提前初始化它，
-    //如果放在子类中，DbSettings类的其他字段会在执行构造函数中的代码之前执行，此时settings还是null。
+    // 这个字段需要放在这，在DbSettings的构造函数中可以提前初始化它，
+    // 如果放在子类中，DbSettings类的其他字段会在执行构造函数中的代码之前执行，此时settings还是null。
     protected final HashMap<String, String> settings;
 
     protected SettingsBase(HashMap<String, String> s) {
@@ -129,7 +129,7 @@ public class DbSettings extends SettingsBase {
      * Database setting <code>DEFRAG_ALWAYS</code> (default: false).<br />
      * Each time the database is closed, it is fully defragmented (SHUTDOWN DEFRAG).
      */
-    public final boolean defragAlways = get("DEFRAG_ALWAYS", false); //TODO 这个参数可以用到存储引擎中
+    public final boolean defragAlways = get("DEFRAG_ALWAYS", false); // TODO 这个参数可以用到存储引擎中
 
     /**
      * Database setting <code>DROP_RESTRICT</code> (default: true).<br />
@@ -172,13 +172,13 @@ public class DbSettings extends SettingsBase {
      * Database setting <code>LARGE_TRANSACTIONS</code> (default: true).<br />
      * Support very large transactions
      */
-    public final boolean largeTransactions = get("LARGE_TRANSACTIONS", true); //TODO 是否考虑用在UndoLog中
+    public final boolean largeTransactions = get("LARGE_TRANSACTIONS", true); // TODO 是否考虑用在UndoLog中
 
     /**
      * Database setting <code>MAX_COMPACT_TIME</code> (default: 200).<br />
      * The maximum time in milliseconds used to compact a database when closing.
      */
-    public final int maxCompactTime = get("MAX_COMPACT_TIME", 200); //TODO 这个参数可以用到存储引擎中
+    public final int maxCompactTime = get("MAX_COMPACT_TIME", 200); // TODO 这个参数可以用到存储引擎中
 
     /**
      * Database setting <code>MAX_MEMORY_ROWS_DISTINCT</code> (default:
@@ -302,6 +302,13 @@ public class DbSettings extends SettingsBase {
      * The default storage engine to use for new tables.
      */
     public final String defaultStorageEngine = get("DEFAULT_STORAGE_ENGINE", Constants.DEFAULT_STORAGE_ENGINE_NAME);
+
+    /**
+     * Database setting <code>DEFAULT_SQL_ENGINE_NAME</code>
+     * (default: lealone).<br />
+     * The default sql engine.
+     */
+    public final String defaultSQLEngine = get("DEFAULT_SQL_ENGINE", Constants.DEFAULT_SQL_ENGINE_NAME);
 
     /**
      * Database setting <code>COMPRESS</code>

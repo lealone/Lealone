@@ -49,18 +49,20 @@ import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Index;
+import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.FunctionTable;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.RangeTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
-import org.lealone.db.table.TableView;
 import org.lealone.db.table.TableFilter.TableFilterVisitor;
+import org.lealone.db.table.TableView;
 import org.lealone.sql.ddl.AlterIndexRename;
 import org.lealone.sql.ddl.AlterSchemaRename;
 import org.lealone.sql.ddl.AlterSchemaWithReplication;
@@ -82,7 +84,6 @@ import org.lealone.sql.ddl.CreateRole;
 import org.lealone.sql.ddl.CreateSchema;
 import org.lealone.sql.ddl.CreateSequence;
 import org.lealone.sql.ddl.CreateTable;
-import org.lealone.sql.ddl.CreateTableData;
 import org.lealone.sql.ddl.CreateTrigger;
 import org.lealone.sql.ddl.CreateUser;
 import org.lealone.sql.ddl.CreateUserDataType;
@@ -119,7 +120,6 @@ import org.lealone.sql.dml.Query;
 import org.lealone.sql.dml.RunScriptCommand;
 import org.lealone.sql.dml.ScriptCommand;
 import org.lealone.sql.dml.Select;
-import org.lealone.sql.dml.SelectOrderBy;
 import org.lealone.sql.dml.SelectUnion;
 import org.lealone.sql.dml.Set;
 import org.lealone.sql.dml.TransactionCommand;
@@ -153,7 +153,7 @@ import org.lealone.sql.expression.Wildcard;
 /**
  * The parser is used to convert a SQL statement string to an command object.
  */
-public class Parser {
+public class Parser implements SQLParser {
 
     // used during the tokenizer phase
     private static final int CHAR_END = 1, CHAR_VALUE = 2, CHAR_QUOTED = 3;
@@ -213,6 +213,7 @@ public class Parser {
      * @param sql the SQL statement to parse
      * @return the prepared object
      */
+    @Override
     public Prepared prepare(String sql) {
         Prepared p = parse(sql);
         p.prepare();
@@ -228,6 +229,7 @@ public class Parser {
      * @param sql the SQL statement to parse
      * @return the command object
      */
+    @Override
     public Command prepareCommand(String sql) {
         try {
             Prepared p = parse(sql);
@@ -919,7 +921,7 @@ public class Parser {
     }
 
     private static Prepared prepare(Session s, String sql, ArrayList<Value> paramValues) {
-        Prepared prep = s.prepare(sql);
+        Prepared prep = (Prepared) s.prepare(sql);
         ArrayList<Parameter> params = prep.getParameters();
         if (params != null) {
             for (int i = 0, size = params.size(); i < size; i++) {
@@ -1671,7 +1673,7 @@ public class Parser {
                     if (!call.isDeterministic()) {
                         recompileAlways = true;
                     }
-                    table = new FunctionTable(mainSchema, session, expr, call);
+                    table = new FunctionTable(mainSchema, session, expr, (org.lealone.db.expression.FunctionCall) call);
                 }
             } else if (equalsToken("DUAL", tableName)) {
                 table = getDualTable(false);
@@ -1727,7 +1729,7 @@ public class Parser {
                 command.addTableFilter(join, false);
             } else {
                 // make flat so the optimizer can work better
-                Expression on = join.getJoinCondition();
+                Expression on = (Expression) join.getJoinCondition();
                 if (on != null) {
                     command.addCondition(on);
                 }
@@ -3877,7 +3879,7 @@ public class Parser {
             if (selectivity != Constants.SELECTIVITY_DEFAULT) {
                 column.setSelectivity(selectivity);
             }
-            Expression checkConstraint = templateColumn.getCheckConstraint(session, columnName);
+            Expression checkConstraint = (Expression) templateColumn.getCheckConstraint(session, columnName);
             column.addCheckConstraint(session, checkConstraint);
         }
         column.setComment(comment);
@@ -4154,7 +4156,7 @@ public class Parser {
         }
         tf.setColumns(columns);
         tf.doneWithParameters();
-        Table table = new FunctionTable(mainSchema, session, tf, tf);
+        Table table = new FunctionTable(mainSchema, session, tf, (org.lealone.db.expression.FunctionCall) tf);
         TableFilter filter = new TableFilter(session, table, null, rightsChecked, currentSelect);
         return filter;
     }
@@ -5607,6 +5609,7 @@ public class Parser {
         return s;
     }
 
+    @Override
     public void setRightsChecked(boolean rightsChecked) {
         this.rightsChecked = rightsChecked;
     }
@@ -5617,6 +5620,7 @@ public class Parser {
      * @param sql the code snippet
      * @return the expression object
      */
+    @Override
     public Expression parseExpression(String sql) {
         parameters = New.arrayList();
         initialize(sql);

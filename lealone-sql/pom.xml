@@ -31,12 +31,7 @@
     <dependencies>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-client</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-		<dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-storage-api</artifactId>
+            <artifactId>lealone-db</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

@@ -56,7 +56,7 @@ public class Delete extends Prepared implements Callable<Integer> {
 
     @Override
     public int update() {
-        return Session.getRouter().executeDelete(this);
+        return org.lealone.sql.RouterHolder.getRouter().executeDelete(this);
     }
 
     @Override

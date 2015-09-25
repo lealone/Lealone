@@ -18,6 +18,7 @@ import org.lealone.db.Session;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.sql.dml.Insert;
@@ -172,7 +173,7 @@ public class CreateTable extends SchemaCommand {
             }
             if (asQuery != null) {
                 Insert insert = null;
-                insert = session.createInsert();
+                insert = new Insert(session);
                 insert.setSortedInsertMode(sortedInsertMode);
                 insert.setQuery(asQuery);
                 insert.setTable(table);

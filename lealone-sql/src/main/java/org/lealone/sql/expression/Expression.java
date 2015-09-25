@@ -17,6 +17,7 @@ import org.lealone.common.value.Value;
 import org.lealone.common.value.ValueArray;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
@@ -24,7 +25,7 @@ import org.lealone.db.table.TableFilter;
 /**
  * An expression is a operation, a value, or a function in a query.
  */
-public abstract class Expression {
+public abstract class Expression implements org.lealone.db.expression.Expression {
 
     private boolean addedToFilter;
 
@@ -34,6 +35,7 @@ public abstract class Expression {
      * @param session the session
      * @return the result
      */
+    @Override
     public abstract Value getValue(Session session);
 
     /**
@@ -42,6 +44,7 @@ public abstract class Expression {
      *
      * @return the type
      */
+    @Override
     public abstract int getType();
 
     /**
@@ -50,6 +53,7 @@ public abstract class Expression {
      * @param resolver the column resolver
      * @param level the subquery nesting level
      */
+    @Override
     public abstract void mapColumns(ColumnResolver resolver, int level);
 
     /**
@@ -58,6 +62,7 @@ public abstract class Expression {
      * @param session the session
      * @return the optimized expression
      */
+    @Override
     public abstract Expression optimize(Session session);
 
     /**
@@ -67,6 +72,7 @@ public abstract class Expression {
      * @param tableFilter the table filter
      * @param value true if the table filter can return value
      */
+    @Override
     public abstract void setEvaluatable(TableFilter tableFilter, boolean value);
 
     /**
@@ -74,6 +80,7 @@ public abstract class Expression {
      *
      * @return the scale
      */
+    @Override
     public abstract int getScale();
 
     /**
@@ -81,6 +88,7 @@ public abstract class Expression {
      *
      * @return the precision
      */
+    @Override
     public abstract long getPrecision();
 
     /**
@@ -88,6 +96,7 @@ public abstract class Expression {
      *
      * @return the display size
      */
+    @Override
     public abstract int getDisplaySize();
 
     /**
@@ -97,8 +106,10 @@ public abstract class Expression {
      *
      * @return the SQL statement
      */
+    @Override
     public abstract String getSQL(boolean isDistributed);
 
+    @Override
     public String getSQL() {
         return getSQL(false);
     }
@@ -122,6 +133,7 @@ public abstract class Expression {
      * @param visitor the visitor
      * @return if the criteria can be fulfilled
      */
+    @Override
     public abstract boolean isEverything(ExpressionVisitor visitor);
 
     /**
@@ -151,6 +163,7 @@ public abstract class Expression {
      *
      * @return if the expression is constant
      */
+    @Override
     public boolean isConstant() {
         return false;
     }
@@ -169,6 +182,7 @@ public abstract class Expression {
      *
      * @return true if it is an auto-increment column
      */
+    @Override
     public boolean isAutoIncrement() {
         return false;
     }
@@ -181,6 +195,7 @@ public abstract class Expression {
      * @param session the session
      * @return the result
      */
+    @Override
     public Boolean getBooleanValue(Session session) {
         return getValue(session).getBoolean();
     }
@@ -191,6 +206,7 @@ public abstract class Expression {
      * @param session the session
      * @param filter the table filter
      */
+    @Override
     public void createIndexConditions(Session session, TableFilter filter) {
         // default is do nothing
     }
@@ -200,6 +216,7 @@ public abstract class Expression {
      *
      * @return the column name
      */
+    @Override
     public String getColumnName() {
         return getAlias();
     }
@@ -209,6 +226,7 @@ public abstract class Expression {
      *
      * @return the schema name
      */
+    @Override
     public String getSchemaName() {
         return null;
     }
@@ -218,6 +236,7 @@ public abstract class Expression {
      *
      * @return the table name
      */
+    @Override
     public String getTableName() {
         return null;
     }
@@ -227,6 +246,7 @@ public abstract class Expression {
      *
      * @return whether NULL is allowed
      */
+    @Override
     public int getNullable() {
         return Column.NULLABLE_UNKNOWN;
     }
@@ -237,6 +257,7 @@ public abstract class Expression {
      *
      * @return the alias name
      */
+    @Override
     public String getAlias() {
         return StringUtils.unEnclose(getSQL());
     }
@@ -255,6 +276,7 @@ public abstract class Expression {
      *
      * @return the expression
      */
+    @Override
     public Expression getNonAliasExpression() {
         return this;
     }
@@ -265,6 +287,7 @@ public abstract class Expression {
      * @param filter the table filter
      * @param outerJoin if the expression is part of an outer join
      */
+    @Override
     public void addFilterConditions(TableFilter filter, boolean outerJoin) {
         if (!addedToFilter && !outerJoin && isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
             filter.addFilterCondition(this, false);

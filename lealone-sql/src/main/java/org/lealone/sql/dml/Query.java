@@ -18,9 +18,11 @@ import org.lealone.common.value.ValueInt;
 import org.lealone.common.value.ValueNull;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.result.ResultTarget;
+import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.Table;
@@ -29,14 +31,13 @@ import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Alias;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 
 /**
  * Represents a SELECT statement (simple, or union).
  */
-public abstract class Query extends Prepared {
+public abstract class Query extends Prepared implements org.lealone.db.expression.Query {
 
     /**
      * The limit expression as specified in the LIMIT or TOP clause.
@@ -96,6 +97,7 @@ public abstract class Query extends Prepared {
      *
      * @return the list of expressions
      */
+    @Override
     public abstract ArrayList<Expression> getExpressions();
 
     /**
@@ -103,6 +105,7 @@ public abstract class Query extends Prepared {
      *
      * @return the cost
      */
+    @Override
     public abstract double getCost();
 
     /**
@@ -123,6 +126,7 @@ public abstract class Query extends Prepared {
      *
      * @return the set of tables
      */
+    @Override
     public abstract HashSet<Table> getTables();
 
     /**
@@ -144,6 +148,7 @@ public abstract class Query extends Prepared {
      *
      * @return the column count
      */
+    @Override
     public abstract int getColumnCount();
 
     /**
@@ -181,6 +186,7 @@ public abstract class Query extends Prepared {
      *
      * @return true if adding global conditions is allowed
      */
+    @Override
     public abstract boolean allowGlobalConditions();
 
     /**
@@ -239,6 +245,7 @@ public abstract class Query extends Prepared {
     /**
      * Disable caching of result sets.
      */
+    @Override
     public void disableCache() {
         this.noCache = true;
     }
@@ -343,7 +350,7 @@ public abstract class Query extends Prepared {
             ArrayList<SelectOrderBy> orderList, int visible, boolean mustBeInResult, ArrayList<TableFilter> filters) {
         Database db = session.getDatabase();
         for (SelectOrderBy o : orderList) {
-            Expression e = o.expression;
+            Expression e = (Expression) o.expression;
             if (e == null) {
                 continue;
             }
@@ -450,7 +457,7 @@ public abstract class Query extends Prepared {
             SelectOrderBy o = orderList.get(i);
             int idx;
             boolean reverse = false;
-            Expression expr = o.columnIndexExpr;
+            Expression expr = (Expression) o.columnIndexExpr;
             Value v = expr.getValue(null);
             if (v == ValueNull.INSTANCE) {
                 // parameter not yet set - order by first column
@@ -531,6 +538,7 @@ public abstract class Query extends Prepared {
         return v.getInt();
     }
 
+    @Override
     public final long getMaxDataModificationId() {
         ExpressionVisitor visitor = ExpressionVisitor.getMaxModificationIdVisitor();
         isEverything(visitor);

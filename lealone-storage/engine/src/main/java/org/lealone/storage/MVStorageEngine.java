@@ -60,7 +60,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
 
     @Override
     public synchronized Table createTable(CreateTableData data0) {
-        org.lealone.sql.ddl.CreateTableData data = (org.lealone.sql.ddl.CreateTableData) data0;
+        org.lealone.db.table.CreateTableData data = (org.lealone.db.table.CreateTableData) data0;
         org.lealone.db.Database db = data.session.getDatabase();
         Store store = stores.get(db.getName());
         if (store == null) {

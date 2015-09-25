@@ -19,6 +19,7 @@ import org.lealone.db.Right;
 import org.lealone.db.Session;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.ResultInterface;
@@ -27,12 +28,12 @@ import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.Parser;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ExpressionVisitor;
 
 /**
  * This class represents the statements
@@ -88,11 +89,11 @@ public class AlterTableAlterColumn extends SchemaCommand {
         table.lock(session, true, true);
         Sequence sequence = oldColumn == null ? null : oldColumn.getSequence();
         if (newColumn != null) {
-            checkDefaultReferencesTable(newColumn.getDefaultExpression());
+            checkDefaultReferencesTable((Expression) newColumn.getDefaultExpression());
         }
         if (columnsToAdd != null) {
             for (Column column : columnsToAdd) {
-                checkDefaultReferencesTable(column.getDefaultExpression());
+                checkDefaultReferencesTable((Expression) column.getDefaultExpression());
             }
         }
         switch (type) {
@@ -325,7 +326,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
                     columnList.append(", ");
                 }
                 if (type == CommandInterface.ALTER_TABLE_ADD_COLUMN && columnsToAdd.contains(nc)) {
-                    Expression def = nc.getDefaultExpression();
+                    Expression def = (Expression) nc.getDefaultExpression();
                     columnList.append(def == null ? "NULL" : def.getSQL());
                 } else {
                     columnList.append(nc.getSQL());
@@ -444,7 +445,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
     }
 
     private void execute(String sql, boolean ddl) {
-        Prepared command = session.prepare(sql);
+        Prepared command = (Prepared) session.prepare(sql);
         command.setLocal(true);
         command.update();
         if (ddl) {
@@ -466,7 +467,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
 
     private void checkNoNullValues() {
         String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL() + " IS NULL";
-        Prepared command = session.prepare(sql);
+        Prepared command = (Prepared) session.prepare(sql);
         ResultInterface result = command.query(0);
         result.next();
         if (result.currentRow()[0].getInt() > 0) {

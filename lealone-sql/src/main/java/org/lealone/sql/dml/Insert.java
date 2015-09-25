@@ -108,7 +108,7 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
         // 在集群模式下使用query时先不创建行，这会导致从其他表中把记录取过来
         if (query == null || isLocal())
             createRows();
-        return Session.getRouter().executeInsert(this);
+        return org.lealone.sql.RouterHolder.getRouter().executeInsert(this);
     }
 
     @Override

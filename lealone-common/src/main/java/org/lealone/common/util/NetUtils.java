@@ -148,15 +148,6 @@ public class NetUtils {
      * @param ssl if SSL should be used
      * @return the server socket
      */
-    public static ServerSocket createServerSocket(int port, boolean ssl) {
-        try {
-            return createServerSocketTry(port, ssl);
-        } catch (Exception e) {
-            // try again
-            return createServerSocketTry(port, ssl);
-        }
-    }
-
     public static ServerSocket createServerSocket(String listenAddress, int port, boolean ssl) {
         try {
             return createServerSocketTry(listenAddress, port, ssl);
@@ -183,23 +174,6 @@ public class NetUtils {
             }
         }
         return cachedBindAddress;
-    }
-
-    private static ServerSocket createServerSocketTry(int port, boolean ssl) {
-        try {
-            InetAddress bindAddress = getBindAddress();
-            if (ssl) {
-                return CipherFactory.createServerSocket(port, bindAddress);
-            }
-            if (bindAddress == null) {
-                return new ServerSocket(port);
-            }
-            return new ServerSocket(port, 0, bindAddress);
-        } catch (BindException be) {
-            throw DbException.get(ErrorCode.EXCEPTION_OPENING_PORT_2, be, "" + port, be.toString());
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, "port: " + port + " ssl: " + ssl);
-        }
     }
 
     private static ServerSocket createServerSocketTry(String listenAddress, int port, boolean ssl) {

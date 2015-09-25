@@ -182,6 +182,7 @@ public class ExpressionVisitor {
      *
      * @param obj the additional dependency.
      */
+
     public void addDependency(DbObject obj) {
         dependencies.add(obj);
     }
@@ -202,6 +203,7 @@ public class ExpressionVisitor {
      *
      * @return the set
      */
+
     public HashSet<DbObject> getDependencies() {
         return dependencies;
     }
@@ -212,6 +214,7 @@ public class ExpressionVisitor {
      * @param offset 1 to increment, -1 to decrement
      * @return a clone of this expression visitor, with the changed query level
      */
+
     public ExpressionVisitor incrementQueryLevel(int offset) {
         return new ExpressionVisitor(type, queryLevel + offset, dependencies, columns, table, resolver,
                 maxDataModificationId);
@@ -223,6 +226,7 @@ public class ExpressionVisitor {
      *
      * @return the column resolver
      */
+
     public ColumnResolver getResolver() {
         return resolver;
     }
@@ -234,6 +238,7 @@ public class ExpressionVisitor {
      *
      * @param value the data modification id
      */
+
     public void addDataModificationId(long value) {
         long m = maxDataModificationId[0];
         if (value > m) {
@@ -247,6 +252,7 @@ public class ExpressionVisitor {
      *
      * @return the maximum modification id
      */
+
     public long getMaxDataModificationId() {
         return maxDataModificationId[0];
     }
@@ -261,6 +267,7 @@ public class ExpressionVisitor {
      *
      * @return the table
      */
+
     public Table getTable() {
         return table;
     }
@@ -270,6 +277,7 @@ public class ExpressionVisitor {
      *
      * @return the type
      */
+
     public int getType() {
         return type;
     }

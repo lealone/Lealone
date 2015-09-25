@@ -101,7 +101,7 @@ public class Merge extends Prepared implements InsertOrMerge {
         // 在集群模式下使用query时先不创建行，这会导致从其他表中把记录取过来
         if (query == null || isLocal())
             createRows();
-        return Session.getRouter().executeMerge(this);
+        return org.lealone.sql.RouterHolder.getRouter().executeMerge(this);
     }
 
     @Override
@@ -399,7 +399,7 @@ public class Merge extends Prepared implements InsertOrMerge {
             buff.append(c.getSQL()).append("=?");
         }
         String sql = buff.toString();
-        update = session.prepare(sql);
+        update = (Prepared) session.prepare(sql);
     }
 
     @Override

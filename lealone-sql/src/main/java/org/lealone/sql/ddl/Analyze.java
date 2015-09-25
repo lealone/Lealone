@@ -103,7 +103,7 @@ public class Analyze extends DefineCommand {
             buff.append(" LIMIT ? SAMPLE_SIZE ? ");
         }
         String sql = buff.toString();
-        Prepared command = session.prepare(sql);
+        Prepared command = (Prepared) session.prepare(sql);
         if (sample > 0) {
             ArrayList<Parameter> params = command.getParameters();
             params.get(0).setValue(ValueInt.get(1));

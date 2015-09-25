@@ -6,13 +6,15 @@
  */
 package org.lealone.server;
 
-import java.sql.SQLException;
 
 /**
  * Classes implementing this interface usually provide a
  * TCP/IP listener such as an FTP server.
  * The can be started and stopped, and may or may not
  * allow remote connections.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface Server extends Runnable {
 
@@ -24,16 +26,9 @@ public interface Server extends Runnable {
     void init(String... args);
 
     /**
-     * Get the URL of this server in a human readable form
-     *
-     * @return the url
-     */
-    String getURL();
-
-    /**
      * Start the server. 
      */
-    void start() throws SQLException;
+    void start();
 
     /**
      * Stop the server.
@@ -49,11 +44,25 @@ public interface Server extends Runnable {
     boolean isRunning(boolean traceError);
 
     /**
-     * Check if remote connections are allowed.
+     * Get the URL of this server in a human readable form
      *
-     * @return true if remote connections are allowed
+     * @return the url
      */
-    boolean getAllowOthers();
+    String getURL();
+
+    /**
+     * Gets the port this server is listening on.
+     *
+     * @return the port
+     */
+    int getPort();
+
+    /**
+     * Gets the address this server is listening on.
+     *
+     * @return the address
+     */
+    String getListenAddress();
 
     /**
      * Get the human readable name of the server.
@@ -70,18 +79,11 @@ public interface Server extends Runnable {
     String getType();
 
     /**
-     * Gets the port this server is listening on.
+     * Check if remote connections are allowed.
      *
-     * @return the port
+     * @return true if remote connections are allowed
      */
-    int getPort();
-
-    /**
-     * Gets the address this server is listening on.
-     *
-     * @return the address
-     */
-    String getListenAddress();
+    boolean getAllowOthers();
 
     /**
      * Check if a daemon thread should be used.

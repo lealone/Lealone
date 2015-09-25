@@ -86,7 +86,7 @@ public class Update extends Prepared implements Callable<Integer> {
 
     @Override
     public int update() {
-        return Session.getRouter().executeUpdate(this);
+        return org.lealone.sql.RouterHolder.getRouter().executeUpdate(this);
     }
 
     @Override

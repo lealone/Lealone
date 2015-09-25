@@ -18,11 +18,14 @@ import org.lealone.common.value.Value;
 import org.lealone.common.value.ValueInt;
 import org.lealone.common.value.ValueNull;
 import org.lealone.db.CommandInterface;
+import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
+import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.result.ResultTarget;
+import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
@@ -30,7 +33,6 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
-import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 
@@ -464,5 +466,10 @@ public class SelectUnion extends Query {
     @Override
     public boolean isBatchForInsert() {
         return left.isBatchForInsert() || right.isBatchForInsert();
+    }
+
+    @Override
+    public void addGlobalCondition(ParameterInterface param, int columnId, int comparisonType) {
+        this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }
 }
