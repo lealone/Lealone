@@ -30,17 +30,17 @@
     <version>1.0.0-SNAPSHOT</version>
 
     <dependencies>
-<dependency>
+        <dependency>
             <groupId>org.lealone</groupId>
             <artifactId>lealone-db</artifactId>
             <version>${project.version}</version>
         </dependency>
-		<dependency>
+        <dependency>
             <groupId>org.lealone</groupId>
             <artifactId>lealone-storage-mvstore</artifactId>
             <version>${project.version}</version>
         </dependency>
-		<dependency>
+        <dependency>
             <groupId>org.lealone</groupId>
             <artifactId>lealone-storage-aostore</artifactId>
             <version>${project.version}</version>
