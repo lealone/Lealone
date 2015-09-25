@@ -30,14 +30,9 @@
     <version>1.0.0-SNAPSHOT</version>
 
     <dependencies>
-        <dependency>
+<dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-transaction</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-		<dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-mvdb</artifactId>
+            <artifactId>lealone-db</artifactId>
             <version>${project.version}</version>
         </dependency>
 		<dependency>

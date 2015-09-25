@@ -29,7 +29,7 @@
     <version>1.0.0-SNAPSHOT</version>
 
     <dependencies>
-	    <dependency>
+        <dependency>
             <groupId>org.lealone</groupId>
             <artifactId>lealone-storage-api</artifactId>
             <version>${project.version}</version>

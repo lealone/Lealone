@@ -18,9 +18,7 @@
  */
 package org.lealone.storage;
 
-import org.lealone.db.Database;
-import org.lealone.db.Session;
-import org.lealone.db.table.MVTable;
+import org.lealone.db.SessionInterface;
 import org.lealone.storage.type.DataType;
 import org.lealone.transaction.TransactionMap;
 
@@ -35,9 +33,10 @@ public interface TransactionStorageEngine {
 
     public boolean isInMemory(Database db);
 
-    public void removeTable(MVTable table);
+    public void removeTable(Table table);
 
     public String nextTemporaryMapName(Database db);
 
-    public <K, V> TransactionMap<K, V> openMap(Session session, String name, DataType keyType, DataType valueType);
+    public <K, V> TransactionMap<K, V> openMap(SessionInterface session, String name, DataType keyType,
+            DataType valueType);
 }

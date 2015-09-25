@@ -28,6 +28,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.DatabaseEngine;
 import org.lealone.db.InDoubtTransaction;
 import org.lealone.db.Session;
+import org.lealone.db.SessionInterface;
 import org.lealone.db.index.ValueDataType;
 import org.lealone.db.table.MVTable;
 import org.lealone.db.table.Table;
@@ -481,28 +482,29 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     }
 
     @Override
-    public boolean hasMap(org.lealone.db.Database db, String name) {
+    public boolean hasMap(org.lealone.storage.Database db, String name) {
         return getStore(db).getStore().hasMap(name);
     }
 
     @Override
-    public boolean isInMemory(org.lealone.db.Database db) {
+    public boolean isInMemory(org.lealone.storage.Database db) {
         return getStore(db) == null;
     }
 
     @Override
-    public void removeTable(MVTable table) {
-        getStore(table.getDatabase()).removeTable(table);
+    public void removeTable(org.lealone.storage.Table table) {
+        getStore(((MVTable) table).getDatabase()).removeTable(((MVTable) table));
     }
 
     @Override
-    public String nextTemporaryMapName(org.lealone.db.Database db) {
+    public String nextTemporaryMapName(org.lealone.storage.Database db) {
         return getStore(db).nextTemporaryMapName();
     }
 
     @Override
-    public <K, V> TransactionMap<K, V> openMap(Session session, String name, DataType keyType, DataType valueType) {
-        return session.getTransaction().openMap(name, keyType, valueType);
+    public <K, V> TransactionMap<K, V> openMap(SessionInterface session, String name, DataType keyType,
+            DataType valueType) {
+        return ((Session) session).getTransaction().openMap(name, keyType, valueType);
     }
 
     @Override
