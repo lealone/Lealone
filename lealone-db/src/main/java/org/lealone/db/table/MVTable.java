@@ -40,9 +40,7 @@ import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.storage.TransactionStorageEngine;
-import org.lealone.storage.type.ObjectDataType;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionMap;
 
 /**
  * A table stored in a MVStore.
@@ -71,7 +69,7 @@ public class MVTable extends TableBase {
     private final TransactionStorageEngine storageEngine;
     private boolean containsGlobalUniqueIndex;
 
-    private final TransactionMap<Long, Long> rowVersionMap;
+    // private final TransactionMap<Long, Long> rowVersionMap;
 
     public MVTable(CreateTableData data, TransactionStorageEngine storageEngine) {
         super(data);
@@ -85,8 +83,8 @@ public class MVTable extends TableBase {
         }
         traceLock = database.getTrace(Trace.LOCK);
 
-        rowVersionMap = storageEngine.openMap(data.session, getName() + "_row_version", new ObjectDataType(),
-                new ObjectDataType());
+        // rowVersionMap = storageEngine.openMap(data.session, getName() + "_row_version", new ObjectDataType(),
+        // new ObjectDataType());
     }
 
     /**
@@ -801,13 +799,13 @@ public class MVTable extends TableBase {
         return containsGlobalUniqueIndex;
     }
 
-    @Override
-    public long getRowVersion(long rowKey) {
-        return rowVersionMap.get(rowKey);
-    }
-
-    @Override
-    public TransactionMap<Long, Long> getRowVersionMap() {
-        return rowVersionMap;
-    }
+    // @Override
+    // public long getRowVersion(long rowKey) {
+    // return rowVersionMap.get(rowKey);
+    // }
+    //
+    // @Override
+    // public TransactionMap<Long, Long> getRowVersionMap() {
+    // return rowVersionMap;
+    // }
 }

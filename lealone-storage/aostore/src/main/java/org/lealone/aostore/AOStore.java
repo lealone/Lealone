@@ -13,15 +13,16 @@
  */
 package org.lealone.aostore;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.aostore.btree.BTreeMap;
 import org.lealone.aostore.btree.BTreeStore;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
-import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 
 // adaptive optimization store
@@ -43,7 +44,7 @@ public class AOStore {
     public static final String SUFFIX_AO_STORE_TEMP_FILE = ".tempFile";
 
     private final HashMap<String, Object> config;
-    private final HashMap<String, BTreeMap<?, ?>> maps = new HashMap<String, BTreeMap<?, ?>>();
+    private final ConcurrentSkipListMap<String, BTreeMap<?, ?>> maps = new ConcurrentSkipListMap<String, BTreeMap<?, ?>>();
 
     private int lastMapId;
 
@@ -53,14 +54,20 @@ public class AOStore {
         if (storeName != null) {
             String sn = storeName.toString();
             if (!FileUtils.exists(sn))
-                FileUtils.createDirectory(sn);
+                FileUtils.createDirectories(sn);
 
-            FilePath dir = FilePath.get(sn);
-            for (FilePath file : dir.newDirectoryStream()) {
-                String name = file.getName();
-                maps.put(name.substring(0, name.length() - SUFFIX_AO_FILE.length()), null);
-            }
+            // FilePath dir = FilePath.get(sn);
+            // for (FilePath file : dir.newDirectoryStream()) {
+            // String name = file.getName();
+            // maps.put(name.substring(0, name.length() - SUFFIX_AO_FILE.length()), null);
+            // }
         }
+
+        // setAutoCommitDelay starts the thread, but only if
+        // the parameter is different from the old value
+        Object delayObject = config.get("autoCommitDelay");
+        int delay = delayObject == null ? 1000 : (Integer) delayObject;
+        setAutoCommitDelay(delay);
     }
 
     public HashMap<String, Object> getConfig() {
@@ -76,12 +83,13 @@ public class AOStore {
             c.put("id", id);
             c.put("createVersion", 0L);
             map = builder.create();
+            map.setName(name);
 
             BTreeStore store = new BTreeStore(name, config);
             map.init(store, c);
 
-            if (!maps.containsKey(name)) // map不存在时标数据改变
-                store.markMetaChanged();
+            // if (!maps.containsKey(name)) // map不存在时标数据改变
+            store.markMetaChanged();
             maps.put(name, map);
         }
 
@@ -89,6 +97,8 @@ public class AOStore {
     }
 
     public synchronized void close() {
+        stopBackgroundThread();
+
         for (BTreeMap<?, ?> map : maps.values())
             map.close();
     }
@@ -98,8 +108,16 @@ public class AOStore {
             map.commit();
     }
 
-    public synchronized Set<String> getMapNames() {
+    public Set<String> getMapNames() {
         return new HashSet<String>(maps.keySet());
+    }
+
+    public Collection<BTreeMap<?, ?>> getMaps() {
+        return maps.values();
+    }
+
+    public boolean hasMap(String name) {
+        return maps.containsKey(name);
     }
 
     /**
@@ -326,6 +344,114 @@ public class AOStore {
             Builder builder = new Builder();
             builder.config.putAll(config);
             return builder;
+        }
+
+    }
+
+    /**
+     * The background thread, if any.
+     */
+    volatile BackgroundWriterThread backgroundWriterThread;
+
+    /**
+     * The delay in milliseconds to automatically commit and write changes.
+     */
+    private int autoCommitDelay;
+
+    /**
+     * Set the maximum delay in milliseconds to auto-commit changes.
+     * <p>
+     * To disable auto-commit, set the value to 0. In this case, changes are
+     * only committed when explicitly calling commit.
+     * <p>
+     * The default is 1000, meaning all changes are committed after at most one
+     * second.
+     * 
+     * @param millis the maximum delay
+     */
+
+    public void setAutoCommitDelay(int millis) {
+        if (autoCommitDelay == millis) {
+            return;
+        }
+        autoCommitDelay = millis;
+        if (config.get("storeName") == null) // 内存存储不需要BackgroundWriterThread
+            return;
+        stopBackgroundThread();
+        // start the background thread if needed
+        if (millis > 0) {
+            int sleep = Math.max(1, millis / 10);
+            BackgroundWriterThread t = new BackgroundWriterThread(this, sleep, config.get("storeName").toString());
+            t.start();
+            backgroundWriterThread = t;
+        }
+    }
+
+    private void stopBackgroundThread() {
+        BackgroundWriterThread t = backgroundWriterThread;
+        if (t == null) {
+            return;
+        }
+        backgroundWriterThread = null;
+        if (Thread.currentThread() == t) {
+            // within the thread itself - can not join
+            return;
+        }
+        synchronized (t.sync) {
+            t.sync.notifyAll();
+        }
+        if (Thread.holdsLock(this)) {
+            // called from storeNow: can not join,
+            // because that could result in a deadlock
+            return;
+        }
+        try {
+            t.join();
+        } catch (Exception e) {
+            // ignore
+        }
+    }
+
+    /**
+     * A background writer thread to automatically store changes from time to
+     * time.
+     */
+    private static class BackgroundWriterThread extends Thread {
+
+        public final Object sync = new Object();
+        private final AOStore store;
+        private final int sleep;
+
+        BackgroundWriterThread(AOStore store, int sleep, String fileStoreName) {
+            super("AOStore background writer " + fileStoreName);
+            this.store = store;
+            this.sleep = sleep;
+            setDaemon(true);
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                Thread t = store.backgroundWriterThread;
+                if (t == null) {
+                    break;
+                }
+                synchronized (sync) {
+                    try {
+                        sync.wait(sleep);
+                    } catch (InterruptedException e) {
+                        continue;
+                    }
+                }
+                for (BTreeMap<?, ?> map : store.getMaps()) {
+                    BTreeStore btreeStore = map.getStore();
+                    FileStore fileStore = btreeStore.getFileStore();
+                    if (fileStore == null || fileStore.isReadOnly()) {
+                        return;
+                    }
+                    btreeStore.writeInBackground();
+                }
+            }
         }
 
     }

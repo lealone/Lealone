@@ -54,6 +54,7 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     protected volatile long writeVersion;
 
     private int id;
+    private String name;
     private long createVersion;
     private final DataType keyType;
     private final DataType valueType;
@@ -953,7 +954,11 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
      */
     @Override
     public String getName() {
-        return store.getMapName(id);
+        return name; // store.getMapName(id);
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public BTreeStore getStore() {

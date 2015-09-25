@@ -23,7 +23,7 @@ public class Constants {
      */
     public static final String PROJECT_NAME_PREFIX = PROJECT_NAME + ".";
 
-    public static final String DEFAULT_STORAGE_ENGINE_NAME = "MVStore";
+    public static final String DEFAULT_STORAGE_ENGINE_NAME = "AOStore";
 
     public static final String DEFAULT_SQL_ENGINE_NAME = PROJECT_NAME;
 

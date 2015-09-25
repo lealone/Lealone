@@ -115,11 +115,6 @@ public class BTreeStore {
      */
     private static final int MARKED_FREE = 10000000;
 
-    /**
-     * The background thread, if any.
-     */
-    volatile BackgroundWriterThread backgroundWriterThread;
-
     private volatile boolean reuseSpace = true;
 
     private boolean closed;
@@ -331,11 +326,11 @@ public class BTreeStore {
         }
         lastCommitTime = getTimeSinceCreation();
 
-        // setAutoCommitDelay starts the thread, but only if
-        // the parameter is different from the old value
-        o = config.get("autoCommitDelay");
-        int delay = o == null ? 1000 : (Integer) o;
-        setAutoCommitDelay(delay);
+        // // setAutoCommitDelay starts the thread, but only if
+        // // the parameter is different from the old value
+        // o = config.get("autoCommitDelay");
+        // int delay = o == null ? 1000 : (Integer) o;
+        // setAutoCommitDelay(delay);
     }
 
     private void panic(IllegalStateException e) {
@@ -770,7 +765,6 @@ public class BTreeStore {
         }
         FileStore f = fileStore;
         if (f != null && !f.isReadOnly()) {
-            stopBackgroundThread();
             if (hasUnsavedChanges()) {
                 commitAndSave();
             }
@@ -797,10 +791,10 @@ public class BTreeStore {
         if (closed) {
             return;
         }
-        // can not synchronize on this yet, because
-        // the thread also synchronized on this, which
-        // could result in a deadlock
-        stopBackgroundThread();
+        // // can not synchronize on this yet, because
+        // // the thread also synchronized on this, which
+        // // could result in a deadlock
+        // stopBackgroundThread();
         closed = true;
         if (fileStore == null) {
             return;
@@ -2345,7 +2339,7 @@ public class BTreeStore {
      * needed.
      */
 
-    void writeInBackground() {
+    public void writeInBackground() {
         if (closed) {
             return;
         }
@@ -2409,31 +2403,6 @@ public class BTreeStore {
         return closed;
     }
 
-    private void stopBackgroundThread() {
-        BackgroundWriterThread t = backgroundWriterThread;
-        if (t == null) {
-            return;
-        }
-        backgroundWriterThread = null;
-        if (Thread.currentThread() == t) {
-            // within the thread itself - can not join
-            return;
-        }
-        synchronized (t.sync) {
-            t.sync.notifyAll();
-        }
-        if (Thread.holdsLock(this)) {
-            // called from storeNow: can not join,
-            // because that could result in a deadlock
-            return;
-        }
-        try {
-            t.join();
-        } catch (Exception e) {
-            // ignore
-        }
-    }
-
     /**
      * Set the maximum delay in milliseconds to auto-commit changes.
      * <p>
@@ -2451,17 +2420,6 @@ public class BTreeStore {
             return;
         }
         autoCommitDelay = millis;
-        if (fileStore == null || fileStore.isReadOnly()) {
-            return;
-        }
-        stopBackgroundThread();
-        // start the background thread if needed
-        if (millis > 0) {
-            int sleep = Math.max(1, millis / 10);
-            BackgroundWriterThread t = new BackgroundWriterThread(this, sleep, fileStore.toString());
-            t.start();
-            backgroundWriterThread = t;
-        }
     }
 
     /**
@@ -2546,42 +2504,5 @@ public class BTreeStore {
 
     public CacheLongKeyLIRS<BTreePage> getCache() {
         return cache;
-    }
-
-    /**
-     * A background writer thread to automatically store changes from time to
-     * time.
-     */
-    private static class BackgroundWriterThread extends Thread {
-
-        public final Object sync = new Object();
-        private final BTreeStore store;
-        private final int sleep;
-
-        BackgroundWriterThread(BTreeStore store, int sleep, String fileStoreName) {
-            super("MVStore background writer " + fileStoreName);
-            this.store = store;
-            this.sleep = sleep;
-            setDaemon(true);
-        }
-
-        @Override
-        public void run() {
-            while (true) {
-                Thread t = store.backgroundWriterThread;
-                if (t == null) {
-                    break;
-                }
-                synchronized (sync) {
-                    try {
-                        sync.wait(sleep);
-                    } catch (InterruptedException e) {
-                        continue;
-                    }
-                }
-                store.writeInBackground();
-            }
-        }
-
     }
 }

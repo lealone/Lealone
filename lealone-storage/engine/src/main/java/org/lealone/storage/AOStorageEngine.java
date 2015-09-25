@@ -18,6 +18,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.lealone.aostore.AOStore;
+import org.lealone.aostore.AOStoreTool;
+import org.lealone.aostore.btree.BTreeMap;
+import org.lealone.aostore.btree.BTreeStore;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.BitField;
@@ -32,9 +36,6 @@ import org.lealone.db.SessionInterface;
 import org.lealone.db.index.ValueDataType;
 import org.lealone.db.table.MVTable;
 import org.lealone.db.table.Table;
-import org.lealone.mvstore.MVMap;
-import org.lealone.mvstore.MVStore;
-import org.lealone.mvstore.MVStoreTool;
 import org.lealone.storage.fs.FileChannelInputStream;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.DataType;
@@ -44,14 +45,14 @@ import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
 /**
- * A storage engine that internally uses the MVStore.
+ * A storage engine that internally uses the AOStore.
  */
-public class MVStorageEngine extends StorageEngineBase implements TransactionStorageEngine {
-    public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
+public class AOStorageEngine extends StorageEngineBase implements TransactionStorageEngine {
+    public static final String NAME = "AOStore";
     private static HashMap<String, Store> stores = new HashMap<>(1);
 
     // 见StorageEngineManager.StorageEngineService中的注释
-    public MVStorageEngine() {
+    public AOStorageEngine() {
         StorageEngineManager.registerStorageEngine(this);
     }
 
@@ -84,7 +85,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
 
     @Override
     public synchronized StorageMap.Builder createStorageMapBuilder(String dbName) {
-        return new MVMapBuilder(stores.get(dbName).getStore());
+        return new AOMapBuilder(stores.get(dbName).getStore());
     }
 
     @Override
@@ -103,36 +104,26 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     }
 
     /**
-     * Initialize the MVStore.
+     * Initialize the AOStore.
      *
      * @param db the database
      * @return the store
      */
-    static Store init(StorageEngine storageEngine, final Database db0) {
-        final org.lealone.db.Database db = (org.lealone.db.Database) db0;
+    static Store init(StorageEngine storageEngine, final org.lealone.db.Database db) {
         Store store = null;
         byte[] key = db.getFileEncryptionKey();
         String dbPath = db.getDatabasePath();
-        MVStore.Builder builder = new MVStore.Builder();
+        AOStore.Builder builder = new AOStore.Builder();
         if (dbPath == null) {
             store = new Store(storageEngine, db, builder);
         } else {
-            String fileName = dbPath + Constants.SUFFIX_MV_FILE;
             builder.pageSplitSize(db.getPageSize());
-            MVStoreTool.compactCleanUp(fileName);
-            builder.fileName(fileName);
+            // AOStoreTool.compactCleanUp(fileName); //TODO
+            builder.storeName(dbPath);
             if (db.isReadOnly()) {
                 builder.readOnly();
-            } else {
-                // possibly create the directory
-                boolean exists = FileUtils.exists(fileName);
-                if (exists && !FileUtils.canWrite(fileName)) {
-                    // read only
-                } else {
-                    String dir = FileUtils.getParent(fileName);
-                    FileUtils.createDirectories(dir);
-                }
             }
+
             if (key != null) {
                 char[] password = new char[key.length / 2];
                 for (int i = 0; i < password.length; i++) {
@@ -159,14 +150,14 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
                 int errorCode = DataUtils.getErrorCode(e.getMessage());
                 if (errorCode == DataUtils.ERROR_FILE_CORRUPT) {
                     if (key != null) {
-                        throw DbException.get(ErrorCode.FILE_ENCRYPTION_ERROR_1, e, fileName);
+                        throw DbException.get(ErrorCode.FILE_ENCRYPTION_ERROR_1, e, dbPath);
                     }
                 } else if (errorCode == DataUtils.ERROR_FILE_LOCKED) {
-                    throw DbException.get(ErrorCode.DATABASE_ALREADY_OPEN_1, e, fileName);
+                    throw DbException.get(ErrorCode.DATABASE_ALREADY_OPEN_1, e, dbPath);
                 } else if (errorCode == DataUtils.ERROR_READING_FAILED) {
-                    throw DbException.get(ErrorCode.IO_EXCEPTION_1, e, fileName);
+                    throw DbException.get(ErrorCode.IO_EXCEPTION_1, e, dbPath);
                 }
-                throw DbException.get(ErrorCode.FILE_CORRUPTED_1, e, fileName);
+                throw DbException.get(ErrorCode.FILE_CORRUPTED_1, e, dbPath);
             }
         }
         return store;
@@ -186,7 +177,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
         /**
          * The store.
          */
-        private final MVStore store;
+        private final AOStore store;
 
         /**
          * The transaction engine.
@@ -197,8 +188,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
 
         private int temporaryMapId;
 
-        public Store(StorageEngine storageEngine, Database db0, MVStore.Builder builder) {
-            org.lealone.db.Database db = (org.lealone.db.Database) db0;
+        public Store(StorageEngine storageEngine, org.lealone.db.Database db, AOStore.Builder builder) {
             store = builder.open();
 
             stores.put(db.getName(), this);
@@ -216,7 +206,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
             db.setLobStorage(new LobStorageMap(db));
         }
 
-        public MVStore getStore() {
+        public AOStore getStore() {
             return store;
         }
 
@@ -237,12 +227,15 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * Store all pending changes.
          */
         public void flush() {
-            org.lealone.mvstore.FileStore s = store.getFileStore();
-            if (s == null || s.isReadOnly()) {
-                return;
-            }
-            if (!store.compact(50, 4 * 1024 * 1024)) {
-                store.commit();
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                BTreeStore store = map.getStore();
+                org.lealone.aostore.FileStore s = store.getFileStore();
+                if (s == null || s.isReadOnly()) {
+                    return;
+                }
+                if (!store.compact(50, 4 * 1024 * 1024)) {
+                    store.commit();
+                }
             }
         }
 
@@ -250,10 +243,13 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * Close the store, without persisting changes.
          */
         public void closeImmediately() {
-            if (store.isClosed()) {
-                return;
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                BTreeStore store = map.getStore();
+                if (store.isClosed()) {
+                    return;
+                }
+                store.closeImmediately();
             }
-            store.closeImmediately();
         }
 
         /**
@@ -277,10 +273,11 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * @param objectIds the ids of the objects to keep
          */
         public void removeTemporaryMaps(BitField objectIds) {
-            for (String mapName : store.getMapNames()) {
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                String mapName = map.getName();
+
                 if (mapName.startsWith("temp.")) {
-                    MVMap<?, ?> map = store.openMap(mapName);
-                    store.removeMap(map);
+                    map.remove();
                 } else if (mapName.startsWith("table.") || mapName.startsWith("index.")) {
                     int id = Integer.parseInt(mapName.substring(1 + mapName.indexOf(".")));
                     if (!objectIds.get(id)) {
@@ -322,7 +319,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
             ArrayList<InDoubtTransaction> result = New.arrayList();
             for (Transaction t : list) {
                 if (t.getStatus() == Transaction.STATUS_PREPARED) {
-                    result.add(new MVInDoubtTransaction(store, t));
+                    result.add(new AOInDoubtTransaction(store, t));
                 }
             }
             return result;
@@ -334,13 +331,16 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * @param kb the maximum size in KB
          */
         public void setCacheSize(int kb) {
-            store.setCacheSize(Math.max(1, kb / 1024));
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                BTreeStore store = map.getStore();
+                store.setCacheSize(Math.max(1, kb / 1024));
+            }
         }
 
-        public InputStream getInputStream() {
-            FileChannel fc = store.getFileStore().getEncryptedFile();
+        public InputStream getInputStream(BTreeStore btreeStore) {
+            FileChannel fc = btreeStore.getFileStore().getEncryptedFile();
             if (fc == null) {
-                fc = store.getFileStore().getFile();
+                fc = btreeStore.getFileStore().getFile();
             }
             return new FileChannelInputStream(fc, false);
         }
@@ -350,7 +350,10 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          */
         public void sync() {
             flush();
-            store.sync();
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                BTreeStore store = map.getStore();
+                store.sync();
+            }
         }
 
         /**
@@ -362,14 +365,17 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * @param maxCompactTime the maximum time in milliseconds to compact
          */
         public void compactFile(long maxCompactTime) {
-            store.setRetentionTime(0);
-            long start = System.currentTimeMillis();
-            while (store.compact(95, 16 * 1024 * 1024)) {
-                store.sync();
-                store.compactMoveChunks(95, 16 * 1024 * 1024);
-                long time = System.currentTimeMillis() - start;
-                if (time > maxCompactTime) {
-                    break;
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                BTreeStore store = map.getStore();
+                store.setRetentionTime(0);
+                long start = System.currentTimeMillis();
+                while (store.compact(95, 16 * 1024 * 1024)) {
+                    store.sync();
+                    store.compactMoveChunks(95, 16 * 1024 * 1024);
+                    long time = System.currentTimeMillis() - start;
+                    if (time > maxCompactTime) {
+                        break;
+                    }
                 }
             }
         }
@@ -382,32 +388,35 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * @param maxCompactTime the maximum time in milliseconds to compact
          */
         public void close(long maxCompactTime) {
-            try {
-                if (!store.isClosed() && store.getFileStore() != null) {
-                    boolean compactFully = false;
-                    if (!store.getFileStore().isReadOnly()) {
-                        transactionEngine.close();
-                        if (maxCompactTime == Long.MAX_VALUE) {
-                            compactFully = true;
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                BTreeStore store = map.getStore();
+                try {
+                    if (!store.isClosed() && store.getFileStore() != null) {
+                        boolean compactFully = false;
+                        if (!store.getFileStore().isReadOnly()) {
+                            transactionEngine.close();
+                            if (maxCompactTime == Long.MAX_VALUE) {
+                                compactFully = true;
+                            }
+                        }
+                        String fileName = store.getFileStore().getFileName();
+                        store.close();
+                        if (compactFully && FileUtils.exists(fileName)) {
+                            // the file could have been deleted concurrently,
+                            // so only compact if the file still exists
+                            AOStoreTool.compact(fileName, true);
                         }
                     }
-                    String fileName = store.getFileStore().getFileName();
-                    store.close();
-                    if (compactFully && FileUtils.exists(fileName)) {
-                        // the file could have been deleted concurrently,
-                        // so only compact if the file still exists
-                        MVStoreTool.compact(fileName, true);
+                } catch (IllegalStateException e) {
+                    int errorCode = DataUtils.getErrorCode(e.getMessage());
+                    if (errorCode == DataUtils.ERROR_WRITING_FAILED) {
+                        // disk full - ok
+                    } else if (errorCode == DataUtils.ERROR_FILE_CORRUPT) {
+                        // wrong encryption key - ok
                     }
+                    store.closeImmediately();
+                    throw DbException.get(ErrorCode.IO_EXCEPTION_1, e, "Closing");
                 }
-            } catch (IllegalStateException e) {
-                int errorCode = DataUtils.getErrorCode(e.getMessage());
-                if (errorCode == DataUtils.ERROR_WRITING_FAILED) {
-                    // disk full - ok
-                } else if (errorCode == DataUtils.ERROR_FILE_CORRUPT) {
-                    // wrong encryption key - ok
-                }
-                store.closeImmediately();
-                throw DbException.get(ErrorCode.IO_EXCEPTION_1, e, "Closing");
             }
         }
 
@@ -415,8 +424,12 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * Start collecting statistics.
          */
         public void statisticsStart() {
-            org.lealone.mvstore.FileStore fs = store.getFileStore();
-            statisticsStart = fs == null ? 0 : fs.getReadCount();
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                BTreeStore store = map.getStore();
+                org.lealone.aostore.FileStore fs = store.getFileStore();
+                statisticsStart = fs == null ? 0 : fs.getReadCount();
+                return;
+            }
         }
 
         /**
@@ -425,11 +438,16 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
          * @return the statistics
          */
         public Map<String, Integer> statisticsEnd() {
-            HashMap<String, Integer> map = New.hashMap();
-            org.lealone.mvstore.FileStore fs = store.getFileStore();
-            int reads = fs == null ? 0 : (int) (fs.getReadCount() - statisticsStart);
-            map.put("reads", reads);
-            return map;
+            for (BTreeMap<?, ?> map : store.getMaps()) {
+                BTreeStore store = map.getStore();
+                HashMap<String, Integer> map2 = New.hashMap();
+                org.lealone.aostore.FileStore fs = store.getFileStore();
+                int reads = fs == null ? 0 : (int) (fs.getReadCount() - statisticsStart);
+                map2.put("reads", reads);
+                return map2;
+            }
+
+            return New.hashMap();
         }
 
     }
@@ -437,13 +455,13 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
     /**
      * An in-doubt transaction.
      */
-    private static class MVInDoubtTransaction implements InDoubtTransaction {
+    private static class AOInDoubtTransaction implements InDoubtTransaction {
 
-        private final MVStore store;
+        private final AOStore store;
         private final Transaction transaction;
         private int state = InDoubtTransaction.IN_DOUBT;
 
-        MVInDoubtTransaction(MVStore store, Transaction transaction) {
+        AOInDoubtTransaction(AOStore store, Transaction transaction) {
             this.store = store;
             this.transaction = transaction;
         }
@@ -513,9 +531,9 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
             throw DbException.get(ErrorCode.DATABASE_IS_NOT_PERSISTENT);
         }
         try {
-            Store mvStore = getStore(db);
-            if (mvStore != null) {
-                mvStore.flush();
+            Store store = getStore(db);
+            if (store != null) {
+                store.flush();
             }
             // 生成fileName表示的文件，如果已存在则覆盖原有的，也就是文件为空
             OutputStream zip = FileUtils.newOutputStream(fileName, false);
@@ -536,15 +554,18 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
                 for (String n : fileList) {
                     if (n.endsWith(Constants.SUFFIX_LOB_FILE)) { // 备份".lob.db"文件
                         backupFile(out, base, n);
-                    } else if (n.endsWith(Constants.SUFFIX_MV_FILE) && mvStore != null) { // 备份".mv.db"文件
-                        MVStore s = mvStore.getStore();
-                        boolean before = s.getReuseSpace();
-                        s.setReuseSpace(false);
-                        try {
-                            InputStream in = mvStore.getInputStream();
-                            backupFile(out, base, n, in);
-                        } finally {
-                            s.setReuseSpace(before);
+                    } else if (n.endsWith(AOStore.SUFFIX_AO_FILE) && store != null) { // 备份".mv.db"文件
+                        AOStore aoStore = store.getStore();
+                        for (BTreeMap<?, ?> map : aoStore.getMaps()) {
+                            BTreeStore btreeStore = map.getStore();
+                            boolean before = btreeStore.getReuseSpace();
+                            btreeStore.setReuseSpace(false);
+                            try {
+                                InputStream in = store.getInputStream(btreeStore);
+                                backupFile(out, base, n, in);
+                            } finally {
+                                btreeStore.setReuseSpace(before);
+                            }
                         }
                     }
                 }
@@ -624,7 +645,7 @@ public class MVStorageEngine extends StorageEngineBase implements TransactionSto
                 }
             } else if (f.endsWith(Constants.SUFFIX_LOB_FILE)) {
                 ok = true;
-            } else if (f.endsWith(Constants.SUFFIX_MV_FILE)) {
+            } else if (f.endsWith(AOStore.SUFFIX_AO_FILE)) {
                 ok = true;
             } else if (all) {
                 if (f.endsWith(Constants.SUFFIX_LOCK_FILE)) {

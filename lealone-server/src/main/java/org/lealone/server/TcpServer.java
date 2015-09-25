@@ -128,7 +128,7 @@ public class TcpServer implements Server {
             managementDb = conn;
             SERVERS.put(port, this);
         } catch (SQLException e) {
-            DbException.convert(e);
+            throw DbException.convert(e);
         } finally {
             JdbcUtils.closeSilently(stat);
         }
