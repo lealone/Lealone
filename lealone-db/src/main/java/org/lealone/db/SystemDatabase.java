@@ -28,7 +28,6 @@ import org.lealone.client.jdbc.Driver;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.New;
-import org.lealone.db.Constants;
 
 public class SystemDatabase {
 
@@ -42,7 +41,7 @@ public class SystemDatabase {
 
     static synchronized void init() {
         if (conn == null) {
-            //不需要在URL中加baseDir，DB文件会放在baseDir目录中
+            // 不需要在URL中加baseDir，DB文件会放在baseDir目录中
             String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
             Statement stmt = null;
             try {

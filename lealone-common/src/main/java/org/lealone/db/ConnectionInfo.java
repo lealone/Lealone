@@ -228,7 +228,7 @@ public class ConnectionInfo implements Cloneable {
                 n = dbName;
             } else {
                 n = FileUtils.unwrap(dbName);
-                prefix = dbName.substring(0, dbName.length() - n.length());
+                prefix = dbName.substring(0, dbName.length() - n.length()); // 比如nio:./test，此时prefix就是"nio:"
                 n = dir + SysProperties.FILE_SEPARATOR + n;
             }
             String normalizedName = FileUtils.unwrap(FileUtils.toRealPath(n));
@@ -246,7 +246,7 @@ public class ConnectionInfo implements Cloneable {
                 throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " + absDir);
             }
             if (!absolute) {
-                dbName = prefix + dir + SysProperties.FILE_SEPARATOR + FileUtils.unwrap(dbName);
+                dbName = prefix + absDir + SysProperties.FILE_SEPARATOR + FileUtils.unwrap(dbName);
             }
         }
     }
@@ -404,23 +404,21 @@ public class ConnectionInfo implements Cloneable {
         if (persistent) {
             String name = dbName;
             if (nameNormalized == null) {
-                // if (!SysProperties.IMPLICIT_RELATIVE_PATH) {
-                // if (!FileUtils.isAbsolute(name)) {
-                // if (name.indexOf("./") < 0 && name.indexOf(".\\") < 0 && name.indexOf(":/") < 0
-                // && name.indexOf(":\\") < 0) {
-                // // the name could start with "./", or
-                // // it could start with a prefix such as "nio:./"
-                // // for Windows, the path "\test" is not considered
-                // // absolute as the drive letter is missing,
-                // // but we consider it absolute
-                // throw DbException.get(ErrorCode.URL_RELATIVE_TO_CWD, url);
-                // }
-                // }
-                // }
+                if (!FileUtils.isAbsolute(name)) {
+                    if (name.indexOf("./") < 0 && name.indexOf(".\\") < 0 && name.indexOf(":/") < 0
+                            && name.indexOf(":\\") < 0) {
+                        // the name could start with "./", or
+                        // it could start with a prefix such as "nio:./"
+                        // for Windows, the path "\test" is not considered
+                        // absolute as the drive letter is missing,
+                        // but we consider it absolute
+                        throw DbException.get(ErrorCode.URL_RELATIVE_TO_CWD, url);
+                    }
+                }
                 String suffix = Constants.SUFFIX_MV_FILE;
                 String n = FileUtils.toRealPath(name + suffix);
                 String fileName = FileUtils.getName(n);
-                if (fileName.length() < suffix.length() + 1) {
+                if (fileName.length() < suffix.length() + 1) { // 例如: 没有设置baseDir且dbName="./"时
                     throw DbException.get(ErrorCode.INVALID_DATABASE_NAME_1, name);
                 }
                 nameNormalized = n.substring(0, n.length() - suffix.length());
