@@ -47,7 +47,7 @@ import org.lealone.transaction.TransactionMap;
  * A storage engine that internally uses the MVStore.
  */
 public class MVStorageEngine extends StorageEngineBase implements TransactionStorageEngine {
-    public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
+    public static final String NAME = "MVStore";
     private static HashMap<String, Store> stores = new HashMap<>(1);
 
     // 见StorageEngineManager.StorageEngineService中的注释

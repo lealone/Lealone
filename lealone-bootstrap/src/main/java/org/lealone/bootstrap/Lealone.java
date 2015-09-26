@@ -52,7 +52,7 @@ public class Lealone {
             init();
             start();
         } catch (Exception e) {
-            logger.error("Fatal error; unable to start Lealone.  See log for stacktrace.", e);
+            logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
         }
     }
@@ -70,19 +70,9 @@ public class Lealone {
         initRouter();
     }
 
-    private static void start() throws Exception {
-        if (config.isClusterMode())
-            startClusterServer();
-
-        startTcpServer();
-
-        if (config.pg_server_options != null && config.pg_server_options.enabled)
-            startPgServer();
-    }
-
     private static void initBaseDir() {
-        if (config.base_dir == null)
-            throw new ConfigurationException("base_dir must be specified");
+        if (config.base_dir == null || config.base_dir.isEmpty())
+            throw new ConfigurationException("base_dir must be specified and not empty");
         SysProperties.setBaseDir(config.base_dir);
 
         logger.info("Base dir: {}", config.base_dir);
@@ -111,6 +101,16 @@ public class Lealone {
         if (config.isClusterMode())
             r = P2PRouter.getInstance();
         RouterHolder.setRouter(new TransactionalRouter(r));
+    }
+
+    private static void start() throws Exception {
+        if (config.isClusterMode())
+            startClusterServer();
+
+        startTcpServer();
+
+        if (config.pg_server_options != null && config.pg_server_options.enabled)
+            startPgServer();
     }
 
     private static void startClusterServer() throws Exception {

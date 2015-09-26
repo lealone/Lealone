@@ -48,7 +48,7 @@ import org.lealone.transaction.TransactionMap;
  * A storage engine that internally uses the AOStore.
  */
 public class AOStorageEngine extends StorageEngineBase implements TransactionStorageEngine {
-    public static final String NAME = "AOStore";
+    public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
     private static HashMap<String, Store> stores = new HashMap<>(1);
 
     // 见StorageEngineManager.StorageEngineService中的注释

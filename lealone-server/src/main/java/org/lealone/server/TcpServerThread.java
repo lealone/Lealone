@@ -148,30 +148,30 @@ public class TcpServerThread implements Runnable {
         }
     }
 
-    protected ConnectionInfo createConnectionInfo(String originalURL, String dbName) {
-        return new ConnectionInfo(originalURL, dbName);
-    }
-
     private Session createSession(String dbName, String originalURL, String userName, Transfer transfer)
             throws IOException {
         byte[] userPasswordHash = transfer.readBytes();
         byte[] filePasswordHash = transfer.readBytes();
         byte[] fileEncryptionKey = transfer.readBytes();
 
+        dbName = server.checkKeyAndGetDatabaseName(dbName);
+        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
+
         Properties originalProperties = new Properties();
 
+        String key, value;
         int len = transfer.readInt();
         for (int i = 0; i < len; i++) {
-            originalProperties.setProperty(transfer.readString(), transfer.readString());
+            key = transfer.readString();
+            value = transfer.readString();
+            ci.addProperty(key, value, true); // 一些不严谨的client driver可能会发送重复的属性名
+            originalProperties.setProperty(key, value);
         }
 
         String baseDir = server.getBaseDir();
         if (baseDir == null) {
             baseDir = SysProperties.getBaseDir();
         }
-
-        dbName = server.checkKeyAndGetDatabaseName(dbName);
-        ConnectionInfo ci = createConnectionInfo(originalURL, dbName);
 
         // override client's requested properties with server settings
         if (baseDir != null) {
@@ -184,7 +184,6 @@ public class TcpServerThread implements Runnable {
         ci.setUserPasswordHash(userPasswordHash);
         ci.setFilePasswordHash(filePasswordHash);
         ci.setFileEncryptionKey(fileEncryptionKey);
-        ci.readProperties(originalProperties);
 
         try {
             Session session = (Session) ci.getSessionFactory().createSession(ci);

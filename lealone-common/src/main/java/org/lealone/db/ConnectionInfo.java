@@ -101,13 +101,13 @@ public class ConnectionInfo implements Cloneable {
      * Create a client connection info object.
      *
      * @param url the database URL
-     * @param info the connection properties
+     * @param prop the connection properties
      */
-    public ConnectionInfo(String url, Properties info) { // 用于client端，需要解析URL
+    public ConnectionInfo(String url, Properties prop) { // 用于client端，需要解析URL
         this.url = remapURL(url);
 
         checkURL();
-        readProperties(info);
+        readProperties(prop);
         readAndRemoveSettingsFromURL();
         parseURL();
 
@@ -118,6 +118,39 @@ public class ConnectionInfo implements Cloneable {
     private void checkURL() {
         if (url == null || !url.startsWith(Constants.URL_PREFIX)) {
             throw getFormatException();
+        }
+    }
+
+    private void readProperties(Properties prop) {
+        if (prop == null)
+            return;
+        for (Object k : prop.keySet()) {
+            String key = k.toString();
+            String value = prop.getProperty(key);
+            addProperty(key, value, false); // 第一次读时，不必检查属性名是否重复
+        }
+    }
+
+    public void addProperty(String key, String value, boolean checkDuplicate) {
+        key = StringUtils.toUpperEnglish(key);
+        if (checkDuplicate) {
+            String old = prop.getProperty(key);
+            if (old != null) {
+                if (!old.equals(value)) {
+                    throw DbException.get(ErrorCode.DUPLICATE_PROPERTY_1, key);
+                }
+                return;
+            }
+        }
+
+        if (isKnownSetting(key)) {
+            prop.put(key, value);
+        } else {
+            if (DbSettings.getDefaultSettings().containsKey(key)) {
+                prop.put(key, value);
+            } else {
+                throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
+            }
         }
     }
 
@@ -145,29 +178,21 @@ public class ConnectionInfo implements Cloneable {
         }
 
         if (idx >= 0) {
-            DbSettings dbSettings = DbSettings.getDefaultSettings();
             String settings = url.substring(idx + 1);
             url = url.substring(0, idx); // 去掉后面的参数
             String[] list = StringUtils.arraySplit(settings, splitChar, false);
             for (String setting : list) {
-                if (setting.length() == 0) {
+                if (setting.isEmpty()) {
                     continue;
                 }
                 int equal = setting.indexOf('=');
                 if (equal < 0) {
                     throw getFormatException();
                 }
-                String value = setting.substring(equal + 1);
+
                 String key = setting.substring(0, equal);
-                key = StringUtils.toUpperEnglish(key);
-                if (!isKnownSetting(key) && !dbSettings.containsKey(key)) {
-                    throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
-                }
-                String old = prop.getProperty(key);
-                if (old != null && !old.equals(value)) {
-                    throw DbException.get(ErrorCode.DUPLICATE_PROPERTY_1, key);
-                }
-                prop.setProperty(key, value);
+                String value = setting.substring(equal + 1);
+                addProperty(key, value, true);// 检查url中设置的参数跟用Properties设置的参数是否重复
             }
         }
     }
@@ -275,31 +300,6 @@ public class ConnectionInfo implements Cloneable {
 
     public String getServers() {
         return servers;
-    }
-
-    public void readProperties(Properties info) {
-        if (info == null)
-            return;
-        Object[] list = new Object[info.size()];
-        info.keySet().toArray(list);
-        DbSettings s = null;
-        for (Object k : list) {
-            String key = StringUtils.toUpperEnglish(k.toString());
-            if (prop.containsKey(key)) {
-                throw DbException.get(ErrorCode.DUPLICATE_PROPERTY_1, key);
-            }
-            Object value = info.get(k);
-            if (isKnownSetting(key)) {
-                prop.put(key, value);
-            } else {
-                if (s == null) {
-                    s = DbSettings.getDefaultSettings();
-                }
-                if (s.containsKey(key)) {
-                    prop.put(key, value);
-                }
-            }
-        }
     }
 
     private char[] removePassword() {
