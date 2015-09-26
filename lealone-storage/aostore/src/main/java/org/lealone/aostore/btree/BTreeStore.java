@@ -146,14 +146,14 @@ public class BTreeStore {
     /**
      * The map of chunks.
      */
-    private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<Integer, BTreeChunk>();
+    private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<>();
 
     /**
      * The map of temporarily freed storage space caused by freed pages. The key
      * is the unsaved version, the value is the map of chunks. The maps contains
      * the number of freed entries per chunk. Access is synchronized.
      */
-    private final ConcurrentHashMap<Long, HashMap<Integer, BTreeChunk>> freedPageSpace = new ConcurrentHashMap<Long, HashMap<Integer, BTreeChunk>>();
+    private final ConcurrentHashMap<Long, HashMap<Integer, BTreeChunk>> freedPageSpace = new ConcurrentHashMap<>();
 
     /**
      * The metadata map. Write access to this map needs to be synchronized on
@@ -227,11 +227,6 @@ public class BTreeStore {
     private Thread currentStoreThread;
 
     private volatile boolean metaChanged;
-
-    /**
-     * The delay in milliseconds to automatically commit and write changes.
-     */
-    private int autoCommitDelay;
 
     private int autoCompactFillRate;
     private long autoCompactLastFileOpCount;
@@ -325,12 +320,6 @@ public class BTreeStore {
             }
         }
         lastCommitTime = getTimeSinceCreation();
-
-        // // setAutoCommitDelay starts the thread, but only if
-        // // the parameter is different from the old value
-        // o = config.get("autoCommitDelay");
-        // int delay = o == null ? 1000 : (Integer) o;
-        // setAutoCommitDelay(delay);
     }
 
     private void panic(IllegalStateException e) {
@@ -343,6 +332,7 @@ public class BTreeStore {
     }
 
     void setMap(BTreeMap<Object, Object> map) {
+        // if (this.map != null)
         this.map = map;
     }
 
@@ -2339,14 +2329,13 @@ public class BTreeStore {
      * needed.
      */
 
-    public void writeInBackground() {
+    public void writeInBackground(int autoCommitDelay) {
         if (closed) {
             return;
         }
 
         // could also commit when there are many unsaved pages,
         // but according to a test it doesn't really help
-
         long time = getTimeSinceCreation();
         if (time <= lastCommitTime + autoCommitDelay) {
             return;
@@ -2401,35 +2390,6 @@ public class BTreeStore {
 
     public boolean isClosed() {
         return closed;
-    }
-
-    /**
-     * Set the maximum delay in milliseconds to auto-commit changes.
-     * <p>
-     * To disable auto-commit, set the value to 0. In this case, changes are
-     * only committed when explicitly calling commit.
-     * <p>
-     * The default is 1000, meaning all changes are committed after at most one
-     * second.
-     * 
-     * @param millis the maximum delay
-     */
-
-    public void setAutoCommitDelay(int millis) {
-        if (autoCommitDelay == millis) {
-            return;
-        }
-        autoCommitDelay = millis;
-    }
-
-    /**
-     * Get the auto-commit delay.
-     * 
-     * @return the delay in milliseconds, or 0 if auto-commit is disabled.
-     */
-
-    public int getAutoCommitDelay() {
-        return autoCommitDelay;
     }
 
     /**

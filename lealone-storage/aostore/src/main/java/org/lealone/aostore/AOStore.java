@@ -17,7 +17,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.aostore.btree.BTreeMap;
 import org.lealone.aostore.btree.BTreeStore;
@@ -38,13 +38,12 @@ public class AOStore {
     public static final String SUFFIX_AO_STORE_NEW_FILE = ".newFile";
 
     /**
-     * The file name suffix of a temporary AOStore file, used when compacting a
-     * store.
+     * The file name suffix of a temporary AOStore file, used when compacting a store.
      */
     public static final String SUFFIX_AO_STORE_TEMP_FILE = ".tempFile";
 
     private final HashMap<String, Object> config;
-    private final ConcurrentSkipListMap<String, BTreeMap<?, ?>> maps = new ConcurrentSkipListMap<String, BTreeMap<?, ?>>();
+    private final ConcurrentHashMap<String, BTreeMap<?, ?>> maps = new ConcurrentHashMap<>();
 
     private int lastMapId;
 
@@ -369,7 +368,6 @@ public class AOStore {
      * 
      * @param millis the maximum delay
      */
-
     public void setAutoCommitDelay(int millis) {
         if (autoCommitDelay == millis) {
             return;
@@ -385,6 +383,16 @@ public class AOStore {
             t.start();
             backgroundWriterThread = t;
         }
+    }
+
+    /**
+     * Get the auto-commit delay.
+     * 
+     * @return the delay in milliseconds, or 0 if auto-commit is disabled.
+     */
+
+    public int getAutoCommitDelay() {
+        return autoCommitDelay;
     }
 
     private void stopBackgroundThread() {
@@ -449,7 +457,7 @@ public class AOStore {
                     if (fileStore == null || fileStore.isReadOnly()) {
                         return;
                     }
-                    btreeStore.writeInBackground();
+                    btreeStore.writeInBackground(store.autoCommitDelay);
                 }
             }
         }
