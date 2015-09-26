@@ -279,7 +279,7 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
                 if (mapName.startsWith("temp.")) {
                     map.remove();
                 } else if (mapName.startsWith("table.") || mapName.startsWith("index.")) {
-                    int id = Integer.parseInt(mapName.substring(1 + mapName.indexOf(".")));
+                    int id = Integer.parseInt(mapName.substring(1 + mapName.lastIndexOf(".")));
                     if (!objectIds.get(id)) {
                         ValueDataType keyType = new ValueDataType(null, null, null);
                         ValueDataType valueType = new ValueDataType(null, null, null);

@@ -21,9 +21,6 @@ import org.lealone.common.value.ValueLong;
 import org.lealone.common.value.ValueNull;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
-import org.lealone.db.index.Cursor;
-import org.lealone.db.index.IndexBase;
-import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -61,7 +58,7 @@ public class MVSecondaryIndex extends IndexBase implements MVIndex {
         // always store the row key in the map key,
         // even for unique indexes, as some of the index columns could be null
         keyColumns = columns.length + 1;
-        mapName = "index." + getId();
+        mapName = "index." + table.getName() + "." + indexName + "." + getId();
         int[] sortTypes = new int[keyColumns];
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = columns[i].sortType;

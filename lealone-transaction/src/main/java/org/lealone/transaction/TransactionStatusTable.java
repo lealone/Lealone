@@ -48,7 +48,7 @@ class TransactionStatusTable {
 
     static synchronized void init(StorageMap.Builder mapBuilder) {
         if (map == null)
-            map = mapBuilder.openMap("transactionStatusTable");
+            map = mapBuilder.openMap(MVCCTransactionEngine.getMapName("transactionStatusTable"));
     }
 
     static void commit(MVCCTransaction transaction, String allLocalTransactionNames) {

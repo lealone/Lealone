@@ -81,11 +81,11 @@ public class MVCCTransactionEngine implements TransactionEngine {
         this.mapBuilder = mapBuilder;
         this.hostAndPort = hostAndPort;
         this.isClusterMode = isClusterMode;
-        preparedTransactions = mapBuilder.openMap("openTransactions");
+        preparedTransactions = mapBuilder.openMap(getMapName("openTransactions"));
 
         VersionedValueType oldValueType = new VersionedValueType(dataType);
         ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), dataType, oldValueType });
-        undoLog = mapBuilder.openMap("undoLog", undoLogValueType);
+        undoLog = mapBuilder.openMap(getMapName("undoLog"), undoLogValueType);
         if (undoLog.getValueType() != undoLogValueType) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
                     "Undo map open with a different value type");
@@ -632,4 +632,9 @@ public class MVCCTransactionEngine implements TransactionEngine {
     public boolean validateTransaction(String localTransactionName) {
         return TransactionStatusTable.validateTransaction(localTransactionName);
     }
+
+    public static String getMapName(String name) {
+        return "trans." + name;
+    }
+
 }

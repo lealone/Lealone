@@ -21,9 +21,6 @@ import org.lealone.common.value.ValueNull;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
-import org.lealone.db.index.Cursor;
-import org.lealone.db.index.IndexBase;
-import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -71,7 +68,7 @@ public class MVPrimaryIndex extends IndexBase {
         }
         ValueDataType keyType = new ValueDataType(null, null, null);
         ValueDataType valueType = new ValueDataType(db.getCompareMode(), db, sortTypes);
-        mapName = "table." + getId();
+        mapName = "table." + table.getName() + "." + getId();
         dataMap = storageEngine.openMap(session, mapName, keyType, valueType);
         // Fix bug in MVStore when creating lots of temporary tables, where we could run out of transaction IDs
         session.commit(false);

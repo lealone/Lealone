@@ -26,6 +26,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
+import org.lealone.sql.SQLEngineManager;
 import org.lealone.storage.StorageEngineManager;
 
 /**
@@ -55,6 +56,7 @@ public class DatabaseEngine implements SessionFactory {
         hostAndPort = host + ":" + port;
 
         StorageEngineManager.initStorageEngines();
+        SQLEngineManager.initSQLEngines();
         SystemDatabase.init();
 
         for (String dbName : SystemDatabase.findAll())
