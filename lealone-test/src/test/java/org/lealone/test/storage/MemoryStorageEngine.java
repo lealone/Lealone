@@ -24,17 +24,23 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.storage.MVStorageEngine;
+import org.lealone.common.util.BitField;
+import org.lealone.db.Session;
+import org.lealone.storage.CreateTableData;
+import org.lealone.storage.Database;
+import org.lealone.storage.StorageEngineBase;
 import org.lealone.storage.StorageEngineManager;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.Table;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
+import org.lealone.transaction.MVCCTransactionEngine;
 import org.lealone.transaction.TransactionEngine;
 
-public class MemoryStorageEngine extends MVStorageEngine {
+public class MemoryStorageEngine extends StorageEngineBase {
     public static final String NAME = "memory";
 
     public static void main(String[] args) throws Exception {
@@ -65,8 +71,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
     @Override
     public TransactionEngine createTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder,
             String hostAndPort) {
-        // return new MemoryTransactionEngine();
-        return super.createTransactionEngine(dataType, mapBuilder, hostAndPort);
+        return new MVCCTransactionEngine(dataType, mapBuilder, hostAndPort, Session.isClusterMode());
     }
 
     @Override
@@ -319,5 +324,38 @@ public class MemoryStorageEngine extends MVStorageEngine {
         @Override
         public void close() {
         }
+    }
+
+    @Override
+    public Table createTable(CreateTableData data) {
+        return null;
+    }
+
+    @Override
+    public void close(Database db) {
+    }
+
+    @Override
+    public void backupTo(Database db, String fileName) {
+    }
+
+    @Override
+    public void flush(Database db) {
+    }
+
+    @Override
+    public void sync(Database db) {
+    }
+
+    @Override
+    public void initTransactions(Database db) {
+    }
+
+    @Override
+    public void removeTemporaryMaps(Database db, BitField objectIds) {
+    }
+
+    @Override
+    public void closeImmediately(Database db) {
     }
 }

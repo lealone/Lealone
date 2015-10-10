@@ -35,7 +35,6 @@
         <module>lealone-cluster</module>
         <module>lealone-bootstrap</module>
 
-        <module>lealone-storage/mvstore</module>
 		<module>lealone-storage/aostore</module>
 		<module>lealone-storage/engine</module>
 

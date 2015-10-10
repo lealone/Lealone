@@ -200,7 +200,7 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
             // initTransactions();
             db.setTransactionEngine(transactionEngine);
             db.addStorageEngine(storageEngine);
-            db.setLobStorage(new LobStorageMap(db));
+            // db.setLobStorage(new LobStorageMap(db)); //TODO
         }
 
         public AOStore getStore() {
