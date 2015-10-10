@@ -7,14 +7,15 @@ package org.lealone.aostore.rtree;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Map;
 
 import org.lealone.aostore.btree.BTreeMap;
 import org.lealone.aostore.btree.BTreePage;
 import org.lealone.aostore.btree.CursorPos;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
+import org.lealone.storage.StorageMapBuilder;
 import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.ObjectDataType;
 
 /**
  * An r-tree implementation. It uses the quadratic split algorithm.
@@ -30,8 +31,8 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     private boolean quadraticSplit;
 
-    public RTreeMap(int dimensions, DataType valueType) {
-        super(new SpatialDataType(dimensions), valueType);
+    public RTreeMap(String name, int dimensions, DataType valueType, Map<String, Object> config) {
+        super(name, new SpatialDataType(dimensions), valueType, config);
         this.keyType = (SpatialDataType) getKeyType();
     }
 
@@ -43,8 +44,8 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
      * @param valueType the value type
      * @return the map
      */
-    public static <V> RTreeMap<V> create(int dimensions, DataType valueType) {
-        return new RTreeMap<V>(dimensions, valueType);
+    public static <V> RTreeMap<V> create(String name, int dimensions, DataType valueType, Map<String, Object> config) {
+        return new RTreeMap<V>(name, dimensions, valueType, config);
     }
 
     @Override
@@ -62,8 +63,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     public RTreeCursor findIntersectingKeys(SpatialKey x) {
         return new RTreeCursor(root, x) {
             @Override
-            protected boolean check(boolean leaf, SpatialKey key,
-                    SpatialKey test) {
+            protected boolean check(boolean leaf, SpatialKey key, SpatialKey test) {
                 return keyType.isOverlap(key, test);
             }
         };
@@ -79,8 +79,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     public RTreeCursor findContainedKeys(SpatialKey x) {
         return new RTreeCursor(root, x) {
             @Override
-            protected boolean check(boolean leaf, SpatialKey key,
-                    SpatialKey test) {
+            protected boolean check(boolean leaf, SpatialKey key, SpatialKey test) {
                 if (leaf) {
                     return keyType.isInside(key, test);
                 }
@@ -191,12 +190,11 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     private synchronized Object putOrAdd(SpatialKey key, V value, boolean alwaysAdd) {
         beforeWrite();
-        long v = writeVersion;
+        long v = store.getCurrentVersion();
         BTreePage p = root.copy(v);
         Object result;
         if (alwaysAdd || get(key) == null) {
-            if (p.getMemory() > store.getPageSplitSize() &&
-                    p.getKeyCount() > 3) {
+            if (p.getMemory() > store.getPageSplitSize() && p.getKeyCount() > 3) {
                 // only possible if this is the root, else we would have
                 // split earlier (this requires pageSplitSize is fixed)
                 long totalCount = p.getTotalCount();
@@ -204,15 +202,10 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
                 Object k1 = getBounds(p);
                 Object k2 = getBounds(split);
                 Object[] keys = { k1, k2 };
-                BTreePage.PageReference[] children = {
-                        new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
+                BTreePage.PageReference[] children = { new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
                         new BTreePage.PageReference(split, split.getPos(), split.getTotalCount()),
-                        new BTreePage.PageReference(null, 0, 0)
-                };
-                p = BTreePage.create(this, v,
-                        keys, null,
-                        children,
-                        totalCount, 0);
+                        new BTreePage.PageReference(null, 0, 0) };
+                p = BTreePage.create(this, v, keys, null, children, totalCount, 0);
                 // now p is a node; continues
             }
             add(p, v, key, value);
@@ -253,8 +246,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
                 }
             }
         }
-        throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL,
-                "Not found: {0}", key);
+        throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Not found: {0}", key);
     }
 
     private void add(BTreePage p, long writeVersion, Object key, Object value) {
@@ -301,9 +293,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     }
 
     private BTreePage split(BTreePage p, long writeVersion) {
-        return quadraticSplit ?
-                splitQuadratic(p, writeVersion) :
-                splitLinear(p, writeVersion);
+        return quadraticSplit ? splitQuadratic(p, writeVersion) : splitLinear(p, writeVersion);
     }
 
     private BTreePage splitLinear(BTreePage p, long writeVersion) {
@@ -406,12 +396,9 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
             refs = null;
         } else {
             values = null;
-            refs = new BTreePage.PageReference[] {
-                    new BTreePage.PageReference(null, 0, 0)};
+            refs = new BTreePage.PageReference[] { new BTreePage.PageReference(null, 0, 0) };
         }
-        return BTreePage.create(this, writeVersion,
-                BTreePage.EMPTY_OBJECT_ARRAY, values,
-                refs, 0, 0);
+        return BTreePage.create(this, writeVersion, BTreePage.EMPTY_OBJECT_ARRAY, values, refs, 0, 0);
     }
 
     private static void move(BTreePage source, BTreePage target, int sourceIndex) {
@@ -506,8 +493,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
         @Override
         public void remove() {
-            throw DataUtils.newUnsupportedOperationException(
-                    "Removing is not supported");
+            throw DataUtils.newUnsupportedOperationException("Removing is not supported");
         }
 
         /**
@@ -562,19 +548,14 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     @Override
     public String getType() {
-        return "rtree";
+        return "RTree";
     }
 
     /**
      * A builder for this class.
-     *
-     * @param <V> the value type
      */
-    public static class Builder<V> implements
-            BTreeMap.MapBuilder<RTreeMap<V>, SpatialKey, V> {
-
+    public static class Builder<V> extends StorageMapBuilder<RTreeMap<V>, SpatialKey, V> {
         private int dimensions = 2;
-        private DataType valueType;
 
         /**
          * Create a new builder for maps with 2 dimensions.
@@ -594,25 +575,59 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
             return this;
         }
 
-        /**
-         * Set the key data type.
-         *
-         * @param valueType the key type
-         * @return this
-         */
-        public Builder<V> valueType(DataType valueType) {
-            this.valueType = valueType;
-            return this;
-        }
-
         @Override
-        public RTreeMap<V> create() {
-            if (valueType == null) {
-                valueType = new ObjectDataType();
-            }
-            return new RTreeMap<V>(dimensions, valueType);
+        public RTreeMap<V> openMap() {
+            return new RTreeMap<V>(name, dimensions, valueType, config);
         }
-
     }
+    //
+    // /**
+    // * A builder for this class.
+    // *
+    // * @param <V> the value type
+    // */
+    // public static class Builder<V> implements BTreeMap.MapBuilder<RTreeMap<V>, SpatialKey, V> {
+    //
+    // private int dimensions = 2;
+    // private DataType valueType;
+    //
+    // /**
+    // * Create a new builder for maps with 2 dimensions.
+    // */
+    // public Builder() {
+    // // default
+    // }
+    //
+    // /**
+    // * Set the dimensions.
+    // *
+    // * @param dimensions the dimensions to use
+    // * @return this
+    // */
+    // public Builder<V> dimensions(int dimensions) {
+    // this.dimensions = dimensions;
+    // return this;
+    // }
+    //
+    // /**
+    // * Set the key data type.
+    // *
+    // * @param valueType the key type
+    // * @return this
+    // */
+    // public Builder<V> valueType(DataType valueType) {
+    // this.valueType = valueType;
+    // return this;
+    // }
+    //
+    // @Override
+    // public RTreeMap<V> create(String name, Map<String, Object> config) {
+    // if (valueType == null) {
+    // valueType = new ObjectDataType();
+    // }
+    // return new RTreeMap<V>(name, dimensions, valueType, config);
+    // }
+    //
+    // }
 
 }

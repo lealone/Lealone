@@ -486,10 +486,10 @@ public class DataUtils {
         // int x = len;
         // int shift = 0;
         // while (x > 3) {
-        //    shift++;
-        //    x = (x >>> 1) + (x & 1);
+        // shift++;
+        // x = (x >>> 1) + (x & 1);
         // }
-        // shift = Math.max(0,  shift - 4);
+        // shift = Math.max(0, shift - 4);
         // int code = (shift << 1) + (x & 1);
         // code = Math.min(31, code);
         return code;
@@ -552,10 +552,10 @@ public class DataUtils {
      * @return the position
      */
     public static long getPagePos(int chunkId, int offset, int length, int type) {
-        long pos = (long) chunkId << 38;
-        pos |= (long) offset << 6;
-        pos |= encodeLength(length) << 1;
-        pos |= type;
+        long pos = (long) chunkId << 38; // 往右移，相当于空出来38位，chunkId占64-38=26位
+        pos |= (long) offset << 6; // offset占38-6=32位
+        pos |= encodeLength(length) << 1; // encodeLength(length)占6-1=5位
+        pos |= type; // type占1位
         return pos;
     }
 
@@ -931,7 +931,7 @@ public class DataUtils {
      * @return the parsed value
      * @throws IllegalStateException if parsing fails
      */
-    public static int readHexInt(HashMap<String, ? extends Object> map, String key, int defaultValue) {
+    public static int readHexInt(Map<String, ? extends Object> map, String key, int defaultValue) {
         Object v = map.get(key);
         if (v == null) {
             return defaultValue;

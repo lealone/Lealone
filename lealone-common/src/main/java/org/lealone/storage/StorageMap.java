@@ -17,7 +17,6 @@
  */
 package org.lealone.storage;
 
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -49,22 +48,6 @@ public interface StorageMap<K, V> {
             }
             return openMap(name, new ObjectDataType(), valueType);
         }
-    }
-
-    public interface Cursor<K, V> extends Iterator<K> {
-        /**
-         * Get the last read key if there was one.
-         *
-         * @return the key or null
-         */
-        K getKey();
-
-        /**
-         * Get the last read value if there was one.
-         *
-         * @return the value or null
-         */
-        V getValue();
     }
 
     /**
@@ -138,7 +121,7 @@ public interface StorageMap<K, V> {
      * @param value the new value
      * @return the old value, if the value was replaced, or null
      */
-    //public V replace(K key, V value);
+    // public V replace(K key, V value);
 
     /**
      * Replace a value for an existing key, if the value matches.
@@ -256,7 +239,7 @@ public interface StorageMap<K, V> {
      *
      * @param isVolatile the volatile flag
      */
-    public void setVolatile(boolean isVolatile);
+    public boolean isInMemory();
 
     /**
      * Check whether the two values are equal.
@@ -273,8 +256,11 @@ public interface StorageMap<K, V> {
      * @param from the first key to return
      * @return the cursor
      */
-    public Cursor<K, V> cursor(K from);
+    public StorageMapCursor<K, V> cursor(K from);
 
     public Set<Map.Entry<K, V>> entrySet();
 
+    public void save();
+
+    public void close();
 }

@@ -5,11 +5,11 @@
  */
 package org.lealone.aostore.btree;
 
-import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 
+import org.lealone.aostore.FileStore;
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.type.WriteBuffer;
 
 /**
  * A chunk of data, containing one or multiple pages.
@@ -17,25 +17,13 @@ import org.lealone.storage.type.WriteBuffer;
  * Chunks are page aligned (each page is usually 4096 bytes).
  * There are at most 67 million (2^26) chunks,
  * each chunk is at most 2 GB large.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class BTreeChunk {
 
-    /**
-     * The maximum chunk id.
-     */
-    public static final int MAX_ID = (1 << 26) - 1;
-
-    /**
-     * The maximum length of a chunk header, in bytes.
-     */
-    static final int MAX_HEADER_LENGTH = 1024;
-
-    /**
-     * The length of the chunk footer. The longest footer is:
-     * chunk:ffffffff,block:ffffffffffffffff,
-     * version:ffffffffffffffff,fletcher:ffffffff
-     */
-    public static final int FOOTER_LENGTH = 128;
+    private static final int FORMAT_VERSION = 1;
 
     /**
      * The chunk id.
@@ -43,14 +31,24 @@ public class BTreeChunk {
     public final int id;
 
     /**
-     * The start block number within the file.
+     * The chunk creation time.
      */
-    public long block;
+    public final long creationTime;
 
     /**
-     * The length in number of blocks.
+     * The version stored in this chunk.
      */
-    public int len;
+    public long version;
+
+    /**
+     * The position of the root page.
+     */
+    public long rootPagePos;
+
+    /**
+     * The total number of blocks in this chunk, include chunk header(2 blocks).
+     */
+    public int blockCount;
 
     /**
      * The total number of pages in this chunk.
@@ -73,22 +71,6 @@ public class BTreeChunk {
     public long maxLenLive;
 
     /**
-     * The garbage collection priority. Priority 0 means it needs to be
-     * collected, a high value means low priority.
-     */
-    public int collectPriority;
-
-    /**
-     * The position of the meta root.
-     */
-    public long metaRootPos;
-
-    /**
-     * The version stored in this chunk.
-     */
-    public long version;
-
-    /**
      * When this chunk was created, in milliseconds after the store was created.
      */
     public long time;
@@ -101,99 +83,29 @@ public class BTreeChunk {
     public long unused;
 
     /**
-     * The last used map id.
+     * New and old page positions.
      */
-    public int mapId;
+    public ArrayList<Long> pagePositions;
+    public int pagePositionsOffset;
 
     /**
-     * The predicted position of the next chunk.
+     * The garbage collection priority. Priority 0 means it needs to be
+     * collected, a high value means low priority.
      */
-    public long next;
+    public int collectPriority;
+
+    public boolean changed;
+
+    public FileStore fileStore;
 
     BTreeChunk(int id) {
         this.id = id;
+        creationTime = System.currentTimeMillis();
     }
 
-    /**
-     * Read the header from the byte buffer.
-     *
-     * @param buff the source buffer
-     * @param start the start of the chunk in the file
-     * @return the chunk
-     */
-    public static BTreeChunk readChunkHeader(ByteBuffer buff, long start) {
-        int pos = buff.position();
-        byte[] data = new byte[Math.min(buff.remaining(), MAX_HEADER_LENGTH)];
-        buff.get(data);
-        try {
-            for (int i = 0; i < data.length; i++) {
-                if (data[i] == '\n') {
-                    // set the position to the start of the first page
-                    buff.position(pos + i + 1);
-                    String s = new String(data, 0, i, DataUtils.LATIN).trim();
-                    return fromString(s);
-                }
-            }
-        } catch (Exception e) {
-            // there could be various reasons
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "File corrupt reading chunk at position {0}", start, e);
-        }
-        throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                "File corrupt reading chunk at position {0}", start);
-    }
-
-    /**
-     * Write the chunk header.
-     *
-     * @param buff the target buffer
-     * @param minLength the minimum length
-     */
-    void writeChunkHeader(WriteBuffer buff, int minLength) {
-        long pos = buff.position();
-        buff.put(asString().getBytes(DataUtils.LATIN));
-        while (buff.position() - pos < minLength - 1) {
-            buff.put((byte) ' ');
-        }
-        if (minLength != 0 && buff.position() > minLength) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Chunk metadata too long");
-        }
-        buff.put((byte) '\n');
-    }
-
-    /**
-     * Get the metadata key for the given chunk id.
-     *
-     * @param chunkId the chunk id
-     * @return the metadata key
-     */
-    static String getMetaKey(int chunkId) {
-        return "chunk." + Integer.toHexString(chunkId);
-    }
-
-    /**
-     * Build a block from the given string.
-     *
-     * @param s the string
-     * @return the block
-     */
-    public static BTreeChunk fromString(String s) {
-        HashMap<String, String> map = DataUtils.parseMap(s);
-        int id = DataUtils.readHexInt(map, "chunk", 0);
-        BTreeChunk c = new BTreeChunk(id);
-        c.block = DataUtils.readHexLong(map, "block", 0);
-        c.len = DataUtils.readHexInt(map, "len", 0);
-        c.pageCount = DataUtils.readHexInt(map, "pages", 0);
-        c.pageCountLive = DataUtils.readHexInt(map, "livePages", c.pageCount);
-        c.mapId = DataUtils.readHexInt(map, "map", 0);
-        c.maxLen = DataUtils.readHexLong(map, "max", 0);
-        c.maxLenLive = DataUtils.readHexLong(map, "liveMax", c.maxLen);
-        c.metaRootPos = DataUtils.readHexLong(map, "root", 0);
-        c.time = DataUtils.readHexLong(map, "time", 0);
-        c.unused = DataUtils.readHexLong(map, "unused", 0);
-        c.version = DataUtils.readHexLong(map, "version", id);
-        c.next = DataUtils.readHexLong(map, "next", 0);
-        return c;
+    BTreeChunk(int id, long creationTime) {
+        this.id = id;
+        this.creationTime = creationTime;
     }
 
     /**
@@ -220,55 +132,76 @@ public class BTreeChunk {
         return o instanceof BTreeChunk && ((BTreeChunk) o).id == id;
     }
 
-    /**
-     * Get the chunk data as a string.
-     *
-     * @return the string
-     */
-    public String asString() {
+    @Override
+    public String toString() {
+        return asStringBuilder().toString();
+    }
+
+    public StringBuilder asStringBuilder() {
         StringBuilder buff = new StringBuilder();
-        DataUtils.appendMap(buff, "chunk", id);
-        DataUtils.appendMap(buff, "block", block);
-        DataUtils.appendMap(buff, "len", len);
-        if (maxLen != maxLenLive) {
-            DataUtils.appendMap(buff, "liveMax", maxLenLive);
-        }
+
+        DataUtils.appendMap(buff, "id", id);
+        DataUtils.appendMap(buff, "creationTime", creationTime);
+        DataUtils.appendMap(buff, "version", version);
+        DataUtils.appendMap(buff, "rootPagePos", rootPagePos);
+
+        DataUtils.appendMap(buff, "blockCount", blockCount);
+
+        DataUtils.appendMap(buff, "pageCount", pageCount);
         if (pageCount != pageCountLive) {
-            DataUtils.appendMap(buff, "livePages", pageCountLive);
+            DataUtils.appendMap(buff, "pageCountLive", pageCountLive);
         }
-        DataUtils.appendMap(buff, "map", mapId);
-        DataUtils.appendMap(buff, "max", maxLen);
-        if (next != 0) {
-            DataUtils.appendMap(buff, "next", next);
+        DataUtils.appendMap(buff, "maxLen", maxLen);
+        if (maxLen != maxLenLive) {
+            DataUtils.appendMap(buff, "maxLenLive", maxLenLive);
         }
-        DataUtils.appendMap(buff, "pages", pageCount);
-        DataUtils.appendMap(buff, "root", metaRootPos);
+
         DataUtils.appendMap(buff, "time", time);
         if (unused != 0) {
             DataUtils.appendMap(buff, "unused", unused);
         }
-        DataUtils.appendMap(buff, "version", version);
-        return buff.toString();
+
+        DataUtils.appendMap(buff, "pagePositionsOffset", pagePositionsOffset);
+
+        DataUtils.appendMap(buff, "blockSize", BTreeStore.BLOCK_SIZE);
+        DataUtils.appendMap(buff, "format", FORMAT_VERSION);
+        return buff;
     }
 
-    byte[] getFooterBytes() {
-        StringBuilder buff = new StringBuilder();
-        DataUtils.appendMap(buff, "chunk", id);
-        DataUtils.appendMap(buff, "block", block);
-        DataUtils.appendMap(buff, "version", version);
-        byte[] bytes = buff.toString().getBytes(DataUtils.LATIN);
-        int checksum = DataUtils.getFletcher32(bytes, bytes.length);
-        DataUtils.appendMap(buff, "fletcher", checksum);
-        while (buff.length() < BTreeChunk.FOOTER_LENGTH - 1) {
-            buff.append(' ');
+    /**
+     * Build a chunk from the given string.
+     *
+     * @param s the string
+     * @return the chunk
+     */
+    public static BTreeChunk fromString(String s) {
+        HashMap<String, String> map = DataUtils.parseMap(s);
+        int id = DataUtils.readHexInt(map, "id", 0);
+        long creationTime = DataUtils.readHexLong(map, "creationTime", 0);
+        BTreeChunk c = new BTreeChunk(id, creationTime);
+        c.version = DataUtils.readHexLong(map, "version", id);
+        c.rootPagePos = DataUtils.readHexLong(map, "rootPagePos", 0);
+
+        c.blockCount = DataUtils.readHexInt(map, "blockCount", 0);
+
+        c.pageCount = DataUtils.readHexInt(map, "pageCount", 0);
+        c.pageCountLive = DataUtils.readHexInt(map, "pageCountLive", c.pageCount);
+
+        c.maxLen = DataUtils.readHexLong(map, "maxLen", 0);
+        c.maxLenLive = DataUtils.readHexLong(map, "maxLenLive", c.maxLen);
+
+        c.time = DataUtils.readHexLong(map, "time", 0);
+        c.unused = DataUtils.readHexLong(map, "unused", 0);
+
+        c.pagePositionsOffset = DataUtils.readHexInt(map, "pagePositionsOffset", 0);
+
+        long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
+        if (format > FORMAT_VERSION) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT,
+                    "The chunk format {0} is larger " + "than the supported format {1}, "
+                            + "and the file was not opened in read-only mode", format, FORMAT_VERSION);
         }
-        buff.append("\n");
-        return buff.toString().getBytes(DataUtils.LATIN);
-    }
 
-    @Override
-    public String toString() {
-        return asString();
+        return c;
     }
-
 }

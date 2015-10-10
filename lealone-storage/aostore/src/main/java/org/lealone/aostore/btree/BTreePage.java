@@ -6,13 +6,10 @@
 package org.lealone.aostore.btree;
 
 import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Set;
 
 import org.lealone.aostore.FileStore;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.New;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
 
@@ -26,8 +23,17 @@ import org.lealone.storage.type.WriteBuffer;
  * varInt number of keys: varInt type: byte (0: leaf, 1: node; +2: compressed)
  * compressed: bytes saved (varInt) keys leaf: values (one for each key) node:
  * children (1 more than keys)
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class BTreePage {
+
+    /**
+     * Whether assertions are enabled.
+     */
+    public static final boolean ASSERT = false;
+    public static final boolean DEBUG = true;
 
     /**
      * An empty object array.
@@ -37,6 +43,7 @@ public class BTreePage {
     private final BTreeMap<?, ?> map;
     private long version;
     private long pos;
+    private long oldPos;
 
     /**
      * The total entry count of this page and all children.
@@ -88,133 +95,22 @@ public class BTreePage {
     }
 
     /**
-     * Create a new, empty page.
+     * Get the position of the page
      * 
-     * @param map the map
-     * @param version the version
-     * @return the new page
-     */
-    static BTreePage createEmpty(BTreeMap<?, ?> map, long version) {
-        return create(map, version, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, null, 0, DataUtils.PAGE_MEMORY);
-    }
-
-    /**
-     * Create a new page. The arrays are not cloned.
-     * 
-     * @param map the map
-     * @param version the version
-     * @param keys the keys
-     * @param values the values
-     * @param children the child page positions
-     * @param totalCount the total number of keys
-     * @param memory the memory used in bytes
-     * @return the page
-     */
-    public static BTreePage create(BTreeMap<?, ?> map, long version, Object[] keys, Object[] values,
-            PageReference[] children, long totalCount, int memory) {
-        BTreePage p = new BTreePage(map, version);
-        // the position is 0
-        p.keys = keys;
-        p.values = values;
-        p.children = children;
-        p.totalCount = totalCount;
-        if (memory == 0) {
-            p.recalculateMemory();
-        } else {
-            p.addMemory(memory);
-        }
-        BTreeStore store = map.store;
-        if (store != null) {
-            store.registerUnsavedPage(p.memory);
-        }
-        return p;
-    }
-
-    /**
-     * Create a copy of a page.
-     * 
-     * @param map the map
-     * @param version the version
-     * @param source the source page
-     * @return the page
-     */
-    public static BTreePage create(BTreeMap<?, ?> map, long version, BTreePage source) {
-        BTreePage p = new BTreePage(map, version);
-        // the position is 0
-        p.keys = source.keys;
-        p.values = source.values;
-        p.children = source.children;
-        p.totalCount = source.totalCount;
-        p.memory = source.memory;
-        BTreeStore store = map.store;
-        if (store != null) {
-            store.registerUnsavedPage(p.memory);
-        }
-        return p;
-    }
-
-    /**
-     * Read a page.
-     * 
-     * @param fileStore the file store
-     * @param pos the position
-     * @param map the map
-     * @param filePos the position in the file
-     * @param maxPos the maximum position (the end of the chunk)
-     * @return the page
-     */
-    static BTreePage read(FileStore fileStore, long pos, BTreeMap<?, ?> map, long filePos, long maxPos) {
-        ByteBuffer buff;
-        int maxLength = DataUtils.getPageMaxLength(pos);
-        if (maxLength == DataUtils.PAGE_LARGE) {
-            buff = fileStore.readFully(filePos, 128);
-            maxLength = buff.getInt();
-            // read the first bytes again
-        }
-        maxLength = (int) Math.min(maxPos - filePos, maxLength);
-        int length = maxLength;
-        if (length < 0) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "Illegal page length {0} reading at {1}; max pos {2} ", length, filePos, maxPos);
-        }
-        buff = fileStore.readFully(filePos, length);
-        BTreePage p = new BTreePage(map, 0);
-        p.pos = pos;
-        int chunkId = DataUtils.getPageChunkId(pos);
-        int offset = DataUtils.getPageOffset(pos);
-        p.read(buff, chunkId, offset, maxLength);
-        return p;
-    }
-
-    /**
-     * Get the key at the given index.
-     * 
-     * @param index the index
-     * @return the key
-     */
-    public Object getKey(int index) {
-        return keys[index];
-    }
-
-    /**
-     * Get the child page at the given index.
-     * 
-     * @param index the index
-     * @return the child page
-     */
-    public BTreePage getChildPage(int index) {
-        PageReference ref = children[index];
-        return ref.page != null ? ref.page : map.readPage(ref.pos);
-    }
-
-    /**
-     * Get the position of the child.
-     * 
-     * @param index the index
      * @return the position
      */
-    public long getChildPagePos(int index) {
-        return children[index].pos;
+    public long getPos() {
+        return pos;
+    }
+
+    /**
+    * Get the key at the given index.
+    * 
+    * @param index the index
+    * @return the key
+    */
+    public Object getKey(int index) {
+        return keys[index];
     }
 
     /**
@@ -237,63 +133,33 @@ public class BTreePage {
     }
 
     /**
+     * Get the child page at the given index.
+     * 
+     * @param index the index
+     * @return the child page
+     */
+    public BTreePage getChildPage(int index) {
+        PageReference ref = children[index];
+        return ref.page != null ? ref.page : map.store.readPage(ref.pos);
+    }
+
+    /**
+     * Get the position of the child.
+     * 
+     * @param index the index
+     * @return the position
+     */
+    public long getChildPagePos(int index) {
+        return children[index].pos;
+    }
+
+    /**
      * Check whether this is a leaf page.
      * 
      * @return true if it is a leaf
      */
     public boolean isLeaf() {
         return children == null;
-    }
-
-    /**
-     * Get the position of the page
-     * 
-     * @return the position
-     */
-    public long getPos() {
-        return pos;
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder buff = new StringBuilder();
-        buff.append("id: ").append(System.identityHashCode(this)).append('\n');
-        buff.append("version: ").append(Long.toHexString(version)).append("\n");
-        buff.append("pos: ").append(Long.toHexString(pos)).append("\n");
-        if (pos != 0) {
-            int chunkId = DataUtils.getPageChunkId(pos);
-            buff.append("chunk: ").append(Long.toHexString(chunkId)).append("\n");
-        }
-        for (int i = 0; i <= keys.length; i++) {
-            if (i > 0) {
-                buff.append(" ");
-            }
-            if (children != null) {
-                buff.append("[" + Long.toHexString(children[i].pos) + "] ");
-            }
-            if (i < keys.length) {
-                buff.append(keys[i]);
-                if (values != null) {
-                    buff.append(':');
-                    buff.append(values[i]);
-                }
-            }
-        }
-        return buff.toString();
-    }
-
-    /**
-     * Create a copy of this page.
-     * 
-     * @param version the new version
-     * @return a page with the given version
-     */
-    public BTreePage copy(long version) {
-        BTreePage newPage = create(map, version, keys, values, children, totalCount, getMemory());
-        // mark the old as deleted
-        removePage();
-        newPage.cachedCompare = cachedCompare;
-        return newPage;
     }
 
     /**
@@ -317,8 +183,9 @@ public class BTreePage {
             x = high >>> 1;
         }
         Object[] k = keys;
+        DataType keyType = map.getKeyType();
         while (low <= high) {
-            int compare = map.compare(key, k[x]);
+            int compare = keyType.compare(key, k[x]);
             if (compare > 0) {
                 low = x + 1;
             } else if (compare < 0) {
@@ -348,6 +215,10 @@ public class BTreePage {
         // return -(low + 1);
     }
 
+    boolean needSplit() {
+        return memory > map.store.getPageSplitSize() && keys.length > 1;
+    }
+
     /**
      * Split the page. This modifies the current page.
      * 
@@ -355,7 +226,9 @@ public class BTreePage {
      * @return the page with the entries after the split index
      */
     BTreePage split(int at) {
-        return isLeaf() ? splitLeaf(at) : splitNode(at);
+        BTreePage p = isLeaf() ? splitLeaf(at) : splitNode(at);
+        p.setOldPos(this);
+        return p;
     }
 
     private BTreePage splitLeaf(int at) {
@@ -374,7 +247,6 @@ public class BTreePage {
         totalCount = a;
         BTreePage newPage = create(map, version, bKeys, bValues, null, bKeys.length, 0);
         recalculateMemory();
-        newPage.recalculateMemory();
         return newPage;
     }
 
@@ -404,7 +276,6 @@ public class BTreePage {
         }
         BTreePage newPage = create(map, version, bKeys, null, bChildren, t, 0);
         recalculateMemory();
-        newPage.recalculateMemory();
         return newPage;
     }
 
@@ -414,7 +285,7 @@ public class BTreePage {
      * @return the number of key-value pairs
      */
     public long getTotalCount() {
-        if (BTreeStore.ASSERT) {
+        if (ASSERT) {
             long check = 0;
             if (isLeaf()) {
                 check = keys.length;
@@ -439,32 +310,6 @@ public class BTreePage {
      */
     long getCounts(int index) {
         return children[index].count;
-    }
-
-    /**
-     * Replace the child page.
-     * 
-     * @param index the index
-     * @param c the new child page
-     */
-    public void setChild(int index, BTreePage c) {
-        if (c == null) {
-            long oldCount = children[index].count;
-            // this is slightly slower:
-            // children = Arrays.copyOf(children, children.length);
-            children = children.clone();
-            PageReference ref = new PageReference(null, 0, 0);
-            children[index] = ref;
-            totalCount -= oldCount;
-        } else if (c != children[index].page || c.getPos() != children[index].pos) {
-            long oldCount = children[index].count;
-            // this is slightly slower:
-            // children = Arrays.copyOf(children, children.length);
-            children = children.clone();
-            PageReference ref = new PageReference(c, c.pos, c.totalCount);
-            children[index] = ref;
-            totalCount += c.totalCount - oldCount;
-        }
     }
 
     /**
@@ -506,27 +351,29 @@ public class BTreePage {
     }
 
     /**
-     * Remove this page and all child pages.
+     * Replace the child page.
+     * 
+     * @param index the index
+     * @param c the new child page
      */
-    void removeAllRecursive() {
-        if (children != null) {
-            for (int i = 0, size = map.getChildPageCount(this); i < size; i++) {
-                PageReference ref = children[i];
-                if (ref.page != null) {
-                    ref.page.removeAllRecursive();
-                } else {
-                    long c = children[i].pos;
-                    int type = DataUtils.getPageType(c);
-                    if (type == DataUtils.PAGE_TYPE_LEAF) {
-                        int mem = DataUtils.getPageMaxLength(c);
-                        map.removePage(c, mem);
-                    } else {
-                        map.readPage(c).removeAllRecursive();
-                    }
-                }
-            }
+    public void setChild(int index, BTreePage c) {
+        if (c == null) {
+            long oldCount = children[index].count;
+            // this is slightly slower:
+            // children = Arrays.copyOf(children, children.length);
+            children = children.clone();
+            PageReference ref = new PageReference(null, 0, 0);
+            children[index] = ref;
+            totalCount -= oldCount;
+        } else if (c != children[index].page || c.getPos() != children[index].pos) {
+            long oldCount = children[index].count;
+            // this is slightly slower:
+            // children = Arrays.copyOf(children, children.length);
+            children = children.clone();
+            PageReference ref = new PageReference(c, c.pos, c.totalCount);
+            children[index] = ref;
+            totalCount += c.totalCount - oldCount;
         }
-        removePage();
     }
 
     /**
@@ -558,7 +405,6 @@ public class BTreePage {
      * @param childPage the child page
      */
     public void insertNode(int index, Object key, BTreePage childPage) {
-
         Object[] newKeys = new Object[keys.length + 1];
         DataUtils.copyWithGap(keys, newKeys, keys.length, index);
         newKeys[index] = key;
@@ -628,29 +474,24 @@ public class BTreePage {
         }
         buff.limit(start + pageLength);
         short check = buff.getShort();
-        int mapId = DataUtils.readVarInt(buff);
-        if (mapId != map.getId()) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "File corrupted in chunk {0}, expected map id {1}, got {2}", chunkId, map.getId(), mapId);
-        }
         int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
                 ^ DataUtils.getCheckValue(pageLength);
         if (check != (short) checkTest) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
                     "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest, check);
         }
-        int len = DataUtils.readVarInt(buff);
-        keys = new Object[len];
+        int keyLength = DataUtils.readVarInt(buff);
+        keys = new Object[keyLength];
         int type = buff.get();
         boolean node = (type & 1) == DataUtils.PAGE_TYPE_NODE;
         if (node) {
-            children = new PageReference[len + 1];
-            long[] p = new long[len + 1];
-            for (int i = 0; i <= len; i++) {
+            children = new PageReference[keyLength + 1];
+            long[] p = new long[keyLength + 1];
+            for (int i = 0; i <= keyLength; i++) {
                 p[i] = buff.getLong();
             }
             long total = 0;
-            for (int i = 0; i <= len; i++) {
+            for (int i = 0; i <= keyLength; i++) {
                 long s = DataUtils.readVarLong(buff);
                 total += s;
                 children[i] = new PageReference(null, p[i], s);
@@ -673,11 +514,11 @@ public class BTreePage {
             buff = ByteBuffer.allocate(l);
             compressor.expand(comp, 0, compLen, buff.array(), buff.arrayOffset(), l);
         }
-        map.getKeyType().read(buff, keys, len, true);
+        map.getKeyType().read(buff, keys, keyLength, true);
         if (!node) {
-            values = new Object[len];
-            map.getValueType().read(buff, values, len, false);
-            totalCount = len;
+            values = new Object[keyLength];
+            map.getValueType().read(buff, values, keyLength, false);
+            totalCount = keyLength;
         }
         recalculateMemory();
     }
@@ -691,21 +532,21 @@ public class BTreePage {
      */
     private int write(BTreeChunk chunk, WriteBuffer buff) {
         int start = buff.position();
-        int len = keys.length;
+        int keyLength = keys.length;
         int type = children != null ? DataUtils.PAGE_TYPE_NODE : DataUtils.PAGE_TYPE_LEAF;
-        buff.putInt(0).putShort((byte) 0).putVarInt(map.getId()).putVarInt(len);
+        buff.putInt(0).putShort((byte) 0).putVarInt(keyLength);
         int typePos = buff.position();
         buff.put((byte) type);
         if (type == DataUtils.PAGE_TYPE_NODE) {
-            writeChildren(buff);
-            for (int i = 0; i <= len; i++) {
-                buff.putVarLong(children[i].count);
+            writeChildrenPositions(buff);
+            for (int i = 0; i <= keyLength; i++) {
+                buff.putVarLong(children[i].count); // count可能不大，所以用VarLong能节省一些空间
             }
         }
         int compressStart = buff.position();
-        map.getKeyType().write(buff, keys, len, true);
+        map.getKeyType().write(buff, keys, keyLength, true);
         if (type == DataUtils.PAGE_TYPE_LEAF) {
-            map.getValueType().write(buff, values, len, false);
+            map.getValueType().write(buff, values, keyLength, false);
         }
         BTreeStore store = map.getStore();
         int expLen = buff.position() - compressStart;
@@ -741,6 +582,8 @@ public class BTreePage {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
         pos = DataUtils.getPagePos(chunkId, start, pageLength, type);
+        chunk.pagePositions.add(pos);
+        chunk.pagePositions.add(oldPos);
         store.cachePage(pos, this, getMemory());
         if (type == DataUtils.PAGE_TYPE_NODE) {
             // cache again - this will make sure nodes stays in the cache
@@ -756,15 +599,15 @@ public class BTreePage {
             // if the page was removed _before_ the position was assigned, we
             // need to mark it removed here, so the fields are updated
             // when the next chunk is stored
-            map.removePage(pos, memory);
+            map.store.removePage(pos, memory);
         }
         return typePos + 1;
     }
 
-    private void writeChildren(WriteBuffer buff) {
+    private void writeChildrenPositions(WriteBuffer buff) {
         int len = keys.length;
         for (int i = 0; i <= len; i++) {
-            buff.putLong(children[i].pos);
+            buff.putLong(children[i].pos); // pos通常是个很大的long，所以不值得用VarLong
         }
     }
 
@@ -792,7 +635,7 @@ public class BTreePage {
             }
             int old = buff.position();
             buff.position(patch);
-            writeChildren(buff);
+            writeChildrenPositions(buff);
             buff.position(old);
         }
     }
@@ -821,31 +664,16 @@ public class BTreePage {
         return version;
     }
 
+    void setVersion(long version) {
+        this.version = version;
+    }
+
     public int getRawChildPageCount() {
         return children.length;
     }
 
-    @Override
-    public boolean equals(Object other) {
-        if (other == this) {
-            return true;
-        }
-        if (other instanceof BTreePage) {
-            if (pos != 0 && ((BTreePage) other).pos == pos) {
-                return true;
-            }
-            return this == other;
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return pos != 0 ? (int) (pos | (pos >>> 32)) : super.hashCode();
-    }
-
     public int getMemory() {
-        if (BTreeStore.ASSERT) {
+        if (ASSERT) {
             int mem = memory;
             recalculateMemory();
             if (mem != memory) {
@@ -876,8 +704,26 @@ public class BTreePage {
         addMemory(mem - memory);
     }
 
-    void setVersion(long version) {
-        this.version = version;
+    /**
+     * Create a copy of this page.
+     * 
+     * @param version the new version
+     * @return a page with the given version
+     */
+    public BTreePage copy(long version) {
+        BTreePage newPage = create(map, version, keys, values, children, totalCount, getMemory());
+        newPage.setOldPos(this);
+        newPage.cachedCompare = cachedCompare;
+        // mark the old as deleted
+        removePage();
+        return newPage;
+    }
+
+    void setOldPos(BTreePage oldPage) {
+        if (oldPage.oldPos > 0)
+            oldPos = oldPage.oldPos;
+        else if (oldPage.pos > 0)
+            oldPos = oldPage.pos;
     }
 
     /**
@@ -888,7 +734,270 @@ public class BTreePage {
         if (p == 0) {
             removedInMemory = true;
         }
-        map.removePage(p, memory);
+        map.store.removePage(p, memory);
+    }
+
+    /**
+     * Remove this page and all child pages.
+     */
+    void removeAllRecursive() {
+        if (children != null) {
+            // TODO 消除这些难理解的规则
+            // 不能直接使用getRawChildPageCount， RTreeMap这样的子类会返回getRawChildPageCount() - 1
+            for (int i = 0, size = map.getChildPageCount(this); i < size; i++) {
+                PageReference ref = children[i];
+                if (ref.page != null) {
+                    ref.page.removeAllRecursive();
+                } else {
+                    long pos = children[i].pos;
+                    int type = DataUtils.getPageType(pos);
+                    if (type == DataUtils.PAGE_TYPE_LEAF) {
+                        int mem = DataUtils.getPageMaxLength(pos);
+                        map.store.removePage(pos, mem);
+                    } else {
+                        map.store.readPage(pos).removeAllRecursive();
+                    }
+                }
+            }
+        }
+        removePage();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other == this) {
+            return true;
+        }
+        if (other instanceof BTreePage) {
+            if (pos != 0 && ((BTreePage) other).pos == pos) {
+                return true;
+            }
+            return this == other;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return pos != 0 ? (int) (pos | (pos >>> 32)) : super.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        if (DEBUG)
+            return getPrettyPageInfo(false);
+
+        StringBuilder buff = new StringBuilder();
+        buff.append("id: ").append(System.identityHashCode(this)).append('\n');
+        buff.append("version: ").append(Long.toHexString(version)).append("\n");
+        buff.append("pos: ").append(Long.toHexString(pos)).append("\n");
+        if (pos != 0) {
+            int chunkId = DataUtils.getPageChunkId(pos);
+            buff.append("chunk: ").append(Long.toHexString(chunkId)).append("\n");
+        }
+        for (int i = 0; i <= keys.length; i++) {
+            if (i > 0) {
+                buff.append(" ");
+            }
+            if (children != null) {
+                buff.append("[" + Long.toHexString(children[i].pos) + "] ");
+            }
+            if (i < keys.length) {
+                buff.append(keys[i]);
+                if (values != null) {
+                    buff.append(':');
+                    buff.append(values[i]);
+                }
+            }
+        }
+        return buff.toString();
+    }
+
+    String getPrettyPageInfo(boolean readOffLinePage) {
+        StringBuilder buff = new StringBuilder();
+        PrettyPageInfo info = new PrettyPageInfo();
+        info.readOffLinePage = readOffLinePage;
+
+        getPrettyPageInfoRecursive("", info);
+
+        buff.append("PrettyPageInfo:").append('\n');
+        buff.append("--------------").append('\n');
+        buff.append("pageCount: ").append(info.pageCount).append('\n');
+        buff.append("leafPageCount: ").append(info.leafPageCount).append('\n');
+        buff.append("nodePageCount: ").append(info.nodePageCount).append('\n');
+        buff.append("levelCount: ").append(info.levelCount).append('\n');
+        buff.append('\n');
+        buff.append("pages:").append('\n');
+        buff.append("--------------------------------").append('\n');
+
+        buff.append(info.buff).append('\n');
+
+        return buff.toString();
+    }
+
+    private void getPrettyPageInfoRecursive(String indent, PrettyPageInfo info) {
+        StringBuilder buff = info.buff;
+        boolean readOffLinePage = info.readOffLinePage;
+        info.pageCount++;
+        if (isLeaf())
+            info.leafPageCount++;
+        else
+            info.nodePageCount++;
+        int levelCount = indent.length() / 2 + 1;
+        if (levelCount > info.levelCount)
+            info.levelCount = levelCount;
+
+        buff.append(indent).append("type: ").append(isLeaf() ? "leaf" : "node").append('\n');
+        buff.append(indent).append("version: ").append(version).append('\n');
+        buff.append(indent).append("pos: ").append(pos).append('\n');
+        buff.append(indent).append("oldPos: ").append(oldPos).append('\n');
+        buff.append(indent).append("chunkId: ").append(DataUtils.getPageChunkId(pos)).append('\n');
+        buff.append(indent).append("oldChunkId: ").append(DataUtils.getPageChunkId(oldPos)).append('\n');
+        buff.append(indent).append("totalCount: ").append(totalCount).append('\n');
+        buff.append(indent).append("memory: ").append(memory).append('\n');
+        buff.append(indent).append("keyLength: ").append(keys.length).append('\n');
+
+        if (keys.length > 0) {
+            buff.append(indent).append("keys: ");
+            for (int i = 0; i < keys.length; i++) {
+                if (i > 0)
+                    buff.append(", ");
+                buff.append(keys[i]);
+            }
+            buff.append('\n');
+
+            if (isLeaf()) {
+                buff.append(indent).append("values: ");
+                for (int i = 0; i < keys.length; i++) {
+                    if (i > 0)
+                        buff.append(", ");
+                    buff.append(values[i]);
+                }
+                buff.append('\n');
+            } else {
+                if (children != null) {
+                    buff.append(indent).append("children: ").append(keys.length + 1).append('\n');
+                    for (int i = 0; i <= keys.length; i++) {
+                        buff.append('\n');
+                        if (children[i].page != null) {
+                            children[i].page.getPrettyPageInfoRecursive(indent + "  ", info);
+                        } else {
+                            if (readOffLinePage) {
+                                map.store.readPage(children[i].pos).getPrettyPageInfoRecursive(indent + "  ", info);
+                            } else {
+                                buff.append(indent).append("  ");
+                                buff.append("*** off-line *** ").append(children[i]).append('\n');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static class PrettyPageInfo {
+        StringBuilder buff = new StringBuilder();
+        int pageCount;
+        int leafPageCount;
+        int nodePageCount;
+        int levelCount;
+        boolean readOffLinePage;
+    }
+
+    /**
+     * Create a new, empty page.
+     * 
+     * @param map the map
+     * @param version the version
+     * @return the new page
+     */
+    static BTreePage createEmpty(BTreeMap<?, ?> map, long version) {
+        return create(map, version, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, null, 0, DataUtils.PAGE_MEMORY);
+    }
+
+    /**
+     * Create a new page. The arrays are not cloned.
+     * 
+     * @param map the map
+     * @param version the version
+     * @param keys the keys
+     * @param values the values
+     * @param children the child page positions
+     * @param totalCount the total number of keys
+     * @param memory the memory used in bytes
+     * @return the page
+     */
+    public static BTreePage create(BTreeMap<?, ?> map, long version, Object[] keys, Object[] values,
+            PageReference[] children, long totalCount, int memory) {
+        BTreePage p = new BTreePage(map, version);
+        // the position is 0
+        p.keys = keys;
+        p.values = values;
+        p.children = children;
+        p.totalCount = totalCount;
+        if (memory == 0) {
+            p.recalculateMemory();
+        } else {
+            p.addMemory(memory);
+        }
+
+        map.store.registerUnsavedPage(p.memory);
+        return p;
+    }
+
+    /**
+     * Create a copy of a page.
+     * 
+     * @param map the map
+     * @param version the version
+     * @param source the source page
+     * @return the page
+     */
+    // public static BTreePage create(BTreeMap<?, ?> map, long version, BTreePage source) {
+    // BTreePage p = new BTreePage(map, version);
+    // // the position is 0
+    // p.keys = source.keys;
+    // p.values = source.values;
+    // p.children = source.children;
+    // p.totalCount = source.totalCount;
+    // p.memory = source.memory;
+    // BTreeStore store = map.store;
+    // if (store != null) {
+    // store.registerUnsavedPage(p.memory);
+    // }
+    // return p;
+    // }
+
+    /**
+     * Read a page.
+     * 
+     * @param fileStore the file store
+     * @param pos the position
+     * @param map the map
+     * @param filePos the position in the file
+     * @param maxPos the maximum position (the end of the chunk)
+     * @return the page
+     */
+    static BTreePage read(FileStore fileStore, long pos, BTreeMap<?, ?> map, long filePos, long maxPos) {
+        ByteBuffer buff;
+        int maxLength = DataUtils.getPageMaxLength(pos);
+        if (maxLength == DataUtils.PAGE_LARGE) {
+            buff = fileStore.readFully(filePos, 128);
+            maxLength = buff.getInt();
+        }
+        maxLength = (int) Math.min(maxPos - filePos, maxLength);
+        int length = maxLength;
+        if (length < 0) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "Illegal page length {0} reading at {1}; max pos {2} ", length, filePos, maxPos);
+        }
+        buff = fileStore.readFully(filePos, length);
+        BTreePage p = new BTreePage(map, 0);
+        p.pos = pos;
+        int chunkId = DataUtils.getPageChunkId(pos);
+        int offset = DataUtils.getPageOffset(pos);
+        p.read(buff, chunkId, offset, maxLength);
+        return p;
     }
 
     /**
@@ -897,14 +1006,14 @@ public class BTreePage {
     public static class PageReference {
 
         /**
-         * The position, if known, or 0.
-         */
-        final long pos;
-
-        /**
          * The page, if in memory, or null.
          */
         final BTreePage page;
+
+        /**
+         * The position, if known, or 0.
+         */
+        final long pos;
 
         /**
          * The descendant count for this child page.
@@ -917,163 +1026,9 @@ public class BTreePage {
             this.count = count;
         }
 
+        @Override
+        public String toString() {
+            return "PageReference[ pos=" + pos + ", count=" + count + " ]";
+        }
     }
-
-    /**
-     * Contains information about which other pages are referenced (directly or
-     * indirectly) by the given page. This is a subset of the page data, for
-     * pages of type node. This information is used for garbage collection (to
-     * quickly find out which chunks are still in use).
-     */
-    public static class PageChildren {
-
-        /**
-         * An empty array of type long.
-         */
-        public static final long[] EMPTY_ARRAY = new long[0];
-
-        /**
-         * The position of the page.
-         */
-        final long pos;
-
-        /**
-         * The page positions of (direct or indirect) children. Depending on the
-         * use case, this can be the complete list, or only a subset of all
-         * children, for example only only one reference to a child in another
-         * chunk.
-         */
-        long[] children;
-
-        /**
-         * Whether this object only contains the list of chunks.
-         */
-        boolean chunkList;
-
-        private PageChildren(long pos, long[] children) {
-            this.pos = pos;
-            this.children = children;
-        }
-
-        PageChildren(BTreePage p) {
-            this.pos = p.getPos();
-            int count = p.getRawChildPageCount();
-            this.children = new long[count];
-            for (int i = 0; i < count; i++) {
-                children[i] = p.getChildPagePos(i);
-            }
-        }
-
-        int getMemory() {
-            return 64 + 8 * children.length;
-        }
-
-        /**
-         * Read an inner node page from the buffer, but ignore the keys and
-         * values.
-         * 
-         * @param fileStore the file store
-         * @param pos the position
-         * @param mapId the map id
-         * @param filePos the position in the file
-         * @param maxPos the maximum position (the end of the chunk)
-         * @return the page children object
-         */
-        static PageChildren read(FileStore fileStore, long pos, int mapId, long filePos, long maxPos) {
-            ByteBuffer buff;
-            int maxLength = DataUtils.getPageMaxLength(pos);
-            if (maxLength == DataUtils.PAGE_LARGE) {
-                buff = fileStore.readFully(filePos, 128);
-                maxLength = buff.getInt();
-                // read the first bytes again
-            }
-            maxLength = (int) Math.min(maxPos - filePos, maxLength);
-            int length = maxLength;
-            if (length < 0) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                        "Illegal page length {0} reading at {1}; max pos {2} ", length, filePos, maxPos);
-            }
-            buff = fileStore.readFully(filePos, length);
-            int chunkId = DataUtils.getPageChunkId(pos);
-            int offset = DataUtils.getPageOffset(pos);
-            int start = buff.position();
-            int pageLength = buff.getInt();
-            if (pageLength > maxLength) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                        "File corrupted in chunk {0}, expected page length =< {1}, got {2}", chunkId, maxLength,
-                        pageLength);
-            }
-            buff.limit(start + pageLength);
-            short check = buff.getShort();
-            int m = DataUtils.readVarInt(buff);
-            if (m != mapId) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                        "File corrupted in chunk {0}, expected map id {1}, got {2}", chunkId, mapId, m);
-            }
-            int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
-                    ^ DataUtils.getCheckValue(pageLength);
-            if (check != (short) checkTest) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                        "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest, check);
-            }
-            int len = DataUtils.readVarInt(buff);
-            int type = buff.get();
-            boolean node = (type & 1) == DataUtils.PAGE_TYPE_NODE;
-            if (!node) {
-                return null;
-            }
-            long[] children = new long[len + 1];
-            for (int i = 0; i <= len; i++) {
-                children[i] = buff.getLong();
-            }
-            return new PageChildren(pos, children);
-        }
-
-        /**
-         * Only keep one reference to the same chunk. Only leaf references are
-         * removed (references to inner nodes are not removed, as they could
-         * indirectly point to other chunks).
-         */
-        void removeDuplicateChunkReferences() {
-            HashSet<Integer> chunks = New.hashSet();
-            // we don't need references to leaves in the same chunk
-            chunks.add(DataUtils.getPageChunkId(pos));
-            for (int i = 0; i < children.length; i++) {
-                long p = children[i];
-                int chunkId = DataUtils.getPageChunkId(p);
-                boolean wasNew = chunks.add(chunkId);
-                if (DataUtils.getPageType(p) == DataUtils.PAGE_TYPE_NODE) {
-                    continue;
-                }
-                if (wasNew) {
-                    continue;
-                }
-                removeChild(i--);
-            }
-        }
-
-        /**
-         * Collect the set of chunks referenced directly by this page.
-         * 
-         * @param target the target set
-         */
-        void collectReferencedChunks(Set<Integer> target) {
-            target.add(DataUtils.getPageChunkId(pos));
-            for (long p : children) {
-                target.add(DataUtils.getPageChunkId(p));
-            }
-        }
-
-        private void removeChild(int index) {
-            if (index == 0 && children.length == 1) {
-                children = EMPTY_ARRAY;
-                return;
-            }
-            long[] c2 = new long[children.length - 1];
-            DataUtils.copyExcept(children, c2, children.length, index);
-            children = c2;
-        }
-
-    }
-
 }

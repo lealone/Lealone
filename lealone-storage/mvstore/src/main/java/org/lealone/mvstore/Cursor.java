@@ -8,7 +8,7 @@ package org.lealone.mvstore;
 import java.util.Iterator;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapCursor;
 
 /**
  * A cursor to iterate over elements in ascending order.
@@ -16,7 +16,7 @@ import org.lealone.storage.StorageMap;
  * @param <K> the key type
  * @param <V> the value type
  */
-public class Cursor<K, V> implements Iterator<K>, StorageMap.Cursor<K, V> {
+public class Cursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
 
     private final MVMap<K, ?> map;
     private final K from;

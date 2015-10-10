@@ -17,23 +17,41 @@
  */
 package org.lealone.storage;
 
-import org.lealone.aostore.AOStore;
+import java.util.Map;
+
 import org.lealone.storage.type.DataType;
 
-public class AOMapBuilder extends StorageMap.BuilderBase {
-    private final AOStore store;
+public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
+    protected int id;
+    protected String name;
+    protected DataType keyType;
+    protected DataType valueType;
+    protected Map<String, Object> config;
 
-    public AOMapBuilder(AOStore store) {
-        this.store = store;
+    public StorageMapBuilder<M, K, V> name(String name) {
+        this.name = name;
+        return this;
     }
 
-    @Override
-    public <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
-        return store.openBTreeMap(name, keyType, valueType);
+    public StorageMapBuilder<M, K, V> id(int id) {
+        this.id = id;
+        return this;
     }
 
-    @Override
-    public String getMapName(int id) {
-        return null; // TODO
+    public StorageMapBuilder<M, K, V> config(Map<String, Object> config) {
+        this.config = config;
+        return this;
     }
+
+    public StorageMapBuilder<M, K, V> keyType(DataType keyType) {
+        this.keyType = keyType;
+        return this;
+    }
+
+    public StorageMapBuilder<M, K, V> valueType(DataType valueType) {
+        this.valueType = valueType;
+        return this;
+    }
+
+    public abstract M openMap();
 }

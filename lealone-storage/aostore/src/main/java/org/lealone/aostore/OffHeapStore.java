@@ -7,6 +7,7 @@ package org.lealone.aostore;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
@@ -15,14 +16,16 @@ import org.lealone.common.util.DataUtils;
 /**
  * A storage mechanism that "persists" data in the off-heap area of the main
  * memory.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class OffHeapStore extends FileStore {
 
-    private final TreeMap<Long, ByteBuffer> memory =
-            new TreeMap<Long, ByteBuffer>();
+    private final TreeMap<Long, ByteBuffer> memory = new TreeMap<Long, ByteBuffer>();
 
     @Override
-    public void open(String fileName, boolean readOnly, char[] encryptionKey) {
+    public void open(String fileName, Map<String, Object> config) {
         memory.clear();
     }
 
@@ -35,8 +38,7 @@ public class OffHeapStore extends FileStore {
     public ByteBuffer readFully(long pos, int len) {
         Entry<Long, ByteBuffer> memEntry = memory.floorEntry(pos);
         if (memEntry == null) {
-            throw DataUtils.newIllegalStateException(
-                    DataUtils.ERROR_READING_FAILED,
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
                     "Could not read from position {0}", pos);
         }
         readCount++;
@@ -49,15 +51,12 @@ public class OffHeapStore extends FileStore {
         return read.slice();
     }
 
-    @Override
     public void free(long pos, int length) {
-        freeSpace.free(pos, length);
         ByteBuffer buff = memory.remove(pos);
         if (buff == null) {
             // nothing was written (just allocated)
         } else if (buff.remaining() != length) {
-            throw DataUtils.newIllegalStateException(
-                    DataUtils.ERROR_READING_FAILED,
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
                     "Partial remove is not supported at position {0}", pos);
         }
     }
@@ -77,10 +76,8 @@ public class OffHeapStore extends FileStore {
         int length = src.remaining();
         if (prevPos == pos) {
             if (prevLength != length) {
-                throw DataUtils.newIllegalStateException(
-                        DataUtils.ERROR_READING_FAILED,
-                        "Could not write to position {0}; " +
-                        "partial overwrite is not supported", pos);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
+                        "Could not write to position {0}; " + "partial overwrite is not supported", pos);
             }
             writeCount++;
             writeBytes += length;
@@ -89,10 +86,8 @@ public class OffHeapStore extends FileStore {
             return;
         }
         if (prevPos + prevLength > pos) {
-            throw DataUtils.newIllegalStateException(
-                    DataUtils.ERROR_READING_FAILED,
-                    "Could not write to position {0}; " +
-                    "partial overwrite is not supported", pos);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
+                    "Could not write to position {0}; " + "partial overwrite is not supported", pos);
         }
         writeNewEntry(pos, src);
     }
@@ -123,10 +118,8 @@ public class OffHeapStore extends FileStore {
             }
             ByteBuffer buff = memory.get(pos);
             if (buff.capacity() > size) {
-                throw DataUtils.newIllegalStateException(
-                        DataUtils.ERROR_READING_FAILED,
-                        "Could not truncate to {0}; " +
-                        "partial truncate is not supported", pos);
+                throw DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED, "Could not truncate to {0}; "
+                        + "partial truncate is not supported", pos);
             }
             it.remove();
         }
@@ -140,11 +133,6 @@ public class OffHeapStore extends FileStore {
     @Override
     public void sync() {
         // nothing to do
-    }
-
-    @Override
-    public int getDefaultRetentionTime() {
-        return 0;
     }
 
 }

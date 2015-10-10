@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 
@@ -519,7 +520,8 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * Close the map. Accessing the data is still possible (to allow concurrent
      * reads), but it is marked as closed.
      */
-    void close() {
+    @Override
+    public void close() {
         closed = true;
     }
 
@@ -861,7 +863,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      * @return the cursor
      */
     @Override
-    public Cursor<K, V> cursor(K from) {
+    public StorageMapCursor<K, V> cursor(K from) {
         return new org.lealone.mvstore.Cursor<>(this, root, from);
     }
 
@@ -873,7 +875,7 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
 
             @Override
             public Iterator<Entry<K, V>> iterator() {
-                final Cursor<K, V> cursor = new org.lealone.mvstore.Cursor<>(map, root, null);
+                final StorageMapCursor<K, V> cursor = new org.lealone.mvstore.Cursor<>(map, root, null);
                 return new Iterator<Entry<K, V>>() {
 
                     @Override
@@ -1019,7 +1021,6 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      *
      * @param isVolatile the volatile flag
      */
-    @Override
     public void setVolatile(boolean isVolatile) {
         this.isVolatile = isVolatile;
     }
@@ -1343,5 +1344,14 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
     @Override
     public void remove() {
         store.removeMap(this);
+    }
+
+    @Override
+    public boolean isInMemory() {
+        return isVolatile();
+    }
+
+    @Override
+    public void save() {
     }
 }

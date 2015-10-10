@@ -15,6 +15,9 @@ import org.lealone.common.util.DataUtils;
  * Internally, it uses immutable objects.
  *
  * @param <K> the key type
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class ConcurrentArrayList<K> {
 

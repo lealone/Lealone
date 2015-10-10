@@ -10,19 +10,23 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.util.Map;
 
-import org.lealone.aostore.btree.BTreeStore;
 import org.lealone.aostore.cache.FilePathCache;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FilePathDisk;
 import org.lealone.storage.fs.FilePathEncrypt;
 import org.lealone.storage.fs.FilePathNio;
+import org.lealone.storage.fs.FileUtils;
 
 /**
  * The default storage mechanism of the MVStore. This implementation persists
  * data to a file. The file store is responsible to persist data and for free
  * space management.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class FileStore {
 
@@ -45,12 +49,6 @@ public class FileStore {
      * The number of written bytes.
      */
     protected long writeBytes;
-
-    /**
-     * The free spaces between the chunks. The first block to use is block 2
-     * (the first two blocks are the store header).
-     */
-    protected final FreeSpaceBitSet freeSpace = new FreeSpaceBitSet(2, BTreeStore.BLOCK_SIZE);
 
     /**
      * The file name.
@@ -125,10 +123,13 @@ public class FileStore {
      * @param encryptionKey the encryption key, or null if encryption is not
      *            used
      */
-    public void open(String fileName, boolean readOnly, char[] encryptionKey) {
+    public void open(String fileName, Map<String, Object> config) {
         if (file != null) {
             return;
         }
+        char[] encryptionKey = (char[]) config.get("encryptionKey");
+        boolean readOnly = config.containsKey("readOnly");
+
         if (fileName != null) {
             FilePath p = FilePath.get(fileName);
             // if no explicit scheme was specified, NIO is used
@@ -186,8 +187,8 @@ public class FileStore {
                 fileLock.release();
                 fileLock = null;
             }
-            file.close();
-            freeSpace.clear();
+            if (file != null)
+                file.close();
         } catch (Exception e) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "Closing failed for file {0}",
                     fileName, e);
@@ -300,60 +301,6 @@ public class FileStore {
     }
 
     /**
-     * Get the default retention time for this store in milliseconds.
-     *
-     * @return the retention time
-     */
-    public int getDefaultRetentionTime() {
-        return 45000;
-    }
-
-    /**
-     * Mark the space as in use.
-     *
-     * @param pos the position in bytes
-     * @param length the number of bytes
-     */
-    public void markUsed(long pos, int length) {
-        freeSpace.markUsed(pos, length);
-    }
-
-    /**
-     * Allocate a number of blocks and mark them as used.
-     *
-     * @param length the number of bytes to allocate
-     * @return the start position in bytes
-     */
-    public long allocate(int length) {
-        return freeSpace.allocate(length);
-    }
-
-    /**
-     * Mark the space as free.
-     *
-     * @param pos the position in bytes
-     * @param length the number of bytes
-     */
-    public void free(long pos, int length) {
-        freeSpace.free(pos, length);
-    }
-
-    public int getFillRate() {
-        return freeSpace.getFillRate();
-    }
-
-    public long getFirstFree() {
-        return freeSpace.getFirstFree();
-    }
-
-    /**
-     * Mark the file as empty.
-     */
-    public void clear() {
-        freeSpace.clear();
-    }
-
-    /**
      * Get the file name.
      *
      * @return the file name
@@ -362,4 +309,7 @@ public class FileStore {
         return fileName;
     }
 
+    public void delete() {
+        FileUtils.delete(fileName);
+    }
 }

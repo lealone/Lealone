@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.storage.MVStorageEngine;
 import org.lealone.storage.StorageEngineManager;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.test.TestBase;
@@ -37,7 +38,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
     public static final String NAME = "memory";
 
     public static void main(String[] args) throws Exception {
-        //register();
+        // register();
 
         TestBase test = new TestBase();
         test.setStorageEngineName(NAME);
@@ -47,8 +48,8 @@ public class MemoryStorageEngine extends MVStorageEngine {
         CRUDExample.crud(test.getConnection());
     }
 
-    //如果配置了META-INF/services/org.lealone.storage.StorageEngine
-    //就不需要调用这个方法了，会自动注册
+    // 如果配置了META-INF/services/org.lealone.storage.StorageEngine
+    // 就不需要调用这个方法了，会自动注册
     public static void register() {
         StorageEngineManager.registerStorageEngine(new MemoryStorageEngine());
     }
@@ -64,7 +65,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
     @Override
     public TransactionEngine createTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder,
             String hostAndPort) {
-        //return new MemoryTransactionEngine();
+        // return new MemoryTransactionEngine();
         return super.createTransactionEngine(dataType, mapBuilder, hostAndPort);
     }
 
@@ -87,7 +88,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
     }
 
-    static class MemoryCursor<K, V> implements StorageMap.Cursor<K, V> {
+    static class MemoryCursor<K, V> implements StorageMapCursor<K, V> {
         private final Iterator<Entry<K, V>> iterator;
         private Entry<K, V> e;
 
@@ -234,10 +235,6 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
 
         @Override
-        public void setVolatile(boolean isVolatile) {
-        }
-
-        @Override
         public boolean areValuesEqual(Object a, Object b) {
             return areEqual(a, b, valueType);
         }
@@ -252,7 +249,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
 
         @Override
-        public StorageMap.Cursor<K, V> cursor(K from) {
+        public StorageMapCursor<K, V> cursor(K from) {
             return new MemoryCursor<>(from == null ? entrySet().iterator() : tailMap(from).entrySet().iterator());
         }
 
@@ -275,7 +272,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
 
         @Override
-        public K lowerKey(K key) { //小于给定key的最大key
+        public K lowerKey(K key) { // 小于给定key的最大key
             try {
                 return super.lowerKey(key);
             } catch (NoSuchElementException e) {
@@ -284,7 +281,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
 
         @Override
-        public K floorKey(K key) { //小于或等于给定key的最大key
+        public K floorKey(K key) { // 小于或等于给定key的最大key
             try {
                 return super.floorKey(key);
             } catch (NoSuchElementException e) {
@@ -293,7 +290,7 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
 
         @Override
-        public K higherKey(K key) { //大于给定key的最小key
+        public K higherKey(K key) { // 大于给定key的最小key
             try {
                 return super.higherKey(key);
             } catch (NoSuchElementException e) {
@@ -302,12 +299,25 @@ public class MemoryStorageEngine extends MVStorageEngine {
         }
 
         @Override
-        public K ceilingKey(K key) { //大于或等于给定key的最小key
+        public K ceilingKey(K key) { // 大于或等于给定key的最小key
             try {
                 return super.ceilingKey(key);
             } catch (NoSuchElementException e) {
                 return null;
             }
+        }
+
+        @Override
+        public boolean isInMemory() {
+            return false;
+        }
+
+        @Override
+        public void save() {
+        }
+
+        @Override
+        public void close() {
         }
     }
 }

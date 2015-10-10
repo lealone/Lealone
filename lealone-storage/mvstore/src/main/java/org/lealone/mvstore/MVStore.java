@@ -1185,7 +1185,7 @@ public class MVStore {
         DataUtils.checkArgument(testVersion > 0, "Collect references on version 0");
         long readCount = getFileStore().readCount;
         Set<Integer> referenced = New.hashSet();
-        for (org.lealone.storage.StorageMap.Cursor<String, String> c = meta.cursor("root."); c.hasNext();) {
+        for (org.lealone.storage.StorageMapCursor<String, String> c = meta.cursor("root."); c.hasNext();) {
             String key = c.next();
             if (!key.startsWith("root.")) {
                 break;

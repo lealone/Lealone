@@ -104,7 +104,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             // the undo log is larger than the map -
             // count the entries of the map
             long size = 0;
-            org.lealone.storage.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(null);
+            org.lealone.storage.StorageMapCursor<K, VersionedValue> cursor = map.cursor(null);
             while (cursor.hasNext()) {
                 K key = cursor.next();
                 VersionedValue data = cursor.getValue();
@@ -141,7 +141,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                     }
                 }
             } finally {
-                //transaction.transactionEngine.store.removeMap(temp);
+                // transaction.transactionEngine.store.removeMap(temp);
                 temp.remove();
             }
             return size;
@@ -569,7 +569,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
         return new Iterator<K>() {
             private K currentKey = from;
-            private org.lealone.storage.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
+            private org.lealone.storage.StorageMapCursor<K, VersionedValue> cursor = map.cursor(currentKey);
 
             {
                 fetchNext();
@@ -639,7 +639,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         return new Iterator<Entry<K, V>>() {
             private Entry<K, V> current;
             private K currentKey = from;
-            private org.lealone.storage.StorageMap.Cursor<K, VersionedValue> cursor = map.cursor(currentKey);
+            private org.lealone.storage.StorageMapCursor<K, VersionedValue> cursor = map.cursor(currentKey);
 
             {
                 fetchNext();
@@ -759,7 +759,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public void setVolatile(boolean isVolatile) {
-        map.setVolatile(isVolatile);
+        // map.setVolatile(isVolatile); //TODO
     }
 
     @Override

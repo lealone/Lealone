@@ -5,6 +5,7 @@
  */
 package org.lealone.aostore.btree;
 
+import java.io.File;
 import java.util.AbstractList;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
@@ -15,9 +16,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
+import org.lealone.aostore.AOStore;
+import org.lealone.common.message.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.New;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapBuilder;
+import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 
@@ -35,76 +39,145 @@ import org.lealone.storage.type.ObjectDataType;
  * 
  * @param <K> the key class
  * @param <V> the value class
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V>, StorageMap<K, V> {
 
-    /**
-     * The store.
-     */
-    protected BTreeStore store;
+    protected final ConcurrentArrayList<BTreePage> oldRoots = new ConcurrentArrayList<>();
+
+    protected final int id;
+    protected final String name;
+    protected final DataType keyType;
+    protected final DataType valueType;
+    protected final boolean readOnly;
+    protected final boolean inMemory;
+
+    protected final Map<String, Object> config;
+    protected final BTreeStore store;
 
     /**
      * The current root page (may not be null).
      */
     protected volatile BTreePage root;
 
-    /**
-     * The version used for writing.
-     */
-    protected volatile long writeVersion;
+    protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config) {
+        this(name, keyType, valueType, config, null);
+    }
 
-    private int id;
-    private String name;
-    private long createVersion;
-    private final DataType keyType;
-    private final DataType valueType;
+    @SuppressWarnings("unchecked")
+    protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config, BTreeStore store) {
+        DataUtils.checkArgument(name != null, "The name may not be null");
+        DataUtils.checkArgument(config != null, "The config may not be null");
 
-    private final ConcurrentArrayList<BTreePage> oldRoots = new ConcurrentArrayList<BTreePage>();
+        if (keyType == null) {
+            keyType = new ObjectDataType();
+        }
+        if (valueType == null) {
+            valueType = new ObjectDataType();
+        }
 
-    private boolean closed;
-    private boolean readOnly;
-    private boolean isVolatile;
-
-    protected BTreeMap(DataType keyType, DataType valueType) {
+        this.id = DataUtils.readHexInt(config, "id", 0);
+        this.name = name;
         this.keyType = keyType;
         this.valueType = valueType;
-        this.root = BTreePage.createEmpty(this, -1);
-    }
+        this.readOnly = config.containsKey("readOnly");
+        this.inMemory = config.get("storeName") == null || config.containsKey("inMemory");
+        this.config = config;
 
-    /**
-     * Get the metadata key for the root of the given map id.
-     * 
-     * @param mapId the map id
-     * @return the metadata key
-     */
-    static String getMapRootKey(int mapId) {
-        return "root." + Integer.toHexString(mapId);
-    }
+        if (store == null) {
+            store = new BTreeStore((BTreeMap<Object, Object>) this);
+        }
 
-    /**
-     * Get the metadata key for the given map id.
-     * 
-     * @param mapId the map id
-     * @return the metadata key
-     */
-    static String getMapKey(int mapId) {
-        return "map." + Integer.toHexString(mapId);
-    }
-
-    /**
-     * Open this map with the given store and configuration.
-     * 
-     * @param store the store
-     * @param config the configuration
-     */
-    @SuppressWarnings("unchecked")
-    public void init(BTreeStore store, HashMap<String, Object> config) {
         this.store = store;
-        this.id = DataUtils.readHexInt(config, "id", 0);
-        this.createVersion = DataUtils.readHexLong(config, "createVersion", 0);
-        this.writeVersion = store.getCurrentVersion();
 
-        store.setMap((BTreeMap<Object, Object>) this);
+        if (store.lastChunk != null)
+            setRootPos(store.lastChunk.rootPagePos, store.lastChunk.version);
+        else
+            setRootPos(0, -1);
+    }
+
+    String getBTreeStoreName() {
+        if (inMemory)
+            return null;
+        String storeName = (String) config.get("storeName");
+        return storeName + File.separator + name + AOStore.MAP_NAME_ID_SEPARATOR + id;
+    }
+
+    /**
+     * Set the position of the root page.
+     * 
+     * @param rootPos the position, 0 for empty
+     * @param version the version of the root
+     */
+    void setRootPos(long rootPos, long version) {
+        if (rootPos == 0) {
+            root = BTreePage.createEmpty(this, version);
+        } else {
+            root = store.readPage(rootPos);
+            root.setVersion(version);
+        }
+    }
+
+    /**
+     * Get the map id. Please note the map id may be different after compacting
+     * a store.
+     * 
+     * @return the map id
+     */
+    @Override
+    public int getId() {
+        return id;
+    }
+
+    /**
+     * Get the map name.
+     * 
+     * @return the name
+     */
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * Get the key type.
+     * 
+     * @return the key type
+     */
+    @Override
+    public DataType getKeyType() {
+        return keyType;
+    }
+
+    /**
+     * Get the value type.
+     * 
+     * @return the value type
+     */
+    @Override
+    public DataType getValueType() {
+        return valueType;
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    /**
+     * Whether this is in-memory map, meaning that changes are not persisted. 
+     * By default (even if the store is not persisted), maps are not in-memory.
+     * 
+     * @return whether this map is in-memory
+     */
+    @Override
+    public boolean isInMemory() {
+        return inMemory;
+    }
+
+    public BTreeStore getStore() {
+        return store;
     }
 
     /**
@@ -119,50 +192,53 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     public synchronized V put(K key, V value) {
         DataUtils.checkArgument(value != null, "The value may not be null");
         beforeWrite();
-        long v = writeVersion;
+        long v = store.getCurrentVersion();
         BTreePage p = root.copy(v);
-        p = splitRootIfNeeded(p, v);
+
+        if (p.needSplit())
+            p = splitRoot(p, v);
+
         Object result = put(p, v, key, value);
         newRoot(p);
         return (V) result;
     }
 
     /**
-     * Add or replace a key-value pair in a branch.
+     * This method is called before writing to the map. 
+     * The default implementation checks whether writing is allowed, and tries to detect
+     * concurrent modification.
      * 
-     * @param root the root page
-     * @param key the key (may not be null)
-     * @param value the value (may not be null)
-     * @return the new root page
+     * @throws UnsupportedOperationException if the map is read-only, or if
+     *             another thread is concurrently writing
      */
-    synchronized BTreePage putBranch(BTreePage root, K key, V value) {
-        DataUtils.checkArgument(value != null, "The value may not be null");
-        long v = writeVersion;
-        BTreePage p = root.copy(v);
-        p = splitRootIfNeeded(p, v);
-        put(p, v, key, value);
-        return p;
+    protected void beforeWrite() {
+        if (store.isClosed()) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
+        }
+        if (readOnly) {
+            throw DataUtils.newUnsupportedOperationException("This map is read-only");
+        }
+        store.beforeWrite();
     }
 
     /**
-     * Split the root page if necessary.
+     * Split the root page.
      * 
      * @param p the page
      * @param writeVersion the write version
      * @return the new sibling
      */
-    protected BTreePage splitRootIfNeeded(BTreePage p, long writeVersion) {
-        if (p.getMemory() <= store.getPageSplitSize() || p.getKeyCount() <= 1) {
-            return p;
-        }
-        int at = p.getKeyCount() / 2;
+    protected BTreePage splitRoot(BTreePage p, long writeVersion) {
+        BTreePage oldPage = p;
         long totalCount = p.getTotalCount();
+        int at = p.getKeyCount() / 2;
         Object k = p.getKey(at);
         BTreePage split = p.split(at);
         Object[] keys = { k };
         BTreePage.PageReference[] children = { new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
                 new BTreePage.PageReference(split, split.getPos(), split.getTotalCount()), };
         p = BTreePage.create(this, writeVersion, keys, null, children, totalCount, 0);
+        p.setOldPos(oldPage); // 记下最初的page pos
         return p;
     }
 
@@ -192,7 +268,7 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
             index++;
         }
         BTreePage c = p.getChildPage(index).copy(writeVersion);
-        if (c.getMemory() > store.getPageSplitSize() && c.getKeyCount() > 1) {
+        if (c.needSplit()) {
             // split on the way down
             int at = c.getKeyCount() / 2;
             Object k = c.getKey(at);
@@ -208,23 +284,91 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     }
 
     /**
-     * Get the first key, or null if the map is empty.
+     * Use the new root page from now on.
      * 
-     * @return the first key, or null
+     * @param newRoot the new root page
      */
-    @Override
-    public K firstKey() {
-        return getFirstLast(true);
+    protected void newRoot(BTreePage newRoot) {
+        if (root != newRoot) {
+            removeUnusedOldVersions();
+            if (root.getVersion() != newRoot.getVersion()) {
+                BTreePage last = oldRoots.peekLast();
+                if (last == null || last.getVersion() != root.getVersion()) {
+                    oldRoots.add(root);
+                }
+            }
+            root = newRoot;
+        }
     }
 
     /**
-     * Get the last key, or null if the map is empty.
+     * Forget those old versions that are no longer needed.
+     */
+    void removeUnusedOldVersions() {
+        long oldest = store.getOldestVersionToKeep();
+        if (oldest == -1) {
+            return;
+        }
+        BTreePage last = oldRoots.peekLast(); // 后面的是最近加入的
+        while (true) {
+            BTreePage p = oldRoots.peekFirst();
+            if (p == null || p.getVersion() >= oldest || p == last) { // 保留最后一个
+                break;
+            }
+            oldRoots.removeFirst(p);
+        }
+    }
+
+    /**
+     * Add a key-value pair if it does not yet exist.
      * 
-     * @return the last key, or null
+     * @param key the key (may not be null)
+     * @param value the new value
+     * @return the old value if the key existed, or null otherwise
      */
     @Override
-    public K lastKey() {
-        return getFirstLast(false);
+    public synchronized V putIfAbsent(K key, V value) {
+        V old = get(key);
+        if (old == null) {
+            put(key, value);
+        }
+        return old;
+    }
+
+    /**
+     * Get a value.
+     * 
+     * @param key the key
+     * @return the value, or null if not found
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public V get(Object key) {
+        return (V) binarySearch(root, key);
+    }
+
+    /**
+     * Get the value for the given key, or null if not found.
+     * 
+     * @param p the page
+     * @param key the key
+     * @return the value or null
+     */
+    protected Object binarySearch(BTreePage p, Object key) {
+        int index = p.binarySearch(key);
+        if (!p.isLeaf()) {
+            if (index < 0) {
+                index = -index - 1;
+            } else {
+                index++;
+            }
+            p = p.getChildPage(index);
+            return binarySearch(p, key);
+        }
+        if (index >= 0) {
+            return p.getValue(index);
+        }
+        return null;
     }
 
     /**
@@ -245,8 +389,11 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
         long offset = 0;
         while (true) {
             if (p.isLeaf()) {
-                if (index >= offset + p.getKeyCount()) {
-                    return null;
+                if (BTreePage.ASSERT) {
+                    if (index >= offset + p.getKeyCount()) {
+                        // return null;
+                        throw DbException.throwInternalError();
+                    }
                 }
                 return (K) p.getKey((int) (index - offset));
             }
@@ -258,41 +405,14 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
                 }
                 offset += c;
             }
-            if (i == size) {
-                return null;
+            if (BTreePage.ASSERT) {
+                if (i == size) {
+                    // return null;
+                    throw DbException.throwInternalError();
+                }
             }
             p = p.getChildPage(i);
         }
-    }
-
-    /**
-     * Get the key list. The list is a read-only representation of all keys.
-     * <p>
-     * The get and indexOf methods are O(log(size)) operations. The result of
-     * indexOf is cast to an int.
-     * 
-     * @return the key list
-     */
-    public List<K> keyList() {
-        return new AbstractList<K>() {
-
-            @Override
-            public K get(int index) {
-                return getKey(index);
-            }
-
-            @Override
-            public int size() {
-                return BTreeMap.this.size();
-            }
-
-            @Override
-            @SuppressWarnings("unchecked")
-            public int indexOf(Object key) {
-                return (int) getKeyIndex((K) key);
-            }
-
-        };
     }
 
     /**
@@ -332,6 +452,56 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
             }
             p = p.getChildPage(x);
         }
+    }
+
+    /**
+     * Get the key list. The list is a read-only representation of all keys.
+     * <p>
+     * The get and indexOf methods are O(log(size)) operations. The result of
+     * indexOf is cast to an int.
+     * 
+     * @return the key list
+     */
+    public List<K> keyList() {
+        return new AbstractList<K>() {
+
+            @Override
+            public K get(int index) {
+                return getKey(index);
+            }
+
+            @Override
+            public int size() {
+                return BTreeMap.this.size();
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public int indexOf(Object key) {
+                return (int) getKeyIndex((K) key);
+            }
+
+        };
+    }
+
+    /**
+     * Get the first key, or null if the map is empty.
+     * 
+     * @return the first key, or null
+     */
+    @Override
+    public K firstKey() {
+        return getFirstLast(true);
+    }
+
+    /**
+     * Get the last key, or null if the map is empty.
+     * 
+     * @return the last key, or null
+     */
+    @Override
+    public K lastKey() {
+        return getFirstLast(false);
     }
 
     /**
@@ -378,17 +548,6 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     }
 
     /**
-     * Get the largest key that is smaller or equal to this key.
-     * 
-     * @param key the key
-     * @return the result
-     */
-    @Override
-    public K floorKey(K key) {
-        return getMinMax(key, true, false);
-    }
-
-    /**
      * Get the largest key that is smaller than the given key, or null if no
      * such key exists.
      * 
@@ -398,6 +557,17 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     @Override
     public K lowerKey(K key) {
         return getMinMax(key, true, true);
+    }
+
+    /**
+     * Get the largest key that is smaller or equal to this key.
+     * 
+     * @param key the key
+     * @return the result
+     */
+    @Override
+    public K floorKey(K key) {
+        return getMinMax(key, true, false);
     }
 
     /**
@@ -444,69 +614,9 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
         }
     }
 
-    /**
-     * Get a value.
-     * 
-     * @param key the key
-     * @return the value, or null if not found
-     */
-    @Override
-    @SuppressWarnings("unchecked")
-    public V get(Object key) {
-        return (V) binarySearch(root, key);
-    }
-
-    /**
-     * Get the value for the given key, or null if not found.
-     * 
-     * @param p the page
-     * @param key the key
-     * @return the value or null
-     */
-    protected Object binarySearch(BTreePage p, Object key) {
-        int x = p.binarySearch(key);
-        if (!p.isLeaf()) {
-            if (x < 0) {
-                x = -x - 1;
-            } else {
-                x++;
-            }
-            p = p.getChildPage(x);
-            return binarySearch(p, key);
-        }
-        if (x >= 0) {
-            return p.getValue(x);
-        }
-        return null;
-    }
-
     @Override
     public boolean containsKey(Object key) {
         return get(key) != null;
-    }
-
-    /**
-     * Get the value for the given key, or null if not found.
-     * 
-     * @param p the parent page
-     * @param key the key
-     * @return the page or null
-     */
-    protected BTreePage binarySearchPage(BTreePage p, Object key) {
-        int x = p.binarySearch(key);
-        if (!p.isLeaf()) {
-            if (x < 0) {
-                x = -x - 1;
-            } else {
-                x++;
-            }
-            p = p.getChildPage(x);
-            return binarySearchPage(p, key);
-        }
-        if (x >= 0) {
-            return p;
-        }
-        return null;
     }
 
     /**
@@ -515,82 +625,23 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     @Override
     public synchronized void clear() {
         beforeWrite();
+        // TODO 如何跟踪被删除的page pos
         root.removeAllRecursive();
-        newRoot(BTreePage.createEmpty(this, writeVersion));
+        newRoot(BTreePage.createEmpty(this, store.getCurrentVersion()));
     }
 
     /**
      * Close the map. Accessing the data is still possible (to allow concurrent
      * reads), but it is marked as closed.
      */
+    @Override
     public void close() {
-        closed = true;
         store.close();
     }
 
     @Override
     public boolean isClosed() {
-        return closed;
-    }
-
-    /**
-     * Remove a key-value pair, if the key exists.
-     * 
-     * @param key the key (may not be null)
-     * @return the old value if the key existed, or null otherwise
-     */
-    @Override
-    @SuppressWarnings("unchecked")
-    public V remove(Object key) {
-        beforeWrite();
-        V result = get(key);
-        if (result == null) {
-            return null;
-        }
-        long v = writeVersion;
-        synchronized (this) {
-            BTreePage p = root.copy(v);
-            result = (V) remove(p, v, key);
-            if (!p.isLeaf() && p.getTotalCount() == 0) {
-                p.removePage();
-                p = BTreePage.createEmpty(this, p.getVersion());
-            }
-            newRoot(p);
-        }
-        return result;
-    }
-
-    /**
-     * Add a key-value pair if it does not yet exist.
-     * 
-     * @param key the key (may not be null)
-     * @param value the new value
-     * @return the old value if the key existed, or null otherwise
-     */
-    @Override
-    public synchronized V putIfAbsent(K key, V value) {
-        V old = get(key);
-        if (old == null) {
-            put(key, value);
-        }
-        return old;
-    }
-
-    /**
-     * Remove a key-value pair if the value matches the stored one.
-     * 
-     * @param key the key (may not be null)
-     * @param value the expected value
-     * @return true if the item was removed
-     */
-    @Override
-    public synchronized boolean remove(Object key, Object value) {
-        V old = get(key);
-        if (areValuesEqual(old, value)) {
-            remove(key);
-            return true;
-        }
-        return false;
+        return store.isClosed();
     }
 
     /**
@@ -602,6 +653,10 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
      */
     @Override
     public boolean areValuesEqual(Object a, Object b) {
+        return areValuesEqual(valueType, a, b);
+    }
+
+    public static boolean areValuesEqual(DataType valueType, Object a, Object b) {
         if (a == b) {
             return true;
         } else if (a == null || b == null) {
@@ -643,6 +698,50 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
             return old;
         }
         return null;
+    }
+
+    /**
+     * Remove a key-value pair, if the key exists.
+     * 
+     * @param key the key (may not be null)
+     * @return the old value if the key existed, or null otherwise
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public V remove(Object key) {
+        beforeWrite();
+        V result = get(key);
+        if (result == null) {
+            return null;
+        }
+        long v = store.getCurrentVersion();
+        synchronized (this) {
+            BTreePage p = root.copy(v);
+            result = (V) remove(p, v, key);
+            if (!p.isLeaf() && p.getTotalCount() == 0) {
+                p.removePage();
+                p = BTreePage.createEmpty(this, p.getVersion());
+            }
+            newRoot(p);
+        }
+        return result;
+    }
+
+    /**
+     * Remove a key-value pair if the value matches the stored one.
+     * 
+     * @param key the key (may not be null)
+     * @param value the expected value
+     * @return true if the item was removed
+     */
+    @Override
+    public synchronized boolean remove(Object key, Object value) {
+        V old = get(key);
+        if (areValuesEqual(old, value)) {
+            remove(key);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -689,83 +788,225 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     }
 
     /**
-     * Use the new root page from now on.
-     * 
-     * @param newRoot the new root page
-     */
-    protected void newRoot(BTreePage newRoot) {
-        if (root != newRoot) {
-            removeUnusedOldVersions();
-            if (root.getVersion() != newRoot.getVersion()) {
-                BTreePage last = oldRoots.peekLast();
-                if (last == null || last.getVersion() != root.getVersion()) {
-                    oldRoots.add(root);
-                }
-            }
-            root = newRoot;
-        }
-    }
-
-    /**
-     * Compare two keys.
-     * 
-     * @param a the first key
-     * @param b the second key
-     * @return -1 if the first key is smaller, 1 if bigger, 0 if equal
-     */
-    int compare(Object a, Object b) {
-        return keyType.compare(a, b);
-    }
-
-    /**
-     * Get the key type.
-     * 
-     * @return the key type
-     */
-    @Override
-    public DataType getKeyType() {
-        return keyType;
-    }
-
-    /**
-     * Get the value type.
-     * 
-     * @return the value type
-     */
-    @Override
-    public DataType getValueType() {
-        return valueType;
-    }
-
-    /**
-     * Read a page.
-     * 
-     * @param pos the position of the page
-     * @return the page
-     */
-    BTreePage readPage(long pos) {
-        return store.readPage(this, pos);
-    }
-
-    /**
-     * Set the position of the root page.
-     * 
-     * @param rootPos the position, 0 for empty
-     * @param version the version of the root
-     */
-    void setRootPos(long rootPos, long version) {
-        root = rootPos == 0 ? BTreePage.createEmpty(this, -1) : readPage(rootPos);
-        root.setVersion(version);
-    }
-
-    /**
      * Iterate over a number of keys.
      * 
      * @param from the first key to return
      * @return the iterator
      */
     public Iterator<K> keyIterator(K from) {
-        return new org.lealone.aostore.btree.Cursor<>(this, root, from);
+        return new BTreeCursor<>(this, root, from);
+    }
+
+    /**
+     * Get a cursor to iterate over a number of keys and values.
+     * 
+     * @param from the first key to return
+     * @return the cursor
+     */
+    @Override
+    public StorageMapCursor<K, V> cursor(K from) {
+        return new BTreeCursor<>(this, root, from);
+    }
+
+    @Override
+    public Set<Map.Entry<K, V>> entrySet() {
+        final BTreeMap<K, V> map = this;
+        final BTreePage root = this.root;
+        return new AbstractSet<Entry<K, V>>() {
+
+            @Override
+            public Iterator<Entry<K, V>> iterator() {
+                final StorageMapCursor<K, V> cursor = new BTreeCursor<>(map, root, null);
+                return new Iterator<Entry<K, V>>() {
+
+                    @Override
+                    public boolean hasNext() {
+                        return cursor.hasNext();
+                    }
+
+                    @Override
+                    public Entry<K, V> next() {
+                        K k = cursor.next();
+                        return new DataUtils.MapEntry<K, V>(k, cursor.getValue());
+                    }
+
+                    @Override
+                    public void remove() {
+                        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
+                    }
+                };
+
+            }
+
+            @Override
+            public int size() {
+                return BTreeMap.this.size();
+            }
+
+            @Override
+            public boolean contains(Object o) {
+                return BTreeMap.this.containsKey(o);
+            }
+
+        };
+
+    }
+
+    @Override
+    public Set<K> keySet() {
+        final BTreeMap<K, V> map = this;
+        final BTreePage root = this.root;
+        return new AbstractSet<K>() {
+
+            @Override
+            public Iterator<K> iterator() {
+                return new BTreeCursor<>(map, root, null);
+            }
+
+            @Override
+            public int size() {
+                return BTreeMap.this.size();
+            }
+
+            @Override
+            public boolean contains(Object o) {
+                return BTreeMap.this.containsKey(o);
+            }
+
+        };
+    }
+
+    /**
+     * Get the number of entries, as a integer. Integer.MAX_VALUE is returned if
+     * there are more than this entries.
+     * 
+     * @return the number of entries, as an integer
+     */
+    @Override
+    public int size() {
+        long size = sizeAsLong();
+        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
+    }
+
+    /**
+     * Get the number of entries, as a long.
+     * 
+     * @return the number of entries
+     */
+    @Override
+    public long sizeAsLong() {
+        return root.getTotalCount();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        // could also use (sizeAsLong() == 0)
+        return root.isLeaf() && root.getKeyCount() == 0;
+    }
+
+    /**
+     * Open an old version for the given map.
+     * 
+     * @param version the version
+     * @return the map
+     */
+    public BTreeMap<K, V> openVersion(long version) {
+        if (readOnly) {
+            throw DataUtils.newUnsupportedOperationException("This map is read-only; need to call "
+                    + "the method on the writable map");
+        }
+        DataUtils.checkArgument(version >= store.createVersion,
+                "Unknown version {0}; this map was created in version is {1}", version, store.createVersion);
+        BTreePage newest = null;
+        // need to copy because it can change
+        BTreePage r = root;
+        if (version >= r.getVersion()
+                && (version == store.getCurrentVersion() || version == store.createVersion || r.getVersion() >= 0)) {
+            newest = r;
+        } else {
+            BTreePage last = oldRoots.peekFirst();
+            if (last == null || version < last.getVersion()) {
+                // smaller than all in-memory versions
+                return store.openMapVersion(version);
+            }
+            Iterator<BTreePage> it = oldRoots.iterator();
+            while (it.hasNext()) {
+                BTreePage p = it.next();
+                if (p.getVersion() > version) {
+                    break;
+                }
+                last = p;
+            }
+            newest = last;
+        }
+        BTreeMap<K, V> m = openReadOnly();
+        m.root = newest;
+        return m;
+    }
+
+    /**
+     * Open a copy of the map in read-only mode.
+     * 
+     * @return the opened map
+     */
+    BTreeMap<K, V> openReadOnly() {
+        HashMap<String, Object> c = new HashMap<>(config);
+        c.put("id", id);
+        c.put("readOnly", 1);
+
+        BTreeMap<K, V> m = new BTreeMap<>(name, keyType, valueType, c, store);
+        m.root = root;
+        return m;
+    }
+
+    public long getVersion() {
+        return root.getVersion();
+    }
+
+    /**
+     * Get the child page count for this page. This is to allow another map
+     * implementation to override the default, in case the last child is not to
+     * be used.
+     * 
+     * @param p the page
+     * @return the number of direct children
+     */
+    protected int getChildPageCount(BTreePage p) {
+        return p.getRawChildPageCount();
+    }
+
+    /**
+     * Get the map type. When opening an existing map, the map type must match.
+     * 
+     * @return the map type
+     */
+    public String getType() {
+        return "BTree";
+    }
+
+    /**
+     * Rollback to the given version.
+     * 
+     * @param version the version
+     */
+    void internalRollbackTo(long version) {
+        beforeWrite();
+        if (version <= store.createVersion) {
+            // the map is removed later
+        } else if (root.getVersion() >= version) {
+            while (true) {
+                BTreePage last = oldRoots.peekLast();
+                if (last == null) {
+                    break;
+                }
+                // slow, but rollback is not a common operation
+                oldRoots.removeLast(last);
+                root = last;
+                if (root.getVersion() < version) {
+                    break;
+                }
+            }
+        }
     }
 
     /**
@@ -777,7 +1018,7 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     boolean rewrite(Set<Integer> set) {
         // read from old version, to avoid concurrent reads
         long previousVersion = store.getCurrentVersion() - 1;
-        if (previousVersion < createVersion) {
+        if (previousVersion < store.createVersion) {
             // a new map
             return true;
         }
@@ -859,207 +1100,50 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
         return writtenPageCount;
     }
 
-    /**
-     * Get a cursor to iterate over a number of keys and values.
-     * 
-     * @param from the first key to return
-     * @return the cursor
-     */
-    @Override
-    public Cursor<K, V> cursor(K from) {
-        return new org.lealone.aostore.btree.Cursor<>(this, root, from);
-    }
-
-    @Override
-    public Set<Map.Entry<K, V>> entrySet() {
-        final BTreeMap<K, V> map = this;
-        final BTreePage root = this.root;
-        return new AbstractSet<Entry<K, V>>() {
-
-            @Override
-            public Iterator<Entry<K, V>> iterator() {
-                final Cursor<K, V> cursor = new org.lealone.aostore.btree.Cursor<>(map, root, null);
-                return new Iterator<Entry<K, V>>() {
-
-                    @Override
-                    public boolean hasNext() {
-                        return cursor.hasNext();
-                    }
-
-                    @Override
-                    public Entry<K, V> next() {
-                        K k = cursor.next();
-                        return new DataUtils.MapEntry<K, V>(k, cursor.getValue());
-                    }
-
-                    @Override
-                    public void remove() {
-                        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
-                    }
-                };
-
-            }
-
-            @Override
-            public int size() {
-                return BTreeMap.this.size();
-            }
-
-            @Override
-            public boolean contains(Object o) {
-                return BTreeMap.this.containsKey(o);
-            }
-
-        };
-
-    }
-
-    @Override
-    public Set<K> keySet() {
-        final BTreeMap<K, V> map = this;
-        final BTreePage root = this.root;
-        return new AbstractSet<K>() {
-
-            @Override
-            public Iterator<K> iterator() {
-                return new org.lealone.aostore.btree.Cursor<>(map, root, null);
-            }
-
-            @Override
-            public int size() {
-                return BTreeMap.this.size();
-            }
-
-            @Override
-            public boolean contains(Object o) {
-                return BTreeMap.this.containsKey(o);
-            }
-
-        };
-    }
-
-    /**
-     * Get the root page.
-     * 
-     * @return the root page
-     */
-    public BTreePage getRoot() {
-        return root;
-    }
-
-    /**
-     * Get the map name.
-     * 
-     * @return the name
-     */
-    @Override
-    public String getName() {
-        return name; // store.getMapName(id);
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public BTreeStore getStore() {
-        return store;
-    }
-
-    /**
-     * Get the map id. Please note the map id may be different after compacting
-     * a store.
-     * 
-     * @return the map id
-     */
-    @Override
-    public int getId() {
-        return id;
-    }
-
-    /**
-     * Rollback to the given version.
-     * 
-     * @param version the version
-     */
-    void rollbackTo(long version) {
-        beforeWrite();
-        if (version <= createVersion) {
-            // the map is removed later
-        } else if (root.getVersion() >= version) {
-            while (true) {
-                BTreePage last = oldRoots.peekLast();
-                if (last == null) {
-                    break;
-                }
-                // slow, but rollback is not a common operation
-                oldRoots.removeLast(last);
-                root = last;
-                if (root.getVersion() < version) {
-                    break;
-                }
-            }
-        }
-    }
-
-    /**
-     * Forget those old versions that are no longer needed.
-     */
-    void removeUnusedOldVersions() {
-        long oldest = store.getOldestVersionToKeep();
-        if (oldest == -1) {
-            return;
-        }
-        BTreePage last = oldRoots.peekLast();
-        while (true) {
-            BTreePage p = oldRoots.peekFirst();
-            if (p == null || p.getVersion() >= oldest || p == last) {
-                break;
-            }
-            oldRoots.removeFirst(p);
-        }
-    }
-
-    public boolean isReadOnly() {
-        return readOnly;
-    }
-
-    /**
-     * Set the volatile flag of the map.
-     * 
-     * @param isVolatile the volatile flag
-     */
-    @Override
-    public void setVolatile(boolean isVolatile) {
-        this.isVolatile = isVolatile;
-    }
-
-    /**
-     * Whether this is volatile map, meaning that changes are not persisted. By
-     * default (even if the store is not persisted), maps are not volatile.
-     * 
-     * @return whether this map is volatile
-     */
-    public boolean isVolatile() {
-        return isVolatile;
-    }
-
-    /**
-     * This method is called before writing to the map. The default
-     * implementation checks whether writing is allowed, and tries to detect
-     * concurrent modification.
-     * 
-     * @throws UnsupportedOperationException if the map is read-only, or if
-     *             another thread is concurrently writing
-     */
-    protected void beforeWrite() {
-        if (closed) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
-        }
-        if (readOnly) {
-            throw DataUtils.newUnsupportedOperationException("This map is read-only");
-        }
-        store.beforeWrite(this);
-    }
+    // /**
+    // * Copy a map. All pages are copied.
+    // *
+    // * @param sourceMap the source map
+    // */
+    // public void copyFrom(BTreeMap<K, V> sourceMap) {
+    // beforeWrite();
+    // newRoot(copy(sourceMap.root, null));
+    // }
+    //
+    // private BTreePage copy(BTreePage source, CursorPos parent) {
+    // BTreePage target = BTreePage.create(this, store.getCurrentVersion(), source);
+    // if (source.isLeaf()) {
+    // BTreePage child = target;
+    // for (CursorPos p = parent; p != null; p = p.parent) {
+    // p.page.setChild(p.index, child);
+    // p.page = p.page.copy(store.getCurrentVersion());
+    // child = p.page;
+    // if (p.parent == null) {
+    // newRoot(p.page);
+    // beforeWrite();
+    // }
+    // }
+    // } else {
+    // // temporarily, replace child pages with empty pages,
+    // // to ensure there are no links to the old store
+    // for (int i = 0; i < getChildPageCount(target); i++) {
+    // target.setChild(i, null);
+    // }
+    // CursorPos pos = new CursorPos(target, 0, parent);
+    // for (int i = 0; i < getChildPageCount(target); i++) {
+    // pos.index = i;
+    // long p = source.getChildPagePos(i);
+    // if (p != 0) {
+    // // p == 0 means no child
+    // // (for example the last entry of an r-tree node)
+    // // (the MVMap is also used for r-trees for compacting)
+    // copy(source.getChildPage(i), pos);
+    // }
+    // }
+    // target = pos.page;
+    // }
+    // return target;
+    // }
 
     @Override
     public int hashCode() {
@@ -1071,143 +1155,11 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
         return this == o;
     }
 
-    /**
-     * Get the number of entries, as a integer. Integer.MAX_VALUE is returned if
-     * there are more than this entries.
-     * 
-     * @return the number of entries, as an integer
-     */
     @Override
-    public int size() {
-        long size = sizeAsLong();
-        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
-    }
-
-    /**
-     * Get the number of entries, as a long.
-     * 
-     * @return the number of entries
-     */
-    @Override
-    public long sizeAsLong() {
-        return root.getTotalCount();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        // could also use (sizeAsLong() == 0)
-        return root.isLeaf() && root.getKeyCount() == 0;
-    }
-
-    public long getCreateVersion() {
-        return createVersion;
-    }
-
-    /**
-     * Remove the given page (make the space available).
-     * 
-     * @param pos the position of the page to remove
-     * @param memory the number of bytes used for this page
-     */
-    protected void removePage(long pos, int memory) {
-        store.removePage(this, pos, memory);
-    }
-
-    /**
-     * Open an old version for the given map.
-     * 
-     * @param version the version
-     * @return the map
-     */
-    public BTreeMap<K, V> openVersion(long version) {
-        if (readOnly) {
-            throw DataUtils.newUnsupportedOperationException("This map is read-only; need to call "
-                    + "the method on the writable map");
-        }
-        DataUtils.checkArgument(version >= createVersion,
-                "Unknown version {0}; this map was created in version is {1}", version, createVersion);
-        BTreePage newest = null;
-        // need to copy because it can change
-        BTreePage r = root;
-        if (version >= r.getVersion()
-                && (version == writeVersion || r.getVersion() >= 0 || version <= createVersion || store.getFileStore() == null)) {
-            newest = r;
-        } else {
-            BTreePage last = oldRoots.peekFirst();
-            if (last == null || version < last.getVersion()) {
-                // smaller than all in-memory versions
-                return store.openMapVersion(version, id, this);
-            }
-            Iterator<BTreePage> it = oldRoots.iterator();
-            while (it.hasNext()) {
-                BTreePage p = it.next();
-                if (p.getVersion() > version) {
-                    break;
-                }
-                last = p;
-            }
-            newest = last;
-        }
-        BTreeMap<K, V> m = openReadOnly();
-        m.root = newest;
-        return m;
-    }
-
-    /**
-     * Open a copy of the map in read-only mode.
-     * 
-     * @return the opened map
-     */
-    BTreeMap<K, V> openReadOnly() {
-        BTreeMap<K, V> m = new BTreeMap<K, V>(keyType, valueType);
-        m.readOnly = true;
-        HashMap<String, Object> config = New.hashMap();
-        config.put("id", id);
-        config.put("createVersion", createVersion);
-        m.init(store, config);
-        m.root = root;
-        return m;
-    }
-
-    public long getVersion() {
-        return root.getVersion();
-    }
-
-    /**
-     * Get the child page count for this page. This is to allow another map
-     * implementation to override the default, in case the last child is not to
-     * be used.
-     * 
-     * @param p the page
-     * @return the number of direct children
-     */
-    protected int getChildPageCount(BTreePage p) {
-        return p.getRawChildPageCount();
-    }
-
-    /**
-     * Get the map type. When opening an existing map, the map type must match.
-     * 
-     * @return the map type
-     */
-    public String getType() {
-        return null;
-    }
-
-    /**
-     * Get the map metadata as a string.
-     * 
-     * @param name the map name (or null)
-     * @return the string
-     */
-    String asString(String name) {
+    public String toString() {
         StringBuilder buff = new StringBuilder();
-        if (name != null) {
-            DataUtils.appendMap(buff, "name", name);
-        }
-        if (createVersion != 0) {
-            DataUtils.appendMap(buff, "createVersion", createVersion);
-        }
+        DataUtils.appendMap(buff, "id", id);
+        DataUtils.appendMap(buff, "name", name);
         String type = getType();
         if (type != null) {
             DataUtils.appendMap(buff, "type", type);
@@ -1215,145 +1167,47 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
         return buff.toString();
     }
 
-    void setWriteVersion(long writeVersion) {
-        this.writeVersion = writeVersion;
+    public void printPage() {
+        printPage(true);
     }
 
-    /**
-     * Copy a map. All pages are copied.
-     * 
-     * @param sourceMap the source map
-     */
-    public void copyFrom(BTreeMap<K, V> sourceMap) {
-        beforeWrite();
-        newRoot(copy(sourceMap.root, null));
-    }
-
-    private BTreePage copy(BTreePage source, CursorPos parent) {
-        BTreePage target = BTreePage.create(this, writeVersion, source);
-        if (source.isLeaf()) {
-            BTreePage child = target;
-            for (CursorPos p = parent; p != null; p = p.parent) {
-                p.page.setChild(p.index, child);
-                p.page = p.page.copy(writeVersion);
-                child = p.page;
-                if (p.parent == null) {
-                    newRoot(p.page);
-                    beforeWrite();
-                }
-            }
-        } else {
-            // temporarily, replace child pages with empty pages,
-            // to ensure there are no links to the old store
-            for (int i = 0; i < getChildPageCount(target); i++) {
-                target.setChild(i, null);
-            }
-            CursorPos pos = new CursorPos(target, 0, parent);
-            for (int i = 0; i < getChildPageCount(target); i++) {
-                pos.index = i;
-                long p = source.getChildPagePos(i);
-                if (p != 0) {
-                    // p == 0 means no child
-                    // (for example the last entry of an r-tree node)
-                    // (the MVMap is also used for r-trees for compacting)
-                    copy(source.getChildPage(i), pos);
-                }
-            }
-            target = pos.page;
-        }
-        return target;
-    }
-
-    @Override
-    public String toString() {
-        return asString(null);
-    }
-
-    /**
-     * A builder for maps.
-     * 
-     * @param <M> the map type
-     * @param <K> the key type
-     * @param <V> the value type
-     */
-    public interface MapBuilder<M extends BTreeMap<K, V>, K, V> {
-
-        /**
-         * Create a new map of the given type.
-         * 
-         * @return the map
-         */
-        M create();
-
+    public void printPage(boolean readOffLinePage) {
+        System.out.println(root.getPrettyPageInfo(readOffLinePage));
     }
 
     /**
      * A builder for this class.
-     * 
-     * @param <K> the key type
-     * @param <V> the value type
      */
-    public static class Builder<K, V> implements MapBuilder<BTreeMap<K, V>, K, V> {
-
-        protected DataType keyType;
-        protected DataType valueType;
-
-        /**
-         * Create a new builder with the default key and value data types.
-         */
-        public Builder() {
-            // ignore
-        }
-
-        /**
-         * Set the key data type.
-         * 
-         * @param keyType the key type
-         * @return this
-         */
-        public Builder<K, V> keyType(DataType keyType) {
-            this.keyType = keyType;
-            return this;
-        }
-
-        public DataType getKeyType() {
-            return keyType;
-        }
-
-        public DataType getValueType() {
-            return valueType;
-        }
-
-        /**
-         * Set the value data type.
-         * 
-         * @param valueType the value type
-         * @return this
-         */
-        public Builder<K, V> valueType(DataType valueType) {
-            this.valueType = valueType;
-            return this;
-        }
-
+    public static class Builder<K, V> extends StorageMapBuilder<BTreeMap<K, V>, K, V> {
         @Override
-        public BTreeMap<K, V> create() {
-            if (keyType == null) {
-                keyType = new ObjectDataType();
-            }
-            if (valueType == null) {
-                valueType = new ObjectDataType();
-            }
-            return new BTreeMap<K, V>(keyType, valueType);
+        public BTreeMap<K, V> openMap() {
+            return new BTreeMap<>(name, keyType, valueType, config);
         }
-
     }
 
     @Override
     public void remove() {
-        store.removeMap(this);
+        store.remove();
     }
 
-    public void commit() {
-        store.commit();
+    public long commit() {
+        return store.commit();
+    }
+
+    public void rollback() {
+        store.rollback();
+    }
+
+    public void rollbackTo(long version) {
+        store.rollbackTo(version);
+    }
+
+    void writeInBackground(int autoCommitDelay) {
+        store.writeInBackground(autoCommitDelay);
+    }
+
+    @Override
+    public void save() {
+        commit();
     }
 }

@@ -8,15 +8,18 @@ package org.lealone.aostore.btree;
 import java.util.Iterator;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapCursor;
 
 /**
  * A cursor to iterate over elements in ascending order.
  * 
  * @param <K> the key type
  * @param <V> the value type
+ * 
+ * @author H2 Group
+ * @author zhh
  */
-public class Cursor<K, V> implements Iterator<K>, StorageMap.Cursor<K, V> {
+public class BTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
 
     private final BTreeMap<K, ?> map;
     private final K from;
@@ -27,7 +30,7 @@ public class Cursor<K, V> implements Iterator<K>, StorageMap.Cursor<K, V> {
     private final BTreePage root;
     private boolean initialized;
 
-    Cursor(BTreeMap<K, ?> map, BTreePage root, K from) {
+    BTreeCursor(BTreeMap<K, ?> map, BTreePage root, K from) {
         this.map = map;
         this.root = root;
         this.from = from;
@@ -59,6 +62,7 @@ public class Cursor<K, V> implements Iterator<K>, StorageMap.Cursor<K, V> {
      * 
      * @return the key or null
      */
+    @Override
     public K getKey() {
         return last;
     }
@@ -68,6 +72,7 @@ public class Cursor<K, V> implements Iterator<K>, StorageMap.Cursor<K, V> {
      * 
      * @return the value or null
      */
+    @Override
     public V getValue() {
         return lastValue;
     }

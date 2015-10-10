@@ -17,23 +17,20 @@
  */
 package org.lealone.storage;
 
-import org.lealone.aostore.AOStore;
-import org.lealone.storage.type.DataType;
+import java.util.Iterator;
 
-public class AOMapBuilder extends StorageMap.BuilderBase {
-    private final AOStore store;
+public interface StorageMapCursor<K, V> extends Iterator<K> {
+    /**
+     * Get the last read key if there was one.
+     *
+     * @return the key or null
+     */
+    K getKey();
 
-    public AOMapBuilder(AOStore store) {
-        this.store = store;
-    }
-
-    @Override
-    public <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
-        return store.openBTreeMap(name, keyType, valueType);
-    }
-
-    @Override
-    public String getMapName(int id) {
-        return null; // TODO
-    }
+    /**
+     * Get the last read value if there was one.
+     *
+     * @return the value or null
+     */
+    V getValue();
 }

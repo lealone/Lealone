@@ -5,9 +5,11 @@
  */
 package org.lealone.aostore.btree;
 
-
 /**
  * A position in a cursor
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CursorPos {
 
@@ -33,4 +35,3 @@ public class CursorPos {
     }
 
 }
-

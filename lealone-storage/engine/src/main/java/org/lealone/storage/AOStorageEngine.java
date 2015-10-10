@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,8 +18,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.lealone.aostore.AOStore;
-import org.lealone.aostore.AOStoreTool;
-import org.lealone.aostore.btree.BTreeMap;
+import org.lealone.aostore.AOStoreBuilder;
 import org.lealone.aostore.btree.BTreeStore;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
@@ -36,7 +34,6 @@ import org.lealone.db.SessionInterface;
 import org.lealone.db.index.ValueDataType;
 import org.lealone.db.table.MVTable;
 import org.lealone.db.table.Table;
-import org.lealone.storage.fs.FileChannelInputStream;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.DataType;
 import org.lealone.transaction.MVCCTransactionEngine;
@@ -113,7 +110,7 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
         Store store = null;
         byte[] key = db.getFileEncryptionKey();
         String dbPath = db.getDatabasePath();
-        AOStore.Builder builder = new AOStore.Builder();
+        AOStoreBuilder builder = new AOStoreBuilder();
         if (dbPath == null) {
             store = new Store(storageEngine, db, builder);
         } else {
@@ -184,11 +181,11 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
          */
         private final TransactionEngine transactionEngine;
 
-        private long statisticsStart;
+        // private long statisticsStart;
 
         private int temporaryMapId;
 
-        public Store(StorageEngine storageEngine, org.lealone.db.Database db, AOStore.Builder builder) {
+        public Store(StorageEngine storageEngine, org.lealone.db.Database db, AOStoreBuilder builder) {
             store = builder.open();
 
             stores.put(db.getName(), this);
@@ -227,29 +224,32 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
          * Store all pending changes.
          */
         public void flush() {
-            for (BTreeMap<?, ?> map : store.getMaps()) {
-                BTreeStore store = map.getStore();
-                org.lealone.aostore.FileStore s = store.getFileStore();
-                if (s == null || s.isReadOnly()) {
-                    return;
-                }
-                if (!store.compact(50, 4 * 1024 * 1024)) {
-                    store.commit();
-                }
-            }
+            store.commit();
+            // for (BTreeMap<?, ?> map : store.getMaps()) {
+            // BTreeStore store = map.getStore();
+            // org.lealone.aostore.FileStore s = store.getFileStore();
+            // if (s == null || s.isReadOnly()) {
+            // return;
+            // }
+            // if (!store.compact(50, 4 * 1024 * 1024)) {
+            // store.commit();
+            // }
+            // }
         }
 
         /**
          * Close the store, without persisting changes.
          */
         public void closeImmediately() {
-            for (BTreeMap<?, ?> map : store.getMaps()) {
-                BTreeStore store = map.getStore();
-                if (store.isClosed()) {
-                    return;
-                }
-                store.closeImmediately();
-            }
+            // for (BTreeMap<?, ?> map : store.getMaps()) {
+            // BTreeStore store = map.getStore();
+            // if (store.isClosed()) {
+            // return;
+            // }
+            // store.closeImmediately();
+            // }
+
+            store.close();
         }
 
         /**
@@ -273,7 +273,7 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
          * @param objectIds the ids of the objects to keep
          */
         public void removeTemporaryMaps(BitField objectIds) {
-            for (BTreeMap<?, ?> map : store.getMaps()) {
+            for (StorageMap<?, ?> map : store.getMaps()) {
                 String mapName = map.getName();
 
                 if (mapName.startsWith("temp.")) {
@@ -331,18 +331,20 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
          * @param kb the maximum size in KB
          */
         public void setCacheSize(int kb) {
-            for (BTreeMap<?, ?> map : store.getMaps()) {
-                BTreeStore store = map.getStore();
-                store.setCacheSize(Math.max(1, kb / 1024));
-            }
+            // for (StorageMap<?, ?> map : store.getMaps()) {
+            // BTreeStore store = map.getStore();
+            // store.setCacheSize(Math.max(1, kb / 1024));
+            // }
         }
 
         public InputStream getInputStream(BTreeStore btreeStore) {
-            FileChannel fc = btreeStore.getFileStore().getEncryptedFile();
-            if (fc == null) {
-                fc = btreeStore.getFileStore().getFile();
-            }
-            return new FileChannelInputStream(fc, false);
+            // FileChannel fc = btreeStore.getFileStore().getEncryptedFile();
+            // if (fc == null) {
+            // fc = btreeStore.getFileStore().getFile();
+            // }
+            // return new FileChannelInputStream(fc, false);
+
+            return null;
         }
 
         /**
@@ -350,10 +352,10 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
          */
         public void sync() {
             flush();
-            for (BTreeMap<?, ?> map : store.getMaps()) {
-                BTreeStore store = map.getStore();
-                store.sync();
-            }
+            // for (BTreeMap<?, ?> map : store.getMaps()) {
+            // BTreeStore store = map.getStore();
+            // store.sync();
+            // }
         }
 
         /**
@@ -365,19 +367,19 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
          * @param maxCompactTime the maximum time in milliseconds to compact
          */
         public void compactFile(long maxCompactTime) {
-            for (BTreeMap<?, ?> map : store.getMaps()) {
-                BTreeStore store = map.getStore();
-                store.setRetentionTime(0);
-                long start = System.currentTimeMillis();
-                while (store.compact(95, 16 * 1024 * 1024)) {
-                    store.sync();
-                    store.compactMoveChunks(95, 16 * 1024 * 1024);
-                    long time = System.currentTimeMillis() - start;
-                    if (time > maxCompactTime) {
-                        break;
-                    }
-                }
-            }
+            // for (BTreeMap<?, ?> map : store.getMaps()) {
+            // BTreeStore store = map.getStore();
+            // store.setRetentionTime(0);
+            // long start = System.currentTimeMillis();
+            // while (store.compact(95, 16 * 1024 * 1024)) {
+            // store.sync();
+            // store.compactMoveChunks(95, 16 * 1024 * 1024);
+            // long time = System.currentTimeMillis() - start;
+            // if (time > maxCompactTime) {
+            // break;
+            // }
+            // }
+            // }
         }
 
         /**
@@ -388,48 +390,49 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
          * @param maxCompactTime the maximum time in milliseconds to compact
          */
         public void close(long maxCompactTime) {
-            for (BTreeMap<?, ?> map : store.getMaps()) {
-                BTreeStore store = map.getStore();
-                try {
-                    if (!store.isClosed() && store.getFileStore() != null) {
-                        boolean compactFully = false;
-                        if (!store.getFileStore().isReadOnly()) {
-                            transactionEngine.close();
-                            if (maxCompactTime == Long.MAX_VALUE) {
-                                compactFully = true;
-                            }
-                        }
-                        String fileName = store.getFileStore().getFileName();
-                        store.close();
-                        if (compactFully && FileUtils.exists(fileName)) {
-                            // the file could have been deleted concurrently,
-                            // so only compact if the file still exists
-                            AOStoreTool.compact(fileName, true);
-                        }
-                    }
-                } catch (IllegalStateException e) {
-                    int errorCode = DataUtils.getErrorCode(e.getMessage());
-                    if (errorCode == DataUtils.ERROR_WRITING_FAILED) {
-                        // disk full - ok
-                    } else if (errorCode == DataUtils.ERROR_FILE_CORRUPT) {
-                        // wrong encryption key - ok
-                    }
-                    store.closeImmediately();
-                    throw DbException.get(ErrorCode.IO_EXCEPTION_1, e, "Closing");
-                }
-            }
+            store.close();
+            // for (BTreeMap<?, ?> map : store.getMaps()) {
+            // BTreeStore store = map.getStore();
+            // try {
+            // if (!store.isClosed() && store.getFileStore() != null) {
+            // boolean compactFully = false;
+            // if (!store.getFileStore().isReadOnly()) {
+            // transactionEngine.close();
+            // if (maxCompactTime == Long.MAX_VALUE) {
+            // compactFully = true;
+            // }
+            // }
+            // String fileName = store.getFileStore().getFileName();
+            // store.close();
+            // if (compactFully && FileUtils.exists(fileName)) {
+            // // the file could have been deleted concurrently,
+            // // so only compact if the file still exists
+            // AOStoreTool.compact(fileName, true);
+            // }
+            // }
+            // } catch (IllegalStateException e) {
+            // int errorCode = DataUtils.getErrorCode(e.getMessage());
+            // if (errorCode == DataUtils.ERROR_WRITING_FAILED) {
+            // // disk full - ok
+            // } else if (errorCode == DataUtils.ERROR_FILE_CORRUPT) {
+            // // wrong encryption key - ok
+            // }
+            // store.closeImmediately();
+            // throw DbException.get(ErrorCode.IO_EXCEPTION_1, e, "Closing");
+            // }
+            // }
         }
 
         /**
          * Start collecting statistics.
          */
         public void statisticsStart() {
-            for (BTreeMap<?, ?> map : store.getMaps()) {
-                BTreeStore store = map.getStore();
-                org.lealone.aostore.FileStore fs = store.getFileStore();
-                statisticsStart = fs == null ? 0 : fs.getReadCount();
-                return;
-            }
+            // for (BTreeMap<?, ?> map : store.getMaps()) {
+            // BTreeStore store = map.getStore();
+            // org.lealone.aostore.FileStore fs = store.getFileStore();
+            // statisticsStart = fs == null ? 0 : fs.getReadCount();
+            // return;
+            // }
         }
 
         /**
@@ -438,14 +441,14 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
          * @return the statistics
          */
         public Map<String, Integer> statisticsEnd() {
-            for (BTreeMap<?, ?> map : store.getMaps()) {
-                BTreeStore store = map.getStore();
-                HashMap<String, Integer> map2 = New.hashMap();
-                org.lealone.aostore.FileStore fs = store.getFileStore();
-                int reads = fs == null ? 0 : (int) (fs.getReadCount() - statisticsStart);
-                map2.put("reads", reads);
-                return map2;
-            }
+            // for (BTreeMap<?, ?> map : store.getMaps()) {
+            // BTreeStore store = map.getStore();
+            // HashMap<String, Integer> map2 = New.hashMap();
+            // org.lealone.aostore.FileStore fs = store.getFileStore();
+            // int reads = fs == null ? 0 : (int) (fs.getReadCount() - statisticsStart);
+            // map2.put("reads", reads);
+            // return map2;
+            // }
 
             return New.hashMap();
         }
@@ -555,18 +558,19 @@ public class AOStorageEngine extends StorageEngineBase implements TransactionSto
                     if (n.endsWith(Constants.SUFFIX_LOB_FILE)) { // 备份".lob.db"文件
                         backupFile(out, base, n);
                     } else if (n.endsWith(AOStore.SUFFIX_AO_FILE) && store != null) { // 备份".mv.db"文件
-                        AOStore aoStore = store.getStore();
-                        for (BTreeMap<?, ?> map : aoStore.getMaps()) {
-                            BTreeStore btreeStore = map.getStore();
-                            boolean before = btreeStore.getReuseSpace();
-                            btreeStore.setReuseSpace(false);
-                            try {
-                                InputStream in = store.getInputStream(btreeStore);
-                                backupFile(out, base, n, in);
-                            } finally {
-                                btreeStore.setReuseSpace(before);
-                            }
-                        }
+                        // TODO
+                        // AOStore aoStore = store.getStore();
+                        // for (BTreeMap<?, ?> map : aoStore.getMaps()) {
+                        // BTreeStore btreeStore = map.getStore();
+                        // boolean before = btreeStore.getReuseSpace();
+                        // btreeStore.setReuseSpace(false);
+                        // try {
+                        // InputStream in = store.getInputStream(btreeStore);
+                        // backupFile(out, base, n, in);
+                        // } finally {
+                        // btreeStore.setReuseSpace(before);
+                        // }
+                        // }
                     }
                 }
             }

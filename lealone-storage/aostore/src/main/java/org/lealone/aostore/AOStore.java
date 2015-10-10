@@ -1,117 +1,194 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law
- * or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the specific language
- * governing permissions and limitations under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.aostore;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.lealone.aostore.btree.BTreeMap;
-import org.lealone.aostore.btree.BTreeStore;
-import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.New;
+import org.lealone.aostore.rtree.RTreeMap;
+import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapBuilder;
+import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.type.DataType;
 
-// adaptive optimization store
+/**
+ * adaptive optimization storage
+ * 
+ * @author zhh
+ */
 public class AOStore {
-    /**
-     * The file name suffix of a AOStore file.
-     */
-    public static final String SUFFIX_AO_FILE = ".db"; // ".ao.db";
+    // /**
+    // * The file name suffix of a new AOStore file, used when compacting a store.
+    // */
+    // public static final String SUFFIX_AO_STORE_NEW_FILE = ".newFile";
+    //
+    // /**
+    // * The file name suffix of a temporary AOStore file, used when compacting a store.
+    // */
+    // public static final String SUFFIX_AO_STORE_TEMP_FILE = ".tempFile";
 
-    /**
-     * The file name suffix of a new AOStore file, used when compacting a store.
-     */
-    public static final String SUFFIX_AO_STORE_NEW_FILE = ".newFile";
+    public static final char MAP_NAME_ID_SEPARATOR = '-';
+    public static final String SUFFIX_AO_FILE = ".db";
+    public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
 
-    /**
-     * The file name suffix of a temporary AOStore file, used when compacting a store.
-     */
-    public static final String SUFFIX_AO_STORE_TEMP_FILE = ".tempFile";
+    private static final CopyOnWriteArrayList<StorageMap<?, ?>> storageMaps = new CopyOnWriteArrayList<>();
+    private static final CopyOnWriteArrayList<BufferedMap<?, ?>> bufferedMaps = new CopyOnWriteArrayList<>();
+    private static final CopyOnWriteArrayList<AOMap<?, ?>> aoMaps = new CopyOnWriteArrayList<>();
 
-    private final HashMap<String, Object> config;
-    private final ConcurrentHashMap<String, BTreeMap<?, ?>> maps = new ConcurrentHashMap<>();
+    public static void addStorageMap(StorageMap<?, ?> map) {
+        storageMaps.add(map);
+    }
+
+    public static void addBufferedMap(BufferedMap<?, ?> map) {
+        bufferedMaps.add(map);
+    }
+
+    public static void removeBufferedMap(BufferedMap<?, ?> map) {
+        bufferedMaps.remove(map);
+    }
+
+    public static void addAOMap(AOMap<?, ?> map) {
+        aoMaps.add(map);
+    }
+
+    private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Integer> ids = new ConcurrentHashMap<>();
+    private final Map<String, Object> config;
+    private final AOStoreBackgroundThread backgroundThread;
 
     private int lastMapId;
 
-    AOStore(HashMap<String, Object> config) {
+    AOStore(Map<String, Object> config) {
         this.config = config;
-        Object storeName = config.get("storeName");
-        if (storeName != null) {
-            String sn = storeName.toString();
-            if (!FileUtils.exists(sn))
-                FileUtils.createDirectories(sn);
+        if (!config.containsKey("inMemory")) {
+            String storeName = (String) config.get("storeName");
+            if (storeName != null) {
+                if (!FileUtils.exists(storeName))
+                    FileUtils.createDirectories(storeName);
 
-            // FilePath dir = FilePath.get(sn);
-            // for (FilePath file : dir.newDirectoryStream()) {
-            // String name = file.getName();
-            // maps.put(name.substring(0, name.length() - SUFFIX_AO_FILE.length()), null);
-            // }
+                FilePath dir = FilePath.get(storeName);
+                for (FilePath fp : dir.newDirectoryStream()) {
+                    String mapFullName = fp.getName();
+                    int mapIdStartPos = mapFullName.lastIndexOf(MAP_NAME_ID_SEPARATOR);
+                    if (mapIdStartPos > 0) {
+                        String mapName = mapFullName.substring(0, mapIdStartPos);
+                        int mapId = Integer.parseInt(mapFullName.substring(mapIdStartPos + 1));
+                        if (mapId > lastMapId)
+                            lastMapId = mapId;
+                        ids.put(mapName, mapId);
+                    }
+                }
+            }
         }
 
-        // setAutoCommitDelay starts the thread, but only if
-        // the parameter is different from the old value
-        Object delayObject = config.get("autoCommitDelay");
-        int delay = delayObject == null ? 1000 : (Integer) delayObject;
-        setAutoCommitDelay(delay);
-    }
-
-    public HashMap<String, Object> getConfig() {
-        return config;
+        backgroundThread = new AOStoreBackgroundThread(this);
     }
 
     @SuppressWarnings("unchecked")
-    public synchronized <M extends BTreeMap<K, V>, K, V> M openMap(String name, BTreeMap.MapBuilder<M, K, V> builder) {
+    public synchronized <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder) {
         M map = (M) maps.get(name);
         if (map == null) {
-            HashMap<String, Object> c = New.hashMap();
-            int id = ++lastMapId;
-            c.put("id", id);
-            c.put("createVersion", 0L);
-            map = builder.create();
-            map.setName(name);
+            HashMap<String, Object> c = new HashMap<>(config);
+            if (ids.containsKey(name))
+                c.put("id", ids.get(name));
+            else
+                c.put("id", ++lastMapId);
 
-            BTreeStore store = new BTreeStore(name, config);
-            map.init(store, c);
-
-            // if (!maps.containsKey(name)) // map不存在时标数据改变
-            store.markMetaChanged();
+            builder.name(name).config(c);
+            map = builder.openMap();
             maps.put(name, map);
+
+            addStorageMap(map);
         }
 
         return map;
     }
 
-    public synchronized void close() {
-        stopBackgroundThread();
+    public <K, V> BTreeMap<K, V> openBTreeMap(String name, DataType keyType, DataType valueType) {
+        BTreeMap.Builder<K, V> builder = new BTreeMap.Builder<>();
+        builder.keyType(keyType);
+        builder.valueType(valueType);
+        return openMap(name, builder);
+    }
 
-        for (BTreeMap<?, ?> map : maps.values())
+    public <V> RTreeMap<V> openRTreeMap(String name, DataType valueType, int dimensions) {
+        RTreeMap.Builder<V> builder = new RTreeMap.Builder<>();
+        builder.dimensions(dimensions);
+        builder.valueType(valueType);
+        return openMap(name, builder);
+    }
+
+    public <K, V> AOMap<K, V> openAOMap(String name, DataType keyType, DataType valueType) {
+        BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType);
+        AOMap<K, V> map = new AOMap<>(btreeMap);
+        addAOMap(map);
+        return map;
+    }
+
+    public <K, V> BufferedMap<K, V> openBufferedMap(String name, DataType keyType, DataType valueType) {
+        BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType);
+        BufferedMap<K, V> map = new BufferedMap<>(btreeMap);
+        addBufferedMap(map);
+        return map;
+    }
+
+    public <K, V> MemoryMap<K, V> openMemoryMap(String name, DataType keyType, DataType valueType) {
+        MemoryMap.Builder<K, V> builder = new MemoryMap.Builder<>();
+        builder.keyType(keyType);
+        builder.valueType(valueType);
+        return openMap(name, builder);
+    }
+
+    public synchronized void close() {
+        backgroundThread.close();
+
+        for (StorageMap<?, ?> map : maps.values())
             map.close();
+
+        storageMaps.clear();
+        bufferedMaps.clear();
+        aoMaps.clear();
+
+        maps.clear();
+        ids.clear();
     }
 
     public synchronized void commit() {
-        for (BTreeMap<?, ?> map : maps.values())
-            map.commit();
+        for (StorageMap<?, ?> map : maps.values())
+            map.save();
     }
 
     public Set<String> getMapNames() {
         return new HashSet<String>(maps.keySet());
     }
 
-    public Collection<BTreeMap<?, ?>> getMaps() {
+    public Collection<StorageMap<?, ?>> getMaps() {
         return maps.values();
     }
 
@@ -119,348 +196,68 @@ public class AOStore {
         return maps.containsKey(name);
     }
 
-    /**
-     * Open a store in exclusive mode. For a file-based store, the parent
-     * directory must already exist.
-     * 
-     * @param storeName the store name (null for in-memory)
-     * @return the store
-     */
-    public static AOStore open(String storeName) {
-        HashMap<String, Object> config = New.hashMap();
-        config.put("storeName", storeName);
-        return new AOStore(config);
-    }
+    private static class AOStoreBackgroundThread extends Thread {
+        private static final ExecutorService executorService = Executors.newCachedThreadPool();
+        private static final ArrayList<Future<Void>> futures = new ArrayList<>();
 
-    /**
-     * A builder for an AOStore.
-     */
-    public static class Builder {
-
-        private final HashMap<String, Object> config = New.hashMap();
-
-        private Builder set(String key, Object value) {
-            config.put(key, value);
-            return this;
-        }
-
-        /**
-         * Disable auto-commit, by setting the auto-commit delay and auto-commit
-         * buffer size to 0.
-         * 
-         * @return this
-         */
-        public Builder autoCommitDisabled() {
-            // we have a separate config option so that
-            // no thread is started if the write delay is 0
-            // (if we only had a setter in the AOStore,
-            // the thread would need to be started in any case)
-            set("autoCommitBufferSize", 0);
-            return set("autoCommitDelay", 0);
-        }
-
-        /**
-         * Set the size of the write buffer, in KB disk space (for file-based
-         * stores). Unless auto-commit is disabled, changes are automatically
-         * saved if there are more than this amount of changes.
-         * <p>
-         * The default is 1024 KB.
-         * <p>
-         * When the value is set to 0 or lower, data is not automatically
-         * stored.
-         * 
-         * @param kb the write buffer size, in kilobytes
-         * @return this
-         */
-        public Builder autoCommitBufferSize(int kb) {
-            return set("autoCommitBufferSize", kb);
-        }
-
-        /**
-         * Set the auto-compact target fill rate. If the average fill rate (the
-         * percentage of the storage space that contains active data) of the
-         * chunks is lower, then the chunks with a low fill rate are re-written.
-         * Also, if the percentage of empty space between chunks is higher than
-         * this value, then chunks at the end of the file are moved. Compaction
-         * stops if the target fill rate is reached.
-         * <p>
-         * The default value is 50 (50%). The value 0 disables auto-compacting.
-         * <p>
-         * 
-         * @param percent the target fill rate
-         * @return this
-         */
-        public Builder autoCompactFillRate(int percent) {
-            return set("autoCompactFillRate", percent);
-        }
-
-        /**
-         * Use the following store name. If the file does not exist, it is
-         * automatically created. The parent directory already must exist.
-         * 
-         * @param storeName the store name
-         * @return this
-         */
-        public Builder storeName(String storeName) {
-            return set("storeName", storeName);
-        }
-
-        /**
-         * Encrypt / decrypt the file using the given password. This method has
-         * no effect for in-memory stores. The password is passed as a char
-         * array so that it can be cleared as soon as possible. Please note
-         * there is still a small risk that password stays in memory (due to
-         * Java garbage collection). Also, the hashed encryption key is kept in
-         * memory as long as the file is open.
-         * 
-         * @param password the password
-         * @return this
-         */
-        public Builder encryptionKey(char[] password) {
-            return set("encryptionKey", password);
-        }
-
-        /**
-         * Open the file in read-only mode. In this case, a shared lock will be
-         * acquired to ensure the file is not concurrently opened in write mode.
-         * <p>
-         * If this option is not used, the file is locked exclusively.
-         * <p>
-         * Please note a store may only be opened once in every JVM (no matter
-         * whether it is opened in read-only or read-write mode), because each
-         * file may be locked only once in a process.
-         * 
-         * @return this
-         */
-        public Builder readOnly() {
-            return set("readOnly", 1);
-        }
-
-        /**
-         * Set the read cache size in MB. The default is 16 MB.
-         * 
-         * @param mb the cache size in megabytes
-         * @return this
-         */
-        public Builder cacheSize(int mb) {
-            return set("cacheSize", mb);
-        }
-
-        /**
-         * Compress data before writing using the LZF algorithm. This will save
-         * about 50% of the disk space, but will slow down read and write
-         * operations slightly.
-         * <p>
-         * This setting only affects writes; it is not necessary to enable
-         * compression when reading, even if compression was enabled when
-         * writing.
-         * 
-         * @return this
-         */
-        public Builder compress() {
-            return set("compress", 1);
-        }
-
-        /**
-         * Compress data before writing using the Deflate algorithm. This will
-         * save more disk space, but will slow down read and write operations
-         * quite a bit.
-         * <p>
-         * This setting only affects writes; it is not necessary to enable
-         * compression when reading, even if compression was enabled when
-         * writing.
-         * 
-         * @return this
-         */
-        public Builder compressHigh() {
-            return set("compress", 2);
-        }
-
-        /**
-         * Set the amount of memory a page should contain at most, in bytes,
-         * before it is split. The default is 16 KB for persistent stores and 4
-         * KB for in-memory stores. This is not a limit in the page size, as
-         * pages with one entry can get larger. It is just the point where pages
-         * that contain more than one entry are split.
-         * 
-         * @param pageSplitSize the page size
-         * @return this
-         */
-        public Builder pageSplitSize(int pageSplitSize) {
-            return set("pageSplitSize", pageSplitSize);
-        }
-
-        /**
-         * Set the listener to be used for exceptions that occur when writing in
-         * the background thread.
-         * 
-         * @param exceptionHandler the handler
-         * @return this
-         */
-        public Builder backgroundExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
-            return set("backgroundExceptionHandler", exceptionHandler);
-        }
-
-        /**
-         * Use the provided file store instead of the default one.
-         * <p>
-         * File stores passed in this way need to be open. They are not closed
-         * when closing the store.
-         * <p>
-         * Please note that any kind of store (including an off-heap store) is
-         * considered a "persistence", while an "in-memory store" means objects
-         * are not persisted and fully kept in the JVM heap.
-         * 
-         * @param store the file store
-         * @return this
-         */
-        public Builder fileStore(FileStore store) {
-            return set("fileStore", store);
-        }
-
-        /**
-         * Open the store.
-         * 
-         * @return the opened store
-         */
-        public AOStore open() {
-            return new AOStore(config);
-        }
-
-        @Override
-        public String toString() {
-            return DataUtils.appendMap(new StringBuilder(), config).toString();
-        }
-
-        /**
-         * Read the configuration from a string.
-         * 
-         * @param s the string representation
-         * @return the builder
-         */
-        public static Builder fromString(String s) {
-            HashMap<String, String> config = DataUtils.parseMap(s);
-            Builder builder = new Builder();
-            builder.config.putAll(config);
-            return builder;
-        }
-
-    }
-
-    /**
-     * The background thread, if any.
-     */
-    volatile BackgroundWriterThread backgroundWriterThread;
-
-    /**
-     * The delay in milliseconds to automatically commit and write changes.
-     */
-    private int autoCommitDelay;
-
-    /**
-     * Set the maximum delay in milliseconds to auto-commit changes.
-     * <p>
-     * To disable auto-commit, set the value to 0. In this case, changes are
-     * only committed when explicitly calling commit.
-     * <p>
-     * The default is 1000, meaning all changes are committed after at most one
-     * second.
-     * 
-     * @param millis the maximum delay
-     */
-    public void setAutoCommitDelay(int millis) {
-        if (autoCommitDelay == millis) {
-            return;
-        }
-        autoCommitDelay = millis;
-        if (config.get("storeName") == null) // 内存存储不需要BackgroundWriterThread
-            return;
-        stopBackgroundThread();
-        // start the background thread if needed
-        if (millis > 0) {
-            int sleep = Math.max(1, millis / 10);
-            BackgroundWriterThread t = new BackgroundWriterThread(this, sleep, config.get("storeName").toString());
-            t.start();
-            backgroundWriterThread = t;
-        }
-    }
-
-    /**
-     * Get the auto-commit delay.
-     * 
-     * @return the delay in milliseconds, or 0 if auto-commit is disabled.
-     */
-
-    public int getAutoCommitDelay() {
-        return autoCommitDelay;
-    }
-
-    private void stopBackgroundThread() {
-        BackgroundWriterThread t = backgroundWriterThread;
-        if (t == null) {
-            return;
-        }
-        backgroundWriterThread = null;
-        if (Thread.currentThread() == t) {
-            // within the thread itself - can not join
-            return;
-        }
-        synchronized (t.sync) {
-            t.sync.notifyAll();
-        }
-        if (Thread.holdsLock(this)) {
-            // called from storeNow: can not join,
-            // because that could result in a deadlock
-            return;
-        }
-        try {
-            t.join();
-        } catch (Exception e) {
-            // ignore
-        }
-    }
-
-    /**
-     * A background writer thread to automatically store changes from time to
-     * time.
-     */
-    private static class BackgroundWriterThread extends Thread {
-
-        public final Object sync = new Object();
-        private final AOStore store;
         private final int sleep;
+        private boolean running = true;
 
-        BackgroundWriterThread(AOStore store, int sleep, String fileStoreName) {
-            super("AOStore background writer " + fileStoreName);
-            this.store = store;
-            this.sleep = sleep;
+        AOStoreBackgroundThread(AOStore store) {
+            super("AOStoreBackgroundThread");
+            // this.store = store;
+            this.sleep = 1000;
             setDaemon(true);
+        }
+
+        void close() {
+            running = false;
         }
 
         @Override
         public void run() {
-            while (true) {
-                Thread t = store.backgroundWriterThread;
-                if (t == null) {
-                    break;
+            while (running) {
+                try {
+                    sleep(sleep);
+                } catch (InterruptedException e) {
+                    continue;
                 }
-                synchronized (sync) {
-                    try {
-                        sync.wait(sleep);
-                    } catch (InterruptedException e) {
-                        continue;
-                    }
-                }
-                for (BTreeMap<?, ?> map : store.getMaps()) {
-                    BTreeStore btreeStore = map.getStore();
-                    FileStore fileStore = btreeStore.getFileStore();
-                    if (fileStore == null || fileStore.isReadOnly()) {
-                        return;
-                    }
-                    btreeStore.writeInBackground(store.autoCommitDelay);
-                }
+
+                adaptiveOptimization();
+                merge();
+                flush();
             }
         }
 
+        private void adaptiveOptimization() {
+            for (AOMap<?, ?> map : AOStore.aoMaps) {
+                if (map.getReadPercent() > 50)
+                    map.switchToNoBufferedMap();
+                else if (map.getWritePercent() > 50)
+                    map.switchToBufferedMap();
+            }
+        }
+
+        private void merge() {
+            for (BufferedMap<?, ?> map : AOStore.bufferedMaps) {
+                futures.add(executorService.submit(map));
+            }
+
+            for (Future<Void> f : futures) {
+                try {
+                    f.get();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+
+            futures.clear();
+        }
+
+        private void flush() {
+            for (StorageMap<?, ?> map : AOStore.storageMaps) {
+                map.save();
+            }
+        }
     }
 }
