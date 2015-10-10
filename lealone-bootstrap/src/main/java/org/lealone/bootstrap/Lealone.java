@@ -32,7 +32,6 @@ import org.lealone.db.Constants;
 import org.lealone.db.DatabaseEngine;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
-import org.lealone.server.PgServer;
 import org.lealone.server.Server;
 import org.lealone.server.TcpServer;
 import org.lealone.sql.RouterHolder;
@@ -109,8 +108,9 @@ public class Lealone {
 
         startTcpServer();
 
-        if (config.pg_server_options != null && config.pg_server_options.enabled)
-            startPgServer();
+        // TODO 动态启动支持其他协议的server
+        // if (config.pg_server_options != null && config.pg_server_options.enabled)
+        // startPgServer();
     }
 
     private static void startClusterServer() throws Exception {
@@ -126,9 +126,9 @@ public class Lealone {
         startTransportServer(new TcpServer(), "Tcp", config.tcp_server_options);
     }
 
-    private static void startPgServer() throws Exception {
-        startTransportServer(new PgServer(), "Pg", config.pg_server_options);
-    }
+    // private static void startPgServer() throws Exception {
+    // startTransportServer(new PgServer(), "Pg", config.pg_server_options);
+    // }
 
     private static void startTransportServer(final Server server, final String prefix, TransportServerOptions options)
             throws Exception {
