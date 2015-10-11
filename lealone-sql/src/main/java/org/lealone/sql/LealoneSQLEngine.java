@@ -22,7 +22,7 @@ import org.lealone.db.SessionInterface;
 
 public class LealoneSQLEngine implements SQLEngine {
     public LealoneSQLEngine() {
-        SQLEngineManager.registerSQLEngine(this);
+        SQLEngineManager.getInstance().registerEngine(this);
     }
 
     @Override

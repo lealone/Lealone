@@ -25,7 +25,9 @@ import org.lealone.db.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.table.CreateTableData;
+import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableFactory;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageEngineManager;
 
@@ -612,16 +614,20 @@ public class Schema extends DbObjectBase {
                 data.storageEngine = database.getStorageEngineName();
             }
             if (data.storageEngine != null) {
-                StorageEngine engine = StorageEngineManager.getStorageEngine(data.storageEngine);
+                StorageEngine engine = StorageEngineManager.getInstance().getEngine(data.storageEngine);
                 if (engine == null) {
                     try {
                         engine = (StorageEngine) Utils.loadUserClass(data.storageEngine).newInstance();
-                        StorageEngineManager.registerStorageEngine(engine);
+                        StorageEngineManager.getInstance().registerEngine(engine);
                     } catch (Exception e) {
                         throw DbException.convert(e);
                     }
                 }
-                return (Table) engine.createTable(data);
+
+                if (engine instanceof TableFactory) {
+                    return ((TableFactory) engine).createTable(data);
+                }
+                return new StandardTable(data, engine);
             }
             throw DbException.convert(new NullPointerException("table engine is null"));
         }

@@ -21,34 +21,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.ObjectDataType;
 
 public interface StorageMap<K, V> {
-
-    public interface Builder {
-        <K, V> StorageMap<K, V> openMap(String name);
-
-        <K, V> StorageMap<K, V> openMap(String name, DataType valueType);
-
-        <K, V> StorageMap<K, V> openMap(String name, DataType keyType, DataType valueType);
-
-        String getMapName(int id);
-    }
-
-    public abstract class BuilderBase implements Builder {
-        @Override
-        public <K, V> StorageMap<K, V> openMap(String name) {
-            return openMap(name, null);
-        }
-
-        @Override
-        public <K, V> StorageMap<K, V> openMap(String name, DataType valueType) {
-            if (valueType == null) {
-                valueType = new ObjectDataType();
-            }
-            return openMap(name, new ObjectDataType(), valueType);
-        }
-    }
 
     /**
      * Get the map id. 

@@ -20,7 +20,9 @@ package org.lealone.transaction;
 import java.util.Map;
 
 import org.lealone.common.util.New;
-import org.lealone.storage.StorageMap;
+import org.lealone.storage.type.ObjectDataType;
+import org.lealone.transaction.log.LogMap;
+import org.lealone.transaction.log.LogStorage;
 
 class TransactionStatusTable {
     private TransactionStatusTable() {
@@ -32,7 +34,7 @@ class TransactionStatusTable {
      * The persisted map of transactionStatusTable.
      * Key: transactionName, value: [ allLocalTransactionNames, commitTimestamp ].
      */
-    private static StorageMap<String, Object[]> map;
+    private static LogMap<String, Object[]> map;
 
     private static TransactionStatusCache newCache(String hostAndPort) {
         synchronized (TransactionStatusTable.class) {
@@ -46,9 +48,11 @@ class TransactionStatusTable {
         }
     }
 
-    static synchronized void init(StorageMap.Builder mapBuilder) {
-        if (map == null)
-            map = mapBuilder.openMap(MVCCTransactionEngine.getMapName("transactionStatusTable"));
+    static synchronized void init(LogStorage logStorage) {
+        if (map == null) {
+            String mapName = MVCCTransactionEngine.getMapName("transactionStatusTable");
+            map = logStorage.openBufferedMap(mapName, new ObjectDataType(), new ObjectDataType());
+        }
     }
 
     static void commit(MVCCTransaction transaction, String allLocalTransactionNames) {

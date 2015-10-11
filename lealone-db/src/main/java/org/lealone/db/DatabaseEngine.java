@@ -28,6 +28,7 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.storage.StorageEngineManager;
+import org.lealone.transaction.TransactionEngineManager;
 
 /**
  * The engine contains a map of all open databases.
@@ -55,8 +56,9 @@ public class DatabaseEngine implements SessionFactory {
     public static synchronized void init(String host, int port) {
         hostAndPort = host + ":" + port;
 
-        StorageEngineManager.initStorageEngines();
-        SQLEngineManager.initSQLEngines();
+        StorageEngineManager.getInstance().init();
+        SQLEngineManager.getInstance().init();
+        TransactionEngineManager.getInstance().init();
         SystemDatabase.init();
 
         for (String dbName : SystemDatabase.findAll())

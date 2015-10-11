@@ -198,4 +198,6 @@ public interface TransactionMap<K, V> {
     public K lowerKey(K key);
 
     public int getMapId();
+
+    boolean isInMemory();
 }

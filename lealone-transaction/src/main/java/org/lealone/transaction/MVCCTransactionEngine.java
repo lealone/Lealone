@@ -14,25 +14,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
+import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
+import org.lealone.transaction.log.LogMap;
+import org.lealone.transaction.log.LogStorage;
+import org.lealone.transaction.log.LogStorageBuilder;
 
 /**
  * The transaction engine that supports concurrent MVCC read-committed transactions.
  */
-public class MVCCTransactionEngine implements TransactionEngine {
+public class MVCCTransactionEngine extends TransactionEngineBase {
 
-    /**
-     * The store.
-     */
-    // public final MVStore store;
-
-    /**
-     * The persisted map of prepared transactions.
-     * Key: transactionId, value: [ status, name ].
-     */
-    final StorageMap<Integer, Object[]> preparedTransactions;
+    public MVCCTransactionEngine() {
+        super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+    }
 
     /**
      * The undo log.
@@ -44,14 +41,14 @@ public class MVCCTransactionEngine implements TransactionEngine {
      * <p>
      * Key: opId, value: [ mapId, key, oldValue ].
      */
-    final StorageMap<Long, Object[]> undoLog;
+    LogMap<Long, Object[]> undoLog;
 
     /**
      * The map of maps.
      */
     private final HashMap<Integer, StorageMap<Object, VersionedValue>> maps = New.hashMap();
 
-    private final DataType dataType;
+    private DataType dataType;
 
     private boolean init;
 
@@ -64,33 +61,22 @@ public class MVCCTransactionEngine implements TransactionEngine {
      */
     private int nextTempMapId;
 
-    private final StorageMap.Builder mapBuilder;
+    String hostAndPort;
 
-    final String hostAndPort;
+    private boolean isClusterMode;
 
-    private final boolean isClusterMode;
+    private LogStorage logStorage;
 
     /**
      * Create a new transaction engine.
      *
      * @param dataType the data type for map keys and values
      */
-    public MVCCTransactionEngine(DataType dataType, StorageMap.Builder mapBuilder, String hostAndPort,
-            boolean isClusterMode) {
+    public MVCCTransactionEngine(DataType dataType, String hostAndPort, boolean isClusterMode) {
+        super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
         this.dataType = dataType;
-        this.mapBuilder = mapBuilder;
         this.hostAndPort = hostAndPort;
         this.isClusterMode = isClusterMode;
-        preparedTransactions = mapBuilder.openMap(getMapName("openTransactions"));
-
-        VersionedValueType oldValueType = new VersionedValueType(dataType);
-        ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), dataType, oldValueType });
-        undoLog = mapBuilder.openMap(getMapName("undoLog"), undoLogValueType);
-        if (undoLog.getValueType() != undoLogValueType) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
-                    "Undo map open with a different value type");
-        }
-
     }
 
     /**
@@ -100,7 +86,24 @@ public class MVCCTransactionEngine implements TransactionEngine {
      */
     @Override
     public synchronized void init(Set<String> storageMapNames) {
+        if (init)
+            return;
         init = true;
+
+        LogStorageBuilder builder = new LogStorageBuilder();
+        // TODO 指定LogStorageBuilder各类参数
+        builder.storageName(System.getProperty("transaction.log.dir", "transaction_log"));
+        logStorage = builder.open();
+
+        // TODO 指定dataType，而不是用ObjectDataType
+        VersionedValueType oldValueType = new VersionedValueType(new ObjectDataType());
+        ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), new ObjectDataType(),
+                oldValueType });
+        undoLog = logStorage.openBufferedMap(getMapName("undoLog"), new ObjectDataType(), undoLogValueType);
+        if (undoLog.getValueType() != undoLogValueType) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
+                    "Undo map open with a different value type");
+        }
 
         // remove all temporary maps
         if (storageMapNames != null) {
@@ -118,7 +121,7 @@ public class MVCCTransactionEngine implements TransactionEngine {
             }
         }
 
-        TransactionStatusTable.init(mapBuilder);
+        TransactionStatusTable.init(logStorage);
 
         if (isClusterMode)
             TransactionValidator.getInstance().start();
@@ -183,21 +186,13 @@ public class MVCCTransactionEngine implements TransactionEngine {
                 int transactionId = getTransactionId(key);
                 key = undoLog.lowerKey(getOperationId(transactionId + 1, 0));
                 long logId = getLogId(key) + 1;
-                Object[] data = preparedTransactions.get(transactionId);
                 int status;
-                String name;
-                if (data == null) {
-                    if (undoLog.containsKey(getOperationId(transactionId, 0))) {
-                        status = MVCCTransaction.STATUS_OPEN;
-                    } else {
-                        status = MVCCTransaction.STATUS_COMMITTING;
-                    }
-                    name = null;
+                if (undoLog.containsKey(getOperationId(transactionId, 0))) {
+                    status = MVCCTransaction.STATUS_OPEN;
                 } else {
-                    status = (Integer) data[0];
-                    name = (String) data[1];
+                    status = MVCCTransaction.STATUS_COMMITTING;
                 }
-                MVCCTransaction t = new MVCCTransaction(this, transactionId, status, name, logId);
+                MVCCTransaction t = new MVCCTransaction(this, transactionId, status, logId);
                 list.add(t);
                 key = undoLog.ceilingKey(getOperationId(transactionId + 1, 0));
             }
@@ -265,7 +260,7 @@ public class MVCCTransactionEngine implements TransactionEngine {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
         int tid = nextTransactionId(autoCommit);
-        MVCCTransaction t = new MVCCTransaction(this, tid, MVCCTransaction.STATUS_OPEN, null, 0);
+        MVCCTransaction t = new MVCCTransaction(this, tid, MVCCTransaction.STATUS_OPEN, 0);
         t.setAutoCommit(autoCommit);
         return t;
     }
@@ -275,18 +270,6 @@ public class MVCCTransactionEngine implements TransactionEngine {
         // store.commit();
         if (isClusterMode)
             TransactionValidator.getInstance().close();
-    }
-
-    /**
-     * Store a transaction.
-     *
-     * @param t the transaction
-     */
-    synchronized void storeTransaction(MVCCTransaction t) {
-        if (t.getStatus() == MVCCTransaction.STATUS_PREPARED || t.getName() != null) {
-            Object[] v = { t.getStatus(), t.getName() };
-            preparedTransactions.put(t.transactionId, v);
-        }
     }
 
     /**
@@ -418,22 +401,22 @@ public class MVCCTransactionEngine implements TransactionEngine {
      * @param valueType the value type
      * @return the map
      */
-    synchronized <K> StorageMap<K, VersionedValue> openMap(String name, DataType keyType, DataType valueType) {
-        if (keyType == null) {
-            keyType = new ObjectDataType();
-        }
-        if (valueType == null) {
-            valueType = new ObjectDataType();
-        }
-        VersionedValueType vt = new VersionedValueType(valueType);
-        StorageMap<K, VersionedValue> map;
-        map = mapBuilder.openMap(name, keyType, vt);
-
-        @SuppressWarnings("unchecked")
-        StorageMap<Object, VersionedValue> m = (StorageMap<Object, VersionedValue>) map;
-        maps.put(map.getId(), m);
-        return map;
-    }
+    // synchronized <K> StorageMap<K, VersionedValue> openMap(String name, DataType keyType, DataType valueType) {
+    // if (keyType == null) {
+    // keyType = new ObjectDataType();
+    // }
+    // if (valueType == null) {
+    // valueType = new ObjectDataType();
+    // }
+    // VersionedValueType vt = new VersionedValueType(valueType);
+    // StorageMap<K, VersionedValue> map;
+    // map = logStorage.openBTreeMap(name, keyType, vt);
+    //
+    // @SuppressWarnings("unchecked")
+    // StorageMap<Object, VersionedValue> m = (StorageMap<Object, VersionedValue>) map;
+    // maps.put(map.getId(), m);
+    // return map;
+    // }
 
     /**
      * Open the map with the given id.
@@ -442,19 +425,24 @@ public class MVCCTransactionEngine implements TransactionEngine {
      * @return the map
      */
     synchronized StorageMap<Object, VersionedValue> openMap(int mapId) {
-        StorageMap<Object, VersionedValue> map = maps.get(mapId);
-        if (map != null) {
-            return map;
-        }
-        String mapName = mapBuilder.getMapName(mapId);
-        if (mapName == null) {
-            // the map was removed later on
-            return null;
-        }
-        VersionedValueType vt = new VersionedValueType(dataType);
-        map = mapBuilder.openMap(mapName, dataType, vt);
-        maps.put(mapId, map);
-        return map;
+        return maps.get(mapId);
+        // StorageMap<Object, VersionedValue> map = maps.get(mapId);
+        // if (map != null) {
+        // return map;
+        // }
+        // String mapName = logStorage.getMapName(mapId);
+        // if (mapName == null) {
+        // // the map was removed later on
+        // return null;
+        // }
+        // VersionedValueType vt = new VersionedValueType(dataType);
+        // map = logStorage.openBTreeMap(mapName, dataType, vt);
+        // maps.put(mapId, map);
+        // return map;
+    }
+
+    void addMap(StorageMap<Object, VersionedValue> map) {
+        maps.put(map.getId(), map);
     }
 
     /**
@@ -474,7 +462,7 @@ public class MVCCTransactionEngine implements TransactionEngine {
      * @return the map
      */
     StorageMap<Object, Integer> openTempMap(String mapName) {
-        return mapBuilder.openMap(mapName, dataType, null);
+        return logStorage.openBufferedMap(mapName, dataType, null);
     }
 
     /**
@@ -483,9 +471,6 @@ public class MVCCTransactionEngine implements TransactionEngine {
      * @param t the transaction
      */
     synchronized void endTransaction(MVCCTransaction t) {
-        if (t.getStatus() == MVCCTransaction.STATUS_PREPARED) {
-            preparedTransactions.remove(t.transactionId);
-        }
         t.setStatus(MVCCTransaction.STATUS_CLOSED);
         // if (store.getAutoCommitDelay() == 0) {
         // store.commit();
@@ -634,7 +619,8 @@ public class MVCCTransactionEngine implements TransactionEngine {
     }
 
     public static String getMapName(String name) {
-        return "trans." + name;
-    }
+        return name;
 
+        // return "trans." + name;
+    }
 }

@@ -17,6 +17,7 @@
  */
 package org.lealone.transaction;
 
+import org.lealone.storage.Storage;
 import org.lealone.storage.type.DataType;
 
 public interface Transaction {
@@ -44,19 +45,13 @@ public interface Transaction {
      */
     public static final int STATUS_COMMITTING = 3;
 
-    String getName(); //用于2pc
-
-    void setName(String name); //用于2pc
-
-    void prepare(); //用于2pc
-
     int getStatus();
 
     void setStatus(int status);
 
     long getTransactionId();
 
-    //long getCommitTimestamp();
+    // long getCommitTimestamp();
 
     boolean isAutoCommit();
 
@@ -80,7 +75,7 @@ public interface Transaction {
      * @param name the name of the map
      * @return the transaction map
      */
-    <K, V> TransactionMap<K, V> openMap(String name);
+    <K, V> TransactionMap<K, V> openMap(String name, Storage storage);
 
     /**
      * Open the map to store the data.
@@ -92,7 +87,7 @@ public interface Transaction {
      * @param valueType the value data type
      * @return the transaction map
      */
-    <K, V> TransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType);
+    <K, V> TransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType, Storage storage);
 
     void addSavepoint(String name);
 

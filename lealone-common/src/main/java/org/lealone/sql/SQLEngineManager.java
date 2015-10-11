@@ -17,74 +17,17 @@
  */
 package org.lealone.sql;
 
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.concurrent.ConcurrentHashMap;
+import org.lealone.db.PlugableEngineManager;
 
-import org.lealone.common.message.DbException;
-import org.lealone.db.DbSettings;
+public class SQLEngineManager extends PlugableEngineManager<SQLEngine> {
 
-public class SQLEngineManager {
+    private static final SQLEngineManager instance = new SQLEngineManager();
+
+    public static SQLEngineManager getInstance() {
+        return instance;
+    }
 
     private SQLEngineManager() {
-    }
-
-    private static Map<String, SQLEngine> sqlEngines = new ConcurrentHashMap<String, SQLEngine>();
-    private static boolean initialized = false;
-
-    public synchronized static void initSQLEngines() {
-        if (!initialized)
-            initialize();
-    }
-
-    public static SQLEngine getSQLEngine(String name) {
-        if (!initialized) {
-            initialize();
-        }
-        if (name == null) {
-            name = DbSettings.getDefaultSettings().defaultSQLEngine;
-        }
-        SQLEngine te = sqlEngines.get(name.toUpperCase());
-        return te;
-    }
-
-    public static void registerSQLEngine(SQLEngine sqlEngine) {
-        sqlEngines.put(sqlEngine.getName().toUpperCase(), sqlEngine);
-    }
-
-    public static void deregisterSQLEngine(SQLEngine sqlEngine) {
-        sqlEngines.remove(sqlEngine.getName().toUpperCase());
-    }
-
-    private static class SQLEngineService implements PrivilegedAction<SQLEngine> {
-        @Override
-        public SQLEngine run() {
-            Iterator<SQLEngine> iterator = ServiceLoader.load(SQLEngine.class).iterator();
-            try {
-                while (iterator.hasNext()) {
-                    // 执行next时ServiceLoader内部会自动为每一个实现SQLEngine接口的类生成一个新实例
-                    // 所以SQLEngine接口的实现类必需有一个public的无参数构造函数
-                    iterator.next();
-                }
-            } catch (Throwable t) {
-                DbException.convert(t);
-            }
-            return null;
-        }
-    }
-
-    private synchronized static void initialize() {
-        if (initialized) {
-            return;
-        }
-        initialized = true;
-        loadSQLEngines();
-    }
-
-    private static void loadSQLEngines() {
-        AccessController.doPrivileged(new SQLEngineService());
+        super(SQLEngine.class);
     }
 }

@@ -771,4 +771,9 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     public int getMapId() {
         return mapId;
     }
+
+    @Override
+    public boolean isInMemory() {
+        return map.isInMemory();
+    }
 }

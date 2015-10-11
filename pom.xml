@@ -34,10 +34,7 @@
         <module>lealone-transaction</module>
         <module>lealone-cluster</module>
         <module>lealone-bootstrap</module>
-
-		<module>lealone-storage/aostore</module>
-		<module>lealone-storage/engine</module>
-
+        <module>lealone-storage</module>
         <module>lealone-test</module>
     </modules>
 

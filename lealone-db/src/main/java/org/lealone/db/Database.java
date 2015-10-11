@@ -7,6 +7,7 @@
 package org.lealone.db;
 
 import java.io.IOException;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.lealone.api.DatabaseEventListener;
@@ -57,9 +59,12 @@ import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.FileStore;
 import org.lealone.storage.LobStorage;
+import org.lealone.storage.Storage;
+import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.TransactionEngine;
+import org.lealone.transaction.TransactionEngineManager;
 
 /**
  * There is one database object per open database.
@@ -69,7 +74,7 @@ import org.lealone.transaction.TransactionEngine;
  *
  * @since 2004-04-15 22:49
  */
-public class Database implements DataHandler, org.lealone.storage.Database {
+public class Database implements DataHandler {
     /**
      * This log mode means the transaction log is not used.
      */
@@ -200,16 +205,29 @@ public class Database implements DataHandler, org.lealone.storage.Database {
 
         String sqlEngineName = ci.getDbSettings().defaultSQLEngine;
         if (sqlEngineName != null) {
-            sqlEngine = SQLEngineManager.getSQLEngine(sqlEngineName);
+            sqlEngine = SQLEngineManager.getInstance().getEngine(sqlEngineName);
             if (sqlEngine == null) {
                 try {
                     sqlEngine = (SQLEngine) Utils.loadUserClass(sqlEngineName).newInstance();
-                    SQLEngineManager.registerSQLEngine(sqlEngine);
+                    SQLEngineManager.getInstance().registerEngine(sqlEngine);
                 } catch (Exception e) {
                     throw DbException.convert(e);
                 }
             }
             SQLEngineHolder.setSQLEngine(sqlEngine);
+        }
+
+        String transactionEngineName = ci.getDbSettings().defaultTransactionEngine;
+        if (transactionEngineName != null) {
+            transactionEngine = TransactionEngineManager.getInstance().getEngine(transactionEngineName);
+            if (transactionEngine == null) {
+                try {
+                    transactionEngine = (TransactionEngine) Utils.loadUserClass(transactionEngineName).newInstance();
+                    TransactionEngineManager.getInstance().registerEngine(transactionEngine);
+                } catch (Exception e) {
+                    throw DbException.convert(e);
+                }
+            }
         }
 
         this.dbSettings = ci.getDbSettings();
@@ -357,9 +375,9 @@ public class Database implements DataHandler, org.lealone.storage.Database {
             rec.execute(this, systemSession, eventListener);
         }
 
-        for (StorageEngine se : getStorageEngines()) {
-            se.initTransactions(this);
-            se.removeTemporaryMaps(this, objectIds);
+        for (Storage s : getStorages()) {
+            s.initTransactions();
+            s.removeTemporaryMaps(objectIds);
         }
 
         recompileInvalidViews(systemSession);
@@ -480,8 +498,9 @@ public class Database implements DataHandler, org.lealone.storage.Database {
         if (powerOffCount != -1) {
             try {
                 powerOffCount = -1;
-                for (StorageEngine se : getStorageEngines())
-                    se.closeImmediately(this);
+                for (Storage s : getStorages()) {
+                    s.closeImmediately();
+                }
                 if (traceSystem != null) {
                     traceSystem.close();
                 }
@@ -997,8 +1016,9 @@ public class Database implements DataHandler, org.lealone.storage.Database {
         }
         getDatabaseEngine().closeDatabase(databaseName);
 
-        for (StorageEngine se : getStorageEngines())
-            se.close(this);
+        for (Storage s : getStorages()) {
+            s.close();
+        }
     }
 
     /**
@@ -1550,8 +1570,9 @@ public class Database implements DataHandler, org.lealone.storage.Database {
             return;
         }
         try {
-            for (StorageEngine se : getStorageEngines())
-                se.flush(this);
+            for (Storage s : getStorages()) {
+                s.flush();
+            }
         } catch (RuntimeException e) {
             backgroundException = DbException.convert(e);
             throw e;
@@ -1624,8 +1645,9 @@ public class Database implements DataHandler, org.lealone.storage.Database {
             return;
         }
 
-        for (StorageEngine se : getStorageEngines())
-            se.flush(this);
+        for (Storage s : getStorages()) {
+            s.sync();
+        }
     }
 
     public int getMaxMemoryRows() {
@@ -1932,8 +1954,9 @@ public class Database implements DataHandler, org.lealone.storage.Database {
      */
     public void checkpoint() {
         if (persistent) {
-            for (StorageEngine se : getStorageEngines())
-                se.flush(this);
+            for (Storage s : getStorages()) {
+                s.flush();
+            }
         }
         getTempFileDeleter().deleteUnused();
     }
@@ -2044,8 +2067,9 @@ public class Database implements DataHandler, org.lealone.storage.Database {
     }
 
     public void backupTo(String fileName) {
-        for (StorageEngine se : getStorageEngines())
-            se.backupTo(this, fileName);
+        for (Storage s : getStorages()) {
+            s.backupTo(fileName);
+        }
     }
 
     // 每个数据库会有多个表，每个表有可能使用不同的存储引擎
@@ -2070,5 +2094,71 @@ public class Database implements DataHandler, org.lealone.storage.Database {
         if (transactionEngine == null)
             throw new IllegalStateException("TransactionEngine not init");
         return transactionEngine;
+    }
+
+    // 每个数据库只有一个StorageBuilder
+    private StorageBuilder storageBuilder;
+
+    // 每个数据库会有多个表，每个表有可能使用不同的存储引擎
+    private final List<Storage> storages = new CopyOnWriteArrayList<>();
+
+    private final ConcurrentHashMap<String, Storage> storageMaps = new ConcurrentHashMap<>();
+
+    public void addStorage(Storage storage) {
+        storages.add(storage);
+    }
+
+    public List<Storage> getStorages() {
+        return storages;
+    }
+
+    public synchronized Storage getStorage(StorageEngine storageEngine) {
+        Storage storage = storageMaps.get(storageEngine.getName());
+        if (storage != null)
+            return storage;
+
+        storage = getStorageBuilder(storageEngine).openStorage();
+        storageMaps.put(storageEngine.getName(), storage);
+        return storage;
+    }
+
+    public synchronized StorageBuilder getStorageBuilder(StorageEngine storageEngine) {
+        if (storageBuilder != null)
+            return storageBuilder;
+
+        StorageBuilder builder = storageEngine.getStorageBuilder();
+        String dbPath = getDatabasePath();
+        if (dbPath == null) {
+            builder.inMemory();
+        } else {
+            byte[] key = getFileEncryptionKey();
+            builder.pageSplitSize(getPageSize());
+            builder.storageName(dbPath);
+            if (isReadOnly()) {
+                builder.readOnly();
+            }
+
+            if (key != null) {
+                char[] password = new char[key.length / 2];
+                for (int i = 0; i < password.length; i++) {
+                    password[i] = (char) (((key[i + i] & 255) << 16) | ((key[i + i + 1]) & 255));
+                }
+                builder.encryptionKey(password);
+            }
+            if (getSettings().compressData) {
+                builder.compress();
+                // use a larger page split size to improve the compression ratio
+                builder.pageSplitSize(64 * 1024);
+            }
+            builder.backgroundExceptionHandler(new UncaughtExceptionHandler() {
+                @Override
+                public void uncaughtException(Thread t, Throwable e) {
+                    setBackgroundException(DbException.convert(e));
+                }
+            });
+        }
+
+        storageBuilder = builder;
+        return storageBuilder;
     }
 }

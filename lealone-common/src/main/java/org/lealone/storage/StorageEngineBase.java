@@ -20,8 +20,23 @@ package org.lealone.storage;
 import org.lealone.common.message.DbException;
 
 public abstract class StorageEngineBase implements StorageEngine {
+
+    protected final String name;
+
+    public StorageEngineBase(String name) {
+        this.name = name;
+        // 见PlugableEngineManager.PlugableEngineService中的注释
+        StorageEngineManager.getInstance().registerEngine(this);
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
     @Override
     public LobStorage getLobStorage() {
         throw DbException.getUnsupportedException("getLobStorage()");
     }
+
 }

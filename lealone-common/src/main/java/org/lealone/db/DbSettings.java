@@ -298,17 +298,25 @@ public class DbSettings extends SettingsBase {
 
     /**
      * Database setting <code>DEFAULT_STORAGE_ENGINE</code>
-     * (default: MVStore).<br />
+     * (default: AOSE).<br />
      * The default storage engine to use for new tables.
      */
     public final String defaultStorageEngine = get("DEFAULT_STORAGE_ENGINE", Constants.DEFAULT_STORAGE_ENGINE_NAME);
 
     /**
-     * Database setting <code>DEFAULT_SQL_ENGINE_NAME</code>
+     * Database setting <code>DEFAULT_SQL_ENGINE</code>
      * (default: lealone).<br />
      * The default sql engine.
      */
     public final String defaultSQLEngine = get("DEFAULT_SQL_ENGINE", Constants.DEFAULT_SQL_ENGINE_NAME);
+
+    /**
+     * Database setting <code>DEFAULT_TRANSACTION_ENGINE</code>
+     * (default: MVCC).<br />
+     * The default transaction engine.
+     */
+    public final String defaultTransactionEngine = get("DEFAULT_TRANSACTION_ENGINE",
+            Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
 
     /**
      * Database setting <code>COMPRESS</code>

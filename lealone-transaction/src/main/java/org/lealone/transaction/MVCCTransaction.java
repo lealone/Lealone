@@ -19,7 +19,9 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
+import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapBuilder;
 import org.lealone.storage.type.DataType;
 
 /**
@@ -40,41 +42,27 @@ public class MVCCTransaction implements Transaction {
 
     Validator validator;
 
-    private String name; //用于2pc的事务名，未来会考虑删除，目前实际使用的是Lealone的分布式事务模型
     private int status;
     private boolean autoCommit;
-    private boolean local = true; //默认是true，如果是分布式事务才设为false
+    private boolean local = true; // 默认是true，如果是分布式事务才设为false
 
     private long commitTimestamp;
 
     private HashMap<String, Long> savepoints;
 
-    //协调者或参与者自身的本地事务名
+    // 协调者或参与者自身的本地事务名
     private StringBuilder localTransactionNamesBuilder;
-    //如果本事务是协调者中的事务，那么在此字段中存放其他参与者的本地事务名
+    // 如果本事务是协调者中的事务，那么在此字段中存放其他参与者的本地事务名
     private ConcurrentSkipListSet<String> participantLocalTransactionNames;
     private List<Participant> participants;
 
-    MVCCTransaction(MVCCTransactionEngine engine, int tid, int status, String name, long logId) {
+    MVCCTransaction(MVCCTransactionEngine engine, int tid, int status, long logId) {
         transactionEngine = engine;
         transactionId = tid;
         transactionName = getTransactionName(engine.hostAndPort, tid);
 
         this.status = status;
-        this.name = name;
         this.logId = logId;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public void setName(String name) {
-        checkNotClosed();
-        this.name = name;
-        transactionEngine.storeTransaction(this);
     }
 
     @Override
@@ -155,14 +143,24 @@ public class MVCCTransaction implements Transaction {
     }
 
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name) {
-        return openMap(name, null, null);
+    public <K, V> MVCCTransactionMap<K, V> openMap(String name, Storage storage) {
+        return openMap(name, null, null, storage);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType) {
+    public <K, V> MVCCTransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType, Storage storage) {
         checkNotClosed();
-        StorageMap<K, VersionedValue> map = transactionEngine.openMap(name, keyType, valueType);
+        // StorageMap<K, VersionedValue> map = transactionEngine.openMap(name, keyType, valueType);
+        // int mapId = map.getId();
+
+        // TODO 能够指定Map类型
+        StorageMapBuilder<StorageMap<K, VersionedValue>, K, VersionedValue> builder = storage
+                .getStorageMapBuilder("AOMap");
+        builder.keyType(keyType);
+        builder.valueType(valueType);
+        StorageMap<K, VersionedValue> map = storage.openMap(name, builder);
+        transactionEngine.addMap((StorageMap<Object, VersionedValue>) map);
         int mapId = map.getId();
         return new MVCCTransactionMap<K, V>(this, map, mapId);
     }
@@ -343,17 +341,6 @@ public class MVCCTransaction implements Transaction {
      */
     void logUndo() {
         transactionEngine.logUndo(this, --logId);
-    }
-
-    /**
-     * Prepare the transaction. Afterwards, the transaction can only be
-     * committed or rolled back.
-     */
-    @Override
-    public void prepare() {
-        checkNotClosed();
-        status = STATUS_PREPARED;
-        transactionEngine.storeTransaction(this);
     }
 
     /**

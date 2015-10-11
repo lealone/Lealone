@@ -26,13 +26,13 @@ import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
-import org.lealone.db.table.MVTable;
+import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableFilter;
 import org.lealone.sql.PreparedInterface;
 
 public class GlobalUniqueIndex extends IndexBase {
 
-    public GlobalUniqueIndex(Session session, MVTable table, int id, String indexName, IndexColumn[] columns,
+    public GlobalUniqueIndex(Session session, StandardTable table, int id, String indexName, IndexColumn[] columns,
             IndexType indexType) {
         initIndexBase(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {

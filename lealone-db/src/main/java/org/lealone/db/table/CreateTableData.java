@@ -15,7 +15,7 @@ import org.lealone.db.schema.Schema;
 /**
  * The data required to create a table.
  */
-public class CreateTableData implements org.lealone.storage.CreateTableData {
+public class CreateTableData {
 
     /**
      * The schema.

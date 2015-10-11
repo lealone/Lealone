@@ -17,74 +17,17 @@
  */
 package org.lealone.storage;
 
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.concurrent.ConcurrentHashMap;
+import org.lealone.db.PlugableEngineManager;
 
-import org.lealone.common.message.DbException;
-import org.lealone.db.DbSettings;
+public class StorageEngineManager extends PlugableEngineManager<StorageEngine> {
 
-public class StorageEngineManager {
+    private static final StorageEngineManager instance = new StorageEngineManager();
+
+    public static StorageEngineManager getInstance() {
+        return instance;
+    }
 
     private StorageEngineManager() {
-    }
-
-    private static Map<String, StorageEngine> storageEngines = new ConcurrentHashMap<String, StorageEngine>();
-    private static boolean initialized = false;
-
-    public synchronized static void initStorageEngines() {
-        if (!initialized)
-            initialize();
-    }
-
-    public static StorageEngine getStorageEngine(String name) {
-        if (!initialized) {
-            initialize();
-        }
-        if (name == null) {
-            name = DbSettings.getDefaultSettings().defaultStorageEngine;
-        }
-        StorageEngine te = storageEngines.get(name.toUpperCase());
-        return te;
-    }
-
-    public static void registerStorageEngine(StorageEngine storageEngine) {
-        storageEngines.put(storageEngine.getName().toUpperCase(), storageEngine);
-    }
-
-    public static void deregisterStorageEngine(StorageEngine storageEngine) {
-        storageEngines.remove(storageEngine.getName().toUpperCase());
-    }
-
-    private static class StorageEngineService implements PrivilegedAction<StorageEngine> {
-        @Override
-        public StorageEngine run() {
-            Iterator<StorageEngine> iterator = ServiceLoader.load(StorageEngine.class).iterator();
-            try {
-                while (iterator.hasNext()) {
-                    //执行next时ServiceLoader内部会自动为每一个实现StorageEngine接口的类生成一个新实例
-                    //所以StorageEngine接口的实现类必需有一个public的无参数构造函数
-                    iterator.next();
-                }
-            } catch (Throwable t) {
-                DbException.convert(t);
-            }
-            return null;
-        }
-    }
-
-    private synchronized static void initialize() {
-        if (initialized) {
-            return;
-        }
-        initialized = true;
-        loadStorageEngines();
-    }
-
-    private static void loadStorageEngines() {
-        AccessController.doPrivileged(new StorageEngineService());
+        super(StorageEngine.class);
     }
 }

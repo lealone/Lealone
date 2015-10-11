@@ -17,6 +17,7 @@
  */
 package org.lealone.test;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.HashMap;
@@ -27,7 +28,7 @@ import org.lealone.db.Constants;
 
 public class TestBase extends Assert {
     public static final String DEFAULT_STORAGE_ENGINE_NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
-    public static final String TEST_DIR = "./lealone-test-data";
+    public static final String TEST_DIR = "." + File.separatorChar + "lealone-test-data";
     public static final String DB_NAME = "test";
 
     private final Map<String, String> connectionParameters = new HashMap<>();
@@ -38,6 +39,13 @@ public class TestBase extends Assert {
 
     private String host = Constants.DEFAULT_HOST;
     private int port = Constants.DEFAULT_TCP_PORT;
+
+    public static String joinDirs(String... dirs) {
+        StringBuilder s = new StringBuilder(TEST_DIR);
+        for (String dir : dirs)
+            s.append(File.separatorChar).append(dir);
+        return s.toString();
+    }
 
     public synchronized void addConnectionParameter(String key, String value) {
         connectionParameters.put(key, value);
