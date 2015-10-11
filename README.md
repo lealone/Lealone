@@ -13,7 +13,7 @@
 * 强一致性，支持ACID、高性能分布式事务<br>
   使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/blob/master/docs/%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E6%A8%A1%E5%9E%8B.md)
  
-* 插件化存储引擎架构，内置AOStore自适应优化存储引擎
+* 插件化存储引擎架构，内置AOSE自适应优化存储引擎(Adaptive Optimization Storage Engine)
 
 * 插件化事务引擎架构，事务处理逻辑与存储分离，内置一个支持MVCC的事务引擎
 
