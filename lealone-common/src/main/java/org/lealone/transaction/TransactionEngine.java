@@ -20,9 +20,9 @@ package org.lealone.transaction;
 import java.util.List;
 import java.util.Set;
 
-import org.lealone.db.PlugableEngine;
+import org.lealone.db.PluggableEngine;
 
-public interface TransactionEngine extends PlugableEngine {
+public interface TransactionEngine extends PluggableEngine {
 
     Transaction beginTransaction(boolean autoCommit);
 

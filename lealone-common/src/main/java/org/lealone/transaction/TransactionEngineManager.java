@@ -17,9 +17,9 @@
  */
 package org.lealone.transaction;
 
-import org.lealone.db.PlugableEngineManager;
+import org.lealone.db.PluggableEngineManager;
 
-public class TransactionEngineManager extends PlugableEngineManager<TransactionEngine> {
+public class TransactionEngineManager extends PluggableEngineManager<TransactionEngine> {
 
     private static final TransactionEngineManager instance = new TransactionEngineManager();
 

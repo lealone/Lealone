@@ -26,15 +26,15 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.message.DbException;
 
-public class PlugableEngineManager<T extends PlugableEngine> {
+public class PluggableEngineManager<T extends PluggableEngine> {
 
-    private final Class<T> plugableEngineClass;
+    private final Class<T> pluggableEngineClass;
 
-    protected PlugableEngineManager(Class<T> plugableEngineClass) {
-        this.plugableEngineClass = plugableEngineClass;
+    protected PluggableEngineManager(Class<T> pluggableEngineClass) {
+        this.pluggableEngineClass = pluggableEngineClass;
     }
 
-    private final Map<String, T> plugableEngines = new ConcurrentHashMap<>();
+    private final Map<String, T> pluggableEngines = new ConcurrentHashMap<>();
     private boolean initialized = false;
 
     public T getEngine(String name) {
@@ -42,36 +42,36 @@ public class PlugableEngineManager<T extends PlugableEngine> {
             throw new NullPointerException("name is null");
         if (!initialized)
             init();
-        return plugableEngines.get(name.toUpperCase());
+        return pluggableEngines.get(name.toUpperCase());
     }
 
-    public void registerEngine(T plugableEngine) {
-        plugableEngines.put(plugableEngine.getName().toUpperCase(), plugableEngine);
+    public void registerEngine(T pluggableEngine) {
+        pluggableEngines.put(pluggableEngine.getName().toUpperCase(), pluggableEngine);
     }
 
-    public void deregisterEngine(T plugableEngine) {
-        plugableEngines.remove(plugableEngine.getName().toUpperCase());
+    public void deregisterEngine(T pluggableEngine) {
+        pluggableEngines.remove(pluggableEngine.getName().toUpperCase());
     }
 
     public synchronized void init() {
         if (initialized)
             return;
         initialized = true;
-        loadPlugableEngines();
+        loadPluggableEngines();
     }
 
-    private void loadPlugableEngines() {
-        AccessController.doPrivileged(new PlugableEngineService());
+    private void loadPluggableEngines() {
+        AccessController.doPrivileged(new PluggableEngineService());
     }
 
-    private class PlugableEngineService implements PrivilegedAction<Void> {
+    private class PluggableEngineService implements PrivilegedAction<Void> {
         @Override
         public Void run() {
-            Iterator<T> iterator = ServiceLoader.load(plugableEngineClass).iterator();
+            Iterator<T> iterator = ServiceLoader.load(pluggableEngineClass).iterator();
             try {
                 while (iterator.hasNext()) {
-                    // 执行next时ServiceLoader内部会自动为每一个实现PlugableEngine接口的类生成一个新实例
-                    // 所以PlugableEngine接口的实现类必需有一个public的无参数构造函数
+                    // 执行next时ServiceLoader内部会自动为每一个实现PluggableEngine接口的类生成一个新实例
+                    // 所以PluggableEngine接口的实现类必需有一个public的无参数构造函数
                     iterator.next();
                 }
             } catch (Throwable t) {

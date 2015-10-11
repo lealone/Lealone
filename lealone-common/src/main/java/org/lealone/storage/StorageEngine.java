@@ -17,9 +17,9 @@
  */
 package org.lealone.storage;
 
-import org.lealone.db.PlugableEngine;
+import org.lealone.db.PluggableEngine;
 
-public interface StorageEngine extends PlugableEngine {
+public interface StorageEngine extends PluggableEngine {
 
     StorageBuilder getStorageBuilder();
 

@@ -17,7 +17,7 @@
  */
 package org.lealone.db;
 
-public interface PlugableEngine {
+public interface PluggableEngine {
 
     String getName();
 

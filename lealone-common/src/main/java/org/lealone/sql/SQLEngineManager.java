@@ -17,9 +17,9 @@
  */
 package org.lealone.sql;
 
-import org.lealone.db.PlugableEngineManager;
+import org.lealone.db.PluggableEngineManager;
 
-public class SQLEngineManager extends PlugableEngineManager<SQLEngine> {
+public class SQLEngineManager extends PluggableEngineManager<SQLEngine> {
 
     private static final SQLEngineManager instance = new SQLEngineManager();
 

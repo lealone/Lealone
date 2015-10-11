@@ -17,10 +17,10 @@
  */
 package org.lealone.sql;
 
-import org.lealone.db.PlugableEngine;
+import org.lealone.db.PluggableEngine;
 import org.lealone.db.SessionInterface;
 
-public interface SQLEngine extends PlugableEngine {
+public interface SQLEngine extends PluggableEngine {
 
     SQLParser createParser(SessionInterface session);
 

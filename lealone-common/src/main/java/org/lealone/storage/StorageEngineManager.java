@@ -17,9 +17,9 @@
  */
 package org.lealone.storage;
 
-import org.lealone.db.PlugableEngineManager;
+import org.lealone.db.PluggableEngineManager;
 
-public class StorageEngineManager extends PlugableEngineManager<StorageEngine> {
+public class StorageEngineManager extends PluggableEngineManager<StorageEngine> {
 
     private static final StorageEngineManager instance = new StorageEngineManager();
 
