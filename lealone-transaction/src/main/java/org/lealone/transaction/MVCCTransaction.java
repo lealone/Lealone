@@ -21,7 +21,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.StorageMapBuilder;
 import org.lealone.storage.type.DataType;
 
 /**
@@ -147,19 +146,18 @@ public class MVCCTransaction implements Transaction {
         return openMap(name, null, null, storage);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <K, V> MVCCTransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType, Storage storage) {
-        checkNotClosed();
-        // StorageMap<K, VersionedValue> map = transactionEngine.openMap(name, keyType, valueType);
-        // int mapId = map.getId();
+        return openMap(name, null, keyType, valueType, storage);
+    }
 
-        // TODO 能够指定Map类型
-        StorageMapBuilder<StorageMap<K, VersionedValue>, K, VersionedValue> builder = storage
-                .getStorageMapBuilder("AOMap");
-        builder.keyType(keyType);
-        builder.valueType(valueType);
-        StorageMap<K, VersionedValue> map = storage.openMap(name, builder);
+    @SuppressWarnings("unchecked")
+    @Override
+    public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+            Storage storage) {
+        checkNotClosed();
+        StorageMap<K, VersionedValue> map = storage.openMap(name, mapType, keyType, new VersionedValueType(valueType),
+                null);
         transactionEngine.addMap((StorageMap<Object, VersionedValue>) map);
         int mapId = map.getId();
         return new MVCCTransactionMap<K, V>(this, map, mapId);

@@ -15,12 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.storage;
+package org.lealone.test.storage.memory;
+
+import java.util.Map;
 
 import org.lealone.common.util.BitField;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapBuilder;
+import org.lealone.storage.type.DataType;
 
 public class MemoryStorage implements Storage {
 
@@ -88,5 +91,12 @@ public class MemoryStorage implements Storage {
     public boolean hasMap(String name) {
         // TODO Auto-generated method stub
         return false;
+    }
+
+    @Override
+    public <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+            Map<String, String> parameters) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

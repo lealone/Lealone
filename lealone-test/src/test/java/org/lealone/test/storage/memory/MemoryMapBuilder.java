@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.storage;
+package org.lealone.test.storage.memory;
 
 import org.lealone.storage.StorageMapBuilder;
 

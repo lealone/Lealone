@@ -89,6 +89,9 @@ public interface Transaction {
      */
     <K, V> TransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType, Storage storage);
 
+    <K, V> TransactionMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+            Storage storage);
+
     void addSavepoint(String name);
 
     long getSavepointId();

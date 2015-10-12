@@ -22,41 +22,41 @@ storage_engines:
     - name: AOSE
       enabled: true
       parameters: {
-          # key1: "v1",
-          # key2: "v2",
+          # key1: v1,
+          # key2: v2,
       }
     - name: MVStore
       enabled: false
       parameters: {
-          # key1: "v1",
-          # key2: "v2",
+          # key1: v1,
+          # key2: v2,
       }
       
 transaction_engines:
     - name: MVCC
       enabled: true
       parameters: {
-          transaction_log_dir: "transaction_log", # ${base_dir} + "/"+ ${transaction_log_dir}
+          transaction_log_dir: transaction_log, # ${base_dir} + "/"+ ${transaction_log_dir}
       }
 
 sql_engines:
     - name: Lealone
       enabled: true
       parameters: {
-          # key1: "v1",
-          # key2: "v2",
+          # key1: v1,
+          # key2: v2,
       }
     - name: MySQL
       enabled: false
       parameters: {
-          # key1: "v1",
-          # key2: "v2",
+          # key1: v1,
+          # key2: v2,
       }
     - name: PostgreSQL
       enabled: false
       parameters: {
-          # key1: "v1",
-          # key2: "v2",
+          # key1: v1,
+          # key2: v2,
       }
       
 protocol_server_engines:
@@ -69,7 +69,7 @@ protocol_server_engines:
           daemon: false,
           if_exists: false,
           ssl: false,
-          # password: "test",
+          # password: test,
           # key: "test,test"
       }
     - name: org.lealone.server.PgServerEngine

@@ -7,6 +7,7 @@
 package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
@@ -286,6 +287,10 @@ public class CreateTable extends SchemaCommand {
 
     public void setStorageEngine(String storageEngine) {
         data.storageEngine = storageEngine;
+    }
+
+    public void setStorageEngineParams(Map<String, String> storageEngineParams) {
+        data.storageEngineParams = storageEngineParams;
     }
 
     public void setHidden(boolean isHidden) {

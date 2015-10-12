@@ -55,7 +55,9 @@ public class Lealone {
 
     public static void main(String[] args) {
         logger.info("Lealone version: {}", Utils.getReleaseVersionString());
+
         try {
+            loadConfig();
             init();
             start();
         } catch (Exception e) {
@@ -64,18 +66,29 @@ public class Lealone {
         }
     }
 
-    private static void init() {
+    private static void loadConfig() {
         config = DatabaseDescriptor.loadConfig();
-
         logger.info("Run mode: {}", config.run_mode);
-
         if (!DatabaseDescriptor.hasLargeAddressSpace())
             logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
+    }
 
+    private static void init() {
         initBaseDir();
+        initHostAndPort();
         initPluggableEngines();
         initDatabaseEngine();
         initRouter();
+    }
+
+    private static void initHostAndPort() {
+        String host = config.listen_address;
+        Integer port = config.listen_port;
+
+        if (host == null)
+            config.listen_address = host = Constants.DEFAULT_HOST;
+        if (port == null)
+            config.listen_port = port = Constants.DEFAULT_TCP_PORT;
     }
 
     private static void initBaseDir() {
@@ -87,15 +100,7 @@ public class Lealone {
     }
 
     private static void initDatabaseEngine() {
-        String host = config.listen_address;
-        Integer port = config.listen_port;
-
-        if (host == null)
-            config.listen_address = host = Constants.DEFAULT_HOST;
-        if (port == null)
-            config.listen_port = port = Constants.DEFAULT_TCP_PORT;
-
-        DatabaseEngine.init(host, port.intValue());
+        DatabaseEngine.init(config.listen_address, config.listen_port.intValue());
     }
 
     // 初始化顺序storage -> transaction -> sql -> protocol
@@ -134,6 +139,7 @@ public class Lealone {
                     }
                     if (config.isClusterMode())
                         def.getParameters().put("is_cluster_mode", "true");
+                    def.getParameters().put("host_and_port", config.listen_address + ":" + config.listen_port);
                     initPluggableEngine(te, def);
                 }
             }

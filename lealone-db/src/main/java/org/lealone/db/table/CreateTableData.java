@@ -7,6 +7,7 @@
 package org.lealone.db.table;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 import org.lealone.common.util.New;
 import org.lealone.db.Session;
@@ -71,6 +72,11 @@ public class CreateTableData {
      * The storage engine to use for creating the table.
      */
     public String storageEngine;
+
+    /**
+     * The storage engine parameters to use for creating the table.
+     */
+    public Map<String, String> storageEngineParams;
 
     /**
      * The table is hidden.

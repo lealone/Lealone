@@ -73,11 +73,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      *
      * @param dataType the data type for map keys and values
      */
-    public MVCCTransactionEngine(DataType dataType, String hostAndPort, boolean isClusterMode) {
+    public MVCCTransactionEngine(DataType dataType) {
         super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
         this.dataType = dataType;
-        this.hostAndPort = hostAndPort;
-        this.isClusterMode = isClusterMode;
     }
 
     /**
@@ -129,6 +127,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
         TransactionStatusTable.init(logStorage);
 
+        hostAndPort = config.get("host_and_port");
         isClusterMode = Boolean.parseBoolean(config.get("is_cluster_mode"));
         if (isClusterMode)
             TransactionValidator.getInstance().start();

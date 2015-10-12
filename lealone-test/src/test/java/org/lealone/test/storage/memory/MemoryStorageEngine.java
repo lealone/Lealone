@@ -15,44 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.storage;
+package org.lealone.test.storage.memory;
 
-import java.util.Iterator;
-import java.util.Map.Entry;
+import org.lealone.storage.StorageBuilder;
+import org.lealone.storage.StorageEngineBase;
 
-import org.lealone.storage.StorageMapCursor;
+public class MemoryStorageEngine extends StorageEngineBase {
+    public static final String NAME = "memory";
 
-public class MemoryMapCursor<K, V> implements StorageMapCursor<K, V> {
-    private final Iterator<Entry<K, V>> iterator;
-    private Entry<K, V> e;
-
-    public MemoryMapCursor(Iterator<Entry<K, V>> iterator) {
-        this.iterator = iterator;
+    public MemoryStorageEngine() {
+        super(NAME);
     }
 
     @Override
-    public boolean hasNext() {
-        return iterator.hasNext();
-    }
-
-    @Override
-    public K next() {
-        e = iterator.next();
-        return e.getKey();
-    }
-
-    @Override
-    public void remove() {
-        iterator.remove();
-    }
-
-    @Override
-    public K getKey() {
-        return e.getKey();
-    }
-
-    @Override
-    public V getValue() {
-        return e.getValue();
+    public StorageBuilder getStorageBuilder() {
+        return new MemoryStorageBuilder();
     }
 }

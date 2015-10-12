@@ -5510,19 +5510,34 @@ public class Parser implements SQLParser {
             }
         }
         if (readIf("ENGINE")) {
-            if (readIf("=")) {
-                // map MySQL engine types onto H2 behavior
-                String storageEngine = readUniqueIdentifier();
-                if ("InnoDb".equalsIgnoreCase(storageEngine)) {
-                    // ok
-                } else if (!"MyISAM".equalsIgnoreCase(storageEngine)) {
-                    throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, storageEngine);
-                }
-            } else {
-                command.setStorageEngine(readUniqueIdentifier());
-            }
+            readIf("=");
+            // if (readIf("=")) {
+            // // map MySQL engine types onto H2 behavior
+            // String storageEngine = readUniqueIdentifier();
+            // if ("InnoDb".equalsIgnoreCase(storageEngine)) {
+            // // ok
+            // } else if (!"MyISAM".equalsIgnoreCase(storageEngine)) {
+            // throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, storageEngine);
+            // }
+            // }
+            command.setStorageEngine(readUniqueIdentifier());
         } else if (database.getSettings().defaultStorageEngine != null) {
             command.setStorageEngine(database.getSettings().defaultStorageEngine);
+        }
+        if (readIf("WITH")) {
+            read("(");
+            HashMap<String, String> storageEngineParams = New.hashMap();
+            String k, v;
+            do {
+                k = readUniqueIdentifier();
+                if (readIf("="))
+                    v = readUniqueIdentifier();
+                else
+                    v = "true";
+                storageEngineParams.put(k, v);
+            } while (readIf(","));
+            read(")");
+            command.setStorageEngineParams(storageEngineParams);
         }
         if (readIf("CHARSET")) {
             read("=");

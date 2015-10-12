@@ -59,7 +59,7 @@ public class StandardPrimaryIndex extends IndexBase {
     private int mainIndexColumn = -1;
 
     public StandardPrimaryIndex(StorageEngine storageEngine, Session session, StandardTable table, int id,
-            IndexColumn[] columns, IndexType indexType) {
+            IndexColumn[] columns, IndexType indexType, String mapType) {
 
         initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
 
@@ -73,17 +73,8 @@ public class StandardPrimaryIndex extends IndexBase {
         mapName = "table." + table.getName() + "." + getId();
 
         Storage storage = database.getStorage(storageEngine);
-        // TODO 能够指定Map类型
-        // StorageMapBuilder<StorageMap<Value, Value>, Value, Value> builder = storage.getStorageMapBuilder("AOMap");
-        // builder.keyType(keyType);
-        // builder.valueType(valueType);
-        // StorageMap<Value, Value> storageMap = storage.openMap(mapName, builder);
-        //
-        // TransactionEngine transactionEngine = database.getTransactionEngine();
-        // dataMap = transactionEngine.getTransactionMap(session, storageMap);
-
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        dataMap = transactionEngine.beginTransaction(false).openMap(mapName, keyType, valueType, storage);
+        dataMap = transactionEngine.beginTransaction(false).openMap(mapName, mapType, keyType, valueType, storage);
 
         // TODO
         // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs

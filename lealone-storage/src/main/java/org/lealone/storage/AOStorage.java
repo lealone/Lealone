@@ -266,9 +266,26 @@ public class AOStorage implements Storage {
     @SuppressWarnings("unchecked")
     @Override
     public <M extends StorageMap<K, V>, K, V> StorageMapBuilder<M, K, V> getStorageMapBuilder(String type) {
+
         if ("AOMap".equalsIgnoreCase(type))
             return (StorageMapBuilder<M, K, V>) new BTreeMap.Builder<>();
         return null;
+    }
+
+    @Override
+    public <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+            Map<String, String> parameters) {
+        if (mapType == null || mapType.equalsIgnoreCase("AOMap)")) {
+            return openAOMap(name, keyType, valueType);
+        } else if (mapType.equalsIgnoreCase("BTreeMap)")) {
+            return openBTreeMap(name, keyType, valueType);
+        } else if (mapType.equalsIgnoreCase("BufferedMap)")) {
+            return openBufferedMap(name, keyType, valueType);
+        } else if (mapType.equalsIgnoreCase("MemoryMap)")) {
+            return openMemoryMap(name, keyType, valueType);
+        } else {
+            return openAOMap(name, keyType, valueType);
+        }
     }
 
     @Override

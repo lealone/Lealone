@@ -15,38 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage;
+package org.lealone.test.storage;
 
-import java.util.Map;
+import org.junit.Test;
+import org.lealone.test.sql.SqlTestBase;
 
-import org.lealone.common.util.BitField;
-import org.lealone.storage.type.DataType;
+public class StorageTest extends SqlTestBase {
+    @Test
+    public void run() {
+        executeUpdate("CREATE TABLE IF NOT EXISTS StorageTest(f1 int, f2 int) ENGINE " + DEFAULT_STORAGE_ENGINE_NAME
+                + " WITH(map_type=BufferedMap)");
+        executeUpdate("INSERT INTO StorageTest(f1, f2) VALUES(1, 10)");
+        executeUpdate("INSERT INTO StorageTest(f1, f2) VALUES(2, 20)");
 
-public interface Storage {
-
-    <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder);
-
-    <M extends StorageMap<K, V>, K, V> StorageMapBuilder<M, K, V> getStorageMapBuilder(String type);
-
-    <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
-            Map<String, String> parameters);
-
-    void close();
-
-    void backupTo(String fileName);
-
-    void flush();
-
-    void sync();
-
-    void initTransactions();
-
-    void removeTemporaryMaps(BitField objectIds);
-
-    void closeImmediately();
-
-    String nextTemporaryMapName();
-
-    boolean hasMap(String name);
-
+        sql = "SELECT * FROM StorageTest";
+        printResultSet();
+    }
 }

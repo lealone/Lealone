@@ -31,6 +31,7 @@ import org.lealone.storage.type.DataType;
  * @author zhh
  */
 public class AOMap<K, V> implements StorageMap<K, V> {
+    private final Object sync = new Object();
     private volatile StorageMap<K, V> map;
     private volatile BufferedMap<K, V> bmap;
 
@@ -51,10 +52,10 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     private void waitWriteFinishIfNeeded() {
         waitWriteFinish = true;
         if (writing) {
-            synchronized (map) {
+            synchronized (sync) {
                 while (writing) {
                     try {
-                        map.wait();
+                        sync.wait();
                     } catch (InterruptedException e) {
                         // ignore
                     }
@@ -67,7 +68,7 @@ public class AOMap<K, V> implements StorageMap<K, V> {
 
     public void switchToBufferedMap() {
         waitWriteFinishIfNeeded();
-        synchronized (map) {
+        synchronized (sync) {
             try {
                 bmap = new BufferedMap<>(map);
                 map = bmap;
@@ -75,35 +76,32 @@ public class AOMap<K, V> implements StorageMap<K, V> {
                 resetCount();
             } finally {
                 switching = false;
-                map.notifyAll();
+                sync.notifyAll();
             }
         }
     }
 
     public void switchToNoBufferedMap() {
         waitWriteFinishIfNeeded();
-        synchronized (map) {
+        synchronized (sync) {
             try {
                 AOStorage.removeBufferedMap(bmap);
                 bmap.merge();
                 map = bmap.getMap();
                 resetCount();
-
-                switching = false;
-                map.notifyAll();
             } finally {
                 switching = false;
-                map.notifyAll();
+                sync.notifyAll();
             }
         }
     }
 
     private void beforeWrite() {
         if (switching) {
-            synchronized (map) {
+            synchronized (sync) {
                 while (switching) {
                     try {
-                        map.wait();
+                        sync.wait();
                     } catch (InterruptedException e) {
                         // ignore
                     }
@@ -118,8 +116,8 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     private void afterWrite() {
         writing = false;
         if (waitWriteFinish) {
-            synchronized (map) {
-                map.notifyAll();
+            synchronized (sync) {
+                sync.notifyAll();
             }
         }
     }

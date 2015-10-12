@@ -9,6 +9,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -67,6 +68,8 @@ public class StandardTable extends TableBase {
     private Column rowIdColumn;
 
     private final StorageEngine storageEngine;
+    private final Map<String, String> storageEngineParams;
+    private final String mapType;
     private boolean containsGlobalUniqueIndex;
 
     // private final TransactionMap<Long, Long> rowVersionMap;
@@ -75,6 +78,7 @@ public class StandardTable extends TableBase {
         super(data);
         nextAnalyze = database.getSettings().analyzeAuto;
         this.storageEngine = storageEngine;
+        this.storageEngineParams = data.storageEngineParams;
         this.isHidden = data.isHidden;
         for (Column col : getColumns()) {
             if (DataType.isLargeObject(col.getType())) {
@@ -86,8 +90,16 @@ public class StandardTable extends TableBase {
         // rowVersionMap = storageEngine.openMap(data.session, getName() + "_row_version", new ObjectDataType(),
         // new ObjectDataType());
 
+        if (storageEngineParams != null) {
+            if (database.getSettings().databaseToUpper)
+                mapType = storageEngineParams.get("MAP_TYPE");
+            else
+                mapType = storageEngineParams.get("map_type");
+        } else
+            mapType = null;
+
         primaryIndex = new StandardPrimaryIndex(storageEngine, data.session, this, getId(),
-                IndexColumn.wrap(getColumns()), IndexType.createScan(true));
+                IndexColumn.wrap(getColumns()), IndexType.createScan(true), mapType);
         indexes.add(primaryIndex);
     }
 
@@ -425,7 +437,8 @@ public class StandardTable extends TableBase {
                     index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
                 }
             } else {
-                index = new StandardSecondaryIndex(storageEngine, session, this, indexId, indexName, cols, indexType);
+                index = new StandardSecondaryIndex(storageEngine, session, this, indexId, indexName, cols, indexType,
+                        mapType);
             }
             if (index instanceof StandardIndex && index.needRebuild()) {
                 rebuildIndex(session, (StandardIndex) index, indexName);

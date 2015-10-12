@@ -20,13 +20,12 @@ package org.lealone.storage;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.StorageMap;
-import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 
 /**
@@ -161,11 +160,14 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
 
     protected K getFirstLast(boolean first) {
         Object k, k1, k2;
-        if (first)
-            k1 = buffer.firstKey();
-        else
-            k1 = buffer.lastKey();
-
+        try {
+            if (first)
+                k1 = buffer.firstKey();
+            else
+                k1 = buffer.lastKey();
+        } catch (NoSuchElementException e) {
+            k1 = null;
+        }
         if (first)
             k2 = map.firstKey();
         else
@@ -207,18 +209,21 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
 
     protected K getMinMax(K key, boolean min, boolean excluding) {
         Object k, k1, k2;
-        if (!min) {
-            if (excluding)
-                k1 = buffer.higherKey(key);
-            else
-                k1 = buffer.ceilingKey(key);
-        } else {
-            if (excluding)
-                k1 = buffer.lowerKey(key);
-            else
-                k1 = buffer.floorKey(key);
+        try {
+            if (!min) {
+                if (excluding)
+                    k1 = buffer.higherKey(key);
+                else
+                    k1 = buffer.ceilingKey(key);
+            } else {
+                if (excluding)
+                    k1 = buffer.lowerKey(key);
+                else
+                    k1 = buffer.floorKey(key);
+            }
+        } catch (NoSuchElementException e) {
+            k1 = null;
         }
-
         if (!min) {
             if (excluding)
                 k2 = map.higherKey(key);
