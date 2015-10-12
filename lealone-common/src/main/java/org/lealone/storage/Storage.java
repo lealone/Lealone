@@ -24,14 +24,16 @@ import org.lealone.storage.type.DataType;
 
 public interface Storage {
 
-    <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder);
-
-    <M extends StorageMap<K, V>, K, V> StorageMapBuilder<M, K, V> getStorageMapBuilder(String type);
-
     <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
             Map<String, String> parameters);
 
-    void close();
+    boolean hasMap(String name);
+
+    String nextTemporaryMapName();
+
+    void removeTemporaryMaps(BitField objectIds);
+
+    void initTransactions();
 
     void backupTo(String fileName);
 
@@ -39,14 +41,8 @@ public interface Storage {
 
     void sync();
 
-    void initTransactions();
-
-    void removeTemporaryMaps(BitField objectIds);
+    void close();
 
     void closeImmediately();
-
-    String nextTemporaryMapName();
-
-    boolean hasMap(String name);
 
 }

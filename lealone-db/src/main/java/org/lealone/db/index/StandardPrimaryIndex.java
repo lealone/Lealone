@@ -59,7 +59,7 @@ public class StandardPrimaryIndex extends IndexBase {
     private int mainIndexColumn = -1;
 
     public StandardPrimaryIndex(StorageEngine storageEngine, Session session, StandardTable table, int id,
-            IndexColumn[] columns, IndexType indexType, String mapType) {
+            IndexColumn[] columns, IndexType indexType) {
 
         initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
 
@@ -74,7 +74,8 @@ public class StandardPrimaryIndex extends IndexBase {
 
         Storage storage = database.getStorage(storageEngine);
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        dataMap = transactionEngine.beginTransaction(false).openMap(mapName, mapType, keyType, valueType, storage);
+        dataMap = transactionEngine.beginTransaction(false).openMap(mapName, table.getMapType(), keyType, valueType,
+                storage);
 
         // TODO
         // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs

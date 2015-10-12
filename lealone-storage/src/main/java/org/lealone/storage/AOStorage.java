@@ -109,7 +109,6 @@ public class AOStorage implements Storage {
         backgroundThread = new AOStorageBackgroundThread(this);
     }
 
-    @Override
     @SuppressWarnings("unchecked")
     public synchronized <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder) {
         M map = (M) maps.get(name);
@@ -261,15 +260,6 @@ public class AOStorage implements Storage {
                 map.save();
             }
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public <M extends StorageMap<K, V>, K, V> StorageMapBuilder<M, K, V> getStorageMapBuilder(String type) {
-
-        if ("AOMap".equalsIgnoreCase(type))
-            return (StorageMapBuilder<M, K, V>) new BTreeMap.Builder<>();
-        return null;
     }
 
     @Override

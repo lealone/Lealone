@@ -99,12 +99,16 @@ public class StandardTable extends TableBase {
             mapType = null;
 
         primaryIndex = new StandardPrimaryIndex(storageEngine, data.session, this, getId(),
-                IndexColumn.wrap(getColumns()), IndexType.createScan(true), mapType);
+                IndexColumn.wrap(getColumns()), IndexType.createScan(true));
         indexes.add(primaryIndex);
     }
 
     public String getMapName() {
         return primaryIndex.getMapName();
+    }
+
+    public String getMapType() {
+        return mapType;
     }
 
     @Override
@@ -437,8 +441,7 @@ public class StandardTable extends TableBase {
                     index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
                 }
             } else {
-                index = new StandardSecondaryIndex(storageEngine, session, this, indexId, indexName, cols, indexType,
-                        mapType);
+                index = new StandardSecondaryIndex(storageEngine, session, this, indexId, indexName, cols, indexType);
             }
             if (index instanceof StandardIndex && index.needRebuild()) {
                 rebuildIndex(session, (StandardIndex) index, indexName);

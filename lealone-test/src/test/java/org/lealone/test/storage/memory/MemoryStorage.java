@@ -22,22 +22,9 @@ import java.util.Map;
 import org.lealone.common.util.BitField;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.StorageMapBuilder;
 import org.lealone.storage.type.DataType;
 
 public class MemoryStorage implements Storage {
-
-    @Override
-    public <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public <M extends StorageMap<K, V>, K, V> StorageMapBuilder<M, K, V> getStorageMapBuilder(String type) {
-        return (StorageMapBuilder<M, K, V>) new MemoryMapBuilder<>();
-    }
 
     @Override
     public void close() {

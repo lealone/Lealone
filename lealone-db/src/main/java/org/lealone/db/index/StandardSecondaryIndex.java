@@ -45,7 +45,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     private final StorageEngine storageEngine;
 
     public StandardSecondaryIndex(StorageEngine storageEngine, Session session, StandardTable table, int id,
-            String indexName, IndexColumn[] columns, IndexType indexType, String mapType) {
+            String indexName, IndexColumn[] columns, IndexType indexType) {
         this.storageEngine = storageEngine;
         Database db = session.getDatabase();
         this.table = table;
@@ -67,7 +67,8 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
         Storage storage = database.getStorage(storageEngine);
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        dataMap = transactionEngine.beginTransaction(false).openMap(mapName, mapType, keyType, valueType, storage);
+        dataMap = transactionEngine.beginTransaction(false).openMap(mapName, table.getMapType(), keyType, valueType,
+                storage);
 
         // TODO
         // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs
@@ -168,18 +169,9 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(storageEngine);
-        // TODO 能够指定Map类型
-        // StorageMapBuilder<StorageMap<Value, Value>, Value, Value> builder = storage.getStorageMapBuilder("AOMap");
-        // builder.keyType(keyType);
-        // builder.valueType(valueType);
-        // StorageMap<Value, Value> storageMap = storage.openMap(mapName, builder);
-        //
-        // TransactionEngine transactionEngine = database.getTransactionEngine();
-        // TransactionMap<Value, Value> map = transactionEngine.getTransactionMap(session, storageMap);
-
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false).openMap(mapName, keyType,
-                valueType, storage);
+        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false).openMap(mapName,
+                table.getMapType(), keyType, valueType, storage);
 
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
