@@ -15,14 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.server;
 
 import java.util.Map;
 
-public interface PluggableEngine {
+public class TcpServerEngine implements ProtocolServerEngine {
 
-    String getName();
+    private final TcpServer tcpServer = new TcpServer();
 
-    void init(Map<String, String> config);
+    @Override
+    public String getName() {
+        return "TcpServer";
+    }
 
+    @Override
+    public ProtocolServer getProtocolServer() {
+        return tcpServer;
+    }
+
+    @Override
+    public void init(Map<String, String> config) {
+        // tcpServer.init(config);
+    }
 }

@@ -28,6 +28,7 @@ import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.NetUtils;
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
+import org.lealone.db.DatabaseEngine;
 
 /**
  * The TCP server implements the native database server protocol.
@@ -40,7 +41,7 @@ import org.lealone.db.Constants;
  * @author H2 Group
  * @author zhh
  */
-public class TcpServer implements Server {
+public class TcpServer implements ProtocolServer {
 
     private static final int SHUTDOWN_NORMAL = 0;
     private static final int SHUTDOWN_FORCE = 1;
@@ -180,34 +181,31 @@ public class TcpServer implements Server {
     }
 
     @Override
-    public void init(String... args) {
-        for (int i = 0; args != null && i < args.length; i++) {
-            String a = args[i];
-            if (isOption(a, "-tcpListenAddress")) {
-                listenAddress = args[++i];
-            } else if (isOption(a, "-trace")) {
-                trace = true;
-            } else if (isOption(a, "-tcpSSL")) {
-                ssl = true;
-            } else if (isOption(a, "-tcpPort")) {
-                port = Integer.decode(args[++i]);
-            } else if (isOption(a, "-tcpPassword")) {
-                managementPassword = args[++i];
-            } else if (isOption(a, "-baseDir")) {
-                baseDir = args[++i];
-            } else if (isOption(a, "-key")) {
-                key = args[++i];
-                keyDatabase = args[++i];
-            } else if (isOption(a, "-tcpAllowOthers")) {
-                allowOthers = true;
-            } else if (isOption(a, "-tcpDaemon")) {
-                isDaemon = true;
-            } else if (isOption(a, "-ifExists")) {
-                ifExists = true;
-            } else {
-                throw DbException.getUnsupportedException("unsupported tcp server option: " + a);
-            }
+    public void init(Map<String, String> config) { // TODO 对于不支持的参数直接报错
+        if (config.containsKey("listen_address"))
+            listenAddress = config.get("listen_address");
+        if (config.containsKey("listen_port"))
+            port = Integer.parseInt(config.get("listen_port"));
+
+        baseDir = config.get("base_dir");
+        if (config.containsKey("key")) {
+            String[] keyAndDatabase = config.get("key").split(",");
+            if (keyAndDatabase.length != 2)
+                throw new IllegalArgumentException("Invalid key parameter, usage: 'key: v1,v2'.");
+            key = keyAndDatabase[0];
+            keyDatabase = keyAndDatabase[1];
         }
+
+        trace = Boolean.parseBoolean(config.get("trace"));
+        ssl = Boolean.parseBoolean(config.get("ssl"));
+        allowOthers = Boolean.parseBoolean(config.get("allow_others"));
+        isDaemon = Boolean.parseBoolean(config.get("daemon"));
+        ifExists = Boolean.parseBoolean(config.get("if_exists"));
+
+        if (config.containsKey("password"))
+            managementPassword = config.get("password");
+
+        DatabaseEngine.setHostAndPort(listenAddress, port); // 用于集群之间通信
 
         initManagementDb();
     }

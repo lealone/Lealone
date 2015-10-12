@@ -17,11 +17,15 @@
  */
 package org.lealone.storage;
 
+import java.util.Map;
+
 import org.lealone.common.message.DbException;
 
 public abstract class StorageEngineBase implements StorageEngine {
 
     protected final String name;
+
+    protected Map<String, String> config;
 
     public StorageEngineBase(String name) {
         this.name = name;
@@ -32,6 +36,11 @@ public abstract class StorageEngineBase implements StorageEngine {
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override
+    public void init(Map<String, String> config) {
+        this.config = config;
     }
 
     @Override

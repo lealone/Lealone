@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Joiner;
 
-public class Utils {
+public class Utils extends org.lealone.common.util.Utils {
     private static final Logger logger = LoggerFactory.getLogger(Utils.class);
     private static final BigInteger TWO = new BigInteger("2");
 

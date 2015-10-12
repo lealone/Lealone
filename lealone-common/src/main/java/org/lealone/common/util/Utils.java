@@ -75,7 +75,7 @@ public class Utils {
         }
     }
 
-    private Utils() {
+    protected Utils() {
         // utility class
     }
 
@@ -329,6 +329,7 @@ public class Utils {
             if (SysProperties.USE_THREAD_CONTEXT_CLASS_LOADER) {
                 final ClassLoader loader = Thread.currentThread().getContextClassLoader();
                 is = new ObjectInputStream(in) {
+                    @Override
                     protected Class<?> resolveClass(ObjectStreamClass desc) throws IOException, ClassNotFoundException {
                         try {
                             return Class.forName(desc.getName(), true, loader);

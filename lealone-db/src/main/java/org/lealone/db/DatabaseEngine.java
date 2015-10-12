@@ -26,9 +26,6 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
-import org.lealone.sql.SQLEngineManager;
-import org.lealone.storage.StorageEngineManager;
-import org.lealone.transaction.TransactionEngineManager;
 
 /**
  * The engine contains a map of all open databases.
@@ -45,6 +42,10 @@ public class DatabaseEngine implements SessionFactory {
         return hostAndPort;
     }
 
+    public static void setHostAndPort(String host, int port) {
+        hostAndPort = host + ":" + port;
+    }
+
     public static DatabaseEngine getInstance() {
         return INSTANCE;
     }
@@ -54,11 +55,7 @@ public class DatabaseEngine implements SessionFactory {
     }
 
     public static synchronized void init(String host, int port) {
-        hostAndPort = host + ":" + port;
-
-        StorageEngineManager.getInstance().init();
-        SQLEngineManager.getInstance().init();
-        TransactionEngineManager.getInstance().init();
+        setHostAndPort(host, port);
         SystemDatabase.init();
 
         for (String dbName : SystemDatabase.findAll())

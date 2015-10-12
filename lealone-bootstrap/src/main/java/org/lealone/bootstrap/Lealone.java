@@ -18,11 +18,11 @@
 package org.lealone.bootstrap;
 
 import java.util.List;
+import java.util.Map;
 
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.config.TransportServerOptions;
-import org.lealone.cluster.config.TransportServerOptions.TcpServerOptions;
+import org.lealone.cluster.config.PluggableEngineDef;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.router.P2PRouter;
 import org.lealone.cluster.service.StorageService;
@@ -30,14 +30,22 @@ import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.WrappedRunnable;
 import org.lealone.db.Constants;
 import org.lealone.db.DatabaseEngine;
+import org.lealone.db.PluggableEngine;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
-import org.lealone.server.Server;
-import org.lealone.server.TcpServer;
+import org.lealone.server.ProtocolServer;
+import org.lealone.server.ProtocolServerEngine;
+import org.lealone.server.ProtocolServerEngineManager;
 import org.lealone.sql.RouterHolder;
+import org.lealone.sql.SQLEngine;
+import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.router.LocalRouter;
 import org.lealone.sql.router.Router;
 import org.lealone.sql.router.TransactionalRouter;
+import org.lealone.storage.StorageEngine;
+import org.lealone.storage.StorageEngineManager;
+import org.lealone.transaction.TransactionEngine;
+import org.lealone.transaction.TransactionEngineManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +73,7 @@ public class Lealone {
             logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
 
         initBaseDir();
+        initPluggableEngines();
         initDatabaseEngine();
         initRouter();
     }
@@ -78,21 +87,101 @@ public class Lealone {
     }
 
     private static void initDatabaseEngine() {
-        String host = null;
-        Integer port = null;
+        String host = config.listen_address;
+        Integer port = config.listen_port;
 
-        if (config.tcp_server_options != null) {
-            host = config.tcp_server_options.listen_address;
-            port = config.tcp_server_options.port;
-        }
         if (host == null)
-            host = config.listen_address;
-        if (host == null)
-            host = Constants.DEFAULT_HOST;
+            config.listen_address = host = Constants.DEFAULT_HOST;
         if (port == null)
-            port = Constants.DEFAULT_TCP_PORT;
+            config.listen_port = port = Constants.DEFAULT_TCP_PORT;
 
         DatabaseEngine.init(host, port.intValue());
+    }
+
+    // 初始化顺序storage -> transaction -> sql -> protocol
+    private static void initPluggableEngines() {
+        List<PluggableEngineDef> pluggable_engines = config.storage_engines;
+        if (pluggable_engines != null) {
+            for (PluggableEngineDef def : pluggable_engines) {
+                if (def.enabled) {
+                    StorageEngine se = StorageEngineManager.getInstance().getEngine(def.name);
+                    if (se == null) {
+                        try {
+                            Class<?> clz = Utils.loadUserClass(def.name);
+                            se = (StorageEngine) clz.newInstance();
+                            StorageEngineManager.getInstance().registerEngine(se, clz.getName());
+                        } catch (Exception e) {
+                            throw new ConfigurationException("StorageEngine '" + def.name + "' can not found");
+                        }
+                    }
+                    initPluggableEngine(se, def);
+                }
+            }
+        }
+        pluggable_engines = config.transaction_engines;
+        if (pluggable_engines != null) {
+            for (PluggableEngineDef def : pluggable_engines) {
+                if (def.enabled) {
+                    TransactionEngine te = TransactionEngineManager.getInstance().getEngine(def.name);
+                    if (te == null) {
+                        try {
+                            Class<?> clz = Utils.loadUserClass(def.name);
+                            te = (TransactionEngine) clz.newInstance();
+                            TransactionEngineManager.getInstance().registerEngine(te, clz.getName());
+                        } catch (Exception e) {
+                            throw new ConfigurationException("TransactionEngine '" + def.name + "' can not found");
+                        }
+                    }
+                    if (config.isClusterMode())
+                        def.getParameters().put("is_cluster_mode", "true");
+                    initPluggableEngine(te, def);
+                }
+            }
+        }
+        pluggable_engines = config.sql_engines;
+        if (pluggable_engines != null) {
+            for (PluggableEngineDef def : pluggable_engines) {
+                if (def.enabled) {
+                    SQLEngine se = SQLEngineManager.getInstance().getEngine(def.name);
+                    if (se == null) {
+                        try {
+                            Class<?> clz = Utils.loadUserClass(def.name);
+                            se = (SQLEngine) clz.newInstance();
+                            SQLEngineManager.getInstance().registerEngine(se, clz.getName());
+                        } catch (Exception e) {
+                            throw new ConfigurationException("SQLEngine '" + def.name + "' can not found");
+                        }
+                    }
+                    initPluggableEngine(se, def);
+                }
+            }
+        }
+
+        pluggable_engines = config.protocol_server_engines;
+        if (pluggable_engines != null) {
+            for (PluggableEngineDef def : pluggable_engines) {
+                if (def.enabled) {
+                    ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
+                    if (pse == null) {
+                        try {
+                            Class<?> clz = Utils.loadUserClass(def.name);
+                            pse = (ProtocolServerEngine) clz.newInstance();
+                            ProtocolServerEngineManager.getInstance().registerEngine(pse, clz.getName());
+                        } catch (Exception e) {
+                            throw new ConfigurationException("ProtocolServerEngine '" + def.name + "' can not found");
+                        }
+                    }
+                    initPluggableEngine(pse, def);
+                }
+            }
+        }
+    }
+
+    private static void initPluggableEngine(PluggableEngine pe, PluggableEngineDef def) {
+        if (!def.getParameters().containsKey("base_dir"))
+            def.getParameters().put("base_dir", config.base_dir);
+
+        pe.init(def.getParameters());
     }
 
     private static void initRouter() {
@@ -106,11 +195,7 @@ public class Lealone {
         if (config.isClusterMode())
             startClusterServer();
 
-        startTcpServer();
-
-        // TODO 动态启动支持其他协议的server
-        // if (config.pg_server_options != null && config.pg_server_options.enabled)
-        // startPgServer();
+        startProtocolServers();
     }
 
     private static void startClusterServer() throws Exception {
@@ -118,36 +203,39 @@ public class Lealone {
         StorageService.instance.start();
     }
 
-    private static void startTcpServer() throws Exception {
-        if (config.tcp_server_options == null) {
-            config.tcp_server_options = new TcpServerOptions();
-            logger.warn("Use default TcpServer options");
+    private static void startProtocolServers() throws Exception {
+        List<PluggableEngineDef> protocol_server_engines = config.protocol_server_engines;
+        if (protocol_server_engines != null) {
+            for (PluggableEngineDef def : protocol_server_engines) {
+                if (def.enabled) {
+                    ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
+                    ProtocolServer protocolServer = pse.getProtocolServer();
+                    startProtocolServer(protocolServer, def.getParameters());
+                }
+            }
         }
-        startTransportServer(new TcpServer(), "Tcp", config.tcp_server_options);
     }
 
-    // private static void startPgServer() throws Exception {
-    // startTransportServer(new PgServer(), "Pg", config.pg_server_options);
-    // }
-
-    private static void startTransportServer(final Server server, final String prefix, TransportServerOptions options)
+    private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters)
             throws Exception {
-        List<String> optionList = options.getOptions(config);
-        logger.info(prefix + "Server options: {}", optionList);
+        if (!parameters.containsKey("listen_address"))
+            parameters.put("listen_address", config.listen_address);
+        if (!parameters.containsKey("port"))
+            parameters.put("port", config.listen_port.toString());
 
-        server.init(optionList.toArray(new String[0]));
+        final String name = server.getName();
+        server.init(parameters);
         server.start();
 
         Thread t = new Thread(new WrappedRunnable() {
             @Override
             public void runMayThrow() throws Exception {
                 server.stop();
-                logger.info(prefix + "Server stopped");
+                logger.info(name + " stopped");
             }
-        }, prefix + "ServerShutdownHook");
+        }, name + "ShutdownHook");
         Runtime.getRuntime().addShutdownHook(t);
 
-        logger.info(prefix + "Server started, listen address: {}, port: {}", server.getListenAddress(),
-                server.getPort());
+        logger.info(name + " started, listen address: {}, port: {}", server.getListenAddress(), server.getPort());
     }
 }

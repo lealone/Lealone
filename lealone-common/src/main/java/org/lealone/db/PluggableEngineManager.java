@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.message.DbException;
 
-public class PluggableEngineManager<T extends PluggableEngine> {
+public abstract class PluggableEngineManager<T extends PluggableEngine> {
 
     private final Class<T> pluggableEngineClass;
 
@@ -35,32 +35,32 @@ public class PluggableEngineManager<T extends PluggableEngine> {
     }
 
     private final Map<String, T> pluggableEngines = new ConcurrentHashMap<>();
-    private boolean initialized = false;
+    private boolean loaded = false;
 
     public T getEngine(String name) {
         if (name == null)
             throw new NullPointerException("name is null");
-        if (!initialized)
-            init();
+        if (!loaded)
+            loadPluggableEngines();
         return pluggableEngines.get(name.toUpperCase());
     }
 
-    public void registerEngine(T pluggableEngine) {
+    public void registerEngine(T pluggableEngine, String... alias) {
         pluggableEngines.put(pluggableEngine.getName().toUpperCase(), pluggableEngine);
+        if (alias != null) {
+            for (String a : alias)
+                pluggableEngines.put(a.toUpperCase(), pluggableEngine);
+        }
     }
 
     public void deregisterEngine(T pluggableEngine) {
         pluggableEngines.remove(pluggableEngine.getName().toUpperCase());
     }
 
-    public synchronized void init() {
-        if (initialized)
+    private synchronized void loadPluggableEngines() {
+        if (loaded)
             return;
-        initialized = true;
-        loadPluggableEngines();
-    }
-
-    private void loadPluggableEngines() {
+        loaded = true;
         AccessController.doPrivileged(new PluggableEngineService());
     }
 

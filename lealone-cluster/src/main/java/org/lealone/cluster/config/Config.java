@@ -17,10 +17,10 @@
  */
 package org.lealone.cluster.config;
 
+import java.util.List;
+
 import org.lealone.cluster.config.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
-import org.lealone.cluster.config.TransportServerOptions.PgServerOptions;
-import org.lealone.cluster.config.TransportServerOptions.TcpServerOptions;
 
 /**
  * A class that contains configuration properties for the lealone node it runs within.
@@ -45,6 +45,7 @@ public class Config {
     public Integer storage_port = 6210;
     public Integer ssl_storage_port = 6211;
 
+    public Integer listen_port;
     public String listen_address;
     public String listen_interface;
     public Boolean listen_interface_prefer_ipv6 = false;
@@ -73,8 +74,10 @@ public class Config {
 
     public String base_dir;
 
-    public TcpServerOptions tcp_server_options = new TcpServerOptions();
-    public PgServerOptions pg_server_options;
+    public List<PluggableEngineDef> storage_engines;
+    public List<PluggableEngineDef> transaction_engines;
+    public List<PluggableEngineDef> sql_engines;
+    public List<PluggableEngineDef> protocol_server_engines;
 
     public RunMode run_mode = RunMode.cluster;
 

@@ -17,6 +17,8 @@
  */
 package org.lealone.sql;
 
+import java.util.Map;
+
 import org.lealone.db.Constants;
 import org.lealone.db.SessionInterface;
 
@@ -33,6 +35,10 @@ public class LealoneSQLEngine implements SQLEngine {
     @Override
     public String getName() {
         return Constants.DEFAULT_SQL_ENGINE_NAME;
+    }
+
+    @Override
+    public void init(Map<String, String> config) {
     }
 
     @Override

@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.TypeDescription;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.error.YAMLException;
 import org.yaml.snakeyaml.introspector.MissingProperty;
 import org.yaml.snakeyaml.introspector.Property;
@@ -95,18 +96,27 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
 
             logConfig(configBytes);
 
-            org.yaml.snakeyaml.constructor.Constructor constructor = new org.yaml.snakeyaml.constructor.Constructor(
-                    Config.class);
+            Constructor configConstructor = new Constructor(Config.class);
+
+            TypeDescription configDescription = new TypeDescription(Config.class);
+            configDescription.putListPropertyType("protocol_server_engines", PluggableEngineDef.class);
+            configConstructor.addTypeDescription(configDescription);
+
+            TypeDescription engineDesc = new TypeDescription(PluggableEngineDef.class);
+            engineDesc.putMapPropertyType("parameters", String.class, String.class);
+            configConstructor.addTypeDescription(engineDesc);
+
             TypeDescription seedDesc = new TypeDescription(SeedProviderDef.class);
             seedDesc.putMapPropertyType("parameters", String.class, String.class);
-            constructor.addTypeDescription(seedDesc);
+            configConstructor.addTypeDescription(seedDesc);
+
             TypeDescription replicationStrategyDesc = new TypeDescription(ReplicationStrategyDef.class);
             replicationStrategyDesc.putMapPropertyType("parameters", String.class, String.class);
-            constructor.addTypeDescription(replicationStrategyDesc);
+            configConstructor.addTypeDescription(replicationStrategyDesc);
 
             MissingPropertiesChecker propertiesChecker = new MissingPropertiesChecker();
-            constructor.setPropertyUtils(propertiesChecker);
-            Yaml yaml = new Yaml(constructor);
+            configConstructor.setPropertyUtils(propertiesChecker);
+            Yaml yaml = new Yaml(configConstructor);
             Config result = yaml.loadAs(new ByteArrayInputStream(configBytes), Config.class);
             propertiesChecker.check();
             return result;

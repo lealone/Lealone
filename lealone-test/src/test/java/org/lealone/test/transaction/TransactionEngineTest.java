@@ -17,6 +17,9 @@
  */
 package org.lealone.test.transaction;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.junit.Test;
 import org.lealone.db.Constants;
 import org.lealone.storage.Storage;
@@ -43,8 +46,10 @@ public class TransactionEngineTest extends UnitTestBase {
         storageBuilder.storageName(joinDirs("transaction-test", "data"));
         Storage storage = storageBuilder.openStorage();
 
-        System.setProperty("transaction.log.dir", joinDirs("transaction-test", "log"));
-        te.init(null);
+        Map<String, String> config = new HashMap<>();
+        config.put("base_dir", joinDirs("transaction-test"));
+        config.put("transaction_log_dir", "log");
+        te.init(config);
         Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap("test", storage);
         map.put("1", "a");

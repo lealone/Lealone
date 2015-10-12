@@ -5,11 +5,12 @@
  */
 package org.lealone.transaction;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.util.DataUtils;
@@ -85,14 +86,17 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      * in which case the store can only be used for reading.
      */
     @Override
-    public synchronized void init(Set<String> storageMapNames) {
+    public synchronized void init(Map<String, String> config) {
         if (init)
             return;
         init = true;
 
         LogStorageBuilder builder = new LogStorageBuilder();
         // TODO 指定LogStorageBuilder各类参数
-        builder.storageName(System.getProperty("transaction.log.dir", "transaction_log"));
+        String baseDir = config.get("base_dir");
+        String logDir = config.get("transaction_log_dir");
+        String storageName = baseDir + File.separator + logDir;
+        builder.storageName(storageName);
         logStorage = builder.open();
 
         // TODO 指定dataType，而不是用ObjectDataType
@@ -105,15 +109,17 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     "Undo map open with a different value type");
         }
 
-        // remove all temporary maps
-        if (storageMapNames != null) {
-            for (String mapName : storageMapNames) {
-                if (mapName.startsWith("temp.")) {
-                    StorageMap<Object, Integer> temp = openTempMap(mapName);
-                    temp.remove();
-                }
-            }
-        }
+        // TODO
+        // Set<String> storageMapNames = null;
+        // // remove all temporary maps
+        // if (storageMapNames != null) {
+        // for (String mapName : storageMapNames) {
+        // if (mapName.startsWith("temp.")) {
+        // StorageMap<Object, Integer> temp = openTempMap(mapName);
+        // temp.remove();
+        // }
+        // }
+        // }
         synchronized (undoLog) {
             if (undoLog.size() > 0) {
                 Long key = undoLog.firstKey();
@@ -123,6 +129,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
         TransactionStatusTable.init(logStorage);
 
+        isClusterMode = Boolean.parseBoolean(config.get("is_cluster_mode"));
         if (isClusterMode)
             TransactionValidator.getInstance().start();
     }

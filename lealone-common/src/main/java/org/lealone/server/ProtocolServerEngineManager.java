@@ -15,14 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.server;
 
-import java.util.Map;
+import org.lealone.db.PluggableEngineManager;
 
-public interface PluggableEngine {
+public class ProtocolServerEngineManager extends PluggableEngineManager<ProtocolServerEngine> {
 
-    String getName();
+    private static final ProtocolServerEngineManager instance = new ProtocolServerEngineManager();
 
-    void init(Map<String, String> config);
+    public static ProtocolServerEngineManager getInstance() {
+        return instance;
+    }
 
+    private ProtocolServerEngineManager() {
+        super(ProtocolServerEngine.class);
+    }
 }

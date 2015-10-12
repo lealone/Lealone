@@ -27,7 +27,10 @@ public abstract class MapPropertyTypeDef {
     public String class_name;
     public Map<String, String> parameters;
 
-    public MapPropertyTypeDef(LinkedHashMap<String, ?> p) {
+    public MapPropertyTypeDef() {
+    }
+
+    public MapPropertyTypeDef(Map<String, ?> p) {
         class_name = (String) p.get("class_name");
         List<?> list = (List<?>) p.get("parameters");
         Map<?, ?> map;
@@ -44,7 +47,7 @@ public abstract class MapPropertyTypeDef {
                 }
             }
         }
-        //这种方式有bug，取到的值有可能不是String类型
-        //parameters = (Map<String, String>) ((List<?>) p.get("parameters")).get(0);
+        // 这种方式有bug，取到的值有可能不是String类型
+        // parameters = (Map<String, String>) ((List<?>) p.get("parameters")).get(0);
     }
 }

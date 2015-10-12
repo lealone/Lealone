@@ -20,6 +20,70 @@ cluster_name: Test Cluster
 partitioner: org.lealone.cluster.dht.Murmur3Partitioner
 listen_address: 127.0.0.1
 
+storage_engines:
+    - name: AOSE
+      enabled: true
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+    - name: MVStore
+      enabled: false
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+      
+transaction_engines:
+    - name: MVCC
+      enabled: true
+      parameters: {
+          transaction_log_dir: "transaction_log", # ${base_dir} + "/"+ ${transaction_log_dir}
+      }
+
+sql_engines:
+    - name: Lealone
+      enabled: true
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+    - name: MySQL
+      enabled: false
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+    - name: PostgreSQL
+      enabled: false
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+      
+protocol_server_engines:
+    - name: org.lealone.server.TcpServerEngine
+      enabled: true
+      parameters: {
+          port: 5210,
+          trace: false,
+          allow_others: true,
+          daemon: false,
+          if_exists: false,
+          ssl: false,
+          # password: "test",
+          # key: "test,test"
+      }
+    - name: org.lealone.server.PgServerEngine
+      enabled: false
+      parameters: {
+          port: 5211,
+          trace: false,
+          allow_others: true,
+          daemon: false,
+          if_exists: false
+      }
+      
 seed_provider:
     - class_name: org.lealone.cluster.locator.SimpleSeedProvider
       parameters:

@@ -18,18 +18,74 @@ base_dir: lealone-test-data/cs
 listen_address: 127.0.0.1
 run_mode: client_server
 
-tcp_server_options:
-    trace: false
-    allow_others: true
-    daemon: false
-    if_exists: false
-    ssl: false
-#    password: test
-#    key: test,test
+storage_engines:
+    - name: AOSE
+      enabled: true
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+    - name: MVStore
+      enabled: false
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+      
+transaction_engines:
+    - name: MVCC
+      enabled: true
+      parameters: {
+          transaction_log_dir: "transaction_log", # ${base_dir} + "/"+ ${transaction_log_dir}
+      }
 
-pg_server_options:
-    enabled: false
-    trace: true
-    allow_others: true
-    daemon: false
-    if_exists: false
+sql_engines:
+    - name: Lealone
+      enabled: true
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+    - name: MySQL
+      enabled: false
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+    - name: PostgreSQL
+      enabled: false
+      parameters: {
+          # key1: "v1",
+          # key2: "v2",
+      }
+      
+protocol_server_engines:
+    - name: org.lealone.server.TcpServerEngine
+      enabled: true
+      parameters: {
+          port: 5210,
+          trace: false,
+          allow_others: true,
+          daemon: false,
+          if_exists: false,
+          ssl: false,
+          # password: "test",
+          # key: "test,test"
+      }
+    - name: org.lealone.server.PgServerEngine
+      enabled: false
+      parameters: {
+          port: 5211,
+          trace: false,
+          allow_others: true,
+          daemon: false,
+          if_exists: false
+      }
+
+
+
+
+
+
+
+

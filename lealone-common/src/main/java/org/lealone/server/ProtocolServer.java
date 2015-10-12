@@ -6,6 +6,7 @@
  */
 package org.lealone.server;
 
+import java.util.Map;
 
 /**
  * Classes implementing this interface usually provide a
@@ -16,14 +17,14 @@ package org.lealone.server;
  * @author H2 Group
  * @author zhh
  */
-public interface Server extends Runnable {
+public interface ProtocolServer extends Runnable {
 
     /**
-     * Initialize the server from command line options.
+     * Initialize the server
      *
-     * @param args the command line options
+     * @param config the config
      */
-    void init(String... args);
+    void init(Map<String, String> config);
 
     /**
      * Start the server. 
