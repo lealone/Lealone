@@ -10,9 +10,6 @@ import java.util.List;
 import org.lealone.db.Session;
 import org.lealone.db.result.Row;
 
-/**
- * An index that stores the data in an MVStore.
- */
 public interface StandardIndex extends Index {
 
     /**

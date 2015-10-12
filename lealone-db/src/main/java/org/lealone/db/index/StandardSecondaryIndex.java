@@ -29,24 +29,18 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableFilter;
 import org.lealone.storage.Storage;
-import org.lealone.storage.StorageEngine;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
-/**
- * A secondary index stored in a storage.
- */
 public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     private final StandardTable table;
     private final int keyColumns;
     private final String mapName;
     private final TransactionMap<Value, Value> dataMap;
-    private final StorageEngine storageEngine;
 
-    public StandardSecondaryIndex(StorageEngine storageEngine, Session session, StandardTable table, int id,
-            String indexName, IndexColumn[] columns, IndexType indexType) {
-        this.storageEngine = storageEngine;
+    public StandardSecondaryIndex(Session session, StandardTable table, int id, String indexName,
+            IndexColumn[] columns, IndexType indexType) {
         Database db = session.getDatabase();
         this.table = table;
         initIndexBase(table, id, indexName, columns, indexType);
@@ -65,7 +59,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         ValueDataType keyType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
 
-        Storage storage = database.getStorage(storageEngine);
+        Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         dataMap = transactionEngine.beginTransaction(false).openMap(mapName, table.getMapType(), keyType, valueType,
                 storage);
@@ -168,7 +162,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         ValueDataType keyType = new ValueDataType(database.getCompareMode(), database, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
 
-        Storage storage = database.getStorage(storageEngine);
+        Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false).openMap(mapName,
                 table.getMapType(), keyType, valueType, storage);

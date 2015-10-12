@@ -285,8 +285,8 @@ public class CreateTable extends SchemaCommand {
         this.sortedInsertMode = sortedInsertMode;
     }
 
-    public void setStorageEngine(String storageEngine) {
-        data.storageEngine = storageEngine;
+    public void setStorageEngineName(String storageEngineName) {
+        data.storageEngineName = storageEngineName;
     }
 
     public void setStorageEngineParams(Map<String, String> storageEngineParams) {

@@ -5520,9 +5520,9 @@ public class Parser implements SQLParser {
             // throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, storageEngine);
             // }
             // }
-            command.setStorageEngine(readUniqueIdentifier());
+            command.setStorageEngineName(readUniqueIdentifier());
         } else if (database.getSettings().defaultStorageEngine != null) {
-            command.setStorageEngine(database.getSettings().defaultStorageEngine);
+            command.setStorageEngineName(database.getSettings().defaultStorageEngine);
         }
         if (readIf("WITH")) {
             read("(");

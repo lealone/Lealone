@@ -28,13 +28,9 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableFilter;
 import org.lealone.storage.Storage;
-import org.lealone.storage.StorageEngine;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
-/**
- * A primary index stored in a storage.
- */
 public class StandardPrimaryIndex extends IndexBase {
 
     /**
@@ -58,10 +54,9 @@ public class StandardPrimaryIndex extends IndexBase {
     private long lastKey;
     private int mainIndexColumn = -1;
 
-    public StandardPrimaryIndex(StorageEngine storageEngine, Session session, StandardTable table, int id,
-            IndexColumn[] columns, IndexType indexType) {
-
-        initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
+    public StandardPrimaryIndex(Session session, StandardTable table) {
+        IndexColumn[] columns = IndexColumn.wrap(table.getColumns());
+        initIndexBase(table, table.getId(), table.getName() + "_DATA", columns, IndexType.createScan(true));
 
         this.table = table;
         int[] sortTypes = new int[columns.length];
@@ -72,7 +67,7 @@ public class StandardPrimaryIndex extends IndexBase {
         ValueDataType valueType = new ValueDataType(database.getCompareMode(), database, sortTypes);
         mapName = "table." + table.getName() + "." + getId();
 
-        Storage storage = database.getStorage(storageEngine);
+        Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         dataMap = transactionEngine.beginTransaction(false).openMap(mapName, table.getMapType(), keyType, valueType,
                 storage);

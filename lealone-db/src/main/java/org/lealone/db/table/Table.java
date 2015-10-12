@@ -100,7 +100,7 @@ public abstract class Table extends SchemaObjectBase {
     /**
      * The table engine used (null for regular tables).
      */
-    protected String storageEngine;
+    protected String storageEngineName;
 
     private final HashMap<String, Column> columnMap;
     private final boolean persistIndexes;
@@ -1162,8 +1162,8 @@ public abstract class Table extends SchemaObjectBase {
         return getColumn(columnName);
     }
 
-    public String getStorageEngine() {
-        return storageEngine;
+    public String getStorageEngineName() {
+        return storageEngineName;
     }
 
     public void addColumn(Column column) {

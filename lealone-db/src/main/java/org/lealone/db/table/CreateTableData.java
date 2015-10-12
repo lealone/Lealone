@@ -71,7 +71,7 @@ public class CreateTableData {
     /**
      * The storage engine to use for creating the table.
      */
-    public String storageEngine;
+    public String storageEngineName;
 
     /**
      * The storage engine parameters to use for creating the table.

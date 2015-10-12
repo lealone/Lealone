@@ -313,7 +313,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
         data.isHidden = table.isHidden();
         data.create = true;
         data.session = session;
-        data.storageEngine = table.getStorageEngine();
+        data.storageEngineName = table.getStorageEngineName();
         Table newTable = getSchema().createTable(data);
         newTable.setComment(table.getComment());
         StringBuilder buff = new StringBuilder();

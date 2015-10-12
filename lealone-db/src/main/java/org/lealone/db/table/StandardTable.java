@@ -43,9 +43,6 @@ import org.lealone.db.schema.SchemaObject;
 import org.lealone.storage.StorageEngine;
 import org.lealone.transaction.Transaction;
 
-/**
- * A standard table stored in a storage.
- */
 public class StandardTable extends TableBase {
 
     private final StandardPrimaryIndex primaryIndex;
@@ -98,8 +95,7 @@ public class StandardTable extends TableBase {
         } else
             mapType = null;
 
-        primaryIndex = new StandardPrimaryIndex(storageEngine, data.session, this, getId(),
-                IndexColumn.wrap(getColumns()), IndexType.createScan(true));
+        primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
     }
 
@@ -109,6 +105,10 @@ public class StandardTable extends TableBase {
 
     public String getMapType() {
         return mapType;
+    }
+
+    public StorageEngine getStorageEngine() {
+        return storageEngine;
     }
 
     @Override
@@ -420,7 +420,7 @@ public class StandardTable extends TableBase {
         Index index;
         int mainIndexColumn = getMainIndexColumn(indexType, cols);
         if (indexType.isDelegate()) {
-            index = createMVDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
+            index = createDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
         } else {
             if (database.isStarting()) {
                 if (database.getStorage(storageEngine).hasMap("index." + indexId)) {
@@ -430,7 +430,7 @@ public class StandardTable extends TableBase {
                 mainIndexColumn = -1;
             }
             if (mainIndexColumn != -1) {
-                index = createMVDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
+                index = createDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
             } else if (isGlobalUniqueIndex(session, indexType)) {
                 index = new GlobalUniqueIndex(session, this, indexId, indexName, cols, indexType);
                 containsGlobalUniqueIndex = true;
@@ -441,7 +441,7 @@ public class StandardTable extends TableBase {
                     index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
                 }
             } else {
-                index = new StandardSecondaryIndex(storageEngine, session, this, indexId, indexName, cols, indexType);
+                index = new StandardSecondaryIndex(session, this, indexId, indexName, cols, indexType);
             }
             if (index instanceof StandardIndex && index.needRebuild()) {
                 rebuildIndex(session, (StandardIndex) index, indexName);
@@ -467,7 +467,7 @@ public class StandardTable extends TableBase {
                                                                                                      // !session.isLocal();
     }
 
-    private StandardDelegateIndex createMVDelegateIndex(int indexId, String indexName, IndexType indexType,
+    private StandardDelegateIndex createDelegateIndex(int indexId, String indexName, IndexType indexType,
             int mainIndexColumn) {
         primaryIndex.setMainIndexColumn(mainIndexColumn);
         return new StandardDelegateIndex(this, indexId, indexName, primaryIndex, indexType);

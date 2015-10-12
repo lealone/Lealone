@@ -606,18 +606,18 @@ public class Schema extends DbObjectBase {
             data.schema = this;
 
             // 先看看是否在连接参数中指定了
-            if (data.storageEngine == null && data.session.getConnectionInfo() != null) {
-                data.storageEngine = data.session.getConnectionInfo().getDbSettings().defaultStorageEngine;
+            if (data.storageEngineName == null && data.session.getConnectionInfo() != null) {
+                data.storageEngineName = data.session.getConnectionInfo().getDbSettings().defaultStorageEngine;
             }
             // 再用默认的数据库参数
-            if (data.storageEngine == null) {
-                data.storageEngine = database.getStorageEngineName();
+            if (data.storageEngineName == null) {
+                data.storageEngineName = database.getStorageEngineName();
             }
-            if (data.storageEngine != null) {
-                StorageEngine engine = StorageEngineManager.getInstance().getEngine(data.storageEngine);
+            if (data.storageEngineName != null) {
+                StorageEngine engine = StorageEngineManager.getInstance().getEngine(data.storageEngineName);
                 if (engine == null) {
                     try {
-                        engine = (StorageEngine) Utils.loadUserClass(data.storageEngine).newInstance();
+                        engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName).newInstance();
                         StorageEngineManager.getInstance().registerEngine(engine);
                     } catch (Exception e) {
                         throw DbException.convert(e);
