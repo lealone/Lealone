@@ -170,7 +170,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     private V set(K key, V value) {
         transaction.checkNotClosed();
         V old = get(key);
-        boolean ok = trySet(key, value, false);
+        boolean ok = trySet(key, value);
         if (ok) {
             return old;
         }
@@ -187,7 +187,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * @return whether the entry could be removed
      */
     public boolean tryRemove(K key) {
-        return trySet(key, null, false);
+        return trySet(key, null);
     }
 
     /**
@@ -202,7 +202,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      */
     public boolean tryPut(K key, V value) {
         DataUtils.checkArgument(value != null, "The value may not be null");
-        return trySet(key, value, false);
+        return trySet(key, value);
     }
 
     /**
@@ -212,34 +212,11 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      *
      * @param key the key
      * @param value the new value (null to remove the value)
-     * @param onlyIfUnchanged only set the value if it was not changed (by
-     *            this or another transaction) since the map was opened
      * @return true if the value was set, false if there was a concurrent
      *         update
      */
-    public boolean trySet(K key, V value, boolean onlyIfUnchanged) {
+    public boolean trySet(K key, V value) {
         VersionedValue current = map.get(key);
-        if (onlyIfUnchanged) {
-            VersionedValue old = getValue(key, readLogId);
-            if (!map.areValuesEqual(old, current)) {
-                long tx = MVCCTransactionEngine.getTransactionId(current.operationId);
-                if (tx == transaction.transactionId) {
-                    if (value == null) {
-                        // ignore removing an entry
-                        // if it was added or changed
-                        // in the same statement
-                        return true;
-                    } else if (current.value == null) {
-                        // add an entry that was removed
-                        // in the same statement
-                    } else {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            }
-        }
         VersionedValue newValue = new VersionedValue();
         newValue.operationId = MVCCTransactionEngine.getOperationId(transaction.transactionId, transaction.logId);
         newValue.value = value;
@@ -284,7 +261,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             boolean isValid = transaction.transactionEngine.validateTransaction(tx, transaction);
             if (isValid) {
                 transaction.transactionEngine.commitAfterValidate(tx);
-                return trySet(key, value, onlyIfUnchanged);
+                return trySet(key, value);
             }
         }
         // the transaction is not yet committed
@@ -548,6 +525,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public void remove() {
         map.remove();
+        transaction.transactionEngine.removeMap(this.getId());
     }
 
     @Override

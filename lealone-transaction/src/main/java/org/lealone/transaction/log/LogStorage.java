@@ -17,10 +17,7 @@
  */
 package org.lealone.transaction.log;
 
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -40,9 +37,7 @@ public class LogStorage {
 
     private static final CopyOnWriteArrayList<LogMap<?, ?>> logMaps = new CopyOnWriteArrayList<>();
 
-    private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Integer> ids = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Integer, String> names = new ConcurrentHashMap<>();
     private final Map<String, Object> config;
     private final LogStorageBackgroundThread backgroundThread;
 
@@ -50,24 +45,21 @@ public class LogStorage {
 
     LogStorage(Map<String, Object> config) {
         this.config = config;
-        if (!config.containsKey("inMemory")) {
-            String storageName = (String) config.get("storageName");
-            if (storageName != null) {
-                if (!FileUtils.exists(storageName))
-                    FileUtils.createDirectories(storageName);
+        String storageName = (String) config.get("storageName");
+        if (storageName != null) {
+            if (!FileUtils.exists(storageName))
+                FileUtils.createDirectories(storageName);
 
-                FilePath dir = FilePath.get(storageName);
-                for (FilePath fp : dir.newDirectoryStream()) {
-                    String mapFullName = fp.getName();
-                    int mapIdStartPos = mapFullName.lastIndexOf(MAP_NAME_ID_SEPARATOR);
-                    if (mapIdStartPos > 0) {
-                        String mapName = mapFullName.substring(0, mapIdStartPos);
-                        int mapId = Integer.parseInt(mapFullName.substring(mapIdStartPos + 1));
-                        if (mapId > lastMapId)
-                            lastMapId = mapId;
-                        ids.put(mapName, mapId);
-                        names.put(mapId, mapName);
-                    }
+            FilePath dir = FilePath.get(storageName);
+            for (FilePath fp : dir.newDirectoryStream()) {
+                String mapFullName = fp.getName();
+                int mapIdStartPos = mapFullName.lastIndexOf(MAP_NAME_ID_SEPARATOR);
+                if (mapIdStartPos > 0) {
+                    String mapName = mapFullName.substring(0, mapIdStartPos);
+                    int mapId = Integer.parseInt(mapFullName.substring(mapIdStartPos + 1));
+                    if (mapId > lastMapId)
+                        lastMapId = mapId;
+                    ids.put(mapName, mapId);
                 }
             }
         }
@@ -75,37 +67,25 @@ public class LogStorage {
         backgroundThread = new LogStorageBackgroundThread(this);
     }
 
-    public <K, V> LogMap<K, V> openBufferedMap(String name, DataType keyType, DataType valueType) {
+    public <K, V> LogMap<K, V> openLogMap(String name, DataType keyType, DataType valueType) {
         LogMap<K, V> m = new LogMap<>(++lastMapId, name, keyType, valueType, config);
         logMaps.add(m);
         return m;
     }
 
-    public String getMapName(int id) {
-        return names.get(id);
-    }
-
     public synchronized void close() {
         backgroundThread.close();
 
-        for (StorageMap<?, ?> map : maps.values())
+        for (StorageMap<?, ?> map : logMaps)
             map.close();
 
-        maps.clear();
+        logMaps.clear();
         ids.clear();
     }
 
     public synchronized void commit() {
-        for (StorageMap<?, ?> map : maps.values())
+        for (StorageMap<?, ?> map : logMaps)
             map.save();
-    }
-
-    public Set<String> getMapNames() {
-        return new HashSet<String>(maps.keySet());
-    }
-
-    public Collection<StorageMap<?, ?>> getMaps() {
-        return maps.values();
     }
 
     private static class LogStorageBackgroundThread extends Thread {

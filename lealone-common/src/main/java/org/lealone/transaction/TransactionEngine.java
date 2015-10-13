@@ -23,11 +23,8 @@ public interface TransactionEngine extends PluggableEngine {
 
     Transaction beginTransaction(boolean autoCommit);
 
-    void close();
-
     boolean validateTransaction(String localTransactionName);
 
-    // void init(Set<String> storageMapNames);
+    void close();
 
-    <K, V> void removeMap(TransactionMap<K, V> map);
 }

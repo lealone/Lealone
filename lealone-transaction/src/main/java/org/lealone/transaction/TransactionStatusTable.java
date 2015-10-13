@@ -50,8 +50,7 @@ class TransactionStatusTable {
 
     static synchronized void init(LogStorage logStorage) {
         if (map == null) {
-            String mapName = MVCCTransactionEngine.getMapName("transactionStatusTable");
-            map = logStorage.openBufferedMap(mapName, new ObjectDataType(), new ObjectDataType());
+            map = logStorage.openLogMap("transactionStatusTable", new ObjectDataType(), new ObjectDataType());
         }
     }
 

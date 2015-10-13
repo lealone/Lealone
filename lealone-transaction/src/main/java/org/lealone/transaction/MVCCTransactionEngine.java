@@ -7,10 +7,10 @@ package org.lealone.transaction;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.util.DataUtils;
@@ -28,9 +28,20 @@ import org.lealone.transaction.log.LogStorageBuilder;
  */
 public class MVCCTransactionEngine extends TransactionEngineBase {
 
-    public MVCCTransactionEngine() {
-        super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-    }
+    private final ConcurrentHashMap<Integer, StorageMap<Object, VersionedValue>> maps = new ConcurrentHashMap<>();
+    private final AtomicInteger lastTransactionId = new AtomicInteger();
+    private int maxTransactionId = 0xffff;
+
+    /**
+     * The next id of a temporary map.
+     */
+    private int nextTempMapId;
+
+    private boolean init;
+    private boolean isClusterMode;
+    String hostAndPort;
+
+    private LogStorage logStorage;
 
     /**
      * The undo log.
@@ -44,38 +55,20 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      */
     LogMap<Long, Object[]> undoLog;
 
-    /**
-     * The map of maps.
-     */
-    private final HashMap<Integer, StorageMap<Object, VersionedValue>> maps = New.hashMap();
-
-    private DataType dataType;
-
-    private boolean init;
-
-    private final AtomicInteger lastTransactionId = new AtomicInteger();
-
-    private int maxTransactionId = 0xffff;
-
-    /**
-     * The next id of a temporary map.
-     */
-    private int nextTempMapId;
-
-    String hostAndPort;
-
-    private boolean isClusterMode;
-
-    private LogStorage logStorage;
-
-    /**
-     * Create a new transaction engine.
-     *
-     * @param dataType the data type for map keys and values
-     */
-    public MVCCTransactionEngine(DataType dataType) {
+    public MVCCTransactionEngine() {
         super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-        this.dataType = dataType;
+    }
+
+    StorageMap<Object, VersionedValue> getMap(int mapId) {
+        return maps.get(mapId);
+    }
+
+    void addMap(StorageMap<Object, VersionedValue> map) {
+        maps.put(map.getId(), map);
+    }
+
+    void removeMap(int mapId) {
+        maps.remove(mapId);
     }
 
     /**
@@ -88,6 +81,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (init)
             return;
         init = true;
+        isClusterMode = Boolean.parseBoolean(config.get("is_cluster_mode"));
+        hostAndPort = config.get("host_and_port");
 
         LogStorageBuilder builder = new LogStorageBuilder();
         // TODO 指定LogStorageBuilder各类参数
@@ -97,11 +92,13 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         builder.storageName(storageName);
         logStorage = builder.open();
 
-        // TODO 指定dataType，而不是用ObjectDataType
+        // undoLog中存放的是所有事务的事务日志，
+        // 就算是在同一个事务中也可能涉及同一个数据库中的多个表甚至多个数据库的多个表，
+        // 所以要序列化数据，只能用ObjectDataType
         VersionedValueType oldValueType = new VersionedValueType(new ObjectDataType());
         ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), new ObjectDataType(),
                 oldValueType });
-        undoLog = logStorage.openBufferedMap(getMapName("undoLog"), new ObjectDataType(), undoLogValueType);
+        undoLog = logStorage.openLogMap("undoLog", new ObjectDataType(), undoLogValueType);
         if (undoLog.getValueType() != undoLogValueType) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
                     "Undo map open with a different value type");
@@ -109,28 +106,14 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
         initTransactions();
 
-        // TODO
-        // Set<String> storageMapNames = null;
-        // // remove all temporary maps
-        // if (storageMapNames != null) {
-        // for (String mapName : storageMapNames) {
-        // if (mapName.startsWith("temp.")) {
-        // StorageMap<Object, Integer> temp = openTempMap(mapName);
-        // temp.remove();
-        // }
-        // }
-        // }
-        synchronized (undoLog) {
-            if (undoLog.size() > 0) {
-                Long key = undoLog.firstKey();
-                lastTransactionId.set(getTransactionId(key));
-            }
-        }
+        Long key = undoLog.firstKey();
+        if (key != null)
+            lastTransactionId.set(getTransactionId(key));
+
+        // TODO 在这里删除logStorage中的临时表
 
         TransactionStatusTable.init(logStorage);
 
-        hostAndPort = config.get("host_and_port");
-        isClusterMode = Boolean.parseBoolean(config.get("is_cluster_mode"));
         if (isClusterMode)
             TransactionValidator.getInstance().start();
     }
@@ -140,53 +123,10 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         for (Transaction t : list) {
             if (t.getStatus() == Transaction.STATUS_COMMITTING) {
                 t.commit();
+            } else {
+                t.rollback();
             }
         }
-    }
-
-    /**
-     * Set the maximum transaction id, after which ids are re-used. If the old
-     * transaction is still in use when re-using an old id, the new transaction
-     * fails.
-     *
-     * @param max the maximum id
-     */
-    public void setMaxTransactionId(int max) {
-        this.maxTransactionId = max;
-    }
-
-    /**
-     * Combine the transaction id and the log id to an operation id.
-     *
-     * @param transactionId the transaction id
-     * @param logId the log id
-     * @return the operation id
-     */
-    static long getOperationId(int transactionId, long logId) {
-        DataUtils.checkArgument(transactionId >= 0 && transactionId < (1 << 24), "Transaction id out of range: {0}",
-                transactionId);
-        DataUtils.checkArgument(logId >= 0 && logId < (1L << 40), "Transaction log id out of range: {0}", logId);
-        return ((long) transactionId << 40) | logId;
-    }
-
-    /**
-     * Get the transaction id for the given operation id.
-     *
-     * @param operationId the operation id
-     * @return the transaction id
-     */
-    static int getTransactionId(long operationId) {
-        return (int) (operationId >>> 40);
-    }
-
-    /**
-     * Get the log id for the given operation id.
-     *
-     * @param operationId the operation id
-     * @return the log id
-     */
-    static long getLogId(long operationId) {
-        return operationId & ((1L << 40) - 1);
     }
 
     /**
@@ -195,25 +135,45 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      * @return the list of transactions (sorted by id)
      */
     private List<Transaction> getOpenTransactions() {
-        synchronized (undoLog) {
-            ArrayList<Transaction> list = New.arrayList();
-            Long key = undoLog.firstKey();
-            while (key != null) {
-                int transactionId = getTransactionId(key);
-                key = undoLog.lowerKey(getOperationId(transactionId + 1, 0));
-                long logId = getLogId(key) + 1;
-                int status;
-                if (undoLog.containsKey(getOperationId(transactionId, 0))) {
-                    status = MVCCTransaction.STATUS_OPEN;
-                } else {
-                    status = MVCCTransaction.STATUS_COMMITTING;
-                }
-                MVCCTransaction t = new MVCCTransaction(this, transactionId, status, logId);
-                list.add(t);
-                key = undoLog.ceilingKey(getOperationId(transactionId + 1, 0));
+        ArrayList<Transaction> list = New.arrayList();
+        Long key = undoLog.firstKey();
+        while (key != null) {
+            int transactionId = getTransactionId(key);
+            key = undoLog.lowerKey(getOperationId(transactionId + 1, 0));
+            long logId = getLogId(key) + 1;
+            int status;
+            if (undoLog.containsKey(getOperationId(transactionId, 0))) {
+                status = MVCCTransaction.STATUS_OPEN;
+            } else {
+                status = MVCCTransaction.STATUS_COMMITTING;
             }
-            return list;
+            MVCCTransaction t = new MVCCTransaction(this, transactionId, status, logId);
+            list.add(t);
+            key = undoLog.ceilingKey(getOperationId(transactionId + 1, 0));
         }
+        return list;
+    }
+
+    /**
+     * Begin a new transaction.
+     *
+     * @return the transaction
+     */
+    @Override
+    public MVCCTransaction beginTransaction(boolean autoCommit) {
+        if (!init) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
+        }
+        int tid = nextTransactionId(autoCommit);
+        MVCCTransaction t = new MVCCTransaction(this, tid, MVCCTransaction.STATUS_OPEN, 0);
+        t.setAutoCommit(autoCommit);
+        return t;
+    }
+
+    @Override
+    public void close() {
+        if (isClusterMode)
+            TransactionValidator.getInstance().close();
     }
 
     private int nextTransactionId(boolean autoCommit) {
@@ -266,26 +226,48 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     /**
-     * Begin a new transaction.
+     * Set the maximum transaction id, after which ids are re-used. If the old
+     * transaction is still in use when re-using an old id, the new transaction
+     * fails.
      *
-     * @return the transaction
+     * @param max the maximum id
      */
-    @Override
-    public MVCCTransaction beginTransaction(boolean autoCommit) {
-        if (!init) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
-        }
-        int tid = nextTransactionId(autoCommit);
-        MVCCTransaction t = new MVCCTransaction(this, tid, MVCCTransaction.STATUS_OPEN, 0);
-        t.setAutoCommit(autoCommit);
-        return t;
+    public void setMaxTransactionId(int max) {
+        this.maxTransactionId = max;
     }
 
-    @Override
-    public void close() {
-        // store.commit();
-        if (isClusterMode)
-            TransactionValidator.getInstance().close();
+    /**
+     * Combine the transaction id and the log id to an operation id.
+     *
+     * @param transactionId the transaction id
+     * @param logId the log id
+     * @return the operation id
+     */
+    static long getOperationId(int transactionId, long logId) {
+        DataUtils.checkArgument(transactionId >= 0 && transactionId < (1 << 24), "Transaction id out of range: {0}",
+                transactionId);
+        DataUtils.checkArgument(logId >= 0 && logId < (1L << 40), "Transaction log id out of range: {0}", logId);
+        return ((long) transactionId << 40) | logId;
+    }
+
+    /**
+     * Get the transaction id for the given operation id.
+     *
+     * @param operationId the operation id
+     * @return the transaction id
+     */
+    static int getTransactionId(long operationId) {
+        return (int) (operationId >>> 40);
+    }
+
+    /**
+     * Get the log id for the given operation id.
+     *
+     * @param operationId the operation id
+     * @return the log id
+     */
+    static long getLogId(long operationId) {
+        return operationId & ((1L << 40) - 1);
     }
 
     /**
@@ -317,7 +299,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      * @param t the transaction
      * @param logId the log id
      */
-    public void logUndo(MVCCTransaction t, long logId) {
+    void logUndo(MVCCTransaction t, long logId) {
         Long undoKey = getOperationId(t.transactionId, logId);
         synchronized (undoLog) {
             Object[] old = undoLog.remove(undoKey);
@@ -329,30 +311,12 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     /**
-     * Remove the given map.
-     *
-     * @param <K> the key type
-     * @param <V> the value type
-     * @param map the map
-     */
-    @Override
-    public synchronized <K, V> void removeMap(TransactionMap<K, V> map) {
-        maps.remove(map.getId());
-        map.remove();
-        // store.removeMap(map.map);
-    }
-
-    /**
      * Commit a transaction.
      *
      * @param t the transaction
      * @param maxLogId the last log id
      */
     void commit(MVCCTransaction t, long maxLogId) {
-        // if (store.isClosed()) {
-        // return;
-        // }
-
         // 分布式事务推迟删除undoLog
         if (t.transactionId % 2 == 0) {
             removeUndoLog(t.transactionId, maxLogId);
@@ -361,11 +325,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         endTransaction(t);
     }
 
-    public void commitAfterValidate(int tid) {
-        // if (store.isClosed()) {
-        // return;
-        // }
-
+    void commitAfterValidate(int tid) {
         removeUndoLog(tid, Long.MAX_VALUE);
     }
 
@@ -385,7 +345,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     continue;
                 }
                 int mapId = (Integer) op[0];
-                StorageMap<Object, VersionedValue> map = openMap(mapId);
+                StorageMap<Object, VersionedValue> map = getMap(mapId);
                 if (map == null) {
                     // map was later removed
                 } else {
@@ -406,79 +366,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 undoLog.remove(undoKey);
             }
         }
-    }
-
-    /**
-     * Open the map with the given name.
-     *
-     * @param <K> the key type
-     * @param name the map name
-     * @param keyType the key type
-     * @param valueType the value type
-     * @return the map
-     */
-    // synchronized <K> StorageMap<K, VersionedValue> openMap(String name, DataType keyType, DataType valueType) {
-    // if (keyType == null) {
-    // keyType = new ObjectDataType();
-    // }
-    // if (valueType == null) {
-    // valueType = new ObjectDataType();
-    // }
-    // VersionedValueType vt = new VersionedValueType(valueType);
-    // StorageMap<K, VersionedValue> map;
-    // map = logStorage.openBTreeMap(name, keyType, vt);
-    //
-    // @SuppressWarnings("unchecked")
-    // StorageMap<Object, VersionedValue> m = (StorageMap<Object, VersionedValue>) map;
-    // maps.put(map.getId(), m);
-    // return map;
-    // }
-
-    /**
-     * Open the map with the given id.
-     *
-     * @param mapId the id
-     * @return the map
-     */
-    synchronized StorageMap<Object, VersionedValue> openMap(int mapId) {
-        return maps.get(mapId);
-        // StorageMap<Object, VersionedValue> map = maps.get(mapId);
-        // if (map != null) {
-        // return map;
-        // }
-        // String mapName = logStorage.getMapName(mapId);
-        // if (mapName == null) {
-        // // the map was removed later on
-        // return null;
-        // }
-        // VersionedValueType vt = new VersionedValueType(dataType);
-        // map = logStorage.openBTreeMap(mapName, dataType, vt);
-        // maps.put(mapId, map);
-        // return map;
-    }
-
-    void addMap(StorageMap<Object, VersionedValue> map) {
-        maps.put(map.getId(), map);
-    }
-
-    /**
-     * Create a temporary map. Such maps are removed when opening the store.
-     *
-     * @return the map
-     */
-    synchronized StorageMap<Object, Integer> createTempMap() {
-        String mapName = "temp." + nextTempMapId++;
-        return openTempMap(mapName);
-    }
-
-    /**
-     * Open a temporary map.
-     *
-     * @param mapName the map name
-     * @return the map
-     */
-    StorageMap<Object, Integer> openTempMap(String mapName) {
-        return logStorage.openBufferedMap(mapName, dataType, null);
     }
 
     /**
@@ -528,7 +415,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     continue;
                 }
                 int mapId = ((Integer) op[0]).intValue();
-                StorageMap<Object, VersionedValue> map = openMap(mapId);
+                StorageMap<Object, VersionedValue> map = getMap(mapId);
                 if (map != null) {
                     Object key = op[1];
                     VersionedValue oldValue = (VersionedValue) op[2];
@@ -545,6 +432,41 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         }
     }
 
+    void commitTransactionStatusTable(MVCCTransaction t, String allLocalTransactionNames) {
+        t.setCommitTimestamp(nextOddTransactionId());
+        TransactionStatusTable.commit(t, allLocalTransactionNames);
+        TransactionValidator.enqueue(t, allLocalTransactionNames);
+    }
+
+    boolean validateTransaction(int tid, MVCCTransaction currentTransaction) {
+        return TransactionStatusTable.validateTransaction(hostAndPort, tid, currentTransaction);
+    }
+
+    @Override
+    public boolean validateTransaction(String localTransactionName) {
+        return TransactionStatusTable.validateTransaction(localTransactionName);
+    }
+
+    /**
+     * Create a temporary map. Such maps are removed when opening the store.
+     *
+     * @return the map
+     */
+    synchronized StorageMap<Object, Integer> createTempMap() {
+        String mapName = "temp." + nextTempMapId++;
+        return openTempMap(mapName);
+    }
+
+    /**
+     * Open a temporary map.
+     *
+     * @param mapName the map name
+     * @return the map
+     */
+    StorageMap<Object, Integer> openTempMap(String mapName) {
+        return logStorage.openLogMap(mapName, null, null);
+    }
+
     /**
      * Get the changes of the given transaction, starting from the latest log id
      * back to the given log id.
@@ -554,6 +476,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      * @param toLogId the minimum log id
      * @return the changes
      */
+    // TODO 目前未使用，H2里面的作用主要是通知触发器
     Iterator<Change> getChanges(final MVCCTransaction t, final long maxLogId, final long toLogId) {
         return new Iterator<Change>() {
 
@@ -580,7 +503,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                             continue;
                         }
                         int mapId = ((Integer) op[0]).intValue();
-                        StorageMap<Object, VersionedValue> m = openMap(mapId);
+                        StorageMap<Object, VersionedValue> m = getMap(mapId);
                         if (m == null) {
                             // map was removed later on
                         } else {
@@ -619,24 +542,4 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         };
     }
 
-    void commitTransactionStatusTable(MVCCTransaction t, String allLocalTransactionNames) {
-        t.setCommitTimestamp(nextOddTransactionId());
-        TransactionStatusTable.commit(t, allLocalTransactionNames);
-        TransactionValidator.enqueue(t, allLocalTransactionNames);
-    }
-
-    boolean validateTransaction(int tid, MVCCTransaction currentTransaction) {
-        return TransactionStatusTable.validateTransaction(hostAndPort, tid, currentTransaction);
-    }
-
-    @Override
-    public boolean validateTransaction(String localTransactionName) {
-        return TransactionStatusTable.validateTransaction(localTransactionName);
-    }
-
-    public static String getMapName(String name) {
-        return name;
-
-        // return "trans." + name;
-    }
 }

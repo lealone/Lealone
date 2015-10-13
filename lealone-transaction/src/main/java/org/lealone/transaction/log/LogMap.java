@@ -25,6 +25,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.ObjectDataType;
 
 /**
  * A skipList-based log map
@@ -47,6 +48,11 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     private final Map<String, Object> config;
 
     public LogMap(int id, String name, DataType keyType, DataType valueType, Map<String, Object> config) {
+        if (keyType == null)
+            keyType = new ObjectDataType();
+        if (valueType == null)
+            valueType = new ObjectDataType();
+
         this.id = id;
         this.name = name;
         this.keyType = keyType;

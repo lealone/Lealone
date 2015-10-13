@@ -349,6 +349,7 @@ public class MVCCTransaction implements Transaction {
      *            transaction
      * @return the changes
      */
+    // TODO 目前未使用，H2里面的作用主要是通知触发器
     public Iterator<Change> getChanges(long savepointId) {
         return transactionEngine.getChanges(this, logId, savepointId);
     }
@@ -360,15 +361,6 @@ public class MVCCTransaction implements Transaction {
         if (status == STATUS_CLOSED) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "Transaction is closed");
         }
-    }
-
-    /**
-     * Remove the map.
-     *
-     * @param map the map
-     */
-    public <K, V> void removeMap(MVCCTransactionMap<K, V> map) {
-        transactionEngine.removeMap(map);
     }
 
     @Override
