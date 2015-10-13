@@ -67,8 +67,7 @@ public class CacheLongKeyLIRS<V> {
     public CacheLongKeyLIRS(Config config) {
         setMaxMemory(config.maxMemory);
         this.nonResidentQueueSize = config.nonResidentQueueSize;
-        DataUtils.checkArgument(
-                Integer.bitCount(config.segmentCount) == 1,
+        DataUtils.checkArgument(Integer.bitCount(config.segmentCount) == 1,
                 "The segment count must be a power of 2, is {0}", config.segmentCount);
         this.segmentCount = config.segmentCount;
         this.segmentMask = segmentCount - 1;
@@ -85,8 +84,7 @@ public class CacheLongKeyLIRS<V> {
     public void clear() {
         long max = Math.max(1, maxMemory / segmentCount);
         for (int i = 0; i < segmentCount; i++) {
-            segments[i] = new Segment<V>(
-                    max, stackMoveDistance, 8, nonResidentQueueSize);
+            segments[i] = new Segment<V>(max, stackMoveDistance, 8, nonResidentQueueSize);
         }
     }
 
@@ -269,9 +267,7 @@ public class CacheLongKeyLIRS<V> {
      * @param maxMemory the maximum size (1 or larger) in bytes
      */
     public void setMaxMemory(long maxMemory) {
-        DataUtils.checkArgument(
-                maxMemory > 0,
-                "Max memory must be larger than 0, is {0}", maxMemory);
+        DataUtils.checkArgument(maxMemory > 0, "Max memory must be larger than 0, is {0}", maxMemory);
         this.maxMemory = maxMemory;
         if (segments != null) {
             long max = 1 + maxMemory / segments.length;
@@ -298,7 +294,7 @@ public class CacheLongKeyLIRS<V> {
     public synchronized Set<Map.Entry<Long, V>> entrySet() {
         HashMap<Long, V> map = new HashMap<Long, V>();
         for (long k : keySet()) {
-            map.put(k,  find(k).value);
+            map.put(k, find(k).value);
         }
         return map.entrySet();
     }
@@ -581,8 +577,7 @@ public class CacheLongKeyLIRS<V> {
          * @param len the number of hash table buckets (must be a power of 2)
          * @param nonResidentQueueSize the non-resident queue size factor
          */
-        Segment(long maxMemory, int stackMoveDistance, int len,
-                int nonResidentQueueSize) {
+        Segment(long maxMemory, int stackMoveDistance, int len, int nonResidentQueueSize) {
             setMaxMemory(maxMemory);
             this.stackMoveDistance = stackMoveDistance;
             this.nonResidentQueueSize = nonResidentQueueSize;
@@ -715,8 +710,7 @@ public class CacheLongKeyLIRS<V> {
             }
             if (e.isHot()) {
                 if (e != stack.stackNext) {
-                    if (stackMoveDistance == 0 ||
-                            stackMoveCounter - e.topMove > stackMoveDistance) {
+                    if (stackMoveDistance == 0 || stackMoveCounter - e.topMove > stackMoveDistance) {
                         access(key, hash);
                     }
                 }
@@ -740,8 +734,7 @@ public class CacheLongKeyLIRS<V> {
             }
             if (e.isHot()) {
                 if (e != stack.stackNext) {
-                    if (stackMoveDistance == 0 ||
-                            stackMoveCounter - e.topMove > stackMoveDistance) {
+                    if (stackMoveDistance == 0 || stackMoveCounter - e.topMove > stackMoveDistance) {
                         // move a hot entry to the top of the stack
                         // unless it is already there
                         boolean wasEnd = e == stack.stackPrev;
@@ -787,8 +780,7 @@ public class CacheLongKeyLIRS<V> {
          */
         synchronized V put(long key, int hash, V value, int memory) {
             if (value == null) {
-                throw DataUtils.newIllegalArgumentException(
-                        "The value may not be null");
+                throw DataUtils.newIllegalArgumentException("The value may not be null");
             }
             V old;
             Entry<V> e = find(key, hash);
@@ -1029,13 +1021,11 @@ public class CacheLongKeyLIRS<V> {
             ArrayList<Long> keys = new ArrayList<Long>();
             if (cold) {
                 Entry<V> start = nonResident ? queue2 : queue;
-                for (Entry<V> e = start.queueNext; e != start;
-                        e = e.queueNext) {
+                for (Entry<V> e = start.queueNext; e != start; e = e.queueNext) {
                     keys.add(e.key);
                 }
             } else {
-                for (Entry<V> e = stack.stackNext; e != stack;
-                        e = e.stackNext) {
+                for (Entry<V> e = stack.stackNext; e != stack; e = e.stackNext) {
                     keys.add(e.key);
                 }
             }

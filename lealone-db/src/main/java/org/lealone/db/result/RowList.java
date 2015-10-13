@@ -14,7 +14,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Data;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
-import org.lealone.storage.FileStore;
+import org.lealone.storage.FileStorage;
 
 /**
  * A list of rows. If the list grows too large, it is buffered to disk
@@ -26,7 +26,7 @@ public class RowList {
     private final ArrayList<Row> list = New.arrayList();
     private int size;
     private int index, listIndex;
-    private FileStore file;
+    private FileStorage file;
     private Data rowBuff;
     private ArrayList<Value> lobs;
     private final int maxMemory;
@@ -90,9 +90,9 @@ public class RowList {
             String fileName = db.createTempFile();
             file = db.openFile(fileName, "rw", false);
             file.setCheckedWriting(false);
-            file.seek(FileStore.HEADER_LENGTH);
+            file.seek(FileStorage.HEADER_LENGTH);
             rowBuff = Data.create(db, Constants.DEFAULT_PAGE_SIZE);
-            file.seek(FileStore.HEADER_LENGTH);
+            file.seek(FileStorage.HEADER_LENGTH);
         }
         Data buff = rowBuff;
         initBuffer(buff);
@@ -149,7 +149,7 @@ public class RowList {
                 written = true;
             }
             list.clear();
-            file.seek(FileStore.HEADER_LENGTH);
+            file.seek(FileStorage.HEADER_LENGTH);
         }
     }
 

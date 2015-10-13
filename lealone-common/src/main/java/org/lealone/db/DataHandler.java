@@ -11,7 +11,7 @@ import java.sql.Connection;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
-import org.lealone.storage.FileStore;
+import org.lealone.storage.FileStorage;
 import org.lealone.storage.LobStorage;
 
 /**
@@ -35,7 +35,7 @@ public interface DataHandler {
      * @param mustExist whether the file must already exist
      * @return the file
      */
-    FileStore openFile(String name, String mode, boolean mustExist);
+    FileStorage openFile(String name, String mode, boolean mustExist);
 
     /**
      * Check if the simulated power failure occurred.

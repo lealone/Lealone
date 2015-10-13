@@ -27,9 +27,9 @@ import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Expression;
-import org.lealone.storage.FileStore;
-import org.lealone.storage.FileStoreInputStream;
-import org.lealone.storage.FileStoreOutputStream;
+import org.lealone.storage.FileStorage;
+import org.lealone.storage.FileStorageInputStream;
+import org.lealone.storage.FileStorageOutputStream;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.fs.FileUtils;
 
@@ -63,7 +63,7 @@ abstract class ScriptBase extends Prepared implements DataHandler {
     private String fileName;
 
     private String cipher;
-    private FileStore store;
+    private FileStorage fileStorage;
     private String compressionAlgorithm;
 
     ScriptBase(Session session) {
@@ -120,9 +120,9 @@ abstract class ScriptBase extends Prepared implements DataHandler {
             key = SHA256.getKeyPasswordHash("script", pass);
         }
         String file = getFileName();
-        store = FileStore.open(db, file, "rw", cipher, key);
-        store.setCheckedWriting(false);
-        store.init();
+        fileStorage = FileStorage.open(db, file, "rw", cipher, key);
+        fileStorage.setCheckedWriting(false);
+        fileStorage.init();
     }
 
     /**
@@ -135,7 +135,7 @@ abstract class ScriptBase extends Prepared implements DataHandler {
         }
         if (isEncrypted()) {
             initStore();
-            out = new FileStoreOutputStream(store, this, compressionAlgorithm);
+            out = new FileStorageOutputStream(fileStorage, this, compressionAlgorithm);
             // always use a big buffer, otherwise end-of-block is written a lot
             out = new BufferedOutputStream(out, Constants.IO_BUFFER_SIZE_COMPRESS);
         } else {
@@ -160,7 +160,7 @@ abstract class ScriptBase extends Prepared implements DataHandler {
         }
         if (isEncrypted()) {
             initStore();
-            in = new FileStoreInputStream(store, this, compressionAlgorithm != null, false);
+            in = new FileStorageInputStream(fileStorage, this, compressionAlgorithm != null, false);
         } else {
             InputStream inStream;
             try {
@@ -184,9 +184,9 @@ abstract class ScriptBase extends Prepared implements DataHandler {
         out = null;
         IOUtils.closeSilently(in);
         in = null;
-        if (store != null) {
-            store.closeSilently();
-            store = null;
+        if (fileStorage != null) {
+            fileStorage.closeSilently();
+            fileStorage = null;
         }
     }
 
@@ -201,7 +201,7 @@ abstract class ScriptBase extends Prepared implements DataHandler {
     }
 
     @Override
-    public FileStore openFile(String name, String mode, boolean mustExist) {
+    public FileStorage openFile(String name, String mode, boolean mustExist) {
         return null;
     }
 

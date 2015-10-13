@@ -17,19 +17,19 @@ import org.lealone.db.Data;
 import org.lealone.db.DataHandler;
 
 /**
- * An input stream that is backed by a file store.
+ * An input stream that is backed by a file storage.
  */
-public class FileStoreInputStream extends InputStream {
+public class FileStorageInputStream extends InputStream {
 
-    private FileStore store;
+    private FileStorage fileStorage;
     private final Data page;
     private int remainingInBuffer;
     private final CompressTool compress;
     private boolean endOfFile;
     private final boolean alwaysClose;
 
-    public FileStoreInputStream(FileStore store, DataHandler handler, boolean compression, boolean alwaysClose) {
-        this.store = store;
+    public FileStorageInputStream(FileStorage fileStorage, DataHandler handler, boolean compression, boolean alwaysClose) {
+        this.fileStorage = fileStorage;
         this.alwaysClose = alwaysClose;
         if (compression) {
             compress = CompressTool.getInstance();
@@ -38,24 +38,27 @@ public class FileStoreInputStream extends InputStream {
         }
         page = Data.create(handler, Constants.FILE_BLOCK_SIZE);
         try {
-            if (store.length() <= FileStore.HEADER_LENGTH) {
+            if (fileStorage.length() <= FileStorage.HEADER_LENGTH) {
                 close();
             } else {
                 fillBuffer();
             }
         } catch (IOException e) {
-            throw DbException.convertIOException(e, store.name);
+            throw DbException.convertIOException(e, fileStorage.name);
         }
     }
 
+    @Override
     public int available() {
         return remainingInBuffer <= 0 ? 0 : remainingInBuffer;
     }
 
+    @Override
     public int read(byte[] buff) throws IOException {
         return read(buff, 0, buff.length);
     }
 
+    @Override
     public int read(byte[] b, int off, int len) throws IOException {
         if (len == 0) {
             return 0;
@@ -89,12 +92,12 @@ public class FileStoreInputStream extends InputStream {
             return;
         }
         page.reset();
-        store.openFile();
-        if (store.length() == store.getFilePointer()) {
+        fileStorage.openFile();
+        if (fileStorage.length() == fileStorage.getFilePointer()) {
             close();
             return;
         }
-        store.readFully(page.getBytes(), 0, Constants.FILE_BLOCK_SIZE);
+        fileStorage.readFully(page.getBytes(), 0, Constants.FILE_BLOCK_SIZE);
         page.reset();
         remainingInBuffer = page.readInt();
         if (remainingInBuffer < 0) {
@@ -112,7 +115,7 @@ public class FileStoreInputStream extends InputStream {
         int len = page.length() - Constants.FILE_BLOCK_SIZE;
         page.reset();
         page.readInt();
-        store.readFully(page.getBytes(), Constants.FILE_BLOCK_SIZE, len);
+        fileStorage.readFully(page.getBytes(), Constants.FILE_BLOCK_SIZE, len);
         page.reset();
         page.readInt();
         if (compress != null) {
@@ -125,25 +128,28 @@ public class FileStoreInputStream extends InputStream {
             remainingInBuffer = uncompressed;
         }
         if (alwaysClose) {
-            store.closeFile();
+            fileStorage.closeFile();
         }
     }
 
+    @Override
     public void close() {
-        if (store != null) {
+        if (fileStorage != null) {
             try {
-                store.close();
+                fileStorage.close();
                 endOfFile = true;
             } finally {
-                store = null;
+                fileStorage = null;
             }
         }
     }
 
+    @Override
     protected void finalize() {
         close();
     }
 
+    @Override
     public int read() throws IOException {
         fillBuffer();
         if (endOfFile) {

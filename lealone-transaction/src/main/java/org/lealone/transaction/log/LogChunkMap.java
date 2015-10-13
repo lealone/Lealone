@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.lealone.storage.FileStorage;
 import org.lealone.storage.memory.MemoryMap;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
@@ -55,7 +56,7 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
         }
     }
 
-    protected final LogFileStorage fileStorage;
+    protected final FileStorage fileStorage;
 
     private long pos;
     private volatile K lastKey;
@@ -65,7 +66,7 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
 
         String storageName = (String) config.get("storageName");
         name = storageName + File.separator + name + LogStorage.MAP_NAME_ID_SEPARATOR + id;
-        fileStorage = new LogFileStorage();
+        fileStorage = new FileStorage();
         fileStorage.open(name, config);
         pos = fileStorage.size();
         if (pos > 0)

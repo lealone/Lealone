@@ -24,9 +24,9 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
-import org.lealone.storage.FileStore;
-import org.lealone.storage.FileStoreInputStream;
-import org.lealone.storage.FileStoreOutputStream;
+import org.lealone.storage.FileStorage;
+import org.lealone.storage.FileStorageInputStream;
+import org.lealone.storage.FileStorageOutputStream;
 import org.lealone.storage.fs.FileUtils;
 
 /**
@@ -62,7 +62,7 @@ public class ValueLob extends Value {
     private byte[] small;
     private int hash;
     private boolean compressed;
-    private FileStore tempFile;
+    private FileStorage tempFile;
 
     private ValueLob(int type, DataHandler handler, String fileName, int tableId, int objectId, boolean linked,
             long precision, boolean compressed) {
@@ -212,7 +212,7 @@ public class ValueLob extends Value {
     }
 
     private void createFromReader(char[] buff, int len, Reader in, long remaining, DataHandler h) throws IOException {
-        FileStoreOutputStream out = initLarge(h);
+        FileStorageOutputStream out = initLarge(h);
         boolean compress = h.getLobCompressionAlgorithm(Value.CLOB) != null;
         try {
             while (true) {
@@ -380,7 +380,7 @@ public class ValueLob extends Value {
         }
     }
 
-    private FileStoreOutputStream initLarge(DataHandler h) {
+    private FileStorageOutputStream initLarge(DataHandler h) {
         this.handler = h;
         this.tableId = 0;
         this.linked = false;
@@ -400,13 +400,13 @@ public class ValueLob extends Value {
             tempFile = h.openFile(fileName, "rw", false);
             tempFile.autoDelete();
         }
-        FileStoreOutputStream out = new FileStoreOutputStream(tempFile, h, compressionAlgorithm);
+        FileStorageOutputStream out = new FileStorageOutputStream(tempFile, h, compressionAlgorithm);
         return out;
     }
 
     private void createFromStream(byte[] buff, int len, InputStream in, long remaining, DataHandler h)
             throws IOException {
-        FileStoreOutputStream out = initLarge(h);
+        FileStorageOutputStream out = initLarge(h);
         boolean compress = h.getLobCompressionAlgorithm(Value.BLOB) != null;
         try {
             while (true) {
@@ -483,7 +483,7 @@ public class ValueLob extends Value {
                 temp = getFileName(handler, -1, objectId);
                 deleteFile(handler, temp);
                 renameFile(handler, fileName, temp);
-                tempFile = FileStore.open(handler, temp, "rw");
+                tempFile = FileStorage.open(handler, temp, "rw");
                 tempFile.autoDelete();
                 tempFile.closeSilently();
                 fileName = temp;
@@ -643,9 +643,9 @@ public class ValueLob extends Value {
         if (fileName == null) {
             return new ByteArrayInputStream(small);
         }
-        FileStore store = handler.openFile(fileName, "r", true);
+        FileStorage fileStorage = handler.openFile(fileName, "r", true);
         boolean alwaysClose = SysProperties.LOB_CLOSE_BETWEEN_READS;
-        return new BufferedInputStream(new FileStoreInputStream(store, handler, compressed, alwaysClose),
+        return new BufferedInputStream(new FileStorageInputStream(fileStorage, handler, compressed, alwaysClose),
                 Constants.IO_BUFFER_SIZE);
     }
 

@@ -33,7 +33,7 @@ import org.lealone.db.SessionInterface;
 import org.lealone.db.SessionWithState;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
-import org.lealone.storage.FileStore;
+import org.lealone.storage.FileStorage;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
@@ -457,24 +457,24 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     }
 
     @Override
-    public FileStore openFile(String name, String mode, boolean mustExist) {
+    public FileStorage openFile(String name, String mode, boolean mustExist) {
         if (mustExist && !FileUtils.exists(name)) {
             throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
         }
-        FileStore store;
+        FileStorage fileStorage;
         if (cipher == null) {
-            store = FileStore.open(this, name, mode);
+            fileStorage = FileStorage.open(this, name, mode);
         } else {
-            store = FileStore.open(this, name, mode, cipher, fileEncryptionKey, 0);
+            fileStorage = FileStorage.open(this, name, mode, cipher, fileEncryptionKey, 0);
         }
-        store.setCheckedWriting(false);
+        fileStorage.setCheckedWriting(false);
         try {
-            store.init();
+            fileStorage.init();
         } catch (DbException e) {
-            store.closeSilently();
+            fileStorage.closeSilently();
             throw e;
         }
-        return store;
+        return fileStorage;
     }
 
     @Override

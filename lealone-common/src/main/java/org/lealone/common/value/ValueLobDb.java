@@ -23,9 +23,9 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
-import org.lealone.storage.FileStore;
-import org.lealone.storage.FileStoreInputStream;
-import org.lealone.storage.FileStoreOutputStream;
+import org.lealone.storage.FileStorage;
+import org.lealone.storage.FileStorageInputStream;
+import org.lealone.storage.FileStorageOutputStream;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.fs.FileUtils;
 
@@ -50,7 +50,7 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
     private final long precision;
 
     private final String fileName;
-    private final FileStore tempFile;
+    private final FileStorage tempFile;
     private int tableId;
     private int hash;
 
@@ -89,7 +89,7 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
         this.fileName = createTempLobFileName(handler);
         this.tempFile = this.handler.openFile(fileName, "rw", false);
         this.tempFile.autoDelete();
-        FileStoreOutputStream out = new FileStoreOutputStream(tempFile, null, null);
+        FileStorageOutputStream out = new FileStorageOutputStream(tempFile, null, null);
         long tmpPrecision = 0;
         try {
             char[] buff = new char[Constants.IO_BUFFER_SIZE];
@@ -118,7 +118,7 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
         this.fileName = createTempLobFileName(handler);
         this.tempFile = this.handler.openFile(fileName, "rw", false);
         this.tempFile.autoDelete();
-        FileStoreOutputStream out = new FileStoreOutputStream(tempFile, null, null);
+        FileStorageOutputStream out = new FileStorageOutputStream(tempFile, null, null);
         long tmpPrecision = 0;
         boolean compress = this.handler.getLobCompressionAlgorithm(Value.BLOB) != null;
         try {
@@ -370,9 +370,9 @@ public class ValueLobDb extends Value implements Value.ValueClob, Value.ValueBlo
         if (small != null) {
             return new ByteArrayInputStream(small);
         } else if (fileName != null) {
-            FileStore store = handler.openFile(fileName, "r", true);
+            FileStorage fileStorage = handler.openFile(fileName, "r", true);
             boolean alwaysClose = SysProperties.LOB_CLOSE_BETWEEN_READS;
-            return new BufferedInputStream(new FileStoreInputStream(store, handler, false, alwaysClose),
+            return new BufferedInputStream(new FileStorageInputStream(fileStorage, handler, false, alwaysClose),
                     Constants.IO_BUFFER_SIZE);
         }
         long byteCount = (type == Value.BLOB) ? precision : -1;

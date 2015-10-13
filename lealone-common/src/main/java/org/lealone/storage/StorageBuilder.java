@@ -5,6 +5,7 @@
  */
 package org.lealone.storage;
 
+import java.nio.file.FileStore;
 import java.util.HashMap;
 
 import org.lealone.common.util.DataUtils;
@@ -194,20 +195,20 @@ public abstract class StorageBuilder {
     }
 
     /**
-     * Use the provided file store instead of the default one.
+     * Use the provided file storage instead of the default one.
      * <p>
-     * File stores passed in this way need to be open. They are not closed
-     * when closing the store.
+     * File storages passed in this way need to be open. They are not closed
+     * when closing the storage.
      * <p>
-     * Please note that any kind of store (including an off-heap store) is
-     * considered a "persistence", while an "in-memory store" means objects
+     * Please note that any kind of storage (including an off-heap storage) is
+     * considered a "persistence", while an "in-memory storage" means objects
      * are not persisted and fully kept in the JVM heap.
      * 
-     * @param store the file store
+     * @param fileStorage the file storage
      * @return this
      */
-    public StorageBuilder fileStore(FileStore store) {
-        return set("fileStore", store);
+    public StorageBuilder fileStorage(FileStore fileStorage) {
+        return set("fileStorage", fileStorage);
     }
 
     /**

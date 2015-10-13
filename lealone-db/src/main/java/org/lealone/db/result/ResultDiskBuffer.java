@@ -16,7 +16,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Data;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
-import org.lealone.storage.FileStore;
+import org.lealone.storage.FileStorage;
 
 /**
  * This class implements the disk buffer for the LocalResult class.
@@ -32,7 +32,7 @@ class ResultDiskBuffer implements ResultExternal {
     private final int columnCount;
     private final int maxBufferSize;
 
-    private FileStore file;
+    private FileStorage file;
     private int rowCount;
 
     private final ResultDiskBuffer parent;
@@ -75,14 +75,14 @@ class ResultDiskBuffer implements ResultExternal {
         String fileName = db.createTempFile();
         file = db.openFile(fileName, "rw", false);
         file.setCheckedWriting(false);
-        file.seek(FileStore.HEADER_LENGTH);
+        file.seek(FileStorage.HEADER_LENGTH);
         if (sort != null) {
             tapes = New.arrayList();
             mainTape = null;
         } else {
             tapes = null;
             mainTape = new ResultDiskTape();
-            mainTape.pos = FileStore.HEADER_LENGTH;
+            mainTape.pos = FileStorage.HEADER_LENGTH;
         }
         this.maxBufferSize = db.getSettings().largeResultBufferSize;
     }
@@ -104,7 +104,7 @@ class ResultDiskBuffer implements ResultExternal {
         }
         if (parent.mainTape != null) {
             mainTape = new ResultDiskTape();
-            mainTape.pos = FileStore.HEADER_LENGTH;
+            mainTape.pos = FileStorage.HEADER_LENGTH;
             mainTape.start = parent.mainTape.start;
             mainTape.end = parent.mainTape.end;
         } else {
@@ -172,7 +172,7 @@ class ResultDiskBuffer implements ResultExternal {
     }
 
     public void done() {
-        file.seek(FileStore.HEADER_LENGTH);
+        file.seek(FileStorage.HEADER_LENGTH);
         file.autoDelete();
     }
 
@@ -183,7 +183,7 @@ class ResultDiskBuffer implements ResultExternal {
                 tape.buffer = New.arrayList();
             }
         } else {
-            mainTape.pos = FileStore.HEADER_LENGTH;
+            mainTape.pos = FileStorage.HEADER_LENGTH;
             mainTape.buffer = New.arrayList();
         }
     }

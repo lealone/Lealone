@@ -9,14 +9,14 @@ package org.lealone.common.security;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
-import org.lealone.storage.FileStore;
+import org.lealone.storage.FileStorage;
 
 /**
- * A file store that encrypts all data before writing, and decrypts all data
+ * A file storage that encrypts all data before writing, and decrypts all data
  * after reading. Areas that were never written to (for example after calling
  * setLength to enlarge the file) are not encrypted (contains 0 bytes).
  */
-public class SecureFileStore extends FileStore {
+public class SecureFileStore extends FileStorage {
 
     private byte[] key;
     private final BlockCipher cipher;

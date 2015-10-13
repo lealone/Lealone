@@ -29,7 +29,5 @@ public class StorageEngineManager extends PluggableEngineManager<StorageEngine> 
 
     private StorageEngineManager() {
         super(StorageEngine.class);
-
-        // new MemoryStorageEngine(); // 提前注册
     }
 }

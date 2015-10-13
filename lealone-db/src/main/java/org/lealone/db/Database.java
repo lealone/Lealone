@@ -57,7 +57,7 @@ import org.lealone.db.util.SourceCompiler;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
-import org.lealone.storage.FileStore;
+import org.lealone.storage.FileStorage;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
@@ -532,18 +532,18 @@ public class Database implements DataHandler {
     }
 
     @Override
-    public FileStore openFile(String name, String openMode, boolean mustExist) {
+    public FileStorage openFile(String name, String openMode, boolean mustExist) {
         if (mustExist && !FileUtils.exists(name)) {
             throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
         }
-        FileStore store = FileStore.open(this, name, openMode, cipher, filePasswordHash);
+        FileStorage fileStorage = FileStorage.open(this, name, openMode, cipher, filePasswordHash);
         try {
-            store.init();
+            fileStorage.init();
         } catch (DbException e) {
-            store.closeSilently();
+            fileStorage.closeSilently();
             throw e;
         }
-        return store;
+        return fileStorage;
     }
 
     /**
