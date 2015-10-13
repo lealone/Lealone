@@ -6,17 +6,11 @@
 package org.lealone.storage.btree;
 
 import java.io.File;
-import java.util.AbstractList;
-import java.util.AbstractMap;
-import java.util.AbstractSet;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
 
-import org.lealone.common.message.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.AOStorage;
 import org.lealone.storage.StorageMap;
@@ -43,7 +37,7 @@ import org.lealone.storage.type.ObjectDataType;
  * @author H2 Group
  * @author zhh
  */
-public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V>, StorageMap<K, V> {
+public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     protected final ConcurrentArrayList<BTreePage> oldRoots = new ConcurrentArrayList<>();
 
@@ -373,119 +367,6 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     }
 
     /**
-     * Get the key at the given index.
-     * <p>
-     * This is a O(log(size)) operation.
-     * 
-     * @param index the index
-     * @return the key
-     */
-    @Override
-    @SuppressWarnings("unchecked")
-    public K getKey(long index) {
-        if (index < 0 || index >= size()) {
-            return null;
-        }
-        BTreePage p = root;
-        long offset = 0;
-        while (true) {
-            if (p.isLeaf()) {
-                if (BTreePage.ASSERT) {
-                    if (index >= offset + p.getKeyCount()) {
-                        // return null;
-                        throw DbException.throwInternalError();
-                    }
-                }
-                return (K) p.getKey((int) (index - offset));
-            }
-            int i = 0, size = getChildPageCount(p);
-            for (; i < size; i++) {
-                long c = p.getCounts(i);
-                if (index < c + offset) {
-                    break;
-                }
-                offset += c;
-            }
-            if (BTreePage.ASSERT) {
-                if (i == size) {
-                    // return null;
-                    throw DbException.throwInternalError();
-                }
-            }
-            p = p.getChildPage(i);
-        }
-    }
-
-    /**
-     * Get the index of the given key in the map.
-     * <p>
-     * This is a O(log(size)) operation.
-     * <p>
-     * If the key was found, the returned value is the index in the key array.
-     * If not found, the returned value is negative, where -1 means the provided
-     * key is smaller than any keys. See also Arrays.binarySearch.
-     * 
-     * @param key the key
-     * @return the index
-     */
-    @Override
-    public long getKeyIndex(K key) {
-        if (size() == 0) {
-            return -1;
-        }
-        BTreePage p = root;
-        long offset = 0;
-        while (true) {
-            int x = p.binarySearch(key);
-            if (p.isLeaf()) {
-                if (x < 0) {
-                    return -offset + x;
-                }
-                return offset + x;
-            }
-            if (x < 0) {
-                x = -x - 1;
-            } else {
-                x++;
-            }
-            for (int i = 0; i < x; i++) {
-                offset += p.getCounts(i);
-            }
-            p = p.getChildPage(x);
-        }
-    }
-
-    /**
-     * Get the key list. The list is a read-only representation of all keys.
-     * <p>
-     * The get and indexOf methods are O(log(size)) operations. The result of
-     * indexOf is cast to an int.
-     * 
-     * @return the key list
-     */
-    public List<K> keyList() {
-        return new AbstractList<K>() {
-
-            @Override
-            public K get(int index) {
-                return getKey(index);
-            }
-
-            @Override
-            public int size() {
-                return BTreeMap.this.size();
-            }
-
-            @Override
-            @SuppressWarnings("unchecked")
-            public int indexOf(Object key) {
-                return (int) getKeyIndex((K) key);
-            }
-
-        };
-    }
-
-    /**
      * Get the first key, or null if the map is empty.
      * 
      * @return the first key, or null
@@ -654,10 +535,6 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
      */
     @Override
     public boolean areValuesEqual(Object a, Object b) {
-        return areValuesEqual(valueType, a, b);
-    }
-
-    public static boolean areValuesEqual(DataType valueType, Object a, Object b) {
         if (a == b) {
             return true;
         } else if (a == null || b == null) {
@@ -685,23 +562,6 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
     }
 
     /**
-     * Replace a value for an existing key.
-     * 
-     * @param key the key (may not be null)
-     * @param value the new value
-     * @return the old value, if the value was replaced, or null
-     */
-    @Override
-    public synchronized V replace(K key, V value) {
-        V old = get(key);
-        if (old != null) {
-            put(key, value);
-            return old;
-        }
-        return null;
-    }
-
-    /**
      * Remove a key-value pair, if the key exists.
      * 
      * @param key the key (may not be null)
@@ -726,23 +586,6 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
             newRoot(p);
         }
         return result;
-    }
-
-    /**
-     * Remove a key-value pair if the value matches the stored one.
-     * 
-     * @param key the key (may not be null)
-     * @param value the expected value
-     * @return true if the item was removed
-     */
-    @Override
-    public synchronized boolean remove(Object key, Object value) {
-        V old = get(key);
-        if (areValuesEqual(old, value)) {
-            remove(key);
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -809,93 +652,13 @@ public class BTreeMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K
         return new BTreeCursor<>(this, root, from);
     }
 
-    @Override
-    public Set<Map.Entry<K, V>> entrySet() {
-        final BTreeMap<K, V> map = this;
-        final BTreePage root = this.root;
-        return new AbstractSet<Entry<K, V>>() {
-
-            @Override
-            public Iterator<Entry<K, V>> iterator() {
-                final StorageMapCursor<K, V> cursor = new BTreeCursor<>(map, root, null);
-                return new Iterator<Entry<K, V>>() {
-
-                    @Override
-                    public boolean hasNext() {
-                        return cursor.hasNext();
-                    }
-
-                    @Override
-                    public Entry<K, V> next() {
-                        K k = cursor.next();
-                        return new DataUtils.MapEntry<K, V>(k, cursor.getValue());
-                    }
-
-                    @Override
-                    public void remove() {
-                        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
-                    }
-                };
-
-            }
-
-            @Override
-            public int size() {
-                return BTreeMap.this.size();
-            }
-
-            @Override
-            public boolean contains(Object o) {
-                return BTreeMap.this.containsKey(o);
-            }
-
-        };
-
-    }
-
-    @Override
-    public Set<K> keySet() {
-        final BTreeMap<K, V> map = this;
-        final BTreePage root = this.root;
-        return new AbstractSet<K>() {
-
-            @Override
-            public Iterator<K> iterator() {
-                return new BTreeCursor<>(map, root, null);
-            }
-
-            @Override
-            public int size() {
-                return BTreeMap.this.size();
-            }
-
-            @Override
-            public boolean contains(Object o) {
-                return BTreeMap.this.containsKey(o);
-            }
-
-        };
-    }
-
-    /**
-     * Get the number of entries, as a integer. Integer.MAX_VALUE is returned if
-     * there are more than this entries.
-     * 
-     * @return the number of entries, as an integer
-     */
-    @Override
-    public int size() {
-        long size = sizeAsLong();
-        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
-    }
-
     /**
      * Get the number of entries, as a long.
      * 
      * @return the number of entries
      */
     @Override
-    public long sizeAsLong() {
+    public long size() {
         return root.getTotalCount();
     }
 

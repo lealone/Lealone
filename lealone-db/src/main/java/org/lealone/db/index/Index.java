@@ -108,22 +108,22 @@ public interface Index extends SchemaObject {
     boolean canGetFirstOrLast();
 
     /**
-     * Check if the index can get the next higher value.
+     * Check if the index supports distinct query.
      *
-     * @return true if it can
+     * @return true if it supports
      */
-    boolean canFindNext();
+    boolean supportsDistinctQuery();
 
     /**
-     * Find a row or a list of rows that is larger and create a cursor to
-     * iterate over the result.
+     * Find a distinct list of rows and create a cursor to iterate over the
+     * result.
      *
      * @param session the session
-     * @param higherThan the lower limit (excluding)
+     * @param first the first row, or null for no limit
      * @param last the last row, or null for no limit
-     * @return the cursor
+     * @return the cursor to iterate over the results
      */
-    Cursor findNext(Session session, SearchRow higherThan, SearchRow last);
+    Cursor findDistinct(Session session, SearchRow first, SearchRow last);
 
     /**
      * Find the first (or last) value of this index. The cursor returned is

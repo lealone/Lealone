@@ -376,7 +376,6 @@ public class Database implements DataHandler {
         }
 
         for (Storage s : getStorages()) {
-            s.initTransactions();
             s.removeTemporaryMaps(objectIds);
         }
 

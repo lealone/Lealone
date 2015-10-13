@@ -17,9 +17,6 @@
  */
 package org.lealone.storage;
 
-import java.util.Map.Entry;
-import java.util.Set;
-
 import org.lealone.storage.type.DataType;
 
 /**
@@ -160,12 +157,7 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public boolean isClosed() {
-        return map.isClosed();
-    }
-
-    @Override
-    public V get(Object key) {
+    public V get(K key) {
         readCount++;
         return map.get(key);
     }
@@ -192,7 +184,7 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public V remove(Object key) {
+    public V remove(K key) {
         beforeWrite();
         try {
             return map.remove(key);
@@ -209,37 +201,6 @@ public class AOMap<K, V> implements StorageMap<K, V> {
         } finally {
             afterWrite();
         }
-    }
-
-    @Override
-    public boolean containsKey(Object key) {
-        readCount++;
-        return map.containsKey(key);
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return map.isEmpty();
-    }
-
-    @Override
-    public int size() {
-        return map.size();
-    }
-
-    @Override
-    public long sizeAsLong() {
-        return map.sizeAsLong();
-    }
-
-    @Override
-    public void clear() {
-        map.clear();
-    }
-
-    @Override
-    public void remove() {
-        map.remove();
     }
 
     @Override
@@ -279,15 +240,24 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public long getKeyIndex(K key) {
-        readCount++;
-        return map.getKeyIndex(key);
+    public boolean areValuesEqual(Object a, Object b) {
+        return map.areValuesEqual(a, b);
     }
 
     @Override
-    public K getKey(long index) {
+    public long size() {
+        return map.size();
+    }
+
+    @Override
+    public boolean containsKey(K key) {
         readCount++;
-        return map.getKey(index);
+        return map.containsKey(key);
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return map.isEmpty();
     }
 
     @Override
@@ -296,29 +266,33 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        return map.areValuesEqual(a, b);
-    }
-
-    @Override
-    public org.lealone.storage.StorageMapCursor<K, V> cursor(K from) {
+    public StorageMapCursor<K, V> cursor(K from) {
         readCount++;
         return map.cursor(from);
     }
 
     @Override
-    public Set<Entry<K, V>> entrySet() {
-        readCount++;
-        return map.entrySet();
+    public void clear() {
+        map.clear();
     }
 
     @Override
-    public void save() {
-        map.save();
+    public void remove() {
+        map.remove();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return map.isClosed();
     }
 
     @Override
     public void close() {
         map.close();
+    }
+
+    @Override
+    public void save() {
+        map.save();
     }
 }

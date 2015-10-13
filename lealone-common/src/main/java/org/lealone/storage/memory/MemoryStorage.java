@@ -15,75 +15,71 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.storage.memory;
+package org.lealone.storage.memory;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.util.BitField;
 import org.lealone.storage.Storage;
-import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
 
 public class MemoryStorage implements Storage {
+    private static final AtomicInteger counter = new AtomicInteger(0);
+
+    private final ConcurrentHashMap<String, MemoryMap<?, ?>> maps = new ConcurrentHashMap<>();
 
     @Override
     public void close() {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void backupTo(String fileName) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void flush() {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void sync() {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void initTransactions() {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void removeTemporaryMaps(BitField objectIds) {
-        // TODO Auto-generated method stub
-
+        for (MemoryMap<?, ?> map : maps.values())
+            map.close();
+        maps.clear();
     }
 
     @Override
     public void closeImmediately() {
-        // TODO Auto-generated method stub
+        close();
+    }
 
+    @Override
+    public void backupTo(String fileName) {
+    }
+
+    @Override
+    public void flush() {
+    }
+
+    @Override
+    public void sync() {
+    }
+
+    @Override
+    public void removeTemporaryMaps(BitField objectIds) {
     }
 
     @Override
     public String nextTemporaryMapName() {
-        // TODO Auto-generated method stub
-        return null;
+        int i = 0;
+        String name = null;
+        while (true) {
+            name = "temp-" + i;
+            if (!maps.containsKey(name))
+                return name;
+        }
     }
 
     @Override
     public boolean hasMap(String name) {
-        // TODO Auto-generated method stub
-        return false;
+        return maps.containsKey(name);
     }
 
     @Override
-    public <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+    public <K, V> MemoryMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
             Map<String, String> parameters) {
-        // TODO Auto-generated method stub
-        return null;
+        int id = counter.incrementAndGet();
+        MemoryMap<K, V> map = new MemoryMap<>(id, name, keyType, valueType);
+        maps.put(name, map);
+        return map;
     }
 }

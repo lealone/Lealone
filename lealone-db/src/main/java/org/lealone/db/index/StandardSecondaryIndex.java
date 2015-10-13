@@ -147,7 +147,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         } finally {
             for (String tempMapName : mapNames) {
                 TransactionMap<Value, Value> map = openMap(session, tempMapName);
-                map.removeMap();
+                map.remove();
             }
         }
     }
@@ -250,60 +250,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
-        return find(session, first, false, last);
-    }
-
-    private Cursor find(Session session, SearchRow first, boolean bigger, SearchRow last) {
         ValueArray min = convertToKey(first);
         if (min != null) {
             min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         }
         TransactionMap<Value, Value> map = getMap(session);
-        if (bigger && min != null) {
-            // search for the next: first skip 1, then 2, 4, 8, until
-            // we have a higher key; then skip 4, 2,...
-            // (binary search), until 1
-            int offset = 1;
-            while (true) {
-                ValueArray v = (ValueArray) map.relativeKey(min, offset);
-                if (v != null) {
-                    boolean foundHigher = false;
-                    for (int i = 0; i < keyColumns - 1; i++) {
-                        int idx = columnIds[i];
-                        Value b = first.getValue(idx);
-                        if (b == null) {
-                            break;
-                        }
-                        Value a = v.getList()[i];
-                        if (database.compare(a, b) > 0) {
-                            foundHigher = true;
-                            break;
-                        }
-                    }
-                    if (!foundHigher) {
-                        offset += offset;
-                        min = v;
-                        continue;
-                    }
-                }
-                if (offset > 1) {
-                    offset /= 2;
-                    continue;
-                }
-                if (map.get(v) == null) {
-                    min = (ValueArray) map.higherKey(min);
-                    if (min == null) {
-                        break;
-                    }
-                    continue;
-                }
-                min = v;
-                break;
-            }
-            if (min == null) {
-                return new StandardSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
-            }
-        }
         return new StandardSecondaryIndexCursor(session, map.keyIterator(min), last);
     }
 
@@ -362,7 +313,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     public void remove(Session session) {
         TransactionMap<Value, Value> map = getMap(session);
         if (!map.isClosed()) {
-            map.removeMap();
+            map.remove();
         }
     }
 
@@ -409,7 +360,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public long getRowCount(Session session) {
         TransactionMap<Value, Value> map = getMap(session);
-        return map.sizeAsLong();
+        return map.size();
     }
 
     @Override
@@ -428,13 +379,17 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public boolean canFindNext() {
+    public boolean supportsDistinctQuery() {
         return true;
     }
 
     @Override
-    public Cursor findNext(Session session, SearchRow higherThan, SearchRow last) {
-        return find(session, higherThan, true, last);
+    public Cursor findDistinct(Session session, SearchRow first, SearchRow last) {
+        ValueArray min = convertToKey(first);
+        if (min != null) {
+            min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+        }
+        return new StandardSecondaryIndexDistinctCursor(session, min, last);
     }
 
     @Override
@@ -452,7 +407,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         if (session == null) {
             return dataMap;
         }
-        return dataMap.getInstance(session.getTransaction(), Long.MAX_VALUE);
+        return dataMap.getInstance(session.getTransaction());
     }
 
     @Override
@@ -504,6 +459,64 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             current = it.hasNext() ? it.next() : null;
             searchRow = null;
             if (current != null) {
+                if (last != null && compareRows(getSearchRow(), last) > 0) {
+                    searchRow = null;
+                    current = null;
+                }
+            }
+            row = null;
+            return current != null;
+        }
+
+        @Override
+        public boolean previous() {
+            throw DbException.getUnsupportedException("previous");
+        }
+
+    }
+
+    private class StandardSecondaryIndexDistinctCursor implements Cursor {
+        private final TransactionMap<Value, Value> map;
+        private final Session session;
+        private final SearchRow last;
+        private Value current;
+        private SearchRow searchRow;
+        private Row row;
+
+        public StandardSecondaryIndexDistinctCursor(Session session, ValueArray min, SearchRow last) {
+            this.session = session;
+            this.last = last;
+            map = getMap(session);
+            current = min;
+        }
+
+        @Override
+        public Row get() {
+            if (row == null) {
+                SearchRow r = getSearchRow();
+                if (r != null) {
+                    row = table.getRow(session, r.getKey());
+                }
+            }
+            return row;
+        }
+
+        @Override
+        public SearchRow getSearchRow() {
+            if (searchRow == null) {
+                if (current != null) {
+                    searchRow = convertToSearchRow((ValueArray) current);
+                }
+            }
+            return searchRow;
+        }
+
+        @Override
+        public boolean next() {
+            current = map.higherKey(current);
+            searchRow = null;
+            if (current != null) {
+                ((ValueArray) current).getList()[keyColumns - 1] = ValueLong.get(Long.MAX_VALUE);
                 if (last != null && compareRows(getSearchRow(), last) > 0) {
                     searchRow = null;
                     current = null;

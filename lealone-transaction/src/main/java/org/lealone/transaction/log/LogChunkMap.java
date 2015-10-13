@@ -18,13 +18,11 @@
 package org.lealone.transaction.log;
 
 import java.io.File;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.Map.Entry;
+import java.util.Set;
 
-import org.lealone.common.util.DataUtils;
-import org.lealone.storage.StorageMap;
-import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.memory.MemoryMap;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
 
@@ -36,7 +34,7 @@ import org.lealone.storage.type.WriteBuffer;
  * 
  * @author zhh
  */
-public class LogChunkMap<K, V> extends ConcurrentSkipListMap<K, V> implements StorageMap<K, V> {
+public class LogChunkMap<K, V> extends MemoryMap<K, V> {
     private static WriteBuffer writeBuffer;
 
     private static WriteBuffer getWriteBuffer() {
@@ -56,21 +54,13 @@ public class LogChunkMap<K, V> extends ConcurrentSkipListMap<K, V> implements St
         }
     }
 
-    protected final int id;
-    protected final String name;
-    protected final DataType keyType;
-    protected final DataType valueType;
-
     protected final LogFileStorage fileStorage;
 
     private long pos;
     private volatile K lastKey;
 
     public LogChunkMap(int id, String name, DataType keyType, DataType valueType, Map<String, Object> config) {
-        this.id = id;
-        this.name = name;
-        this.keyType = keyType;
-        this.valueType = valueType;
+        super(id, name, keyType, valueType);
 
         String storageName = (String) config.get("storageName");
         name = storageName + File.separator + name + LogStorage.MAP_NAME_ID_SEPARATOR + id;
@@ -80,75 +70,11 @@ public class LogChunkMap<K, V> extends ConcurrentSkipListMap<K, V> implements St
     }
 
     @Override
-    public int getId() {
-        return id;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public DataType getKeyType() {
-        return keyType;
-    }
-
-    @Override
-    public DataType getValueType() {
-        return valueType;
-    }
-
-    @Override
-    public boolean isClosed() {
-        return false;
-    }
-
-    @Override
-    public long sizeAsLong() {
-        return size();
-    }
-
-    @Override
-    public void remove() {
-        clear();
-    }
-
-    @Override
-    public K getKey(long index) {
-        throw DataUtils.newUnsupportedOperationException("getKey");
-    }
-
-    @Override
-    public long getKeyIndex(K key) {
-        throw DataUtils.newUnsupportedOperationException("getKeyIndex");
-    }
-
-    @Override
-    public boolean isInMemory() {
-        return true;
-    }
-
-    @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        if (a == b) {
-            return true;
-        } else if (a == null || b == null) {
-            return false;
-        }
-        return valueType.compare(a, b) == 0;
-    }
-
-    @Override
-    public StorageMapCursor<K, V> cursor(K from) {
-        return new Cursor<>(this, from);
-    }
-
-    @Override
     public void save() {
         WriteBuffer buff = getWriteBuffer();
         K lastKey = this.lastKey;
-        for (Entry<K, V> e : tailMap(lastKey).entrySet()) {
+        Set<Entry<K, V>> entrySet = lastKey == null ? skipListMap.entrySet() : skipListMap.tailMap(lastKey).entrySet();
+        for (Entry<K, V> e : entrySet) {
             lastKey = e.getKey();
             keyType.write(buff, lastKey);
             valueType.write(buff, e.getValue());
@@ -169,6 +95,7 @@ public class LogChunkMap<K, V> extends ConcurrentSkipListMap<K, V> implements St
     public void close() {
         save();
         clear();
+        super.close();
         fileStorage.close();
     }
 
@@ -176,39 +103,7 @@ public class LogChunkMap<K, V> extends ConcurrentSkipListMap<K, V> implements St
         return pos;
     }
 
-    private static class Cursor<K, V> implements StorageMapCursor<K, V> {
-        private final Iterator<Entry<K, V>> iterator;
-        private Entry<K, V> entry;
-
-        Cursor(LogChunkMap<K, V> map, K from) {
-            iterator = map.tailMap(from).entrySet().iterator();
-        }
-
-        @Override
-        public boolean hasNext() {
-            return iterator.hasNext();
-        }
-
-        @Override
-        public K next() {
-            entry = iterator.next();
-            return entry.getKey();
-        }
-
-        @Override
-        public void remove() {
-            iterator.remove();
-        }
-
-        @Override
-        public K getKey() {
-            return entry.getKey();
-        }
-
-        @Override
-        public V getValue() {
-            return entry.getValue();
-        }
+    Set<Entry<K, V>> entrySet() {
+        return skipListMap.entrySet();
     }
-
 }

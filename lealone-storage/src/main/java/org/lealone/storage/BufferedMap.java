@@ -17,11 +17,9 @@
  */
 package org.lealone.storage;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListMap;
 
@@ -70,12 +68,7 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     }
 
     @Override
-    public boolean isClosed() {
-        return map.isClosed();
-    }
-
-    @Override
-    public V get(Object key) {
+    public V get(K key) {
         Object v = buffer.get(key);
         if (v == null)
             v = map.get(key);
@@ -97,7 +90,7 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     }
 
     @Override
-    public V remove(Object key) {
+    public V remove(K key) {
         Object v = buffer.remove(key);
         if (v == null)
             v = map.remove(key);
@@ -113,39 +106,6 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
             return true;
         }
         return false;
-    }
-
-    @Override
-    public boolean containsKey(Object key) {
-        return get(key) != null;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return buffer.isEmpty() && map.isEmpty();
-    }
-
-    @Override
-    public int size() {
-        long size = sizeAsLong();
-        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
-    }
-
-    @Override
-    public long sizeAsLong() {
-        return buffer.size() + map.sizeAsLong();
-    }
-
-    @Override
-    public void clear() {
-        buffer.clear();
-        map.clear();
-    }
-
-    @Override
-    public void remove() {
-        buffer.clear();
-        map.remove();
     }
 
     @Override
@@ -210,16 +170,20 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     protected K getMinMax(K key, boolean min, boolean excluding) {
         Object k, k1, k2;
         try {
-            if (!min) {
-                if (excluding)
-                    k1 = buffer.higherKey(key);
-                else
-                    k1 = buffer.ceilingKey(key);
+            if (key == null) {
+                k1 = buffer.firstKey();
             } else {
-                if (excluding)
-                    k1 = buffer.lowerKey(key);
-                else
-                    k1 = buffer.floorKey(key);
+                if (!min) {
+                    if (excluding)
+                        k1 = buffer.higherKey(key);
+                    else
+                        k1 = buffer.ceilingKey(key);
+                } else {
+                    if (excluding)
+                        k1 = buffer.lowerKey(key);
+                    else
+                        k1 = buffer.floorKey(key);
+                }
             }
         } catch (NoSuchElementException e) {
             k1 = null;
@@ -251,13 +215,23 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     }
 
     @Override
-    public long getKeyIndex(K key) {
-        throw DataUtils.newUnsupportedOperationException("getKeyIndex");
+    public boolean areValuesEqual(Object a, Object b) {
+        return map.areValuesEqual(a, b);
     }
 
     @Override
-    public K getKey(long index) {
-        throw DataUtils.newUnsupportedOperationException("getKey");
+    public long size() {
+        return buffer.size() + map.size();
+    }
+
+    @Override
+    public boolean containsKey(K key) {
+        return get(key) != null;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return buffer.isEmpty() && map.isEmpty();
     }
 
     @Override
@@ -266,31 +240,36 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     }
 
     @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        return map.areValuesEqual(a, b);
-    }
-
-    @Override
-    public org.lealone.storage.StorageMapCursor<K, V> cursor(K from) {
+    public StorageMapCursor<K, V> cursor(K from) {
         return new Cursor<>(this, from);
     }
 
     @Override
-    public Set<Entry<K, V>> entrySet() {
-        Set<Entry<K, V>> set = map.entrySet();
-        set.addAll((Collection<? extends Entry<K, V>>) buffer.entrySet());
-        return set;
+    public void clear() {
+        buffer.clear();
+        map.clear();
     }
 
     @Override
-    public void save() {
-        map.save();
+    public void remove() {
+        buffer.clear();
+        map.remove();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return map.isClosed();
     }
 
     @Override
     public void close() {
         buffer.clear();
         map.close();
+    }
+
+    @Override
+    public void save() {
+        map.save();
     }
 
     @Override

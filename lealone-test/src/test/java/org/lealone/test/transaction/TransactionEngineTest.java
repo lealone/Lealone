@@ -63,11 +63,11 @@ public class TransactionEngineTest extends UnitTestBase {
 
         assertNull(map.get("1"));
         assertNull(map.get("2"));
-        map = map.getInstance(t, Long.MAX_VALUE);
+        map = map.getInstance(t);
         map.put("1", "a");
         map.put("2", "b");
         t.commit();
 
-        assertEquals(2, map.sizeAsLong());
+        assertEquals(2, map.size());
     }
 }

@@ -115,8 +115,13 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public boolean canFindNext() {
+    public boolean supportsDistinctQuery() {
         return false;
+    }
+
+    @Override
+    public Cursor findDistinct(Session session, SearchRow first, SearchRow last) {
+        throw DbException.throwInternalError();
     }
 
     @Override
@@ -134,10 +139,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
      * @return the cursor
      * @throws DbException always
      */
-    @Override
-    public Cursor findNext(Session session, SearchRow higherThan, SearchRow last) {
-        throw DbException.throwInternalError();
-    }
 
     /**
      * Calculate the cost for the given mask as if this index was a typical

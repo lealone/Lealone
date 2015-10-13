@@ -14,7 +14,6 @@
 package org.lealone.storage;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.btree.BTreeChunk;
@@ -90,48 +89,6 @@ public class AOStorageTest extends TestBase {
         v = map.get("105");
         p(v);
 
-        v = map.getKey(-1);
-        p(v);
-
-        v = map.getKey(400);
-        p(v);
-
-        v = map.getKey(0); // 第一个
-        p(v);
-
-        v = map.getKey(100);
-        p(v);
-
-        v = map.getKey(200);
-        p(v);
-
-        v = map.getKey(199); // 这才是最后一个，下标从0开始
-        p(v);
-
-        v = map.getKeyIndex("100");
-        p(v);
-
-        v = map.getKeyIndex("299");
-        p(v);
-
-        v = map.getKeyIndex("100a");
-        p(v); // -2，因为找不到时，假想它放在"100"之后，并且位置从1开始，此时它就是放在第2个位置，并且取负号
-        v = map.getKeyIndex("103a");
-        p(v); // -5，因为前面有"100"、"101"、"102"、"103"，占4个位置了，放在"103"之后变-5
-
-        List<String> keyList = map.keyList();
-        v = keyList.get(0); // 相当于map.getKey(0);
-        p(v);
-
-        v = keyList.indexOf("100"); // 相当于map.getKeyIndex("100");
-        p(v);
-
-        try {
-            keyList.add("aaa"); // 返回的keyList是只读的
-        } catch (Exception e) {
-            p(e);
-        }
-
         v = map.firstKey();
         p(v);
         v = map.lastKey();
@@ -152,17 +109,6 @@ public class AOStorageTest extends TestBase {
         v = map.replace("100", "value100", "value100a");
         p(v);
         v = map.replace("100", "value100a", "value100");
-        p(v);
-
-        v = map.replace("100a", "value100a");
-        p(v);
-        v = map.replace("100", "value100a");
-        p(v);
-        v = map.get("100");
-        p(v);
-        v = map.replace("100", "value100");
-        p(v);
-        v = map.get("100");
         p(v);
 
         map.clear();
@@ -325,15 +271,6 @@ public class AOStorageTest extends TestBase {
 
         key = map.lastKey();
         p(key);
-
-        key = map.getKey(20);
-        p(key);
-
-        long index = map.getKeyIndex("30");
-        p(index);
-
-        index = map.getKeyIndex("300");
-        p(index);
 
         key = map.higherKey("30");
         p(key);

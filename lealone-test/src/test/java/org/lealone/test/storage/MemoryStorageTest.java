@@ -17,9 +17,9 @@
  */
 package org.lealone.test.storage;
 
+import org.lealone.storage.memory.MemoryStorageEngine;
 import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
-import org.lealone.test.storage.memory.MemoryStorageEngine;
 
 public class MemoryStorageTest {
 

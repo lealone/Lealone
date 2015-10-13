@@ -375,7 +375,7 @@ public class Select extends Query implements Callable<ResultInterface>, org.leal
                     boolean ascending = columnIndex.getIndexColumns()[0].sortType == SortOrder.ASCENDING;
                     Index current = topTableFilter.getIndex();
                     // if another index is faster
-                    if (columnIndex.canFindNext() && ascending
+                    if (columnIndex.supportsDistinctQuery() && ascending
                             && (current == null || current.getIndexType().isScan() || columnIndex == current)) {
                         IndexType type = columnIndex.getIndexType();
                         // hash indexes don't work, and unique single column
@@ -764,21 +764,13 @@ public class Select extends Query implements Callable<ResultInterface>, org.leal
         int rowNumber = 0;
         setCurrentRowNumber(0);
         Index index = topTableFilter.getIndex();
-        SearchRow first = null;
         int columnIndex = index.getColumns()[0].getColumnId();
         int sampleSize = getSampleSizeValue(session);
-        while (true) {
+        Cursor cursor = index.findDistinct(session, null, null);
+        while (cursor.next()) {
             setCurrentRowNumber(rowNumber + 1);
-            Cursor cursor = index.findNext(session, first, null);
-            if (!cursor.next()) {
-                break;
-            }
             SearchRow found = cursor.getSearchRow();
             Value value = found.getValue(columnIndex);
-            if (first == null) {
-                first = topTableFilter.getTable().getTemplateSimpleRow(true);
-            }
-            first.setValue(columnIndex, value);
             Value[] row = { value };
             result.addRow(row);
             rowNumber++;

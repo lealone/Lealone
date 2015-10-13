@@ -107,6 +107,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     "Undo map open with a different value type");
         }
 
+        initTransactions();
+
         // TODO
         // Set<String> storageMapNames = null;
         // // remove all temporary maps
@@ -131,6 +133,15 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         isClusterMode = Boolean.parseBoolean(config.get("is_cluster_mode"));
         if (isClusterMode)
             TransactionValidator.getInstance().start();
+    }
+
+    private void initTransactions() {
+        List<Transaction> list = getOpenTransactions();
+        for (Transaction t : list) {
+            if (t.getStatus() == Transaction.STATUS_COMMITTING) {
+                t.commit();
+            }
+        }
     }
 
     /**
@@ -183,8 +194,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      *
      * @return the list of transactions (sorted by id)
      */
-    @Override
-    public List<Transaction> getOpenTransactions() {
+    private List<Transaction> getOpenTransactions() {
         synchronized (undoLog) {
             ArrayList<Transaction> list = New.arrayList();
             Long key = undoLog.firstKey();
@@ -327,8 +337,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      */
     @Override
     public synchronized <K, V> void removeMap(TransactionMap<K, V> map) {
-        maps.remove(map.getMapId());
-        map.removeMap();
+        maps.remove(map.getId());
+        map.remove();
         // store.removeMap(map.map);
     }
 

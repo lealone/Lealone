@@ -50,7 +50,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public V get(Object key) {
+    public V get(SpatialKey key) {
         return (V) get(root, key);
     }
 

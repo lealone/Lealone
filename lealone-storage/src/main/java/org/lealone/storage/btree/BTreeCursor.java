@@ -81,29 +81,6 @@ public class BTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
         return lastPage;
     }
 
-    /**
-     * Skip over that many entries. This method is relatively fast (for this map
-     * implementation) even if many entries need to be skipped.
-     * 
-     * @param n the number of entries to skip
-     */
-    public void skip(long n) {
-        if (!hasNext()) {
-            return;
-        }
-        if (n < 10) {
-            while (n-- > 0) {
-                fetchNext();
-            }
-            return;
-        }
-        long index = map.getKeyIndex(current);
-        K k = map.getKey(index + n);
-        pos = null;
-        min(root, k);
-        fetchNext();
-    }
-
     @Override
     public void remove() {
         throw DataUtils.newUnsupportedOperationException("Removing is not supported");

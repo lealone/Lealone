@@ -33,8 +33,6 @@ public interface Storage {
 
     void removeTemporaryMaps(BitField objectIds);
 
-    void initTransactions();
-
     void backupTo(String fileName);
 
     void flush();

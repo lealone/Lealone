@@ -17,8 +17,6 @@
  */
 package org.lealone.transaction;
 
-import java.util.List;
-
 import org.lealone.db.PluggableEngine;
 
 public interface TransactionEngine extends PluggableEngine {
@@ -30,8 +28,6 @@ public interface TransactionEngine extends PluggableEngine {
     boolean validateTransaction(String localTransactionName);
 
     // void init(Set<String> storageMapNames);
-
-    List<Transaction> getOpenTransactions();
 
     <K, V> void removeMap(TransactionMap<K, V> map);
 }

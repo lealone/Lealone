@@ -76,12 +76,7 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public boolean isClosed() {
-        return current.isClosed();
-    }
-
-    @Override
-    public V get(Object key) {
+    public V get(K key) {
         V v = current.get(key);
         if (v == null && chunks.isEmpty()) {
             // TODO read old
@@ -103,43 +98,13 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public V remove(Object key) {
+    public V remove(K key) {
         return current.remove(key);
     }
 
     @Override
     public boolean replace(K key, V oldValue, V newValue) {
         return current.replace(key, oldValue, newValue);
-    }
-
-    @Override
-    public boolean containsKey(Object key) {
-        return current.containsKey(key);
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return current.isEmpty();
-    }
-
-    @Override
-    public int size() {
-        return current.size();
-    }
-
-    @Override
-    public long sizeAsLong() {
-        return current.sizeAsLong();
-    }
-
-    @Override
-    public void clear() {
-        current.clear();
-    }
-
-    @Override
-    public void remove() {
-        current.remove();
     }
 
     @Override
@@ -173,13 +138,23 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public long getKeyIndex(K key) {
-        return current.getKeyIndex(key);
+    public boolean areValuesEqual(Object a, Object b) {
+        return current.areValuesEqual(a, b);
     }
 
     @Override
-    public K getKey(long index) {
-        return current.getKey(index);
+    public long size() {
+        return current.size();
+    }
+
+    @Override
+    public boolean containsKey(K key) {
+        return current.containsKey(key);
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return current.isEmpty();
     }
 
     @Override
@@ -188,18 +163,28 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        return current.areValuesEqual(a, b);
-    }
-
-    @Override
     public StorageMapCursor<K, V> cursor(K from) {
         return current.cursor(from);
     }
 
     @Override
-    public Set<Entry<K, V>> entrySet() {
-        return current.entrySet();
+    public void clear() {
+        current.clear();
+    }
+
+    @Override
+    public void remove() {
+        current.remove();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return current.isClosed();
+    }
+
+    @Override
+    public void close() {
+        current.close();
     }
 
     @Override
@@ -211,8 +196,7 @@ public class LogMap<K, V> implements StorageMap<K, V> {
         }
     }
 
-    @Override
-    public void close() {
-        current.close();
+    public Set<Entry<K, V>> entrySet() {
+        return current.entrySet();
     }
 }

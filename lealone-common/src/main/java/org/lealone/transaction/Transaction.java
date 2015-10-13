@@ -33,11 +33,6 @@ public interface Transaction {
     public static final int STATUS_OPEN = 1;
 
     /**
-     * The status of a prepared transaction.
-     */
-    public static final int STATUS_PREPARED = 2;
-
-    /**
      * The status of a transaction that is being committed, but possibly not
      * yet finished. A transactions can go into this state when the store is
      * closed while the transaction is committing. When opening a store,

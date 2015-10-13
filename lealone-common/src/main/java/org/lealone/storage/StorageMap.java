@@ -17,9 +17,6 @@
  */
 package org.lealone.storage;
 
-import java.util.Map;
-import java.util.Set;
-
 import org.lealone.storage.type.DataType;
 
 public interface StorageMap<K, V> {
@@ -52,15 +49,13 @@ public interface StorageMap<K, V> {
      */
     public DataType getValueType();
 
-    public boolean isClosed();
-
     /**
      * Get a value.
      *
      * @param key the key
      * @return the value, or null if not found
      */
-    public V get(Object key);
+    public V get(K key);
 
     /**
      * Add or replace a key-value pair.
@@ -86,16 +81,7 @@ public interface StorageMap<K, V> {
      * @param key the key (may not be null)
      * @return the old value if the key existed, or null otherwise
      */
-    public V remove(Object key);
-
-    /**
-     * Replace a value for an existing key.
-     *
-     * @param key the key (may not be null)
-     * @param value the new value
-     * @return the old value, if the value was replaced, or null
-     */
-    // public V replace(K key, V value);
+    public V remove(K key);
 
     /**
      * Replace a value for an existing key, if the value matches.
@@ -106,35 +92,6 @@ public interface StorageMap<K, V> {
      * @return true if the value was replaced
      */
     public boolean replace(K key, V oldValue, V newValue);
-
-    public boolean containsKey(Object key);
-
-    public boolean isEmpty();
-
-    /**
-     * Get the number of entries, as a integer. Integer.MAX_VALUE is returned if
-     * there are more than this entries.
-     *
-     * @return the number of entries, as an integer
-     */
-    public int size();
-
-    /**
-     * Get the number of entries, as a long.
-     *
-     * @return the number of entries
-     */
-    public long sizeAsLong();
-
-    /**
-     * Remove all entries.
-     */
-    public void clear();
-
-    /**
-     * Remove map.
-     */
-    public void remove();
 
     /**
      * Get the first key, or null if the map is empty.
@@ -185,37 +142,6 @@ public interface StorageMap<K, V> {
     public K ceilingKey(K key);
 
     /**
-     * Get the index of the given key in the map.
-     * <p>
-     * This is a O(log(size)) operation.
-     * <p>
-     * If the key was found, the returned value is the index in the key array.
-     * If not found, the returned value is negative, where -1 means the provided
-     * key is smaller than any keys. See also Arrays.binarySearch.
-     *
-     * @param key the key
-     * @return the index
-     */
-    public long getKeyIndex(K key);
-
-    /**
-     * Get the key at the given index.
-     * <p>
-     * This is a O(log(size)) operation.
-     *
-     * @param index the index
-     * @return the key
-     */
-    public K getKey(long index);
-
-    /**
-     * Set the volatile flag of the map.
-     *
-     * @param isVolatile the volatile flag
-     */
-    public boolean isInMemory();
-
-    /**
      * Check whether the two values are equal.
      *
      * @param a the first value
@@ -225,6 +151,19 @@ public interface StorageMap<K, V> {
     public boolean areValuesEqual(Object a, Object b);
 
     /**
+     * Get the number of entries, as a long.
+     *
+     * @return the number of entries
+     */
+    public long size();
+
+    public boolean containsKey(K key);
+
+    public boolean isEmpty();
+
+    public boolean isInMemory();
+
+    /**
      * Get a cursor to iterate over a number of keys and values.
      *
      * @param from the first key to return
@@ -232,9 +171,19 @@ public interface StorageMap<K, V> {
      */
     public StorageMapCursor<K, V> cursor(K from);
 
-    public Set<Map.Entry<K, V>> entrySet();
+    /**
+     * Remove all entries.
+     */
+    public void clear();
 
-    public void save();
+    /**
+     * Remove map.
+     */
+    public void remove();
+
+    public boolean isClosed();
 
     public void close();
+
+    public void save();
 }

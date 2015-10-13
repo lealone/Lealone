@@ -69,15 +69,10 @@ public class StandardPrimaryIndex extends IndexBase {
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
+        // TODO处理内存表的情况!table.isPersistData()
         dataMap = transactionEngine.beginTransaction(false).openMap(mapName, table.getMapType(), keyType, valueType,
                 storage);
 
-        // TODO
-        // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs
-        session.commit(false);
-        if (!table.isPersistData()) {
-            dataMap.setVolatile(true);
-        }
         Value k = dataMap.lastKey();
         lastKey = k == null ? 0 : k.getLong();
     }
@@ -236,7 +231,7 @@ public class StandardPrimaryIndex extends IndexBase {
     public void remove(Session session) {
         TransactionMap<Value, Value> map = getMap(session);
         if (!map.isClosed()) {
-            map.removeMap();
+            map.remove();
         }
     }
 
@@ -277,7 +272,7 @@ public class StandardPrimaryIndex extends IndexBase {
     @Override
     public long getRowCount(Session session) {
         TransactionMap<Value, Value> map = getMap(session);
-        return map.sizeAsLong();
+        return map.size();
     }
 
     /**
@@ -362,7 +357,7 @@ public class StandardPrimaryIndex extends IndexBase {
         if (session == null) {
             return dataMap;
         }
-        return dataMap.getInstance(session.getTransaction(), Long.MAX_VALUE);
+        return dataMap.getInstance(session.getTransaction());
     }
 
     boolean isInMemory() {

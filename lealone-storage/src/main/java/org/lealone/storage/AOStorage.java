@@ -33,6 +33,7 @@ import org.lealone.common.util.BitField;
 import org.lealone.storage.btree.BTreeMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.memory.MemoryMap;
 import org.lealone.storage.rtree.RTreeMap;
 import org.lealone.storage.type.DataType;
 
@@ -158,10 +159,17 @@ public class AOStorage implements Storage {
     }
 
     public <K, V> MemoryMap<K, V> openMemoryMap(String name, DataType keyType, DataType valueType) {
-        MemoryMap.Builder<K, V> builder = new MemoryMap.Builder<>();
+        MemoryMapBuilder<K, V> builder = new MemoryMapBuilder<>();
         builder.keyType(keyType);
         builder.valueType(valueType);
         return openMap(name, builder);
+    }
+
+    private static class MemoryMapBuilder<K, V> extends StorageMapBuilder<MemoryMap<K, V>, K, V> {
+        @Override
+        public MemoryMap<K, V> openMap() {
+            return new MemoryMap<>(id, name, keyType, valueType);
+        }
     }
 
     @Override
@@ -292,12 +300,6 @@ public class AOStorage implements Storage {
 
     @Override
     public void sync() {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void initTransactions() {
         // TODO Auto-generated method stub
 
     }

@@ -15,18 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.storage.memory;
+package org.lealone.storage.memory;
 
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 
-public class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements StorageMap<K, V> {
+/**
+ * A skipList-based memory map
+ * 
+ * @param <K> the key class
+ * @param <V> the value class
+ * 
+ * @author zhh
+ */
+public class MemoryMap<K, V> implements StorageMap<K, V> {
 
     private static class KeyComparator<K> implements java.util.Comparator<K> {
         DataType keyType;
@@ -41,23 +48,25 @@ public class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements Stor
         }
     }
 
-    private static final AtomicInteger counter = new AtomicInteger(0);
+    protected final int id;
+    protected final String name;
+    protected final DataType keyType;
+    protected final DataType valueType;
+    protected final ConcurrentSkipListMap<K, V> skipListMap;
 
-    private final String name;
-    private final DataType keyType;
-    private final DataType valueType;
-    private final int id;
+    protected boolean closed;
 
-    public MemoryMap(String name) {
-        this(name, new ObjectDataType(), new ObjectDataType());
-    }
+    public MemoryMap(int id, String name, DataType keyType, DataType valueType) {
+        if (keyType == null)
+            keyType = new ObjectDataType();
+        if (valueType == null)
+            valueType = new ObjectDataType();
 
-    public MemoryMap(String name, DataType keyType, DataType valueType) {
-        super(new KeyComparator<K>(keyType));
+        this.id = id;
         this.name = name;
         this.keyType = keyType;
         this.valueType = valueType;
-        id = counter.incrementAndGet();
+        skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<K>(keyType));
     }
 
     @Override
@@ -81,81 +90,34 @@ public class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements Stor
     }
 
     @Override
+    public V get(K key) {
+        return skipListMap.get(key);
+    }
+
+    @Override
     public V put(K key, V value) {
-        return super.put(key, value);
+        return skipListMap.put(key, value);
     }
 
     @Override
-    public boolean isClosed() {
-        return false;
+    public V putIfAbsent(K key, V value) {
+        return skipListMap.putIfAbsent(key, value);
     }
 
     @Override
-    public long sizeAsLong() {
-        return size();
+    public V remove(K key) {
+        return skipListMap.remove(key);
     }
 
     @Override
-    public void remove() {
-        clear();
-    }
-
-    @Override
-    public long getKeyIndex(K key) {
-        long index = -1;
-        for (K k : keySet()) {
-            index++;
-            if (areEqual(key, k, keyType))
-                break;
-        }
-
-        return index;
-    }
-
-    @Override
-    public K getKey(long index) {
-        if (index < 0)
-            return null;
-
-        long i = 0;
-        K key = null;
-        for (K k : keySet()) {
-            if (i == index) {
-                key = k;
-                break;
-            }
-
-            i++;
-        }
-        if (index != i)
-            return null;
-
-        return key;
-    }
-
-    @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        return areEqual(a, b, valueType);
-    }
-
-    private static boolean areEqual(Object a, Object b, DataType dataType) {
-        if (a == b) {
-            return true;
-        } else if (a == null || b == null) {
-            return false;
-        }
-        return dataType.compare(a, b) == 0;
-    }
-
-    @Override
-    public StorageMapCursor<K, V> cursor(K from) {
-        return new MemoryMapCursor<>(from == null ? entrySet().iterator() : tailMap(from).entrySet().iterator());
+    public boolean replace(K key, V oldValue, V newValue) {
+        return skipListMap.replace(key, oldValue, newValue);
     }
 
     @Override
     public K firstKey() {
         try {
-            return super.firstKey();
+            return skipListMap.firstKey();
         } catch (NoSuchElementException e) {
             return null;
         }
@@ -164,7 +126,7 @@ public class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements Stor
     @Override
     public K lastKey() {
         try {
-            return super.lastKey();
+            return skipListMap.lastKey();
         } catch (NoSuchElementException e) {
             return null;
         }
@@ -173,7 +135,7 @@ public class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements Stor
     @Override
     public K lowerKey(K key) { // 小于给定key的最大key
         try {
-            return super.lowerKey(key);
+            return skipListMap.lowerKey(key);
         } catch (NoSuchElementException e) {
             return null;
         }
@@ -182,7 +144,7 @@ public class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements Stor
     @Override
     public K floorKey(K key) { // 小于或等于给定key的最大key
         try {
-            return super.floorKey(key);
+            return skipListMap.floorKey(key);
         } catch (NoSuchElementException e) {
             return null;
         }
@@ -191,7 +153,7 @@ public class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements Stor
     @Override
     public K higherKey(K key) { // 大于给定key的最小key
         try {
-            return super.higherKey(key);
+            return skipListMap.higherKey(key);
         } catch (NoSuchElementException e) {
             return null;
         }
@@ -200,22 +162,70 @@ public class MemoryMap<K, V> extends ConcurrentSkipListMap<K, V> implements Stor
     @Override
     public K ceilingKey(K key) { // 大于或等于给定key的最小key
         try {
-            return super.ceilingKey(key);
+            return skipListMap.ceilingKey(key);
         } catch (NoSuchElementException e) {
             return null;
         }
     }
 
     @Override
-    public boolean isInMemory() {
-        return false;
+    public boolean areValuesEqual(Object a, Object b) {
+        if (a == b) {
+            return true;
+        } else if (a == null || b == null) {
+            return false;
+        }
+        return valueType.compare(a, b) == 0;
     }
 
     @Override
-    public void save() {
+    public long size() {
+        return skipListMap.size();
+    }
+
+    @Override
+    public boolean containsKey(K key) {
+        return skipListMap.containsKey(key);
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return skipListMap.isEmpty();
+    }
+
+    @Override
+    public boolean isInMemory() {
+        return true;
+    }
+
+    @Override
+    public StorageMapCursor<K, V> cursor(K from) {
+        return new MemoryMapCursor<>(from == null ? skipListMap.entrySet().iterator() : skipListMap.tailMap(from)
+                .entrySet().iterator());
+    }
+
+    @Override
+    public void clear() {
+        skipListMap.clear();
+    }
+
+    @Override
+    public void remove() {
+        clear();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return closed;
     }
 
     @Override
     public void close() {
+        clear();
+        closed = true;
+    }
+
+    @Override
+    public void save() {
     }
 }

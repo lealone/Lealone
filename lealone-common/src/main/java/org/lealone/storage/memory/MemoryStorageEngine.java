@@ -15,14 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.storage.memory;
+package org.lealone.storage.memory;
 
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
+import org.lealone.storage.StorageEngineBase;
 
-public class MemoryStorageBuilder extends StorageBuilder {
+public class MemoryStorageEngine extends StorageEngineBase {
+    public static final String NAME = "memory";
+
+    public MemoryStorageEngine() {
+        super(NAME);
+    }
+
     @Override
-    public Storage openStorage() {
-        return new MemoryStorage();
+    public StorageBuilder getStorageBuilder() {
+        return new MemoryStorageBuilder();
+    }
+
+    public static class MemoryStorageBuilder extends StorageBuilder {
+        @Override
+        public Storage openStorage() {
+            return new MemoryStorage();
+        }
     }
 }

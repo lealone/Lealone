@@ -214,16 +214,6 @@ public class GlobalUniqueIndex extends IndexBase {
     }
 
     @Override
-    public boolean canFindNext() {
-        return true;
-    }
-
-    @Override
-    public Cursor findNext(Session session, SearchRow higherThan, SearchRow last) {
-        return find(session, higherThan, true, last);
-    }
-
-    @Override
     public void checkRename() {
         // ok
     }
