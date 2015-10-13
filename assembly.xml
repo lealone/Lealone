@@ -34,7 +34,8 @@
     <moduleSets>
         <moduleSet>
             <includes>
-                <include>org.lealone:lealone-storage-engine</include>
+                <include>org.lealone:lealone-storage</include>
+                <include>org.lealone:lealone-transaction</include>
                 <include>org.lealone:lealone-bootstrap</include>
             </includes>
             <binaries>
