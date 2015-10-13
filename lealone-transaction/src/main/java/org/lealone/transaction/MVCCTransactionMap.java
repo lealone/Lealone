@@ -451,7 +451,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                     }
                 }
             } finally {
-                // transaction.transactionEngine.store.removeMap(temp);
                 temp.remove();
             }
             return size;
@@ -525,7 +524,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public void remove() {
         map.remove();
-        transaction.transactionEngine.removeMap(this.getId());
+        transaction.transactionEngine.removeMap(getId());
     }
 
     @Override
@@ -550,7 +549,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     * @return the maximum size
     */
     @Override
-    public long sizeAsLongMax() {
+    public long rawSize() {
         return map.size();
     }
 

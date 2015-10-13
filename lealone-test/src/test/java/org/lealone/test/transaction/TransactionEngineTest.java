@@ -58,16 +58,47 @@ public class TransactionEngineTest extends UnitTestBase {
         assertEquals("b", map.get("2"));
 
         t.rollback();
+        try {
+            map.put("1", "a"); // 事务rollback或commit后就自动关闭了，java.lang.IllegalStateException: Transaction is closed
+            fail();
+        } catch (IllegalStateException e) {
+        }
 
         t = te.beginTransaction(false);
+        map = map.getInstance(t);
 
         assertNull(map.get("1"));
         assertNull(map.get("2"));
-        map = map.getInstance(t);
         map.put("1", "a");
         map.put("2", "b");
         t.commit();
 
+        map.get("1"); // 虽然事务commit后就自动关闭了，但是读操作还是允许的
+
+        try {
+            map.put("1", "a"); // 事务rollback或commit后就自动关闭了，java.lang.IllegalStateException: Transaction is closed
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
         assertEquals(2, map.size());
+
+        Transaction t2 = te.beginTransaction(false);
+        map = map.getInstance(t2);
+        map.put("3", "c");
+        map.put("4", "d");
+        assertEquals(4, map.size());
+
+        Transaction t3 = te.beginTransaction(false);
+        map = map.getInstance(t3);
+        map.put("5", "f");
+        assertEquals(3, map.size());
+
+        Transaction t4 = te.beginTransaction(false);
+        map = map.getInstance(t4);
+        map.remove("1");
+        assertEquals(1, map.size());
+        t4.commit();
+
     }
 }

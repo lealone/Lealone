@@ -55,6 +55,13 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      */
     LogMap<Long, Object[]> undoLog;
 
+    /**
+     * The redo log.
+     * 
+     * Key: opId, value: [ mapId, key, newValue ].
+     */
+    LogMap<Long, Object[]> redoLog;
+
     public MVCCTransactionEngine() {
         super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
     }
@@ -104,9 +111,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     "Undo map open with a different value type");
         }
 
+        redoLog = logStorage.openLogMap("redoLog", new ObjectDataType(), undoLogValueType);
+
         initTransactions();
 
-        Long key = undoLog.firstKey();
+        Long key = redoLog.lastKey();
         if (key != null)
             lastTransactionId.set(getTransactionId(key));
 
@@ -329,9 +338,15 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         removeUndoLog(tid, Long.MAX_VALUE);
     }
 
+    private void redoLog(Long operationId, int mapId, Object key, VersionedValue value) {
+        redoLog.put(operationId, new Object[] { mapId, key, value });
+    }
+
+    @SuppressWarnings("unchecked")
     private void removeUndoLog(int tid, long maxLogId) {
         // TODO could synchronize on blocks (100 at a time or so)
         synchronized (undoLog) {
+            ArrayList<Object[]> logs = new ArrayList<>();
             for (long logId = 0; logId < maxLogId; logId++) {
                 Long undoKey = getOperationId(tid, logId);
                 Object[] op = undoLog.get(undoKey);
@@ -354,16 +369,33 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     if (value == null) {
                         // nothing to do
                     } else if (value.value == null) {
+                        redoLog(undoKey, mapId, key, null);
                         // remove the value
-                        map.remove(key);
+                        // map.remove(key);
+                        logs.add(new Object[] { map, key, undoKey });
                     } else {
                         VersionedValue v2 = new VersionedValue();
                         v2.value = value.value;
-                        map.put(key, v2);
+                        redoLog(undoKey, mapId, key, v2);
+                        // map.put(key, v2);
+                        logs.add(new Object[] { map, key, v2, undoKey });
                     }
                 }
+                // undoLog.remove(undoKey);
+            }
 
-                undoLog.remove(undoKey);
+            // 先写redoLog
+            redoLog.save();
+            Object[] a;
+            for (int i = 0, size = logs.size(); i < size; i++) {
+                a = logs.get(i);
+                if (a.length == 3) {
+                    ((StorageMap<Object, VersionedValue>) a[0]).remove(a[1]);
+                    undoLog.remove((Long) a[2]);
+                } else {
+                    ((StorageMap<Object, VersionedValue>) a[0]).put(a[1], (VersionedValue) a[2]);
+                    undoLog.remove((Long) a[3]);
+                }
             }
         }
     }
@@ -375,21 +407,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      */
     synchronized void endTransaction(MVCCTransaction t) {
         t.setStatus(MVCCTransaction.STATUS_CLOSED);
-        // if (store.getAutoCommitDelay() == 0) {
-        // store.commit();
-        // return;
-        // }
-        // // to avoid having to store the transaction log,
-        // // if there is no open transaction,
-        // // and if there have been many changes, store them now
-        // if (undoLog.isEmpty()) {
-        // int unsaved = store.getUnsavedMemory();
-        // int max = store.getAutoCommitMemory();
-        // // save at 3/4 capacity
-        // if (unsaved * 4 > max * 3) {
-        // store.commit();
-        // }
-        // }
     }
 
     /**

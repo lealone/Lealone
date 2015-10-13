@@ -303,7 +303,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         try {
-            return 10 * getCostRangeIndex(masks, dataMap.sizeAsLongMax(), filter, sortOrder);
+            return 10 * getCostRangeIndex(masks, dataMap.rawSize(), filter, sortOrder);
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }
@@ -351,7 +351,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public boolean needRebuild() {
         try {
-            return dataMap.sizeAsLongMax() == 0;
+            return dataMap.rawSize() == 0;
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }
@@ -366,7 +366,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public long getRowCountApproximation() {
         try {
-            return dataMap.sizeAsLongMax();
+            return dataMap.rawSize();
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }

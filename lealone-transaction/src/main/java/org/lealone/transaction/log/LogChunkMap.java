@@ -18,6 +18,7 @@
 package org.lealone.transaction.log;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -67,6 +68,18 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
         fileStorage = new LogFileStorage();
         fileStorage.open(name, config);
         pos = fileStorage.size();
+        if (pos > 0)
+            read();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void read() {
+        ByteBuffer buffer = fileStorage.readFully(0, (int) pos);
+        while (buffer.remaining() > 0) {
+            K k = (K) keyType.read(buffer);
+            V v = (V) valueType.read(buffer);
+            put(k, v);
+        }
     }
 
     @Override

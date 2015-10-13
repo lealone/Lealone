@@ -68,7 +68,7 @@ public class LogStorage {
     }
 
     public <K, V> LogMap<K, V> openLogMap(String name, DataType keyType, DataType valueType) {
-        LogMap<K, V> m = new LogMap<>(++lastMapId, name, keyType, valueType, config);
+        LogMap<K, V> m = new LogMap<>(lastMapId, name, keyType, valueType, config);
         logMaps.add(m);
         return m;
     }

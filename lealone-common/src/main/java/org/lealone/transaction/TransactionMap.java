@@ -31,7 +31,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      *
      * @return the maximum size
      */
-    public long sizeAsLongMax();
+    public long rawSize();
 
     /**
      * Get a clone of this map for the given transaction.
