@@ -36,7 +36,7 @@ import org.lealone.storage.type.WriteBuffer;
  * 
  * @author zhh
  */
-public class LogChunkMap<K, V> extends MemoryMap<K, V> {
+public class LogChunkMap<K, V> extends MemoryMap<K, V> implements Comparable<LogChunkMap<K, V>> {
     public static ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
     protected final FileStorage fileStorage;
@@ -47,13 +47,18 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
     public LogChunkMap(int id, String name, DataType keyType, DataType valueType, Map<String, String> config) {
         super(id, name, keyType, valueType);
 
-        String storageName = config.get("storageName");
-        name = storageName + File.separator + name + LogStorage.MAP_NAME_ID_SEPARATOR + id;
+        name = getChunkFileName(config, id, name);
         fileStorage = new FileStorage();
         fileStorage.open(name, config);
         pos = fileStorage.size();
         if (pos > 0)
             read();
+    }
+
+    static String getChunkFileName(Map<String, String> config, int id, String name) {
+        String storageName = config.get("storageName");
+        name = storageName + File.separator + name + LogStorage.MAP_NAME_ID_SEPARATOR + id;
+        return name;
     }
 
     @SuppressWarnings("unchecked")
@@ -70,7 +75,8 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
     public synchronized void save() {
         WriteBuffer buff = WriteBufferPool.poll();
         K lastKey = this.lastSyncKey;
-        Set<Entry<K, V>> entrySet = lastKey == null ? skipListMap.entrySet() : skipListMap.tailMap(lastKey).entrySet();
+        Set<Entry<K, V>> entrySet = lastKey == null ? skipListMap.entrySet() : skipListMap.tailMap(lastKey, false)
+                .entrySet();
         for (Entry<K, V> e : entrySet) {
             lastKey = e.getKey();
             keyType.write(buff, lastKey);
@@ -91,7 +97,6 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
     @Override
     public void close() {
         save();
-        clear();
         super.close();
         fileStorage.close();
     }
@@ -113,5 +118,15 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
 
     K getLastSyncKey() {
         return lastSyncKey;
+    }
+
+    @Override
+    public int compareTo(LogChunkMap<K, V> o) {
+        return this.getId() - o.getId();
+    }
+
+    @Override
+    public String toString() {
+        return "LogChunkMap[" + getId() + ", " + getName() + "]";
     }
 }

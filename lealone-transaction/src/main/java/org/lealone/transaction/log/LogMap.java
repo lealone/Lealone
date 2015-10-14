@@ -20,10 +20,11 @@ package org.lealone.transaction.log;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 
@@ -39,7 +40,7 @@ public class LogMap<K, V> implements StorageMap<K, V> {
 
     private static final long DEFAULT_LOG_CHUNK_SIZE = 32 * 1024 * 1024;
 
-    private final CopyOnWriteArrayList<LogChunkMap<K, V>> chunks = new CopyOnWriteArrayList<>();
+    private final ConcurrentSkipListSet<LogChunkMap<K, V>> chunks = new ConcurrentSkipListSet<>();
     private LogChunkMap<K, V> current;
 
     private int id;
@@ -91,13 +92,35 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     @Override
     public V get(K key) {
         V v = current.get(key);
-        if (v == null && chunks.isEmpty()) {
-            // TODO read old
-            LogChunkMap<K, V> chunk = new LogChunkMap<>(id, name, keyType, valueType, config);
-            chunks.add(chunk);
-            v = chunks.get(0).get(key);
+        if (v == null) {
+            if (chunks.isEmpty()) {
+                return getFromPreviousChunk(key, id);
+            } else {
+                for (LogChunkMap<K, V> c : chunks) {
+                    v = c.get(key);
+                    if (v != null)
+                        return v;
+                }
+                return getFromPreviousChunk(key, chunks.first().getId());
+            }
         }
         return v;
+    }
+
+    private V getFromPreviousChunk(K key, Integer currentId) {
+        V v;
+        while (true) {
+            Integer previousId = LogStorage.getPreviousId(getName(), currentId);
+            if (previousId == null)
+                return null;
+
+            LogChunkMap<K, V> chunk = new LogChunkMap<>(previousId, name, keyType, valueType, config);
+            chunks.add(chunk);
+            v = chunk.get(key);
+            if (v != null)
+                return v;
+            currentId = previousId;
+        }
     }
 
     @Override
@@ -183,11 +206,25 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     @Override
     public void clear() {
         current.clear();
+        for (LogChunkMap<K, V> c : chunks) {
+            c.clear();
+        }
     }
 
     @Override
     public void remove() {
-        current.remove();
+        current.close();
+        for (LogChunkMap<K, V> c : chunks) {
+            c.close();
+        }
+
+        Integer id = current.getId();
+
+        do {
+            FileUtils.delete(LogChunkMap.getChunkFileName(config, id, name));
+            id = LogStorage.getPreviousId(name, id);
+        } while (id != null);
+
         LogStorage.logMaps.remove(this);
     }
 
@@ -206,6 +243,7 @@ public class LogMap<K, V> implements StorageMap<K, V> {
         current.save();
         if (current.logChunkSize() > logChunkSize) {
             current.close();
+            LogStorage.addMapId(name, id);
             current = new LogChunkMap<>(++id, name, keyType, valueType, config);
         }
     }
@@ -216,5 +254,10 @@ public class LogMap<K, V> implements StorageMap<K, V> {
 
     public K getLastSyncKey() {
         return current.getLastSyncKey();
+    }
+
+    @Override
+    public String toString() {
+        return "LogMap[" + getId() + ", " + getName() + "]";
     }
 }

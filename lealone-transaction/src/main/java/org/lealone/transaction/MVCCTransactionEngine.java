@@ -5,7 +5,6 @@
  */
 package org.lealone.transaction;
 
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -86,10 +85,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         isClusterMode = Boolean.parseBoolean(config.get("is_cluster_mode"));
         hostAndPort = config.get("host_and_port");
 
-        String baseDir = config.get("base_dir");
-        String logDir = config.get("transaction_log_dir");
-        String storageName = baseDir + File.separator + logDir;
-        config.put("storageName", storageName);
         logStorage = new LogStorage(config);
 
         // undoLog中存放的是所有事务的事务日志，
