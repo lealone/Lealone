@@ -430,7 +430,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             // re-fetch in case any transaction was committed now
             long size = map.size();
             int mapId = getId();
-            StorageMap<Object, Integer> temp = transaction.transactionEngine.createTempMap();
+            StorageMap<Object, Integer> temp = transaction.transactionEngine.logStorage.createTempMap();
             try {
                 for (Entry<Long, Object[]> e : undo.entrySet()) {
                     Object[] op = e.getValue();

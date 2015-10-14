@@ -600,7 +600,7 @@ public class FileStorage {
      * @param encryptionKey the encryption key, or null if encryption is not
      *            used
      */
-    public void open(String fileName, Map<String, Object> config) {
+    public void open(String fileName, Map<String, ?> config) {
         if (file != null) {
             return;
         }

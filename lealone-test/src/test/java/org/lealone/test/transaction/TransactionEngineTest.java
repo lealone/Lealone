@@ -48,7 +48,7 @@ public class TransactionEngineTest extends UnitTestBase {
 
         Map<String, String> config = new HashMap<>();
         config.put("base_dir", joinDirs("transaction-test"));
-        config.put("transaction_log_dir", "log");
+        config.put("transaction_log_dir", "tlog");
         te.init(config);
         Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap("test", storage);

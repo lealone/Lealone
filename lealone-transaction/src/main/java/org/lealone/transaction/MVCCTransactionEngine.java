@@ -24,7 +24,6 @@ import org.lealone.storage.type.WriteBuffer;
 import org.lealone.transaction.log.LogChunkMap;
 import org.lealone.transaction.log.LogMap;
 import org.lealone.transaction.log.LogStorage;
-import org.lealone.transaction.log.LogStorageBuilder;
 import org.lealone.transaction.log.RedoLogValue;
 import org.lealone.transaction.log.RedoLogValueType;
 
@@ -37,16 +36,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     private final AtomicInteger lastTransactionId = new AtomicInteger();
     private int maxTransactionId = 0xffff;
 
-    /**
-     * The next id of a temporary map.
-     */
-    private int nextTempMapId;
-
     private boolean init;
     private boolean isClusterMode;
     String hostAndPort;
 
-    private LogStorage logStorage;
+    LogStorage logStorage;
 
     /**
      * The undo log.
@@ -83,11 +77,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         maps.remove(mapId);
     }
 
-    /**
-     * Initialize the store. This is needed before a transaction can be opened.
-     * If the transaction store is corrupt, this method can throw an exception,
-     * in which case the store can only be used for reading.
-     */
     @Override
     public synchronized void init(Map<String, String> config) {
         if (init)
@@ -96,13 +85,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         isClusterMode = Boolean.parseBoolean(config.get("is_cluster_mode"));
         hostAndPort = config.get("host_and_port");
 
-        LogStorageBuilder builder = new LogStorageBuilder();
-        // TODO 指定LogStorageBuilder各类参数
         String baseDir = config.get("base_dir");
         String logDir = config.get("transaction_log_dir");
         String storageName = baseDir + File.separator + logDir;
-        builder.storageName(storageName);
-        logStorage = builder.open();
+        config.put("storageName", storageName);
+        logStorage = new LogStorage(config);
 
         // undoLog中存放的是所有事务的事务日志，
         // 就算是在同一个事务中也可能涉及同一个数据库中的多个表甚至多个数据库的多个表，
@@ -111,10 +98,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), new ObjectDataType(),
                 oldValueType });
         undoLog = logStorage.openLogMap("undoLog", new ObjectDataType(), undoLogValueType);
-        if (undoLog.getValueType() != undoLogValueType) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
-                    "Undo map open with a different value type");
-        }
 
         redoLog = logStorage.openLogMap("redoLog", new ObjectDataType(), new RedoLogValueType());
 
@@ -123,8 +106,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         Long key = redoLog.lastKey();
         if (key != null)
             lastTransactionId.set(getTransactionId(key));
-
-        // TODO 在这里删除logStorage中的临时表
 
         TransactionStatusTable.init(logStorage);
 
@@ -490,26 +471,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     @Override
     public boolean validateTransaction(String localTransactionName) {
         return TransactionStatusTable.validateTransaction(localTransactionName);
-    }
-
-    /**
-     * Create a temporary map. Such maps are removed when opening the store.
-     *
-     * @return the map
-     */
-    synchronized StorageMap<Object, Integer> createTempMap() {
-        String mapName = "temp." + nextTempMapId++;
-        return openTempMap(mapName);
-    }
-
-    /**
-     * Open a temporary map.
-     *
-     * @param mapName the map name
-     * @return the map
-     */
-    StorageMap<Object, Integer> openTempMap(String mapName) {
-        return logStorage.openLogMap(mapName, null, null);
     }
 
     /**

@@ -28,7 +28,7 @@ import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 
 /**
- * A skipList-based log map
+ * A log map
  * 
  * @param <K> the key class
  * @param <V> the value class
@@ -37,17 +37,19 @@ import org.lealone.storage.type.ObjectDataType;
  */
 public class LogMap<K, V> implements StorageMap<K, V> {
 
-    private static final long LOG_CHUNK_MAX_SIZE = 32 * 1024 * 1024;
+    private static final long DEFAULT_LOG_CHUNK_SIZE = 32 * 1024 * 1024;
 
     private final CopyOnWriteArrayList<LogChunkMap<K, V>> chunks = new CopyOnWriteArrayList<>();
     private LogChunkMap<K, V> current;
+
     private int id;
     private final String name;
     private final DataType keyType;
     private final DataType valueType;
-    private final Map<String, Object> config;
+    private final Map<String, String> config;
+    private final long logChunkSize;
 
-    public LogMap(int id, String name, DataType keyType, DataType valueType, Map<String, Object> config) {
+    public LogMap(int id, String name, DataType keyType, DataType valueType, Map<String, String> config) {
         if (keyType == null)
             keyType = new ObjectDataType();
         if (valueType == null)
@@ -58,7 +60,12 @@ public class LogMap<K, V> implements StorageMap<K, V> {
         this.keyType = keyType;
         this.valueType = valueType;
         this.config = config;
+
         current = new LogChunkMap<>(id, name, keyType, valueType, config);
+        if (config.containsKey("log_chunk_size"))
+            logChunkSize = Long.parseLong(config.get("log_chunk_size"));
+        else
+            logChunkSize = DEFAULT_LOG_CHUNK_SIZE;
     }
 
     @Override
@@ -196,7 +203,7 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     @Override
     public void save() {
         current.save();
-        if (current.logChunkSize() > LOG_CHUNK_MAX_SIZE) {
+        if (current.logChunkSize() > logChunkSize) {
             current.close();
             current = new LogChunkMap<>(id++, name, keyType, valueType, config);
         }

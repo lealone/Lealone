@@ -26,7 +26,7 @@ public class OffHeapStorage extends FileStorage {
     private final TreeMap<Long, ByteBuffer> memory = new TreeMap<Long, ByteBuffer>();
 
     @Override
-    public void open(String fileName, Map<String, Object> config) {
+    public void open(String fileName, Map<String, ?> config) {
         memory.clear();
     }
 

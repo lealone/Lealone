@@ -63,10 +63,10 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
     private long pos;
     private volatile K lastKey;
 
-    public LogChunkMap(int id, String name, DataType keyType, DataType valueType, Map<String, Object> config) {
+    public LogChunkMap(int id, String name, DataType keyType, DataType valueType, Map<String, String> config) {
         super(id, name, keyType, valueType);
 
-        String storageName = (String) config.get("storageName");
+        String storageName = config.get("storageName");
         name = storageName + File.separator + name + LogStorage.MAP_NAME_ID_SEPARATOR + id;
         fileStorage = new FileStorage();
         fileStorage.open(name, config);
@@ -113,6 +113,13 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
         clear();
         super.close();
         fileStorage.close();
+    }
+
+    @Override
+    public void remove() {
+        fileStorage.close();
+        fileStorage.delete();
+        super.remove();
     }
 
     long logChunkSize() {

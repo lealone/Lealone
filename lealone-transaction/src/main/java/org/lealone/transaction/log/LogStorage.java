@@ -35,17 +35,22 @@ public class LogStorage {
 
     public static final char MAP_NAME_ID_SEPARATOR = '-';
 
+    private static final String TEMP_MAP_NAME_PREFIX = "temp" + MAP_NAME_ID_SEPARATOR;
+
     private static final CopyOnWriteArrayList<LogMap<?, ?>> logMaps = new CopyOnWriteArrayList<>();
 
     private final ConcurrentHashMap<String, Integer> ids = new ConcurrentHashMap<>();
-    private final Map<String, Object> config;
+    private final Map<String, String> config;
     private final LogStorageBackgroundThread backgroundThread;
 
-    private int lastMapId;
+    /**
+     * The next id of a temporary map.
+     */
+    private int nextTempMapId;
 
-    LogStorage(Map<String, Object> config) {
+    public LogStorage(Map<String, String> config) {
         this.config = config;
-        String storageName = (String) config.get("storageName");
+        String storageName = config.get("storageName");
         if (storageName != null) {
             if (!FileUtils.exists(storageName))
                 FileUtils.createDirectories(storageName);
@@ -53,22 +58,36 @@ public class LogStorage {
             FilePath dir = FilePath.get(storageName);
             for (FilePath fp : dir.newDirectoryStream()) {
                 String mapFullName = fp.getName();
+                if (mapFullName.startsWith(TEMP_MAP_NAME_PREFIX)) {
+                    fp.delete();
+                    continue;
+                }
+
                 int mapIdStartPos = mapFullName.lastIndexOf(MAP_NAME_ID_SEPARATOR);
                 if (mapIdStartPos > 0) {
                     String mapName = mapFullName.substring(0, mapIdStartPos);
                     int mapId = Integer.parseInt(mapFullName.substring(mapIdStartPos + 1));
-                    if (mapId > lastMapId)
-                        lastMapId = mapId;
-                    ids.put(mapName, mapId);
+                    Integer oldMapId = ids.put(mapName, mapId);
+                    if (oldMapId != null && mapId < oldMapId)
+                        ids.put(mapName, oldMapId);
                 }
+
             }
         }
 
         backgroundThread = new LogStorageBackgroundThread(this);
     }
 
+    public synchronized StorageMap<Object, Integer> createTempMap() {
+        String mapName = LogStorage.TEMP_MAP_NAME_PREFIX + (++nextTempMapId);
+        return openLogMap(mapName, null, null);
+    }
+
     public <K, V> LogMap<K, V> openLogMap(String name, DataType keyType, DataType valueType) {
-        LogMap<K, V> m = new LogMap<>(lastMapId, name, keyType, valueType, config);
+        int mapId = 1;
+        if (ids.containsKey(name))
+            mapId = ids.get(name);
+        LogMap<K, V> m = new LogMap<>(mapId, name, keyType, valueType, config);
         logMaps.add(m);
         return m;
     }
