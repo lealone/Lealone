@@ -22,6 +22,7 @@ import org.lealone.common.util.New;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.ObjectDataType;
 
 /**
  * A transaction.
@@ -155,11 +156,15 @@ public class MVCCTransaction implements Transaction {
     @Override
     public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
             Storage storage) {
+        if (keyType == null)
+            keyType = new ObjectDataType();
+        if (valueType == null)
+            valueType = new ObjectDataType();
+
         checkNotClosed();
         StorageMap<K, VersionedValue> map = storage.openMap(name, mapType, keyType, new VersionedValueType(valueType),
                 null);
         transactionEngine.addMap((StorageMap<Object, VersionedValue>) map);
-        transactionEngine.changeDataType(valueType);
         return new MVCCTransactionMap<>(this, map);
     }
 

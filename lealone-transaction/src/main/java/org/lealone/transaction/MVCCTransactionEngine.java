@@ -6,6 +6,7 @@
 package org.lealone.transaction;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -19,9 +20,13 @@ import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
+import org.lealone.storage.type.WriteBuffer;
+import org.lealone.transaction.log.LogChunkMap;
 import org.lealone.transaction.log.LogMap;
 import org.lealone.transaction.log.LogStorage;
 import org.lealone.transaction.log.LogStorageBuilder;
+import org.lealone.transaction.log.RedoLogValue;
+import org.lealone.transaction.log.RedoLogValueType;
 
 /**
  * The transaction engine that supports concurrent MVCC read-committed transactions.
@@ -60,9 +65,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      * 
      * Key: opId, value: [ mapId, key, newValue ].
      */
-    LogMap<Long, Object[]> redoLog;
-
-    private Class<?> dataTypeClass;
+    LogMap<Long, RedoLogValue> redoLog;
 
     public MVCCTransactionEngine() {
         super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
@@ -78,19 +81,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     void removeMap(int mapId) {
         maps.remove(mapId);
-    }
-
-    // TODO 只是临时方案
-    void changeDataType(DataType dataType) {
-        if (dataType != null && (dataTypeClass == null || (dataTypeClass != dataType.getClass()))) {
-            dataTypeClass = dataType.getClass();
-            undoLog.close();
-            redoLog.close();
-            VersionedValueType oldValueType = new VersionedValueType(dataType);
-            ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), dataType, oldValueType });
-            undoLog = logStorage.openLogMap("undoLog", new ObjectDataType(), undoLogValueType);
-            redoLog = logStorage.openLogMap("redoLog", new ObjectDataType(), undoLogValueType);
-        }
     }
 
     /**
@@ -126,7 +116,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     "Undo map open with a different value type");
         }
 
-        redoLog = logStorage.openLogMap("redoLog", new ObjectDataType(), undoLogValueType);
+        redoLog = logStorage.openLogMap("redoLog", new ObjectDataType(), new RedoLogValueType());
 
         initTransactions();
 
@@ -354,7 +344,30 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     private void redoLog(Long operationId, int mapId, Object key, VersionedValue value) {
-        redoLog.put(operationId, new Object[] { mapId, key, value });
+        WriteBuffer writeBuffer = LogChunkMap.getWriteBuffer();
+        StorageMap<?, ?> map = maps.get(mapId);
+
+        map.getKeyType().write(writeBuffer, key);
+        ByteBuffer keyBuffer = writeBuffer.getBuffer();
+        keyBuffer.flip();
+        keyBuffer = keyBuffer.duplicate();
+
+        writeBuffer.clear();
+
+        ByteBuffer valueBuffer;
+        if (value != null) {
+            ((VersionedValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
+            valueBuffer = writeBuffer.getBuffer();
+            valueBuffer.flip();
+            valueBuffer = valueBuffer.duplicate();
+        } else {
+            valueBuffer = LogChunkMap.EMPTY_BUFFER;
+        }
+
+        RedoLogValue v = new RedoLogValue(mapId, keyBuffer, valueBuffer);
+        redoLog.put(operationId, v);
+
+        LogChunkMap.releaseWriteBuffer(writeBuffer);
     }
 
     @SuppressWarnings("unchecked")

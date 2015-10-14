@@ -37,9 +37,11 @@ import org.lealone.storage.type.WriteBuffer;
  * @author zhh
  */
 public class LogChunkMap<K, V> extends MemoryMap<K, V> {
+    public static ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
+
     private static WriteBuffer writeBuffer;
 
-    private static WriteBuffer getWriteBuffer() {
+    public static WriteBuffer getWriteBuffer() {
         WriteBuffer buff;
         if (writeBuffer != null) {
             buff = writeBuffer;
@@ -50,7 +52,7 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
         return buff;
     }
 
-    private static void releaseWriteBuffer(WriteBuffer buff) {
+    public static void releaseWriteBuffer(WriteBuffer buff) {
         if (buff.capacity() <= 4 * 1024 * 1024) {
             writeBuffer = buff;
         }

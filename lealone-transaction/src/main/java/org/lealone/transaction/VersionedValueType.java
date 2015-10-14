@@ -16,7 +16,7 @@ import org.lealone.storage.type.WriteBuffer;
  */
 class VersionedValueType implements DataType {
 
-    private final DataType valueType;
+    final DataType valueType;
 
     public VersionedValueType(DataType valueType) {
         this.valueType = valueType;
