@@ -393,18 +393,24 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         return map.areValuesEqual(a, b);
     }
 
+    @Override
+    public int size() {
+        long size = sizeAsLong();
+        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
+    }
+
     /**
      * Get the size of the map as seen by this transaction.
      *
      * @return the size
      */
     @Override
-    public long size() {
-        long sizeRaw = map.size();
+    public long sizeAsLong() {
+        long sizeRaw = map.sizeAsLong();
         LogMap<Long, Object[]> undo = transaction.transactionEngine.undoLog;
         long undoLogSize;
         synchronized (undo) {
-            undoLogSize = undo.size();
+            undoLogSize = undo.sizeAsLong();
         }
         if (undoLogSize == 0) {
             return sizeRaw;
@@ -428,7 +434,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         // scan the undo log and subtract invisible entries
         synchronized (undo) {
             // re-fetch in case any transaction was committed now
-            long size = map.size();
+            long size = map.sizeAsLong();
             int mapId = getId();
             StorageMap<Object, Integer> temp = transaction.transactionEngine.logStorage.createTempMap();
             try {
@@ -470,7 +476,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public boolean isEmpty() {
-        return size() == 0;
+        return sizeAsLong() == 0;
     }
 
     @Override
@@ -550,7 +556,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     */
     @Override
     public long rawSize() {
-        return map.size();
+        return map.sizeAsLong();
     }
 
     /**

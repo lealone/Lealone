@@ -179,8 +179,13 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public long size() {
+    public int size() {
         return skipListMap.size();
+    }
+
+    @Override
+    public long sizeAsLong() {
+        return size();
     }
 
     @Override

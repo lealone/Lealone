@@ -360,7 +360,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public long getRowCount(Session session) {
         TransactionMap<Value, Value> map = getMap(session);
-        return map.size();
+        return map.sizeAsLong();
     }
 
     @Override

@@ -396,7 +396,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      */
     @SuppressWarnings("unchecked")
     protected K getFirstLast(boolean first) {
-        if (size() == 0) {
+        if (sizeAsLong() == 0) {
             return null;
         }
         BTreePage p = root;
@@ -685,7 +685,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
             @Override
             public int size() {
-                return (int) BTreeMap.this.size();
+                return BTreeMap.this.size();
             }
 
             @Override
@@ -697,13 +697,19 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     }
 
-    /**
-     * Get the number of entries, as a long.
-     * 
-     * @return the number of entries
-     */
     @Override
-    public long size() {
+    public int size() {
+        long size = sizeAsLong();
+        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
+    }
+
+    /**
+    * Get the number of entries, as a long.
+    * 
+    * @return the number of entries
+    */
+    @Override
+    public long sizeAsLong() {
         return root.getTotalCount();
     }
 

@@ -245,8 +245,13 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public long size() {
+    public int size() {
         return map.size();
+    }
+
+    @Override
+    public long sizeAsLong() {
+        return map.sizeAsLong();
     }
 
     @Override

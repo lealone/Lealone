@@ -179,8 +179,13 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public long size() {
+    public int size() {
         return current.size();
+    }
+
+    @Override
+    public long sizeAsLong() {
+        return current.sizeAsLong();
     }
 
     @Override

@@ -151,11 +151,18 @@ public interface StorageMap<K, V> {
     public boolean areValuesEqual(Object a, Object b);
 
     /**
+     * Get the number of entries.
+     *
+     * @return the number of entries
+     */
+    public int size();
+
+    /**
      * Get the number of entries, as a long.
      *
      * @return the number of entries
      */
-    public long size();
+    public long sizeAsLong();
 
     public boolean containsKey(K key);
 

@@ -220,8 +220,13 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     }
 
     @Override
-    public long size() {
+    public int size() {
         return buffer.size() + map.size();
+    }
+
+    @Override
+    public long sizeAsLong() {
+        return buffer.size() + map.sizeAsLong();
     }
 
     @Override
