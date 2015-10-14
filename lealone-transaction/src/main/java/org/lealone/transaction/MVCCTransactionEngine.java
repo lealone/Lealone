@@ -26,6 +26,7 @@ import org.lealone.transaction.log.LogMap;
 import org.lealone.transaction.log.LogStorage;
 import org.lealone.transaction.log.RedoLogValue;
 import org.lealone.transaction.log.RedoLogValueType;
+import org.lealone.transaction.log.WriteBufferPool;
 
 /**
  * The transaction engine that supports concurrent MVCC read-committed transactions.
@@ -167,6 +168,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     @Override
     public void close() {
+        logStorage.close();
         if (isClusterMode)
             TransactionValidator.getInstance().close();
     }
@@ -325,7 +327,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     private void redoLog(Long operationId, int mapId, Object key, VersionedValue value) {
-        WriteBuffer writeBuffer = LogChunkMap.getWriteBuffer();
+        WriteBuffer writeBuffer = WriteBufferPool.poll();
         StorageMap<?, ?> map = maps.get(mapId);
 
         map.getKeyType().write(writeBuffer, key);
@@ -348,11 +350,12 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         RedoLogValue v = new RedoLogValue(mapId, keyBuffer, valueBuffer);
         redoLog.put(operationId, v);
 
-        LogChunkMap.releaseWriteBuffer(writeBuffer);
+        WriteBufferPool.offer(writeBuffer);
     }
 
     @SuppressWarnings("unchecked")
     private void removeUndoLog(int tid, long maxLogId) {
+        Long lastOperationId = null;
         // TODO could synchronize on blocks (100 at a time or so)
         synchronized (undoLog) {
             ArrayList<Object[]> logs = new ArrayList<>();
@@ -382,19 +385,23 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                         // remove the value
                         // map.remove(key);
                         logs.add(new Object[] { map, key, undoKey });
+                        lastOperationId = undoKey;
                     } else {
                         VersionedValue v2 = new VersionedValue();
                         v2.value = value.value;
                         redoLog(undoKey, mapId, key, v2);
                         // map.put(key, v2);
                         logs.add(new Object[] { map, key, v2, undoKey });
+                        lastOperationId = undoKey;
                     }
                 }
                 // undoLog.remove(undoKey);
             }
 
             // 先写redoLog
-            redoLog.save();
+            // redoLog.save();
+            if (lastOperationId != null)
+                logStorage.logSyncService.maybeWaitForSync(redoLog, lastOperationId);
             Object[] a;
             for (int i = 0, size = logs.size(); i < size; i++) {
                 a = logs.get(i);

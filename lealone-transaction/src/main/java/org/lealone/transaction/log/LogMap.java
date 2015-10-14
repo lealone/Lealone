@@ -188,6 +188,7 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     @Override
     public void remove() {
         current.remove();
+        LogStorage.logMaps.remove(this);
     }
 
     @Override
@@ -205,11 +206,15 @@ public class LogMap<K, V> implements StorageMap<K, V> {
         current.save();
         if (current.logChunkSize() > logChunkSize) {
             current.close();
-            current = new LogChunkMap<>(id++, name, keyType, valueType, config);
+            current = new LogChunkMap<>(++id, name, keyType, valueType, config);
         }
     }
 
     public Set<Entry<K, V>> entrySet() {
         return current.entrySet();
+    }
+
+    public K getLastSyncKey() {
+        return current.getLastSyncKey();
     }
 }

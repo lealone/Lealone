@@ -39,29 +39,10 @@ import org.lealone.storage.type.WriteBuffer;
 public class LogChunkMap<K, V> extends MemoryMap<K, V> {
     public static ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
-    private static WriteBuffer writeBuffer;
-
-    public static WriteBuffer getWriteBuffer() {
-        WriteBuffer buff;
-        if (writeBuffer != null) {
-            buff = writeBuffer;
-            buff.clear();
-        } else {
-            buff = new WriteBuffer();
-        }
-        return buff;
-    }
-
-    public static void releaseWriteBuffer(WriteBuffer buff) {
-        if (buff.capacity() <= 4 * 1024 * 1024) {
-            writeBuffer = buff;
-        }
-    }
-
     protected final FileStorage fileStorage;
 
     private long pos;
-    private volatile K lastKey;
+    private volatile K lastSyncKey;
 
     public LogChunkMap(int id, String name, DataType keyType, DataType valueType, Map<String, String> config) {
         super(id, name, keyType, valueType);
@@ -86,9 +67,9 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
     }
 
     @Override
-    public void save() {
-        WriteBuffer buff = getWriteBuffer();
-        K lastKey = this.lastKey;
+    public synchronized void save() {
+        WriteBuffer buff = WriteBufferPool.poll();
+        K lastKey = this.lastSyncKey;
         Set<Entry<K, V>> entrySet = lastKey == null ? skipListMap.entrySet() : skipListMap.tailMap(lastKey).entrySet();
         for (Entry<K, V> e : entrySet) {
             lastKey = e.getKey();
@@ -102,9 +83,9 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
             fileStorage.writeFully(pos, buff.getBuffer());
             pos += chunkLength;
             fileStorage.sync();
-            releaseWriteBuffer(buff);
+            WriteBufferPool.offer(buff);
         }
-        this.lastKey = lastKey;
+        this.lastSyncKey = lastKey;
     }
 
     @Override
@@ -128,5 +109,9 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> {
 
     Set<Entry<K, V>> entrySet() {
         return skipListMap.entrySet();
+    }
+
+    K getLastSyncKey() {
+        return lastSyncKey;
     }
 }

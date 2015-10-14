@@ -37,16 +37,19 @@ public class LogStorage {
 
     private static final String TEMP_MAP_NAME_PREFIX = "temp" + MAP_NAME_ID_SEPARATOR;
 
-    private static final CopyOnWriteArrayList<LogMap<?, ?>> logMaps = new CopyOnWriteArrayList<>();
+    static final CopyOnWriteArrayList<LogMap<?, ?>> logMaps = new CopyOnWriteArrayList<>();
 
     private final ConcurrentHashMap<String, Integer> ids = new ConcurrentHashMap<>();
     private final Map<String, String> config;
-    private final LogStorageBackgroundThread backgroundThread;
+
+    public final LogSyncService logSyncService;
 
     /**
      * The next id of a temporary map.
      */
     private int nextTempMapId;
+
+    static LogMap<?, ?> redoLog;
 
     public LogStorage(Map<String, String> config) {
         this.config = config;
@@ -75,7 +78,15 @@ public class LogStorage {
             }
         }
 
-        backgroundThread = new LogStorageBackgroundThread(this);
+        String logSyncType = config.get("log_sync_type");
+        if (logSyncType == null || "periodic".equalsIgnoreCase(logSyncType))
+            logSyncService = new PeriodicLogSyncService(config);
+        else if ("batch".equalsIgnoreCase(logSyncType))
+            logSyncService = new BatchLogSyncService(config);
+        else
+            throw new IllegalArgumentException("Unknow log_sync_type:" + logSyncType);
+
+        logSyncService.start();
     }
 
     public synchronized StorageMap<Object, Integer> createTempMap() {
@@ -89,51 +100,24 @@ public class LogStorage {
             mapId = ids.get(name);
         LogMap<K, V> m = new LogMap<>(mapId, name, keyType, valueType, config);
         logMaps.add(m);
+        if ("redoLog".equals(name))
+            redoLog = m;
         return m;
     }
 
     public synchronized void close() {
-        backgroundThread.close();
+        for (StorageMap<?, ?> map : logMaps)
+            map.save();
+        logSyncService.close();
+        try {
+            logSyncService.join();
+        } catch (InterruptedException e) {
+        }
 
         for (StorageMap<?, ?> map : logMaps)
             map.close();
 
         logMaps.clear();
         ids.clear();
-    }
-
-    public synchronized void commit() {
-        for (StorageMap<?, ?> map : logMaps)
-            map.save();
-    }
-
-    private static class LogStorageBackgroundThread extends Thread {
-        private final int sleep;
-        private boolean running = true;
-
-        LogStorageBackgroundThread(LogStorage storage) {
-            super("LogStorageBackgroundThread");
-            this.sleep = 1000;
-            setDaemon(true);
-        }
-
-        void close() {
-            running = false;
-        }
-
-        @Override
-        public void run() {
-            while (running) {
-                try {
-                    sleep(sleep);
-                } catch (InterruptedException e) {
-                    continue;
-                }
-
-                for (LogMap<?, ?> map : LogStorage.logMaps) {
-                    map.save();
-                }
-            }
-        }
     }
 }

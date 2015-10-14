@@ -49,6 +49,12 @@ public class TransactionEngineTest extends UnitTestBase {
         Map<String, String> config = new HashMap<>();
         config.put("base_dir", joinDirs("transaction-test"));
         config.put("transaction_log_dir", "tlog");
+        config.put("log_sync_type", "batch");
+        config.put("log_sync_batch_window", "10"); // 10ms
+
+        // config.put("log_sync_type", "periodic");
+        // config.put("log_sync_period", "500"); // 500ms
+
         te.init(config);
         Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap("test", storage);
@@ -100,5 +106,6 @@ public class TransactionEngineTest extends UnitTestBase {
         assertEquals(1, map.size());
         t4.commit();
 
+        te.close();
     }
 }
