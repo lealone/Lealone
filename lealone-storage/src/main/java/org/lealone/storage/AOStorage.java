@@ -83,6 +83,7 @@ public class AOStorage implements Storage {
     private final AOStorageBackgroundThread backgroundThread;
 
     private int lastMapId;
+    private boolean closed;
 
     AOStorage(Map<String, Object> config) {
         this.config = config;
@@ -130,6 +131,10 @@ public class AOStorage implements Storage {
         return map;
     }
 
+    public <K, V> BTreeMap<K, V> openBTreeMap(String name) {
+        return openBTreeMap(name, null, null);
+    }
+
     public <K, V> BTreeMap<K, V> openBTreeMap(String name, DataType keyType, DataType valueType) {
         BTreeMap.Builder<K, V> builder = new BTreeMap.Builder<>();
         builder.keyType(keyType);
@@ -172,8 +177,26 @@ public class AOStorage implements Storage {
         }
     }
 
+    public boolean isReadOnly() {
+        return config.containsKey("readOnly");
+    }
+
+    public boolean isClosed() {
+        return closed;
+    }
+
     @Override
     public synchronized void close() {
+        close(true);
+    }
+
+    @Override
+    public void closeImmediately() {
+        close(false);
+    }
+
+    private void close(boolean closeMaps) {
+        closed = true;
         backgroundThread.close();
 
         for (StorageMap<?, ?> map : maps.values())
@@ -289,36 +312,35 @@ public class AOStorage implements Storage {
     @Override
     public void backupTo(String fileName) {
         // TODO Auto-generated method stub
-
     }
 
     @Override
     public void flush() {
-        // TODO Auto-generated method stub
-
+        commit();
     }
 
     @Override
     public void sync() {
-        // TODO Auto-generated method stub
-
+        commit();
     }
 
     @Override
     public void removeTemporaryMaps(BitField objectIds) {
-        // TODO Auto-generated method stub
-
+        for (String mapName : getMapNames()) {
+            if (mapName.startsWith("temp.")) {
+                openBTreeMap(mapName, null, null).remove();
+            } else if (mapName.startsWith("table.") || mapName.startsWith("index.")) {
+                int id = Integer.parseInt(mapName.substring(1 + mapName.indexOf(".")));
+                // 上层的SYS表中没有对应id的表和索引元数据了，出现了不一致，所以删除
+                if (!objectIds.get(id)) {
+                    openBTreeMap(mapName, null, null).remove();
+                }
+            }
+        }
     }
 
     @Override
-    public void closeImmediately() {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public String nextTemporaryMapName() {
-        // TODO Auto-generated method stub
-        return null;
+    public synchronized String nextTemporaryMapName() {
+        return "temp." + lastMapId++;
     }
 }

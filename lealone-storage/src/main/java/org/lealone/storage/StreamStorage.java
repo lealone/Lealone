@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,7 +40,7 @@ import org.lealone.common.util.DataUtils;
  */
 public class StreamStorage {
 
-    private final Map<Long, byte[]> map;
+    private final StorageMap<Long, byte[]> map;
     private int minBlockSize = 256;
     private int maxBlockSize = 256 * 1024;
     private final AtomicLong nextKey = new AtomicLong();
@@ -52,11 +51,11 @@ public class StreamStorage {
      *
      * @param map the map to store blocks of data
      */
-    public StreamStorage(Map<Long, byte[]> map) {
+    public StreamStorage(StorageMap<Long, byte[]> map) {
         this.map = map;
     }
 
-    public Map<Long, byte[]> getMap() {
+    public StorageMap<Long, byte[]> getMap() {
         return map;
     }
 

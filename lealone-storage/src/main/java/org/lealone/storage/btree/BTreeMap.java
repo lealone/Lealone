@@ -6,9 +6,11 @@
 package org.lealone.storage.btree;
 
 import java.io.File;
+import java.util.AbstractSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.lealone.common.util.DataUtils;
@@ -650,6 +652,49 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     @Override
     public StorageMapCursor<K, V> cursor(K from) {
         return new BTreeCursor<>(this, root, from);
+    }
+
+    public Set<Map.Entry<K, V>> entrySet() {
+        final BTreeMap<K, V> map = this;
+        final BTreePage root = this.root;
+        return new AbstractSet<Entry<K, V>>() {
+
+            @Override
+            public Iterator<Entry<K, V>> iterator() {
+                final StorageMapCursor<K, V> cursor = new BTreeCursor<>(map, root, null);
+                return new Iterator<Entry<K, V>>() {
+
+                    @Override
+                    public boolean hasNext() {
+                        return cursor.hasNext();
+                    }
+
+                    @Override
+                    public Entry<K, V> next() {
+                        K k = cursor.next();
+                        return new DataUtils.MapEntry<K, V>(k, cursor.getValue());
+                    }
+
+                    @Override
+                    public void remove() {
+                        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
+                    }
+                };
+
+            }
+
+            @Override
+            public int size() {
+                return (int) BTreeMap.this.size();
+            }
+
+            @Override
+            public boolean contains(Object o) {
+                return BTreeMap.this.containsKey(o);
+            }
+
+        };
+
     }
 
     /**
