@@ -16,7 +16,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Data;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
-import org.lealone.storage.FileStorage;
+import org.lealone.storage.fs.FileStorage;
 
 /**
  * This class implements the disk buffer for the LocalResult class.

@@ -14,7 +14,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Data;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
-import org.lealone.storage.FileStorage;
+import org.lealone.storage.fs.FileStorage;
 
 /**
  * A list of rows. If the list grows too large, it is buffered to disk

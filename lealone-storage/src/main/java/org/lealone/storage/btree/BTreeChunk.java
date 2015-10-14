@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.FileStorage;
+import org.lealone.storage.fs.FileStorage;
 
 /**
  * A chunk of data, containing one or multiple pages.

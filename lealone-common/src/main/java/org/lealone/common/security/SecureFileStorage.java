@@ -9,14 +9,14 @@ package org.lealone.common.security;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
-import org.lealone.storage.FileStorage;
+import org.lealone.storage.fs.FileStorage;
 
 /**
  * A file storage that encrypts all data before writing, and decrypts all data
  * after reading. Areas that were never written to (for example after calling
  * setLength to enlarge the file) are not encrypted (contains 0 bytes).
  */
-public class SecureFileStore extends FileStorage {
+public class SecureFileStorage extends FileStorage {
 
     private byte[] key;
     private final BlockCipher cipher;
@@ -26,7 +26,7 @@ public class SecureFileStore extends FileStorage {
     private final byte[] bufferForInitVector;
     private final int keyIterations;
 
-    public SecureFileStore(DataHandler handler, String name, String mode, String cipher, byte[] key, int keyIterations) {
+    public SecureFileStorage(DataHandler handler, String name, String mode, String cipher, byte[] key, int keyIterations) {
         super(handler, name, mode);
         this.key = key;
         this.cipher = CipherFactory.getBlockCipher(cipher);

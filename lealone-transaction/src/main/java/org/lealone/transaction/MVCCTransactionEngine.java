@@ -62,6 +62,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      */
     LogMap<Long, Object[]> redoLog;
 
+    private Class<?> dataTypeClass;
+
     public MVCCTransactionEngine() {
         super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
     }
@@ -76,6 +78,19 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     void removeMap(int mapId) {
         maps.remove(mapId);
+    }
+
+    // TODO 只是临时方案
+    void changeDataType(DataType dataType) {
+        if (dataType != null && (dataTypeClass == null || (dataTypeClass != dataType.getClass()))) {
+            dataTypeClass = dataType.getClass();
+            undoLog.close();
+            redoLog.close();
+            VersionedValueType oldValueType = new VersionedValueType(dataType);
+            ArrayType undoLogValueType = new ArrayType(new DataType[] { new ObjectDataType(), dataType, oldValueType });
+            undoLog = logStorage.openLogMap("undoLog", new ObjectDataType(), undoLogValueType);
+            redoLog = logStorage.openLogMap("redoLog", new ObjectDataType(), undoLogValueType);
+        }
     }
 
     /**

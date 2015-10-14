@@ -23,10 +23,10 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
-import org.lealone.storage.FileStorage;
-import org.lealone.storage.FileStorageInputStream;
-import org.lealone.storage.FileStorageOutputStream;
 import org.lealone.storage.LobStorage;
+import org.lealone.storage.fs.FileStorage;
+import org.lealone.storage.fs.FileStorageInputStream;
+import org.lealone.storage.fs.FileStorageOutputStream;
 import org.lealone.storage.fs.FileUtils;
 
 /**

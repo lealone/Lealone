@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage;
+package org.lealone.storage.fs;
 
 import java.io.OutputStream;
 

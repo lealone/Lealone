@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.FileStorage;
+import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
 

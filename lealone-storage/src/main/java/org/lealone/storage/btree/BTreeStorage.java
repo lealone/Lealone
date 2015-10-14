@@ -24,8 +24,8 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.storage.AOStorage;
-import org.lealone.storage.FileStorage;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
+import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.WriteBuffer;
 

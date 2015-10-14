@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage;
+package org.lealone.storage.fs;
 
 import java.io.IOException;
 import java.lang.ref.Reference;
@@ -17,23 +17,18 @@ import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.common.security.SecureFileStore;
+import org.lealone.common.security.SecureFileStorage;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
 import org.lealone.storage.cache.FilePathCache;
-import org.lealone.storage.fs.FilePath;
-import org.lealone.storage.fs.FilePathDisk;
-import org.lealone.storage.fs.FilePathEncrypt;
-import org.lealone.storage.fs.FilePathNio;
-import org.lealone.storage.fs.FileUtils;
 
 /**
  * This class is an abstraction of a random access file.
  * Each file contains a magic header, and reading / writing is done in blocks.
- * See also {@link SecureFileStore}
+ * See also {@link SecureFileStorage}
  */
 public class FileStorage {
 
@@ -200,7 +195,7 @@ public class FileStorage {
         if (cipher == null) {
             store = new FileStorage(handler, name, mode);
         } else {
-            store = new SecureFileStore(handler, name, mode, cipher, key, keyIterations);
+            store = new SecureFileStorage(handler, name, mode, cipher, key, keyIterations);
         }
         return store;
     }

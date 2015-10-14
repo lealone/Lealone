@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.lealone.storage.FileStorage;
+import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.memory.MemoryMap;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;

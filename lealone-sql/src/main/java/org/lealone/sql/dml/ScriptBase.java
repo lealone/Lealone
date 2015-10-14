@@ -27,10 +27,10 @@ import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Expression;
-import org.lealone.storage.FileStorage;
-import org.lealone.storage.FileStorageInputStream;
-import org.lealone.storage.FileStorageOutputStream;
 import org.lealone.storage.LobStorage;
+import org.lealone.storage.fs.FileStorage;
+import org.lealone.storage.fs.FileStorageInputStream;
+import org.lealone.storage.fs.FileStorageOutputStream;
 import org.lealone.storage.fs.FileUtils;
 
 /**
