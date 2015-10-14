@@ -69,8 +69,8 @@ public class Lealone {
     private static void loadConfig() {
         config = DatabaseDescriptor.loadConfig();
         logger.info("Run mode: {}", config.run_mode);
-        if (!DatabaseDescriptor.hasLargeAddressSpace())
-            logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
+        // if (!DatabaseDescriptor.hasLargeAddressSpace())
+        // logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
     }
 
     private static void init() {
