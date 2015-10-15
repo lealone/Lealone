@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.engine;
+package org.lealone.test.db;
 
 import java.util.Properties;
 

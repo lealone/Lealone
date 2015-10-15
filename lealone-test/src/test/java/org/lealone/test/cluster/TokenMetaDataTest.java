@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.misc;
+package org.lealone.test.cluster;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -36,7 +36,7 @@ import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.locator.SimpleStrategy;
 import org.lealone.cluster.locator.TokenMetaData;
 import org.lealone.db.schema.Schema;
-import org.lealone.test.dbobject.DbObjectTestBase;
+import org.lealone.test.db.DbObjectTestBase;
 
 public class TokenMetaDataTest extends DbObjectTestBase {
 
