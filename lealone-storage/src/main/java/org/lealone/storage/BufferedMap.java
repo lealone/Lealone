@@ -292,44 +292,86 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
         }
     }
 
+    // 需要轮流从bufferIterator和mapCursor中取出一个值，哪个小先返回它
+    // 保证所有返回的值整体上是排序好的
     private static class Cursor<K, V> implements StorageMapCursor<K, V> {
-        private final Iterator<Entry<Object, Object>> iterator;
-        private final StorageMapCursor<K, V> cursor;
+        private final Iterator<Entry<Object, Object>> bufferIterator;
+        private final StorageMapCursor<K, V> mapCursor;
         private final DataType keyType;
 
-        private Entry<Object, Object> iteratorEntry;
-        private K cursorKey;
+        private boolean bufferIteratorEnd;
+        private boolean mapCursorEnd;
+
+        private Entry<Object, Object> bufferIteratorEntry;
+        private K mapCursorKey;
+
         private K key;
         private V value;
 
         Cursor(BufferedMap<K, V> bmap, K from) {
-            iterator = bmap.buffer.tailMap(from).entrySet().iterator();
-            cursor = bmap.map.cursor(from);
+            if (from == null)
+                bufferIterator = bmap.buffer.entrySet().iterator();
+            else
+                bufferIterator = bmap.buffer.tailMap(from).entrySet().iterator();
+            mapCursor = bmap.map.cursor(from);
             keyType = bmap.map.getKeyType();
         }
 
         @Override
         public boolean hasNext() {
-            if (iterator.hasNext())
+            if (bufferIteratorEnd)
+                return mapCursor.hasNext();
+
+            if (bufferIterator.hasNext())
                 return true;
-            return cursor.hasNext();
+            else
+                bufferIteratorEnd = true;
+            return mapCursor.hasNext();
         }
 
         @Override
         public K next() {
-            if (iteratorEntry == null)
-                iteratorEntry = iterator.next();
-            if (cursorKey == null)
-                cursorKey = cursor.next();
-
-            if (keyType.compare(iteratorEntry.getKey(), cursorKey) < 0) {
-                key = (K) iteratorEntry.getKey();
-                value = (V) iteratorEntry.getValue();
-                iteratorEntry = null;
+            if (bufferIteratorEnd) {
+                if (mapCursorKey != null) { // bufferIterator结束时可能上次的mapCursorKey还没有返回，所以直接利用
+                    key = mapCursorKey;
+                    value = mapCursor.getValue();
+                    mapCursorKey = null;
+                } else {
+                    key = mapCursor.next();
+                    value = mapCursor.getValue();
+                }
+            } else if (mapCursorEnd) {
+                Entry<Object, Object> e;
+                if (bufferIteratorEntry != null) { // mapCursor结束时可能上次的bufferIteratorEntry还没有返回，所以直接利用
+                    e = bufferIteratorEntry;
+                    bufferIteratorEntry = null;
+                } else {
+                    e = bufferIterator.next();
+                }
+                key = (K) e.getKey();
+                value = (V) e.getValue();
             } else {
-                key = cursorKey;
-                value = cursor.getValue();
-                cursorKey = null;
+                if (bufferIteratorEntry == null)
+                    bufferIteratorEntry = bufferIterator.next(); // 不需要判断hasNext()，因为会事先调用Cursor类的hasNext()
+
+                if (mapCursorKey == null) {
+                    if (mapCursor.hasNext())
+                        mapCursorKey = mapCursor.next();
+                    else {
+                        mapCursorEnd = true;
+                        return next();
+                    }
+                }
+
+                if (keyType.compare(bufferIteratorEntry.getKey(), mapCursorKey) < 0) {
+                    key = (K) bufferIteratorEntry.getKey();
+                    value = (V) bufferIteratorEntry.getValue();
+                    bufferIteratorEntry = null; // 下次bufferIterator要执行next
+                } else {
+                    key = mapCursorKey;
+                    value = mapCursor.getValue();
+                    mapCursorKey = null; // 下次mapCursor要执行next
+                }
             }
             return key;
         }

@@ -44,7 +44,7 @@ public class AOStorageTest extends TestBase {
         testPagePos();
         openStorage();
         try {
-            openMap();
+            // openMap();
             // testPut();
             // testSplit();
             // testGet();
@@ -55,13 +55,43 @@ public class AOStorageTest extends TestBase {
 
             // testPrintPage();
 
-            testBTreeMap();
+            // testBTreeMap();
+            testBufferedMap();
 
             // openRTreeMap();
             // testRTreePut();
         } finally {
             storage.close();
         }
+    }
+
+    void testBufferedMap() {
+        BufferedMap<Integer, String> bmap = storage.openBufferedMap("bmap", null, null);
+        p(bmap.firstKey());
+
+        for (int i = 10; i < 20; i += 2) {
+            bmap.put(i, "value" + i);
+        }
+
+        bmap.merge();
+
+        for (int i = 11; i < 20; i += 2) {
+            bmap.put(i, "value" + i);
+        }
+        bmap.put(22, "value" + 22);
+
+        int count = 0;
+
+        StorageMapCursor<Integer, String> cursor = bmap.cursor(null);
+        while (cursor.hasNext()) {
+            cursor.next();
+            p(cursor.getKey());
+            p(cursor.getValue());
+            count++;
+        }
+
+        assertEquals(5 + 5 + 1, count);
+        bmap.remove();
     }
 
     void testBTreeMap() {
