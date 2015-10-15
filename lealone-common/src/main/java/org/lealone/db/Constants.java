@@ -31,6 +31,8 @@ public class Constants {
 
     public static final String TCP_SERVER_NAME = "tcp_server";
 
+    public static final char NAME_SEPARATOR = '_';
+
     /**
      * The build date is updated for each public release.
      */

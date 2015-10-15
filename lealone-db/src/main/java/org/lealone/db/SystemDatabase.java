@@ -31,7 +31,7 @@ import org.lealone.common.util.New;
 
 public class SystemDatabase {
 
-    public static final String NAME = "system";
+    public static final String NAME = Constants.PROJECT_NAME;
 
     private static Connection conn;
     private static PreparedStatement addDatabase;

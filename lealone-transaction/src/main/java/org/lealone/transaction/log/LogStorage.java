@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
@@ -35,7 +36,7 @@ import org.lealone.storage.type.DataType;
  */
 public class LogStorage {
 
-    public static final char MAP_NAME_ID_SEPARATOR = '-';
+    public static final char MAP_NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
 
     private static final String TEMP_MAP_NAME_PREFIX = "temp" + MAP_NAME_ID_SEPARATOR;
 

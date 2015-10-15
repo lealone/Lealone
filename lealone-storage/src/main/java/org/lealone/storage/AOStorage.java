@@ -30,6 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.lealone.common.util.BitField;
+import org.lealone.db.Constants;
 import org.lealone.storage.btree.BTreeMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
@@ -53,7 +54,7 @@ public class AOStorage implements Storage {
     // */
     // public static final String SUFFIX_AO_STORE_TEMP_FILE = ".tempFile";
 
-    public static final char MAP_NAME_ID_SEPARATOR = '-';
+    public static final char MAP_NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
     public static final String SUFFIX_AO_FILE = ".db";
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
 
@@ -327,20 +328,22 @@ public class AOStorage implements Storage {
     @Override
     public void removeTemporaryMaps(BitField objectIds) {
         for (String mapName : getMapNames()) {
-            if (mapName.startsWith("temp.")) {
+            if (mapName.startsWith("temp" + MAP_NAME_ID_SEPARATOR)) {
                 openBTreeMap(mapName, null, null).remove();
-            } else if (mapName.startsWith("table.") || mapName.startsWith("index.")) {
-                int id = Integer.parseInt(mapName.substring(1 + mapName.indexOf(".")));
-                // 上层的SYS表中没有对应id的表和索引元数据了，出现了不一致，所以删除
-                if (!objectIds.get(id)) {
-                    openBTreeMap(mapName, null, null).remove();
-                }
             }
+            // TODO
+            // else if (mapName.startsWith("table-") || mapName.startsWith("index-")) {
+            // int id = Integer.parseInt(mapName.substring(1 + mapName.indexOf(".")));
+            // // 上层的SYS表中没有对应id的表和索引元数据了，出现了不一致，所以删除
+            // if (!objectIds.get(id)) {
+            // openBTreeMap(mapName, null, null).remove();
+            // }
+            // }
         }
     }
 
     @Override
     public synchronized String nextTemporaryMapName() {
-        return "temp." + lastMapId++;
+        return "temp" + MAP_NAME_ID_SEPARATOR + lastMapId++;
     }
 }

@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
@@ -2071,17 +2070,6 @@ public class Database implements DataHandler {
         }
     }
 
-    // 每个数据库会有多个表，每个表有可能使用不同的存储引擎
-    private final List<StorageEngine> storageEngines = new CopyOnWriteArrayList<>();
-
-    public void addStorageEngine(StorageEngine storageEngine) {
-        storageEngines.add(storageEngine);
-    }
-
-    public List<StorageEngine> getStorageEngines() {
-        return storageEngines;
-    }
-
     // 每个数据库只有一个事务引擎
     private TransactionEngine transactionEngine;
 
@@ -2098,17 +2086,10 @@ public class Database implements DataHandler {
     // 每个数据库只有一个StorageBuilder
     private StorageBuilder storageBuilder;
 
-    // 每个数据库会有多个表，每个表有可能使用不同的存储引擎
-    private final List<Storage> storages = new CopyOnWriteArrayList<>();
-
     private final ConcurrentHashMap<String, Storage> storageMaps = new ConcurrentHashMap<>();
 
-    public void addStorage(Storage storage) {
-        storages.add(storage);
-    }
-
     public List<Storage> getStorages() {
-        return storages;
+        return new ArrayList<>(storageMaps.values());
     }
 
     public synchronized Storage getStorage(StorageEngine storageEngine) {
