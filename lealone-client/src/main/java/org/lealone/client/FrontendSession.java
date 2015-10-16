@@ -218,10 +218,9 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     /**
      * Open a new (remote or embedded) session.
      *
-     * @param openNew whether to open a new session in any case
      * @return the session
      */
-    public SessionInterface connectEmbeddedOrServer(boolean openNew) {
+    public SessionInterface connectEmbeddedOrServer() {
         ConnectionInfo ci = connectionInfo;
         if (ci.isRemote()) {
             connectServer(ci);
@@ -230,9 +229,6 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         // create the session using reflection,
         // so that the JDBC layer can be compiled without it
         try {
-            if (openNew) {
-                ci.setProperty("OPEN_NEW", "true");
-            }
             if (sessionFactory == null) {
                 sessionFactory = ci.getSessionFactory();
             }

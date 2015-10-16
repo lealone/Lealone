@@ -6,6 +6,7 @@
  */
 package org.lealone.db;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.sql.Connection;
@@ -36,6 +37,9 @@ import org.lealone.common.value.CaseInsensitiveMap;
 import org.lealone.common.value.CompareMode;
 import org.lealone.common.value.Value;
 import org.lealone.common.value.ValueInt;
+import org.lealone.db.auth.Right;
+import org.lealone.db.auth.Role;
+import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
@@ -73,7 +77,7 @@ import org.lealone.transaction.TransactionEngineManager;
  *
  * @since 2004-04-15 22:49
  */
-public class Database implements DataHandler {
+public class Database implements DataHandler, DbObject {
     /**
      * This log mode means the transaction log is not used.
      */
@@ -93,8 +97,7 @@ public class Database implements DataHandler {
      */
     private static final String SYSTEM_USER_NAME = "DBA";
 
-    private final DatabaseEngine dbEngine;
-    private final boolean persistent;
+    private boolean persistent;
     private String databaseName;
     private String databaseShortName;
     private String databaseURL;
@@ -110,10 +113,11 @@ public class Database implements DataHandler {
     private final HashMap<String, UserDataType> userDataTypes = New.hashMap();
     private final HashMap<String, UserAggregate> aggregates = New.hashMap();
     private final HashMap<String, Comment> comments = New.hashMap();
+    protected final HashMap<String, Database> databases = New.hashMap();
 
     private final Set<Session> userSessions = Collections.synchronizedSet(new HashSet<Session>());
     private Session exclusiveSession;
-    private final BitField objectIds = new BitField();
+    protected final BitField objectIds = new BitField();
     private final Object lobSyncObject = new Object();
 
     private Schema mainSchema;
@@ -165,7 +169,7 @@ public class Database implements DataHandler {
     private int defaultTableType = Table.TYPE_CACHED;
     private DbSettings dbSettings;
     private int logMode;
-    private boolean initialized = false;
+    private volatile boolean initialized = false;
     private DbException backgroundException;
 
     private boolean queryStatistics;
@@ -173,9 +177,19 @@ public class Database implements DataHandler {
 
     private SQLEngine sqlEngine;
 
-    public Database(DatabaseEngine dbEngine, boolean persistent) {
-        this.dbEngine = dbEngine;
-        this.persistent = persistent;
+    private final int id;
+    private final String name;
+    private boolean temporary;
+
+    public Database(int id, String name) {
+        this.id = id;
+        this.name = name;
+        sqlEngine = SQLEngineManager.getInstance().getEngine(DbSettings.getDefaultSettings().defaultSQLEngine);
+    }
+
+    @Override
+    public int getId() {
+        return id;
     }
 
     public SQLParser createParser(SessionInterface session) {
@@ -184,10 +198,6 @@ public class Database implements DataHandler {
 
     public String quoteIdentifier(String identifier) {
         return sqlEngine.quoteIdentifier(identifier);
-    }
-
-    public DatabaseEngine getDatabaseEngine() {
-        return dbEngine;
     }
 
     public String getStorageEngineName() {
@@ -228,7 +238,7 @@ public class Database implements DataHandler {
                 }
             }
         }
-
+        this.persistent = ci.isPersistent();
         this.dbSettings = ci.getDbSettings();
         this.compareMode = CompareMode.getInstance(null, 0, false);
         this.filePasswordHash = ci.getFilePasswordHash();
@@ -506,7 +516,7 @@ public class Database implements DataHandler {
                 DbException.traceThrowable(e);
             }
         }
-        getDatabaseEngine().closeDatabase(databaseName);
+        LealoneDatabase.getInstance().closeDatabase(databaseName);
         throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
     }
 
@@ -702,6 +712,9 @@ public class Database implements DataHandler {
         case DbObject.AGGREGATE:
             result = aggregates;
             break;
+        case DbObject.DATABASE:
+            result = databases;
+            break;
         default:
             throw DbException.throwInternalError("type=" + type);
         }
@@ -743,6 +756,8 @@ public class Database implements DataHandler {
             }
         }
         String name = obj.getName();
+        if (obj.getType() == DbObject.DATABASE)
+            name = ((Database) obj).name;
         if (SysProperties.CHECK && map.get(name) != null) {
             DbException.throwInternalError("object already exists");
         }
@@ -783,7 +798,10 @@ public class Database implements DataHandler {
      * @return the role or null
      */
     public Role findRole(String roleName) {
-        return roles.get(roleName);
+        Role role = roles.get(name);
+        if (role == null && this != LealoneDatabase.getInstance())
+            role = LealoneDatabase.getInstance().findRole(name);
+        return role;
     }
 
     /**
@@ -817,7 +835,10 @@ public class Database implements DataHandler {
      * @return the user or null
      */
     public User findUser(String name) {
-        return users.get(name);
+        User user = users.get(name);
+        if (user == null && this != LealoneDatabase.getInstance())
+            user = LealoneDatabase.getInstance().findUser(name);
+        return user;
     }
 
     /**
@@ -1012,7 +1033,7 @@ public class Database implements DataHandler {
             }
             closeOnExit = null;
         }
-        getDatabaseEngine().closeDatabase(databaseName);
+        LealoneDatabase.getInstance().closeDatabase(databaseName);
 
         for (Storage s : getStorages()) {
             s.close();
@@ -1163,6 +1184,7 @@ public class Database implements DataHandler {
         return databaseShortName;
     }
 
+    @Override
     public String getName() {
         return databaseName;
     }
@@ -2102,18 +2124,34 @@ public class Database implements DataHandler {
         return storage;
     }
 
+    private String getStorageName() {
+        String baseDir = SysProperties.getBaseDirSilently();
+        if (baseDir == null)
+            baseDir = FileUtils.getParent(getDatabasePath());
+        if (baseDir != null && !baseDir.endsWith(File.separator))
+            baseDir = baseDir + File.separator;
+        String storageName;
+        if (baseDir == null)
+            storageName = "." + File.separator;
+        else
+            storageName = baseDir;
+
+        storageName = storageName + "db" + Constants.NAME_SEPARATOR + id;
+        return storageName;
+    }
+
     public synchronized StorageBuilder getStorageBuilder(StorageEngine storageEngine) {
         if (storageBuilder != null)
             return storageBuilder;
 
         StorageBuilder builder = storageEngine.getStorageBuilder();
-        String dbPath = getDatabasePath();
-        if (dbPath == null) {
+        if (!persistent) {
             builder.inMemory();
         } else {
+            String storageName = getStorageName();// getDatabasePath();
             byte[] key = getFileEncryptionKey();
             builder.pageSplitSize(getPageSize());
-            builder.storageName(dbPath);
+            builder.storageName(storageName);
             if (isReadOnly()) {
                 builder.readOnly();
             }
@@ -2140,5 +2178,72 @@ public class Database implements DataHandler {
 
         storageBuilder = builder;
         return storageBuilder;
+    }
+
+    @Override
+    public String getSQL() {
+        return "CREATE DATABASE IF NOT EXISTS " + quoteIdentifier(name) + (temporary ? " TEMPORARY" : "");
+    }
+
+    @Override
+    public ArrayList<DbObject> getChildren() {
+        return null;
+    }
+
+    @Override
+    public Database getDatabase() {
+        return this;
+    }
+
+    @Override
+    public String getCreateSQLForCopy(Table table, String quotedName) {
+        return getSQL();
+    }
+
+    @Override
+    public String getCreateSQL() {
+        return getSQL();
+    }
+
+    @Override
+    public String getDropSQL() {
+        return null;
+    }
+
+    @Override
+    public int getType() {
+        return DbObject.DATABASE;
+    }
+
+    @Override
+    public void removeChildrenAndResources(Session session) {
+    }
+
+    @Override
+    public void checkRename() {
+    }
+
+    @Override
+    public void rename(String newName) {
+    }
+
+    @Override
+    public boolean isTemporary() {
+        return temporary;
+    }
+
+    @Override
+    public void setTemporary(boolean temporary) {
+        this.temporary = temporary;
+        this.persistent = false;
+    }
+
+    @Override
+    public void setComment(String comment) {
+    }
+
+    @Override
+    public String getComment() {
+        return null;
     }
 }

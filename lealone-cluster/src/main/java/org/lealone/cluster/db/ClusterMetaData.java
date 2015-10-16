@@ -18,6 +18,7 @@
 package org.lealone.cluster.db;
 
 import java.net.InetAddress;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -33,11 +34,12 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
+import org.lealone.client.jdbc.Driver;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.dht.TokenFactory;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Utils;
-import org.lealone.db.SystemDatabase;
+import org.lealone.db.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +47,8 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 
 public class ClusterMetaData {
+    public static final String CLUSTER_DB_NAME = Constants.PROJECT_NAME + Constants.NAME_SEPARATOR + "cluster";
+
     public static enum BootstrapState {
         NEEDS_BOOTSTRAP,
         COMPLETED,
@@ -56,11 +60,14 @@ public class ClusterMetaData {
     private static final String PEERS_TABLE = "peers";
     private static final String LOCAL_KEY = "local";
 
+    private static Connection conn;
     private static Statement stmt;
 
     static {
         try {
-            stmt = SystemDatabase.getConnection().createStatement();
+            String url = Constants.URL_PREFIX + Constants.URL_EMBED + CLUSTER_DB_NAME;
+            conn = Driver.getInternalConnection(url, CLUSTER_DB_NAME, CLUSTER_DB_NAME);
+            stmt = conn.createStatement();
             stmt.execute("CREATE TABLE IF NOT EXISTS " + PEERS_TABLE + "(" //
                     + "peer varchar,"//
                     + "data_center varchar,"//
@@ -86,7 +93,7 @@ public class ClusterMetaData {
                     + "release_version varchar,"//
                     + "schema_version uuid,"//
                     + "tokens varchar,"//
-                    //+ "truncated_at map<uuid, blob>,"//
+                    // + "truncated_at map<uuid, blob>,"//
                     + "PRIMARY KEY (key))");
         } catch (SQLException e) {
             handleException(e);
@@ -94,7 +101,7 @@ public class ClusterMetaData {
     }
 
     private static void handleException(Exception e) {
-        //TODO 是否要重新抛出异常
+        // TODO 是否要重新抛出异常
         logger.error("Cluster metadata exception", e);
     }
 
@@ -138,7 +145,7 @@ public class ClusterMetaData {
     }
 
     public static void setBootstrapState(BootstrapState state) {
-        //String sql = "INSERT INTO %s (key, bootstrapped) VALUES ('%s', '%s')";
+        // String sql = "INSERT INTO %s (key, bootstrapped) VALUES ('%s', '%s')";
         String sql = "UPDATE %s SET bootstrapped = '%s' WHERE key = '%s'";
         try {
             stmt.executeUpdate(String.format(sql, LOCAL_TABLE, state.name(), LOCAL_KEY));
@@ -260,7 +267,8 @@ public class ClusterMetaData {
                     // but it's as close as sanely possible
                     generation = (int) (System.currentTimeMillis() / 1000);
                 } else {
-                    // Other nodes will ignore gossip messages about a node that have a lower generation than previously seen.
+                    // Other nodes will ignore gossip messages about a node that have a lower generation than previously
+                    // seen.
                     final int storedGeneration = generation + 1;
                     final int now = (int) (System.currentTimeMillis() / 1000);
                     if (storedGeneration >= now) {
@@ -319,11 +327,11 @@ public class ClusterMetaData {
         return s;
     }
 
-    //由调用者确定是否把本地节点的信息存入PEERS表
+    // 由调用者确定是否把本地节点的信息存入PEERS表
     public static synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value) {
         String sql = "MERGE INTO %s (peer, %s) KEY(peer) VALUES('%s', '%s')";
         try {
-            //InetAddress.getCanonicalHostName很慢，别用它
+            // InetAddress.getCanonicalHostName很慢，别用它
             stmt.executeUpdate(String.format(sql, PEERS_TABLE, columnName, ep.getHostAddress(), value));
         } catch (SQLException e) {
             handleException(e);

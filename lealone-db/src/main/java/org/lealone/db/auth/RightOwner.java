@@ -3,11 +3,14 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.auth;
 
 import java.util.HashMap;
 
 import org.lealone.common.util.New;
+import org.lealone.db.Database;
+import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectBase;
 import org.lealone.db.table.Table;
 
 /**

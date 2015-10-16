@@ -90,6 +90,8 @@ public interface DbObject {
      */
     int AGGREGATE = 14;
 
+    int DATABASE = 15;
+
     /**
      * Get the SQL name of this object (may be quoted).
      *

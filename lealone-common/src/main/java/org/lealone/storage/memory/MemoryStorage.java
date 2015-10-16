@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.util.BitField;
+import org.lealone.db.Constants;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.DataType;
 
@@ -63,7 +64,7 @@ public class MemoryStorage implements Storage {
         int i = 0;
         String name = null;
         while (true) {
-            name = "temp-" + i;
+            name = "temp" + Constants.NAME_SEPARATOR + i;
             if (!maps.containsKey(name))
                 return name;
         }

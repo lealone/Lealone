@@ -314,6 +314,8 @@ public class ErrorCode {
      */
     public static final int TABLE_OR_VIEW_NOT_FOUND_1 = 42102;
 
+    public static final int DATABASE_ALREADY_EXISTS_1 = 42103;
+
     /**
      * The error with code <code>42111</code> is thrown when
      * trying to create an index if an index with the same name already exists.

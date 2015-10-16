@@ -20,7 +20,7 @@ package org.lealone.test.db;
 import org.junit.Test;
 import org.lealone.db.Comment;
 import org.lealone.db.Constants;
-import org.lealone.db.Role;
+import org.lealone.db.auth.Role;
 import org.lealone.db.table.Table;
 
 public class CommentTest extends DbObjectTestBase {

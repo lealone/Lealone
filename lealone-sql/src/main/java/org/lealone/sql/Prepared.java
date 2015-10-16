@@ -261,9 +261,13 @@ public abstract class Prepared implements PreparedInterface {
      * @return the object id
      */
     protected int getObjectId() {
+        return getObjectId(session.getDatabase());
+    }
+
+    protected int getObjectId(Database db) {
         int id = objectId;
         if (id == 0) {
-            id = session.getDatabase().allocateObjectId();
+            id = db.allocateObjectId();
         } else {
             objectId = 0;
         }

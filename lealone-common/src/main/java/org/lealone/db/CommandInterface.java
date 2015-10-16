@@ -451,6 +451,8 @@ public interface CommandInterface {
      */
     int ALTER_SCHEMA_WTIH_REPLICATION = 85;
 
+    int CREATE_DATABASE = 86;
+
     /**
      * Get command type.
      *

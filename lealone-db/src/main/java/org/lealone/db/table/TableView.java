@@ -19,7 +19,7 @@ import org.lealone.common.value.Value;
 import org.lealone.db.Constants;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
-import org.lealone.db.User;
+import org.lealone.db.auth.User;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.expression.Parameter;

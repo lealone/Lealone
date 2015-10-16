@@ -15,6 +15,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 import org.lealone.common.message.DbException;
+import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 
 /**
@@ -197,5 +198,17 @@ public class Driver implements java.sql.Driver {
         info.setProperty("user", user);
         info.setProperty("password", password);
         return load().connect(url, info);
+    }
+
+    /**
+     * INTERNAL
+     */
+    public static Connection getInternalConnection(String url, String user, String password) throws SQLException {
+        Properties info = new Properties();
+        info.setProperty("user", user);
+        info.setProperty("password", password);
+        ConnectionInfo ci = new ConnectionInfo(url, info);
+        ci.disableAuthentication();
+        return new JdbcConnection(ci, true);
     }
 }

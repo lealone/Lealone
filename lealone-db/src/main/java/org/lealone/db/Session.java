@@ -26,6 +26,7 @@ import org.lealone.common.value.Value;
 import org.lealone.common.value.ValueLong;
 import org.lealone.common.value.ValueNull;
 import org.lealone.common.value.ValueString;
+import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.ResultInterface;

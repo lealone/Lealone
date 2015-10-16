@@ -31,8 +31,8 @@ public class ConnectionInfo implements Cloneable {
         KNOWN_SETTINGS.addAll(SetTypes.getTypes());
 
         String[] connectionSettings = { "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS",
-                "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "OPEN_NEW", "PAGE_SIZE", "PASSWORD_HASH",
-                "IS_LOCAL", "TOKEN" };
+                "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "PAGE_SIZE", "PASSWORD_HASH", "IS_LOCAL",
+                "TOKEN" };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
@@ -66,6 +66,8 @@ public class ConnectionInfo implements Cloneable {
 
     private SessionFactory sessionFactory;
     private DbSettings dbSettings;
+
+    private boolean authenticationEnabled = true;
 
     /**
      * Create a server connection info object.
@@ -638,7 +640,7 @@ public class ConnectionInfo implements Cloneable {
         if (sessionFactory == null) {
             try {
                 sessionFactory = (SessionFactory) Class.forName("org.lealone.db.DatabaseEngine")
-                        .getMethod("getInstance").invoke(null);
+                        .getMethod("getSessionFactory").invoke(null);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -668,4 +670,13 @@ public class ConnectionInfo implements Cloneable {
         }
         return url;
     }
+
+    public void disableAuthentication() {
+        authenticationEnabled = false;
+    }
+
+    public boolean isAuthenticationEnabled() {
+        return authenticationEnabled;
+    }
+
 }

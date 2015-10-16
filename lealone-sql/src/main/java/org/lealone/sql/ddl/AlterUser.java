@@ -10,8 +10,9 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Session;
-import org.lealone.db.User;
+import org.lealone.db.auth.User;
 import org.lealone.sql.expression.Expression;
 
 /**
@@ -65,7 +66,7 @@ public class AlterUser extends DefineCommand {
     @Override
     public int update() {
         session.commit(true);
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         switch (type) {
         case CommandInterface.ALTER_USER_SET_PASSWORD:
             if (user != session.getUser()) {

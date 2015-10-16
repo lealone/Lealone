@@ -13,10 +13,11 @@ import org.lealone.common.util.New;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.Right;
-import org.lealone.db.RightOwner;
-import org.lealone.db.Role;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Session;
+import org.lealone.db.auth.Right;
+import org.lealone.db.auth.RightOwner;
+import org.lealone.db.auth.Role;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 
@@ -66,7 +67,7 @@ public class GrantRevoke extends DefineCommand {
     }
 
     public void setGranteeName(String granteeName) {
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         grantee = db.findUser(granteeName);
         if (grantee == null) {
             grantee = db.findRole(granteeName);
@@ -80,7 +81,7 @@ public class GrantRevoke extends DefineCommand {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         if (roleNames != null) {
             for (String name : roleNames) {
                 Role grantedRole = db.findRole(name);
@@ -117,10 +118,10 @@ public class GrantRevoke extends DefineCommand {
     }
 
     private void grantRight(DbObject object) {
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         Right right = grantee.getRightForObject(object);
         if (right == null) {
-            int id = getObjectId();
+            int id = getObjectId(db);
             right = new Right(db, id, grantee, rightMask, object);
             grantee.grantRight(object, right);
             db.addDatabaseObject(session, right);
@@ -141,8 +142,8 @@ public class GrantRevoke extends DefineCommand {
                 throw DbException.get(ErrorCode.ROLE_ALREADY_GRANTED_1, grantedRole.getSQL());
             }
         }
-        Database db = session.getDatabase();
-        int id = getObjectId();
+        Database db = LealoneDatabase.getInstance();
+        int id = getObjectId(db);
         Right right = new Right(db, id, grantee, grantedRole);
         db.addDatabaseObject(session, right);
         grantee.grantRole(grantedRole, right);
@@ -164,7 +165,7 @@ public class GrantRevoke extends DefineCommand {
         }
         int mask = right.getRightMask();
         int newRight = mask & ~rightMask;
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         if (newRight == 0) {
             db.removeDatabaseObject(session, right);
         } else {
@@ -178,7 +179,7 @@ public class GrantRevoke extends DefineCommand {
         if (right == null) {
             return;
         }
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         db.removeDatabaseObject(session, right);
     }
 

@@ -10,8 +10,9 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Session;
-import org.lealone.db.User;
+import org.lealone.db.auth.User;
 
 /**
  * This class represents the statement
@@ -38,7 +39,7 @@ public class DropUser extends DefineCommand {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         User user = db.findUser(userName);
         if (user == null) {
             if (!ifExists) {

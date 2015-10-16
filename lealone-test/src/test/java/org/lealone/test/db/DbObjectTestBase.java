@@ -35,9 +35,9 @@ public class DbObjectTestBase extends UnitTestBase {
     public DbObjectTestBase() {
         setInMemory(true);
         setEmbedded(true);
-        addConnectionParameter("DATABASE_TO_UPPER", "false"); //不转成大写
+        addConnectionParameter("DATABASE_TO_UPPER", "false"); // 不转成大写
         ConnectionInfo ci = new ConnectionInfo(getURL(DB_NAME));
-        session = DatabaseEngine.getInstance().createSession(ci);
+        session = DatabaseEngine.createSession(ci);
         db = session.getDatabase();
         session = db.getSystemSession();
     }
@@ -50,7 +50,7 @@ public class DbObjectTestBase extends UnitTestBase {
         return session.prepareCommandLocal(sql).executeQuery(0, false);
     }
 
-    //index从1开始
+    // index从1开始
     public int getInt(ResultInterface result, int index) {
         if (result.next())
             return result.currentRow()[index - 1].getInt();

@@ -28,7 +28,6 @@ import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.NetUtils;
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
-import org.lealone.db.DatabaseEngine;
 
 /**
  * The TCP server implements the native database server protocol.
@@ -118,7 +117,7 @@ public class TcpServer implements ProtocolServer {
         Statement stat = null;
         try {
             // avoid using the driver manager
-            Connection conn = Driver.getConnection(getManagementDbEmbeddedURL(port), "", managementPassword);
+            Connection conn = Driver.getInternalConnection(getManagementDbEmbeddedURL(port), "", managementPassword);
             stat = conn.createStatement();
             stat.execute("CREATE ALIAS IF NOT EXISTS STOP_SERVER FOR \"" + TcpServer.class.getName() + ".stopServer\"");
             stat.execute("CREATE TABLE IF NOT EXISTS SESSIONS"
@@ -204,8 +203,6 @@ public class TcpServer implements ProtocolServer {
 
         if (config.containsKey("password"))
             managementPassword = config.get("password");
-
-        DatabaseEngine.setHostAndPort(listenAddress, port); // 用于集群之间通信
 
         initManagementDb();
     }

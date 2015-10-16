@@ -100,13 +100,13 @@ public class JdbcConnection extends TraceObject implements Connection {
     public JdbcConnection(ConnectionInfo ci, boolean useBaseDir) throws SQLException {
         try {
             if (useBaseDir) {
-                String baseDir = SysProperties.getBaseDir();
+                String baseDir = SysProperties.getBaseDirSilently();
                 if (baseDir != null) {
                     ci.setBaseDir(baseDir);
                 }
             }
             // this will return an embedded or server connection
-            session = new FrontendSession(ci).connectEmbeddedOrServer(false);
+            session = new FrontendSession(ci).connectEmbeddedOrServer();
             trace = session.getTrace();
             int id = getNextId(TraceObject.CONNECTION);
             setTrace(trace, TraceObject.CONNECTION, id);

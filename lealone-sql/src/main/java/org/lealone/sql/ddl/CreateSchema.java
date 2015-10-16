@@ -13,7 +13,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
-import org.lealone.db.User;
+import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
 
 /**

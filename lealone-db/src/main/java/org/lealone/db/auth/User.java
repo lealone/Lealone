@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.auth;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +17,9 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.Database;
+import org.lealone.db.DbObject;
+import org.lealone.db.Session;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.RangeTable;

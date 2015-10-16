@@ -40,13 +40,13 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbSettings;
 import org.lealone.db.Procedure;
-import org.lealone.db.Right;
 import org.lealone.db.Session;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
-import org.lealone.db.User;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
+import org.lealone.db.auth.Right;
+import org.lealone.db.auth.User;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.SelectOrderBy;
@@ -78,6 +78,7 @@ import org.lealone.sql.ddl.AlterView;
 import org.lealone.sql.ddl.Analyze;
 import org.lealone.sql.ddl.CreateAggregate;
 import org.lealone.sql.ddl.CreateConstant;
+import org.lealone.sql.ddl.CreateDatabase;
 import org.lealone.sql.ddl.CreateFunctionAlias;
 import org.lealone.sql.ddl.CreateIndex;
 import org.lealone.sql.ddl.CreateRole;
@@ -3918,6 +3919,8 @@ public class Parser implements SQLParser {
             return parseCreateUserDataType();
         } else if (readIf("AGGREGATE")) {
             return parseCreateAggregate(force);
+        } else if (readIf("DATABASE")) {
+            return parseCreateDatabase();
         }
         // tables or linked tables
         boolean memory = false, cached = false;
@@ -4172,6 +4175,14 @@ public class Parser implements SQLParser {
         CreateRole command = new CreateRole(session);
         command.setIfNotExists(readIfNoExists());
         command.setRoleName(readUniqueIdentifier());
+        return command;
+    }
+
+    private CreateDatabase parseCreateDatabase() {
+        CreateDatabase command = new CreateDatabase(session);
+        command.setIfNotExists(readIfNoExists());
+        command.setDatabaseName(readUniqueIdentifier());
+        command.setTemporary(readIf("TEMPORARY"));
         return command;
     }
 

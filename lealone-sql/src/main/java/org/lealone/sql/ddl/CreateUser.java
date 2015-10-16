@@ -12,8 +12,9 @@ import org.lealone.common.security.SHA256;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Session;
-import org.lealone.db.User;
+import org.lealone.db.auth.User;
 import org.lealone.sql.expression.Expression;
 
 /**
@@ -87,7 +88,7 @@ public class CreateUser extends DefineCommand {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         if (db.findRole(userName) != null) {
             throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, userName);
         }
@@ -97,7 +98,7 @@ public class CreateUser extends DefineCommand {
             }
             throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, userName);
         }
-        int id = getObjectId();
+        int id = getObjectId(db);
         User user = new User(db, id, userName, false);
         user.setAdmin(admin);
         user.setComment(comment);

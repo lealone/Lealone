@@ -170,7 +170,7 @@ public class TcpServerThread implements Runnable {
 
         String baseDir = server.getBaseDir();
         if (baseDir == null) {
-            baseDir = SysProperties.getBaseDir();
+            baseDir = SysProperties.getBaseDirSilently();
         }
 
         // override client's requested properties with server settings

@@ -71,7 +71,7 @@ public class FrontendSessionPool {
             ci.setUserPasswordHash(oldCi.getUserPasswordHash());
             ci.setFilePasswordHash(oldCi.getFilePasswordHash());
             ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
-            fs = (FrontendSession) new FrontendSession(ci).connectEmbeddedOrServer(false);
+            fs = (FrontendSession) new FrontendSession(ci).connectEmbeddedOrServer();
         }
 
         return fs;

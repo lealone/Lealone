@@ -11,8 +11,9 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.Role;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Session;
+import org.lealone.db.auth.Role;
 
 /**
  * This class represents the statement
@@ -35,7 +36,7 @@ public class DropRole extends DefineCommand {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = session.getDatabase();
+        Database db = LealoneDatabase.getInstance();
         if (roleName.equals(Constants.PUBLIC_ROLE_NAME)) {
             throw DbException.get(ErrorCode.ROLE_CAN_NOT_BE_DROPPED_1, roleName);
         }

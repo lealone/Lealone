@@ -29,7 +29,7 @@ import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.WrappedRunnable;
 import org.lealone.db.Constants;
-import org.lealone.db.DatabaseEngine;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
@@ -77,7 +77,7 @@ public class Lealone {
         initBaseDir();
         initHostAndPort();
         initPluggableEngines();
-        initDatabaseEngine();
+        LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
         initRouter();
     }
 
@@ -97,10 +97,6 @@ public class Lealone {
         SysProperties.setBaseDir(config.base_dir);
 
         logger.info("Base dir: {}", config.base_dir);
-    }
-
-    private static void initDatabaseEngine() {
-        DatabaseEngine.init(config.listen_address, config.listen_port.intValue());
     }
 
     // 初始化顺序storage -> transaction -> sql -> protocol

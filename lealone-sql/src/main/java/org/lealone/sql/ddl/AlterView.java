@@ -8,8 +8,8 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
-import org.lealone.db.Right;
 import org.lealone.db.Session;
+import org.lealone.db.auth.Right;
 import org.lealone.db.table.TableView;
 
 /**

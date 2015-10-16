@@ -21,7 +21,7 @@ import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
-import org.lealone.db.User;
+import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.table.CreateTableData;
