@@ -36,6 +36,10 @@ import org.lealone.storage.type.DataType;
  */
 public class LogStorage {
 
+    public static String LOG_SYNC_TYPE_PERIODIC = "periodic";
+    public static String LOG_SYNC_TYPE_BATCH = "batch";
+    public static String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
+
     public static final char MAP_NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
 
     private static final String TEMP_MAP_NAME_PREFIX = "temp" + MAP_NAME_ID_SEPARATOR;
@@ -81,17 +85,16 @@ public class LogStorage {
             }
         }
         String logSyncType = config.get("log_sync_type");
-        if (logSyncType == null || "periodic".equalsIgnoreCase(logSyncType))
+        if (logSyncType == null || LOG_SYNC_TYPE_PERIODIC.equalsIgnoreCase(logSyncType))
             logSyncService = new PeriodicLogSyncService(config);
-        else if ("batch".equalsIgnoreCase(logSyncType))
+        else if (LOG_SYNC_TYPE_BATCH.equalsIgnoreCase(logSyncType))
             logSyncService = new BatchLogSyncService(config);
-        else if ("none".equalsIgnoreCase(logSyncType))
-            logSyncService = null;
+        else if (LOG_SYNC_TYPE_NO_SYNC.equalsIgnoreCase(logSyncType))
+            logSyncService = new NoLogSyncService();
         else
             throw new IllegalArgumentException("Unknow log_sync_type: " + logSyncType);
 
-        if (logSyncService != null)
-            logSyncService.start();
+        logSyncService.start();
     }
 
     public synchronized StorageMap<Object, Integer> createTempMap() {
