@@ -232,11 +232,19 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public String getName() {
-        return fullName; // TODO 用name替换
+        return name;
     }
 
     public String getShortName() {
-        return name;
+        return getName();
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public DbSettings getSettings() {
+        return dbSettings;
     }
 
     public boolean isPersistent() {
@@ -411,20 +419,19 @@ public class Database implements DataHandler, DbObject {
             rec.execute(this, systemSession, eventListener);
         }
 
-        recompileInvalidViews(systemSession);
+        recompileInvalidViews();
         starting = false;
     }
 
-    // TODO session参数就是systemSession，另外是否有必要来来回回recompile
-    private void recompileInvalidViews(Session session) {
+    private void recompileInvalidViews() {
         boolean recompileSuccessful;
         do {
             recompileSuccessful = false;
             for (Table obj : getAllTablesAndViews(false)) {
                 if (obj instanceof TableView) {
                     TableView view = (TableView) obj;
-                    if (view.isInvalid()) {
-                        view.recompile(session, true);
+                    if (view.isInvalid()) { // 这里是无效的要recompile
+                        view.recompile(systemSession, true);
                         if (!view.isInvalid()) {
                             recompileSuccessful = true;
                         }
@@ -438,7 +445,7 @@ public class Database implements DataHandler, DbObject {
         for (Table obj : getAllTablesAndViews(false)) {
             if (obj instanceof TableView) {
                 TableView view = (TableView) obj;
-                if (!view.isInvalid()) {
+                if (!view.isInvalid()) { // 这里是有效的要recompile
                     view.recompile(systemSession, true);
                 }
             }
@@ -537,16 +544,6 @@ public class Database implements DataHandler, DbObject {
         }
         LealoneDatabase.getInstance().closeDatabase(name);
         throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
-    }
-
-    /**
-     * Check if a database with the given name exists.
-     *
-     * @param name the name of the database (including path)
-     * @return true if one exists
-     */
-    static boolean exists(String name) {
-        return FileUtils.exists(name + Constants.SUFFIX_MV_FILE);
     }
 
     /**
@@ -1103,9 +1100,6 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
-    private void closeFiles() {
-    }
-
     /**
      * Allocate a new object id.
      *
@@ -1214,7 +1208,7 @@ public class Database implements DataHandler, DbObject {
     @Override
     public String getDatabasePath() {
         if (persistent) {
-            return FileUtils.toRealPath(fullName);
+            return getStorageName();
         }
         return null;
     }
@@ -1323,20 +1317,20 @@ public class Database implements DataHandler, DbObject {
     public String createTempFile() {
         try {
             boolean inTempDir = readOnly;
-            String name = fullName;
+            String name = getStorageName();
             if (!persistent) {
                 name = "memFS:" + name;
             }
             return FileUtils.createTempFile(name, Constants.SUFFIX_TEMP_FILE, true, inTempDir);
         } catch (IOException e) {
-            throw DbException.convertIOException(e, fullName);
+            throw DbException.convertIOException(e, getStorageName());
         }
     }
 
     private void deleteOldTempFiles() {
-        String path = FileUtils.getParent(fullName);
+        String path = FileUtils.getParent(getStorageName());
         for (String name : FileUtils.newDirectoryStream(path)) {
-            if (name.endsWith(Constants.SUFFIX_TEMP_FILE) && name.startsWith(fullName)) {
+            if (name.endsWith(Constants.SUFFIX_TEMP_FILE) && name.startsWith(getStorageName())) {
                 // can't always delete the files, they may still be open
                 FileUtils.tryDelete(name);
             }
@@ -1944,7 +1938,9 @@ public class Database implements DataHandler, DbObject {
         } catch (DbException e) {
             // ignore
         }
-        closeFiles();
+        for (Storage s : getStorages()) {
+            s.closeImmediately();
+        }
     }
 
     @Override
@@ -2049,10 +2045,6 @@ public class Database implements DataHandler, DbObject {
         this.multiVersion = multiVersion;
     }
 
-    public DbSettings getSettings() {
-        return dbSettings;
-    }
-
     /**
      * Create a new hash map. Depending on the configuration, the key is case
      * sensitive or case insensitive.
@@ -2117,7 +2109,7 @@ public class Database implements DataHandler, DbObject {
             return storageName;
         String baseDir = SysProperties.getBaseDirSilently();
         if (baseDir == null)
-            baseDir = FileUtils.getParent(getDatabasePath());
+            baseDir = FileUtils.getParent(FileUtils.toRealPath(fullName));
         if (baseDir != null && !baseDir.endsWith(File.separator))
             baseDir = baseDir + File.separator;
 
