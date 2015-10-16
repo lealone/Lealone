@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.lealone.common.util.BitField;
 import org.lealone.db.Constants;
 import org.lealone.storage.btree.BTreeMap;
 import org.lealone.storage.fs.FilePath;
@@ -57,6 +56,8 @@ public class AOStorage implements Storage {
     public static final char MAP_NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
     public static final String SUFFIX_AO_FILE = ".db";
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
+
+    private static final String TEMP_NAME_PREFIX = "temp" + MAP_NAME_ID_SEPARATOR;
 
     private static final CopyOnWriteArrayList<StorageMap<?, ?>> storageMaps = new CopyOnWriteArrayList<>();
     private static final CopyOnWriteArrayList<BufferedMap<?, ?>> bufferedMaps = new CopyOnWriteArrayList<>();
@@ -93,10 +94,13 @@ public class AOStorage implements Storage {
             if (storageName != null) {
                 if (!FileUtils.exists(storageName))
                     FileUtils.createDirectories(storageName);
-
                 FilePath dir = FilePath.get(storageName);
                 for (FilePath fp : dir.newDirectoryStream()) {
                     String mapFullName = fp.getName();
+                    if (mapFullName.startsWith(TEMP_NAME_PREFIX)) {
+                        fp.delete();
+                        continue;
+                    }
                     int mapIdStartPos = mapFullName.lastIndexOf(MAP_NAME_ID_SEPARATOR);
                     if (mapIdStartPos > 0) {
                         String mapName = mapFullName.substring(0, mapIdStartPos);
@@ -326,24 +330,7 @@ public class AOStorage implements Storage {
     }
 
     @Override
-    public void removeTemporaryMaps(BitField objectIds) {
-        for (String mapName : getMapNames()) {
-            if (mapName.startsWith("temp" + MAP_NAME_ID_SEPARATOR)) {
-                openBTreeMap(mapName, null, null).remove();
-            }
-            // TODO
-            // else if (mapName.startsWith("table-") || mapName.startsWith("index-")) {
-            // int id = Integer.parseInt(mapName.substring(1 + mapName.indexOf(".")));
-            // // 上层的SYS表中没有对应id的表和索引元数据了，出现了不一致，所以删除
-            // if (!objectIds.get(id)) {
-            // openBTreeMap(mapName, null, null).remove();
-            // }
-            // }
-        }
-    }
-
-    @Override
     public synchronized String nextTemporaryMapName() {
-        return "temp" + MAP_NAME_ID_SEPARATOR + lastMapId++;
+        return TEMP_NAME_PREFIX + lastMapId++;
     }
 }

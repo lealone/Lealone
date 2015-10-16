@@ -384,10 +384,6 @@ public class Database implements DataHandler, DbObject {
             rec.execute(this, systemSession, eventListener);
         }
 
-        for (Storage s : getStorages()) {
-            s.removeTemporaryMaps(objectIds);
-        }
-
         recompileInvalidViews(systemSession);
         starting = false;
     }

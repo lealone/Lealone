@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.common.util.BitField;
 import org.lealone.db.Constants;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.DataType;
@@ -53,10 +52,6 @@ public class MemoryStorage implements Storage {
 
     @Override
     public void sync() {
-    }
-
-    @Override
-    public void removeTemporaryMaps(BitField objectIds) {
     }
 
     @Override

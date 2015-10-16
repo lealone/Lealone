@@ -19,7 +19,6 @@ package org.lealone.storage;
 
 import java.util.Map;
 
-import org.lealone.common.util.BitField;
 import org.lealone.storage.type.DataType;
 
 public interface Storage {
@@ -30,8 +29,6 @@ public interface Storage {
     boolean hasMap(String name);
 
     String nextTemporaryMapName();
-
-    void removeTemporaryMaps(BitField objectIds);
 
     void backupTo(String fileName);
 
