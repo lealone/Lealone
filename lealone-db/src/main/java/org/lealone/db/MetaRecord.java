@@ -10,9 +10,9 @@ import java.sql.SQLException;
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
-import org.lealone.common.value.ValueInt;
-import org.lealone.common.value.ValueString;
 import org.lealone.db.result.SearchRow;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueString;
 import org.lealone.sql.PreparedInterface;
 
 /**

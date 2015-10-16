@@ -6,10 +6,10 @@
  */
 package org.lealone.db.table;
 
-import org.lealone.common.value.Value;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionColumn;
 import org.lealone.db.expression.Select;
+import org.lealone.db.value.Value;
 
 /**
  * The single column resolver is like a table with exactly one row.

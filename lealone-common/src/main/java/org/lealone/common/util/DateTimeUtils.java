@@ -19,11 +19,11 @@ import java.util.TimeZone;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueDate;
-import org.lealone.common.value.ValueNull;
-import org.lealone.common.value.ValueTime;
-import org.lealone.common.value.ValueTimestamp;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueDate;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueTime;
+import org.lealone.db.value.ValueTimestamp;
 
 /**
  * This utility class contains time conversion functions.

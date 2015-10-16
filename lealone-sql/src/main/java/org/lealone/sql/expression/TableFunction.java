@@ -12,17 +12,17 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueArray;
-import org.lealone.common.value.ValueNull;
-import org.lealone.common.value.ValueResultSet;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.table.Column;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueResultSet;
 
 /**
  * Implementation of the functions TABLE(..) and TABLE_DISTINCT(..).

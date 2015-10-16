@@ -22,7 +22,7 @@ package org.lealone.sql.expression;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lealone.common.value.Value;
+import org.lealone.db.value.Value;
 
 public class Calculator {
     private final Value[] currentRow;

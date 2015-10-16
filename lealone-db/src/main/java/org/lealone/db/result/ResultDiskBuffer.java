@@ -11,11 +11,11 @@ import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.common.value.Value;
 import org.lealone.db.Constants;
 import org.lealone.db.Data;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
+import org.lealone.db.value.Value;
 import org.lealone.storage.fs.FileStorage;
 
 /**

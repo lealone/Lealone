@@ -20,12 +20,12 @@ package org.lealone.sql.expression;
 import java.util.ArrayList;
 
 import org.lealone.common.util.New;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueArray;
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.util.ValueHashMap;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
 import org.lealone.sql.dml.Query;
 
 public class SubqueryResult extends DelegatedResult {

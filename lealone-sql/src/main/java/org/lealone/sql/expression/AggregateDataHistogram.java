@@ -8,14 +8,14 @@ package org.lealone.sql.expression;
 import java.util.Arrays;
 import java.util.Comparator;
 
-import org.lealone.common.value.CompareMode;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueArray;
-import org.lealone.common.value.ValueLong;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.util.ValueHashMap;
+import org.lealone.db.value.CompareMode;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
 
 /**
  * Data stored while calculating a HISTOGRAM aggregate.

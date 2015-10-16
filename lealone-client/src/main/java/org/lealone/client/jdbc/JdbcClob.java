@@ -26,8 +26,8 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.Task;
-import org.lealone.common.value.Value;
 import org.lealone.db.Constants;
+import org.lealone.db.value.Value;
 
 /**
  * Represents a CLOB value.

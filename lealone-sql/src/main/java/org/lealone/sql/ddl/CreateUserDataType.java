@@ -8,13 +8,13 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.DataType;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.UserDataType;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.DataType;
 
 /**
  * This class represents the statement

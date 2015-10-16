@@ -14,8 +14,6 @@ import java.util.List;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.common.value.CompareMode;
-import org.lealone.common.value.Value;
 import org.lealone.db.Session;
 import org.lealone.db.expression.Comparison;
 import org.lealone.db.expression.Expression;
@@ -25,6 +23,8 @@ import org.lealone.db.expression.Query;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.CompareMode;
+import org.lealone.db.value.Value;
 
 /**
  * A index condition object is made for each condition that can potentially use

@@ -7,8 +7,6 @@
 package org.lealone.db.index;
 
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueLong;
 import org.lealone.db.Session;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -16,6 +14,8 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.RangeTable;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLong;
 
 /**
  * An index for the SYSTEM_RANGE table.

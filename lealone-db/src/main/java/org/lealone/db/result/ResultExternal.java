@@ -8,7 +8,7 @@ package org.lealone.db.result;
 
 import java.util.ArrayList;
 
-import org.lealone.common.value.Value;
+import org.lealone.db.value.Value;
 
 /**
  * This interface is used to extend the LocalResult class, if data does not fit

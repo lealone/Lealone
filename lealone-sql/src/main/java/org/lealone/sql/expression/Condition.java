@@ -6,8 +6,8 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueBoolean;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueBoolean;
 
 /**
  * Represents a condition returning a boolean value, or NULL.

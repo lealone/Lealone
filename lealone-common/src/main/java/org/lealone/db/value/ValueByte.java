@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.common.value;
+package org.lealone.db.value;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -14,37 +14,37 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
 
 /**
- * Implementation of the SMALLINT data type.
+ * Implementation of the BYTE data type.
  */
-public class ValueShort extends Value {
+public class ValueByte extends Value {
 
     /**
      * The precision in digits.
      */
-    static final int PRECISION = 5;
+    static final int PRECISION = 3;
 
     /**
-     * The maximum display size of a short.
-     * Example: -32768
+     * The display size for a byte.
+     * Example: -127
      */
-    static final int DISPLAY_SIZE = 6;
+    static final int DISPLAY_SIZE = 4;
 
-    private final short value;
+    private final byte value;
 
-    private ValueShort(short value) {
+    private ValueByte(byte value) {
         this.value = value;
     }
 
     public Value add(Value v) {
-        ValueShort other = (ValueShort) v;
+        ValueByte other = (ValueByte) v;
         return checkRange(value + other.value);
     }
 
-    private static ValueShort checkRange(int x) {
-        if (x < Short.MIN_VALUE || x > Short.MAX_VALUE) {
+    private static ValueByte checkRange(int x) {
+        if (x < Byte.MIN_VALUE || x > Byte.MAX_VALUE) {
             throw DbException.get(ErrorCode.NUMERIC_VALUE_OUT_OF_RANGE_1, Integer.toString(x));
         }
-        return ValueShort.get((short) x);
+        return ValueByte.get((byte) x);
     }
 
     public int getSignum() {
@@ -56,29 +56,29 @@ public class ValueShort extends Value {
     }
 
     public Value subtract(Value v) {
-        ValueShort other = (ValueShort) v;
+        ValueByte other = (ValueByte) v;
         return checkRange(value - other.value);
     }
 
     public Value multiply(Value v) {
-        ValueShort other = (ValueShort) v;
+        ValueByte other = (ValueByte) v;
         return checkRange(value * other.value);
     }
 
     public Value divide(Value v) {
-        ValueShort other = (ValueShort) v;
+        ValueByte other = (ValueByte) v;
         if (other.value == 0) {
             throw DbException.get(ErrorCode.DIVISION_BY_ZERO_1, getSQL());
         }
-        return ValueShort.get((short) (value / other.value));
+        return ValueByte.get((byte) (value / other.value));
     }
 
     public Value modulus(Value v) {
-        ValueShort other = (ValueShort) v;
+        ValueByte other = (ValueByte) v;
         if (other.value == 0) {
             throw DbException.get(ErrorCode.DIVISION_BY_ZERO_1, getSQL());
         }
-        return ValueShort.get((short) (value % other.value));
+        return ValueByte.get((byte) (value % other.value));
     }
 
     public String getSQL() {
@@ -86,15 +86,15 @@ public class ValueShort extends Value {
     }
 
     public int getType() {
-        return Value.SHORT;
+        return Value.BYTE;
     }
 
-    public short getShort() {
+    public byte getByte() {
         return value;
     }
 
     protected int compareSecure(Value o, CompareMode mode) {
-        ValueShort v = (ValueShort) o;
+        ValueByte v = (ValueByte) o;
         return MathUtils.compareInt(value, v.value);
     }
 
@@ -111,21 +111,21 @@ public class ValueShort extends Value {
     }
 
     public Object getObject() {
-        return Short.valueOf(value);
+        return Byte.valueOf(value);
     }
 
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
-        prep.setShort(parameterIndex, value);
+        prep.setByte(parameterIndex, value);
     }
 
     /**
-     * Get or create a short value for the given short.
+     * Get or create byte value for the given byte.
      *
-     * @param i the short
+     * @param i the byte
      * @return the value
      */
-    public static ValueShort get(short i) {
-        return (ValueShort) Value.cache(new ValueShort(i));
+    public static ValueByte get(byte i) {
+        return (ValueByte) Value.cache(new ValueByte(i));
     }
 
     public int getDisplaySize() {
@@ -133,7 +133,7 @@ public class ValueShort extends Value {
     }
 
     public boolean equals(Object other) {
-        return other instanceof ValueShort && value == ((ValueShort) other).value;
+        return other instanceof ValueByte && value == ((ValueByte) other).value;
     }
 
 }

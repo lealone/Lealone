@@ -17,12 +17,12 @@ import org.lealone.client.result.ResultRemoteInMemory;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.New;
-import org.lealone.common.value.Transfer;
-import org.lealone.common.value.Value;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.ResultInterface;
+import org.lealone.db.value.Transfer;
+import org.lealone.db.value.Value;
 
 /**
  * Represents the client-side part of a SQL statement.

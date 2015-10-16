@@ -18,7 +18,6 @@
 package org.lealone.db.index;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.common.value.Value;
 import org.lealone.db.Session;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.result.Row;
@@ -28,6 +27,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedInterface;
 
 public class GlobalUniqueIndex extends IndexBase {

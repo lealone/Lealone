@@ -13,8 +13,6 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.Utils;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Constants;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
@@ -34,6 +32,8 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.table.TableView;
 import org.lealone.db.util.IntArray;
 import org.lealone.db.util.SynchronizedVerifier;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 
 /**
  * This object represents a virtual index for a query.

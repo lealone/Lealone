@@ -10,8 +10,8 @@ import java.io.IOException;
 
 import org.lealone.client.FrontendSession;
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Transfer;
-import org.lealone.common.value.Value;
+import org.lealone.db.value.Transfer;
+import org.lealone.db.value.Value;
 
 /**
  * The client side part of a result set that is kept on the server.

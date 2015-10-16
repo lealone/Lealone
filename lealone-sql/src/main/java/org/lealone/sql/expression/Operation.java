@@ -8,16 +8,16 @@ package org.lealone.sql.expression;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueInt;
-import org.lealone.common.value.ValueNull;
-import org.lealone.common.value.ValueString;
 import org.lealone.db.Mode;
 import org.lealone.db.Session;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueString;
 
 /**
  * A mathematical expression, or string concatenation.

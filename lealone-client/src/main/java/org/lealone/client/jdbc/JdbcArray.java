@@ -15,8 +15,8 @@ import java.util.Map;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.TraceObject;
-import org.lealone.common.value.Value;
 import org.lealone.db.result.SimpleResultSet;
+import org.lealone.db.value.Value;
 
 /**
  * Represents an ARRAY value.

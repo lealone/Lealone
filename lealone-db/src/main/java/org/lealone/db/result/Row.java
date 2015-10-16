@@ -7,12 +7,12 @@
 package org.lealone.db.result;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueLong;
 import org.lealone.db.Constants;
 import org.lealone.db.Data;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLong;
 
 /**
  * Represents a row in a table.

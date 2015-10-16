@@ -7,7 +7,6 @@
 package org.lealone.db.index;
 
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Value;
 import org.lealone.db.Session;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexBase;
@@ -21,6 +20,7 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.TableBase;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.util.ValueHashMap;
+import org.lealone.db.value.Value;
 
 /**
  * An unique index based on an in-memory hash map.

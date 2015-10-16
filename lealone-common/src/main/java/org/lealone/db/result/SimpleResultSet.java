@@ -36,7 +36,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
-import org.lealone.common.value.DataType;
+import org.lealone.db.value.DataType;
 
 //*/
 

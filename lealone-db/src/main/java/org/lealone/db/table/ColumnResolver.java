@@ -6,10 +6,10 @@
  */
 package org.lealone.db.table;
 
-import org.lealone.common.value.Value;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionColumn;
 import org.lealone.db.expression.Select;
+import org.lealone.db.value.Value;
 
 /**
  * A column resolver is list of column (for example, a table) that can map a

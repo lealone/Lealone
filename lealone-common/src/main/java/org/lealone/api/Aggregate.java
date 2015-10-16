@@ -23,7 +23,7 @@ public interface Aggregate {
     void init(Connection conn) throws SQLException;
 
     /**
-     * This method must return the H2 data type, {@link org.lealone.common.value.Value},
+     * This method must return the H2 data type, {@link org.lealone.db.value.Value},
      * of the aggregate function, given the H2 data type of the input data.
      * The method should check here if the number of parameters
      * passed is correct, and if not it should throw an exception.

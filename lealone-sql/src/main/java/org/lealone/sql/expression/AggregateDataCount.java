@@ -5,11 +5,11 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueLong;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Database;
 import org.lealone.db.util.ValueHashMap;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
 
 /**
  * Data stored while calculating an aggregate.

@@ -10,14 +10,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueString;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.table.Column;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueString;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;

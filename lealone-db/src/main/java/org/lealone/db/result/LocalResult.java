@@ -12,12 +12,12 @@ import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueArray;
 import org.lealone.db.Session;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.util.ValueHashMap;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
 
 /**
  * A local result set contains all row data of a result set.

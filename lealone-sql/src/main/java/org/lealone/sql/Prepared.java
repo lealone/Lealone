@@ -13,13 +13,13 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.common.value.Value;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 

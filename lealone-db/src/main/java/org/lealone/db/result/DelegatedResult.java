@@ -19,8 +19,8 @@
  */
 package org.lealone.db.result;
 
-import org.lealone.common.value.Value;
 import org.lealone.db.result.ResultInterface;
+import org.lealone.db.value.Value;
 
 public class DelegatedResult implements ResultInterface {
     protected ResultInterface result;

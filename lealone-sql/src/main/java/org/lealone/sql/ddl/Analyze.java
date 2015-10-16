@@ -8,9 +8,6 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueInt;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
@@ -18,6 +15,9 @@ import org.lealone.db.auth.Right;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueNull;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Parameter;
 

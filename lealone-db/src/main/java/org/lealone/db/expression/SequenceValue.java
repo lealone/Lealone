@@ -7,13 +7,13 @@
 package org.lealone.db.expression;
 
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueInt;
-import org.lealone.common.value.ValueLong;
 import org.lealone.db.Session;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueLong;
 
 /**
  * Wraps a sequence when used in a statement.

@@ -10,8 +10,8 @@ import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 
 /**
  * This hash map supports keys of type Value.

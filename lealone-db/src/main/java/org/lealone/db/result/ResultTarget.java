@@ -6,7 +6,7 @@
  */
 package org.lealone.db.result;
 
-import org.lealone.common.value.Value;
+import org.lealone.db.value.Value;
 
 /**
  * A object where rows are written to.

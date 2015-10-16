@@ -5,8 +5,8 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.common.value.Value;
 import org.lealone.db.Database;
+import org.lealone.db.value.Value;
 
 /**
  * Abstract class for the computation of an aggregate.

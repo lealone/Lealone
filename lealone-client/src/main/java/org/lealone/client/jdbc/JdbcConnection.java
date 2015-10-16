@@ -36,17 +36,17 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.CloseWatcher;
 import org.lealone.common.util.Utils;
-import org.lealone.common.value.CompareMode;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueInt;
-import org.lealone.common.value.ValueNull;
-import org.lealone.common.value.ValueString;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.SessionInterface;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.ResultInterface;
+import org.lealone.db.value.CompareMode;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueString;
 
 //*/
 

@@ -13,8 +13,8 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.value.DataType;
 import org.lealone.db.result.ResultInterface;
+import org.lealone.db.value.DataType;
 
 /**
  * Represents the meta data for a ResultSet.

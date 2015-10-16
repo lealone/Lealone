@@ -8,7 +8,6 @@ package org.lealone.db.index;
 import java.util.List;
 
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.ValueLong;
 import org.lealone.db.Session;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -17,6 +16,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.ValueLong;
 
 /**
  * An index that delegates indexing to another index.

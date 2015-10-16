@@ -8,8 +8,8 @@ package org.lealone.client.result;
 
 import java.io.IOException;
 
-import org.lealone.common.value.Transfer;
 import org.lealone.db.result.ResultInterface;
+import org.lealone.db.value.Transfer;
 
 /**
  * A result set column of a remote result.

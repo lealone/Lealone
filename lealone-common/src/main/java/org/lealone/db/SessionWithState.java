@@ -9,8 +9,8 @@ package org.lealone.db;
 import java.util.ArrayList;
 
 import org.lealone.common.util.New;
-import org.lealone.common.value.Value;
 import org.lealone.db.result.ResultInterface;
+import org.lealone.db.value.Value;
 
 /**
  * The base class for both remote and embedded sessions.

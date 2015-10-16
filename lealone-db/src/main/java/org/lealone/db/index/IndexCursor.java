@@ -10,8 +10,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Session;
 import org.lealone.db.expression.Comparison;
 import org.lealone.db.result.ResultInterface;
@@ -22,6 +20,8 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 
 /**
  * The filter used to walk through an index. This class supports IN(..)

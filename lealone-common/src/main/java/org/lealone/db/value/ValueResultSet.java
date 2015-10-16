@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.common.value;
+package org.lealone.db.value;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;

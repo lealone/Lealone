@@ -10,8 +10,6 @@ import java.util.concurrent.Callable;
 
 import org.lealone.api.Trigger;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Session;
 import org.lealone.db.auth.Right;
@@ -21,6 +19,8 @@ import org.lealone.db.result.RowList;
 import org.lealone.db.table.PlanItem;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Expression;
 

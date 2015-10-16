@@ -10,7 +10,6 @@ import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.common.value.Value;
 import org.lealone.db.Session;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexType;
@@ -19,6 +18,7 @@ import org.lealone.db.result.SearchRow;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.TableBase;
 import org.lealone.db.util.ValueHashMap;
+import org.lealone.db.value.Value;
 
 /**
  * A non-unique index based on an in-memory hash map.

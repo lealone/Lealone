@@ -7,12 +7,12 @@ package org.lealone.db.schema;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
-import org.lealone.common.value.Value;
 import org.lealone.db.DbObject;
 import org.lealone.db.Session;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ValueExpression;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.Value;
 
 /**
  * A user-defined constant as created by the SQL statement

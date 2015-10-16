@@ -10,7 +10,6 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Value;
 import org.lealone.db.Session;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Index;
@@ -18,6 +17,7 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.index.RangeIndex;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.value.Value;
 
 /**
  * The table SYSTEM_RANGE is a virtual table that generates incrementing numbers

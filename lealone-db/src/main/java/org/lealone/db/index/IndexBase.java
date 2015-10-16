@@ -12,8 +12,6 @@ import org.lealone.common.message.Trace;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.Mode;
@@ -26,6 +24,8 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 
 /**
  * Most index implementations extend the base index.

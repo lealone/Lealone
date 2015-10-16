@@ -8,10 +8,10 @@ package org.lealone.sql.expression;
 import java.util.ArrayList;
 
 import org.lealone.common.util.New;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Database;
 import org.lealone.db.util.ValueHashMap;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 
 /**
  * Data stored while calculating a GROUP_CONCAT aggregate.

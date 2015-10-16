@@ -11,8 +11,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
 import org.lealone.db.Session;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.result.Row;
@@ -21,6 +19,8 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.FunctionTable;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
 
 /**
  * An index for a function that returns a result set. This index can only scan

@@ -13,8 +13,8 @@ import org.lealone.api.AggregateFunction;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.Utils;
-import org.lealone.common.value.DataType;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.DataType;
 
 /**
  * Represents a user-defined aggregate function.

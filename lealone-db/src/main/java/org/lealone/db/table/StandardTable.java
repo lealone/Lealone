@@ -19,8 +19,6 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.Session;
@@ -40,6 +38,8 @@ import org.lealone.db.index.StandardSecondaryIndex;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObject;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
 import org.lealone.storage.StorageEngine;
 import org.lealone.transaction.Transaction;
 

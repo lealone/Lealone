@@ -12,14 +12,14 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.value.CompareMode;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
+import org.lealone.db.value.CompareMode;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
 
 /**
  * The base class of a regular table, or a user defined table.

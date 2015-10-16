@@ -18,10 +18,10 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.result.ResultInterface;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 
 /**
  * This class is used for updatable result sets.

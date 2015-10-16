@@ -5,8 +5,8 @@
  */
 package org.lealone.db.expression;
 
-import org.lealone.common.value.ValueResultSet;
 import org.lealone.db.Session;
+import org.lealone.db.value.ValueResultSet;
 
 /**
  * This interface is used by the built-in functions,

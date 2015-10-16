@@ -24,12 +24,6 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
-import org.lealone.common.value.CompareMode;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
-import org.lealone.common.value.ValueString;
-import org.lealone.common.value.ValueStringIgnoreCase;
 import org.lealone.db.Constants;
 import org.lealone.db.Csv;
 import org.lealone.db.Database;
@@ -59,6 +53,12 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.TriggerObject;
+import org.lealone.db.value.CompareMode;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueString;
+import org.lealone.db.value.ValueStringIgnoreCase;
 import org.lealone.sql.BackendCommand;
 
 /**

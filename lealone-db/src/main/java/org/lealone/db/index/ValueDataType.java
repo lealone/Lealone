@@ -16,32 +16,32 @@ import java.util.Arrays;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.value.CompareMode;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueArray;
-import org.lealone.common.value.ValueBoolean;
-import org.lealone.common.value.ValueByte;
-import org.lealone.common.value.ValueBytes;
-import org.lealone.common.value.ValueDate;
-import org.lealone.common.value.ValueDecimal;
-import org.lealone.common.value.ValueDouble;
-import org.lealone.common.value.ValueFloat;
-import org.lealone.common.value.ValueInt;
-import org.lealone.common.value.ValueJavaObject;
-import org.lealone.common.value.ValueLobDb;
-import org.lealone.common.value.ValueLong;
-import org.lealone.common.value.ValueNull;
-import org.lealone.common.value.ValueResultSet;
-import org.lealone.common.value.ValueShort;
-import org.lealone.common.value.ValueString;
-import org.lealone.common.value.ValueStringFixed;
-import org.lealone.common.value.ValueStringIgnoreCase;
-import org.lealone.common.value.ValueTime;
-import org.lealone.common.value.ValueTimestamp;
-import org.lealone.common.value.ValueUuid;
 import org.lealone.db.DataHandler;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.result.SortOrder;
+import org.lealone.db.value.CompareMode;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueBoolean;
+import org.lealone.db.value.ValueByte;
+import org.lealone.db.value.ValueBytes;
+import org.lealone.db.value.ValueDate;
+import org.lealone.db.value.ValueDecimal;
+import org.lealone.db.value.ValueDouble;
+import org.lealone.db.value.ValueFloat;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueJavaObject;
+import org.lealone.db.value.ValueLobDb;
+import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueResultSet;
+import org.lealone.db.value.ValueShort;
+import org.lealone.db.value.ValueString;
+import org.lealone.db.value.ValueStringFixed;
+import org.lealone.db.value.ValueStringIgnoreCase;
+import org.lealone.db.value.ValueTime;
+import org.lealone.db.value.ValueTimestamp;
+import org.lealone.db.value.ValueUuid;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
 
@@ -352,8 +352,8 @@ public class ValueDataType implements DataType {
                 while (rs.next()) {
                     buff.put((byte) 1);
                     for (int i = 0; i < columnCount; i++) {
-                        int t = org.lealone.common.value.DataType.getValueTypeFromResultSet(meta, i + 1);
-                        Value val = org.lealone.common.value.DataType.readValue(null, rs, i + 1, t);
+                        int t = org.lealone.db.value.DataType.getValueTypeFromResultSet(meta, i + 1);
+                        Value val = org.lealone.db.value.DataType.readValue(null, rs, i + 1, t);
                         writeValue(buff, val);
                     }
                 }

@@ -13,8 +13,6 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
 import org.lealone.db.expression.Expression;
@@ -27,6 +25,8 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedInterface;
 
 /**

@@ -6,8 +6,8 @@
  */
 package org.lealone.db.result;
 
-import org.lealone.common.value.Value;
 import org.lealone.db.table.Column;
+import org.lealone.db.value.Value;
 
 /**
  * The interface for rows stored in a table, and for partial rows stored in the

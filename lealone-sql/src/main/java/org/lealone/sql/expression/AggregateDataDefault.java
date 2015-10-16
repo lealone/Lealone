@@ -6,14 +6,14 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueBoolean;
-import org.lealone.common.value.ValueDouble;
-import org.lealone.common.value.ValueLong;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Database;
 import org.lealone.db.util.ValueHashMap;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueBoolean;
+import org.lealone.db.value.ValueDouble;
+import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
 
 /**
  * Data stored while calculating an aggregate.

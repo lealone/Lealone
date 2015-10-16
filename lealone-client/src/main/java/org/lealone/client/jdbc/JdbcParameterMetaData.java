@@ -14,10 +14,10 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.ParameterInterface;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
 
 /**
  * Information about the parameters of a prepared statement.

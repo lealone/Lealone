@@ -8,15 +8,15 @@ package org.lealone.sql.expression;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueBoolean;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueBoolean;
+import org.lealone.db.value.ValueNull;
 
 /**
  * A parameter of a prepared statement.

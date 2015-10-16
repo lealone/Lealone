@@ -6,9 +6,9 @@
  */
 package org.lealone.db.result;
 
-import org.lealone.common.value.Value;
 import org.lealone.db.Constants;
 import org.lealone.db.table.Column;
+import org.lealone.db.value.Value;
 
 /**
  * A simple row that contains data for only one column.

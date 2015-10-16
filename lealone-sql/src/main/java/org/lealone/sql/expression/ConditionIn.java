@@ -9,15 +9,15 @@ package org.lealone.sql.expression;
 import java.util.ArrayList;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueBoolean;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueBoolean;
+import org.lealone.db.value.ValueNull;
 
 /**
  * An 'in' condition with a list of values, as in WHERE NAME IN(...)

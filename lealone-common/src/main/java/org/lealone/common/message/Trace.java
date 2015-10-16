@@ -10,9 +10,9 @@ import java.util.ArrayList;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.value.Value;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.SysProperties;
+import org.lealone.db.value.Value;
 
 /**
  * This class represents a trace module.

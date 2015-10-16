@@ -27,10 +27,6 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueArray;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.Session;
@@ -38,6 +34,10 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.table.Table;
 import org.lealone.db.util.SourceCompiler;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueNull;
 
 /**
  * Represents a user-defined function, or alias.

@@ -34,8 +34,8 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.New;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.ParameterInterface;
+import org.lealone.db.value.ValueNull;
 
 /**
  * Represents a callable statement.

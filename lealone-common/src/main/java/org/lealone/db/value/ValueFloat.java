@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.common.value;
+package org.lealone.db.value;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -13,100 +13,100 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 
 /**
- * Implementation of the DOUBLE data type.
+ * Implementation of the REAL data type.
  */
-public class ValueDouble extends Value {
+public class ValueFloat extends Value {
+
+    /**
+     * Float.floatToIntBits(0.0F).
+     */
+    public static final int ZERO_BITS = Float.floatToIntBits(0.0F);
 
     /**
      * The precision in digits.
      */
-    public static final int PRECISION = 17;
+    static final int PRECISION = 7;
 
     /**
-     * The maximum display size of a double.
-     * Example: -3.3333333333333334E-100
+     * The maximum display size of a float.
+     * Example: -1.12345676E-20
      */
-    public static final int DISPLAY_SIZE = 24;
+    static final int DISPLAY_SIZE = 15;
 
-    /**
-     * Double.doubleToLongBits(0.0)
-     */
-    public static final long ZERO_BITS = Double.doubleToLongBits(0.0);
+    private static final ValueFloat ZERO = new ValueFloat(0.0F);
+    private static final ValueFloat ONE = new ValueFloat(1.0F);
 
-    private static final ValueDouble ZERO = new ValueDouble(0.0);
-    private static final ValueDouble ONE = new ValueDouble(1.0);
-    private static final ValueDouble NAN = new ValueDouble(Double.NaN);
+    private final float value;
 
-    private final double value;
-
-    private ValueDouble(double value) {
+    private ValueFloat(float value) {
         this.value = value;
     }
 
     public Value add(Value v) {
-        ValueDouble v2 = (ValueDouble) v;
-        return ValueDouble.get(value + v2.value);
+        ValueFloat v2 = (ValueFloat) v;
+        return ValueFloat.get(value + v2.value);
     }
 
     public Value subtract(Value v) {
-        ValueDouble v2 = (ValueDouble) v;
-        return ValueDouble.get(value - v2.value);
+        ValueFloat v2 = (ValueFloat) v;
+        return ValueFloat.get(value - v2.value);
     }
 
     public Value negate() {
-        return ValueDouble.get(-value);
+        return ValueFloat.get(-value);
     }
 
     public Value multiply(Value v) {
-        ValueDouble v2 = (ValueDouble) v;
-        return ValueDouble.get(value * v2.value);
+        ValueFloat v2 = (ValueFloat) v;
+        return ValueFloat.get(value * v2.value);
     }
 
     public Value divide(Value v) {
-        ValueDouble v2 = (ValueDouble) v;
+        ValueFloat v2 = (ValueFloat) v;
         if (v2.value == 0.0) {
             throw DbException.get(ErrorCode.DIVISION_BY_ZERO_1, getSQL());
         }
-        return ValueDouble.get(value / v2.value);
+        return ValueFloat.get(value / v2.value);
     }
 
-    public ValueDouble modulus(Value v) {
-        ValueDouble other = (ValueDouble) v;
+    public Value modulus(Value v) {
+        ValueFloat other = (ValueFloat) v;
         if (other.value == 0) {
             throw DbException.get(ErrorCode.DIVISION_BY_ZERO_1, getSQL());
         }
-        return ValueDouble.get(value % other.value);
+        return ValueFloat.get(value % other.value);
     }
 
     public String getSQL() {
-        if (value == Double.POSITIVE_INFINITY) {
+        if (value == Float.POSITIVE_INFINITY) {
             return "POWER(0, -1)";
-        } else if (value == Double.NEGATIVE_INFINITY) {
+        } else if (value == Float.NEGATIVE_INFINITY) {
             return "(-POWER(0, -1))";
         } else if (Double.isNaN(value)) {
+            // NaN
             return "SQRT(-1)";
         }
         String s = getString();
         if (s.equals("-0.0")) {
-            return "-CAST(0 AS DOUBLE)";
+            return "-CAST(0 AS REAL)";
         }
         return s;
     }
 
     public int getType() {
-        return Value.DOUBLE;
+        return Value.FLOAT;
     }
 
     protected int compareSecure(Value o, CompareMode mode) {
-        ValueDouble v = (ValueDouble) o;
-        return Double.compare(value, v.value);
+        ValueFloat v = (ValueFloat) o;
+        return Float.compare(value, v.value);
     }
 
     public int getSignum() {
         return value == 0 ? 0 : (value < 0 ? -1 : 1);
     }
 
-    public double getDouble() {
+    public float getFloat() {
         return value;
     }
 
@@ -123,37 +123,35 @@ public class ValueDouble extends Value {
     }
 
     public int hashCode() {
-        long hash = Double.doubleToLongBits(value);
+        long hash = Float.floatToIntBits(value);
         return (int) (hash ^ (hash >> 32));
     }
 
     public Object getObject() {
-        return Double.valueOf(value);
+        return Float.valueOf(value);
     }
 
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
-        prep.setDouble(parameterIndex, value);
+        prep.setFloat(parameterIndex, value);
     }
 
     /**
-     * Get or create double value for the given double.
+     * Get or create float value for the given float.
      *
-     * @param d the double
+     * @param d the float
      * @return the value
      */
-    public static ValueDouble get(double d) {
-        if (d == 1.0) {
+    public static ValueFloat get(float d) {
+        if (d == 1.0F) {
             return ONE;
-        } else if (d == 0.0) {
+        } else if (d == 0.0F) {
             // unfortunately, -0.0 == 0.0, but we don't want to return
             // 0.0 in this case
-            if (Double.doubleToLongBits(d) == ZERO_BITS) {
+            if (Float.floatToIntBits(d) == ZERO_BITS) {
                 return ZERO;
             }
-        } else if (Double.isNaN(d)) {
-            return NAN;
         }
-        return (ValueDouble) Value.cache(new ValueDouble(d));
+        return (ValueFloat) Value.cache(new ValueFloat(d));
     }
 
     public int getDisplaySize() {
@@ -161,10 +159,10 @@ public class ValueDouble extends Value {
     }
 
     public boolean equals(Object other) {
-        if (!(other instanceof ValueDouble)) {
+        if (!(other instanceof ValueFloat)) {
             return false;
         }
-        return compareSecure((ValueDouble) other, null) == 0;
+        return compareSecure((ValueFloat) other, null) == 0;
     }
 
 }

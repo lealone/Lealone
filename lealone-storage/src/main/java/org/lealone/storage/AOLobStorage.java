@@ -22,10 +22,10 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueLobDb;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLobDb;
 import org.lealone.storage.btree.BTreeMap;
 
 /**

@@ -14,16 +14,6 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueDate;
-import org.lealone.common.value.ValueInt;
-import org.lealone.common.value.ValueLong;
-import org.lealone.common.value.ValueNull;
-import org.lealone.common.value.ValueString;
-import org.lealone.common.value.ValueTime;
-import org.lealone.common.value.ValueTimestamp;
-import org.lealone.common.value.ValueUuid;
 import org.lealone.db.Constants;
 import org.lealone.db.Mode;
 import org.lealone.db.SQLEngineHolder;
@@ -37,6 +27,16 @@ import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.util.Bytes;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueDate;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueString;
+import org.lealone.db.value.ValueTime;
+import org.lealone.db.value.ValueTimestamp;
+import org.lealone.db.value.ValueUuid;
 
 /**
  * This class represents a column in a table.

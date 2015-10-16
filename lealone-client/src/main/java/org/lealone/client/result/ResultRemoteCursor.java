@@ -10,8 +10,8 @@ import java.io.IOException;
 
 import org.lealone.client.FrontendSession;
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Transfer;
-import org.lealone.common.value.Value;
+import org.lealone.db.value.Transfer;
+import org.lealone.db.value.Value;
 
 public class ResultRemoteCursor extends ResultRemote {
     //不能在这初始化为false，在super的构造函数中会调用fetchRows有可能把isEnd设为true了，

@@ -12,10 +12,6 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.DataType;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
-import org.lealone.common.value.ValueResultSet;
 import org.lealone.db.Session;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.FunctionCall;
@@ -27,6 +23,10 @@ import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultInterface;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueResultSet;
 
 /**
  * A table backed by a system or user-defined function that returns a result

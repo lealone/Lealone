@@ -8,11 +8,11 @@ package org.lealone.sql;
 import java.util.ArrayList;
 
 import org.lealone.api.DatabaseEventListener;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
 import org.lealone.db.result.ResultInterface;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Parameter;
 
 /**

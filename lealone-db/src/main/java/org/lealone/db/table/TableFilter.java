@@ -12,9 +12,6 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueLong;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.auth.Right;
@@ -29,6 +26,9 @@ import org.lealone.db.index.IndexCursor;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
 
 /**
  * A table filter represents a table that is used in a query. There is one such

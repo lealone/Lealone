@@ -9,8 +9,6 @@ package org.lealone.db.result;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
@@ -23,6 +21,8 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 
 /**
  * This class implements the temp table buffer for the LocalResult class.

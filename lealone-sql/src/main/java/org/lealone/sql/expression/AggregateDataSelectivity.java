@@ -5,12 +5,12 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.common.value.Value;
-import org.lealone.common.value.ValueInt;
-import org.lealone.common.value.ValueNull;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.util.IntIntHashMap;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueNull;
 
 /**
  * Data stored while calculating a SELECTIVITY aggregate.

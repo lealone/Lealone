@@ -7,7 +7,7 @@
 package org.lealone.db;
 
 import org.lealone.common.message.DbException;
-import org.lealone.common.value.Value;
+import org.lealone.db.value.Value;
 
 /**
  * The interface for client side (remote) and server side parameters.

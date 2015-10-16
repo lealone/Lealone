@@ -15,7 +15,6 @@ import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
-import org.lealone.common.value.Value;
 import org.lealone.db.Constants;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
@@ -34,6 +33,7 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.util.IntArray;
 import org.lealone.db.util.SynchronizedVerifier;
+import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedInterface;
 
 /**
