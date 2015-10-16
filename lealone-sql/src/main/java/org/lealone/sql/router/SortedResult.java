@@ -21,7 +21,7 @@ import java.util.List;
 
 import org.lealone.db.Session;
 import org.lealone.db.result.DelegatedResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
@@ -30,7 +30,7 @@ import org.lealone.sql.dml.Select;
 public class SortedResult extends DelegatedResult {
     private static final Value[] END = new Value[0];
     private final SortOrder sort;
-    private final ResultInterface[] results;
+    private final Result[] results;
     private final int limit;
     private final int size;
     private int rowCount = -1;
@@ -39,9 +39,9 @@ public class SortedResult extends DelegatedResult {
 
     private int rowNumber;
 
-    public SortedResult(int maxRows, Session session, Select select, List<ResultInterface> results) {
+    public SortedResult(int maxRows, Session session, Select select, List<Result> results) {
         this.sort = select.getSortOrder();
-        this.results = results.toArray(new ResultInterface[results.size()]);
+        this.results = results.toArray(new Result[results.size()]);
         this.result = this.results[0];
         this.size = this.results.length;
         currentRows = new Value[size][];

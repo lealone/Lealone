@@ -9,7 +9,7 @@ package org.lealone.sql.ddl;
 import java.util.concurrent.Callable;
 
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.Prepared;
 
 /**
@@ -39,7 +39,7 @@ public abstract class DefineCommand extends Prepared implements Callable<Integer
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return null;
     }
 

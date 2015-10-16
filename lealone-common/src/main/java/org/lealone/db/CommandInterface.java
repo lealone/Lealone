@@ -7,7 +7,7 @@ package org.lealone.db;
 
 import java.util.ArrayList;
 
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 
 /**
  * Represents a SQL statement.
@@ -481,7 +481,7 @@ public interface CommandInterface {
      * @param scrollable if the result set must be scrollable
      * @return the result
      */
-    ResultInterface executeQuery(int maxRows, boolean scrollable);
+    Result executeQuery(int maxRows, boolean scrollable);
 
     /**
      * Execute the statement
@@ -505,5 +505,5 @@ public interface CommandInterface {
      *
      * @return the empty result
      */
-    ResultInterface getMetaData();
+    Result getMetaData();
 }

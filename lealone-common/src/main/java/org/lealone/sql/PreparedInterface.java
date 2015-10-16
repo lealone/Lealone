@@ -20,7 +20,7 @@ package org.lealone.sql;
 import java.util.ArrayList;
 
 import org.lealone.db.ParameterInterface;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 
 public interface PreparedInterface {
     void setLocal(boolean local);
@@ -39,7 +39,7 @@ public interface PreparedInterface {
 
     int update();
 
-    ResultInterface query(int maxrows);
+    Result query(int maxrows);
 
     void checkCanceled();
 

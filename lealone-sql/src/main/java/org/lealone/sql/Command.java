@@ -17,7 +17,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 
 /**
  * Represents a SQL statement. This object is only used on the server side.
@@ -92,7 +92,7 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
      *
      * @return an empty result set
      */
-    public abstract ResultInterface queryMeta();
+    public abstract Result queryMeta();
 
     /**
      * Execute an updating statement (for example insert, delete, or update), if
@@ -112,12 +112,12 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
      * @return the local result set
      * @throws DbException if the command is not a query
      */
-    public ResultInterface query(int maxRows) {
+    public Result query(int maxRows) {
         throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
     }
 
     @Override
-    public final ResultInterface getMetaData() {
+    public final Result getMetaData() {
         return queryMeta();
     }
 
@@ -179,7 +179,7 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
      */
 
     @Override
-    public ResultInterface executeQuery(int maxRows, boolean scrollable) {
+    public Result executeQuery(int maxRows, boolean scrollable) {
         startTime = 0;
         long start = 0;
         Database database = session.getDatabase();

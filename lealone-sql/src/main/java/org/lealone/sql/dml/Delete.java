@@ -13,7 +13,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Session;
 import org.lealone.db.auth.Right;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.RowList;
 import org.lealone.db.table.PlanItem;
@@ -157,7 +157,7 @@ public class Delete extends Prepared implements Callable<Integer> {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return null;
     }
 

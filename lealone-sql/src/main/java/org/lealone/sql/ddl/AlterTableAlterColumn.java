@@ -22,7 +22,7 @@ import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
@@ -468,7 +468,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
     private void checkNoNullValues() {
         String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL() + " IS NULL";
         Prepared command = (Prepared) session.prepare(sql);
-        ResultInterface result = command.query(0);
+        Result result = command.query(0);
         result.next();
         if (result.currentRow()[0].getInt() > 0) {
             throw DbException.get(ErrorCode.COLUMN_CONTAINS_NULL_VALUES_1, oldColumn.getSQL());

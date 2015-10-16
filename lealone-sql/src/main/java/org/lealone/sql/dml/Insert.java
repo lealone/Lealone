@@ -18,7 +18,7 @@ import org.lealone.db.CommandInterface;
 import org.lealone.db.Session;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.Index;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.Row;
 import org.lealone.db.table.Column;
@@ -155,7 +155,7 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
             if (insertFromSelect) {
                 query.query(0, this);
             } else {
-                ResultInterface rows = query.query(0);
+                Result rows = query.query(0);
                 while (rows.next()) {
                     Value[] r = rows.currentRow();
                     addRow(r);
@@ -356,7 +356,7 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return null;
     }
 

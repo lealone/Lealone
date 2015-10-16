@@ -20,7 +20,7 @@ import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionColumn;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.expression.Query;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.CompareMode;
@@ -160,7 +160,7 @@ public class IndexCondition {
      *
      * @return the result
      */
-    public ResultInterface getCurrentResult() {
+    public Result getCurrentResult() {
         return expressionQuery.query(0);
     }
 

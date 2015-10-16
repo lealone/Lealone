@@ -27,7 +27,7 @@ import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.index.ViewIndex;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.Schema;
@@ -492,7 +492,7 @@ public class TableView extends Table {
         this.recursiveResult = value;
     }
 
-    public ResultInterface getRecursiveResult() {
+    public Result getRecursiveResult() {
         return recursiveResult;
     }
 

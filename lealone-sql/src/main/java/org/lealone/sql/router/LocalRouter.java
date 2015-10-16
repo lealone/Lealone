@@ -17,7 +17,7 @@
  */
 package org.lealone.sql.router;
 
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.ddl.DefineCommand;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
@@ -61,7 +61,7 @@ public class LocalRouter implements Router {
     }
 
     @Override
-    public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
+    public Result executeSelect(Select select, int maxRows, boolean scrollable) {
         return select.queryLocal(maxRows);
     }
 

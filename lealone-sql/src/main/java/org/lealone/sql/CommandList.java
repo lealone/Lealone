@@ -9,7 +9,7 @@ import java.util.ArrayList;
 
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 
 /**
  * Represents a list of SQL statements.
@@ -47,8 +47,8 @@ class CommandList extends Command {
     }
 
     @Override
-    public ResultInterface query(int maxrows) {
-        ResultInterface result = command.query(maxrows);
+    public Result query(int maxrows) {
+        Result result = command.query(maxrows);
         executeRemaining();
         return result;
     }
@@ -69,7 +69,7 @@ class CommandList extends Command {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return command.queryMeta();
     }
 

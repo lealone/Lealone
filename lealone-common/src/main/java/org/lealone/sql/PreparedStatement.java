@@ -17,10 +17,10 @@
  */
 package org.lealone.sql;
 
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 
 public interface PreparedStatement {
     int executeUpdate();
 
-    ResultInterface executeQuery();
+    Result executeQuery();
 }

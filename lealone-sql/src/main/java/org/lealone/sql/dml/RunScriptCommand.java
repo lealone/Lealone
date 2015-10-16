@@ -15,7 +15,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.util.ScriptReader;
 import org.lealone.sql.Prepared;
 
@@ -92,7 +92,7 @@ public class RunScriptCommand extends ScriptBase {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return null;
     }
 

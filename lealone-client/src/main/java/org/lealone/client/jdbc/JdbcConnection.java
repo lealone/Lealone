@@ -41,7 +41,7 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.SessionInterface;
 import org.lealone.db.SysProperties;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
@@ -523,7 +523,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("isReadOnly");
             checkClosed();
             getReadOnly = prepareCommand("CALL READONLY()", getReadOnly);
-            ResultInterface result = getReadOnly.executeQuery(0, false);
+            Result result = getReadOnly.executeQuery(0, false);
             result.next();
             boolean readOnly = result.currentRow()[0].getBoolean().booleanValue();
             return readOnly;
@@ -561,7 +561,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             checkClosed();
             if (catalog == null) {
                 CommandInterface cat = prepareCommand("CALL DATABASE()", Integer.MAX_VALUE);
-                ResultInterface result = cat.executeQuery(0, false);
+                Result result = cat.executeQuery(0, false);
                 result.next();
                 catalog = result.currentRow()[0].getString();
                 cat.close();
@@ -711,7 +711,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 getQueryTimeout = prepareCommand("SELECT VALUE FROM INFORMATION_SCHEMA.SETTINGS WHERE NAME=?",
                         getQueryTimeout);
                 getQueryTimeout.getParameters().get(0).setValue(ValueString.get("QUERY_TIMEOUT"), false);
-                ResultInterface result = getQueryTimeout.executeQuery(0, false);
+                Result result = getQueryTimeout.executeQuery(0, false);
                 result.next();
                 int queryTimeout = result.currentRow()[0].getInt();
                 result.close();
@@ -739,7 +739,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("getTransactionIsolation");
             checkClosed();
             getLockMode = prepareCommand("CALL LOCK_MODE()", getLockMode);
-            ResultInterface result = getLockMode.executeQuery(0, false);
+            Result result = getLockMode.executeQuery(0, false);
             result.next();
             int lockMode = result.currentRow()[0].getInt();
             result.close();
@@ -1445,7 +1445,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     ResultSet getGeneratedKeys(JdbcStatement stat, int id) {
         getGeneratedKeys = prepareCommand("SELECT SCOPE_IDENTITY() WHERE SCOPE_IDENTITY() IS NOT NULL",
                 getGeneratedKeys);
-        ResultInterface result = getGeneratedKeys.executeQuery(0, false);
+        Result result = getGeneratedKeys.executeQuery(0, false);
         ResultSet rs = new JdbcResultSet(this, stat, result, id, false, true, false);
         return rs;
     }

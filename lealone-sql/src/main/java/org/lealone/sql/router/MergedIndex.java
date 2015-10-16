@@ -21,7 +21,7 @@ import org.lealone.db.Session;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexBase;
 import org.lealone.db.index.IndexType;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -30,9 +30,9 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 
 public class MergedIndex extends IndexBase {
-    private final ResultInterface result;
+    private final Result result;
 
-    public MergedIndex(ResultInterface result, Table table, int id, IndexColumn[] columns, IndexType indexType) {
+    public MergedIndex(Result result, Table table, int id, IndexColumn[] columns, IndexType indexType) {
         super();
         this.result = result;
         initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
@@ -64,9 +64,9 @@ public class MergedIndex extends IndexBase {
     }
 
     private static class MergedCursor implements Cursor {
-        private final ResultInterface result;
+        private final Result result;
 
-        MergedCursor(ResultInterface result) {
+        MergedCursor(Result result) {
             this.result = result;
         }
 

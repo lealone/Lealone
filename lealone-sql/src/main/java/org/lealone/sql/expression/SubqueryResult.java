@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import org.lealone.common.util.New;
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
@@ -94,7 +94,7 @@ public class SubqueryResult extends DelegatedResult {
         final int size;
         int index;
 
-        SubqueryRowList(ArrayList<Value[]> rowList, ResultInterface result) {
+        SubqueryRowList(ArrayList<Value[]> rowList, Result result) {
             this.result = result;
             this.rowList = rowList;
             index = -1;

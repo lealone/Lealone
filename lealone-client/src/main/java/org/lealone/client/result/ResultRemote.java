@@ -14,11 +14,11 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.New;
 import org.lealone.db.SysProperties;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 
-public abstract class ResultRemote implements ResultInterface {
+public abstract class ResultRemote implements Result {
 
     protected int fetchSize;
     protected FrontendSession session;

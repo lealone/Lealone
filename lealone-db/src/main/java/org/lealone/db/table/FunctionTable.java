@@ -20,7 +20,7 @@ import org.lealone.db.index.FunctionIndex;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.value.DataType;
@@ -179,7 +179,7 @@ public class FunctionTable extends Table {
      * @param session the session
      * @return the result
      */
-    public ResultInterface getResult(Session session) {
+    public Result getResult(Session session) {
         ValueResultSet v = getValueResultSet(session);
         if (v == null) {
             return null;

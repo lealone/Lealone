@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.dml.Select;
 
 public class CommandParallel {
@@ -107,10 +107,10 @@ public class CommandParallel {
         return updateCount;
     }
 
-    public static List<ResultInterface> executeSelectCallable(List<Callable<ResultInterface>> commands) {
+    public static List<Result> executeSelectCallable(List<Callable<Result>> commands) {
         int size = commands.size();
-        List<Future<ResultInterface>> futures = New.arrayList(size);
-        List<ResultInterface> results = New.arrayList(size);
+        List<Future<Result>> futures = New.arrayList(size);
+        List<Result> results = New.arrayList(size);
         for (int i = 0; i < size; i++) {
             futures.add(pool.submit(commands.get(i)));
         }

@@ -42,7 +42,7 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.SysProperties;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -82,7 +82,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     private final boolean closeStatement;
     private final boolean scrollable;
     private final boolean updatable;
-    private ResultInterface result;
+    private Result result;
     private JdbcConnection conn;
     private JdbcStatement stat;
     private int columnCount;
@@ -94,7 +94,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     private JdbcPreparedStatement preparedStatement;
     private CommandInterface command;
 
-    JdbcResultSet(JdbcConnection conn, JdbcStatement stat, ResultInterface result, int id, boolean closeStatement,
+    JdbcResultSet(JdbcConnection conn, JdbcStatement stat, Result result, int id, boolean closeStatement,
             boolean scrollable, boolean updatable) {
         setTrace(conn.getSession().getTrace(), TraceObject.RESULT_SET, id);
         this.conn = conn;
@@ -106,7 +106,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
         this.updatable = updatable;
     }
 
-    JdbcResultSet(JdbcConnection conn, JdbcPreparedStatement preparedStatement, ResultInterface result, int id,
+    JdbcResultSet(JdbcConnection conn, JdbcPreparedStatement preparedStatement, Result result, int id,
             boolean closeStatement, boolean scrollable, boolean updatable, HashMap<String, Integer> columnLabelMap) {
         this(conn, preparedStatement, result, id, closeStatement, scrollable, updatable);
         this.columnLabelMap = columnLabelMap;

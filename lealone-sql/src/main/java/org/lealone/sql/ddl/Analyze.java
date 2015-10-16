@@ -12,7 +12,7 @@ import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.auth.Right;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -109,7 +109,7 @@ public class Analyze extends DefineCommand {
             params.get(0).setValue(ValueInt.get(1));
             params.get(1).setValue(ValueInt.get(sample));
         }
-        ResultInterface result = command.query(0);
+        Result result = command.query(0);
         result.next();
         for (int j = 0; j < columns.length; j++) {
             Value v = result.currentRow()[j];

@@ -9,7 +9,7 @@ package org.lealone.db;
 import java.util.ArrayList;
 
 import org.lealone.common.util.New;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 
 /**
@@ -49,7 +49,7 @@ public abstract class SessionWithState implements SessionInterface {
         sessionStateChanged = false;
         sessionState = New.arrayList();
         CommandInterface ci = prepareCommand("SELECT * FROM INFORMATION_SCHEMA.SESSION_STATE", Integer.MAX_VALUE);
-        ResultInterface result = ci.executeQuery(0, false);
+        Result result = ci.executeQuery(0, false);
         while (result.next()) {
             Value[] row = result.currentRow();
             sessionState.add(row[1].getString());

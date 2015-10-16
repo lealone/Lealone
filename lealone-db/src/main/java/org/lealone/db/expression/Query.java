@@ -21,11 +21,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lealone.db.ParameterInterface;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.table.Table;
 
 public interface Query {
-    ResultInterface query(int maxrows);
+    Result query(int maxrows);
 
     String getPlanSQL();
 

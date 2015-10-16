@@ -18,7 +18,7 @@ import org.lealone.db.Session;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.schema.Schema;
@@ -663,7 +663,7 @@ public class ConstraintReferential extends Constraint {
         }
         buff.append(')');
         String sql = buff.toString();
-        ResultInterface r = session.prepare(sql).query(1);
+        Result r = session.prepare(sql).query(1);
         if (r.next()) {
             throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
                     getShortDescription(null, null));

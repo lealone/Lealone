@@ -12,7 +12,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Procedure;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
@@ -68,7 +68,7 @@ public class ExecuteProcedure extends Prepared {
     }
 
     @Override
-    public ResultInterface query(int limit) {
+    public Result query(int limit) {
         setParameters();
         Prepared prepared = (Prepared) procedure.getPrepared();
         return prepared.query(limit);
@@ -80,7 +80,7 @@ public class ExecuteProcedure extends Prepared {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         Prepared prepared = (Prepared) procedure.getPrepared();
         return prepared.queryMeta();
     }

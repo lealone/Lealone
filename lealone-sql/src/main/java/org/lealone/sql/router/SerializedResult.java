@@ -21,11 +21,11 @@ import java.util.List;
 
 import org.lealone.db.CommandInterface;
 import org.lealone.db.result.DelegatedResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 
 public class SerializedResult extends DelegatedResult {
     private final static int UNKNOW_ROW_COUNT = -1;
-    private final List<ResultInterface> results;
+    private final List<Result> results;
     private final List<? extends CommandInterface> commands;
     private final int maxRows;
     private final int limitRows;
@@ -45,7 +45,7 @@ public class SerializedResult extends DelegatedResult {
         nextResult();
     }
 
-    public SerializedResult(List<ResultInterface> results, int limitRows) {
+    public SerializedResult(List<Result> results, int limitRows) {
         this.results = results;
         this.commands = null;
         this.maxRows = -1;

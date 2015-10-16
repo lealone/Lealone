@@ -29,7 +29,7 @@ import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -64,7 +64,7 @@ import org.lealone.sql.expression.Parameter;
  * @author Thomas Mueller
  * @author Joel Turkel (Group sorted query)
  */
-public class Select extends Query implements Callable<ResultInterface>, org.lealone.db.expression.Select {
+public class Select extends Query implements Callable<Result>, org.lealone.db.expression.Select {
     private TableFilter topTableFilter;
     private final ArrayList<TableFilter> filters = New.arrayList();
     private final ArrayList<TableFilter> topFilters = New.arrayList();
@@ -645,19 +645,19 @@ public class Select extends Query implements Callable<ResultInterface>, org.leal
     }
 
     @Override
-    public ResultInterface query(int limit, ResultTarget target) {
+    public Result query(int limit, ResultTarget target) {
         queryLimit = limit;
         resultTarget = target;
         return org.lealone.sql.RouterHolder.getRouter().executeSelect(this, limit, false);
     }
 
     @Override
-    public ResultInterface queryLocal(int maxRows) {
+    public Result queryLocal(int maxRows) {
         return super.query(maxRows, resultTarget);
     }
 
     @Override
-    public ResultInterface call() {
+    public Result call() {
         return super.query(queryLimit, resultTarget);
     }
 
@@ -991,7 +991,7 @@ public class Select extends Query implements Callable<ResultInterface>, org.leal
         }
     }
 
-    public ResultInterface queryGroupMerge() {
+    public Result queryGroupMerge() {
         int columnCount = expressions.size();
         LocalResult result = new LocalResult(session, expressionArray, columnCount);
         ValueHashMap<HashMap<Expression, Object>> groups = ValueHashMap.newInstance();
@@ -1057,7 +1057,7 @@ public class Select extends Query implements Callable<ResultInterface>, org.leal
         return result;
     }
 
-    public ResultInterface calculate(ResultInterface result, Select select) {
+    public Result calculate(Result result, Select select) {
         int size = expressions.size();
         if (havingIndex >= 0)
             size--;
@@ -1088,7 +1088,7 @@ public class Select extends Query implements Callable<ResultInterface>, org.leal
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount);
         result.done();
         return result;

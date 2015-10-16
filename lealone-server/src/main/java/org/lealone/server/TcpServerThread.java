@@ -31,7 +31,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.util.SmallMap;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
@@ -333,7 +333,7 @@ public class TcpServerThread implements Runnable {
             int id = transfer.readInt();
             int objectId = transfer.readInt();
             Command command = (Command) cache.getObject(id, false);
-            ResultInterface result = command.getMetaData();
+            Result result = command.getMetaData();
             cache.addObject(objectId, result);
             int columnCount = result.getVisibleColumnCount();
             transfer.writeInt(FrontendSession.STATUS_OK).writeInt(columnCount).writeInt(0);
@@ -356,7 +356,7 @@ public class TcpServerThread implements Runnable {
             command.getPrepared().setFetchSize(fetchSize);
             setParameters(command);
             int old = session.getModificationId();
-            ResultInterface result;
+            Result result;
             synchronized (session) {
                 result = command.executeQuery(maxRows, false);
             }
@@ -512,7 +512,7 @@ public class TcpServerThread implements Runnable {
         case FrontendSession.RESULT_FETCH_ROWS: {
             int id = transfer.readInt();
             int count = transfer.readInt();
-            ResultInterface result = (ResultInterface) cache.getObject(id, false);
+            Result result = (Result) cache.getObject(id, false);
             transfer.writeInt(FrontendSession.STATUS_OK);
             sendRow(result, count);
             transfer.flush();
@@ -520,13 +520,13 @@ public class TcpServerThread implements Runnable {
         }
         case FrontendSession.RESULT_RESET: {
             int id = transfer.readInt();
-            ResultInterface result = (ResultInterface) cache.getObject(id, false);
+            Result result = (Result) cache.getObject(id, false);
             result.reset();
             break;
         }
         case FrontendSession.RESULT_CLOSE: {
             int id = transfer.readInt();
-            ResultInterface result = (ResultInterface) cache.getObject(id, true);
+            Result result = (Result) cache.getObject(id, true);
             if (result != null) {
                 result.close();
                 cache.freeObject(id);
@@ -599,7 +599,7 @@ public class TcpServerThread implements Runnable {
         return FrontendSession.STATUS_OK_STATE_CHANGED;
     }
 
-    private void sendRow(ResultInterface result, int count) throws IOException {
+    private void sendRow(Result result, int count) throws IOException {
         try {
             int visibleColumnCount = result.getVisibleColumnCount();
             for (int i = 0; i < count; i++) {

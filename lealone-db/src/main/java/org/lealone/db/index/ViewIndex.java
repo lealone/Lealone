@@ -21,7 +21,7 @@ import org.lealone.db.expression.Parameter;
 import org.lealone.db.expression.Query;
 import org.lealone.db.expression.SelectUnion;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -160,7 +160,7 @@ public class ViewIndex extends IndexBase {
     @Override
     public Cursor find(Session session, SearchRow first, SearchRow last) {
         if (recursive) {
-            ResultInterface recResult = view.getRecursiveResult();
+            Result recResult = view.getRecursiveResult();
             if (recResult != null) {
                 recResult.reset();
                 return new ViewCursor(this, recResult, first, last);
@@ -240,7 +240,7 @@ public class ViewIndex extends IndexBase {
                 setParameter(paramList, idx++, last.getValue(i));
             }
         }
-        ResultInterface result = query.query(0);
+        Result result = query.query(0);
         return new ViewCursor(this, result, first, last);
     }
 
@@ -361,11 +361,11 @@ public class ViewIndex extends IndexBase {
 
         private final Table table;
         private final Index index;
-        private final ResultInterface result;
+        private final Result result;
         private final SearchRow first, last;
         private Row current;
 
-        ViewCursor(Index index, ResultInterface result, SearchRow first, SearchRow last) {
+        ViewCursor(Index index, Result result, SearchRow first, SearchRow last) {
             this.table = index.getTable();
             this.index = index;
             this.result = result;

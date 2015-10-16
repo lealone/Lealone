@@ -20,7 +20,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.SysProperties;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 
@@ -105,7 +105,7 @@ public class FrontendCommand implements CommandInterface {
     }
 
     @Override
-    public ResultInterface getMetaData() {
+    public Result getMetaData() {
         synchronized (session) {
             if (!isQuery) {
                 return null;
@@ -128,7 +128,7 @@ public class FrontendCommand implements CommandInterface {
     }
 
     @Override
-    public ResultInterface executeQuery(int maxRows, boolean scrollable) {
+    public Result executeQuery(int maxRows, boolean scrollable) {
         checkParameters();
         synchronized (session) {
             int objectId = session.getNextId();

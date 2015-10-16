@@ -21,7 +21,7 @@ import java.util.ArrayList;
 
 import org.lealone.db.CommandInterface;
 import org.lealone.db.ParameterInterface;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.Prepared;
 
 public class CommandWrapper implements CommandInterface {
@@ -47,7 +47,7 @@ public class CommandWrapper implements CommandInterface {
     }
 
     @Override
-    public ResultInterface executeQuery(int maxRows, boolean scrollable) {
+    public Result executeQuery(int maxRows, boolean scrollable) {
         return p.query(maxRows);
     }
 
@@ -67,7 +67,7 @@ public class CommandWrapper implements CommandInterface {
     }
 
     @Override
-    public ResultInterface getMetaData() {
+    public Result getMetaData() {
         return p.queryMeta();
     }
 }

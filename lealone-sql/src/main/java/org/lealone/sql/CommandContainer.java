@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Parameter;
@@ -84,12 +84,12 @@ class CommandContainer extends Command {
     }
 
     @Override
-    public ResultInterface query(int maxrows) {
+    public Result query(int maxrows) {
         recompileIfRequired();
         setProgress(DatabaseEventListener.STATE_STATEMENT_START);
         start();
         prepared.checkParameters();
-        ResultInterface result = prepared.query(maxrows);
+        Result result = prepared.query(maxrows);
         prepared.trace(startTime, result.getRowCount());
         setProgress(DatabaseEventListener.STATE_STATEMENT_END);
         return result;
@@ -105,7 +105,7 @@ class CommandContainer extends Command {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return prepared.queryMeta();
     }
 

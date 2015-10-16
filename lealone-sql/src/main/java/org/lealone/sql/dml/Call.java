@@ -12,7 +12,7 @@ import org.lealone.db.CommandInterface;
 import org.lealone.db.Session;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Expression;
@@ -32,7 +32,7 @@ public class Call extends Prepared {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         LocalResult result;
         if (isResultSet) {
             Expression[] expr = expression.getExpressionColumns(session);
@@ -62,7 +62,7 @@ public class Call extends Prepared {
     }
 
     @Override
-    public ResultInterface query(int maxrows) {
+    public Result query(int maxrows) {
         setCurrentRowNumber(1);
         Value v = expression.getValue(session);
         if (isResultSet) {

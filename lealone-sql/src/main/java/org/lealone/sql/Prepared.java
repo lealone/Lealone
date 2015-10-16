@@ -16,7 +16,7 @@ import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
@@ -84,7 +84,7 @@ public abstract class Prepared implements PreparedInterface {
      *
      * @return the result set
      */
-    public abstract ResultInterface queryMeta();
+    public abstract Result queryMeta();
 
     /**
      * Get the command type as defined in CommandInterface
@@ -217,11 +217,11 @@ public abstract class Prepared implements PreparedInterface {
      * @throws DbException if it is not a query
      */
     @Override
-    public ResultInterface query(int maxrows) {
+    public Result query(int maxrows) {
         throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
     }
 
-    public ResultInterface queryLocal(int maxrows) {
+    public Result queryLocal(int maxrows) {
         return query(maxrows);
     }
 

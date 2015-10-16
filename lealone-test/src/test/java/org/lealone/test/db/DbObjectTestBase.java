@@ -21,7 +21,7 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.test.UnitTestBase;
 
 public class DbObjectTestBase extends UnitTestBase {
@@ -46,12 +46,12 @@ public class DbObjectTestBase extends UnitTestBase {
         return session.prepareCommandLocal(sql).executeUpdate();
     }
 
-    public ResultInterface executeQuery(String sql) {
+    public Result executeQuery(String sql) {
         return session.prepareCommandLocal(sql).executeQuery(0, false);
     }
 
     // index从1开始
-    public int getInt(ResultInterface result, int index) {
+    public int getInt(Result result, int index) {
         if (result.next())
             return result.currentRow()[index - 1].getInt();
         else

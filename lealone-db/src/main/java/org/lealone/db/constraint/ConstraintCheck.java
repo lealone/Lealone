@@ -16,7 +16,7 @@ import org.lealone.db.Session;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Column;
@@ -143,7 +143,7 @@ public class ConstraintCheck extends Constraint {
             return;
         }
         String sql = "SELECT 1 FROM " + filter.getTable().getSQL() + " WHERE NOT(" + expr.getSQL() + ")";
-        ResultInterface r = session.prepare(sql).query(1);
+        Result r = session.prepare(sql).query(1);
         if (r.next()) {
             throw DbException.get(ErrorCode.CHECK_CONSTRAINT_VIOLATED_1, getName());
         }

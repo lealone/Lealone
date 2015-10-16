@@ -24,7 +24,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Parameter;
 
@@ -62,7 +62,7 @@ public class BackendBatchCommand implements CommandInterface {
     }
 
     @Override
-    public ResultInterface executeQuery(int maxRows, boolean scrollable) {
+    public Result executeQuery(int maxRows, boolean scrollable) {
         throw DbException.throwInternalError();
     }
 
@@ -118,7 +118,7 @@ public class BackendBatchCommand implements CommandInterface {
     }
 
     @Override
-    public ResultInterface getMetaData() {
+    public Result getMetaData() {
         throw DbException.throwInternalError();
     }
 

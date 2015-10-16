@@ -47,7 +47,7 @@ import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Constant;
 import org.lealone.db.schema.Schema;
@@ -127,7 +127,7 @@ public class ScriptCommand extends ScriptBase {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         LocalResult r = createResult();
         r.done();
         return r;
@@ -139,7 +139,7 @@ public class ScriptCommand extends ScriptBase {
     }
 
     @Override
-    public ResultInterface query(int maxrows) {
+    public Result query(int maxrows) {
         session.getUser().checkAdmin();
         reset();
         Database db = session.getDatabase();

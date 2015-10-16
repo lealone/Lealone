@@ -13,7 +13,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.MathUtils;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.DataType;
 
 /**
@@ -24,10 +24,10 @@ public class JdbcResultSetMetaData extends TraceObject implements ResultSetMetaD
     private final String catalog;
     private final JdbcResultSet rs;
     private final JdbcPreparedStatement prep;
-    private final ResultInterface result;
+    private final Result result;
     private final int columnCount;
 
-    JdbcResultSetMetaData(JdbcResultSet rs, JdbcPreparedStatement prep, ResultInterface result, String catalog,
+    JdbcResultSetMetaData(JdbcResultSet rs, JdbcPreparedStatement prep, Result result, String catalog,
             Trace trace, int id) {
         setTrace(trace, TraceObject.RESULT_SET_META_DATA, id);
         this.catalog = catalog;

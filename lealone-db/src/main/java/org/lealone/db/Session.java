@@ -25,7 +25,7 @@ import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -83,7 +83,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
     private long transactionStart;
     private long currentCommandStart;
     private HashMap<String, Value> variables;
-    private HashSet<ResultInterface> temporaryResults;
+    private HashSet<Result> temporaryResults;
     private int queryTimeout;
     private boolean commitOrRollbackDisabled;
     private Table waitForLock;
@@ -1071,7 +1071,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
      *
      * @param result the temporary result set
      */
-    public void addTemporaryResult(ResultInterface result) {
+    public void addTemporaryResult(Result result) {
         if (!result.needToClose()) {
             return;
         }
@@ -1090,7 +1090,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
      */
     public void closeTemporaryResults() {
         if (temporaryResults != null) {
-            for (ResultInterface result : temporaryResults) {
+            for (Result result : temporaryResults) {
                 result.close();
             }
             temporaryResults = null;

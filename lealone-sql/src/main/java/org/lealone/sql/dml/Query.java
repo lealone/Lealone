@@ -17,7 +17,7 @@ import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
@@ -291,7 +291,7 @@ public abstract class Query extends Prepared implements org.lealone.db.expressio
     }
 
     @Override
-    public ResultInterface query(int maxrows) {
+    public Result query(int maxrows) {
         return query(maxrows, null);
     }
 
@@ -302,7 +302,7 @@ public abstract class Query extends Prepared implements org.lealone.db.expressio
      * @param target the target result (null will return the result)
      * @return the result set (if the target is not set).
      */
-    public ResultInterface query(int limit, ResultTarget target) {
+    public Result query(int limit, ResultTarget target) {
         fireBeforeSelectTriggers();
         if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
             return queryWithoutCache(limit, target);

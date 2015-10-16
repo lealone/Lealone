@@ -8,7 +8,7 @@ package org.lealone.sql.dml;
 
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.expression.Expression;
 
@@ -47,7 +47,7 @@ public class BackupCommand extends Prepared {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return null;
     }
 

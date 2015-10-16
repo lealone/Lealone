@@ -19,7 +19,7 @@ package org.lealone.db.index;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -155,7 +155,7 @@ public class GlobalUniqueIndex extends IndexBase {
 
         PreparedInterface prepared = session.prepare(sql.toString(), true);
         prepared.setLocal(false);
-        ResultInterface result = prepared.query(0);
+        Result result = prepared.query(0);
         if (bigger)
             result.next();
         return new GlobalUniqueIndexTableCursor(result);
@@ -204,7 +204,7 @@ public class GlobalUniqueIndex extends IndexBase {
             session = getDatabase().getSystemSession();
         PreparedInterface prepared = session.prepare(sql.toString(), true);
         prepared.setLocal(false);
-        ResultInterface result = prepared.query(0);
+        Result result = prepared.query(0);
         return result.getRowCount();
     }
 
@@ -229,9 +229,9 @@ public class GlobalUniqueIndex extends IndexBase {
     }
 
     private class GlobalUniqueIndexTableCursor implements Cursor {
-        final ResultInterface result;
+        final Result result;
 
-        public GlobalUniqueIndexTableCursor(ResultInterface result) {
+        public GlobalUniqueIndexTableCursor(Result result) {
             this.result = result;
         }
 

@@ -10,7 +10,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.Prepared;
 
 /**
@@ -135,7 +135,7 @@ public class TransactionCommand extends Prepared {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return null;
     }
 

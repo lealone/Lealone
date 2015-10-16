@@ -18,7 +18,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
@@ -30,7 +30,7 @@ import org.lealone.db.value.ValueNull;
 public class UpdatableRow {
 
     private final JdbcConnection conn;
-    private final ResultInterface result;
+    private final Result result;
     private final int columnCount;
     private String schemaName;
     private String tableName;
@@ -44,7 +44,7 @@ public class UpdatableRow {
      * @param conn the database connection
      * @param result the result
      */
-    public UpdatableRow(JdbcConnection conn, ResultInterface result) throws SQLException {
+    public UpdatableRow(JdbcConnection conn, Result result) throws SQLException {
         this.conn = conn;
         this.result = result;
         columnCount = result.getVisibleColumnCount();

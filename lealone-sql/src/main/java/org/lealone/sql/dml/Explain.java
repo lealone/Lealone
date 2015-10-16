@@ -14,7 +14,7 @@ import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
@@ -50,12 +50,12 @@ public class Explain extends Prepared {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return query(-1);
     }
 
     @Override
-    public ResultInterface query(int maxrows) {
+    public Result query(int maxrows) {
         Column column = new Column("PLAN", Value.STRING);
         Database db = session.getDatabase();
         ExpressionColumn expr = new ExpressionColumn(db, column);

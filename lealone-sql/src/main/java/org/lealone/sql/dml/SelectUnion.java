@@ -20,7 +20,7 @@ import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
@@ -124,7 +124,7 @@ public class SelectUnion extends Query {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         int columnCount = left.getColumnCount();
         LocalResult result = new LocalResult(session, expressionArray, columnCount);
         result.done();
@@ -193,8 +193,8 @@ public class SelectUnion extends Query {
         default:
             DbException.throwInternalError("type=" + unionType);
         }
-        ResultInterface l = left.query(0);
-        ResultInterface r = right.query(0);
+        Result l = left.query(0);
+        Result r = right.query(0);
         l.reset();
         r.reset();
         switch (unionType) {

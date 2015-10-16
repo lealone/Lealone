@@ -19,11 +19,11 @@
  */
 package org.lealone.db.result;
 
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 
-public class DelegatedResult implements ResultInterface {
-    protected ResultInterface result;
+public class DelegatedResult implements Result {
+    protected Result result;
 
     @Override
     public void reset() {

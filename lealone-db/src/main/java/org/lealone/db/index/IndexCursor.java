@@ -12,7 +12,7 @@ import java.util.HashSet;
 import org.lealone.common.message.DbException;
 import org.lealone.db.Session;
 import org.lealone.db.expression.Comparison;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -41,7 +41,7 @@ public class IndexCursor implements Cursor {
     private Column inColumn;
     private int inListIndex;
     private Value[] inList;
-    private ResultInterface inResult;
+    private Result inResult;
     private HashSet<Value> inResultTested;
 
     public IndexCursor(TableFilter filter) {

@@ -20,7 +20,7 @@ package org.lealone.sql.router;
 import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.Prepared;
 import org.lealone.sql.ddl.DefineCommand;
 import org.lealone.sql.dml.Delete;
@@ -48,7 +48,7 @@ public class TransactionalRouter implements Router {
     }
 
     @Override
-    public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
+    public Result executeSelect(Select select, int maxRows, boolean scrollable) {
         beginTransaction(select);
         return nestedRouter.executeSelect(select, maxRows, scrollable);
     }

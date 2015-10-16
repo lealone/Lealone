@@ -20,7 +20,7 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.sql.Command;
 import org.lealone.sql.expression.Parameter;
 
@@ -49,7 +49,7 @@ public class DefineCommandWrapper extends DefineCommand {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return dc.queryMeta();
     }
 

@@ -39,7 +39,7 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.ParameterInterface;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
@@ -104,7 +104,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             synchronized (session) {
                 checkClosed();
                 closeOldResultSet();
-                ResultInterface result;
+                Result result;
                 boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                 try {
@@ -191,7 +191,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                             returnsResultSet = true;
                             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                            ResultInterface result = command.executeQuery(maxRows, scrollable);
+                            Result result = command.executeQuery(maxRows, scrollable);
                             resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable,
                                     updatable);
                         } else {
@@ -1033,7 +1033,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         try {
             debugCodeCall("getMetaData");
             checkClosed();
-            ResultInterface result = command.getMetaData();
+            Result result = command.getMetaData();
             if (result == null) {
                 return null;
             }

@@ -12,7 +12,7 @@ import java.sql.SQLException;
 
 import org.lealone.common.message.DbException;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -82,11 +82,11 @@ public class FunctionIndex extends IndexBase {
      */
     private static class FunctionCursor implements Cursor {
 
-        private final ResultInterface result;
+        private final Result result;
         private Value[] values;
         private Row row;
 
-        FunctionCursor(ResultInterface result) {
+        FunctionCursor(Result result) {
             this.result = result;
         }
 

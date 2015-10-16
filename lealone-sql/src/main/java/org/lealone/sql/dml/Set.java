@@ -18,7 +18,7 @@ import org.lealone.db.Mode;
 import org.lealone.db.Session;
 import org.lealone.db.SetTypes;
 import org.lealone.db.Setting;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.CompareMode;
@@ -447,7 +447,7 @@ public class Set extends Prepared {
     }
 
     @Override
-    public ResultInterface queryMeta() {
+    public Result queryMeta() {
         return null;
     }
 

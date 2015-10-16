@@ -22,7 +22,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.SessionInterface;
 import org.lealone.db.SysProperties;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 
 /**
  * Represents a statement.
@@ -72,7 +72,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                 closeOldResultSet();
                 sql = JdbcConnection.translateSQL(sql, escapeProcessing);
                 CommandInterface command = conn.prepareCommand(sql, fetchSize);
-                ResultInterface result;
+                Result result;
                 boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                 setExecutingStatement(command);
@@ -177,7 +177,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                         returnsResultSet = true;
                         boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                         boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                        ResultInterface result = command.executeQuery(maxRows, scrollable);
+                        Result result = command.executeQuery(maxRows, scrollable);
                         resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
                     } else {
                         returnsResultSet = false;

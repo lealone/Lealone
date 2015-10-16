@@ -41,7 +41,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.CommandInterface;
 import org.lealone.db.FrontendSessionPool;
 import org.lealone.db.Session;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.TableFilter;
@@ -332,7 +332,7 @@ public class P2PRouter implements Router {
     }
 
     @Override
-    public ResultInterface executeSelect(Select select, int maxRows, boolean scrollable) {
+    public Result executeSelect(Select select, int maxRows, boolean scrollable) {
         if (select.isLocal())
             return select.queryLocal(maxRows);
 
@@ -373,7 +373,7 @@ public class P2PRouter implements Router {
 
                     return new SerializedResult(commands, maxRows, scrollable, select.getLimitRows());
                 } else {
-                    List<Callable<ResultInterface>> commands = New.arrayList(liveMembers.size());
+                    List<Callable<Result>> commands = New.arrayList(liveMembers.size());
                     for (InetAddress endpoint : liveMembers) {
                         if (endpoint.equals(Utils.getBroadcastAddress())) {
                             commands.add(createNewLocalSelect(select, sql));
@@ -382,7 +382,7 @@ public class P2PRouter implements Router {
                         }
                     }
 
-                    List<ResultInterface> results = CommandParallel.executeSelectCallable(commands);
+                    List<Result> results = CommandParallel.executeSelectCallable(commands);
 
                     if (!select.isGroupQuery() && select.getSortOrder() != null)
                         return new SortedResult(maxRows, select.getSession(), select, results);
@@ -424,13 +424,13 @@ public class P2PRouter implements Router {
             return select.getSQL();
     }
 
-    private static Callable<ResultInterface> createSelectCallable(InetAddress endpoint, Select select, String sql,
+    private static Callable<Result> createSelectCallable(InetAddress endpoint, Select select, String sql,
             final int maxRows, final boolean scrollable) throws Exception {
         final FrontendCommand c = createFrontendCommand(endpoint, select, sql);
 
-        Callable<ResultInterface> call = new Callable<ResultInterface>() {
+        Callable<Result> call = new Callable<Result>() {
             @Override
-            public ResultInterface call() throws Exception {
+            public Result call() throws Exception {
                 return c.executeQuery(maxRows, scrollable);
             }
         };

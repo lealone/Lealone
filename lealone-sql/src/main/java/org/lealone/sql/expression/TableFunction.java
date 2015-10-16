@@ -15,7 +15,7 @@ import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.DataType;
@@ -128,7 +128,7 @@ public class TableFunction extends Function {
         return vr;
     }
 
-    private static SimpleResultSet getSimpleResultSet(ResultInterface rs, int maxrows) {
+    private static SimpleResultSet getSimpleResultSet(Result rs, int maxrows) {
         int columnCount = rs.getVisibleColumnCount();
         SimpleResultSet simple = new SimpleResultSet();
         for (int i = 0; i < columnCount; i++) {

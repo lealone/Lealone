@@ -9,7 +9,7 @@ package org.lealone.sql.expression;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Session;
 import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.result.ResultInterface;
+import org.lealone.db.result.Result;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
@@ -30,7 +30,7 @@ public class ConditionExists extends Condition {
     @Override
     public Value getValue(Session session) {
         query.setSession(session);
-        ResultInterface result = query.query(1);// session.createSubqueryResult(query, 1);
+        Result result = query.query(1);// session.createSubqueryResult(query, 1);
         session.addTemporaryResult(result);
         boolean r = result.getRowCount() > 0;
         return ValueBoolean.get(r);
