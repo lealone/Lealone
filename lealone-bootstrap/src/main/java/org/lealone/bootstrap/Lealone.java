@@ -110,7 +110,7 @@ public class Lealone {
                         try {
                             Class<?> clz = Utils.loadUserClass(def.name);
                             se = (StorageEngine) clz.newInstance();
-                            StorageEngineManager.getInstance().registerEngine(se, clz.getName());
+                            StorageEngineManager.getInstance().registerEngine(se);
                         } catch (Exception e) {
                             throw new ConfigurationException("StorageEngine '" + def.name + "' can not found");
                         }
@@ -128,7 +128,7 @@ public class Lealone {
                         try {
                             Class<?> clz = Utils.loadUserClass(def.name);
                             te = (TransactionEngine) clz.newInstance();
-                            TransactionEngineManager.getInstance().registerEngine(te, clz.getName());
+                            TransactionEngineManager.getInstance().registerEngine(te);
                         } catch (Exception e) {
                             throw new ConfigurationException("TransactionEngine '" + def.name + "' can not found");
                         }
@@ -149,7 +149,7 @@ public class Lealone {
                         try {
                             Class<?> clz = Utils.loadUserClass(def.name);
                             se = (SQLEngine) clz.newInstance();
-                            SQLEngineManager.getInstance().registerEngine(se, clz.getName());
+                            SQLEngineManager.getInstance().registerEngine(se);
                         } catch (Exception e) {
                             throw new ConfigurationException("SQLEngine '" + def.name + "' can not found");
                         }
@@ -168,7 +168,7 @@ public class Lealone {
                         try {
                             Class<?> clz = Utils.loadUserClass(def.name);
                             pse = (ProtocolServerEngine) clz.newInstance();
-                            ProtocolServerEngineManager.getInstance().registerEngine(pse, clz.getName());
+                            ProtocolServerEngineManager.getInstance().registerEngine(pse);
                         } catch (Exception e) {
                             throw new ConfigurationException("ProtocolServerEngine '" + def.name + "' can not found");
                         }

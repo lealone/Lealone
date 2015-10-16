@@ -7,6 +7,7 @@
 package org.lealone.db;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
@@ -29,9 +30,9 @@ import org.lealone.common.util.Utils;
 class SettingsBase {
     // 这个字段需要放在这，在DbSettings的构造函数中可以提前初始化它，
     // 如果放在子类中，DbSettings类的其他字段会在执行构造函数中的代码之前执行，此时settings还是null。
-    protected final HashMap<String, String> settings;
+    protected final Map<String, String> settings;
 
-    protected SettingsBase(HashMap<String, String> s) {
+    protected SettingsBase(Map<String, String> s) {
         this.settings = s;
     }
 }
@@ -50,14 +51,14 @@ public class DbSettings extends SettingsBase {
      * @param s the settings
      * @return the settings
      */
-    public static DbSettings getInstance(HashMap<String, String> s) {
+    public static DbSettings getInstance(Map<String, String> s) {
         if (s == null || s.isEmpty()) {
             return defaultSettings;
         }
         return new DbSettings(s);
     }
 
-    private DbSettings(HashMap<String, String> s) {
+    private DbSettings(Map<String, String> s) {
         super(s);
     }
 
@@ -326,6 +327,13 @@ public class DbSettings extends SettingsBase {
     public final boolean compressData = get("COMPRESS", false);
 
     /**
+     * Database setting <code>PERSISTENT</code>
+     * (default: true).<br />
+     * Persistent data.
+     */
+    public final boolean persistent = get("PERSISTENT", true);
+
+    /**
      * Get the setting for the given key.
      *
      * @param key the key
@@ -398,7 +406,7 @@ public class DbSettings extends SettingsBase {
      *
      * @return the settings
      */
-    public HashMap<String, String> getSettings() {
+    public Map<String, String> getSettings() {
         return settings;
     }
 }

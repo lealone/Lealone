@@ -97,10 +97,11 @@ public class StatementBuilder {
      *
      * @param s the text to append
      */
-    public void appendOnlyFirst(String s) {
+    public StatementBuilder appendOnlyFirst(String s) {
         if (index == 0) {
             builder.append(s);
         }
+        return this;
     }
 
     /**
@@ -108,12 +109,15 @@ public class StatementBuilder {
      *
      * @param s the text to append
      */
-    public void appendExceptFirst(String s) {
+    public StatementBuilder appendExceptFirst(String s) {
         if (index++ > 0) {
             builder.append(s);
         }
+
+        return this;
     }
 
+    @Override
     public String toString() {
         return builder.toString();
     }

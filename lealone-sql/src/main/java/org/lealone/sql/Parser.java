@@ -4179,11 +4179,12 @@ public class Parser implements SQLParser {
     }
 
     private CreateDatabase parseCreateDatabase() {
-        CreateDatabase command = new CreateDatabase(session);
-        command.setIfNotExists(readIfNoExists());
-        command.setDatabaseName(readUniqueIdentifier());
-        command.setTemporary(readIf("TEMPORARY"));
-        return command;
+        boolean ifNotExists = readIfNoExists();
+        String dbName = readUniqueIdentifier();
+        Map<String, String> parameters = null;
+        if (readIf("WITH"))
+            parameters = parseParameters();
+        return new CreateDatabase(session, dbName, ifNotExists, parameters);
     }
 
     private CreateSchema parseCreateSchema() {
@@ -4199,7 +4200,7 @@ public class Parser implements SQLParser {
         if (readIf("WITH")) {
             read("REPLICATION");
             read("=");
-            Map<String, String> replicationProperties = parseMap();
+            Map<String, String> replicationProperties = parseParameters();
             command.setReplicationProperties(replicationProperties);
             checkReplicationProperties(replicationProperties);
         }
@@ -4207,17 +4208,22 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private Map<String, String> parseMap() {
-        Map<String, String> map = new HashMap<>();
+    private Map<String, String> parseParameters() {
         read("(");
-        while (!readIf(")")) {
-            String k = readString();
-            read(":");
-            String v = readString();
-            readIf(",");
-            map.put(k, v);
-        }
-        return map;
+        HashMap<String, String> parameters = New.hashMap();
+        if (readIf(")"))
+            return parameters;
+        String k, v;
+        do {
+            k = readUniqueIdentifier();
+            if (readIf("=") || readIf(":"))
+                v = readString();
+            else
+                v = "1";
+            parameters.put(k, v);
+        } while (readIf(","));
+        read(")");
+        return parameters;
     }
 
     private CreateSequence parseCreateSequence() {
@@ -4562,7 +4568,7 @@ public class Parser implements SQLParser {
             read("=");
             AlterSchemaWithReplication command = new AlterSchemaWithReplication(session);
             command.setSchema(getSchema(schemaName));
-            Map<String, String> replicationProperties = parseMap();
+            Map<String, String> replicationProperties = parseParameters();
             command.setReplicationProperties(replicationProperties);
             checkReplicationProperties(replicationProperties);
             return command;
@@ -5536,19 +5542,7 @@ public class Parser implements SQLParser {
             command.setStorageEngineName(database.getSettings().defaultStorageEngine);
         }
         if (readIf("WITH")) {
-            read("(");
-            HashMap<String, String> storageEngineParams = New.hashMap();
-            String k, v;
-            do {
-                k = readUniqueIdentifier();
-                if (readIf("="))
-                    v = readUniqueIdentifier();
-                else
-                    v = "true";
-                storageEngineParams.put(k, v);
-            } while (readIf(","));
-            read(")");
-            command.setStorageEngineParams(storageEngineParams);
+            command.setStorageEngineParams(parseParameters());
         }
         if (readIf("CHARSET")) {
             read("=");

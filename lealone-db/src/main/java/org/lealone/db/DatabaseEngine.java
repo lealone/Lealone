@@ -124,8 +124,8 @@ public class DatabaseEngine {
             if (database == null) {
                 if (ifExists)
                     throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
-                database = LealoneDatabase.getInstance().createDatabase(dbName, ci.isPersistent());
-                database.init(ci, dbName);
+                database = LealoneDatabase.getInstance().createDatabase(dbName, ci);
+                database.init(ci);
                 opened = true;
 
                 // 内部JDBC访问时不需要认证，需要建立一个默认有Admin权限的用户
@@ -141,7 +141,7 @@ public class DatabaseEngine {
                 }
             } else {
                 if (!database.isInitialized())
-                    database.init(ci, dbName);
+                    database.init(ci);
             }
 
             synchronized (database) {

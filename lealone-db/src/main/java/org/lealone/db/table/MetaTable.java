@@ -15,8 +15,8 @@ import java.sql.Timestamp;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
@@ -638,7 +638,7 @@ public class MetaTable extends Table {
             add(rows, "LOG", "" + database.getLogMode());
             // database settings
             ArrayList<String> settingNames = New.arrayList();
-            HashMap<String, String> s = database.getSettings().getSettings();
+            Map<String, String> s = database.getSettings().getSettings();
             for (String k : s.keySet()) {
                 settingNames.add(k);
             }

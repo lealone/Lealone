@@ -43,7 +43,7 @@ public class LealoneDatabase extends Database {
     }
 
     private LealoneDatabase() {
-        super(0, NAME);
+        super(0, NAME, null);
         databases.put(NAME, this);
     }
 
@@ -51,7 +51,7 @@ public class LealoneDatabase extends Database {
         String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
         ConnectionInfo ci = new ConnectionInfo(url, (Properties) null);
         ci.setBaseDir(SysProperties.getBaseDir());
-        init(ci, NAME);
+        init(ci);
 
         if (getAllUsers().isEmpty()) {
             getSystemSession().prepareCommandLocal("CREATE USER IF NOT EXISTS lealone PASSWORD 'lealone' ADMIN")
@@ -64,9 +64,9 @@ public class LealoneDatabase extends Database {
         return databases.get(dbName);
     }
 
-    synchronized Database createDatabase(String dbName, boolean persistent) {
-        getSystemSession().prepareCommandLocal(
-                "CREATE DATABASE IF NOT EXISTS " + dbName + (persistent ? "" : " TEMPORARY")).executeUpdate();
+    synchronized Database createDatabase(String dbName, ConnectionInfo ci) {
+        String sql = getSQL(quoteIdentifier(dbName), ci);
+        getSystemSession().prepareCommandLocal(sql).executeUpdate();
         Database db = databases.get(dbName);
         return db;
     }

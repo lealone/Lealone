@@ -621,13 +621,11 @@ public class ConnectionInfo implements Cloneable {
     public DbSettings getDbSettings() {
         if (dbSettings == null) {
             DbSettings defaultSettings = DbSettings.getDefaultSettings();
-            HashMap<String, String> s = null;
+            HashMap<String, String> s = New.hashMap();
+            s.put("PERSISTENT", persistent ? "true" : "false");
             for (Object k : prop.keySet()) {
                 String key = k.toString();
                 if (!isKnownSetting(key) && defaultSettings.containsKey(key)) {
-                    if (s == null) {
-                        s = New.hashMap();
-                    }
                     s.put(key, prop.getProperty(key));
                 }
             }

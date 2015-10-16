@@ -47,14 +47,20 @@ public abstract class PluggableEngineManager<T extends PluggableEngine> {
 
     public void registerEngine(T pluggableEngine, String... alias) {
         pluggableEngines.put(pluggableEngine.getName().toUpperCase(), pluggableEngine);
+        pluggableEngines.put(pluggableEngine.getClass().getName().toUpperCase(), pluggableEngine);
         if (alias != null) {
             for (String a : alias)
                 pluggableEngines.put(a.toUpperCase(), pluggableEngine);
         }
     }
 
-    public void deregisterEngine(T pluggableEngine) {
+    public void deregisterEngine(T pluggableEngine, String... alias) {
         pluggableEngines.remove(pluggableEngine.getName().toUpperCase());
+        pluggableEngines.remove(pluggableEngine.getClass().getName().toUpperCase().toUpperCase());
+        if (alias != null) {
+            for (String a : alias)
+                pluggableEngines.remove(a.toUpperCase());
+        }
     }
 
     private synchronized void loadPluggableEngines() {

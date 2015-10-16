@@ -17,6 +17,8 @@
  */
 package org.lealone.sql.ddl;
 
+import java.util.Map;
+
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.db.CommandInterface;
@@ -30,24 +32,15 @@ import org.lealone.db.Session;
  */
 public class CreateDatabase extends DefineCommand {
 
-    private String dbName;
-    private boolean ifNotExists;
-    private boolean temporary;
+    private final String dbName;
+    private final boolean ifNotExists;
+    private final Map<String, String> parameters;
 
-    public CreateDatabase(Session session) {
+    public CreateDatabase(Session session, String dbName, boolean ifNotExists, Map<String, String> parameters) {
         super(session);
-    }
-
-    public void setIfNotExists(boolean ifNotExists) {
-        this.ifNotExists = ifNotExists;
-    }
-
-    public void setDatabaseName(String dbName) {
         this.dbName = dbName;
-    }
-
-    public void setTemporary(boolean temporary) {
-        this.temporary = temporary;
+        this.ifNotExists = ifNotExists;
+        this.parameters = parameters;
     }
 
     @Override
@@ -62,8 +55,7 @@ public class CreateDatabase extends DefineCommand {
             throw DbException.get(ErrorCode.DATABASE_ALREADY_EXISTS_1, dbName);
         }
         int id = getObjectId(db);
-        Database newDb = new Database(id, dbName);
-        newDb.setTemporary(temporary);
+        Database newDb = new Database(id, dbName, parameters);
         db.addDatabaseObject(session, newDb);
         return 0;
     }

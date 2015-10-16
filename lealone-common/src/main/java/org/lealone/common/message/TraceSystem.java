@@ -183,7 +183,7 @@ public class TraceSystem implements TraceWriter {
      */
     public void setLevelFile(int level) {
         if (level == ADAPTER) {
-            String adapterClass = "org.lealone.message.TraceWriterAdapter";
+            String adapterClass = "org.lealone.common.message.TraceWriterAdapter";
             try {
                 writer = (TraceWriter) Class.forName(adapterClass).newInstance();
             } catch (Throwable e) {
