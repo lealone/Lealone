@@ -185,7 +185,7 @@ public class Database implements DataHandler, DbObject {
     private final TransactionEngine transactionEngine;
 
     private String fullName;
-    private String storageName; // 不使用原始的名称，按是用id替换数据库名
+    private String storageName; // 不使用原始的名称，而是用id替换数据库名
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -384,7 +384,6 @@ public class Database implements DataHandler, DbObject {
         cols.add(new Column("SQL", Value.STRING));
         data.tableName = "SYS";
         data.id = 0;
-        data.temporary = false;
         data.persistData = persistent;
         data.persistIndexes = persistent;
         data.create = true;

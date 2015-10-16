@@ -50,9 +50,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         // always store the row key in the map key,
         // even for unique indexes, as some of the index columns could be null
         keyColumns = columns.length + 1;
-        // mapName = StandardPrimaryIndex.getMapName("index", table.getSchema().getName(), table.getName(), indexName,
-        // getId());
-        mapName = StandardPrimaryIndex.getMapName("index", getId());
         int[] sortTypes = new int[keyColumns];
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = columns[i].sortType;
@@ -60,6 +57,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
         ValueDataType keyType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
+        mapName = StandardTable.getMapNameForIndex(getId());
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();

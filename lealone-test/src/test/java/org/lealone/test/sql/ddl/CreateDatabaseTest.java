@@ -27,7 +27,8 @@ public class CreateDatabaseTest extends SqlTestBase {
     @Test
     public void run() {
         executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest1");
-        executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest2 TEMPORARY");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest2 WITH(OPTIMIZE_DISTINCT=true, PERSISTENT=false)");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest3 WITH()");
 
         try {
             stmt.executeUpdate("CREATE DATABASE CreateDatabaseTest1");

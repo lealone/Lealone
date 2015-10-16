@@ -423,7 +423,7 @@ public class StandardTable extends TableBase {
             index = createDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
         } else {
             if (database.isStarting()) {
-                if (database.getStorage(storageEngine).hasMap("index." + indexId)) {
+                if (database.getStorage(storageEngine).hasMap(getMapNameForIndex(indexId))) {
                     mainIndexColumn = -1;
                 }
             } else if (primaryIndex.getRowCountMax() != 0) {
@@ -816,4 +816,22 @@ public class StandardTable extends TableBase {
     // public TransactionMap<Long, Long> getRowVersionMap() {
     // return rowVersionMap;
     // }
+
+    public static String getMapNameForTable(int id) {
+        return getMapName("table", id);
+    }
+
+    public static String getMapNameForIndex(int id) {
+        return getMapName("index", id);
+    }
+
+    private static String getMapName(Object... args) {
+        StringBuilder name = new StringBuilder();
+        for (Object arg : args) {
+            if (name.length() > 0)
+                name.append(Constants.NAME_SEPARATOR);
+            name.append(arg.toString());
+        }
+        return name.toString();
+    }
 }

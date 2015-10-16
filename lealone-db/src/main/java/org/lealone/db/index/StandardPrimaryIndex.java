@@ -65,8 +65,8 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         ValueDataType keyType = new ValueDataType(null, null, null);
         ValueDataType valueType = new ValueDataType(database.getCompareMode(), database, sortTypes);
-        // mapName = getMapName("table", table.getSchema().getName(), table.getName(), getId());
-        mapName = getMapName("table", getId());
+        mapName = StandardTable.getMapNameForTable(getId());
+
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         // TODO处理内存表的情况!table.isPersistData()
@@ -75,16 +75,6 @@ public class StandardPrimaryIndex extends IndexBase {
 
         Value k = dataMap.lastKey();
         lastKey = k == null ? 0 : k.getLong();
-    }
-
-    static String getMapName(Object... args) {
-        StringBuilder name = new StringBuilder();
-        for (Object arg : args) {
-            if (name.length() > 0)
-                name.append(Constants.NAME_SEPARATOR);
-            name.append(arg.toString());
-        }
-        return name.toString();
     }
 
     @Override
