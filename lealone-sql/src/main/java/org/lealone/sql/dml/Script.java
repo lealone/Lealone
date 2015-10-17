@@ -29,12 +29,11 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Comment;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SetTypes;
 import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
@@ -60,6 +59,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.Parser;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 
@@ -67,7 +67,7 @@ import org.lealone.sql.expression.ExpressionColumn;
  * This class represents the statement
  * SCRIPT
  */
-public class ScriptCommand extends ScriptBase {
+public class Script extends ScriptBase {
 
     private Charset charset = Constants.UTF8;
     private Set<String> schemaNames;
@@ -87,7 +87,7 @@ public class ScriptCommand extends ScriptBase {
     private int nextLobId;
     private int lobBlockSize = Constants.IO_BUFFER_SIZE;
 
-    public ScriptCommand(Session session) {
+    public Script(ServerSession session) {
         super(session);
     }
 
@@ -715,7 +715,7 @@ public class ScriptCommand extends ScriptBase {
 
     @Override
     public int getType() {
-        return CommandInterface.SCRIPT;
+        return SQLStatement.SCRIPT;
     }
 
 }

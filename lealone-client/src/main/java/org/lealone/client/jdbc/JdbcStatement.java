@@ -14,13 +14,13 @@ import java.sql.Statement;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.client.FrontendBatchCommand;
-import org.lealone.client.FrontendSession;
+import org.lealone.client.ClientBatchCommand;
+import org.lealone.client.ClientSession;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.SessionInterface;
+import org.lealone.db.Command;
+import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 
@@ -30,7 +30,7 @@ import org.lealone.db.result.Result;
 public class JdbcStatement extends TraceObject implements Statement {
 
     protected JdbcConnection conn;
-    protected SessionInterface session;
+    protected Session session;
     protected JdbcResultSet resultSet;
     protected int maxRows;
     protected int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
@@ -38,7 +38,7 @@ public class JdbcStatement extends TraceObject implements Statement {
     protected final int resultSetType;
     protected final int resultSetConcurrency;
     protected final boolean closedByResultSet;
-    private CommandInterface executingCommand;
+    private Command executingCommand;
     private int lastExecutedCommandType;
     private ArrayList<String> batchCommands;
     private boolean escapeProcessing = true;
@@ -71,7 +71,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                 checkClosed();
                 closeOldResultSet();
                 sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-                CommandInterface command = conn.prepareCommand(sql, fetchSize);
+                Command command = conn.prepareCommand(sql, fetchSize);
                 Result result;
                 boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
@@ -124,7 +124,7 @@ public class JdbcStatement extends TraceObject implements Statement {
         try {
             closeOldResultSet();
             sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            CommandInterface command = conn.prepareCommand(sql, fetchSize);
+            Command command = conn.prepareCommand(sql, fetchSize);
             synchronized (session) {
                 setExecutingStatement(command);
                 try {
@@ -168,7 +168,7 @@ public class JdbcStatement extends TraceObject implements Statement {
         try {
             closeOldResultSet();
             sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            CommandInterface command = conn.prepareCommand(sql, fetchSize);
+            Command command = conn.prepareCommand(sql, fetchSize);
             boolean returnsResultSet;
             synchronized (session) {
                 setExecutingStatement(command);
@@ -533,7 +533,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             debugCodeCall("cancel");
             checkClosed();
             // executingCommand can be reset by another thread
-            CommandInterface c = executingCommand;
+            Command c = executingCommand;
             try {
                 if (c != null) {
                     c.cancel();
@@ -646,8 +646,8 @@ public class JdbcStatement extends TraceObject implements Statement {
                 if (batchCommands.isEmpty())
                     return new int[0];
 
-                if (session instanceof FrontendSession) {
-                    FrontendBatchCommand c = ((FrontendSession) session).getFrontendBatchCommand(batchCommands);
+                if (session instanceof ClientSession) {
+                    ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(batchCommands);
                     c.executeUpdate();
                     int[] result = c.getResult();
                     c.close();
@@ -983,7 +983,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             throw DbException.get(ErrorCode.OBJECT_CLOSED);
         }
         conn.checkClosed(write);
-        SessionInterface s = conn.getSession();
+        Session s = conn.getSession();
         if (s != session) {
             session = s;
             trace = session.getTrace();
@@ -1021,12 +1021,12 @@ public class JdbcStatement extends TraceObject implements Statement {
      *
      * @param c the command
      */
-    protected void setExecutingStatement(CommandInterface c) {
+    protected void setExecutingStatement(Command c) {
         if (c == null) {
             conn.setExecutingStatement(null);
         } else {
             conn.setExecutingStatement(this);
-            lastExecutedCommandType = c.getCommandType();
+            lastExecutedCommandType = c.getType();
         }
         executingCommand = c;
     }

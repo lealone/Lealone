@@ -28,8 +28,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import org.lealone.client.FrontendCommand;
-import org.lealone.client.FrontendSession;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.gms.FailureDetector;
@@ -38,8 +36,9 @@ import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Utils;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.FrontendSessionPool;
+import org.lealone.db.SessionPool;
+import org.lealone.db.Command;
+import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
@@ -47,8 +46,8 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueUuid;
-import org.lealone.sql.Prepared;
-import org.lealone.sql.ddl.DefineCommand;
+import org.lealone.sql.StatementBase;
+import org.lealone.sql.ddl.DefineStatement;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.InsertOrMerge;
@@ -58,7 +57,6 @@ import org.lealone.sql.dml.Select;
 import org.lealone.sql.dml.Update;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.router.CommandParallel;
-import org.lealone.sql.router.CommandWrapper;
 import org.lealone.sql.router.MergedResult;
 import org.lealone.sql.router.Router;
 import org.lealone.sql.router.SerializedResult;
@@ -78,7 +76,7 @@ public class P2PRouter implements Router {
     }
 
     @Override
-    public int executeDefineCommand(DefineCommand defineCommand) {
+    public int executeDefineCommand(DefineStatement defineCommand) {
         if (defineCommand.isLocal())
             return defineCommand.updateLocal();
 
@@ -87,12 +85,12 @@ public class P2PRouter implements Router {
             throw new RuntimeException("no live seed endpoint");
 
         if (!seedEndpoint.equals(Utils.getBroadcastAddress())) {
-            Session session = defineCommand.getSession();
-            FrontendSession fs = null;
+            ServerSession session = defineCommand.getSession();
+            Session fs = null;
             try {
-                fs = FrontendSessionPool.getSeedEndpointFrontendSession(session, session.getURL(seedEndpoint));
-                FrontendCommand fc = FrontendSessionPool.getFrontendCommand(fs, defineCommand.getSQL(),
-                        defineCommand.getParameters(), defineCommand.getFetchSize());
+                fs = SessionPool.getSeedEndpointSession(session, session.getURL(seedEndpoint));
+                Command fc = SessionPool.getCommand(fs, defineCommand.getSQL(), defineCommand.getParameters(),
+                        defineCommand.getFetchSize());
                 return fc.executeUpdate();
             } catch (Exception e) {
                 throw DbException.convert(e);
@@ -154,7 +152,7 @@ public class P2PRouter implements Router {
         return executeInsertOrMerge(merge);
     }
 
-    private static int executeInsertOrMergeFromQuery(Query query, Prepared p, Callable<Integer> callable) {
+    private static int executeInsertOrMergeFromQuery(Query query, StatementBase p, Callable<Integer> callable) {
         List<InetAddress> targetEndpoints = getTargetEndpointsIfEqual(query.getTopFilters().get(0));
         if (targetEndpoints != null) {
             boolean isLocal = targetEndpoints.contains(Utils.getBroadcastAddress());
@@ -175,7 +173,7 @@ public class P2PRouter implements Router {
                 endpoint = targetEndpoints.get(random.nextInt(size));
 
             try {
-                return createFrontendCommand(endpoint, p).executeUpdate();
+                return createCommand(endpoint, p).executeUpdate();
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -274,7 +272,7 @@ public class P2PRouter implements Router {
             List<Callable<Integer>> commands, Map<InetAddress, List<Row>> rows) throws Exception {
         if (rows != null) {
             for (Map.Entry<InetAddress, List<Row>> e : rows.entrySet()) {
-                commands.add(createUpdateCallable(e.getKey(), (Prepared) iom, iom.getPlanSQL(e.getValue())));
+                commands.add(createUpdateCallable(e.getKey(), (StatementBase) iom, iom.getPlanSQL(e.getValue())));
             }
         }
     }
@@ -296,7 +294,7 @@ public class P2PRouter implements Router {
     }
 
     @SuppressWarnings("unchecked")
-    private int executeUpdateOrDelete(TableFilter tableFilter, Prepared p) {
+    private int executeUpdateOrDelete(TableFilter tableFilter, StatementBase p) {
         List<InetAddress> targetEndpoints = getTargetEndpointsIfEqual(tableFilter);
         if (targetEndpoints != null) {
             List<Callable<Integer>> commands = New.arrayList(targetEndpoints.size());
@@ -350,7 +348,7 @@ public class P2PRouter implements Router {
                 endpoint = targetEndpoints.get(random.nextInt(size));
 
             try {
-                return createFrontendCommand(endpoint, select).executeQuery(maxRows, scrollable);
+                return createCommand(endpoint, select).executeQuery(maxRows, scrollable);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -361,14 +359,14 @@ public class P2PRouter implements Router {
 
             try {
                 if (!select.isGroupQuery() && select.getSortOrder() == null) {
-                    List<CommandInterface> commands = New.arrayList(liveMembers.size());
+                    List<Command> commands = New.arrayList(liveMembers.size());
 
                     // 在本地节点执行
                     liveMembers.remove(Utils.getBroadcastAddress());
-                    commands.add(new CommandWrapper(createNewLocalSelect(select, sql)));
+                    commands.add(createNewLocalSelect(select, sql));
 
                     for (InetAddress endpoint : liveMembers) {
-                        commands.add(createFrontendCommand(endpoint, select, sql));
+                        commands.add(createCommand(endpoint, select, sql));
                     }
 
                     return new SerializedResult(commands, maxRows, scrollable, select.getLimitRows());
@@ -388,7 +386,7 @@ public class P2PRouter implements Router {
                         return new SortedResult(maxRows, select.getSession(), select, results);
 
                     String newSQL = select.getPlanSQL(true, true);
-                    Select newSelect = (Select) select.getSession().prepare(newSQL, true);
+                    Select newSelect = (Select) select.getSession().prepareStatement(newSQL, true);
                     newSelect.setLocal(true);
 
                     return new MergedResult(results, newSelect, select);
@@ -406,7 +404,7 @@ public class P2PRouter implements Router {
             return oldSelect;
         }
 
-        Prepared p = (Prepared) oldSelect.getSession().prepare(sql, true);
+        StatementBase p = (StatementBase) oldSelect.getSession().prepareStatement(sql, true);
         p.setLocal(true);
         p.setFetchSize(oldSelect.getFetchSize());
         ArrayList<Parameter> oldParams = oldSelect.getParameters();
@@ -426,7 +424,7 @@ public class P2PRouter implements Router {
 
     private static Callable<Result> createSelectCallable(InetAddress endpoint, Select select, String sql,
             final int maxRows, final boolean scrollable) throws Exception {
-        final FrontendCommand c = createFrontendCommand(endpoint, select, sql);
+        final Command c = createCommand(endpoint, select, sql);
 
         Callable<Result> call = new Callable<Result>() {
             @Override
@@ -439,7 +437,7 @@ public class P2PRouter implements Router {
     }
 
     private static List<InetAddress> getTargetEndpointsIfEqual(TableFilter tableFilter) {
-        Value pk = Prepared.getPartitionKey(tableFilter);
+        Value pk = StatementBase.getPartitionKey(tableFilter);
 
         if (pk != null) {
             Schema schema = tableFilter.getTable().getSchema();
@@ -455,13 +453,13 @@ public class P2PRouter implements Router {
         return null;
     }
 
-    private static Callable<Integer> createUpdateCallable(InetAddress endpoint, Prepared p) throws Exception {
+    private static Callable<Integer> createUpdateCallable(InetAddress endpoint, StatementBase p) throws Exception {
         return createUpdateCallable(endpoint, p, p.getSQL());
     }
 
-    private static Callable<Integer> createUpdateCallable(InetAddress endpoint, Prepared p, String sql)
+    private static Callable<Integer> createUpdateCallable(InetAddress endpoint, StatementBase p, String sql)
             throws Exception {
-        final FrontendCommand c = createFrontendCommand(endpoint, p, sql);
+        final Command c = createCommand(endpoint, p, sql);
         Callable<Integer> call = new Callable<Integer>() {
             @Override
             public Integer call() throws Exception {
@@ -472,11 +470,11 @@ public class P2PRouter implements Router {
         return call;
     }
 
-    private static FrontendCommand createFrontendCommand(InetAddress endpoint, Prepared p) throws Exception {
-        return FrontendSessionPool.getFrontendCommand(p.getSession(), p, p.getSession().getURL(endpoint), p.getSQL());
+    private static Command createCommand(InetAddress endpoint, StatementBase p) throws Exception {
+        return SessionPool.getCommand(p.getSession(), p, p.getSession().getURL(endpoint), p.getSQL());
     }
 
-    private static FrontendCommand createFrontendCommand(InetAddress endpoint, Prepared p, String sql) throws Exception {
-        return FrontendSessionPool.getFrontendCommand(p.getSession(), p, p.getSession().getURL(endpoint), sql);
+    private static Command createCommand(InetAddress endpoint, StatementBase p, String sql) throws Exception {
+        return SessionPool.getCommand(p.getSession(), p, p.getSession().getURL(endpoint), sql);
     }
 }

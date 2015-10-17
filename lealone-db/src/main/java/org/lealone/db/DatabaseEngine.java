@@ -45,7 +45,11 @@ public class DatabaseEngine {
         return SESSION_FACTORY;
     }
 
-    public static Session createSession(ConnectionInfo ci) {
+    public static ServerSession createSession(String url) {
+        return SESSION_FACTORY.createSession(new ConnectionInfo(url));
+    }
+
+    public static ServerSession createSession(ConnectionInfo ci) {
         return SESSION_FACTORY.createSession(ci);
     }
 
@@ -57,14 +61,14 @@ public class DatabaseEngine {
         private volatile long wrongPasswordDelay = SysProperties.DELAY_WRONG_PASSWORD_MIN;
 
         @Override
-        public synchronized Session createSession(ConnectionInfo ci) {
+        public synchronized ServerSession createSession(ConnectionInfo ci) {
             String dbName = ci.getDatabaseName();
             dbName = Database.parseDatabaseShortName(ci.getDbSettings(), dbName);
 
             try {
                 User user = authenticate(dbName, ci);
                 boolean ifExists = ci.getProperty("IFEXISTS", false);
-                Session session;
+                ServerSession session;
                 for (int i = 0;; i++) {
                     session = createSession(dbName, ci, user, ifExists);
                     if (session != null) {
@@ -118,7 +122,7 @@ public class DatabaseEngine {
             return user;
         }
 
-        private Session createSession(String dbName, ConnectionInfo ci, User user, boolean ifExists) {
+        private ServerSession createSession(String dbName, ConnectionInfo ci, User user, boolean ifExists) {
             boolean opened = false;
             Database database = LealoneDatabase.getInstance().findDatabase(dbName);
             if (database == null) {
@@ -154,25 +158,23 @@ public class DatabaseEngine {
                 if (database.isClosing()) {
                     return null;
                 }
-                Session session = database.createSession(user);
+                ServerSession session = database.createSession(user);
                 session.setConnectionInfo(ci);
                 return session;
             }
         }
 
-        private void initSession(Session session, ConnectionInfo ci) {
+        private void initSession(ServerSession session, ConnectionInfo ci) {
             boolean ignoreUnknownSetting = ci.getProperty("IGNORE_UNKNOWN_SETTINGS", false);
             String init = ci.getProperty("INIT", null);
 
             session.setAllowLiterals(true);
-            CommandInterface command;
             for (String setting : ci.getKeys()) {
                 if (SetTypes.contains(setting)) {
                     String value = ci.getProperty(setting);
                     try {
-                        command = session.prepareCommandLocal("SET " + session.getDatabase().quoteIdentifier(setting)
-                                + " " + value);
-                        command.executeUpdate();
+                        session.prepareStatementLocal(
+                                "SET " + session.getDatabase().quoteIdentifier(setting) + " " + value).executeUpdate();
                     } catch (DbException e) {
                         if (!ignoreUnknownSetting) {
                             session.close();
@@ -183,8 +185,7 @@ public class DatabaseEngine {
             }
             if (init != null) {
                 try {
-                    command = session.prepareCommand(init, Integer.MAX_VALUE);
-                    command.executeUpdate();
+                    session.prepareStatement(init, Integer.MAX_VALUE).executeUpdate();
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {
                         session.close();

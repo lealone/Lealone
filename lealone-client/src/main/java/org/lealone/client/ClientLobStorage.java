@@ -20,11 +20,11 @@ import org.lealone.storage.LobStorage;
  * This factory creates in-memory objects and temporary files. It is used on the
  * client side.
  */
-public class FrontendLobStorage implements LobStorage {
+public class ClientLobStorage implements LobStorage {
 
     private final DataHandler handler;
 
-    public FrontendLobStorage(DataHandler handler) {
+    public ClientLobStorage(DataHandler handler) {
         this.handler = handler;
     }
 
@@ -46,7 +46,7 @@ public class FrontendLobStorage implements LobStorage {
         if (byteCount < 0) {
             byteCount = Long.MAX_VALUE;
         }
-        return new BufferedInputStream(new FrontendLobStorageInputStream(handler, lob, hmac, byteCount));
+        return new BufferedInputStream(new ClientLobStorageInputStream(handler, lob, hmac, byteCount));
     }
 
     @Override
@@ -100,7 +100,7 @@ public class FrontendLobStorage implements LobStorage {
     /**
      * An input stream that reads from a remote LOB.
      */
-    private static class FrontendLobStorageInputStream extends InputStream {
+    private static class ClientLobStorageInputStream extends InputStream {
 
         /**
          * The data handler.
@@ -124,7 +124,7 @@ public class FrontendLobStorage implements LobStorage {
          */
         private long remainingBytes;
 
-        FrontendLobStorageInputStream(DataHandler handler, ValueLobDb lob, byte[] hmac, long byteCount) {
+        ClientLobStorageInputStream(DataHandler handler, ValueLobDb lob, byte[] hmac, long byteCount) {
             this.handler = handler;
             this.lob = lob.getLobId();
             this.hmac = hmac;

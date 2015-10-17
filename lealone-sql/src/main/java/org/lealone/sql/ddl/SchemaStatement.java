@@ -6,23 +6,23 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 
 /**
  * This class represents a non-transaction statement that involves a schema.
  */
-public abstract class SchemaCommand extends DefineCommand {
+public abstract class SchemaStatement extends DefineStatement {
 
     private final Schema schema;
 
     /**
-     * Create a new command.
+     * Create a new statement.
      *
      * @param session the session
      * @param schema the schema
      */
-    public SchemaCommand(Session session, Schema schema) {
+    public SchemaStatement(ServerSession session, Schema schema) {
         super(session);
         this.schema = schema;
     }

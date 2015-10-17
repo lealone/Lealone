@@ -13,7 +13,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SimpleResultSet;
@@ -39,7 +39,7 @@ public class TableFunction extends Function {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         return getTable(session, args, false, distinct);
     }
 
@@ -68,7 +68,7 @@ public class TableFunction extends Function {
     }
 
     @Override
-    public ValueResultSet getValueForColumnList(Session session, Expression[] nullArgs) {
+    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] nullArgs) {
         return getTable(session, args, true, false);
     }
 
@@ -77,7 +77,7 @@ public class TableFunction extends Function {
         columns.toArray(columnList);
     }
 
-    private ValueResultSet getTable(Session session, Expression[] argList, boolean onlyColumnList, boolean distinctRows) {
+    private ValueResultSet getTable(ServerSession session, Expression[] argList, boolean onlyColumnList, boolean distinctRows) {
         int len = columnList.length;
         Expression[] header = new Expression[len];
         Database db = session.getDatabase();
@@ -154,7 +154,7 @@ public class TableFunction extends Function {
     }
 
     @Override
-    public Expression[] getExpressionColumns(Session session) {
+    public Expression[] getExpressionColumns(ServerSession session) {
         return getExpressionColumns(session, getTable(session, getArgs(), true, false).getResultSet());
     }
 

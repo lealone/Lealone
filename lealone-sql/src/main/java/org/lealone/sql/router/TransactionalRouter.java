@@ -18,16 +18,16 @@
 package org.lealone.sql.router;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
-import org.lealone.sql.Prepared;
-import org.lealone.sql.ddl.DefineCommand;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
+import org.lealone.sql.ddl.DefineStatement;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Merge;
 import org.lealone.sql.dml.Select;
-import org.lealone.sql.dml.TransactionCommand;
+import org.lealone.sql.dml.TransactionStatement;
 import org.lealone.sql.dml.Update;
 
 public class TransactionalRouter implements Router {
@@ -37,12 +37,12 @@ public class TransactionalRouter implements Router {
         this.nestedRouter = nestedRouter;
     }
 
-    private void beginTransaction(Prepared p) {
+    private void beginTransaction(StatementBase p) {
         p.getSession().getTransaction(p);
     }
 
     @Override
-    public int executeDefineCommand(DefineCommand defineCommand) {
+    public int executeDefineCommand(DefineStatement defineCommand) {
         beginTransaction(defineCommand);
         return nestedRouter.executeDefineCommand(defineCommand);
     }
@@ -73,12 +73,12 @@ public class TransactionalRouter implements Router {
         return execute(update);
     }
 
-    private int execute(Prepared p) {
+    private int execute(StatementBase p) {
         beginTransaction(p);
 
         boolean isTopTransaction = false;
         boolean isNestedTransaction = false;
-        Session session = p.getSession();
+        ServerSession session = p.getSession();
 
         try {
             if (!p.isLocal() && p.isBatch()) {
@@ -87,21 +87,21 @@ public class TransactionalRouter implements Router {
                     isTopTransaction = true;
                 } else {
                     isNestedTransaction = true;
-                    session.addSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
+                    session.addSavepoint(TransactionStatement.INTERNAL_SAVEPOINT);
                 }
             }
             int updateCount = 0;
             switch (p.getType()) {
-            case CommandInterface.INSERT:
+            case SQLStatement.INSERT:
                 updateCount = nestedRouter.executeInsert((Insert) p);
                 break;
-            case CommandInterface.UPDATE:
+            case SQLStatement.UPDATE:
                 updateCount = nestedRouter.executeUpdate((Update) p);
                 break;
-            case CommandInterface.DELETE:
+            case SQLStatement.DELETE:
                 updateCount = nestedRouter.executeDelete((Delete) p);
                 break;
-            case CommandInterface.MERGE:
+            case SQLStatement.MERGE:
                 updateCount = nestedRouter.executeMerge((Merge) p);
                 break;
             }
@@ -114,7 +114,7 @@ public class TransactionalRouter implements Router {
 
             // 嵌套事务出错时提前rollback
             if (isNestedTransaction)
-                session.rollbackToSavepoint(TransactionCommand.INTERNAL_SAVEPOINT);
+                session.rollbackToSavepoint(TransactionStatement.INTERNAL_SAVEPOINT);
 
             throw DbException.convert(e);
         } finally {

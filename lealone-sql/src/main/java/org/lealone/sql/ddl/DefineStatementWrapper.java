@@ -19,153 +19,144 @@ package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
-import org.lealone.sql.Command;
+import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.expression.Parameter;
 
 //只重写了update方法
-public class DefineCommandWrapper extends DefineCommand {
-    protected final DefineCommand dc;
+public class DefineStatementWrapper extends DefineStatement {
+    protected final DefineStatement ds;
 
-    public DefineCommandWrapper(Session session, DefineCommand dc) {
+    public DefineStatementWrapper(ServerSession session, DefineStatement ds) {
         super(session);
-        this.dc = dc;
+        this.ds = ds;
     }
 
     @Override
     public int update() {
-        return org.lealone.sql.RouterHolder.getRouter().executeDefineCommand(dc);
+        return org.lealone.sql.RouterHolder.getRouter().executeDefineCommand(ds);
     }
 
     @Override
     public int updateLocal() {
-        return dc.update();
+        return ds.update();
     }
 
     @Override
     public boolean isReadOnly() {
-        return dc.isReadOnly();
+        return ds.isReadOnly();
     }
 
     @Override
     public Result queryMeta() {
-        return dc.queryMeta();
+        return ds.queryMeta();
     }
 
     @Override
     public void setTransactional(boolean transactional) {
-        dc.setTransactional(transactional);
+        ds.setTransactional(transactional);
     }
 
     @Override
     public boolean isTransactional() {
-        return dc.isTransactional();
+        return ds.isTransactional();
     }
 
     @Override
     public int hashCode() {
-        return dc.hashCode();
+        return ds.hashCode();
     }
 
     @Override
     public int getType() {
-        return dc.getType();
+        return ds.getType();
     }
 
     @Override
     public boolean needRecompile() {
-        return dc.needRecompile();
+        return ds.needRecompile();
     }
 
     @Override
     public boolean equals(Object obj) {
-        return dc.equals(obj);
+        return ds.equals(obj);
     }
 
     @Override
     public void setParameterList(ArrayList<Parameter> parameters) {
-        dc.setParameterList(parameters);
+        ds.setParameterList(parameters);
     }
 
     @Override
     public ArrayList<Parameter> getParameters() {
-        return dc.getParameters();
-    }
-
-    @Override
-    public void setCommand(Command command) {
-        dc.setCommand(command);
+        return ds.getParameters();
     }
 
     @Override
     public boolean isQuery() {
-        return dc.isQuery();
+        return ds.isQuery();
     }
 
     @Override
-    public void prepare() {
-        dc.prepare();
+    public PreparedStatement prepare() {
+        ds.prepare();
+        return this;
     }
 
     @Override
     public void setSQL(String sql) {
-        dc.setSQL(sql);
+        ds.setSQL(sql);
     }
 
     @Override
     public String getSQL() {
-        return dc.getSQL();
+        return ds.getSQL();
     }
 
     @Override
     public String getPlanSQL() {
-        return dc.getPlanSQL();
+        return ds.getPlanSQL();
     }
 
     @Override
     public void checkCanceled() {
-        dc.checkCanceled();
+        ds.checkCanceled();
     }
 
     @Override
     public void setObjectId(int i) {
-        dc.setObjectId(i);
+        ds.setObjectId(i);
     }
 
     @Override
-    public void setSession(Session currentSession) {
-        dc.setSession(currentSession);
+    public void setSession(ServerSession currentSession) {
+        ds.setSession(currentSession);
     }
 
     @Override
     public void setPrepareAlways(boolean prepareAlways) {
-        dc.setPrepareAlways(prepareAlways);
+        ds.setPrepareAlways(prepareAlways);
     }
 
     @Override
     public int getCurrentRowNumber() {
-        return dc.getCurrentRowNumber();
+        return ds.getCurrentRowNumber();
     }
 
     @Override
     public String toString() {
-        return dc.toString();
+        return ds.toString();
     }
 
     @Override
     public boolean isCacheable() {
-        return dc.isCacheable();
-    }
-
-    @Override
-    public Command getCommand() {
-        return dc.getCommand();
+        return ds.isCacheable();
     }
 
     @Override
     public void setLocal(boolean local) {
-        dc.setLocal(local);
+        ds.setLocal(local);
     }
 
 }

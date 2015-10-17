@@ -6,7 +6,7 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
@@ -25,12 +25,12 @@ public class ConditionNot extends Condition {
     }
 
     @Override
-    public Expression getNotIfPossible(Session session) {
+    public Expression getNotIfPossible(ServerSession session) {
         return condition;
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Value v = condition.getValue(session);
         if (v == ValueNull.INSTANCE) {
             return v;
@@ -44,7 +44,7 @@ public class ConditionNot extends Condition {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         Expression e2 = condition.getNotIfPossible(session);
         if (e2 != null) {
             return e2.optimize(session);
@@ -72,7 +72,7 @@ public class ConditionNot extends Condition {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         condition.updateAggregate(session);
     }
 

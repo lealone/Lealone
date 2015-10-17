@@ -18,7 +18,7 @@
 package org.lealone.sql.router;
 
 import org.lealone.db.result.Result;
-import org.lealone.sql.ddl.DefineCommand;
+import org.lealone.sql.ddl.DefineStatement;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Merge;
@@ -36,7 +36,7 @@ public class LocalRouter implements Router {
     }
 
     @Override
-    public int executeDefineCommand(DefineCommand defineCommand) {
+    public int executeDefineCommand(DefineStatement defineCommand) {
         return defineCommand.updateLocal();
     }
 

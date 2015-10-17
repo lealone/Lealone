@@ -38,11 +38,12 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.db.Command;
 import org.lealone.db.Constants;
 import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.Mode;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
@@ -66,7 +67,6 @@ import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
-import org.lealone.sql.Command;
 import org.lealone.sql.Parser;
 import org.lealone.storage.fs.FileUtils;
 
@@ -463,11 +463,11 @@ public class Function extends Expression implements FunctionCall {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         return getValueWithArgs(session, args);
     }
 
-    private Value getSimpleValue(Session session, Value v0, Expression[] args, Value[] values) {
+    private Value getSimpleValue(ServerSession session, Value v0, Expression[] args, Value[] values) {
         Value result;
         switch (info.type) {
         case ABS:
@@ -942,10 +942,10 @@ public class Function extends Expression implements FunctionCall {
         return result;
     }
 
-    private static boolean cancelStatement(Session session, int targetSessionId) {
+    private static boolean cancelStatement(ServerSession session, int targetSessionId) {
         session.getUser().checkAdmin();
-        Session[] sessions = session.getDatabase().getSessions(false);
-        for (Session s : sessions) {
+        ServerSession[] sessions = session.getDatabase().getSessions(false);
+        for (ServerSession s : sessions) {
             if (s.getId() == targetSessionId) {
                 Command c = (Command) s.getCurrentCommand();
                 if (c == null) {
@@ -958,14 +958,14 @@ public class Function extends Expression implements FunctionCall {
         return false;
     }
 
-    private static long getDiskSpaceUsed(Session session, Value v0) {
+    private static long getDiskSpaceUsed(ServerSession session, Value v0) {
         Parser p = new Parser(session);
         String sql = v0.getString();
         Table table = p.parseTableName(sql);
         return table.getDiskSpaceUsed();
     }
 
-    private static Value getNullOrValue(Session session, Expression[] args, Value[] values, int i) {
+    private static Value getNullOrValue(ServerSession session, Expression[] args, Value[] values, int i) {
         if (i >= args.length) {
             return null;
         }
@@ -976,7 +976,7 @@ public class Function extends Expression implements FunctionCall {
         return v;
     }
 
-    private Value getValueWithArgs(Session session, Expression[] args) {
+    private Value getValueWithArgs(ServerSession session, Expression[] args) {
         Value[] values = new Value[args.length];
         if (info.nullIfParameterIsNull) {
             for (int i = 0; i < args.length; i++) {
@@ -1318,7 +1318,7 @@ public class Function extends Expression implements FunctionCall {
         return result;
     }
 
-    private Sequence getSequence(Session session, Value v0, Value v1) {
+    private Sequence getSequence(ServerSession session, Value v0, Value v1) {
         String schemaName, sequenceName;
         if (v1 == null) {
             Parser p = (Parser) session.getParser();
@@ -1808,7 +1808,7 @@ public class Function extends Expression implements FunctionCall {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         boolean allConst = info.deterministic;
         for (int i = 0; i < args.length; i++) {
             Expression e = args[i].optimize(session);
@@ -2115,7 +2115,7 @@ public class Function extends Expression implements FunctionCall {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         for (Expression e : args) {
             if (e != null) {
                 e.updateAggregate(session);
@@ -2133,7 +2133,7 @@ public class Function extends Expression implements FunctionCall {
     }
 
     @Override
-    public ValueResultSet getValueForColumnList(Session session, Expression[] argList) {
+    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] argList) {
         switch (info.type) {
         case CSVREAD: {
             String fileName = argList[0].getValue(session).getString();

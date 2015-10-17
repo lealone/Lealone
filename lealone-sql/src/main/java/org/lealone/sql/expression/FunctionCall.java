@@ -5,7 +5,7 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.value.ValueResultSet;
 
 /**
@@ -28,7 +28,7 @@ public interface FunctionCall {
      * @param nullArgs the argument list (some arguments may be null)
      * @return the empty result set
      */
-    ValueResultSet getValueForColumnList(Session session, Expression[] nullArgs);
+    ValueResultSet getValueForColumnList(ServerSession session, Expression[] nullArgs);
 
     /**
      * Get the data type.
@@ -43,7 +43,7 @@ public interface FunctionCall {
      * @param session the session
      * @return the optimized expression
      */
-    Expression optimize(Session session);
+    Expression optimize(ServerSession session);
 
     /**
      * Get the function arguments.

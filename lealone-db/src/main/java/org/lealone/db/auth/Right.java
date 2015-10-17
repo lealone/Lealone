@@ -10,7 +10,7 @@ import org.lealone.common.message.Trace;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 
@@ -162,7 +162,7 @@ public class Right extends DbObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         if (grantedRole != null) {
             grantee.revokeRole(grantedRole);
         } else {

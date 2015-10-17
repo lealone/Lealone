@@ -18,7 +18,7 @@
 package org.lealone.db.index;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -28,11 +28,11 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
-import org.lealone.sql.PreparedInterface;
+import org.lealone.sql.PreparedStatement;
 
 public class GlobalUniqueIndex extends IndexBase {
 
-    public GlobalUniqueIndex(Session session, StandardTable table, int id, String indexName, IndexColumn[] columns,
+    public GlobalUniqueIndex(ServerSession session, StandardTable table, int id, String indexName, IndexColumn[] columns,
             IndexType indexType) {
         initIndexBase(table, id, indexName, columns, indexType);
         if (!database.isStarting()) {
@@ -57,18 +57,18 @@ public class GlobalUniqueIndex extends IndexBase {
         }
         sql.append("))");
 
-        PreparedInterface prepared = session.prepare(sql.toString(), true);
+        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(true);
         prepared.update();
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // ok
     }
 
     @Override
-    public void add(Session session, Row row) {
+    public void add(ServerSession session, Row row) {
         StatementBuilder sql = new StatementBuilder("insert into ");
         sql.append(getName()).append("(_gui_row_id_");
 
@@ -91,13 +91,13 @@ public class GlobalUniqueIndex extends IndexBase {
         }
         sql.append(")");
 
-        PreparedInterface prepared = session.prepare(sql.toString(), true);
+        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(false);
         prepared.update();
     }
 
     @Override
-    public void remove(Session session, Row row) {
+    public void remove(ServerSession session, Row row) {
         StatementBuilder sql = new StatementBuilder("delete from ");
         sql.append(getName());
         if (row != null) {
@@ -113,17 +113,17 @@ public class GlobalUniqueIndex extends IndexBase {
             }
         }
 
-        PreparedInterface prepared = session.prepare(sql.toString(), true);
+        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(false);
         prepared.update();
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         return find(session, first, false, last);
     }
 
-    private Cursor find(Session session, SearchRow first, boolean bigger, SearchRow last) {
+    private Cursor find(ServerSession session, SearchRow first, boolean bigger, SearchRow last) {
         StatementBuilder sql = new StatementBuilder("select _gui_row_id_");
         for (Column c : getColumns()) {
             sql.append(",");
@@ -153,7 +153,7 @@ public class GlobalUniqueIndex extends IndexBase {
             }
         }
 
-        PreparedInterface prepared = session.prepare(sql.toString(), true);
+        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(false);
         Result result = prepared.query(0);
         if (bigger)
@@ -162,20 +162,20 @@ public class GlobalUniqueIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         return Double.MAX_VALUE;
     }
 
     @Override
-    public void remove(Session session) {
-        PreparedInterface prepared = session.prepare("drop table if exists " + getName(), true);
+    public void remove(ServerSession session) {
+        PreparedStatement prepared = session.prepareStatement("drop table if exists " + getName(), true);
         prepared.setLocal(true);
         prepared.update();
     }
 
     @Override
-    public void truncate(Session session) {
-        PreparedInterface prepared = session.prepare("truncate table " + getName(), true);
+    public void truncate(ServerSession session) {
+        PreparedStatement prepared = session.prepareStatement("truncate table " + getName(), true);
         prepared.setLocal(true);
         prepared.update();
     }
@@ -186,7 +186,7 @@ public class GlobalUniqueIndex extends IndexBase {
     }
 
     @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
         return find(session, null, false, null);
     }
 
@@ -196,13 +196,13 @@ public class GlobalUniqueIndex extends IndexBase {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         StatementBuilder sql = new StatementBuilder("select count(*) from ");
         sql.append(getName());
 
         if (session == null)
             session = getDatabase().getSystemSession();
-        PreparedInterface prepared = session.prepare(sql.toString(), true);
+        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(false);
         Result result = prepared.query(0);
         return result.getRowCount();
@@ -223,7 +223,7 @@ public class GlobalUniqueIndex extends IndexBase {
         StatementBuilder sql = new StatementBuilder("alter table ");
         sql.append(getName()).append(" rename to").append(newName);
 
-        PreparedInterface prepared = getDatabase().getSystemSession().prepare(sql.toString(), true);
+        PreparedStatement prepared = getDatabase().getSystemSession().prepareStatement(sql.toString(), true);
         prepared.setLocal(true);
         prepared.update();
     }

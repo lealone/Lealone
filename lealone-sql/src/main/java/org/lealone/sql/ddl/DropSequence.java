@@ -8,22 +8,22 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP SEQUENCE
  */
-public class DropSequence extends SchemaCommand {
+public class DropSequence extends SchemaStatement {
 
     private String sequenceName;
     private boolean ifExists;
 
-    public DropSequence(Session session, Schema schema) {
+    public DropSequence(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -56,7 +56,7 @@ public class DropSequence extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_SEQUENCE;
+        return SQLStatement.DROP_SEQUENCE;
     }
 
 }

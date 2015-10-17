@@ -8,18 +8,18 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * CREATE SEQUENCE
  */
-public class CreateSequence extends SchemaCommand {
+public class CreateSequence extends SchemaStatement {
 
     private String sequenceName;
     private boolean ifNotExists;
@@ -31,7 +31,7 @@ public class CreateSequence extends SchemaCommand {
     private Expression cacheSize;
     private boolean belongsToTable;
 
-    public CreateSequence(Session session, Schema schema) {
+    public CreateSequence(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -102,7 +102,7 @@ public class CreateSequence extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_SEQUENCE;
+        return SQLStatement.CREATE_SEQUENCE;
     }
 
 }

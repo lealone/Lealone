@@ -21,7 +21,7 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
@@ -48,16 +48,16 @@ public class StandardTable extends TableBase {
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = New.arrayList();
     private long lastModificationId;
-    private volatile Session lockExclusiveSession;
+    private volatile ServerSession lockExclusiveSession;
 
     // using a ConcurrentHashMap as a set
-    private final ConcurrentHashMap<Session, Session> lockSharedSessions = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<ServerSession, ServerSession> lockSharedSessions = new ConcurrentHashMap<>();
 
     /**
      * The queue of sessions waiting to lock the table. It is a FIFO queue to
      * prevent starvation, since Java's synchronized locking is biased.
      */
-    private final ArrayDeque<Session> waitingSessions = new ArrayDeque<>();
+    private final ArrayDeque<ServerSession> waitingSessions = new ArrayDeque<>();
     private final Trace traceLock;
     private int changesSinceAnalyze;
     private int nextAnalyze;
@@ -112,7 +112,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
         int lockMode = database.getLockMode();
         if (lockMode == Constants.LOCK_MODE_OFF) {
             return false;
@@ -167,7 +167,7 @@ public class StandardTable extends TableBase {
         return database;
     }
 
-    private void doLock1(Session session, int lockMode, boolean exclusive) {
+    private void doLock1(ServerSession session, int lockMode, boolean exclusive) {
         traceLock(session, exclusive, "requesting for");
         // don't get the current time unless necessary
         long max = 0;
@@ -180,7 +180,7 @@ public class StandardTable extends TableBase {
                 }
             }
             if (checkDeadlock) {
-                ArrayList<Session> sessions = checkDeadlock(session, null, null);
+                ArrayList<ServerSession> sessions = checkDeadlock(session, null, null);
                 if (sessions != null) {
                     throw DbException.get(ErrorCode.DEADLOCK_1, getDeadlockDetails(sessions, exclusive));
                 }
@@ -220,7 +220,7 @@ public class StandardTable extends TableBase {
         }
     }
 
-    private boolean doLock2(Session session, int lockMode, boolean exclusive) {
+    private boolean doLock2(ServerSession session, int lockMode, boolean exclusive) {
         if (exclusive) {
             if (lockExclusiveSession == null) {
                 if (lockSharedSessions.isEmpty()) {
@@ -258,11 +258,11 @@ public class StandardTable extends TableBase {
         return false;
     }
 
-    private static String getDeadlockDetails(ArrayList<Session> sessions, boolean exclusive) {
+    private static String getDeadlockDetails(ArrayList<ServerSession> sessions, boolean exclusive) {
         // We add the thread details here to make it easier for customers to
         // match up these error messages with their own logs.
         StringBuilder buff = new StringBuilder();
-        for (Session s : sessions) {
+        for (ServerSession s : sessions) {
             Table lock = s.getWaitForLock();
             Thread thread = s.getWaitForLockThread();
             buff.append("\nSession ").append(s.toString()).append(" on thread ").append(thread.getName())
@@ -288,7 +288,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public ArrayList<Session> checkDeadlock(Session session, Session clash, Set<Session> visited) {
+    public ArrayList<ServerSession> checkDeadlock(ServerSession session, ServerSession clash, Set<ServerSession> visited) {
         // only one deadlock check at any given time
         synchronized (StandardTable.class) {
             if (clash == null) {
@@ -305,8 +305,8 @@ public class StandardTable extends TableBase {
                 return null;
             }
             visited.add(session);
-            ArrayList<Session> error = null;
-            for (Session s : lockSharedSessions.keySet()) {
+            ArrayList<ServerSession> error = null;
+            for (ServerSession s : lockSharedSessions.keySet()) {
                 if (s == session) {
                     // it doesn't matter if we have locked the object already
                     continue;
@@ -322,7 +322,7 @@ public class StandardTable extends TableBase {
             }
             // take a local copy so we don't see inconsistent data, since we are not locked
             // while checking the lockExclusiveSession value
-            Session copyOfLockExclusiveSession = lockExclusiveSession;
+            ServerSession copyOfLockExclusiveSession = lockExclusiveSession;
             if (error == null && copyOfLockExclusiveSession != null) {
                 Table t = copyOfLockExclusiveSession.getWaitForLock();
                 if (t != null) {
@@ -336,7 +336,7 @@ public class StandardTable extends TableBase {
         }
     }
 
-    private void traceLock(Session session, boolean exclusive, String s) {
+    private void traceLock(ServerSession session, boolean exclusive, String s) {
         if (traceLock.isDebugEnabled()) {
             traceLock.debug("{0} {1} {2} {3}", session.getId(),
                     exclusive ? "exclusive write lock" : "shared read lock", s, getName());
@@ -349,12 +349,12 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public boolean isLockedExclusivelyBy(Session session) {
+    public boolean isLockedExclusivelyBy(ServerSession session) {
         return lockExclusiveSession == session;
     }
 
     @Override
-    public void unlock(Session s) {
+    public void unlock(ServerSession s) {
         if (database != null) {
             traceLock(s, lockExclusiveSession == s, "unlock");
             if (lockExclusiveSession == s) {
@@ -392,17 +392,17 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // ignore
     }
 
     @Override
-    public Row getRow(Session session, long key) {
+    public Row getRow(ServerSession session, long key) {
         return primaryIndex.getRow(session, key);
     }
 
     @Override
-    public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
             boolean create, String indexComment) {
         if (indexType.isPrimaryKey()) {
             for (IndexColumn c : cols) {
@@ -461,8 +461,8 @@ public class StandardTable extends TableBase {
         return index;
     }
 
-    private boolean isGlobalUniqueIndex(Session session, IndexType indexType) {
-        return indexType.isUnique() && !indexType.isPrimaryKey() && Session.isClusterMode()
+    private boolean isGlobalUniqueIndex(ServerSession session, IndexType indexType) {
+        return indexType.isUnique() && !indexType.isPrimaryKey() && ServerSession.isClusterMode()
                 && session.getConnectionInfo() != null && !session.getConnectionInfo().isEmbedded(); // &&
                                                                                                      // !session.isLocal();
     }
@@ -473,7 +473,7 @@ public class StandardTable extends TableBase {
         return new StandardDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
     }
 
-    private void rebuildIndex(Session session, StandardIndex index, String indexName) {
+    private void rebuildIndex(ServerSession session, StandardIndex index, String indexName) {
         try {
             if (index.isInMemory()) {
                 // in-memory
@@ -496,7 +496,7 @@ public class StandardTable extends TableBase {
         }
     }
 
-    private void rebuildIndexBlockMerge(Session session, StandardIndex index) {
+    private void rebuildIndexBlockMerge(ServerSession session, StandardIndex index) {
         // Read entries in memory, sort them, write to a new map (in sorted
         // order); repeat (using a new map for every block of 1 MB) until all
         // record are read. Merge all maps to the target (using merge sort;
@@ -542,7 +542,7 @@ public class StandardTable extends TableBase {
         }
     }
 
-    private void rebuildIndexBuffered(Session session, Index index) {
+    private void rebuildIndexBuffered(ServerSession session, Index index) {
         Index scan = getScanIndex(session);
         long remaining = scan.getRowCount(session);
         long total = remaining;
@@ -590,7 +590,7 @@ public class StandardTable extends TableBase {
         return first.column.getColumnId();
     }
 
-    private static void addRowsToIndex(Session session, ArrayList<Row> list, Index index) {
+    private static void addRowsToIndex(ServerSession session, ArrayList<Row> list, Index index) {
         sortRows(list, index);
         for (Row row : list) {
             index.add(session, row);
@@ -608,7 +608,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public void removeRow(Session session, Row row) {
+    public void removeRow(ServerSession session, Row row) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         long savepointId = t.getSavepointId();
@@ -626,7 +626,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         lastModificationId = database.getNextModificationDataId();
         for (int i = indexes.size() - 1; i >= 0; i--) {
             Index index = indexes.get(i);
@@ -637,7 +637,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public void addRow(Session session, Row row) {
+    public void addRow(ServerSession session, Row row) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         long savepointId = t.getSavepointId();
@@ -656,7 +656,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    protected void analyzeIfRequired(Session session) {
+    protected void analyzeIfRequired(ServerSession session) {
         if (nextAnalyze == 0 || nextAnalyze > changesSinceAnalyze++) {
             return;
         }
@@ -681,7 +681,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public Index getScanIndex(Session session) {
+    public Index getScanIndex(ServerSession session) {
         return primaryIndex;
     }
 
@@ -721,7 +721,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         if (containsLargeObject) {
             // unfortunately, the data is gone on rollback
             truncate(session);
@@ -754,7 +754,7 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return primaryIndex.getRowCount(session);
     }
 

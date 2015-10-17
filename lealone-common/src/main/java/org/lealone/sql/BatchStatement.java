@@ -17,14 +17,8 @@
  */
 package org.lealone.sql;
 
-import org.lealone.db.CommandInterface;
+public interface BatchStatement extends SQLStatement {
 
-public interface BackendCommand extends CommandInterface {
-    boolean canReuse();
+    int[] getResult();
 
-    void reuse();
-
-    boolean isCacheable();
-
-    PreparedInterface getPrepared();
 }

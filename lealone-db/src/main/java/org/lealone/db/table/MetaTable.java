@@ -24,12 +24,13 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.db.Command;
 import org.lealone.db.Constants;
 import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.InDoubtTransaction;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.Setting;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
@@ -59,7 +60,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueStringIgnoreCase;
-import org.lealone.sql.BackendCommand;
 
 /**
  * This class is responsible to build the database meta data pseudo tables.
@@ -323,13 +323,13 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment) {
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment) {
         throw DbException.getUnsupportedException("META");
     }
 
     @Override
-    public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
         return false;
     }
 
@@ -345,14 +345,14 @@ public class MetaTable extends Table {
         return s;
     }
 
-    private ArrayList<Table> getAllTables(Session session) {
+    private ArrayList<Table> getAllTables(ServerSession session) {
         ArrayList<Table> tables = database.getAllTablesAndViews(true);
         ArrayList<Table> tempTables = session.getLocalTempTables();
         tables.addAll(tempTables);
         return tables;
     }
 
-    private boolean checkIndex(Session session, String value, Value indexFrom, Value indexTo) {
+    private boolean checkIndex(ServerSession session, String value, Value indexFrom, Value indexTo) {
         if (value == null || (indexFrom == null && indexTo == null)) {
             return true;
         }
@@ -378,7 +378,7 @@ public class MetaTable extends Table {
         return s == null ? "" : s;
     }
 
-    private boolean hideTable(Table table, Session session) {
+    private boolean hideTable(Table table, ServerSession session) {
         return table.isHidden() && session != database.getSystemSession();
     }
 
@@ -391,7 +391,7 @@ public class MetaTable extends Table {
      * @param last the last row to return
      * @return the generated rows
      */
-    public ArrayList<Row> generateRows(Session session, SearchRow first, SearchRow last) {
+    public ArrayList<Row> generateRows(ServerSession session, SearchRow first, SearchRow last) {
         Value indexFrom = null, indexTo = null;
 
         if (indexColumn >= 0) {
@@ -1278,9 +1278,9 @@ public class MetaTable extends Table {
         }
         case SESSIONS: {
             long now = System.currentTimeMillis();
-            for (Session s : database.getSessions(false)) {
+            for (ServerSession s : database.getSessions(false)) {
                 if (admin || s == session) {
-                    BackendCommand command = s.getCurrentCommand();
+                    Command command = s.getCurrentCommand();
                     long start = s.getCurrentCommandStart();
                     if (start == 0) {
                         start = now;
@@ -1301,7 +1301,7 @@ public class MetaTable extends Table {
             break;
         }
         case LOCKS: {
-            for (Session s : database.getSessions(false)) {
+            for (ServerSession s : database.getSessions(false)) {
                 if (admin || s == session) {
                     for (Table table : s.getLocks()) {
                         add(rows,
@@ -1379,27 +1379,27 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public void removeRow(Session session, Row row) {
+    public void removeRow(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("META");
     }
 
     @Override
-    public void addRow(Session session, Row row) {
+    public void addRow(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("META");
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         throw DbException.getUnsupportedException("META");
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // nothing to do
     }
 
     @Override
-    public void unlock(Session s) {
+    public void unlock(ServerSession s) {
         // nothing to do
     }
 
@@ -1491,12 +1491,12 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         throw DbException.getUnsupportedException("META");
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         throw DbException.throwInternalError();
     }
 
@@ -1516,7 +1516,7 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public Index getScanIndex(Session session) {
+    public Index getScanIndex(ServerSession session) {
         return new MetaIndex(this, IndexColumn.wrap(columns), true);
     }
 

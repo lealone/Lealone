@@ -3,16 +3,14 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.sql;
 
-import java.util.ArrayList;
-
-import org.lealone.db.result.Result;
+import org.lealone.db.Command;
 
 /**
  * Represents a SQL statement.
  */
-public interface CommandInterface {
+public interface SQLStatement extends Command {
 
     /**
      * The type for unknown statement.
@@ -458,52 +456,61 @@ public interface CommandInterface {
      *
      * @return one of the constants above
      */
-    int getCommandType();
+    // int getCommandType();
+    //
+    // /**
+    // * Check if this is a query.
+    // *
+    // * @return true if it is a query
+    // */
+    // boolean isQuery();
+    //
+    // /**
+    // * Get the parameters (if any).
+    // *
+    // * @return the parameters
+    // */
+    // ArrayList<? extends CommandParameter> getParameters();
+    //
+    // /**
+    // * Execute the query.
+    // *
+    // * @param maxRows the maximum number of rows returned
+    // * @param scrollable if the result set must be scrollable
+    // * @return the result
+    // */
+    // Result query(int maxRows, boolean scrollable);
 
-    /**
-     * Check if this is a query.
-     *
-     * @return true if it is a query
-     */
-    boolean isQuery();
+    //
+    // /**
+    // * Execute the statement
+    // *
+    // * @return the update count
+    // */
+    // int update();
+    //
+    // /**
+    // * Close the statement.
+    // */
+    // void close();
+    //
+    // /**
+    // * Cancel the statement if it is still processing.
+    // */
+    // void cancel();
+    //
+    // /**
+    // * Get an empty result set containing the meta data of the result.
+    // *
+    // * @return the empty result
+    // */
+    // Result getMetaData();
+    //
+    // boolean canReuse();
+    //
+    // void reuse();
+    //
+    // boolean isCacheable();
 
-    /**
-     * Get the parameters (if any).
-     *
-     * @return the parameters
-     */
-    ArrayList<? extends ParameterInterface> getParameters();
-
-    /**
-     * Execute the query.
-     *
-     * @param maxRows the maximum number of rows returned
-     * @param scrollable if the result set must be scrollable
-     * @return the result
-     */
-    Result executeQuery(int maxRows, boolean scrollable);
-
-    /**
-     * Execute the statement
-     *
-     * @return the update count
-     */
-    int executeUpdate();
-
-    /**
-     * Close the statement.
-     */
-    void close();
-
-    /**
-     * Cancel the statement if it is still processing.
-     */
-    void cancel();
-
-    /**
-     * Get an empty result set containing the meta data of the result.
-     *
-     * @return the empty result
-     */
-    Result getMetaData();
+    // PreparedStatement getPreparedStatement();
 }

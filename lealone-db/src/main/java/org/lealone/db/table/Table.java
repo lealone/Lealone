@@ -17,7 +17,7 @@ import org.lealone.common.message.Trace;
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.expression.Expression;
@@ -37,7 +37,7 @@ import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.PreparedInterface;
+import org.lealone.sql.PreparedStatement;
 import org.lealone.transaction.TransactionMap;
 
 /**
@@ -141,21 +141,21 @@ public abstract class Table extends SchemaObjectBase {
      * @param force lock even in the MVCC mode
      * @throws DbException if a lock timeout occurred
      */
-    public abstract boolean lock(Session session, boolean exclusive, boolean force);
+    public abstract boolean lock(ServerSession session, boolean exclusive, boolean force);
 
     /**
      * Close the table object and flush changes.
      *
      * @param session the session
      */
-    public abstract void close(Session session);
+    public abstract void close(ServerSession session);
 
     /**
      * Release the lock for this session.
      *
      * @param s the session
      */
-    public abstract void unlock(Session s);
+    public abstract void unlock(ServerSession s);
 
     /**
      * Create an index for this table
@@ -169,7 +169,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param indexComment the comment
      * @return the index
      */
-    public abstract Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols,
+    public abstract Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
             IndexType indexType, boolean create, String indexComment);
 
     /**
@@ -178,9 +178,9 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      * @param row the row
      */
-    public abstract void removeRow(Session session, Row row);
+    public abstract void removeRow(ServerSession session, Row row);
 
-    public void removeRow(final Session session, final Row row, boolean isUndo) {
+    public void removeRow(final ServerSession session, final Row row, boolean isUndo) {
         // TODO
     }
 
@@ -189,7 +189,7 @@ public abstract class Table extends SchemaObjectBase {
      *
      * @param session the session
      */
-    public abstract void truncate(Session session);
+    public abstract void truncate(ServerSession session);
 
     /**
      * Add a row to the table and all indexes.
@@ -198,7 +198,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param row the row
      * @throws DbException if a constraint was violated
      */
-    public abstract void addRow(Session session, Row row);
+    public abstract void addRow(ServerSession session, Row row);
 
     /**
      * Check if this table supports ALTER TABLE.
@@ -220,7 +220,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      * @return the index
      */
-    public abstract Index getScanIndex(Session session);
+    public abstract Index getScanIndex(ServerSession session);
 
     /**
      * Get any unique index for this table if one exists.
@@ -286,7 +286,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      * @return the row count
      */
-    public abstract long getRowCount(Session session);
+    public abstract long getRowCount(ServerSession session);
 
     /**
      * Get the approximated row count for this table.
@@ -421,7 +421,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      * @return true if it is
      */
-    public boolean isLockedExclusivelyBy(Session session) {
+    public boolean isLockedExclusivelyBy(ServerSession session) {
         return false;
     }
 
@@ -433,7 +433,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param rows a list of row pairs of the form old row, new row, old row,
      *            new row,...
      */
-    public void updateRows(PreparedInterface prepared, Session session, RowList rows) {
+    public void updateRows(PreparedStatement prepared, ServerSession session, RowList rows) {
         // List<Long> rowVersionList = null;
         // TransactionMap<Long, Long> rowVersionMap = getRowVersionMap();
         // if (rowVersionMap != null) {
@@ -489,7 +489,7 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         while (views != null && views.size() > 0) {
             TableView view = views.get(0);
             views.remove(0);
@@ -536,7 +536,7 @@ public abstract class Table extends SchemaObjectBase {
      * @throws DbException if the column is referenced by multi-column
      *             constraints or indexes
      */
-    public void dropSingleColumnConstraintsAndIndexes(Session session, Column col) {
+    public void dropSingleColumnConstraintsAndIndexes(ServerSession session, Column col) {
         ArrayList<Constraint> constraintsToDrop = New.arrayList();
         if (constraints != null) {
             for (int i = 0, size = constraints.size(); i < size; i++) {
@@ -661,7 +661,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param sortOrder the sort order
      * @return the plan item
      */
-    public PlanItem getBestPlanItem(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public PlanItem getBestPlanItem(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         PlanItem item = new PlanItem();
         item.setIndex(getScanIndex(session));
         item.cost = item.getIndex().getCost(session, null, null, null);
@@ -713,7 +713,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      * @param row the row
      */
-    public void validateConvertUpdateSequence(Session session, Row row) {
+    public void validateConvertUpdateSequence(ServerSession session, Row row) {
         for (int i = 0; i < columns.length; i++) {
             Value value = row.getValue(i);
             Column column = columns[i];
@@ -851,7 +851,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param type the trigger type
      * @param beforeAction whether 'before' triggers should be called
      */
-    public void fire(Session session, int type, boolean beforeAction) {
+    public void fire(ServerSession session, int type, boolean beforeAction) {
         if (triggers != null) {
             for (TriggerObject trigger : triggers) {
                 trigger.fire(session, type, beforeAction);
@@ -893,13 +893,13 @@ public abstract class Table extends SchemaObjectBase {
      * @param newRow the new data or null for a delete
      * @return true if no further action is required (for 'instead of' triggers)
      */
-    public boolean fireBeforeRow(Session session, Row oldRow, Row newRow) {
+    public boolean fireBeforeRow(ServerSession session, Row oldRow, Row newRow) {
         boolean done = fireRow(session, oldRow, newRow, true, false);
         fireConstraints(session, oldRow, newRow, true);
         return done;
     }
 
-    private void fireConstraints(Session session, Row oldRow, Row newRow, boolean before) {
+    private void fireConstraints(ServerSession session, Row oldRow, Row newRow, boolean before) {
         if (constraints != null) {
             // don't use enhanced for loop to avoid creating objects
             for (int i = 0, size = constraints.size(); i < size; i++) {
@@ -919,14 +919,14 @@ public abstract class Table extends SchemaObjectBase {
      *  @param newRow the new data or null for a delete
      *  @param rollback when the operation occurred within a rollback
      */
-    public void fireAfterRow(Session session, Row oldRow, Row newRow, boolean rollback) {
+    public void fireAfterRow(ServerSession session, Row oldRow, Row newRow, boolean rollback) {
         fireRow(session, oldRow, newRow, false, rollback);
         if (!rollback) {
             fireConstraints(session, oldRow, newRow, false);
         }
     }
 
-    private boolean fireRow(Session session, Row oldRow, Row newRow, boolean beforeAction, boolean rollback) {
+    private boolean fireRow(ServerSession session, Row oldRow, Row newRow, boolean beforeAction, boolean rollback) {
         if (triggers != null) {
             for (TriggerObject trigger : triggers) {
                 boolean done = trigger.fireRow(session, oldRow, newRow, beforeAction, rollback);
@@ -958,7 +958,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param enabled true if checking should be enabled
      * @param checkExisting true if existing rows must be checked during this call
      */
-    public void setCheckForeignKeyConstraints(Session session, boolean enabled, boolean checkExisting) {
+    public void setCheckForeignKeyConstraints(ServerSession session, boolean enabled, boolean checkExisting) {
         if (enabled && checkExisting) {
             if (constraints != null) {
                 for (Constraint c : constraints) {
@@ -1019,7 +1019,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      * @param index the index that is no longer required
      */
-    public void removeIndexOrTransferOwnership(Session session, Index index) {
+    public void removeIndexOrTransferOwnership(ServerSession session, Index index) {
         boolean stillNeeded = false;
         if (constraints != null) {
             for (Constraint cons : constraints) {
@@ -1051,7 +1051,7 @@ public abstract class Table extends SchemaObjectBase {
      * @return an object array with the sessions involved in the deadlock, or
      *         null
      */
-    public ArrayList<Session> checkDeadlock(Session session, Session clash, Set<Session> visited) {
+    public ArrayList<ServerSession> checkDeadlock(ServerSession session, ServerSession clash, Set<ServerSession> visited) {
         return null;
     }
 
@@ -1102,7 +1102,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param column the column
      * @return the value
      */
-    public Value getDefaultValue(Session session, Column column) {
+    public Value getDefaultValue(ServerSession session, Column column) {
         Expression defaultExpr = column.getDefaultExpression();
         Value v;
         if (defaultExpr == null) {

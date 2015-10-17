@@ -12,7 +12,7 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.FunctionCall;
 import org.lealone.db.expression.TableFunction;
@@ -40,7 +40,7 @@ public class FunctionTable extends Table {
     private LocalResult cachedResult;
     private Value cachedValue;
 
-    public FunctionTable(Schema schema, Session session, Expression functionExpr, FunctionCall function) {
+    public FunctionTable(Schema schema, ServerSession session, Expression functionExpr, FunctionCall function) {
         super(schema, 0, function.getName(), false, true);
         this.functionExpr = functionExpr;
         this.function = function;
@@ -81,18 +81,18 @@ public class FunctionTable extends Table {
     }
 
     @Override
-    public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
         // nothing to do
         return false;
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // nothing to do
     }
 
     @Override
-    public void unlock(Session s) {
+    public void unlock(ServerSession s) {
         // nothing to do
     }
 
@@ -102,18 +102,18 @@ public class FunctionTable extends Table {
     }
 
     @Override
-    public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
             boolean create, String indexComment) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
     @Override
-    public void removeRow(Session session, Row row) {
+    public void removeRow(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
@@ -123,7 +123,7 @@ public class FunctionTable extends Table {
     }
 
     @Override
-    public void addRow(Session session, Row row) {
+    public void addRow(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("ALIAS");
     }
 
@@ -138,7 +138,7 @@ public class FunctionTable extends Table {
     }
 
     @Override
-    public Index getScanIndex(Session session) {
+    public Index getScanIndex(ServerSession session) {
         return new FunctionIndex(this, IndexColumn.wrap(columns));
     }
 
@@ -153,7 +153,7 @@ public class FunctionTable extends Table {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return rowCount;
     }
 
@@ -179,7 +179,7 @@ public class FunctionTable extends Table {
      * @param session the session
      * @return the result
      */
-    public Result getResult(Session session) {
+    public Result getResult(ServerSession session) {
         ValueResultSet v = getValueResultSet(session);
         if (v == null) {
             return null;
@@ -202,12 +202,12 @@ public class FunctionTable extends Table {
      * @param session the session
      * @return the result set
      */
-    public ResultSet getResultSet(Session session) {
+    public ResultSet getResultSet(ServerSession session) {
         ValueResultSet v = getValueResultSet(session);
         return v == null ? null : v.getResultSet();
     }
 
-    private ValueResultSet getValueResultSet(Session session) {
+    private ValueResultSet getValueResultSet(ServerSession session) {
         functionExpr = functionExpr.optimize(session);
         Value v = functionExpr.getValue(session);
         if (v == ValueNull.INSTANCE) {

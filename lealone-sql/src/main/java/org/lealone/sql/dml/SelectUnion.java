@@ -14,9 +14,8 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.ParameterInterface;
-import org.lealone.db.Session;
+import org.lealone.db.CommandParameter;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
@@ -31,6 +30,8 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.Parameter;
@@ -71,7 +72,7 @@ public class SelectUnion extends Query {
     private boolean isPrepared, checkInit;
     private boolean isForUpdate;
 
-    public SelectUnion(Session session, Query query) {
+    public SelectUnion(ServerSession session, Query query) {
         super(session);
         this.left = query;
     }
@@ -280,10 +281,10 @@ public class SelectUnion extends Query {
     }
 
     @Override
-    public void prepare() {
+    public PreparedStatement prepare() {
         if (isPrepared) {
             // sometimes a subquery is prepared twice (CREATE TABLE AS SELECT)
-            return;
+            return this;
         }
         if (SysProperties.CHECK && !checkInit) {
             DbException.throwInternalError("not initialized");
@@ -314,6 +315,7 @@ public class SelectUnion extends Query {
         }
         expressionArray = new Expression[expressions.size()];
         expressions.toArray(expressionArray);
+        return this;
     }
 
     @Override
@@ -435,7 +437,7 @@ public class SelectUnion extends Query {
     }
 
     @Override
-    public void updateAggregate(Session s) {
+    public void updateAggregate(ServerSession s) {
         left.updateAggregate(s);
         right.updateAggregate(s);
     }
@@ -448,7 +450,7 @@ public class SelectUnion extends Query {
 
     @Override
     public int getType() {
-        return CommandInterface.SELECT;
+        return SQLStatement.SELECT;
     }
 
     @Override
@@ -469,7 +471,7 @@ public class SelectUnion extends Query {
     }
 
     @Override
-    public void addGlobalCondition(ParameterInterface param, int columnId, int comparisonType) {
+    public void addGlobalCondition(CommandParameter param, int columnId, int comparisonType) {
         this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }
 }

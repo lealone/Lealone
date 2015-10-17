@@ -12,9 +12,8 @@ import java.util.Map;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.Column;
@@ -22,6 +21,7 @@ import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.DataType;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Query;
 import org.lealone.sql.expression.Expression;
@@ -30,20 +30,20 @@ import org.lealone.sql.expression.Expression;
  * This class represents the statement
  * CREATE TABLE
  */
-public class CreateTable extends SchemaCommand {
+public class CreateTable extends SchemaStatement {
 
     protected final CreateTableData data = new CreateTableData();
     protected IndexColumn[] pkColumns;
     protected boolean ifNotExists;
 
-    private final ArrayList<DefineCommand> constraintCommands = New.arrayList();
+    private final ArrayList<DefineStatement> constraintCommands = New.arrayList();
     private boolean onCommitDrop;
     private boolean onCommitTruncate;
     private Query asQuery;
     private String comment;
     private boolean sortedInsertMode;
 
-    public CreateTable(Session session, Schema schema) {
+    public CreateTable(ServerSession session, Schema schema) {
         super(session, schema);
         data.persistIndexes = true;
         data.persistData = true;
@@ -76,13 +76,13 @@ public class CreateTable extends SchemaCommand {
      *
      * @param command the statement to add
      */
-    public void addConstraintCommand(DefineCommand command) {
+    public void addConstraintCommand(DefineStatement command) {
         if (command instanceof CreateIndex) {
             constraintCommands.add(command);
         } else {
             AlterTableAddConstraint con = (AlterTableAddConstraint) command;
             boolean alreadySet;
-            if (con.getType() == CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY) {
+            if (con.getType() == SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY) {
                 alreadySet = setPrimaryKeyColumns(con.getIndexColumns());
             } else {
                 alreadySet = false;
@@ -168,7 +168,7 @@ public class CreateTable extends SchemaCommand {
             for (Sequence sequence : sequences) {
                 table.addSequence(sequence);
             }
-            for (DefineCommand command : constraintCommands) {
+            for (DefineStatement command : constraintCommands) {
                 command.setTransactional(transactional);
                 command.update();
             }
@@ -299,7 +299,7 @@ public class CreateTable extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_TABLE;
+        return SQLStatement.CREATE_TABLE;
     }
 
 }

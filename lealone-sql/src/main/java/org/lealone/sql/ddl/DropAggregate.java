@@ -8,21 +8,21 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP AGGREGATE
  */
-public class DropAggregate extends DefineCommand {
+public class DropAggregate extends DefineStatement {
 
     private String name;
     private boolean ifExists;
 
-    public DropAggregate(Session session) {
+    public DropAggregate(ServerSession session) {
         super(session);
     }
 
@@ -52,7 +52,7 @@ public class DropAggregate extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_AGGREGATE;
+        return SQLStatement.DROP_AGGREGATE;
     }
 
 }

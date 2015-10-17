@@ -19,7 +19,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.RangeTable;
@@ -243,7 +243,7 @@ public class User extends RightOwner {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         for (Right right : database.getAllRights()) {
             if (right.getGrantee() == this) {
                 database.removeDatabaseObject(session, right);

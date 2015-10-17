@@ -1,25 +1,37 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.client.result;
 
 import java.io.IOException;
 
-import org.lealone.client.FrontendSession;
+import org.lealone.client.ClientSession;
 import org.lealone.common.message.DbException;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 
-public class ResultRemoteCursor extends ResultRemote {
-    //不能在这初始化为false，在super的构造函数中会调用fetchRows有可能把isEnd设为true了，
-    //如果初始化为false，相当于在调用完super(...)后再执行isEnd = false，这时前面的值就被覆盖了。
+public class RowCountUndeterminedClientResult extends ClientResult {
+
+    // 不能在这初始化为false，在super的构造函数中会调用fetchRows有可能把isEnd设为true了，
+    // 如果初始化为false，相当于在调用完super(...)后再执行isEnd = false，这时前面的值就被覆盖了。
     private boolean isEnd;
 
-    public ResultRemoteCursor(FrontendSession session, Transfer transfer, int id, int columnCount, int fetchSize)
-            throws IOException {
+    public RowCountUndeterminedClientResult(ClientSession session, Transfer transfer, int id, int columnCount,
+            int fetchSize) throws IOException {
         super(session, transfer, id, columnCount, -1, fetchSize);
     }
 
@@ -48,7 +60,7 @@ public class ResultRemoteCursor extends ResultRemote {
 
     @Override
     public int getRowCount() {
-        return Integer.MAX_VALUE; //不能返回-1，JdbcResultSet那边会抛异常
+        return Integer.MAX_VALUE; // 不能返回-1，JdbcResultSet那边会抛异常
     }
 
     @Override

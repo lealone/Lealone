@@ -17,7 +17,7 @@
  */
 package org.lealone.sql.router;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexBase;
 import org.lealone.db.index.IndexType;
@@ -44,17 +44,17 @@ public class MergedIndex extends IndexBase {
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         return new MergedCursor(result);
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         return 0;
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return 0;
     }
 

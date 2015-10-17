@@ -42,7 +42,7 @@ public class TestBase extends Assert {
     }
 
     public static synchronized void initTransactionEngine() {
-        if (te != null) {
+        if (te == null) {
             te = TransactionEngineManager.getInstance().getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
 
             Map<String, String> config = new HashMap<>();
@@ -165,5 +165,13 @@ public class TestBase extends Assert {
 
     public Connection getConnection() throws Exception {
         return DriverManager.getConnection(getURL());
+    }
+
+    public static void p(Object o) {
+        System.out.println(o);
+    }
+
+    public static void p() {
+        System.out.println();
     }
 }

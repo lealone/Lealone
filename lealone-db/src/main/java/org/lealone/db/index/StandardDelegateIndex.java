@@ -8,7 +8,7 @@ package org.lealone.db.index;
 import java.util.List;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -36,17 +36,17 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void addRowsToBuffer(Session session, List<Row> rows, String bufferName) {
+    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
         throw DbException.throwInternalError();
     }
 
     @Override
-    public void addBufferedRows(Session session, List<String> bufferNames) {
+    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
         throw DbException.throwInternalError();
     }
 
     @Override
-    public void add(Session session, Row row) {
+    public void add(ServerSession session, Row row) {
         // nothing to do
     }
 
@@ -56,12 +56,12 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // nothing to do
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         ValueLong min = mainIndex.getKey(first, StandardPrimaryIndex.MIN, StandardPrimaryIndex.MIN);
         // ifNull is MIN_VALUE as well, because the column is never NULL
         // so avoid returning all rows (returning one row is OK)
@@ -70,7 +70,7 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
         return mainIndex.findFirstOrLast(session, first);
     }
 
@@ -83,7 +83,7 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         return 10 * getCostRangeIndex(masks, mainIndex.getRowCountApproximation(), filter, sortOrder);
     }
 
@@ -93,17 +93,17 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void remove(Session session, Row row) {
+    public void remove(ServerSession session, Row row) {
         // nothing to do
     }
 
     @Override
-    public void remove(Session session) {
+    public void remove(ServerSession session) {
         mainIndex.setMainIndexColumn(-1);
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         // nothing to do
     }
 
@@ -113,7 +113,7 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return mainIndex.getRowCount(session);
     }
 

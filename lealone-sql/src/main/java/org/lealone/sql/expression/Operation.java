@@ -9,7 +9,7 @@ package org.lealone.sql.expression;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.Mode;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
@@ -107,7 +107,7 @@ public class Operation extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Value l = left.getValue(session).convertTo(dataType);
         Value r;
         if (right == null) {
@@ -178,7 +178,7 @@ public class Operation extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         left = left.optimize(session);
         switch (opType) {
         case NEGATE:
@@ -378,7 +378,7 @@ public class Operation extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         left.updateAggregate(session);
         if (right != null) {
             right.updateAggregate(session);

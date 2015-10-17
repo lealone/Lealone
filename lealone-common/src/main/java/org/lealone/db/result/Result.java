@@ -9,7 +9,7 @@ package org.lealone.db.result;
 import org.lealone.db.value.Value;
 
 /**
- * The result interface is used by the LocalResult and ResultRemote class.
+ * The result interface is used by the LocalResult and ClientResult class.
  * A result may contain rows, or just an update count.
  */
 public interface Result {

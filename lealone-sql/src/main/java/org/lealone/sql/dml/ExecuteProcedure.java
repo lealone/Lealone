@@ -9,11 +9,11 @@ package org.lealone.sql.dml;
 import java.util.ArrayList;
 
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Procedure;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 
@@ -21,12 +21,12 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * EXECUTE
  */
-public class ExecuteProcedure extends Prepared {
+public class ExecuteProcedure extends StatementBase {
 
     private final ArrayList<Expression> expressions = New.arrayList();
     private Procedure procedure;
 
-    public ExecuteProcedure(Session session) {
+    public ExecuteProcedure(ServerSession session) {
         super(session);
     }
 
@@ -45,7 +45,7 @@ public class ExecuteProcedure extends Prepared {
     }
 
     private void setParameters() {
-        Prepared prepared = (Prepared) procedure.getPrepared();
+        StatementBase prepared = (StatementBase) procedure.getPrepared();
         ArrayList<Parameter> params = prepared.getParameters();
         for (int i = 0; params != null && i < params.size() && i < expressions.size(); i++) {
             Expression expr = expressions.get(i);
@@ -56,21 +56,21 @@ public class ExecuteProcedure extends Prepared {
 
     @Override
     public boolean isQuery() {
-        Prepared prepared = (Prepared) procedure.getPrepared();
+        StatementBase prepared = (StatementBase) procedure.getPrepared();
         return prepared.isQuery();
     }
 
     @Override
     public int update() {
         setParameters();
-        Prepared prepared = (Prepared) procedure.getPrepared();
+        StatementBase prepared = (StatementBase) procedure.getPrepared();
         return prepared.update();
     }
 
     @Override
     public Result query(int limit) {
         setParameters();
-        Prepared prepared = (Prepared) procedure.getPrepared();
+        StatementBase prepared = (StatementBase) procedure.getPrepared();
         return prepared.query(limit);
     }
 
@@ -81,13 +81,13 @@ public class ExecuteProcedure extends Prepared {
 
     @Override
     public Result queryMeta() {
-        Prepared prepared = (Prepared) procedure.getPrepared();
+        StatementBase prepared = (StatementBase) procedure.getPrepared();
         return prepared.queryMeta();
     }
 
     @Override
     public int getType() {
-        return CommandInterface.EXECUTE;
+        return SQLStatement.EXECUTE;
     }
 
 }

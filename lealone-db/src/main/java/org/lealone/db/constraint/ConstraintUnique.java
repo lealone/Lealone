@@ -10,7 +10,7 @@ import java.util.HashSet;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
@@ -103,7 +103,7 @@ public class ConstraintUnique extends Constraint {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         table.removeConstraint(this);
         if (indexOwner) {
             table.removeIndexOrTransferOwnership(session, index);
@@ -116,7 +116,7 @@ public class ConstraintUnique extends Constraint {
     }
 
     @Override
-    public void checkRow(Session session, Table t, Row oldRow, Row newRow) {
+    public void checkRow(ServerSession session, Table t, Row oldRow, Row newRow) {
         // unique index check is enough
     }
 
@@ -145,7 +145,7 @@ public class ConstraintUnique extends Constraint {
     }
 
     @Override
-    public void checkExistingData(Session session) {
+    public void checkExistingData(ServerSession session) {
         // no need to check: when creating the unique index any problems are
         // found
     }

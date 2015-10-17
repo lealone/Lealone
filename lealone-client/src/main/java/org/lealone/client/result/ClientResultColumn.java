@@ -8,13 +8,12 @@ package org.lealone.client.result;
 
 import java.io.IOException;
 
-import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
 
 /**
- * A result set column of a remote result.
+ * A column of the client result.
  */
-public class ResultColumn {
+public class ClientResultColumn {
 
     /**
      * The column alias.
@@ -57,7 +56,7 @@ public class ResultColumn {
     final int displaySize;
 
     /**
-     * True if this is an autoincrement column.
+     * True if this is an auto-increment column.
      */
     final boolean autoIncrement;
 
@@ -71,7 +70,7 @@ public class ResultColumn {
      *
      * @param in the object from where to read the data
      */
-    ResultColumn(Transfer in) throws IOException {
+    ClientResultColumn(Transfer in) throws IOException {
         alias = in.readString();
         schemaName = in.readString();
         tableName = in.readString();
@@ -83,25 +82,4 @@ public class ResultColumn {
         autoIncrement = in.readBoolean();
         nullable = in.readInt();
     }
-
-    /**
-     * Write a result column to the given output.
-     *
-     * @param out the object to where to write the data
-     * @param result the result
-     * @param i the column index
-     */
-    public static void writeColumn(Transfer out, Result result, int i) throws IOException {
-        out.writeString(result.getAlias(i));
-        out.writeString(result.getSchemaName(i));
-        out.writeString(result.getTableName(i));
-        out.writeString(result.getColumnName(i));
-        out.writeInt(result.getColumnType(i));
-        out.writeLong(result.getColumnPrecision(i));
-        out.writeInt(result.getColumnScale(i));
-        out.writeInt(result.getDisplaySize(i));
-        out.writeBoolean(result.isAutoIncrement(i));
-        out.writeInt(result.getNullable(i));
-    }
-
 }

@@ -7,7 +7,7 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
@@ -22,7 +22,7 @@ public class Variable extends Expression {
     private final String name;
     private Value lastValue;
 
-    public Variable(Session session, String name) {
+    public Variable(ServerSession session, String name) {
         this.name = name;
         lastValue = session.getVariable(name);
     }
@@ -58,7 +58,7 @@ public class Variable extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         lastValue = session.getVariable(name);
         return lastValue;
     }
@@ -91,7 +91,7 @@ public class Variable extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         return this;
     }
 
@@ -101,7 +101,7 @@ public class Variable extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // nothing to do
     }
 

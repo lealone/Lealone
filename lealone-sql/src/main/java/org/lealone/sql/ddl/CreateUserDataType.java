@@ -8,25 +8,25 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.UserDataType;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.DataType;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * CREATE DOMAIN
  */
-public class CreateUserDataType extends DefineCommand {
+public class CreateUserDataType extends DefineStatement {
 
     private String typeName;
     private Column column;
     private boolean ifNotExists;
 
-    public CreateUserDataType(Session session) {
+    public CreateUserDataType(ServerSession session) {
         super(session);
     }
 
@@ -74,7 +74,7 @@ public class CreateUserDataType extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_DOMAIN;
+        return SQLStatement.CREATE_DOMAIN;
     }
 
 }

@@ -8,26 +8,27 @@ package org.lealone.sql.dml;
 
 import java.sql.ResultSet;
 
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * CALL.
  */
-public class Call extends Prepared {
+public class Call extends StatementBase {
 
     private boolean isResultSet;
     private Expression expression;
     private Expression[] expressions;
 
-    public Call(Session session) {
+    public Call(ServerSession session) {
         super(session);
     }
 
@@ -78,13 +79,14 @@ public class Call extends Prepared {
     }
 
     @Override
-    public void prepare() {
+    public PreparedStatement prepare() {
         expression = expression.optimize(session);
         expressions = new Expression[] { expression };
         isResultSet = expression.getType() == Value.RESULT_SET;
         if (isResultSet) {
             prepareAlways = true;
         }
+        return this;
     }
 
     public void setExpression(Expression expression) {
@@ -109,7 +111,7 @@ public class Call extends Prepared {
 
     @Override
     public int getType() {
-        return CommandInterface.CALL;
+        return SQLStatement.CALL;
     }
 
     @Override

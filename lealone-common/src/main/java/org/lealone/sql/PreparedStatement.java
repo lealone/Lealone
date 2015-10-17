@@ -17,10 +17,60 @@
  */
 package org.lealone.sql;
 
+import java.util.ArrayList;
+
+import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 
-public interface PreparedStatement {
+public interface PreparedStatement extends SQLStatement {
+
+    void setLocal(boolean local);
+
+    void setFetchSize(int fetchSize);
+
+    int getFetchSize();
+
+    @Override
+    ArrayList<? extends CommandParameter> getParameters();
+
+    @Override
+    boolean isQuery();
+
+    boolean isLocal();
+
+    boolean isBatch();
+
+    boolean isReadOnly();
+
+    void setObjectId(int i);
+
+    int update();
+
+    Result query(int maxrows);
+
+    Result query(int maxrows, boolean scrollable);
+
+    void checkCanceled();
+
+    boolean canReuse();
+
+    void reuse();
+
+    boolean isCacheable();
+
+    @Override
+    void close();
+
+    @Override
+    void cancel();
+
+    @Override
+    Result executeQuery(int maxRows, boolean scrollable);
+
+    @Override
     int executeUpdate();
 
-    Result executeQuery();
+    @Override
+    Result getMetaData();
+
 }

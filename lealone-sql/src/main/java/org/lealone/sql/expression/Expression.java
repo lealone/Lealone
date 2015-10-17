@@ -13,7 +13,7 @@ import java.sql.SQLException;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
@@ -36,7 +36,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      * @return the result
      */
     @Override
-    public abstract Value getValue(Session session);
+    public abstract Value getValue(ServerSession session);
 
     /**
      * Return the data type. The data type may not be known before the
@@ -63,7 +63,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      * @return the optimized expression
      */
     @Override
-    public abstract Expression optimize(Session session);
+    public abstract Expression optimize(ServerSession session);
 
     /**
      * Tell the expression columns whether the table filter can return values now.
@@ -124,7 +124,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      *
      * @param session the session
      */
-    public abstract void updateAggregate(Session session);
+    public abstract void updateAggregate(ServerSession session);
 
     /**
      * Check if this expression and all sub-expressions can fulfill a criteria.
@@ -153,7 +153,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      * @param session the session
      * @return the negated expression, or null
      */
-    public Expression getNotIfPossible(Session session) {
+    public Expression getNotIfPossible(ServerSession session) {
         // by default it is not possible
         return null;
     }
@@ -196,7 +196,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      * @return the result
      */
     @Override
-    public Boolean getBooleanValue(Session session) {
+    public Boolean getBooleanValue(ServerSession session) {
         return getValue(session).getBoolean();
     }
 
@@ -207,7 +207,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      * @param filter the table filter
      */
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         // default is do nothing
     }
 
@@ -311,7 +311,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      * @param session the session
      * @return array of expression columns if applicable, null otherwise
      */
-    public Expression[] getExpressionColumns(Session session) {
+    public Expression[] getExpressionColumns(ServerSession session) {
         return null;
     }
 
@@ -322,7 +322,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      * @param value the value to extract columns from
      * @return array of expression columns
      */
-    static Expression[] getExpressionColumns(Session session, ValueArray value) {
+    static Expression[] getExpressionColumns(ServerSession session, ValueArray value) {
         Value[] list = value.getList();
         ExpressionColumn[] expr = new ExpressionColumn[list.length];
         for (int i = 0, len = list.length; i < len; i++) {
@@ -340,7 +340,7 @@ public abstract class Expression implements org.lealone.db.expression.Expression
      * @param rs the result set
      * @return an array of expression columns
      */
-    public static Expression[] getExpressionColumns(Session session, ResultSet rs) {
+    public static Expression[] getExpressionColumns(ServerSession session, ResultSet rs) {
         try {
             ResultSetMetaData meta = rs.getMetaData();
             int columnCount = meta.getColumnCount();
@@ -362,13 +362,13 @@ public abstract class Expression implements org.lealone.db.expression.Expression
         }
     }
 
-    public void mergeAggregate(Session session, Value v) {
+    public void mergeAggregate(ServerSession session, Value v) {
     }
 
     public void calculate(Calculator calculator) {
     }
 
-    public Value getMergedValue(Session session) {
+    public Value getMergedValue(ServerSession session) {
         return getValue(session);
     }
 }

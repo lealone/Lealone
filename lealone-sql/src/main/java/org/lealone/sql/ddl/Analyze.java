@@ -8,9 +8,8 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
@@ -18,21 +17,22 @@ import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Parameter;
 
 /**
  * This class represents the statement
  * ANALYZE
  */
-public class Analyze extends DefineCommand {
+public class Analyze extends DefineStatement {
 
     /**
      * The sample size.
      */
     private int sampleRows;
 
-    public Analyze(Session session) {
+    public Analyze(ServerSession session) {
         super(session);
         sampleRows = session.getDatabase().getSettings().analyzeSample;
     }
@@ -56,7 +56,7 @@ public class Analyze extends DefineCommand {
      * @param sample the number of sample rows
      * @param manual whether the command was called by the user
      */
-    public static void analyzeTable(Session session, Table table, int sample, boolean manual) {
+    public static void analyzeTable(ServerSession session, Table table, int sample, boolean manual) {
         if (!(table.getTableType().equals(Table.TABLE)) || table.isHidden() || session == null) {
             return;
         }
@@ -103,7 +103,7 @@ public class Analyze extends DefineCommand {
             buff.append(" LIMIT ? SAMPLE_SIZE ? ");
         }
         String sql = buff.toString();
-        Prepared command = (Prepared) session.prepare(sql);
+        StatementBase command = (StatementBase) session.prepareStatement(sql);
         if (sample > 0) {
             ArrayList<Parameter> params = command.getParameters();
             params.get(0).setValue(ValueInt.get(1));
@@ -121,7 +121,7 @@ public class Analyze extends DefineCommand {
         if (manual) {
             db.updateMeta(session, table);
         } else {
-            Session sysSession = db.getSystemSession();
+            ServerSession sysSession = db.getSystemSession();
             if (sysSession != session) {
                 // if the current session is the system session
                 // (which is the case if we are within a trigger)
@@ -143,7 +143,7 @@ public class Analyze extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.ANALYZE;
+        return SQLStatement.ANALYZE;
     }
 
 }

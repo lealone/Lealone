@@ -8,31 +8,26 @@ package org.lealone.sql;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
+import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.MathUtils;
-import org.lealone.db.CommandInterface;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.ParameterInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
+import org.lealone.sql.expression.Parameter;
 
 /**
- * Represents a SQL statement. This object is only used on the server side.
+ * Represents a SQL statement wrapper.
  */
-public abstract class Command implements CommandInterface, org.lealone.sql.BackendCommand {
+class StatementWrapper extends StatementBase {
 
-    /**
-     * The session.
-     */
-    protected final Session session;
-
-    /**
-     * The last start time.
-     */
-    protected long startTime;
+    StatementBase statement;
 
     /**
      * The trace module.
@@ -40,80 +35,21 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
     private final Trace trace;
 
     /**
+     * The last start time.
+     */
+    private long startTime;
+
+    /**
      * If this query was canceled.
      */
     private volatile boolean cancel;
 
-    private final String sql;
-
     private boolean canReuse;
 
-    protected Command(Session session, String sql) {
-        this.session = session;
-        this.sql = sql;
+    StatementWrapper(ServerSession session, StatementBase statement) {
+        super(session);
+        this.statement = statement;
         trace = session.getDatabase().getTrace(Trace.COMMAND);
-    }
-
-    /**
-     * Check if this command is transactional.
-     * If it is not, then it forces the current transaction to commit.
-     *
-     * @return true if it is
-     */
-    public abstract boolean isTransactional();
-
-    /**
-     * Check if this command is a query.
-     *
-     * @return true if it is
-     */
-
-    @Override
-    public abstract boolean isQuery();
-
-    /**
-     * Get the list of parameters.
-     *
-     * @return the list of parameters
-     */
-
-    @Override
-    public abstract ArrayList<? extends ParameterInterface> getParameters();
-
-    /**
-     * Check if this command is read only.
-     *
-     * @return true if it is
-     */
-    public abstract boolean isReadOnly();
-
-    /**
-     * Get an empty result set containing the meta data.
-     *
-     * @return an empty result set
-     */
-    public abstract Result queryMeta();
-
-    /**
-     * Execute an updating statement (for example insert, delete, or update), if
-     * this is possible.
-     *
-     * @return the update count
-     * @throws DbException if the command is not an updating statement
-     */
-    public int update() {
-        throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_QUERY);
-    }
-
-    /**
-     * Execute a query statement, if this is possible.
-     *
-     * @param maxRows the maximum number of rows returned
-     * @return the local result set
-     * @throws DbException if the command is not a query
-     */
-    public Result query(int maxRows) {
-        throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
     }
 
     @Override
@@ -131,7 +67,7 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
     }
 
     void setProgress(int state) {
-        session.getDatabase().setProgress(state, sql, 0, 0);
+        session.getDatabase().setProgress(state, sqlStatement, 0, 0);
     }
 
     /**
@@ -139,7 +75,9 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
      *
      * @throws DbException if the statement has been canceled
      */
-    protected void checkCanceled() {
+
+    @Override
+    public void checkCanceled() {
         if (cancel) {
             cancel = false;
             throw DbException.get(ErrorCode.STATEMENT_WAS_CANCELED);
@@ -208,9 +146,9 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
                     }
                 }
             } catch (DbException e) {
-                e = e.addSQL(sql);
+                e = e.addSQL(sqlStatement);
                 SQLException s = e.getSQLException();
-                database.exceptionThrown(s, sql);
+                database.exceptionThrown(s, sqlStatement);
                 if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
                     callStop = false;
                     database.shutdownImmediately();
@@ -234,7 +172,7 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
         session.waitIfExclusiveModeEnabled();
         boolean callStop = true;
         synchronized (sync) {
-            long savepointId = session.getTransaction(getPrepared()).getSavepointId();
+            long savepointId = session.getTransaction(statement).getSavepointId();
             session.setCurrentCommand(this);
             try {
                 while (true) {
@@ -252,9 +190,9 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
                     }
                 }
             } catch (DbException e) {
-                e = e.addSQL(sql);
+                e = e.addSQL(sqlStatement);
                 SQLException s = e.getSQLException();
-                database.exceptionThrown(s, sql);
+                database.exceptionThrown(s, sqlStatement);
                 if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
                     callStop = false;
                     database.shutdownImmediately();
@@ -315,12 +253,7 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
 
     @Override
     public String toString() {
-        return sql + Trace.formatParams(getParameters());
-    }
-
-    @Override
-    public boolean isCacheable() {
-        return false;
+        return sqlStatement + Trace.formatParams(getParameters());
     }
 
     /**
@@ -342,13 +275,106 @@ public abstract class Command implements CommandInterface, org.lealone.sql.Backe
     @Override
     public void reuse() {
         canReuse = false;
-        ArrayList<? extends ParameterInterface> parameters = getParameters();
+        ArrayList<? extends CommandParameter> parameters = getParameters();
         for (int i = 0, size = parameters.size(); i < size; i++) {
-            ParameterInterface param = parameters.get(i);
+            CommandParameter param = parameters.get(i);
             param.setValue(null, true);
         }
     }
 
+    private void recompileIfRequired() {
+        if (statement.needRecompile()) {
+            // TODO test with 'always recompile'
+            statement.setModificationMetaId(0);
+            String sql = statement.getSQL();
+            ArrayList<Parameter> oldParams = statement.getParameters();
+            Parser parser = new Parser(session);
+            statement = (StatementBase) parser.parse(sql).prepare();
+            long mod = statement.getModificationMetaId();
+            statement.setModificationMetaId(0);
+            ArrayList<Parameter> newParams = statement.getParameters();
+            for (int i = 0, size = newParams.size(); i < size; i++) {
+                Parameter old = oldParams.get(i);
+                if (old.isValueSet()) {
+                    Value v = old.getValue(session);
+                    Parameter p = newParams.get(i);
+                    p.setValue(v);
+                }
+            }
+            statement.prepare();
+            statement.setModificationMetaId(mod);
+        }
+    }
+
     @Override
-    public abstract Prepared getPrepared();
+    public int update() {
+        recompileIfRequired();
+        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+        start();
+        session.setLastScopeIdentity(ValueNull.INSTANCE);
+        statement.checkParameters();
+        int updateCount = statement.update();
+        statement.trace(startTime, updateCount);
+        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+        return updateCount;
+    }
+
+    @Override
+    public Result query(int maxrows) {
+        recompileIfRequired();
+        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+        start();
+        statement.checkParameters();
+        Result result = statement.query(maxrows);
+        statement.trace(startTime, result.getRowCount());
+        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+        return result;
+    }
+
+    private boolean readOnlyKnown;
+    private boolean readOnly;
+
+    @Override
+    public boolean isReadOnly() {
+        if (!readOnlyKnown) {
+            readOnly = statement.isReadOnly();
+            readOnlyKnown = true;
+        }
+        return readOnly;
+    }
+
+    @Override
+    public Result queryMeta() {
+        return statement.queryMeta();
+    }
+
+    @Override
+    public boolean isCacheable() {
+        return statement.isCacheable();
+    }
+
+    // @Override
+    public int getCommandType() {
+        return statement.getType();
+    }
+
+    @Override
+    public int getType() {
+        return statement.getType();
+    }
+
+    @Override
+    public boolean isTransactional() {
+        return statement.isTransactional();
+    }
+
+    @Override
+    public boolean isDDL() {
+        return statement.isDDL();
+    }
+
+    @Override
+    public boolean isBatch() {
+        return statement.isDDL();
+    }
 }

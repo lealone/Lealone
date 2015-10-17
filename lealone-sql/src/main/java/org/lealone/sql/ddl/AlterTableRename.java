@@ -8,24 +8,24 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * ALTER TABLE RENAME
  */
-public class AlterTableRename extends SchemaCommand {
+public class AlterTableRename extends SchemaStatement {
 
     private Table oldTable;
     private String newTableName;
     private boolean hidden;
 
-    public AlterTableRename(Session session, Schema schema) {
+    public AlterTableRename(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -63,7 +63,7 @@ public class AlterTableRename extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.ALTER_TABLE_RENAME;
+        return SQLStatement.ALTER_TABLE_RENAME;
     }
 
     public void setHidden(boolean hidden) {

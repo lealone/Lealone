@@ -8,7 +8,8 @@ package org.lealone.sql.expression;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.ParameterInterface;
+import org.lealone.db.CommandParameter;
+import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.Column;
@@ -21,7 +22,7 @@ import org.lealone.db.value.ValueNull;
 /**
  * A parameter of a prepared statement.
  */
-public class Parameter extends Expression implements ParameterInterface {
+public class Parameter extends Expression implements CommandParameter {
 
     private Value value;
     private Column column;
@@ -42,6 +43,7 @@ public class Parameter extends Expression implements ParameterInterface {
         this.value = v;
     }
 
+    @Override
     public void setValue(Value v) {
         this.value = v;
     }
@@ -56,7 +58,7 @@ public class Parameter extends Expression implements ParameterInterface {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         return getParamValue();
     }
 
@@ -84,7 +86,7 @@ public class Parameter extends Expression implements ParameterInterface {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         return this;
     }
 
@@ -137,7 +139,7 @@ public class Parameter extends Expression implements ParameterInterface {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // nothing to do
     }
 
@@ -169,7 +171,7 @@ public class Parameter extends Expression implements ParameterInterface {
     }
 
     @Override
-    public Expression getNotIfPossible(Session session) {
+    public Expression getNotIfPossible(ServerSession session) {
         return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
     }
 
@@ -177,8 +179,14 @@ public class Parameter extends Expression implements ParameterInterface {
         this.column = column;
     }
 
+    @Override
     public int getIndex() {
         return index;
+    }
+
+    @Override
+    public Value getParamValue(Session session) {
+        return getParamValue();
     }
 
 }

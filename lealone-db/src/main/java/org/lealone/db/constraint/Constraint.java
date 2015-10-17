@@ -10,7 +10,7 @@ import java.util.HashSet;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Row;
@@ -71,7 +71,7 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
      * @param oldRow the old row
      * @param newRow the new row
      */
-    public abstract void checkRow(Session session, Table t, Row oldRow, Row newRow);
+    public abstract void checkRow(ServerSession session, Table t, Row oldRow, Row newRow);
 
     /**
      * Check if this constraint needs the specified index.
@@ -116,7 +116,7 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
      *
      * @param session the session
      */
-    public abstract void checkExistingData(Session session);
+    public abstract void checkExistingData(ServerSession session);
 
     /**
      * This method is called after a related table has changed

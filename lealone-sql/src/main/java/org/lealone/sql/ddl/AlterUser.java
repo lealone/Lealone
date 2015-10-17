@@ -8,11 +8,11 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.User;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
 /**
@@ -21,7 +21,7 @@ import org.lealone.sql.expression.Expression;
  * ALTER USER RENAME,
  * ALTER USER SET PASSWORD
  */
-public class AlterUser extends DefineCommand {
+public class AlterUser extends DefineStatement {
 
     private int type;
     private User user;
@@ -31,7 +31,7 @@ public class AlterUser extends DefineCommand {
     private Expression hash;
     private boolean admin;
 
-    public AlterUser(Session session) {
+    public AlterUser(ServerSession session) {
         super(session);
     }
 
@@ -68,7 +68,7 @@ public class AlterUser extends DefineCommand {
         session.commit(true);
         Database db = LealoneDatabase.getInstance();
         switch (type) {
-        case CommandInterface.ALTER_USER_SET_PASSWORD:
+        case SQLStatement.ALTER_USER_SET_PASSWORD:
             if (user != session.getUser()) {
                 session.getUser().checkAdmin();
             }
@@ -78,14 +78,14 @@ public class AlterUser extends DefineCommand {
                 CreateUser.setPassword(user, session, password);
             }
             break;
-        case CommandInterface.ALTER_USER_RENAME:
+        case SQLStatement.ALTER_USER_RENAME:
             session.getUser().checkAdmin();
             if (db.findUser(newName) != null || newName.equals(user.getName())) {
                 throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, newName);
             }
             db.renameDatabaseObject(session, user, newName);
             break;
-        case CommandInterface.ALTER_USER_ADMIN:
+        case SQLStatement.ALTER_USER_ADMIN:
             session.getUser().checkAdmin();
             if (!admin) {
                 user.checkOwnsNoSchemas();

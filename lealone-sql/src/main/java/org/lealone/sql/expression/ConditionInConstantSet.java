@@ -11,7 +11,7 @@ import java.util.HashSet;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
 import org.lealone.db.table.ColumnResolver;
@@ -41,7 +41,7 @@ public class ConditionInConstantSet extends Condition {
      * @param left the expression before IN
      * @param valueList the value list (at least two elements)
      */
-    public ConditionInConstantSet(Session session, Expression left, ArrayList<Expression> valueList) {
+    public ConditionInConstantSet(ServerSession session, Expression left, ArrayList<Expression> valueList) {
         this.left = left;
         this.valueList = valueList;
         this.valueSet = new HashSet<Value>(valueList.size());
@@ -52,7 +52,7 @@ public class ConditionInConstantSet extends Condition {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Value x = left.getValue(session);
         if (x == ValueNull.INSTANCE) {
             return x;
@@ -74,13 +74,13 @@ public class ConditionInConstantSet extends Condition {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         left = left.optimize(session);
         return this;
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         if (!(left instanceof ExpressionColumn)) {
             return;
         }
@@ -111,7 +111,7 @@ public class ConditionInConstantSet extends Condition {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // nothing to do
     }
 
@@ -150,7 +150,7 @@ public class ConditionInConstantSet extends Condition {
      * @param other the second condition
      * @return null if the condition was not added, or the new condition
      */
-    Expression getAdditional(Session session, Comparison other) {
+    Expression getAdditional(ServerSession session, Comparison other) {
         Expression add = other.getIfEquals(left);
         if (add != null) {
             if (add.isConstant()) {

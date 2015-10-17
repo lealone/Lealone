@@ -15,7 +15,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
@@ -221,7 +221,7 @@ public class Aggregate extends Expression {
         this.groupConcatSeparator = separator;
     }
 
-    private SortOrder initOrder(Session session) {
+    private SortOrder initOrder(ServerSession session) {
         int size = groupConcatOrderList.size();
         int[] index = new int[size];
         int[] sortType = new int[size];
@@ -235,7 +235,7 @@ public class Aggregate extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // TODO aggregates: check nested MIN(MAX(ID)) and so on
         // if (on != null) {
         // on.updateAggregate();
@@ -278,7 +278,7 @@ public class Aggregate extends Expression {
     }
 
     @Override
-    public void mergeAggregate(Session session, Value v) {
+    public void mergeAggregate(ServerSession session, Value v) {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             // this is a different level (the enclosing query)
@@ -316,7 +316,7 @@ public class Aggregate extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         if (select.isQuickAggregateQuery()) {
             switch (type) {
             case COUNT:
@@ -392,7 +392,7 @@ public class Aggregate extends Expression {
     }
 
     @Override
-    public Value getMergedValue(Session session) {
+    public Value getMergedValue(ServerSession session) {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             throw DbException.get(ErrorCode.INVALID_USE_OF_AGGREGATE_FUNCTION_1, getSQL());
@@ -530,7 +530,7 @@ public class Aggregate extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         if (on != null) {
             on = on.optimize(session);
             dataType = on.getType();

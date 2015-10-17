@@ -9,7 +9,7 @@ package org.lealone.client.result;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import org.lealone.client.FrontendSession;
+import org.lealone.client.ClientSession;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.New;
@@ -18,29 +18,37 @@ import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 
-public abstract class ResultRemote implements Result {
+/**
+ * The client side part of a result set that is kept on the server.
+ * In many cases, the complete data is kept on the client side,
+ * but for large results only a subset is in-memory.
+ * 
+ * @author H2 Group
+ * @author zhh
+ */
+public abstract class ClientResult implements Result {
 
     protected int fetchSize;
-    protected FrontendSession session;
+    protected ClientSession session;
     protected Transfer transfer;
     protected int id;
-    protected final ResultColumn[] columns;
+    protected final ClientResultColumn[] columns;
     protected Value[] currentRow;
     protected final int rowCount;
     protected int rowId, rowOffset;
     protected ArrayList<Value[]> result;
     protected final Trace trace;
 
-    public ResultRemote(FrontendSession session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
+    public ClientResult(ClientSession session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
             throws IOException {
         this.session = session;
         trace = session.getTrace();
         this.transfer = transfer;
         this.id = id;
-        this.columns = new ResultColumn[columnCount];
+        this.columns = new ClientResultColumn[columnCount];
         this.rowCount = rowCount;
         for (int i = 0; i < columnCount; i++) {
-            columns[i] = new ResultColumn(transfer);
+            columns[i] = new ClientResultColumn(transfer);
         }
         rowId = -1;
         result = New.arrayList();
@@ -48,50 +56,62 @@ public abstract class ResultRemote implements Result {
         fetchRows(false);
     }
 
+    @Override
     public abstract boolean next();
 
     protected abstract void fetchRows(boolean sendFetch);
 
+    @Override
     public String getAlias(int i) {
         return columns[i].alias;
     }
 
+    @Override
     public String getSchemaName(int i) {
         return columns[i].schemaName;
     }
 
+    @Override
     public String getTableName(int i) {
         return columns[i].tableName;
     }
 
+    @Override
     public String getColumnName(int i) {
         return columns[i].columnName;
     }
 
+    @Override
     public int getColumnType(int i) {
         return columns[i].columnType;
     }
 
+    @Override
     public long getColumnPrecision(int i) {
         return columns[i].precision;
     }
 
+    @Override
     public int getColumnScale(int i) {
         return columns[i].scale;
     }
 
+    @Override
     public int getDisplaySize(int i) {
         return columns[i].displaySize;
     }
 
+    @Override
     public boolean isAutoIncrement(int i) {
         return columns[i].autoIncrement;
     }
 
+    @Override
     public int getNullable(int i) {
         return columns[i].nullable;
     }
 
+    @Override
     public void reset() {
         rowId = -1;
         currentRow = null;
@@ -102,25 +122,29 @@ public abstract class ResultRemote implements Result {
             session.checkClosed();
             try {
                 session.traceOperation("RESULT_RESET", id);
-                transfer.writeInt(FrontendSession.RESULT_RESET).writeInt(id).flush();
+                transfer.writeInt(ClientSession.RESULT_RESET).writeInt(id).flush();
             } catch (IOException e) {
                 throw DbException.convertIOException(e, null);
             }
         }
     }
 
+    @Override
     public Value[] currentRow() {
         return currentRow;
     }
 
+    @Override
     public int getRowId() {
         return rowId;
     }
 
+    @Override
     public int getVisibleColumnCount() {
         return columns.length;
     }
 
+    @Override
     public int getRowCount() {
         return rowCount;
     }
@@ -133,7 +157,7 @@ public abstract class ResultRemote implements Result {
         try {
             synchronized (session) {
                 session.traceOperation("RESULT_CLOSE", id);
-                transfer.writeInt(FrontendSession.RESULT_CLOSE).writeInt(id);
+                transfer.writeInt(ClientSession.RESULT_CLOSE).writeInt(id);
             }
         } catch (IOException e) {
             trace.error(e, "close");
@@ -145,10 +169,11 @@ public abstract class ResultRemote implements Result {
 
     protected void sendFetch(int fetchSize) throws IOException {
         session.traceOperation("RESULT_FETCH_ROWS", id);
-        transfer.writeInt(FrontendSession.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize);
+        transfer.writeInt(ClientSession.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize);
         session.done(transfer);
     }
 
+    @Override
     public void close() {
         result = null;
         sendClose();
@@ -163,7 +188,7 @@ public abstract class ResultRemote implements Result {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
                 session.traceOperation("CHANGE_ID", id);
-                transfer.writeInt(FrontendSession.CHANGE_ID).writeInt(id).writeInt(newId);
+                transfer.writeInt(ClientSession.CHANGE_ID).writeInt(id).writeInt(newId);
                 id = newId;
                 // TODO remote result set: very old result sets may be
                 // already removed on the server (theoretically) - how to
@@ -174,25 +199,29 @@ public abstract class ResultRemote implements Result {
         }
     }
 
+    @Override
     public String toString() {
         return "columns: " + columns.length + " rows: " + rowCount + " pos: " + rowId;
     }
 
+    @Override
     public int getFetchSize() {
         return fetchSize;
     }
 
+    @Override
     public void setFetchSize(int fetchSize) {
         this.fetchSize = fetchSize;
     }
 
+    @Override
     public boolean needToClose() {
         return true;
     }
 
     protected void fetchRowsThrowException() throws IOException {
         int available = transfer.available();
-        if (transfer.readInt() == FrontendSession.STATUS_ERROR)
+        if (transfer.readInt() == ClientSession.STATUS_ERROR)
             session.parseError(transfer);
 
         throw DbException.throwInternalError("fetchRows: the available bytes was " + available);

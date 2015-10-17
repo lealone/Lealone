@@ -40,7 +40,7 @@ import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandInterface;
+import org.lealone.db.Command;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.CompareMode;
@@ -92,7 +92,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     private HashMap<String, Integer> columnLabelMap;
     private HashMap<Integer, Value[]> patchedRows;
     private JdbcPreparedStatement preparedStatement;
-    private CommandInterface command;
+    private Command command;
 
     JdbcResultSet(JdbcConnection conn, JdbcStatement stat, Result result, int id, boolean closeStatement,
             boolean scrollable, boolean updatable) {
@@ -3495,11 +3495,11 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
         }
     }
 
-    public void setCommand(CommandInterface command) {
+    public void setCommand(Command command) {
         this.command = command;
     }
 
-    public CommandInterface getCommand() {
+    public Command getCommand() {
         return command;
     }
 

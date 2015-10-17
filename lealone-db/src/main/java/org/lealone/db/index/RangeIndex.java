@@ -7,7 +7,7 @@
 package org.lealone.db.index;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -31,7 +31,7 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         long min = rangeTable.getMin(session), start = min;
         long max = rangeTable.getMax(session), end = max;
         try {
@@ -48,7 +48,7 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         return 1;
     }
 
@@ -63,13 +63,13 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
         long pos = first ? rangeTable.getMin(session) : rangeTable.getMax(session);
         return new RangeCursor(pos, pos);
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return rangeTable.getRowCountApproximation();
     }
 

@@ -17,18 +17,20 @@
  */
 package org.lealone.sql;
 
+import java.util.ArrayList;
+
+import org.lealone.db.value.Value;
+
 public interface SQLParser {
-    // String quoteIdentifier(String s);
-
-    // ParsedStatement parse(String sql);
-
-    // PreparedStatement prepare(String sql);
-
-    BackendCommand prepareCommand(String sql);
 
     void setRightsChecked(boolean rightsChecked);
 
-    PreparedInterface prepare(String sql);
-
     Expression parseExpression(String sql);
+
+    ParsedStatement parse(String sql);
+
+    BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters);
+
+    BatchStatement getBatchStatement(ArrayList<String> batchCommands);
+
 }

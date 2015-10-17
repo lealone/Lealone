@@ -17,8 +17,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
@@ -29,7 +28,9 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
@@ -38,7 +39,7 @@ import org.lealone.sql.expression.ValueExpression;
  * This class represents the statement
  * UPDATE
  */
-public class Update extends Prepared implements Callable<Integer> {
+public class Update extends StatementBase implements Callable<Integer> {
 
     protected Expression condition;
     protected TableFilter tableFilter;
@@ -50,7 +51,7 @@ public class Update extends Prepared implements Callable<Integer> {
     protected final HashMap<Column, Expression> expressionMap = New.hashMap();
     private final List<Row> rows = New.arrayList();
 
-    public Update(Session session) {
+    public Update(ServerSession session) {
         super(session);
     }
 
@@ -201,7 +202,7 @@ public class Update extends Prepared implements Callable<Integer> {
     }
 
     @Override
-    public void prepare() {
+    public PreparedStatement prepare() {
         if (condition != null) {
             condition.mapColumns(tableFilter, 0);
             condition = condition.optimize(session);
@@ -216,6 +217,8 @@ public class Update extends Prepared implements Callable<Integer> {
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
         tableFilter.prepare();
+
+        return this;
     }
 
     @Override
@@ -230,7 +233,7 @@ public class Update extends Prepared implements Callable<Integer> {
 
     @Override
     public int getType() {
-        return CommandInterface.UPDATE;
+        return SQLStatement.UPDATE;
     }
 
     public void setLimit(Expression limit) {

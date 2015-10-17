@@ -7,7 +7,7 @@
 package org.lealone.db.index;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexBase;
 import org.lealone.db.index.IndexCondition;
@@ -47,12 +47,12 @@ public class HashIndex extends IndexBase {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         reset();
     }
 
     @Override
-    public void add(Session session, Row row) {
+    public void add(ServerSession session, Row row) {
         Value key = row.getValue(indexColumn);
         Object old = rows.get(key);
         if (old != null) {
@@ -63,12 +63,12 @@ public class HashIndex extends IndexBase {
     }
 
     @Override
-    public void remove(Session session, Row row) {
+    public void remove(ServerSession session, Row row) {
         rows.remove(row.getValue(indexColumn));
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         if (first == null || last == null) {
             // TODO hash index: should additionally check if values are the same
             throw DbException.throwInternalError();
@@ -84,7 +84,7 @@ public class HashIndex extends IndexBase {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return getRowCountApproximation();
     }
 
@@ -99,17 +99,17 @@ public class HashIndex extends IndexBase {
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // nothing to do
     }
 
     @Override
-    public void remove(Session session) {
+    public void remove(ServerSession session) {
         // nothing to do
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         for (Column column : columns) {
             int index = column.getColumnId();
             int mask = masks[index];
@@ -136,7 +136,7 @@ public class HashIndex extends IndexBase {
     }
 
     @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
         throw DbException.getUnsupportedException("HASH");
     }
 

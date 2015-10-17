@@ -9,7 +9,7 @@ package org.lealone.sql.expression;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
@@ -35,7 +35,7 @@ public class Wildcard extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         throw DbException.throwInternalError();
     }
 
@@ -50,7 +50,7 @@ public class Wildcard extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         throw DbException.get(ErrorCode.SYNTAX_ERROR_1, table);
     }
 
@@ -93,7 +93,7 @@ public class Wildcard extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         DbException.throwInternalError();
     }
 

@@ -19,17 +19,20 @@ package org.lealone.sql;
 
 import java.util.Map;
 
+import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
-import org.lealone.db.SessionInterface;
+import org.lealone.db.Session;
+import org.lealone.sql.expression.Parameter;
 
 public class LealoneSQLEngine implements SQLEngine {
+
     public LealoneSQLEngine() {
         SQLEngineManager.getInstance().registerEngine(this);
     }
 
     @Override
-    public SQLParser createParser(SessionInterface session) {
-        return new Parser((org.lealone.db.Session) session);
+    public SQLParser createParser(Session session) {
+        return new Parser((org.lealone.db.ServerSession) session);
     }
 
     @Override
@@ -44,6 +47,11 @@ public class LealoneSQLEngine implements SQLEngine {
     @Override
     public String quoteIdentifier(String identifier) {
         return Parser.quoteIdentifier(identifier);
+    }
+
+    @Override
+    public CommandParameter createParameter(int index) {
+        return new Parameter(index);
     }
 
 }

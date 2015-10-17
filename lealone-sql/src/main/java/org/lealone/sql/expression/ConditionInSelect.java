@@ -10,7 +10,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
 import org.lealone.db.table.ColumnResolver;
@@ -41,7 +41,7 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         query.setSession(session);
         SubqueryResult rows = new SubqueryResult(query, 0); // query.query(0);
         session.addTemporaryResult(rows);
@@ -107,7 +107,7 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         left = left.optimize(session);
         query.setRandomAccessResult(true);
         query.prepare();
@@ -141,7 +141,7 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         left.updateAggregate(session);
         query.updateAggregate(session);
     }
@@ -157,7 +157,7 @@ public class ConditionInSelect extends Condition {
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         if (!session.getDatabase().getSettings().optimizeInList) {
             return;
         }

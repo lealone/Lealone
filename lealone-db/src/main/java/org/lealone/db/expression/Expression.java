@@ -17,13 +17,13 @@
  */
 package org.lealone.db.expression;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 
 public interface Expression extends org.lealone.sql.Expression {
-    Value getValue(Session session);
+    Value getValue(ServerSession session);
 
     String getAlias();
 
@@ -57,13 +57,13 @@ public interface Expression extends org.lealone.sql.Expression {
 
     void setEvaluatable(TableFilter tableFilter, boolean value);
 
-    Expression optimize(Session session);
+    Expression optimize(ServerSession session);
 
     void addFilterConditions(TableFilter filter, boolean outerJoin);
 
     void mapColumns(ColumnResolver resolver, int level);
 
-    void createIndexConditions(Session session, TableFilter filter);
+    void createIndexConditions(ServerSession session, TableFilter filter);
 
-    Boolean getBooleanValue(Session session);
+    Boolean getBooleanValue(ServerSession session);
 }

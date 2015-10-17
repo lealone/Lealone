@@ -84,7 +84,7 @@ public class Comment extends DbObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         database.removeMeta(session, getId());
     }
 

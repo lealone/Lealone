@@ -17,7 +17,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.Mode;
 import org.lealone.db.SQLEngineHolder;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ConditionAndOr;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
@@ -250,7 +250,7 @@ public class Column {
      * @param row the row
      * @return the value
      */
-    synchronized Value computeValue(Session session, Row row) {
+    synchronized Value computeValue(ServerSession session, Row row) {
         computeTableFilter.setSession(session);
         computeTableFilter.set(row);
         return defaultExpression.getValue(session);
@@ -288,7 +288,7 @@ public class Column {
      * @param session the session
      * @param defaultExpression the default expression
      */
-    public void setDefaultExpression(Session session, Expression defaultExpression) {
+    public void setDefaultExpression(ServerSession session, Expression defaultExpression) {
         // also to test that no column names are used
         if (defaultExpression != null) {
             defaultExpression = defaultExpression.optimize(session);
@@ -354,7 +354,7 @@ public class Column {
      * @param value the value or null
      * @return the new or converted value
      */
-    public Value validateConvertUpdateSequence(Session session, Value value) {
+    public Value validateConvertUpdateSequence(ServerSession session, Value value) {
         if (value == null) {
             if (defaultExpression == null) {
                 value = ValueNull.INSTANCE;
@@ -419,7 +419,7 @@ public class Column {
         return value;
     }
 
-    private void updateSequenceIfRequired(Session session, Value value) {
+    private void updateSequenceIfRequired(ServerSession session, Value value) {
         if (sequence != null) {
             long current = sequence.getCurrentValue();
             long inc = sequence.getIncrement();
@@ -448,7 +448,7 @@ public class Column {
      * @param temporary true if the sequence is temporary and does not need to
      *            be stored
      */
-    public void convertAutoIncrementToSequence(Session session, Schema schema, int id, boolean temporary) {
+    public void convertAutoIncrementToSequence(ServerSession session, Schema schema, int id, boolean temporary) {
         if (!autoIncrement) {
             DbException.throwInternalError();
         }
@@ -484,7 +484,7 @@ public class Column {
      *
      * @param session the session
      */
-    public void prepareExpression(Session session) {
+    public void prepareExpression(ServerSession session) {
         if (defaultExpression != null) {
             computeTableFilter = new TableFilter(session, table, null, false, null);
             defaultExpression.mapColumns(computeTableFilter, 0);
@@ -644,7 +644,7 @@ public class Column {
      * @param session the session
      * @param expr the (additional) constraint
      */
-    public void addCheckConstraint(Session session, Expression expr) {
+    public void addCheckConstraint(ServerSession session, Expression expr) {
         if (expr == null) {
             return;
         }
@@ -686,7 +686,7 @@ public class Column {
      * @param asColumnName the column name to use
      * @return the constraint expression
      */
-    public Expression getCheckConstraint(Session session, String asColumnName) {
+    public Expression getCheckConstraint(ServerSession session, String asColumnName) {
         if (checkConstraint == null) {
             return null;
         }
@@ -721,7 +721,7 @@ public class Column {
      * @param asColumnName the column name to use
      * @return the SQL snippet
      */
-    String getCheckConstraintSQL(Session session, String asColumnName) {
+    String getCheckConstraintSQL(ServerSession session, String asColumnName) {
         Expression constraint = getCheckConstraint(session, asColumnName);
         return constraint == null ? "" : constraint.getSQL();
     }

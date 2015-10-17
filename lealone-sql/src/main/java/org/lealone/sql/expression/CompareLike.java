@@ -12,7 +12,7 @@ import java.util.regex.PatternSyntaxException;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
 import org.lealone.db.table.ColumnResolver;
@@ -83,7 +83,7 @@ public class CompareLike extends Condition {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         left = left.optimize(session);
         right = right.optimize(session);
         if (left.getType() == Value.STRING_IGNORECASE) {
@@ -151,7 +151,7 @@ public class CompareLike extends Condition {
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         if (regexp) {
             return;
         }
@@ -224,7 +224,7 @@ public class CompareLike extends Condition {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Value l = left.getValue(session);
         if (l == ValueNull.INSTANCE) {
             return l;
@@ -400,7 +400,7 @@ public class CompareLike extends Condition {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         left.updateAggregate(session);
         right.updateAggregate(session);
         if (escape != null) {

@@ -27,7 +27,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
-import org.lealone.db.SessionInterface;
+import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.SimpleResultSet;
 
@@ -376,7 +376,7 @@ public class DataType {
      * @param type the data type
      * @return the value
      */
-    public static Value readValue(SessionInterface session, ResultSet rs, int columnIndex, int type) {
+    public static Value readValue(Session session, ResultSet rs, int columnIndex, int type) {
         try {
             Value v;
             switch (type) {
@@ -802,7 +802,7 @@ public class DataType {
      * @param type the value type
      * @return the value
      */
-    public static Value convertToValue(SessionInterface session, Object x, int type) {
+    public static Value convertToValue(Session session, Object x, int type) {
         if (x == null) {
             return ValueNull.INSTANCE;
         }

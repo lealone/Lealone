@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.ColumnResolver;
@@ -34,7 +34,7 @@ public class Subquery extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         query.setSession(session);
         Result result = query.query(2);// session.createSubqueryResult(query, 2); // query.query(2);
         try {
@@ -71,7 +71,7 @@ public class Subquery extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         query.prepare();
         return this;
     }
@@ -102,7 +102,7 @@ public class Subquery extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         query.updateAggregate(session);
     }
 
@@ -138,7 +138,7 @@ public class Subquery extends Expression {
     }
 
     @Override
-    public Expression[] getExpressionColumns(Session session) {
+    public Expression[] getExpressionColumns(ServerSession session) {
         return getExpression().getExpressionColumns(session);
     }
 }

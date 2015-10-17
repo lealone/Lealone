@@ -12,10 +12,9 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.compress.CompressTool;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.Mode;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SetTypes;
 import org.lealone.db.Setting;
 import org.lealone.db.result.Result;
@@ -23,7 +22,8 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.ValueInt;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ValueExpression;
 
@@ -31,14 +31,14 @@ import org.lealone.sql.expression.ValueExpression;
  * This class represents the statement
  * SET
  */
-public class Set extends Prepared {
+public class Set extends StatementBase {
 
     private final int type;
     private Expression expression;
     private String stringValue;
     private String[] stringValueList;
 
-    public Set(Session session, int type) {
+    public Set(ServerSession session, int type) {
         super(session);
         this.type = type;
     }
@@ -411,7 +411,7 @@ public class Set extends Prepared {
         addOrUpdateSetting(session, name, s, v);
     }
 
-    private void addOrUpdateSetting(Session session, String name, String s, int v) {
+    private void addOrUpdateSetting(ServerSession session, String name, String s, int v) {
         Database database = session.getDatabase();
         if (database.isReadOnly()) {
             return;
@@ -457,7 +457,7 @@ public class Set extends Prepared {
 
     @Override
     public int getType() {
-        return CommandInterface.SET;
+        return SQLStatement.SET;
     }
 
 }

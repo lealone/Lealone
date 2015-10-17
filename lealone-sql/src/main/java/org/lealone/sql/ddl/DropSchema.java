@@ -8,21 +8,21 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP SCHEMA
  */
-public class DropSchema extends DefineCommand {
+public class DropSchema extends DefineStatement {
 
     private String schemaName;
     private boolean ifExists;
 
-    public DropSchema(Session session) {
+    public DropSchema(ServerSession session) {
         super(session);
     }
 
@@ -55,7 +55,7 @@ public class DropSchema extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_SCHEMA;
+        return SQLStatement.DROP_SCHEMA;
     }
 
 }

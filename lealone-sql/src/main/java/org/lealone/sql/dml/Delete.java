@@ -10,8 +10,7 @@ import java.util.concurrent.Callable;
 
 import org.lealone.api.Trigger;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
@@ -21,14 +20,16 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * DELETE
  */
-public class Delete extends Prepared implements Callable<Integer> {
+public class Delete extends StatementBase implements Callable<Integer> {
 
     private Expression condition;
     protected TableFilter tableFilter;
@@ -38,7 +39,7 @@ public class Delete extends Prepared implements Callable<Integer> {
      */
     private Expression limitExpr;
 
-    public Delete(Session session) {
+    public Delete(ServerSession session) {
         super(session);
     }
 
@@ -140,7 +141,7 @@ public class Delete extends Prepared implements Callable<Integer> {
     }
 
     @Override
-    public void prepare() {
+    public PreparedStatement prepare() {
         if (condition != null) {
             condition.mapColumns(tableFilter, 0);
             condition = condition.optimize(session);
@@ -149,6 +150,8 @@ public class Delete extends Prepared implements Callable<Integer> {
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
         tableFilter.prepare();
+
+        return this;
     }
 
     @Override
@@ -163,7 +166,7 @@ public class Delete extends Prepared implements Callable<Integer> {
 
     @Override
     public int getType() {
-        return CommandInterface.DELETE;
+        return SQLStatement.DELETE;
     }
 
     public void setLimit(Expression limit) {

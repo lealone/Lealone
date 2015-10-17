@@ -17,27 +17,26 @@
  */
 package org.lealone.db;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.lealone.client.FrontendCommand;
-import org.lealone.client.FrontendSession;
 import org.lealone.common.message.DbException;
-import org.lealone.sql.PreparedInterface;
+import org.lealone.sql.PreparedStatement;
 
-public class FrontendSessionPool {
+public class SessionPool {
     private static final int QUEUE_SIZE = 3;
 
     // key是集群中每个节点的URL
-    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<FrontendSession>> pool = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<Session>> pool = new ConcurrentHashMap<>();
 
-    private static ConcurrentLinkedQueue<FrontendSession> getQueue(String url) {
-        ConcurrentLinkedQueue<FrontendSession> queue = pool.get(url);
+    private static ConcurrentLinkedQueue<Session> getQueue(String url) {
+        ConcurrentLinkedQueue<Session> queue = pool.get(url);
         if (queue == null) {
             // 避免多个线程生成不同的ConcurrentLinkedQueue实例
-            synchronized (FrontendSessionPool.class) {
+            synchronized (SessionPool.class) {
                 queue = pool.get(url);
                 if (queue == null) {
                     queue = new ConcurrentLinkedQueue<>();
@@ -48,18 +47,18 @@ public class FrontendSessionPool {
         return queue;
     }
 
-    public static FrontendSession getFrontendSession(Session originalSession, String url) {
-        return getFrontendSession(originalSession, url, true);
+    public static Session getSession(ServerSession originalSession, String url) {
+        return getSession(originalSession, url, true);
     }
 
-    public static FrontendSession getSeedEndpointFrontendSession(Session originalSession, String url) {
-        return getFrontendSession(originalSession, url, false);
+    public static Session getSeedEndpointSession(ServerSession originalSession, String url) {
+        return getSession(originalSession, url, false);
     }
 
-    private static FrontendSession getFrontendSession(Session originalSession, String url, boolean isLocal) {
-        FrontendSession fs = getQueue(url).poll();
+    private static Session getSession(ServerSession originalSession, String url, boolean isLocal) {
+        Session session = getQueue(url).poll();
 
-        if (fs == null || fs.isClosed()) {
+        if (session == null || session.isClosed()) {
             ConnectionInfo oldCi = originalSession.getConnectionInfo();
             // 未来新加的代码如果忘记设置这两个字段，出问题时方便查找原因
             if (originalSession.getOriginalProperties() == null || oldCi == null)
@@ -71,50 +70,54 @@ public class FrontendSessionPool {
             ci.setUserPasswordHash(oldCi.getUserPasswordHash());
             ci.setFilePasswordHash(oldCi.getFilePasswordHash());
             ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
-            fs = (FrontendSession) new FrontendSession(ci).connectEmbeddedOrServer();
+            try {
+                session = ci.getSessionFactory().createSession(ci).connectEmbeddedOrServer();
+            } catch (SQLException e) {
+                throw DbException.convert(e);
+            }
         }
 
-        return fs;
+        return session;
     }
 
-    public static void release(FrontendSession fs) {
-        if (fs == null || fs.isClosed())
+    public static void release(Session session) {
+        if (session == null || session.isClosed())
             return;
 
-        ConcurrentLinkedQueue<FrontendSession> queue = getQueue(fs.getURL());
+        ConcurrentLinkedQueue<Session> queue = getQueue(session.getURL());
         if (queue.size() > QUEUE_SIZE)
-            fs.close();
+            session.close();
         else
-            queue.offer(fs);
+            queue.offer(session);
     }
 
-    public static FrontendCommand getFrontendCommand(Session originalSession, PreparedInterface prepared, //
+    public static Command getCommand(ServerSession originalSession, PreparedStatement prepared, //
             String url, String sql) throws Exception {
-        FrontendSession fs = originalSession.getFrontendSession(url);
-        if (fs != null && fs.isClosed())
-            fs = null;
+        Session session = originalSession.getSession(url);
+        if (session != null && session.isClosed())
+            session = null;
         boolean isNew = false;
-        if (fs == null) {
+        if (session == null) {
             isNew = true;
-            fs = getFrontendSession(originalSession, url);
+            session = getSession(originalSession, url);
         }
 
-        if (fs.getTransaction() == null)
-            fs.setTransaction(originalSession.getTransaction());
+        if (session.getTransaction() == null)
+            session.setTransaction(originalSession.getTransaction());
 
         if (isNew)
-            originalSession.addFrontendSession(url, fs);
+            originalSession.addSession(url, session);
 
-        return getFrontendCommand(fs, sql, prepared.getParameters(), prepared.getFetchSize());
+        return getCommand(session, sql, prepared.getParameters(), prepared.getFetchSize());
     }
 
-    public static FrontendCommand getFrontendCommand(FrontendSession fs, String sql, //
-            List<? extends ParameterInterface> parameters, int fetchSize) {
-        FrontendCommand fc = (FrontendCommand) fs.prepareCommand(sql, fetchSize);
+    public static Command getCommand(Session session, String sql, //
+            List<? extends CommandParameter> parameters, int fetchSize) {
+        Command command = session.prepareCommand(sql, fetchSize);
 
-        // 传递最初的参数值到新的FrontendCommand
+        // 传递最初的参数值到新的Command
         if (parameters != null) {
-            ArrayList<? extends ParameterInterface> newParams = fc.getParameters();
+            ArrayList<? extends CommandParameter> newParams = command.getParameters();
             // SQL重写后可能没有占位符了
             if (!newParams.isEmpty()) {
                 if (SysProperties.CHECK && newParams.size() != parameters.size())
@@ -125,12 +128,12 @@ public class FrontendSessionPool {
             }
         }
 
-        return fc;
+        return command;
     }
 
     public static void check() {
-        for (ConcurrentLinkedQueue<FrontendSession> queue : pool.values())
-            for (FrontendSession sr : queue)
-                sr.checkTransfers();
+        for (ConcurrentLinkedQueue<Session> queue : pool.values())
+            for (Session session : queue)
+                session.checkTransfers();
     }
 }

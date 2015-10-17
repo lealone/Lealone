@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
@@ -79,18 +79,18 @@ public class RangeTable extends Table {
     }
 
     @Override
-    public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
         // nothing to do
         return false;
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // nothing to do
     }
 
     @Override
-    public void unlock(Session s) {
+    public void unlock(ServerSession s) {
         // nothing to do
     }
 
@@ -100,18 +100,18 @@ public class RangeTable extends Table {
     }
 
     @Override
-    public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
             boolean create, String indexComment) {
         throw DbException.getUnsupportedException("SYSTEM_RANGE");
     }
 
     @Override
-    public void removeRow(Session session, Row row) {
+    public void removeRow(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("SYSTEM_RANGE");
     }
 
     @Override
-    public void addRow(Session session, Row row) {
+    public void addRow(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("SYSTEM_RANGE");
     }
 
@@ -136,7 +136,7 @@ public class RangeTable extends Table {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return Math.max(0, getMax(session) - getMin(session) + 1);
     }
 
@@ -146,7 +146,7 @@ public class RangeTable extends Table {
     }
 
     @Override
-    public Index getScanIndex(Session session) {
+    public Index getScanIndex(ServerSession session) {
         if (getStep(session) == 0) {
             throw DbException.get(ErrorCode.STEP_SIZE_MUST_NOT_BE_ZERO);
         }
@@ -159,7 +159,7 @@ public class RangeTable extends Table {
      * @param session the session
      * @return the start value
      */
-    public long getMin(Session session) {
+    public long getMin(ServerSession session) {
         optimize(session);
         return min.getValue(session).getLong();
     }
@@ -170,7 +170,7 @@ public class RangeTable extends Table {
      * @param session the session
      * @return the end value
      */
-    public long getMax(Session session) {
+    public long getMax(ServerSession session) {
         optimize(session);
         return max.getValue(session).getLong();
     }
@@ -181,7 +181,7 @@ public class RangeTable extends Table {
      * @param session the session
      * @return the increment (1 by default)
      */
-    public long getStep(Session session) {
+    public long getStep(ServerSession session) {
         optimize(session);
         if (step == null) {
             return 1;
@@ -189,7 +189,7 @@ public class RangeTable extends Table {
         return step.getValue(session).getLong();
     }
 
-    private void optimize(Session s) {
+    private void optimize(ServerSession s) {
         if (!optimized) {
             min = min.optimize(s);
             max = max.optimize(s);
@@ -206,7 +206,7 @@ public class RangeTable extends Table {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         throw DbException.getUnsupportedException("SYSTEM_RANGE");
     }
 

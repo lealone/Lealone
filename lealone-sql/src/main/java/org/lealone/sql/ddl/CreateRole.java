@@ -8,22 +8,22 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Role;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * CREATE ROLE
  */
-public class CreateRole extends DefineCommand {
+public class CreateRole extends DefineStatement {
 
     private String roleName;
     private boolean ifNotExists;
 
-    public CreateRole(Session session) {
+    public CreateRole(ServerSession session) {
         super(session);
     }
 
@@ -57,7 +57,7 @@ public class CreateRole extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_ROLE;
+        return SQLStatement.CREATE_ROLE;
     }
 
 }

@@ -19,14 +19,14 @@ package org.lealone.sql.router;
 
 import java.util.List;
 
-import org.lealone.db.CommandInterface;
+import org.lealone.db.Command;
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.Result;
 
 public class SerializedResult extends DelegatedResult {
     private final static int UNKNOW_ROW_COUNT = -1;
     private final List<Result> results;
-    private final List<? extends CommandInterface> commands;
+    private final List<? extends Command> commands;
     private final int maxRows;
     private final int limitRows;
     private final boolean scrollable;
@@ -35,7 +35,7 @@ public class SerializedResult extends DelegatedResult {
     private int index = 0;
     private int count = 0;
 
-    public SerializedResult(List<? extends CommandInterface> commands, int maxRows, boolean scrollable, int limitRows) {
+    public SerializedResult(List<? extends Command> commands, int maxRows, boolean scrollable, int limitRows) {
         this.results = null;
         this.commands = commands;
         this.maxRows = maxRows;

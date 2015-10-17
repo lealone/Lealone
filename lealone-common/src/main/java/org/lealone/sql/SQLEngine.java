@@ -17,12 +17,16 @@
  */
 package org.lealone.sql;
 
+import org.lealone.db.CommandParameter;
 import org.lealone.db.PluggableEngine;
-import org.lealone.db.SessionInterface;
+import org.lealone.db.Session;
 
 public interface SQLEngine extends PluggableEngine {
 
-    SQLParser createParser(SessionInterface session);
+    SQLParser createParser(Session session);
 
     String quoteIdentifier(String identifier);
+
+    CommandParameter createParameter(int index);
+
 }

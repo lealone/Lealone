@@ -19,4 +19,9 @@ package org.lealone.test;
 
 //一个标记类，标识它的子类是进行单元测试的
 public class UnitTestBase extends TestBase {
+
+    public UnitTestBase() {
+        initTransactionEngine();
+    }
+
 }

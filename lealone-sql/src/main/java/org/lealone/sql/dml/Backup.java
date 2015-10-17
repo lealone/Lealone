@@ -6,21 +6,21 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * BACKUP
  */
-public class BackupCommand extends Prepared {
+public class Backup extends StatementBase {
 
     private Expression fileNameExpr;
 
-    public BackupCommand(Session session) {
+    public Backup(ServerSession session) {
         super(session);
     }
 
@@ -53,7 +53,7 @@ public class BackupCommand extends Prepared {
 
     @Override
     public int getType() {
-        return CommandInterface.BACKUP;
+        return SQLStatement.BACKUP;
     }
 
 }

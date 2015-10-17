@@ -20,7 +20,7 @@ package org.lealone.db.expression;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.lealone.db.ParameterInterface;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Table;
 
@@ -31,9 +31,9 @@ public interface Query {
 
     boolean isEverything(ExpressionVisitor visitor);
 
-    ArrayList<? extends ParameterInterface> getParameters();
+    ArrayList<? extends CommandParameter> getParameters();
 
-    void addGlobalCondition(ParameterInterface param, int columnId, int comparisonType);
+    void addGlobalCondition(CommandParameter param, int columnId, int comparisonType);
 
     void disableCache();
 

@@ -7,7 +7,7 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.ColumnResolver;
@@ -28,7 +28,7 @@ public class SequenceValue extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         long value = sequence.getNext(session);
         session.setLastIdentity(ValueLong.get(value));
         return ValueLong.get(value);
@@ -45,7 +45,7 @@ public class SequenceValue extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         return this;
     }
 
@@ -75,7 +75,7 @@ public class SequenceValue extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // nothing to do
     }
 

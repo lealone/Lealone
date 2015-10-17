@@ -14,8 +14,8 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.MathUtils;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.ParameterInterface;
+import org.lealone.db.Command;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 
@@ -26,9 +26,9 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
 
     private final JdbcPreparedStatement prep;
     private final int paramCount;
-    private final ArrayList<? extends ParameterInterface> parameters;
+    private final ArrayList<? extends CommandParameter> parameters;
 
-    JdbcParameterMetaData(Trace trace, JdbcPreparedStatement prep, CommandInterface command, int id) {
+    JdbcParameterMetaData(Trace trace, JdbcPreparedStatement prep, Command command, int id) {
         setTrace(trace, TraceObject.PARAMETER_META_DATA, id);
         this.prep = prep;
         this.parameters = command.getParameters();
@@ -77,7 +77,7 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
     public int getParameterType(int param) throws SQLException {
         try {
             debugCodeCall("getParameterType", param);
-            ParameterInterface p = getParameter(param);
+            CommandParameter p = getParameter(param);
             int type = p.getType();
             if (type == Value.UNKNOWN) {
                 type = Value.STRING;
@@ -98,7 +98,7 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
     public int getPrecision(int param) throws SQLException {
         try {
             debugCodeCall("getPrecision", param);
-            ParameterInterface p = getParameter(param);
+            CommandParameter p = getParameter(param);
             return MathUtils.convertLongToInt(p.getPrecision());
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -115,7 +115,7 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
     public int getScale(int param) throws SQLException {
         try {
             debugCodeCall("getScale", param);
-            ParameterInterface p = getParameter(param);
+            CommandParameter p = getParameter(param);
             return p.getScale();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -165,7 +165,7 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
     public String getParameterClassName(int param) throws SQLException {
         try {
             debugCodeCall("getParameterClassName", param);
-            ParameterInterface p = getParameter(param);
+            CommandParameter p = getParameter(param);
             int type = p.getType();
             if (type == Value.UNKNOWN) {
                 type = Value.STRING;
@@ -186,7 +186,7 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
     public String getParameterTypeName(int param) throws SQLException {
         try {
             debugCodeCall("getParameterTypeName", param);
-            ParameterInterface p = getParameter(param);
+            CommandParameter p = getParameter(param);
             int type = p.getType();
             if (type == Value.UNKNOWN) {
                 type = Value.STRING;
@@ -197,7 +197,7 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
         }
     }
 
-    private ParameterInterface getParameter(int param) {
+    private CommandParameter getParameter(int param) {
         checkClosed();
         if (param < 1 || param > paramCount) {
             throw DbException.getInvalidValueException("param", param);

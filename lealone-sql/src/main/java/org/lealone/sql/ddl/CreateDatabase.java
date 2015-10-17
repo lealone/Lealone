@@ -21,22 +21,22 @@ import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * CREATE DATABASE
  */
-public class CreateDatabase extends DefineCommand {
+public class CreateDatabase extends DefineStatement {
 
     private final String dbName;
     private final boolean ifNotExists;
     private final Map<String, String> parameters;
 
-    public CreateDatabase(Session session, String dbName, boolean ifNotExists, Map<String, String> parameters) {
+    public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, Map<String, String> parameters) {
         super(session);
         this.dbName = dbName;
         this.ifNotExists = ifNotExists;
@@ -62,7 +62,7 @@ public class CreateDatabase extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_DATABASE;
+        return SQLStatement.CREATE_DATABASE;
     }
 
 }

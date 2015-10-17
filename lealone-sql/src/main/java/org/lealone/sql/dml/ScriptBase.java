@@ -23,9 +23,9 @@ import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.fs.FileStorage;
@@ -34,9 +34,9 @@ import org.lealone.storage.fs.FileStorageOutputStream;
 import org.lealone.storage.fs.FileUtils;
 
 /**
- * This class is the base for RunScriptCommand and ScriptCommand.
+ * This class is the base for RunScript and Script.
  */
-abstract class ScriptBase extends Prepared implements DataHandler {
+abstract class ScriptBase extends StatementBase implements DataHandler {
 
     /**
      * The default name of the script file if .zip compression is used.
@@ -66,7 +66,7 @@ abstract class ScriptBase extends Prepared implements DataHandler {
     private FileStorage fileStorage;
     private String compressionAlgorithm;
 
-    ScriptBase(Session session) {
+    ScriptBase(ServerSession session) {
         super(session);
     }
 

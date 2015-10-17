@@ -32,7 +32,7 @@ public class ConnectionInfo implements Cloneable {
 
         String[] connectionSettings = { "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS",
                 "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "PAGE_SIZE", "PASSWORD_HASH", "IS_LOCAL",
-                "TOKEN" };
+                "TOKEN", "DISABLE_AUTHENTICATION" };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
@@ -115,6 +115,9 @@ public class ConnectionInfo implements Cloneable {
 
         setUserName(removeProperty("USER", ""));
         convertPasswords();
+
+        if (removeProperty("DISABLE_AUTHENTICATION", false) && embedded && !remote)
+            disableAuthentication();
     }
 
     private void checkURL() {

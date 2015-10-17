@@ -13,7 +13,7 @@ import org.lealone.api.Aggregate;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
@@ -115,7 +115,7 @@ public class JavaAggregate extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         userConnection = session.createConnection(false);
         int len = args.length;
         argTypes = new int[len];
@@ -150,7 +150,7 @@ public class JavaAggregate extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             throw DbException.get(ErrorCode.INVALID_USE_OF_AGGREGATE_FUNCTION_1, getSQL());
@@ -171,7 +171,7 @@ public class JavaAggregate extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         HashMap<Expression, Object> group = select.getCurrentGroup();
         if (group == null) {
             // this is a different level (the enclosing query)

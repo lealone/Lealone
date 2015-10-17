@@ -72,7 +72,7 @@ public class UserAggregate extends DbObjectBase {
     }
 
     @Override
-    public synchronized void removeChildrenAndResources(Session session) {
+    public synchronized void removeChildrenAndResources(ServerSession session) {
         database.removeMeta(session, getId());
         className = null;
         javaClass = null;

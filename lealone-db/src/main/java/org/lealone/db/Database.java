@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
-import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.message.TraceSystem;
@@ -116,8 +116,8 @@ public class Database implements DataHandler, DbObject {
     private final HashMap<String, Comment> comments = New.hashMap();
     protected final HashMap<String, Database> databases = New.hashMap();
 
-    private final Set<Session> userSessions = Collections.synchronizedSet(new HashSet<Session>());
-    private Session exclusiveSession;
+    private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<ServerSession>());
+    private ServerSession exclusiveSession;
     private final BitField objectIds = new BitField();
     private final Object lobSyncObject = new Object();
 
@@ -126,7 +126,7 @@ public class Database implements DataHandler, DbObject {
     private int nextSessionId;
     private int nextTempTableId;
     private User systemUser;
-    private Session systemSession;
+    private ServerSession systemSession;
     private Table meta;
     private Index metaIdIndex;
     private boolean starting;
@@ -251,11 +251,15 @@ public class Database implements DataHandler, DbObject {
         return persistent;
     }
 
+    public SQLEngine getSQLEngine() {
+        return sqlEngine;
+    }
+
     public TransactionEngine getTransactionEngine() {
         return transactionEngine;
     }
 
-    public SQLParser createParser(SessionInterface session) {
+    public SQLParser createParser(Session session) {
         return sqlEngine.createParser(session);
     }
 
@@ -345,7 +349,7 @@ public class Database implements DataHandler, DbObject {
             publicRole = new Role(this, 0, Constants.PUBLIC_ROLE_NAME, true);
             roles.put(Constants.PUBLIC_ROLE_NAME, publicRole);
             systemUser.setAdmin(true);
-            systemSession = new Session(this, systemUser, ++nextSessionId);
+            systemSession = new ServerSession(this, systemUser, ++nextSessionId);
 
             openMetaTable();
 
@@ -626,18 +630,18 @@ public class Database implements DataHandler, DbObject {
         return meta == null || meta.isLockedExclusively();
     }
 
-    public boolean isSysTableLockedBy(Session session) {
+    public boolean isSysTableLockedBy(ServerSession session) {
         return meta == null || meta.isLockedExclusivelyBy(session);
     }
 
-    public void isSysTableLockedThenUnlock(Session session) {
+    public void isSysTableLockedThenUnlock(ServerSession session) {
         if (meta != null && meta.isLockedExclusively()) {
             meta.unlock(session);
             session.unlock(meta);
         }
     }
 
-    private synchronized void addMeta(Session session, DbObject obj) {
+    private synchronized void addMeta(ServerSession session, DbObject obj) {
         int id = obj.getId();
         if (id > 0 && !starting && !obj.isTemporary()) {
             Row r = meta.getTemplateRow();
@@ -656,7 +660,7 @@ public class Database implements DataHandler, DbObject {
      *
      * @param session the session
      */
-    public void verifyMetaLocked(Session session) {
+    public void verifyMetaLocked(ServerSession session) {
         if (!lockMeta(session) && lockMode != 0) {
             throw DbException.throwInternalError();
         }
@@ -668,7 +672,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @return whether it was already locked before by this session
      */
-    public synchronized boolean lockMeta(Session session) {
+    public synchronized boolean lockMeta(ServerSession session) {
         if (meta == null) {
             return true;
         }
@@ -683,11 +687,11 @@ public class Database implements DataHandler, DbObject {
         return wasLocked;
     }
 
-    public void unlockMeta(Session session) {
+    public void unlockMeta(ServerSession session) {
         meta.unlock(session);
     }
 
-    private void checkMetaFree(Session session, int id) {
+    private void checkMetaFree(ServerSession session, int id) {
         SearchRow r = meta.getTemplateSimpleRow(false);
         r.setValue(0, ValueInt.get(id));
         Cursor cursor = metaIdIndex.find(session, r, r);
@@ -702,7 +706,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param id the id of the object to remove
      */
-    public synchronized void removeMeta(Session session, int id) {
+    public synchronized void removeMeta(ServerSession session, int id) {
         if (id > 0 && !starting) {
             SearchRow r = meta.getTemplateSimpleRow(false);
             r.setValue(0, ValueInt.get(id));
@@ -772,7 +776,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param obj the object to add
      */
-    public synchronized void addSchemaObject(Session session, SchemaObject obj) {
+    public synchronized void addSchemaObject(ServerSession session, SchemaObject obj) {
         int id = obj.getId();
         if (id > 0 && !starting) {
             checkWritingAllowed();
@@ -788,7 +792,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param obj the object to add
      */
-    public synchronized void addDatabaseObject(Session session, DbObject obj) {
+    public synchronized void addDatabaseObject(ServerSession session, DbObject obj) {
         int id = obj.getId();
         if (id > 0 && !starting) {
             checkWritingAllowed();
@@ -919,11 +923,11 @@ public class Database implements DataHandler, DbObject {
      * @return the session
      * @throws DbException if the database is in exclusive mode
      */
-    public synchronized Session createSession(User user) {
+    public synchronized ServerSession createSession(User user) {
         if (exclusiveSession != null) {
             throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);
         }
-        Session session = new Session(this, user, ++nextSessionId);
+        ServerSession session = new ServerSession(this, user, ++nextSessionId);
         userSessions.add(session);
         trace.info("connecting session #{0} to {1}", session.getId(), name);
         if (delayedCloser != null) {
@@ -938,7 +942,7 @@ public class Database implements DataHandler, DbObject {
      *
      * @param session the session
      */
-    public synchronized void removeSession(Session session) {
+    public synchronized void removeSession(ServerSession session) {
         if (session != null) {
             if (exclusiveSession == session) {
                 exclusiveSession = null;
@@ -965,10 +969,10 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
-    private synchronized void closeAllSessionsException(Session except) {
-        Session[] all = new Session[userSessions.size()];
+    private synchronized void closeAllSessionsException(ServerSession except) {
+        ServerSession[] all = new ServerSession[userSessions.size()];
         userSessions.toArray(all);
-        for (Session s : all) {
+        for (ServerSession s : all) {
             if (s != except) {
                 try {
                     // must roll back, otherwise the session is removed and
@@ -1220,19 +1224,19 @@ public class Database implements DataHandler, DbObject {
      *            included
      * @return the list of sessions
      */
-    public Session[] getSessions(boolean includingSystemSession) {
-        ArrayList<Session> list;
+    public ServerSession[] getSessions(boolean includingSystemSession) {
+        ArrayList<ServerSession> list;
         // need to synchronized on userSession, otherwise the list
         // may contain null elements
         synchronized (userSessions) {
             list = New.arrayList(userSessions);
         }
         // copy, to ensure the reference is stable
-        Session sys = systemSession;
+        ServerSession sys = systemSession;
         if (includingSystemSession && sys != null) {
             list.add(sys);
         }
-        Session[] array = new Session[list.size()];
+        ServerSession[] array = new ServerSession[list.size()];
         list.toArray(array);
         return array;
     }
@@ -1243,7 +1247,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param obj the database object
      */
-    public synchronized void updateMeta(Session session, DbObject obj) {
+    public synchronized void updateMeta(ServerSession session, DbObject obj) {
         lockMeta(session);
         int id = obj.getId();
         removeMeta(session, id);
@@ -1257,13 +1261,13 @@ public class Database implements DataHandler, DbObject {
      * @param obj the object
      * @param newName the new name
      */
-    public synchronized void renameSchemaObject(Session session, SchemaObject obj, String newName) {
+    public synchronized void renameSchemaObject(ServerSession session, SchemaObject obj, String newName) {
         checkWritingAllowed();
         obj.getSchema().rename(obj, newName);
         updateMetaAndFirstLevelChildren(session, obj);
     }
 
-    private synchronized void updateMetaAndFirstLevelChildren(Session session, DbObject obj) {
+    private synchronized void updateMetaAndFirstLevelChildren(ServerSession session, DbObject obj) {
         ArrayList<DbObject> list = obj.getChildren();
         Comment comment = findComment(obj);
         if (comment != null) {
@@ -1287,7 +1291,7 @@ public class Database implements DataHandler, DbObject {
      * @param obj the object
      * @param newName the new name
      */
-    public synchronized void renameDatabaseObject(Session session, DbObject obj, String newName) {
+    public synchronized void renameDatabaseObject(ServerSession session, DbObject obj, String newName) {
         checkWritingAllowed();
         int type = obj.getType();
         HashMap<String, DbObject> map = getMap(type);
@@ -1358,7 +1362,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param obj the object to remove
      */
-    public synchronized void removeDatabaseObject(Session session, DbObject obj) {
+    public synchronized void removeDatabaseObject(ServerSession session, DbObject obj) {
         checkWritingAllowed();
         String objName = obj.getName();
         int type = obj.getType();
@@ -1415,7 +1419,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param obj the object to be removed
      */
-    public synchronized void removeSchemaObject(Session session, SchemaObject obj) {
+    public synchronized void removeSchemaObject(ServerSession session, SchemaObject obj) {
         int type = obj.getType();
         if (type == DbObject.TABLE_OR_VIEW) {
             Table table = (Table) obj;
@@ -1513,7 +1517,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @return a unique name
      */
-    public synchronized String getTempTableName(String baseName, Session session) {
+    public synchronized String getTempTableName(String baseName, ServerSession session) {
         String tempName;
         do {
             tempName = baseName + "_COPY_" + session.getId() + "_" + nextTempTableId++;
@@ -1559,7 +1563,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param transaction the name of the transaction
      */
-    synchronized void prepareCommit(Session session, String transaction) {
+    synchronized void prepareCommit(ServerSession session, String transaction) {
         if (readOnly) {
             return;
         }
@@ -1570,7 +1574,7 @@ public class Database implements DataHandler, DbObject {
      *
      * @param session the session
      */
-    synchronized void commit(Session session) {
+    synchronized void commit(ServerSession session) {
         throwLastBackgroundException();
     }
 
@@ -1727,7 +1731,7 @@ public class Database implements DataHandler, DbObject {
         this.closeDelay = value;
     }
 
-    public Session getSystemSession() {
+    public ServerSession getSystemSession() {
         return systemSession;
     }
 
@@ -1898,7 +1902,7 @@ public class Database implements DataHandler, DbObject {
         return maxOperationMemory;
     }
 
-    public Session getExclusiveSession() {
+    public ServerSession getExclusiveSession() {
         return exclusiveSession;
     }
 
@@ -1908,7 +1912,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param closeOthers whether other sessions are closed
      */
-    public void setExclusiveSession(Session session, boolean closeOthers) {
+    public void setExclusiveSession(ServerSession session, boolean closeOthers) {
         this.exclusiveSession = session;
         if (closeOthers) {
             closeAllSessionsException(session);
@@ -2016,9 +2020,15 @@ public class Database implements DataHandler, DbObject {
     @Override
     public Connection getLobConnection() {
         String url = Constants.CONN_URL_INTERNAL;
-        JdbcConnection conn = new JdbcConnection(systemSession, systemUser.getName(), url);
-        conn.setTraceLevel(TraceSystem.OFF);
-        return conn;
+        // JdbcConnection conn = new JdbcConnection(systemSession, systemUser.getName(), url);
+        // conn.setTraceLevel(TraceSystem.OFF);
+        // return conn;
+
+        try {
+            return DriverManager.getConnection(url, systemUser.getName(), "");
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
     }
 
     public void setLogMode(int log) {
@@ -2220,7 +2230,7 @@ public class Database implements DataHandler, DbObject {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
     }
 
     @Override

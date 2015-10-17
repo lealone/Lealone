@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Comparison;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
@@ -29,7 +29,7 @@ import org.lealone.db.value.ValueNull;
  */
 public class IndexCursor implements Cursor {
 
-    private Session session;
+    private ServerSession session;
     private final TableFilter tableFilter;
     private Index index;
     private Table table;
@@ -70,7 +70,7 @@ public class IndexCursor implements Cursor {
      * @param s the session
      * @param indexConditions the index conditions
      */
-    public void find(Session s, ArrayList<IndexCondition> indexConditions) {
+    public void find(ServerSession s, ArrayList<IndexCondition> indexConditions) {
         parseIndexConditions(s, indexConditions);
         if (inColumn != null) {
             return;
@@ -80,7 +80,7 @@ public class IndexCursor implements Cursor {
         }
     }
 
-    public void parseIndexConditions(Session s, ArrayList<IndexCondition> indexConditions) {
+    public void parseIndexConditions(ServerSession s, ArrayList<IndexCondition> indexConditions) {
         this.session = s;
         alwaysFalse = false;
         start = end = null;

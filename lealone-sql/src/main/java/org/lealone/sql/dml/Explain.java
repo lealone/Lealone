@@ -10,15 +10,16 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
 
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 
@@ -26,23 +27,24 @@ import org.lealone.sql.expression.ExpressionColumn;
  * This class represents the statement
  * EXPLAIN
  */
-public class Explain extends Prepared {
+public class Explain extends StatementBase {
 
-    private Prepared command;
+    private StatementBase command;
     private LocalResult result;
     private boolean executeCommand;
 
-    public Explain(Session session) {
+    public Explain(ServerSession session) {
         super(session);
     }
 
-    public void setCommand(Prepared command) {
+    public void setCommand(StatementBase command) {
         this.command = command;
     }
 
     @Override
-    public void prepare() {
+    public PreparedStatement prepare() {
         command.prepare();
+        return this;
     }
 
     public void setExecuteCommand(boolean executeCommand) {
@@ -126,6 +128,6 @@ public class Explain extends Prepared {
 
     @Override
     public int getType() {
-        return CommandInterface.EXPLAIN;
+        return SQLStatement.EXPLAIN;
     }
 }

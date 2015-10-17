@@ -7,7 +7,7 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
 import org.lealone.db.table.ColumnResolver;
@@ -71,7 +71,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         return value;
     }
 
@@ -81,7 +81,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         if (value.getType() == Value.BOOLEAN) {
             boolean v = ((ValueBoolean) value).getBoolean().booleanValue();
             if (!v) {
@@ -91,7 +91,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public Expression getNotIfPossible(Session session) {
+    public Expression getNotIfPossible(ServerSession session) {
         return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
     }
 
@@ -101,7 +101,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         return this;
     }
 
@@ -144,7 +144,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // nothing to do
     }
 
@@ -173,7 +173,7 @@ public class ValueExpression extends Expression {
     }
 
     @Override
-    public Expression[] getExpressionColumns(Session session) {
+    public Expression[] getExpressionColumns(ServerSession session) {
         if (getType() == Value.ARRAY) {
             return getExpressionColumns(session, (ValueArray) getValue(session));
         }

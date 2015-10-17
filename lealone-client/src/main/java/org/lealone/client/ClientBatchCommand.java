@@ -23,39 +23,39 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.ParameterInterface;
+import org.lealone.db.Command;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 
-public class FrontendBatchCommand implements CommandInterface {
-    private FrontendSession session;
+public class ClientBatchCommand implements Command {
+    private ClientSession session;
     private Transfer transfer;
-    private ArrayList<String> batchCommands; //对应JdbcStatement.executeBatch()
-    private ArrayList<Value[]> batchParameters; //对应JdbcPreparedStatement.executeBatch()
+    private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
+    private ArrayList<Value[]> batchParameters; // 对应JdbcPreparedStatement.executeBatch()
     private int id = -1;
     private int[] result;
 
-    public FrontendBatchCommand(FrontendSession session, Transfer transfer, ArrayList<String> batchCommands) {
+    public ClientBatchCommand(ClientSession session, Transfer transfer, ArrayList<String> batchCommands) {
         this.session = session;
         this.transfer = transfer;
         this.batchCommands = batchCommands;
     }
 
-    public FrontendBatchCommand(FrontendSession session, Transfer transfer, CommandInterface preparedCommand,
+    public ClientBatchCommand(ClientSession session, Transfer transfer, Command preparedCommand,
             ArrayList<Value[]> batchParameters) {
         this.session = session;
         this.transfer = transfer;
         this.batchParameters = batchParameters;
 
-        if (preparedCommand instanceof FrontendCommand)
-            id = ((FrontendCommand) preparedCommand).getId();
+        if (preparedCommand instanceof ClientCommand)
+            id = ((ClientCommand) preparedCommand).getId();
     }
 
     @Override
-    public int getCommandType() {
-        return UNKNOWN;
+    public int getType() {
+        return COMMAND;
     }
 
     @Override
@@ -64,7 +64,7 @@ public class FrontendBatchCommand implements CommandInterface {
     }
 
     @Override
-    public ArrayList<? extends ParameterInterface> getParameters() {
+    public ArrayList<? extends CommandParameter> getParameters() {
         throw DbException.throwInternalError();
     }
 
@@ -81,7 +81,7 @@ public class FrontendBatchCommand implements CommandInterface {
         try {
             if (batchCommands != null) {
                 session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT", id);
-                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT);
+                transfer.writeInt(ClientSession.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT);
                 int size = batchCommands.size();
                 result = new int[size];
                 transfer.writeInt(size);
@@ -93,7 +93,7 @@ public class FrontendBatchCommand implements CommandInterface {
                     result[j] = transfer.readInt();
             } else {
                 session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT", id);
-                transfer.writeInt(FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT).writeInt(id);
+                transfer.writeInt(ClientSession.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT).writeInt(id);
                 int size = batchParameters.size();
                 result = new int[size];
                 transfer.writeInt(size);

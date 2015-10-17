@@ -11,7 +11,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.table.Table;
 
 /**
@@ -231,7 +231,7 @@ public class Sequence extends SchemaObjectBase {
      * @param session the session
      * @return the next value
      */
-    public long getNext(Session session) {
+    public long getNext(ServerSession session) {
         boolean needsFlush = false;
         long retVal;
         long flushValueWithMargin = -1;
@@ -275,12 +275,12 @@ public class Sequence extends SchemaObjectBase {
      *
      * @param session the session
      */
-    public void flush(Session session, long flushValueWithMargin) {
+    public void flush(ServerSession session, long flushValueWithMargin) {
         if (session == null || !database.isSysTableLockedBy(session)) {
             // This session may not lock the sys table (except if it already has
             // locked it) because it must be committed immediately, otherwise
             // other threads can not access the sys table.
-            Session sysSession = database.getSystemSession();
+            ServerSession sysSession = database.getSystemSession();
             synchronized (sysSession) {
                 flushInternal(sysSession, flushValueWithMargin);
                 sysSession.commit(false);
@@ -292,7 +292,7 @@ public class Sequence extends SchemaObjectBase {
         }
     }
 
-    private void flushInternal(Session session, long flushValueWithMargin) {
+    private void flushInternal(ServerSession session, long flushValueWithMargin) {
         final boolean metaWasLocked = database.lockMeta(session);
         synchronized (this) {
             if (flushValueWithMargin == lastFlushValueWithMargin) {
@@ -333,7 +333,7 @@ public class Sequence extends SchemaObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         database.removeMeta(session, getId());
         invalidate();
     }

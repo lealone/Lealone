@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.client.jdbc.Driver;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.NetUtils;
@@ -101,7 +100,7 @@ public class TcpServer implements ProtocolServer {
         StringBuilder buff = new StringBuilder();
         buff.append(Constants.URL_PREFIX).append(Constants.URL_MEM);
         buff.append(Constants.URL_EMBED);
-        buff.append(MANAGEMENT_DB_PREFIX).append(port);
+        buff.append(MANAGEMENT_DB_PREFIX).append(port).append(";DISABLE_AUTHENTICATION=true");
         return buff.toString();
     }
 
@@ -117,7 +116,7 @@ public class TcpServer implements ProtocolServer {
         Statement stat = null;
         try {
             // avoid using the driver manager
-            Connection conn = Driver.getInternalConnection(getManagementDbEmbeddedURL(port), "", managementPassword);
+            Connection conn = DriverManager.getConnection(getManagementDbEmbeddedURL(port), "", managementPassword);
             stat = conn.createStatement();
             stat.execute("CREATE ALIAS IF NOT EXISTS STOP_SERVER FOR \"" + TcpServer.class.getName() + ".stopServer\"");
             stat.execute("CREATE TABLE IF NOT EXISTS SESSIONS"
@@ -453,11 +452,6 @@ public class TcpServer implements ProtocolServer {
     public static synchronized void shutdown(String hostname, int port, String password, boolean force, boolean all)
             throws SQLException {
         try {
-            try {
-                Driver.load();
-            } catch (Throwable e) {
-                throw DbException.convert(e);
-            }
             for (int i = 0; i < 2; i++) {
                 Connection conn = null;
                 PreparedStatement prep = null;

@@ -11,11 +11,12 @@ import java.util.ArrayList;
 import org.lealone.common.util.New;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
+import org.lealone.sql.PreparedStatement;
 
 /**
- * The base class for both remote and embedded sessions.
+ * The base class for both client and server sessions.
  */
-public abstract class SessionWithState implements SessionInterface {
+public abstract class SessionBase implements Session {
 
     protected ArrayList<String> sessionState;
     protected boolean sessionStateChanged;
@@ -29,8 +30,8 @@ public abstract class SessionWithState implements SessionInterface {
             sessionStateUpdating = true;
             try {
                 for (String sql : sessionState) {
-                    CommandInterface ci = prepareCommand(sql, Integer.MAX_VALUE);
-                    ci.executeUpdate();
+                    PreparedStatement ps = prepareStatement(sql, Integer.MAX_VALUE);
+                    ps.update();
                 }
             } finally {
                 sessionStateUpdating = false;
@@ -48,8 +49,8 @@ public abstract class SessionWithState implements SessionInterface {
         }
         sessionStateChanged = false;
         sessionState = New.arrayList();
-        CommandInterface ci = prepareCommand("SELECT * FROM INFORMATION_SCHEMA.SESSION_STATE", Integer.MAX_VALUE);
-        Result result = ci.executeQuery(0, false);
+        PreparedStatement ps = prepareStatement("SELECT * FROM INFORMATION_SCHEMA.SESSION_STATE", Integer.MAX_VALUE);
+        Result result = ps.query(0, false);
         while (result.next()) {
             Value[] row = result.currentRow();
             sessionState.add(row[1].getString());

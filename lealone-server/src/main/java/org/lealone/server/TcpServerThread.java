@@ -18,28 +18,24 @@ import java.util.ArrayList;
 import java.util.Properties;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.client.FrontendSession;
-import org.lealone.client.result.ResultColumn;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.JdbcSQLException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
+import org.lealone.common.util.SmallMap;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
-import org.lealone.db.ParameterInterface;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
-import org.lealone.db.util.SmallMap;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLobDb;
-import org.lealone.sql.BackendBatchCommand;
-import org.lealone.sql.Command;
-import org.lealone.sql.Parser;
-import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.BatchStatement;
+import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
 
 /**
@@ -107,7 +103,7 @@ public class TcpServerThread implements Runnable {
                     String targetSessionId = transfer.readString();
                     int command = transfer.readInt();
                     stop = true;
-                    if (command == FrontendSession.SESSION_CANCEL_STATEMENT) {
+                    if (command == Session.SESSION_CANCEL_STATEMENT) {
                         // cancel a running statement
                         int statementId = transfer.readInt();
                         server.cancelStatement(targetSessionId, statementId);
@@ -120,7 +116,7 @@ public class TcpServerThread implements Runnable {
                 userName = StringUtils.toUpperEnglish(userName);
                 session = createSession(db, originalURL, userName, transfer);
                 transfer.setSession(session);
-                transfer.writeInt(FrontendSession.STATUS_OK);
+                transfer.writeInt(Session.STATUS_OK);
                 transfer.writeInt(clientVersion);
                 transfer.flush();
                 server.addConnection(threadId, originalURL, userName);
@@ -186,9 +182,9 @@ public class TcpServerThread implements Runnable {
         ci.setFileEncryptionKey(fileEncryptionKey);
 
         try {
-            Session session = (Session) ci.getSessionFactory().createSession(ci);
-            session.setOriginalProperties(originalProperties);
-            session.setLocal(ci.getProperty("IS_LOCAL", false));
+            Session session = ci.getSessionFactory().createSession(ci);
+            // session.setOriginalProperties(originalProperties);
+            // session.setLocal(ci.getProperty("IS_LOCAL", false));
             return session;
         } catch (SQLException e) {
             throw DbException.convert(e);
@@ -199,8 +195,7 @@ public class TcpServerThread implements Runnable {
         if (session != null) {
             RuntimeException closeError = null;
             try {
-                Command rollback = (Command) session.prepareCommandLocal("ROLLBACK");
-                rollback.executeUpdate();
+                session.prepareStatement("ROLLBACK", -1).executeUpdate();
             } catch (RuntimeException e) {
                 closeError = e;
                 server.traceError(e);
@@ -259,8 +254,8 @@ public class TcpServerThread implements Runnable {
                 message = e.getMessage();
                 sql = null;
             }
-            transfer.writeInt(FrontendSession.STATUS_ERROR).writeString(e.getSQLState()).writeString(message)
-                    .writeString(sql).writeInt(e.getErrorCode()).writeString(trace).flush();
+            transfer.writeInt(Session.STATUS_ERROR).writeString(e.getSQLState()).writeString(message).writeString(sql)
+                    .writeInt(e.getErrorCode()).writeString(trace).flush();
         } catch (Exception e2) {
             if (!transfer.isClosed()) {
                 server.traceError(e2);
@@ -270,16 +265,16 @@ public class TcpServerThread implements Runnable {
         }
     }
 
-    private void setParameters(Command command) throws IOException {
+    private void setParameters(PreparedStatement command) throws IOException {
         int len = transfer.readInt();
-        ArrayList<? extends ParameterInterface> params = command.getParameters();
+        ArrayList<? extends CommandParameter> params = command.getParameters();
         for (int i = 0; i < len; i++) {
-            Parameter p = (Parameter) params.get(i);
+            CommandParameter p = params.get(i);
             p.setValue(transfer.readValue());
         }
     }
 
-    private void executeBatch(int size, BackendBatchCommand command) throws IOException {
+    private void executeBatch(int size, BatchStatement command) throws IOException {
         int old = session.getModificationId();
         synchronized (session) {
             command.executeUpdate();
@@ -287,7 +282,7 @@ public class TcpServerThread implements Runnable {
 
         int status;
         if (session.isClosed()) {
-            status = FrontendSession.STATUS_CLOSED;
+            status = Session.STATUS_CLOSED;
         } else {
             status = getState(old);
         }
@@ -302,58 +297,57 @@ public class TcpServerThread implements Runnable {
     private void process() throws IOException {
         int operation = transfer.readInt();
         switch (operation) {
-        case FrontendSession.SESSION_PREPARE_READ_PARAMS:
-        case FrontendSession.SESSION_PREPARE: {
+        case Session.SESSION_PREPARE_READ_PARAMS:
+        case Session.SESSION_PREPARE: {
             int id = transfer.readInt();
             String sql = transfer.readString();
             int old = session.getModificationId();
-            session.setParser(new Parser(session));
-            Command command = (Command) session.prepareCommand(sql);
+            PreparedStatement command = session.prepareStatement(sql, -1);
             boolean readonly = command.isReadOnly();
             cache.addObject(id, command);
             boolean isQuery = command.isQuery();
-            ArrayList<? extends ParameterInterface> params = command.getParameters();
+            ArrayList<? extends CommandParameter> params = command.getParameters();
             transfer.writeInt(getState(old)).writeBoolean(isQuery).writeBoolean(readonly).writeInt(params.size());
-            if (operation == FrontendSession.SESSION_PREPARE_READ_PARAMS) {
-                for (ParameterInterface p : params) {
+            if (operation == Session.SESSION_PREPARE_READ_PARAMS) {
+                for (CommandParameter p : params) {
                     writeMetaData(transfer, p);
                 }
             }
             transfer.flush();
             break;
         }
-        case FrontendSession.SESSION_CLOSE: {
+        case Session.SESSION_CLOSE: {
             stop = true;
             closeSession();
-            transfer.writeInt(FrontendSession.STATUS_OK).flush();
+            transfer.writeInt(Session.STATUS_OK).flush();
             close();
             break;
         }
-        case FrontendSession.COMMAND_GET_META_DATA: {
+        case Session.COMMAND_GET_META_DATA: {
             int id = transfer.readInt();
             int objectId = transfer.readInt();
-            Command command = (Command) cache.getObject(id, false);
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
             Result result = command.getMetaData();
             cache.addObject(objectId, result);
             int columnCount = result.getVisibleColumnCount();
-            transfer.writeInt(FrontendSession.STATUS_OK).writeInt(columnCount).writeInt(0);
+            transfer.writeInt(Session.STATUS_OK).writeInt(columnCount).writeInt(0);
             for (int i = 0; i < columnCount; i++) {
-                ResultColumn.writeColumn(transfer, result, i);
+                writeColumn(transfer, result, i);
             }
             transfer.flush();
             break;
         }
-        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY: {
+        case Session.COMMAND_EXECUTE_DISTRIBUTED_QUERY: {
             session.setAutoCommit(false);
             session.setRoot(false);
         }
-        case FrontendSession.COMMAND_EXECUTE_QUERY: {
+        case Session.COMMAND_EXECUTE_QUERY: {
             int id = transfer.readInt();
             int objectId = transfer.readInt();
             int maxRows = transfer.readInt();
             int fetchSize = transfer.readInt();
-            Command command = (Command) cache.getObject(id, false);
-            command.getPrepared().setFetchSize(fetchSize);
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            command.setFetchSize(fetchSize);
             setParameters(command);
             int old = session.getModificationId();
             Result result;
@@ -365,14 +359,14 @@ public class TcpServerThread implements Runnable {
             int state = getState(old);
             transfer.writeInt(state);
 
-            if (operation == FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY)
+            if (operation == Session.COMMAND_EXECUTE_DISTRIBUTED_QUERY)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             transfer.writeInt(columnCount);
             int rowCount = result.getRowCount();
             transfer.writeInt(rowCount);
             for (int i = 0; i < columnCount; i++) {
-                ResultColumn.writeColumn(transfer, result, i);
+                writeColumn(transfer, result, i);
             }
             int fetch = fetchSize;
             if (rowCount != -1)
@@ -381,13 +375,13 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE: {
+        case Session.COMMAND_EXECUTE_DISTRIBUTED_UPDATE: {
             session.setAutoCommit(false);
             session.setRoot(false);
         }
-        case FrontendSession.COMMAND_EXECUTE_UPDATE: {
+        case Session.COMMAND_EXECUTE_UPDATE: {
             int id = transfer.readInt();
-            Command command = (Command) cache.getObject(id, false);
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
             setParameters(command);
             int old = session.getModificationId();
             int updateCount;
@@ -396,26 +390,26 @@ public class TcpServerThread implements Runnable {
             }
             int status;
             if (session.isClosed()) {
-                status = FrontendSession.STATUS_CLOSED;
+                status = Session.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
             transfer.writeInt(status);
-            if (operation == FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE)
+            if (operation == Session.COMMAND_EXECUTE_DISTRIBUTED_UPDATE)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             transfer.writeInt(updateCount).writeBoolean(session.isAutoCommit());
             transfer.flush();
             break;
         }
-        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_COMMIT: {
+        case Session.COMMAND_EXECUTE_DISTRIBUTED_COMMIT: {
             int old = session.getModificationId();
             synchronized (session) {
                 session.commit(false, transfer.readString());
             }
             int status;
             if (session.isClosed()) {
-                status = FrontendSession.STATUS_CLOSED;
+                status = Session.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
@@ -423,14 +417,14 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK: {
+        case Session.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK: {
             int old = session.getModificationId();
             synchronized (session) {
                 session.rollback();
             }
             int status;
             if (session.isClosed()) {
-                status = FrontendSession.STATUS_CLOSED;
+                status = Session.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
@@ -438,19 +432,19 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD:
-        case FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK: {
+        case Session.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD:
+        case Session.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK: {
             int old = session.getModificationId();
             String name = transfer.readString();
             synchronized (session) {
-                if (operation == FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD)
+                if (operation == Session.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD)
                     session.addSavepoint(name);
                 else
                     session.rollbackToSavepoint(name);
             }
             int status;
             if (session.isClosed()) {
-                status = FrontendSession.STATUS_CLOSED;
+                status = Session.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
@@ -458,12 +452,12 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case FrontendSession.COMMAND_EXECUTE_TRANSACTION_VALIDATE: {
+        case Session.COMMAND_EXECUTE_TRANSACTION_VALIDATE: {
             int old = session.getModificationId();
-            boolean isValid = session.getDatabase().getTransactionEngine().validateTransaction(transfer.readString());
+            boolean isValid = session.validateTransaction(transfer.readString());
             int status;
             if (session.isClosed()) {
-                status = FrontendSession.STATUS_CLOSED;
+                status = Session.STATUS_CLOSED;
             } else {
                 status = getState(old);
             }
@@ -472,20 +466,20 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT: {
+        case Session.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT: {
             int size = transfer.readInt();
             ArrayList<String> batchCommands = New.arrayList(size);
             for (int i = 0; i < size; i++)
                 batchCommands.add(transfer.readString());
 
-            BackendBatchCommand command = new BackendBatchCommand(session, batchCommands);
+            BatchStatement command = session.getBatchStatement(batchCommands);
             executeBatch(size, command);
             break;
         }
-        case FrontendSession.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT: {
+        case Session.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT: {
             int id = transfer.readInt();
             int size = transfer.readInt();
-            Command preparedCommand = (Command) cache.getObject(id, false);
+            PreparedStatement preparedCommand = (PreparedStatement) cache.getObject(id, false);
             ArrayList<Value[]> batchParameters = New.arrayList(size);
             int paramsSize = preparedCommand.getParameters().size();
             Value[] values;
@@ -496,35 +490,35 @@ public class TcpServerThread implements Runnable {
                 }
                 batchParameters.add(values);
             }
-            BackendBatchCommand command = new BackendBatchCommand(session, preparedCommand, batchParameters);
+            BatchStatement command = session.getBatchStatement(preparedCommand, batchParameters);
             executeBatch(size, command);
             break;
         }
-        case FrontendSession.COMMAND_CLOSE: {
+        case Session.COMMAND_CLOSE: {
             int id = transfer.readInt();
-            Command command = (Command) cache.getObject(id, true);
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, true);
             if (command != null) {
                 command.close();
                 cache.freeObject(id);
             }
             break;
         }
-        case FrontendSession.RESULT_FETCH_ROWS: {
+        case Session.RESULT_FETCH_ROWS: {
             int id = transfer.readInt();
             int count = transfer.readInt();
             Result result = (Result) cache.getObject(id, false);
-            transfer.writeInt(FrontendSession.STATUS_OK);
+            transfer.writeInt(Session.STATUS_OK);
             sendRow(result, count);
             transfer.flush();
             break;
         }
-        case FrontendSession.RESULT_RESET: {
+        case Session.RESULT_RESET: {
             int id = transfer.readInt();
             Result result = (Result) cache.getObject(id, false);
             result.reset();
             break;
         }
-        case FrontendSession.RESULT_CLOSE: {
+        case Session.RESULT_CLOSE: {
             int id = transfer.readInt();
             Result result = (Result) cache.getObject(id, true);
             if (result != null) {
@@ -533,7 +527,7 @@ public class TcpServerThread implements Runnable {
             }
             break;
         }
-        case FrontendSession.CHANGE_ID: {
+        case Session.CHANGE_ID: {
             int oldId = transfer.readInt();
             int newId = transfer.readInt();
             Object obj = cache.getObject(oldId, false);
@@ -541,20 +535,20 @@ public class TcpServerThread implements Runnable {
             cache.addObject(newId, obj);
             break;
         }
-        case FrontendSession.SESSION_SET_ID: {
+        case Session.SESSION_SET_ID: {
             sessionId = transfer.readString();
-            transfer.writeInt(FrontendSession.STATUS_OK).flush();
+            transfer.writeInt(Session.STATUS_OK).flush();
             transfer.writeBoolean(session.isAutoCommit());
             transfer.flush();
             break;
         }
-        case FrontendSession.SESSION_SET_AUTOCOMMIT: {
+        case Session.SESSION_SET_AUTOCOMMIT: {
             boolean autoCommit = transfer.readBoolean();
             session.setAutoCommit(autoCommit);
-            transfer.writeInt(FrontendSession.STATUS_OK).flush();
+            transfer.writeInt(Session.STATUS_OK).flush();
             break;
         }
-        case FrontendSession.LOB_READ: {
+        case Session.LOB_READ: {
             long lobId = transfer.readLong();
             byte[] hmac = transfer.readBytes();
             CachedInputStream in = lobs.get(lobId);
@@ -578,7 +572,7 @@ public class TcpServerThread implements Runnable {
             length = Math.min(16 * Constants.IO_BUFFER_SIZE, length);
             byte[] buff = new byte[length];
             length = IOUtils.readFully(in, buff, length);
-            transfer.writeInt(FrontendSession.STATUS_OK);
+            transfer.writeInt(Session.STATUS_OK);
             transfer.writeInt(length);
             transfer.writeBytes(buff, 0, length);
             transfer.flush();
@@ -594,9 +588,9 @@ public class TcpServerThread implements Runnable {
 
     private int getState(int oldModificationId) {
         if (session.getModificationId() == oldModificationId) {
-            return FrontendSession.STATUS_OK;
+            return Session.STATUS_OK;
         }
-        return FrontendSession.STATUS_OK_STATE_CHANGED;
+        return Session.STATUS_OK_STATE_CHANGED;
     }
 
     private void sendRow(Result result, int count) throws IOException {
@@ -639,7 +633,7 @@ public class TcpServerThread implements Runnable {
      */
     void cancelStatement(String targetSessionId, int statementId) {
         if (StringUtils.equals(targetSessionId, this.sessionId)) {
-            Command cmd = (Command) cache.getObject(statementId, false);
+            PreparedStatement cmd = (PreparedStatement) cache.getObject(statementId, false);
             cmd.cancel();
         }
     }
@@ -698,11 +692,31 @@ public class TcpServerThread implements Runnable {
      * @param transfer the transfer object
      * @param p the parameter
      */
-    private static void writeMetaData(Transfer transfer, ParameterInterface p) throws IOException {
+    private static void writeMetaData(Transfer transfer, CommandParameter p) throws IOException {
         transfer.writeInt(p.getType());
         transfer.writeLong(p.getPrecision());
         transfer.writeInt(p.getScale());
         transfer.writeInt(p.getNullable());
+    }
+
+    /**
+     * Write a result column to the given output.
+     *
+     * @param out the object to where to write the data
+     * @param result the result
+     * @param i the column index
+     */
+    public static void writeColumn(Transfer out, Result result, int i) throws IOException {
+        out.writeString(result.getAlias(i));
+        out.writeString(result.getSchemaName(i));
+        out.writeString(result.getTableName(i));
+        out.writeString(result.getColumnName(i));
+        out.writeInt(result.getColumnType(i));
+        out.writeLong(result.getColumnPrecision(i));
+        out.writeInt(result.getColumnScale(i));
+        out.writeInt(result.getDisplaySize(i));
+        out.writeBoolean(result.isAutoIncrement(i));
+        out.writeInt(result.getNullable(i));
     }
 
 }

@@ -14,8 +14,7 @@ import org.lealone.api.Trigger;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
@@ -24,8 +23,9 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.Command;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 
@@ -33,27 +33,19 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * MERGE
  */
-public class Merge extends Prepared implements InsertOrMerge {
+public class Merge extends StatementBase implements InsertOrMerge {
 
     protected Table table;
     protected Column[] columns;
     protected Column[] keys;
     protected final ArrayList<Expression[]> list = New.arrayList();
     protected Query query;
-    protected Prepared update;
+    protected StatementBase update;
 
     private List<Row> rows;
 
-    public Merge(Session session) {
+    public Merge(ServerSession session) {
         super(session);
-    }
-
-    @Override
-    public void setCommand(Command command) {
-        super.setCommand(command);
-        if (query != null) {
-            query.setCommand(command);
-        }
     }
 
     public void setTable(Table table) {
@@ -352,7 +344,7 @@ public class Merge extends Prepared implements InsertOrMerge {
     }
 
     @Override
-    public void prepare() {
+    public PreparedStatement prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
                 // special case where table is used as a sequence
@@ -399,7 +391,9 @@ public class Merge extends Prepared implements InsertOrMerge {
             buff.append(c.getSQL()).append("=?");
         }
         String sql = buff.toString();
-        update = (Prepared) session.prepare(sql);
+        update = (StatementBase) session.prepareStatement(sql);
+
+        return this;
     }
 
     @Override
@@ -414,7 +408,7 @@ public class Merge extends Prepared implements InsertOrMerge {
 
     @Override
     public int getType() {
-        return CommandInterface.MERGE;
+        return SQLStatement.MERGE;
     }
 
     @Override

@@ -7,7 +7,7 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.ColumnResolver;
@@ -28,7 +28,7 @@ public class ConditionExists extends Condition {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         query.setSession(session);
         Result result = query.query(1);// session.createSubqueryResult(query, 1);
         session.addTemporaryResult(result);
@@ -37,7 +37,7 @@ public class ConditionExists extends Condition {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         query.prepare();
         return this;
     }
@@ -48,7 +48,7 @@ public class ConditionExists extends Condition {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // TODO exists: is it allowed that the subquery contains aggregates?
         // probably not
         // select id from test group by id having exists (select * from test2

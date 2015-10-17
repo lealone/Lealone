@@ -14,7 +14,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
@@ -27,7 +27,7 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Alias;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -37,7 +37,7 @@ import org.lealone.sql.expression.ValueExpression;
 /**
  * Represents a SELECT statement (simple, or union).
  */
-public abstract class Query extends Prepared implements org.lealone.db.expression.Query {
+public abstract class Query extends StatementBase implements org.lealone.db.expression.Query {
 
     /**
      * The limit expression as specified in the LIMIT or TOP clause.
@@ -71,7 +71,7 @@ public abstract class Query extends Prepared implements org.lealone.db.expressio
     private Value[] lastParameters;
     private boolean cacheableChecked;
 
-    Query(Session session) {
+    Query(ServerSession session) {
         super(session);
     }
 
@@ -203,7 +203,7 @@ public abstract class Query extends Prepared implements org.lealone.db.expressio
      *
      * @param s the session
      */
-    public abstract void updateAggregate(Session s);
+    public abstract void updateAggregate(ServerSession s);
 
     /**
      * Call the before triggers on all tables.
@@ -250,7 +250,7 @@ public abstract class Query extends Prepared implements org.lealone.db.expressio
         this.noCache = true;
     }
 
-    private boolean sameResultAsLast(Session s, Value[] params, Value[] lastParams, long lastEval) {
+    private boolean sameResultAsLast(ServerSession s, Value[] params, Value[] lastParams, long lastEval) {
         if (!cacheableChecked) {
             long max = getMaxDataModificationId();
             noCache = max == Long.MAX_VALUE;
@@ -346,7 +346,7 @@ public abstract class Query extends Prepared implements org.lealone.db.expressio
      * @param mustBeInResult all order by expressions must be in the select list
      * @param filters the table filters
      */
-    static void initOrder(Session session, ArrayList<Expression> expressions, ArrayList<String> expressionSQL,
+    static void initOrder(ServerSession session, ArrayList<Expression> expressions, ArrayList<String> expressionSQL,
             ArrayList<SelectOrderBy> orderList, int visible, boolean mustBeInResult, ArrayList<TableFilter> filters) {
         Database db = session.getDatabase();
         for (SelectOrderBy o : orderList) {
@@ -449,7 +449,7 @@ public abstract class Query extends Prepared implements org.lealone.db.expressio
      * @param expressionCount the number of columns in the query
      * @return the {@link SortOrder} object
      */
-    static SortOrder prepareOrder(Session session, ArrayList<SelectOrderBy> orderList, int expressionCount) {
+    static SortOrder prepareOrder(ServerSession session, ArrayList<SelectOrderBy> orderList, int expressionCount) {
         int size = orderList.size();
         int[] index = new int[size];
         int[] sortType = new int[size];
@@ -527,7 +527,7 @@ public abstract class Query extends Prepared implements org.lealone.db.expressio
      * @param session the session
      * @return the sample size
      */
-    int getSampleSizeValue(Session session) {
+    int getSampleSizeValue(ServerSession session) {
         if (sampleSizeExpr == null) {
             return 0;
         }

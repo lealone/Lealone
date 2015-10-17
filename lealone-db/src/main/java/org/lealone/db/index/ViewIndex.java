@@ -13,11 +13,10 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.Utils;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
-import org.lealone.db.ParameterInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Comparison;
-import org.lealone.db.expression.Parameter;
 import org.lealone.db.expression.Query;
 import org.lealone.db.expression.SelectUnion;
 import org.lealone.db.result.LocalResult;
@@ -43,16 +42,16 @@ public class ViewIndex extends IndexBase {
 
     private final TableView view;
     private final String querySQL;
-    private final ArrayList<Parameter> originalParameters;
+    private final ArrayList<CommandParameter> originalParameters;
     private final SmallLRUCache<IntArray, CostElement> costCache = SmallLRUCache
             .newInstance(Constants.VIEW_INDEX_CACHE_SIZE);
     private boolean recursive;
     private final int[] indexMasks;
     private String planSQL;
     private Query query;
-    private final Session createSession;
+    private final ServerSession createSession;
 
-    public ViewIndex(TableView view, String querySQL, ArrayList<Parameter> originalParameters, boolean recursive) {
+    public ViewIndex(TableView view, String querySQL, ArrayList<CommandParameter> originalParameters, boolean recursive) {
         initIndexBase(view, 0, null, null, IndexType.createNonUnique(false));
         this.view = view;
         this.querySQL = querySQL;
@@ -63,7 +62,7 @@ public class ViewIndex extends IndexBase {
         this.indexMasks = null;
     }
 
-    public ViewIndex(TableView view, ViewIndex index, Session session, int[] masks) {
+    public ViewIndex(TableView view, ViewIndex index, ServerSession session, int[] masks) {
         initIndexBase(view, 0, null, null, IndexType.createNonUnique(false));
         this.view = view;
         this.querySQL = index.querySQL;
@@ -78,7 +77,7 @@ public class ViewIndex extends IndexBase {
         }
     }
 
-    public Session getSession() {
+    public ServerSession getSession() {
         return createSession;
     }
 
@@ -104,7 +103,7 @@ public class ViewIndex extends IndexBase {
     }
 
     @Override
-    public synchronized double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public synchronized double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         if (recursive) {
             return 1000;
         }
@@ -117,7 +116,7 @@ public class ViewIndex extends IndexBase {
                 return cachedCost.cost;
             }
         }
-        Query q = (Query) session.prepare(querySQL, true);
+        Query q = (Query) session.prepareStatement(querySQL, true);
         if (masks != null) {
             IntArray paramIndex = new IntArray();
             for (int i = 0; i < masks.length; i++) {
@@ -133,21 +132,21 @@ public class ViewIndex extends IndexBase {
                 int mask = masks[idx];
                 int nextParamIndex = q.getParameters().size() + view.getParameterOffset();
                 if ((mask & IndexCondition.EQUALITY) != 0) {
-                    Parameter param = new Parameter(nextParamIndex);
+                    CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
                     q.addGlobalCondition(param, idx, Comparison.EQUAL_NULL_SAFE);
                 } else {
                     if ((mask & IndexCondition.START) != 0) {
-                        Parameter param = new Parameter(nextParamIndex);
+                        CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
                         q.addGlobalCondition(param, idx, Comparison.BIGGER_EQUAL);
                     }
                     if ((mask & IndexCondition.END) != 0) {
-                        Parameter param = new Parameter(nextParamIndex);
+                        CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
                         q.addGlobalCondition(param, idx, Comparison.SMALLER_EQUAL);
                     }
                 }
             }
             String sql = q.getPlanSQL();
-            q = (Query) session.prepare(sql, true);
+            q = (Query) session.prepareStatement(sql, true);
         }
         double cost = q.getCost();
         cachedCost = new CostElement();
@@ -158,7 +157,7 @@ public class ViewIndex extends IndexBase {
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         if (recursive) {
             Result recResult = view.getRecursiveResult();
             if (recResult != null) {
@@ -166,7 +165,7 @@ public class ViewIndex extends IndexBase {
                 return new ViewCursor(this, recResult, first, last);
             }
             if (query == null) {
-                query = (Query) createSession.prepare(querySQL, true);
+                query = (Query) createSession.prepareStatement(querySQL, true);
                 planSQL = query.getPlanSQL();
             }
             if (!(query instanceof SelectUnion)) {
@@ -209,12 +208,12 @@ public class ViewIndex extends IndexBase {
             result.done();
             return new ViewCursor(this, result, first, last);
         }
-        ArrayList<? extends ParameterInterface> paramList = query.getParameters();
+        ArrayList<? extends CommandParameter> paramList = query.getParameters();
         if (originalParameters != null) {
             for (int i = 0, size = originalParameters.size(); i < size; i++) {
-                Parameter orig = originalParameters.get(i);
+                CommandParameter orig = originalParameters.get(i);
                 int idx = orig.getIndex();
-                Value value = orig.getValue(session);
+                Value value = orig.getParamValue(session);
                 setParameter(paramList, idx, value);
             }
         }
@@ -244,18 +243,18 @@ public class ViewIndex extends IndexBase {
         return new ViewCursor(this, result, first, last);
     }
 
-    private static void setParameter(ArrayList<? extends ParameterInterface> paramList, int x, Value v) {
+    private static void setParameter(ArrayList<? extends CommandParameter> paramList, int x, Value v) {
         if (x >= paramList.size()) {
             // the parameter may be optimized away as in
             // select * from (select null as x) where x=1;
             return;
         }
-        Parameter param = (Parameter) paramList.get(x);
+        CommandParameter param = paramList.get(x);
         param.setValue(v);
     }
 
-    private Query getQuery(Session session, int[] masks) {
-        Query q = (Query) session.prepare(querySQL, true);
+    private Query getQuery(ServerSession session, int[] masks) {
+        Query q = (Query) session.prepareStatement(querySQL, true);
         if (masks == null) {
             return q;
         }
@@ -285,17 +284,17 @@ public class ViewIndex extends IndexBase {
             columnList.add(table.getColumn(idx));
             int mask = masks[idx];
             if ((mask & IndexCondition.EQUALITY) == IndexCondition.EQUALITY) {
-                Parameter param = new Parameter(firstIndexParam + i);
+                CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
                 q.addGlobalCondition(param, idx, Comparison.EQUAL_NULL_SAFE);
                 i++;
             }
             if ((mask & IndexCondition.START) == IndexCondition.START) {
-                Parameter param = new Parameter(firstIndexParam + i);
+                CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
                 q.addGlobalCondition(param, idx, Comparison.BIGGER_EQUAL);
                 i++;
             }
             if ((mask & IndexCondition.END) == IndexCondition.END) {
-                Parameter param = new Parameter(firstIndexParam + i);
+                CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
                 q.addGlobalCondition(param, idx, Comparison.SMALLER_EQUAL);
                 i++;
             }
@@ -332,7 +331,7 @@ public class ViewIndex extends IndexBase {
         }
 
         String sql = q.getPlanSQL();
-        q = (Query) session.prepare(sql, true);
+        q = (Query) session.prepareStatement(sql, true);
         return q;
     }
 
@@ -341,7 +340,7 @@ public class ViewIndex extends IndexBase {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return 0;
     }
 

@@ -6,17 +6,17 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 
 /**
  * Represents an empty statement or a statement that has no effect.
  */
-public class NoOperation extends Prepared {
+public class NoOperation extends StatementBase {
 
-    public NoOperation(Session session) {
+    public NoOperation(ServerSession session) {
         super(session);
     }
 
@@ -52,7 +52,7 @@ public class NoOperation extends Prepared {
 
     @Override
     public int getType() {
-        return CommandInterface.NO_OPERATION;
+        return SQLStatement.NO_OPERATION;
     }
 
 }

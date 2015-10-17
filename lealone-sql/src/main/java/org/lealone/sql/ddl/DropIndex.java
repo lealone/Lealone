@@ -10,25 +10,25 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP INDEX
  */
-public class DropIndex extends SchemaCommand {
+public class DropIndex extends SchemaStatement {
 
     private String indexName;
     private boolean ifExists;
 
-    public DropIndex(Session session, Schema schema) {
+    public DropIndex(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -77,7 +77,7 @@ public class DropIndex extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_INDEX;
+        return SQLStatement.DROP_INDEX;
     }
 
 }

@@ -15,7 +15,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.Mode;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -108,7 +108,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         table.removeIndex(this);
         remove(session);
         database.removeMeta(session, getId());
@@ -120,7 +120,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public Cursor findDistinct(Session session, SearchRow first, SearchRow last) {
+    public Cursor findDistinct(ServerSession session, SearchRow first, SearchRow last) {
         throw DbException.throwInternalError();
     }
 
@@ -400,7 +400,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public Row getRow(Session session, long key) {
+    public Row getRow(ServerSession session, long key) {
         throw DbException.getUnsupportedException(toString());
     }
 
@@ -439,27 +439,27 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // nothing to do
     }
 
     @Override
-    public void add(Session session, Row row) {
+    public void add(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("add row");
     }
 
     @Override
-    public void remove(Session session, Row row) {
+    public void remove(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("remove row");
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         throw DbException.getUnsupportedException("truncate index");
     }
 
     @Override
-    public void remove(Session session) {
+    public void remove(ServerSession session) {
         throw DbException.getUnsupportedException("remove index");
     }
 
@@ -474,7 +474,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
         throw DbException.getUnsupportedException("findFirstOrLast");
     }
 

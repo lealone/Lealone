@@ -7,7 +7,7 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
@@ -28,7 +28,7 @@ public class ExpressionList extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Value[] v = new Value[list.length];
         for (int i = 0; i < list.length; i++) {
             v[i] = list[i].getValue(session);
@@ -49,7 +49,7 @@ public class ExpressionList extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         boolean allConst = true;
         for (int i = 0; i < list.length; i++) {
             Expression e = list[i].optimize(session);
@@ -100,7 +100,7 @@ public class ExpressionList extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         for (Expression e : list) {
             e.updateAggregate(session);
         }
@@ -126,7 +126,7 @@ public class ExpressionList extends Expression {
     }
 
     @Override
-    public Expression[] getExpressionColumns(Session session) {
+    public Expression[] getExpressionColumns(ServerSession session) {
         ExpressionColumn[] expr = new ExpressionColumn[list.length];
         for (int i = 0; i < list.length; i++) {
             Expression e = list[i];

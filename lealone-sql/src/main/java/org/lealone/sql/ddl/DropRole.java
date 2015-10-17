@@ -8,23 +8,23 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Role;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP ROLE
  */
-public class DropRole extends DefineCommand {
+public class DropRole extends DefineStatement {
 
     private String roleName;
     private boolean ifExists;
 
-    public DropRole(Session session) {
+    public DropRole(ServerSession session) {
         super(session);
     }
 
@@ -57,7 +57,7 @@ public class DropRole extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_ROLE;
+        return SQLStatement.DROP_ROLE;
     }
 
 }

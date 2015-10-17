@@ -8,17 +8,17 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.schema.Schema;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * CREATE AGGREGATE
  */
-public class CreateAggregate extends DefineCommand {
+public class CreateAggregate extends DefineStatement {
 
     private Schema schema;
     private String name;
@@ -26,7 +26,7 @@ public class CreateAggregate extends DefineCommand {
     private boolean ifNotExists;
     private boolean force;
 
-    public CreateAggregate(Session session) {
+    public CreateAggregate(ServerSession session) {
         super(session);
     }
 
@@ -69,7 +69,7 @@ public class CreateAggregate extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_AGGREGATE;
+        return SQLStatement.CREATE_AGGREGATE;
     }
 
 }

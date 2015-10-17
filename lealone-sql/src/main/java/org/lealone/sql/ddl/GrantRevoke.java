@@ -10,16 +10,16 @@ import java.util.ArrayList;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.RightOwner;
 import org.lealone.db.auth.Role;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statements
@@ -28,7 +28,7 @@ import org.lealone.db.table.Table;
  * REVOKE RIGHT,
  * REVOKE ROLE
  */
-public class GrantRevoke extends DefineCommand {
+public class GrantRevoke extends DefineStatement {
 
     private ArrayList<String> roleNames;
     private int operationType;
@@ -37,7 +37,7 @@ public class GrantRevoke extends DefineCommand {
     private Schema schema;
     private RightOwner grantee;
 
-    public GrantRevoke(Session session) {
+    public GrantRevoke(ServerSession session) {
         super(session);
     }
 
@@ -88,18 +88,18 @@ public class GrantRevoke extends DefineCommand {
                 if (grantedRole == null) {
                     throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, name);
                 }
-                if (operationType == CommandInterface.GRANT) {
+                if (operationType == SQLStatement.GRANT) {
                     grantRole(grantedRole);
-                } else if (operationType == CommandInterface.REVOKE) {
+                } else if (operationType == SQLStatement.REVOKE) {
                     revokeRole(grantedRole);
                 } else {
                     DbException.throwInternalError("type=" + operationType);
                 }
             }
         } else {
-            if (operationType == CommandInterface.GRANT) {
+            if (operationType == SQLStatement.GRANT) {
                 grantRight();
-            } else if (operationType == CommandInterface.REVOKE) {
+            } else if (operationType == SQLStatement.REVOKE) {
                 revokeRight();
             } else {
                 DbException.throwInternalError("type=" + operationType);

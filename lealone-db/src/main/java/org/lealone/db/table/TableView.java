@@ -15,13 +15,12 @@ import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
-import org.lealone.db.ParameterInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.User;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.expression.Parameter;
 import org.lealone.db.expression.Query;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
@@ -34,7 +33,7 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.util.IntArray;
 import org.lealone.db.util.SynchronizedVerifier;
 import org.lealone.db.value.Value;
-import org.lealone.sql.PreparedInterface;
+import org.lealone.sql.PreparedStatement;
 
 /**
  * A view is a virtual table that is defined by a query.
@@ -59,8 +58,8 @@ public class TableView extends Table {
     private LocalResult recursiveResult;
     private boolean tableExpression;
 
-    public TableView(Schema schema, int id, String name, String querySQL, ArrayList<Parameter> params,
-            String[] columnNames, Session session, boolean recursive) {
+    public TableView(Schema schema, int id, String name, String querySQL, ArrayList<CommandParameter> params,
+            String[] columnNames, ServerSession session, boolean recursive) {
         super(schema, id, name, false, true);
         init(querySQL, params, columnNames, session, recursive);
     }
@@ -75,7 +74,7 @@ public class TableView extends Table {
      * @param recursive whether this is a recursive view
      * @param force if errors should be ignored
      */
-    public void replace(String querySQL, String[] columnNames, Session session, boolean recursive, boolean force) {
+    public void replace(String querySQL, String[] columnNames, ServerSession session, boolean recursive, boolean force) {
         String oldQuerySQL = this.querySQL;
         String[] oldColumnNames = this.columnNames;
         boolean oldRecursive = this.recursive;
@@ -88,8 +87,8 @@ public class TableView extends Table {
         }
     }
 
-    private synchronized void init(String querySQL, ArrayList<Parameter> params, String[] columnNames, Session session,
-            boolean recursive) {
+    private synchronized void init(String querySQL, ArrayList<CommandParameter> params, String[] columnNames,
+            ServerSession session, boolean recursive) {
         this.querySQL = querySQL;
         this.columnNames = columnNames;
         this.recursive = recursive;
@@ -99,8 +98,8 @@ public class TableView extends Table {
         initColumnsAndTables(session);
     }
 
-    private static Query compileViewQuery(Session session, String sql) {
-        PreparedInterface p = session.prepare(sql);
+    private static Query compileViewQuery(ServerSession session, String sql) {
+        PreparedStatement p = session.prepareStatement(sql);
         if (!(p instanceof Query)) {
             throw DbException.getSyntaxError(sql, 0);
         }
@@ -115,7 +114,7 @@ public class TableView extends Table {
      * @return the exception if re-compiling this or any dependent view failed
      *         (only when force is disabled)
      */
-    public synchronized DbException recompile(Session session, boolean force) {
+    public synchronized DbException recompile(ServerSession session, boolean force) {
         try {
             compileViewQuery(session, querySQL);
         } catch (DbException e) {
@@ -141,7 +140,7 @@ public class TableView extends Table {
         return force ? null : createException;
     }
 
-    private void initColumnsAndTables(Session session) {
+    private void initColumnsAndTables(ServerSession session) {
         Column[] cols;
         removeViewFromTables();
         try {
@@ -204,7 +203,7 @@ public class TableView extends Table {
     }
 
     @Override
-    public PlanItem getBestPlanItem(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public PlanItem getBestPlanItem(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         PlanItem item = new PlanItem();
         item.cost = index.getCost(session, masks, filter, sortOrder);
         IntArray masksArray = new IntArray(masks == null ? Utils.EMPTY_INT_ARRAY : masks);
@@ -281,18 +280,18 @@ public class TableView extends Table {
     }
 
     @Override
-    public boolean lock(Session session, boolean exclusive, boolean force) {
+    public boolean lock(ServerSession session, boolean exclusive, boolean force) {
         // exclusive lock means: the view will be dropped
         return false;
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // nothing to do
     }
 
     @Override
-    public void unlock(Session s) {
+    public void unlock(ServerSession s) {
         // nothing to do
     }
 
@@ -302,18 +301,18 @@ public class TableView extends Table {
     }
 
     @Override
-    public Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment) {
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment) {
         throw DbException.getUnsupportedException("VIEW");
     }
 
     @Override
-    public void removeRow(Session session, Row row) {
+    public void removeRow(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("VIEW");
     }
 
     @Override
-    public void addRow(Session session, Row row) {
+    public void addRow(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("VIEW");
     }
 
@@ -323,12 +322,12 @@ public class TableView extends Table {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         throw DbException.getUnsupportedException("VIEW");
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         throw DbException.throwInternalError();
     }
 
@@ -349,7 +348,7 @@ public class TableView extends Table {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         removeViewFromTables();
         super.removeChildrenAndResources(session);
         database.removeMeta(session, getId());
@@ -371,7 +370,7 @@ public class TableView extends Table {
     }
 
     @Override
-    public Index getScanIndex(Session session) {
+    public Index getScanIndex(ServerSession session) {
         if (createException != null) {
             String msg = createException.getMessage();
             throw DbException.get(ErrorCode.VIEW_IS_INVALID_2, createException, getSQL(), msg);
@@ -442,13 +441,13 @@ public class TableView extends Table {
      * @param topQuery the top level query
      * @return the view table
      */
-    public static TableView createTempView(Session session, User owner, String name, Query query, Query topQuery) {
+    public static TableView createTempView(ServerSession session, User owner, String name, Query query, Query topQuery) {
         Schema mainSchema = session.getDatabase().getSchema(Constants.SCHEMA_MAIN);
         String querySQL = query.getPlanSQL();
         int size = query.getParameters().size();
-        ArrayList<Parameter> parms = new ArrayList<Parameter>(size);
-        for (ParameterInterface p : query.getParameters())
-            parms.add((Parameter) p);
+        ArrayList<CommandParameter> parms = new ArrayList<CommandParameter>(size);
+        for (CommandParameter p : query.getParameters())
+            parms.add(p);
         TableView v = new TableView(mainSchema, 0, name, querySQL, parms, null, session, false);
         if (v.createException != null) {
             throw v.createException;

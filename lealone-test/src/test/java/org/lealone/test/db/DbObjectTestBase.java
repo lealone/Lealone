@@ -20,7 +20,7 @@ package org.lealone.test.db;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.test.UnitTestBase;
 
@@ -28,7 +28,7 @@ public class DbObjectTestBase extends UnitTestBase {
     public static final String DB_NAME = "DbObjectTest";
 
     protected Database db;
-    protected Session session;
+    protected ServerSession session;
 
     protected String sql;
 
@@ -43,11 +43,11 @@ public class DbObjectTestBase extends UnitTestBase {
     }
 
     public int executeUpdate(String sql) {
-        return session.prepareCommandLocal(sql).executeUpdate();
+        return session.prepareStatementLocal(sql).executeUpdate();
     }
 
     public Result executeQuery(String sql) {
-        return session.prepareCommandLocal(sql).executeQuery(0, false);
+        return session.prepareStatementLocal(sql).executeQuery(0, false);
     }
 
     // index从1开始

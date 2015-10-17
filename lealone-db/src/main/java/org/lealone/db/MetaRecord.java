@@ -13,7 +13,7 @@ import org.lealone.common.message.Trace;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.PreparedInterface;
+import org.lealone.sql.PreparedStatement;
 
 /**
  * A record in the system table of the database.
@@ -50,9 +50,9 @@ public class MetaRecord implements Comparable<MetaRecord> {
      * @param systemSession the system session
      * @param listener the database event listener
      */
-    public void execute(Database db, Session systemSession, DatabaseEventListener listener) {
+    public void execute(Database db, ServerSession systemSession, DatabaseEventListener listener) {
         try {
-            PreparedInterface command = systemSession.prepare(sql);
+            PreparedStatement command = systemSession.prepareStatement(sql);
             command.setObjectId(id);
             command.setLocal(true);
             command.update();

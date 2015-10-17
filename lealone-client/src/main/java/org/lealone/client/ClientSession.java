@@ -22,63 +22,30 @@ import org.lealone.common.util.NetUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.TempFileDeleter;
-import org.lealone.db.CommandInterface;
+import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
+import org.lealone.db.Session;
+import org.lealone.db.SessionBase;
 import org.lealone.db.SessionFactory;
-import org.lealone.db.SessionInterface;
-import org.lealone.db.SessionWithState;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
+import org.lealone.sql.BatchStatement;
+import org.lealone.sql.ParsedStatement;
+import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
 
 /**
- * The client side part of a session when using the server mode. This object
- * communicates with a Session on the server side.
+ * The client side part of a session when using the server mode. 
+ * This object communicates with a Session on the server side.
  */
-public class FrontendSession extends SessionWithState implements DataHandler, Transaction.Participant {
-    public static final int SESSION_PREPARE = 0;
-    public static final int SESSION_CLOSE = 1;
-    public static final int COMMAND_EXECUTE_QUERY = 2;
-    public static final int COMMAND_EXECUTE_UPDATE = 3;
-    public static final int COMMAND_CLOSE = 4;
-    public static final int RESULT_FETCH_ROWS = 5;
-    public static final int RESULT_RESET = 6;
-    public static final int RESULT_CLOSE = 7;
-    // public static final int COMMAND_COMMIT = 8; //不再使用
-    public static final int CHANGE_ID = 9;
-    public static final int COMMAND_GET_META_DATA = 10;
-    public static final int SESSION_PREPARE_READ_PARAMS = 11;
-    public static final int SESSION_SET_ID = 12;
-    public static final int SESSION_CANCEL_STATEMENT = 13;
-    // public static final int SESSION_CHECK_KEY = 14; //不再使用
-    public static final int SESSION_SET_AUTOCOMMIT = 15;
-    // public static final int SESSION_UNDO_LOG_POS = 16; //不再使用
-    public static final int LOB_READ = 17;
-
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_QUERY = 100;
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_UPDATE = 101;
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_COMMIT = 102;
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK = 103;
-
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD = 104;
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK = 105;
-
-    public static final int COMMAND_EXECUTE_TRANSACTION_VALIDATE = 106;
-
-    public static final int COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT = 120;
-    public static final int COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT = 121;
-
-    public static final int STATUS_ERROR = 0;
-    public static final int STATUS_OK = 1;
-    public static final int STATUS_CLOSED = 2;
-    public static final int STATUS_OK_STATE_CHANGED = 3;
+public class ClientSession extends SessionBase implements DataHandler, Transaction.Participant {
 
     private static final Random random = new Random(System.currentTimeMillis());
 
@@ -96,11 +63,11 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     private String sessionId;
     private int clientVersion;
     private int lastReconnect;
-    private SessionInterface embedded;
+    private Session embedded;
     private LobStorage lobStorage;
     private Transaction transaction;
 
-    public FrontendSession(ConnectionInfo ci) {
+    public ClientSession(ConnectionInfo ci) {
         this.connectionInfo = ci;
     }
 
@@ -126,7 +93,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
             done(trans);
             clientVersion = trans.readInt();
             trans.setVersion(clientVersion);
-            trans.writeInt(FrontendSession.SESSION_SET_ID);
+            trans.writeInt(ClientSession.SESSION_SET_ID);
             trans.writeString(sessionId);
             done(trans);
             autoCommit = trans.readBoolean();
@@ -158,7 +125,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
             trans.writeString(null);
             trans.writeString(null);
             trans.writeString(sessionId);
-            trans.writeInt(FrontendSession.SESSION_CANCEL_STATEMENT);
+            trans.writeInt(ClientSession.SESSION_CANCEL_STATEMENT);
             trans.writeInt(id);
             trans.close();
         } catch (IOException e) {
@@ -184,7 +151,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     private void setAutoCommitSend(boolean autoCommit) {
         try {
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            transfer.writeInt(FrontendSession.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
+            transfer.writeInt(ClientSession.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
@@ -205,22 +172,13 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         return buff.toString();
     }
 
-    @Override
-    public int getPowerOffCount() {
-        return 0;
-    }
-
-    @Override
-    public void setPowerOffCount(int count) {
-        throw DbException.getUnsupportedException("remote");
-    }
-
     /**
      * Open a new (remote or embedded) session.
      *
      * @return the session
      */
-    public SessionInterface connectEmbeddedOrServer() {
+    @Override
+    public Session connectEmbeddedOrServer() {
         ConnectionInfo ci = connectionInfo;
         if (ci.isRemote()) {
             connectServer(ci);
@@ -304,9 +262,9 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     }
 
     @Override
-    public synchronized CommandInterface prepareCommand(String sql, int fetchSize) {
+    public synchronized Command prepareCommand(String sql, int fetchSize) {
         checkClosed();
-        return new FrontendCommand(this, transfer, sql, fetchSize);
+        return new ClientCommand(this, transfer, sql, fetchSize);
     }
 
     /**
@@ -327,7 +285,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
             synchronized (this) {
                 try {
                     traceOperation("SESSION_CLOSE", 0);
-                    transfer.writeInt(FrontendSession.SESSION_CLOSE);
+                    transfer.writeInt(ClientSession.SESSION_CLOSE);
                     done(transfer);
                     transfer.close();
                 } catch (RuntimeException e) {
@@ -500,7 +458,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     @Override
     public LobStorage getLobStorage() {
         if (lobStorage == null) {
-            lobStorage = new FrontendLobStorage(this);
+            lobStorage = new ClientLobStorage(this);
         }
         return lobStorage;
     }
@@ -515,7 +473,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
 
         try {
             traceOperation("LOB_READ", (int) lobId);
-            transfer.writeInt(FrontendSession.LOB_READ);
+            transfer.writeInt(ClientSession.LOB_READ);
             transfer.writeLong(lobId);
             transfer.writeBytes(hmac);
             transfer.writeLong(offset);
@@ -537,7 +495,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
-            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeString(allLocalTransactionNames);
+            transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeString(allLocalTransactionNames);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
@@ -548,7 +506,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     public synchronized void rollbackTransaction() {
         checkClosed();
         try {
-            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
+            transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
@@ -559,7 +517,7 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     public synchronized void addSavepoint(String name) {
         checkClosed();
         try {
-            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD).writeString(name);
+            transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD).writeString(name);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
@@ -570,17 +528,18 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
     public synchronized void rollbackToSavepoint(String name) {
         checkClosed();
         try {
-            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK).writeString(name);
+            transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK).writeString(name);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
         }
     }
 
+    @Override
     public synchronized boolean validateTransaction(String localTransactionName) {
         checkClosed();
         try {
-            transfer.writeInt(FrontendSession.COMMAND_EXECUTE_TRANSACTION_VALIDATE).writeString(localTransactionName);
+            transfer.writeInt(ClientSession.COMMAND_EXECUTE_TRANSACTION_VALIDATE).writeString(localTransactionName);
             done(transfer);
             return transfer.readBoolean();
         } catch (Exception e) {
@@ -589,30 +548,34 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
         }
     }
 
-    // 要加synchronized，避免FrontendCommand在执行更新和查询时其他线程把transaction置null
+    // 要加synchronized，避免ClientCommand在执行更新和查询时其他线程把transaction置null
+    @Override
     public synchronized void setTransaction(Transaction transaction) {
         this.transaction = transaction;
     }
 
+    @Override
     public Transaction getTransaction() {
         return transaction;
     }
 
-    public synchronized FrontendBatchCommand getFrontendBatchCommand(ArrayList<String> batchCommands) {
+    public synchronized ClientBatchCommand getClientBatchCommand(ArrayList<String> batchCommands) {
         checkClosed();
-        return new FrontendBatchCommand(this, transfer, batchCommands);
+        return new ClientBatchCommand(this, transfer, batchCommands);
     }
 
-    public synchronized FrontendBatchCommand getFrontendBatchCommand(CommandInterface preparedCommand,
+    public synchronized ClientBatchCommand getClientBatchCommand(Command preparedCommand,
             ArrayList<Value[]> batchParameters) {
         checkClosed();
-        return new FrontendBatchCommand(this, transfer, preparedCommand, batchParameters);
+        return new ClientBatchCommand(this, transfer, preparedCommand, batchParameters);
     }
 
+    @Override
     public String getURL() {
         return connectionInfo.getURL();
     }
 
+    @Override
     public synchronized void checkTransfers() {
         if (transfer != null) {
             try {
@@ -622,5 +585,53 @@ public class FrontendSession extends SessionWithState implements DataHandler, Tr
                 throw DbException.convert(e);
             }
         }
+    }
+
+    @Override
+    public ParsedStatement parseStatement(String sql) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(String sql, int fetchSize) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public int getModificationId() {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public void rollback() {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void setRoot(boolean isRoot) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void commit(boolean ddl, String allLocalTransactionNames) {
+        // TODO Auto-generated method stub
+
     }
 }

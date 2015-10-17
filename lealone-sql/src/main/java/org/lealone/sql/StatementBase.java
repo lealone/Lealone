@@ -13,8 +13,9 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.StatementBuilder;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SearchRow;
@@ -24,14 +25,14 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 
 /**
- * A prepared statement.
+ * A parsed and prepared statement.
  */
-public abstract class Prepared implements PreparedInterface {
+public abstract class StatementBase implements PreparedStatement, ParsedStatement {
 
     /**
      * The session.
      */
-    protected Session session;
+    protected ServerSession session;
 
     /**
      * The SQL string.
@@ -56,17 +57,18 @@ public abstract class Prepared implements PreparedInterface {
     protected boolean prepareAlways;
 
     private long modificationMetaId;
-    private Command command;
     private int objectId;
     private int currentRowNumber;
     private int rowScanCount;
+
+    private boolean canReuse;
 
     /**
      * Create a new object.
      *
      * @param session the session
      */
-    public Prepared(Session session) {
+    public StatementBase(ServerSession session) {
         this.session = session;
         modificationMetaId = session.getDatabase().getModificationMetaId();
     }
@@ -91,6 +93,7 @@ public abstract class Prepared implements PreparedInterface {
      *
      * @return the statement type
      */
+    @Override
     public abstract int getType();
 
     /**
@@ -98,6 +101,7 @@ public abstract class Prepared implements PreparedInterface {
      *
      * @return true if it is
      */
+    @Override
     public boolean isReadOnly() {
         return false;
     }
@@ -170,19 +174,11 @@ public abstract class Prepared implements PreparedInterface {
     }
 
     /**
-     * Set the command.
-     *
-     * @param command the new command
-     */
-    public void setCommand(Command command) {
-        this.command = command;
-    }
-
-    /**
      * Check if this object is a query.
      *
      * @return true if it is
      */
+    @Override
     public boolean isQuery() {
         return false;
     }
@@ -190,8 +186,10 @@ public abstract class Prepared implements PreparedInterface {
     /**
      * Prepare this statement.
      */
-    public void prepare() {
+    @Override
+    public PreparedStatement prepare() {
         // nothing to do
+        return this;
     }
 
     /**
@@ -219,6 +217,11 @@ public abstract class Prepared implements PreparedInterface {
     @Override
     public Result query(int maxrows) {
         throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
+    }
+
+    @Override
+    public Result query(int maxRows, boolean scrollable) {
+        return query(maxRows);
     }
 
     public Result queryLocal(int maxrows) {
@@ -291,10 +294,6 @@ public abstract class Prepared implements PreparedInterface {
     @Override
     public void checkCanceled() {
         session.checkCanceled();
-        Command c = (Command) (command != null ? command : session.getCurrentCommand());
-        if (c != null) {
-            c.checkCanceled();
-        }
     }
 
     /**
@@ -313,7 +312,7 @@ public abstract class Prepared implements PreparedInterface {
      *
      * @param currentSession the new session
      */
-    public void setSession(Session currentSession) {
+    public void setSession(ServerSession currentSession) {
         this.session = currentSession;
     }
 
@@ -443,12 +442,9 @@ public abstract class Prepared implements PreparedInterface {
         return e.addSQL(buff.toString());
     }
 
+    @Override
     public boolean isCacheable() {
         return false;
-    }
-
-    public Command getCommand() {
-        return command;
     }
 
     private boolean local = true;
@@ -481,7 +477,7 @@ public abstract class Prepared implements PreparedInterface {
         this.fetchSize = fetchSize;
     }
 
-    public Session getSession() {
+    public ServerSession getSession() {
         return session;
     }
 
@@ -520,5 +516,55 @@ public abstract class Prepared implements PreparedInterface {
 
     public List<Long> getRowVersions() {
         return null;
+    }
+
+    /**
+     * Whether the command is already closed (in which case it can be re-used).
+     *
+     * @return true if it can be re-used
+     */
+
+    @Override
+    public boolean canReuse() {
+        return canReuse;
+    }
+
+    /**
+     * The command is now re-used, therefore reset the canReuse flag, and the
+     * parameter values.
+     */
+
+    @Override
+    public void reuse() {
+        canReuse = false;
+        ArrayList<? extends CommandParameter> parameters = getParameters();
+        for (int i = 0, size = parameters.size(); i < size; i++) {
+            CommandParameter param = parameters.get(i);
+            param.setValue(null, true);
+        }
+    }
+
+    @Override
+    public void close() {
+        canReuse = true;
+    }
+
+    @Override
+    public void cancel() {
+    }
+
+    @Override
+    public Result executeQuery(int maxRows, boolean scrollable) {
+        return query(maxRows);
+    }
+
+    @Override
+    public int executeUpdate() {
+        return update();
+    }
+
+    @Override
+    public Result getMetaData() {
+        return queryMeta();
     }
 }

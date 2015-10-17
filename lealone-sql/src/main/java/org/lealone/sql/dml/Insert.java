@@ -14,8 +14,7 @@ import org.lealone.api.Trigger;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
@@ -24,8 +23,9 @@ import org.lealone.db.result.Row;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
-import org.lealone.sql.Command;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 
@@ -33,7 +33,7 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * INSERT
  */
-public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
+public class Insert extends StatementBase implements ResultTarget, InsertOrMerge {
 
     protected Table table;
     protected Column[] columns;
@@ -47,16 +47,8 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
 
     private List<Row> rows;
 
-    public Insert(Session session) {
+    public Insert(ServerSession session) {
         super(session);
-    }
-
-    @Override
-    public void setCommand(Command command) {
-        super.setCommand(command);
-        if (query != null) {
-            query.setCommand(command);
-        }
     }
 
     public void setTable(Table table) {
@@ -316,7 +308,7 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
     }
 
     @Override
-    public void prepare() {
+    public PreparedStatement prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
                 // special case where table is used as a sequence
@@ -348,6 +340,7 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
                 throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
             }
         }
+        return this;
     }
 
     @Override
@@ -366,7 +359,7 @@ public class Insert extends Prepared implements ResultTarget, InsertOrMerge {
 
     @Override
     public int getType() {
-        return CommandInterface.INSERT;
+        return SQLStatement.INSERT;
     }
 
     public void setInsertFromSelect(boolean value) {

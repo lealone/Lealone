@@ -10,13 +10,13 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.dml.Query;
 import org.lealone.sql.expression.Parameter;
 
@@ -24,7 +24,7 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * CREATE VIEW
  */
-public class CreateView extends SchemaCommand {
+public class CreateView extends SchemaStatement {
 
     private Query select;
     private String viewName;
@@ -35,7 +35,7 @@ public class CreateView extends SchemaCommand {
     private boolean orReplace;
     private boolean force;
 
-    public CreateView(Session session, Schema schema) {
+    public CreateView(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -97,7 +97,7 @@ public class CreateView extends SchemaCommand {
             }
             querySQL = select.getPlanSQL();
         }
-        Session sysSession = db.getSystemSession();
+        ServerSession sysSession = db.getSystemSession();
         try {
             if (view == null) {
                 Schema schema = session.getDatabase().getSchema(session.getCurrentSchemaName());
@@ -122,7 +122,7 @@ public class CreateView extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_VIEW;
+        return SQLStatement.CREATE_VIEW;
     }
 
 }

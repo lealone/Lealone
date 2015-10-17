@@ -11,7 +11,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -36,7 +36,7 @@ public class FunctionIndex extends IndexBase {
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         if (functionTable.isBufferResultSetToLocalTemp()) {
             return new FunctionCursor(functionTable.getResult(session));
         }
@@ -44,7 +44,7 @@ public class FunctionIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         if (masks != null) {
             throw DbException.getUnsupportedException("ALIAS");
         }
@@ -58,7 +58,7 @@ public class FunctionIndex extends IndexBase {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return functionTable.getRowCount(session);
     }
 
@@ -128,13 +128,13 @@ public class FunctionIndex extends IndexBase {
      */
     private static class FunctionCursorResultSet implements Cursor {
 
-        private final Session session;
+        private final ServerSession session;
         private final ResultSet result;
         private final ResultSetMetaData meta;
         private Value[] values;
         private Row row;
 
-        FunctionCursorResultSet(Session session, ResultSet result) {
+        FunctionCursorResultSet(ServerSession session, ResultSet result) {
             this.session = session;
             this.result = result;
             try {

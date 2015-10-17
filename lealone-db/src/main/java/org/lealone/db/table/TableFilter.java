@@ -12,7 +12,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.auth.Right;
 import org.lealone.db.expression.Comparison;
@@ -44,7 +44,7 @@ public class TableFilter implements ColumnResolver {
      */
     protected boolean joinOuterIndirect;
 
-    private Session session;
+    private ServerSession session;
 
     private final Table table;
     private final Select select;
@@ -112,7 +112,7 @@ public class TableFilter implements ColumnResolver {
      * @param rightsChecked true if rights are already checked
      * @param select the select statement
      */
-    public TableFilter(Session session, Table table, String alias, boolean rightsChecked, Select select) {
+    public TableFilter(ServerSession session, Table table, String alias, boolean rightsChecked, Select select) {
         this.session = session;
         this.table = table;
         this.alias = alias;
@@ -140,7 +140,7 @@ public class TableFilter implements ColumnResolver {
      * @param exclusive true if an exclusive lock is required
      * @param force lock even in the MVCC mode
      */
-    public void lock(Session s, boolean exclusive, boolean force) {
+    public void lock(ServerSession s, boolean exclusive, boolean force) {
         table.lock(s, exclusive, force);
         if (join != null) {
             join.lock(s, exclusive, force);
@@ -155,7 +155,7 @@ public class TableFilter implements ColumnResolver {
      * @param level 1 for the first table in a join, 2 for the second, and so on
      * @return the best plan item
      */
-    public PlanItem getBestPlanItem(Session s, int level) {
+    public PlanItem getBestPlanItem(ServerSession s, int level) {
         PlanItem item;
         if (indexConditions.isEmpty()) {
             item = new PlanItem();
@@ -292,7 +292,7 @@ public class TableFilter implements ColumnResolver {
      *
      * @param s the session
      */
-    public void startQuery(Session s) {
+    public void startQuery(ServerSession s) {
         this.session = s;
         scanCount = 0;
         if (nestedJoin != null) {
@@ -746,7 +746,7 @@ public class TableFilter implements ColumnResolver {
      *
      * @param session the new session
      */
-    void setSession(Session session) {
+    void setSession(ServerSession session) {
         this.session = session;
     }
 
@@ -1035,7 +1035,7 @@ public class TableFilter implements ColumnResolver {
         return evaluatable;
     }
 
-    public Session getSession() {
+    public ServerSession getSession() {
         return session;
     }
 

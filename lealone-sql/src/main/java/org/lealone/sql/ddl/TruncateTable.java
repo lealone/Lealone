@@ -8,20 +8,20 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * TRUNCATE TABLE
  */
-public class TruncateTable extends DefineCommand {
+public class TruncateTable extends DefineStatement {
 
     private Table table;
 
-    public TruncateTable(Session session) {
+    public TruncateTable(ServerSession session) {
         super(session);
     }
 
@@ -43,7 +43,7 @@ public class TruncateTable extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.TRUNCATE_TABLE;
+        return SQLStatement.TRUNCATE_TABLE;
     }
 
 }

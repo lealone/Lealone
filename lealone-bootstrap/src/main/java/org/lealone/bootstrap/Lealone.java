@@ -31,7 +31,7 @@ import org.lealone.cluster.utils.WrappedRunnable;
 import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
@@ -201,7 +201,7 @@ public class Lealone {
     }
 
     private static void startClusterServer() throws Exception {
-        Session.setClusterMode(true);
+        ServerSession.setClusterMode(true);
         StorageService.instance.start();
     }
 

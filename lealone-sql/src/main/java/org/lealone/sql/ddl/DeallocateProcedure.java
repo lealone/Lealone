@@ -6,18 +6,18 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DEALLOCATE
  */
-public class DeallocateProcedure extends DefineCommand {
+public class DeallocateProcedure extends DefineStatement {
 
     private String procedureName;
 
-    public DeallocateProcedure(Session session) {
+    public DeallocateProcedure(ServerSession session) {
         super(session);
     }
 
@@ -33,7 +33,7 @@ public class DeallocateProcedure extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DEALLOCATE;
+        return SQLStatement.DEALLOCATE;
     }
 
 }

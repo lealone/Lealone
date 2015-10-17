@@ -11,7 +11,7 @@ import java.util.Arrays;
 
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
@@ -33,7 +33,7 @@ public class ResultTempTable implements ResultExternal {
     private final boolean distinct;
     private final SortOrder sort;
     private Index index;
-    private final Session session;
+    private final ServerSession session;
     private Table table;
     private Cursor resultCursor;
     private int rowCount;
@@ -44,7 +44,7 @@ public class ResultTempTable implements ResultExternal {
     private int childCount;
     private boolean containsLob;
 
-    ResultTempTable(Session session, Expression[] expressions, boolean distinct, SortOrder sort) {
+    ResultTempTable(ServerSession session, Expression[] expressions, boolean distinct, SortOrder sort) {
         this.session = session;
         this.distinct = distinct;
         this.sort = sort;
@@ -216,7 +216,7 @@ public class ResultTempTable implements ResultExternal {
             // removed now, it will be when the database is opened the next
             // time. (the table is truncated, so this is just one record)
             if (!database.isSysTableLocked()) {
-                Session sysSession = database.getSystemSession();
+                ServerSession sysSession = database.getSystemSession();
                 table.removeChildrenAndResources(sysSession);
                 if (index != null) {
                     // need to explicitly do this,
@@ -256,7 +256,7 @@ public class ResultTempTable implements ResultExternal {
             // in which case we can't use the session
             if (idx.getRowCount(session) == 0 && rowCount > 0) {
                 // this means querying is not transactional
-                resultCursor = idx.find((Session) null, null, null);
+                resultCursor = idx.find((ServerSession) null, null, null);
             } else {
                 // the transaction is still open
                 resultCursor = idx.find(session, null, null);

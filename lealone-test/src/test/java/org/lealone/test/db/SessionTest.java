@@ -15,32 +15,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql;
+package org.lealone.test.db;
 
-import java.util.ArrayList;
+import org.junit.Test;
+import org.lealone.db.DatabaseEngine;
+import org.lealone.db.Session;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.test.UnitTestBase;
 
-import org.lealone.db.ParameterInterface;
-import org.lealone.db.result.Result;
+public class SessionTest extends UnitTestBase {
 
-public interface PreparedInterface {
-    void setLocal(boolean local);
+    @Test
+    public void run() {
+        setInMemory(true);
+        setEmbedded(true);
 
-    void setFetchSize(int fetchSize);
+        String url = getURL();
+        Session session = DatabaseEngine.createSession(url);
 
-    int getFetchSize();
-
-    ArrayList<? extends ParameterInterface> getParameters();
-
-    boolean isLocal();
-
-    boolean isBatch();
-
-    void setObjectId(int i);
-
-    int update();
-
-    Result query(int maxrows);
-
-    void checkCanceled();
-
+        String sql = "CREATE TABLE IF NOT EXISTS SessionTest(f1 int, f2 int)";
+        int fetchSize = 0;
+        PreparedStatement ps = session.prepareStatement(sql, fetchSize);
+        p(ps.isQuery());
+    }
 }

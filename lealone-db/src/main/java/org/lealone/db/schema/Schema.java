@@ -19,7 +19,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
@@ -150,7 +150,7 @@ public class Schema extends DbObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         while (triggers != null && triggers.size() > 0) {
             TriggerObject obj = (TriggerObject) triggers.values().toArray()[0];
             database.removeSchemaObject(session, obj);
@@ -299,7 +299,7 @@ public class Schema extends DbObjectBase {
      * @param name the object name
      * @return the object or null
      */
-    public Table findTableOrView(Session session, String name) {
+    public Table findTableOrView(ServerSession session, String name) {
         Table table = tablesAndViews.get(name);
         if (table == null && session != null) {
             table = session.findLocalTempTable(name);
@@ -315,7 +315,7 @@ public class Schema extends DbObjectBase {
      * @param name the object name
      * @return the object or null
      */
-    public Index findIndex(Session session, String name) {
+    public Index findIndex(ServerSession session, String name) {
         Index index = indexes.get(name);
         if (index == null) {
             index = session.findLocalTempTableIndex(name);
@@ -353,7 +353,7 @@ public class Schema extends DbObjectBase {
      * @param name the object name
      * @return the object or null
      */
-    public Constraint findConstraint(Session session, String name) {
+    public Constraint findConstraint(ServerSession session, String name) {
         Constraint constraint = constraints.get(name);
         if (constraint == null) {
             constraint = session.findLocalTempTableConstraint(name);
@@ -428,7 +428,7 @@ public class Schema extends DbObjectBase {
      * @param table the constraint table
      * @return the unique name
      */
-    public String getUniqueConstraintName(Session session, Table table) {
+    public String getUniqueConstraintName(ServerSession session, Table table) {
         HashMap<String, Constraint> tableConstraints;
         if (table.isTemporary() && !table.isGlobalTemporary()) {
             tableConstraints = session.getLocalTempTableConstraints();
@@ -446,7 +446,7 @@ public class Schema extends DbObjectBase {
      * @param prefix the index name prefix
      * @return the unique name
      */
-    public String getUniqueIndexName(Session session, Table table, String prefix) {
+    public String getUniqueIndexName(ServerSession session, Table table, String prefix) {
         HashMap<String, Index> tableIndexes;
         if (table.isTemporary() && !table.isGlobalTemporary()) {
             tableIndexes = session.getLocalTempTableIndexes();
@@ -465,7 +465,7 @@ public class Schema extends DbObjectBase {
      * @return the table or view
      * @throws DbException if no such object exists
      */
-    public Table getTableOrView(Session session, String name) {
+    public Table getTableOrView(ServerSession session, String name) {
         Table table = tablesAndViews.get(name);
         if (table == null) {
             if (session != null) {

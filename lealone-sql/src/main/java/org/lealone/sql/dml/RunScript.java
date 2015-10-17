@@ -12,18 +12,18 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.db.util.ScriptReader;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 
 /**
  * This class represents the statement
  * RUNSCRIPT
  */
-public class RunScriptCommand extends ScriptBase {
+public class RunScript extends ScriptBase {
 
     /**
      * The byte order mark.
@@ -34,7 +34,7 @@ public class RunScriptCommand extends ScriptBase {
 
     private Charset charset = Constants.UTF8;
 
-    public RunScriptCommand(Session session) {
+    public RunScript(ServerSession session) {
         super(session);
     }
 
@@ -73,7 +73,7 @@ public class RunScriptCommand extends ScriptBase {
 
     private void execute(String sql) {
         try {
-            Prepared command = (Prepared) session.prepare(sql);
+            StatementBase command = (StatementBase) session.prepareStatement(sql);
             if (command.isQuery()) {
                 command.query(0);
             } else {
@@ -98,7 +98,7 @@ public class RunScriptCommand extends ScriptBase {
 
     @Override
     public int getType() {
-        return CommandInterface.RUNSCRIPT;
+        return SQLStatement.RUNSCRIPT;
     }
 
 }

@@ -18,7 +18,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.table.Table;
 import org.lealone.db.util.SourceCompiler;
@@ -68,7 +68,7 @@ public class TriggerObject extends SchemaObjectBase {
             return;
         }
         try {
-            Session sysSession = database.getSystemSession();
+            ServerSession sysSession = database.getSystemSession();
             Connection c2 = sysSession.createConnection(false);
             Object obj;
             if (triggerClassName != null) {
@@ -148,7 +148,7 @@ public class TriggerObject extends SchemaObjectBase {
      * @param type the trigger type
      * @param beforeAction if this method is called before applying the changes
      */
-    public void fire(Session session, int type, boolean beforeAction) {
+    public void fire(ServerSession session, int type, boolean beforeAction) {
         if (rowBased || before != beforeAction || (typeMask & type) == 0) {
             return;
         }
@@ -198,7 +198,7 @@ public class TriggerObject extends SchemaObjectBase {
      * @param rollback when the operation occurred within a rollback
      * @return true if no further action is required (for 'instead of' triggers)
      */
-    public boolean fireRow(Session session, Row oldRow, Row newRow, boolean beforeAction, boolean rollback) {
+    public boolean fireRow(ServerSession session, Row oldRow, Row newRow, boolean beforeAction, boolean rollback) {
         if (!rowBased || before != beforeAction) {
             return false;
         }
@@ -369,7 +369,7 @@ public class TriggerObject extends SchemaObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         table.removeTrigger(this);
         database.removeMeta(session, getId());
         if (triggerCallback != null) {

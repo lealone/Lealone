@@ -54,9 +54,9 @@ public class LealoneDatabase extends Database {
         init(ci);
 
         if (getAllUsers().isEmpty()) {
-            getSystemSession().prepareCommandLocal("CREATE USER IF NOT EXISTS lealone PASSWORD 'lealone' ADMIN")
+            getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS lealone PASSWORD 'lealone' ADMIN")
                     .executeUpdate();
-            getSystemSession().prepareCommandLocal("CREATE USER IF NOT EXISTS sa PASSWORD '' ADMIN").executeUpdate();
+            getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS sa PASSWORD '' ADMIN").executeUpdate();
         }
     }
 
@@ -66,7 +66,7 @@ public class LealoneDatabase extends Database {
 
     synchronized Database createDatabase(String dbName, ConnectionInfo ci) {
         String sql = getSQL(quoteIdentifier(dbName), ci);
-        getSystemSession().prepareCommandLocal(sql).executeUpdate();
+        getSystemSession().prepareStatementLocal(sql).executeUpdate();
         Database db = databases.get(dbName);
         return db;
     }

@@ -18,7 +18,7 @@
 package org.lealone.sql.router;
 
 import org.lealone.db.result.Result;
-import org.lealone.sql.ddl.DefineCommand;
+import org.lealone.sql.ddl.DefineStatement;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Merge;
@@ -27,7 +27,7 @@ import org.lealone.sql.dml.Update;
 
 public interface Router {
 
-    int executeDefineCommand(DefineCommand defineCommand);
+    int executeDefineCommand(DefineStatement defineCommand);
 
     int executeInsert(Insert insert);
 

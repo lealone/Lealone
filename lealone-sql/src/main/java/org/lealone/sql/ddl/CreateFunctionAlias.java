@@ -8,17 +8,17 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * CREATE ALIAS
  */
-public class CreateFunctionAlias extends SchemaCommand {
+public class CreateFunctionAlias extends SchemaStatement {
 
     private String aliasName;
     private String javaClassMethod;
@@ -28,7 +28,7 @@ public class CreateFunctionAlias extends SchemaCommand {
     private String source;
     private boolean bufferResultSetToLocalTemp = true;
 
-    public CreateFunctionAlias(Session session, Schema schema) {
+    public CreateFunctionAlias(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -97,7 +97,7 @@ public class CreateFunctionAlias extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_ALIAS;
+        return SQLStatement.CREATE_ALIAS;
     }
 
 }

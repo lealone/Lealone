@@ -10,18 +10,18 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.User;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * CREATE USER
  */
-public class CreateUser extends DefineCommand {
+public class CreateUser extends DefineStatement {
 
     private String userName;
     private boolean admin;
@@ -31,7 +31,7 @@ public class CreateUser extends DefineCommand {
     private boolean ifNotExists;
     private String comment;
 
-    public CreateUser(Session session) {
+    public CreateUser(ServerSession session) {
         super(session);
     }
 
@@ -55,11 +55,11 @@ public class CreateUser extends DefineCommand {
      * @param salt the salt
      * @param hash the hash
      */
-    static void setSaltAndHash(User user, Session session, Expression salt, Expression hash) {
+    static void setSaltAndHash(User user, ServerSession session, Expression salt, Expression hash) {
         user.setSaltAndHash(getByteArray(session, salt), getByteArray(session, hash));
     }
 
-    private static byte[] getByteArray(Session session, Expression e) {
+    private static byte[] getByteArray(ServerSession session, Expression e) {
         String s = e.optimize(session).getValue(session).getString();
         return s == null ? new byte[0] : StringUtils.convertHexToBytes(s);
     }
@@ -71,7 +71,7 @@ public class CreateUser extends DefineCommand {
      * @param session the session
      * @param password the password
      */
-    static void setPassword(User user, Session session, Expression password) {
+    static void setPassword(User user, ServerSession session, Expression password) {
         String pwd = password.optimize(session).getValue(session).getString();
         char[] passwordChars = pwd == null ? new char[0] : pwd.toCharArray();
         byte[] userPasswordHash;
@@ -131,7 +131,7 @@ public class CreateUser extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_USER;
+        return SQLStatement.CREATE_USER;
     }
 
 }

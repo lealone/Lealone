@@ -7,7 +7,7 @@ package org.lealone.db.index;
 
 import java.util.List;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 
 public interface StandardIndex extends Index {
@@ -19,7 +19,7 @@ public interface StandardIndex extends Index {
      * @param rows the rows
      * @param bufferName the name of the temporary storage
      */
-    void addRowsToBuffer(Session session, List<Row> rows, String bufferName);
+    void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName);
 
     /**
      * Add all the index data from the buffers to the index. The index will
@@ -27,7 +27,7 @@ public interface StandardIndex extends Index {
      *
      * @param bufferNames the names of the temporary storage
      */
-    void addBufferedRows(Session session, List<String> bufferNames);
+    void addBufferedRows(ServerSession session, List<String> bufferNames);
 
     boolean isInMemory();
 

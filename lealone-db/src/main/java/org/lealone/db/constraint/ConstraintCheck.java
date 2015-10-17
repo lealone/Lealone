@@ -12,7 +12,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
@@ -78,7 +78,7 @@ public class ConstraintCheck extends Constraint {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         table.removeConstraint(this);
         database.removeMeta(session, getId());
         filter = null;
@@ -88,7 +88,7 @@ public class ConstraintCheck extends Constraint {
     }
 
     @Override
-    public void checkRow(Session session, Table t, Row oldRow, Row newRow) {
+    public void checkRow(ServerSession session, Table t, Row oldRow, Row newRow) {
         if (newRow == null) {
             return;
         }
@@ -137,13 +137,13 @@ public class ConstraintCheck extends Constraint {
     }
 
     @Override
-    public void checkExistingData(Session session) {
+    public void checkExistingData(ServerSession session) {
         if (session.getDatabase().isStarting()) {
             // don't check at startup
             return;
         }
         String sql = "SELECT 1 FROM " + filter.getTable().getSQL() + " WHERE NOT(" + expr.getSQL() + ")";
-        Result r = session.prepare(sql).query(1);
+        Result r = session.prepareStatement(sql).query(1);
         if (r.next()) {
             throw DbException.get(ErrorCode.CHECK_CONSTRAINT_VIOLATED_1, getName());
         }

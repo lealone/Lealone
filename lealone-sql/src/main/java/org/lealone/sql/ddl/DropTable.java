@@ -11,20 +11,20 @@ import java.util.ArrayList;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP TABLE
  */
-public class DropTable extends SchemaCommand {
+public class DropTable extends SchemaStatement {
 
     private boolean ifExists;
     private String tableName;
@@ -32,7 +32,7 @@ public class DropTable extends SchemaCommand {
     private DropTable next;
     private int dropAction;
 
-    public DropTable(Session session, Schema schema) {
+    public DropTable(ServerSession session, Schema schema) {
         super(session, schema);
         dropAction = session.getDatabase().getSettings().dropRestrict ? ConstraintReferential.RESTRICT
                 : ConstraintReferential.CASCADE;
@@ -124,7 +124,7 @@ public class DropTable extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_TABLE;
+        return SQLStatement.DROP_TABLE;
     }
 
 }

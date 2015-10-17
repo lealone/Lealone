@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
 import org.lealone.db.table.ColumnResolver;
@@ -43,7 +43,7 @@ public class ConditionIn extends Condition {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Value l = left.getValue(session);
         if (l == ValueNull.INSTANCE) {
             return l;
@@ -78,7 +78,7 @@ public class ConditionIn extends Condition {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         left = left.optimize(session);
         boolean constant = left.isConstant();
         if (constant && left == ValueExpression.getNull()) {
@@ -120,7 +120,7 @@ public class ConditionIn extends Condition {
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         if (!(left instanceof ExpressionColumn)) {
             return;
         }
@@ -160,7 +160,7 @@ public class ConditionIn extends Condition {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         left.updateAggregate(session);
         for (Expression e : valueList) {
             e.updateAggregate(session);

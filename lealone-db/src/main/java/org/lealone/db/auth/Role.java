@@ -9,7 +9,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.table.Table;
 
 /**
@@ -63,7 +63,7 @@ public class Role extends RightOwner {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         for (User user : database.getAllUsers()) {
             Right right = user.getRightForRole(this);
             if (right != null) {

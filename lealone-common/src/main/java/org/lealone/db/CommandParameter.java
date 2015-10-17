@@ -10,9 +10,9 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.value.Value;
 
 /**
- * The interface for client side (remote) and server side parameters.
+ * The interface for client side and server side parameters.
  */
-public interface ParameterInterface {
+public interface CommandParameter {
 
     /**
      * Set the value of the parameter.
@@ -21,6 +21,8 @@ public interface ParameterInterface {
      * @param closeOld if the old value (if one is set) should be closed
      */
     void setValue(Value value, boolean closeOld);
+
+    void setValue(Value value);
 
     /**
      * Get the value of the parameter if set.
@@ -71,5 +73,9 @@ public interface ParameterInterface {
      * @return Column.NULLABLE_*
      */
     int getNullable();
+
+    int getIndex();
+
+    Value getParamValue(Session session);
 
 }

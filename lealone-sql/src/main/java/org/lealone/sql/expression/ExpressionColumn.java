@@ -11,7 +11,7 @@ import java.util.HashMap;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
 import org.lealone.db.schema.Constant;
@@ -205,7 +205,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         if (columnResolver == null) {
             Schema schema = session.getDatabase().findSchema(
                     tableAlias == null ? session.getCurrentSchemaName() : tableAlias);
@@ -239,7 +239,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         Value now = columnResolver.getValue(column);
         Select select = (Select) columnResolver.getSelect();
         if (select == null) {
@@ -257,7 +257,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Select select = (Select) columnResolver.getSelect();
         if (select != null) {
             HashMap<Expression, Object> values = select.getCurrentGroup();
@@ -403,7 +403,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         TableFilter tf = getTableFilter();
         if (filter == tf && column.getType() == Value.BOOLEAN) {
             IndexCondition cond = IndexCondition.get(Comparison.EQUAL, this,
@@ -413,7 +413,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
     }
 
     @Override
-    public Expression getNotIfPossible(Session session) {
+    public Expression getNotIfPossible(ServerSession session) {
         return new Comparison(session, Comparison.EQUAL, this, ValueExpression.get(ValueBoolean.get(false)));
     }
 

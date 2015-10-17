@@ -6,7 +6,7 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
@@ -34,7 +34,7 @@ public class Alias extends Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         return expr.getValue(session);
     }
 
@@ -49,7 +49,7 @@ public class Alias extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         expr = expr.optimize(session);
         return this;
     }
@@ -85,7 +85,7 @@ public class Alias extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         expr.updateAggregate(session);
     }
 

@@ -7,17 +7,17 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * ALTER TABLE SET
  */
-public class AlterTableSet extends SchemaCommand {
+public class AlterTableSet extends SchemaStatement {
 
     private String tableName;
     private final int type;
@@ -25,7 +25,7 @@ public class AlterTableSet extends SchemaCommand {
     private final boolean value;
     private boolean checkExisting;
 
-    public AlterTableSet(Session session, Schema schema, int type, boolean value) {
+    public AlterTableSet(ServerSession session, Schema schema, int type, boolean value) {
         super(session, schema);
         this.type = type;
         this.value = value;
@@ -50,7 +50,7 @@ public class AlterTableSet extends SchemaCommand {
         session.getUser().checkRight(table, Right.ALL);
         table.lock(session, true, true);
         switch (type) {
-        case CommandInterface.ALTER_TABLE_SET_REFERENTIAL_INTEGRITY:
+        case SQLStatement.ALTER_TABLE_SET_REFERENTIAL_INTEGRITY:
             table.setCheckForeignKeyConstraints(session, value, value ? checkExisting : false);
             break;
         default:

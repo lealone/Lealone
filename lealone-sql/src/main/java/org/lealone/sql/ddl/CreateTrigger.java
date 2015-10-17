@@ -9,18 +9,18 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * CREATE TRIGGER
  */
-public class CreateTrigger extends SchemaCommand {
+public class CreateTrigger extends SchemaStatement {
 
     private String triggerName;
     private boolean ifNotExists;
@@ -36,7 +36,7 @@ public class CreateTrigger extends SchemaCommand {
     private boolean force;
     private boolean onRollback;
 
-    public CreateTrigger(Session session, Schema schema) {
+    public CreateTrigger(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -119,7 +119,7 @@ public class CreateTrigger extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_TRIGGER;
+        return SQLStatement.CREATE_TRIGGER;
     }
 
 }

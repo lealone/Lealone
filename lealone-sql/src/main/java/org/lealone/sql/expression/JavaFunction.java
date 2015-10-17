@@ -8,7 +8,7 @@ package org.lealone.sql.expression;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Constants;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.table.ColumnResolver;
@@ -36,7 +36,7 @@ public class JavaFunction extends Expression implements FunctionCall {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         return javaMethod.getValue(session, args, false);
     }
 
@@ -53,7 +53,7 @@ public class JavaFunction extends Expression implements FunctionCall {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         boolean allConst = isDeterministic();
         for (int i = 0, len = args.length; i < len; i++) {
             Expression e = args[i].optimize(session);
@@ -107,7 +107,7 @@ public class JavaFunction extends Expression implements FunctionCall {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         for (Expression e : args) {
             if (e != null) {
                 e.updateAggregate(session);
@@ -121,7 +121,7 @@ public class JavaFunction extends Expression implements FunctionCall {
     }
 
     @Override
-    public ValueResultSet getValueForColumnList(Session session, Expression[] argList) {
+    public ValueResultSet getValueForColumnList(ServerSession session, Expression[] argList) {
         Value v = javaMethod.getValue(session, argList, true);
         return v == ValueNull.INSTANCE ? null : (ValueResultSet) v;
     }
@@ -168,7 +168,7 @@ public class JavaFunction extends Expression implements FunctionCall {
     }
 
     @Override
-    public Expression[] getExpressionColumns(Session session) {
+    public Expression[] getExpressionColumns(ServerSession session) {
         switch (getType()) {
         case Value.RESULT_SET:
             ValueResultSet rs = getValueForColumnList(session, getArgs());

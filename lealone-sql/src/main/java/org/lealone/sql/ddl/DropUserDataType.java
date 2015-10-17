@@ -8,21 +8,21 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.UserDataType;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP DOMAIN
  */
-public class DropUserDataType extends DefineCommand {
+public class DropUserDataType extends DefineStatement {
 
     private String typeName;
     private boolean ifExists;
 
-    public DropUserDataType(Session session) {
+    public DropUserDataType(ServerSession session) {
         super(session);
     }
 
@@ -52,7 +52,7 @@ public class DropUserDataType extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_DOMAIN;
+        return SQLStatement.DROP_DOMAIN;
     }
 
 }

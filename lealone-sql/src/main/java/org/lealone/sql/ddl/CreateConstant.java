@@ -8,25 +8,25 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Constant;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.value.Value;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * CREATE CONSTANT
  */
-public class CreateConstant extends SchemaCommand {
+public class CreateConstant extends SchemaStatement {
 
     private String constantName;
     private Expression expression;
     private boolean ifNotExists;
 
-    public CreateConstant(Session session, Schema schema) {
+    public CreateConstant(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -64,7 +64,7 @@ public class CreateConstant extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_CONSTANT;
+        return SQLStatement.CREATE_CONSTANT;
     }
 
 }

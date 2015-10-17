@@ -12,7 +12,7 @@ import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.DataType;
@@ -28,7 +28,7 @@ import org.lealone.db.value.ValueArray;
 public class LocalResult implements Result, ResultTarget {
 
     private int maxMemoryRows;
-    private Session session;
+    private ServerSession session;
     private int visibleColumnCount;
     private Expression[] expressions;
     private int rowId, rowCount;
@@ -58,7 +58,7 @@ public class LocalResult implements Result, ResultTarget {
      * @param expressions the expression array
      * @param visibleColumnCount the number of visible columns
      */
-    public LocalResult(Session session, Expression[] expressions, int visibleColumnCount) {
+    public LocalResult(ServerSession session, Expression[] expressions, int visibleColumnCount) {
         this.session = session;
         if (session == null) {
             this.maxMemoryRows = Integer.MAX_VALUE;
@@ -79,7 +79,7 @@ public class LocalResult implements Result, ResultTarget {
      * @param maxrows the maximum number of rows to read (0 for no limit)
      * @return the local result set
      */
-    public static LocalResult read(Session session, ResultSet rs, int maxrows) {
+    public static LocalResult read(ServerSession session, ResultSet rs, int maxrows) {
         Expression[] cols = getExpressionColumns(session, rs);
         int columnCount = cols.length;
         LocalResult result = new LocalResult(session, cols, columnCount);
@@ -106,7 +106,7 @@ public class LocalResult implements Result, ResultTarget {
      * @param rs the result set
      * @return an array of expression columns
      */
-    public static Expression[] getExpressionColumns(Session session, ResultSet rs) {
+    public static Expression[] getExpressionColumns(ServerSession session, ResultSet rs) {
         return new Expression[0]; // TODO
         // try {
         // ResultSetMetaData meta = rs.getMetaData();
@@ -136,7 +136,7 @@ public class LocalResult implements Result, ResultTarget {
      * @param targetSession the session of the copy
      * @return the copy
      */
-    public LocalResult createShallowCopy(Session targetSession) {
+    public LocalResult createShallowCopy(ServerSession targetSession) {
         if (external == null && (rows == null || rows.size() < rowCount)) {
             return null;
         }

@@ -7,7 +7,7 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
@@ -60,7 +60,7 @@ public class ConditionAndOr extends Condition {
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         if (andOrType == AND) {
             left.createIndexConditions(session, filter);
             right.createIndexConditions(session, filter);
@@ -68,7 +68,7 @@ public class ConditionAndOr extends Condition {
     }
 
     @Override
-    public Expression getNotIfPossible(Session session) {
+    public Expression getNotIfPossible(ServerSession session) {
         // (NOT (A OR B)): (NOT(A) AND NOT(B))
         // (NOT (A AND B)): (NOT(A) OR NOT(B))
         Expression l = left.getNotIfPossible(session);
@@ -84,7 +84,7 @@ public class ConditionAndOr extends Condition {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Value l = left.getValue(session);
         Value r;
         switch (andOrType) {
@@ -126,7 +126,7 @@ public class ConditionAndOr extends Condition {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         // NULL handling: see wikipedia,
         // http://www-cs-students.stanford.edu/~wlam/compsci/sqlnulls
         left = left.optimize(session);
@@ -258,7 +258,7 @@ public class ConditionAndOr extends Condition {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         left.updateAggregate(session);
         right.updateAggregate(session);
     }

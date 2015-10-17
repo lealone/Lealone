@@ -19,7 +19,7 @@ package org.lealone.sql.router;
 
 import java.util.List;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SortOrder;
@@ -39,7 +39,7 @@ public class SortedResult extends DelegatedResult {
 
     private int rowNumber;
 
-    public SortedResult(int maxRows, Session session, Select select, List<Result> results) {
+    public SortedResult(int maxRows, ServerSession session, Select select, List<Result> results) {
         this.sort = select.getSortOrder();
         this.results = results.toArray(new Result[results.size()]);
         this.result = this.results[0];

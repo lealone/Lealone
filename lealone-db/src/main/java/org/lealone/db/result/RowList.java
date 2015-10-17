@@ -12,7 +12,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.Data;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.storage.fs.FileStorage;
 
@@ -22,7 +22,7 @@ import org.lealone.storage.fs.FileStorage;
  */
 public class RowList {
 
-    private final Session session;
+    private final ServerSession session;
     private final ArrayList<Row> list = New.arrayList();
     private int size;
     private int index, listIndex;
@@ -39,7 +39,7 @@ public class RowList {
      *
      * @param session the session
      */
-    public RowList(Session session) {
+    public RowList(ServerSession session) {
         this.session = session;
         if (session.getDatabase().isPersistent()) {
             maxMemory = session.getDatabase().getMaxOperationMemory();

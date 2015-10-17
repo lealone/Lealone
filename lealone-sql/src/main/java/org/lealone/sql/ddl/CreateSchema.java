@@ -10,17 +10,17 @@ import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * CREATE SCHEMA
  */
-public class CreateSchema extends DefineCommand {
+public class CreateSchema extends DefineStatement {
 
     private String schemaName;
     private String authorization;
@@ -28,7 +28,7 @@ public class CreateSchema extends DefineCommand {
 
     private Map<String, String> replicationProperties;
 
-    public CreateSchema(Session session) {
+    public CreateSchema(ServerSession session) {
         super(session);
     }
 
@@ -69,7 +69,7 @@ public class CreateSchema extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_SCHEMA;
+        return SQLStatement.CREATE_SCHEMA;
     }
 
     public void setReplicationProperties(Map<String, String> replicationProperties) {

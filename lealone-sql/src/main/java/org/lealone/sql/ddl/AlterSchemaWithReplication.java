@@ -19,17 +19,17 @@ package org.lealone.sql.ddl;
 
 import java.util.Map;
 
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
+import org.lealone.sql.SQLStatement;
 
-public class AlterSchemaWithReplication extends DefineCommand {
+public class AlterSchemaWithReplication extends DefineStatement {
 
     private Schema schema;
     private Map<String, String> replicationProperties;
 
-    public AlterSchemaWithReplication(Session session) {
+    public AlterSchemaWithReplication(ServerSession session) {
         super(session);
     }
 
@@ -49,7 +49,7 @@ public class AlterSchemaWithReplication extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.ALTER_SCHEMA_WTIH_REPLICATION;
+        return SQLStatement.ALTER_SCHEMA_WTIH_REPLICATION;
     }
 
     public void setReplicationProperties(Map<String, String> replicationProperties) {

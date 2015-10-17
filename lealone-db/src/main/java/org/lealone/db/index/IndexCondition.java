@@ -14,7 +14,7 @@ import java.util.List;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Comparison;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionColumn;
@@ -124,7 +124,7 @@ public class IndexCondition {
      * @param session the session
      * @return the value
      */
-    public Value getCurrentValue(Session session) {
+    public Value getCurrentValue(ServerSession session) {
         return expression.getValue(session);
     }
 
@@ -135,7 +135,7 @@ public class IndexCondition {
      * @param session the session
      * @return the value list
      */
-    public Value[] getCurrentValueList(Session session) {
+    public Value[] getCurrentValueList(ServerSession session) {
         HashSet<Value> valueSet = new HashSet<Value>();
         for (Expression e : expressionList) {
             Value v = e.getValue(session);

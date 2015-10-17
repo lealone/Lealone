@@ -8,22 +8,22 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.schema.Schema;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * ALTER TABLE DROP CONSTRAINT
  */
-public class AlterTableDropConstraint extends SchemaCommand {
+public class AlterTableDropConstraint extends SchemaStatement {
 
     private String constraintName;
     private final boolean ifExists;
 
-    public AlterTableDropConstraint(Session session, Schema schema, boolean ifExists) {
+    public AlterTableDropConstraint(ServerSession session, Schema schema, boolean ifExists) {
         super(session, schema);
         this.ifExists = ifExists;
     }
@@ -50,7 +50,7 @@ public class AlterTableDropConstraint extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.ALTER_TABLE_DROP_CONSTRAINT;
+        return SQLStatement.ALTER_TABLE_DROP_CONSTRAINT;
     }
 
 }

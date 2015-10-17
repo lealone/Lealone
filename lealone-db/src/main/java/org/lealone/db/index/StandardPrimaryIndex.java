@@ -15,7 +15,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -54,7 +54,7 @@ public class StandardPrimaryIndex extends IndexBase {
     private long lastKey;
     private int mainIndexColumn = -1;
 
-    public StandardPrimaryIndex(Session session, StandardTable table) {
+    public StandardPrimaryIndex(ServerSession session, StandardTable table) {
         IndexColumn[] columns = IndexColumn.wrap(table.getColumns());
         initIndexBase(table, table.getId(), table.getName() + "_DATA", columns, IndexType.createScan(true));
 
@@ -96,12 +96,12 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // ok
     }
 
     @Override
-    public void add(Session session, Row row) {
+    public void add(ServerSession session, Row row) {
         if (mainIndexColumn == -1) {
             if (row.getKey() == 0) {
                 row.setKey(++lastKey);
@@ -145,7 +145,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public void remove(Session session, Row row) {
+    public void remove(ServerSession session, Row row) {
         if (table.getContainsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
                 Value v = row.getValue(i);
@@ -166,7 +166,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         ValueLong min, max;
         if (first == null) {
             min = MIN;
@@ -202,7 +202,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public Row getRow(Session session, long key) {
+    public Row getRow(ServerSession session, long key) {
         TransactionMap<Value, Value> map = getMap(session);
         Value v = map.get(ValueLong.get(key));
         ValueArray array = (ValueArray) v;
@@ -212,7 +212,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         try {
             long cost = 10 * (dataMap.rawSize() + Constants.COST_ROW_OFFSET);
             return cost;
@@ -228,7 +228,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public void remove(Session session) {
+    public void remove(ServerSession session) {
         TransactionMap<Value, Value> map = getMap(session);
         if (!map.isClosed()) {
             map.remove();
@@ -236,7 +236,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         TransactionMap<Value, Value> map = getMap(session);
         if (table.getContainsLargeObject()) {
             database.getLobStorage().removeAllForTable(table.getId());
@@ -250,7 +250,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
         TransactionMap<Value, Value> map = getMap(session);
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
         if (v == null) {
@@ -270,7 +270,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         TransactionMap<Value, Value> map = getMap(session);
         return map.sizeAsLong();
     }
@@ -337,7 +337,7 @@ public class StandardPrimaryIndex extends IndexBase {
      * @param last the key of the last row
      * @return the cursor
      */
-    Cursor find(Session session, ValueLong first, ValueLong last) {
+    Cursor find(ServerSession session, ValueLong first, ValueLong last) {
         TransactionMap<Value, Value> map = getMap(session);
         return new StandardPrimaryIndexCursor(map.entryIterator(first), last);
     }
@@ -353,7 +353,7 @@ public class StandardPrimaryIndex extends IndexBase {
      * @param session the session
      * @return the map
      */
-    TransactionMap<Value, Value> getMap(Session session) {
+    TransactionMap<Value, Value> getMap(ServerSession session) {
         if (session == null) {
             return dataMap;
         }

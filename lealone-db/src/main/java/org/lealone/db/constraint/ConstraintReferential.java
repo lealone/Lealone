@@ -13,8 +13,8 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.ParameterInterface;
-import org.lealone.db.Session;
+import org.lealone.db.CommandParameter;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
@@ -27,7 +27,7 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.PreparedInterface;
+import org.lealone.sql.PreparedStatement;
 
 /**
  * A referential constraint.
@@ -276,7 +276,7 @@ public class ConstraintReferential extends Constraint {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         table.removeConstraint(this);
         refTable.removeConstraint(this);
         if (indexOwner) {
@@ -298,7 +298,7 @@ public class ConstraintReferential extends Constraint {
     }
 
     @Override
-    public void checkRow(Session session, Table t, Row oldRow, Row newRow) {
+    public void checkRow(ServerSession session, Table t, Row oldRow, Row newRow) {
         if (!database.getReferentialIntegrity()) {
             return;
         }
@@ -315,7 +315,7 @@ public class ConstraintReferential extends Constraint {
         }
     }
 
-    private void checkRowOwnTable(Session session, Row oldRow, Row newRow) {
+    private void checkRowOwnTable(ServerSession session, Row oldRow, Row newRow) {
         if (newRow == null) {
             return;
         }
@@ -370,7 +370,7 @@ public class ConstraintReferential extends Constraint {
         }
     }
 
-    private boolean existsRow(Session session, Index searchIndex, SearchRow check, Row excluding) {
+    private boolean existsRow(ServerSession session, Index searchIndex, SearchRow check, Row excluding) {
         Table searchTable = searchIndex.getTable();
         searchTable.lock(session, false, false);
         Cursor cursor = searchIndex.find(session, check, check);
@@ -403,7 +403,7 @@ public class ConstraintReferential extends Constraint {
         return refIndex.compareRows(oldRow, newRow) == 0;
     }
 
-    private void checkRow(Session session, Row oldRow) {
+    private void checkRow(ServerSession session, Row oldRow) {
         SearchRow check = table.getTemplateSimpleRow(false);
         for (int i = 0, len = columns.length; i < len; i++) {
             Column refCol = refColumns[i].column;
@@ -423,7 +423,7 @@ public class ConstraintReferential extends Constraint {
         }
     }
 
-    private void checkRowRefTable(Session session, Row oldRow, Row newRow) {
+    private void checkRowRefTable(ServerSession session, Row oldRow, Row newRow) {
         if (oldRow == null) {
             // this is an insert
             return;
@@ -438,7 +438,7 @@ public class ConstraintReferential extends Constraint {
                 checkRow(session, oldRow);
             } else {
                 int i = deleteAction == CASCADE ? 0 : columns.length;
-                PreparedInterface deleteCommand = getDelete(session);
+                PreparedStatement deleteCommand = getDelete(session);
                 setWhere(deleteCommand, i, oldRow);
                 updateWithSkipCheck(deleteCommand);
             }
@@ -447,11 +447,11 @@ public class ConstraintReferential extends Constraint {
             if (updateAction == RESTRICT) {
                 checkRow(session, oldRow);
             } else {
-                PreparedInterface updateCommand = getUpdate(session);
+                PreparedStatement updateCommand = getUpdate(session);
                 if (updateAction == CASCADE) {
-                    ArrayList<? extends ParameterInterface> params = updateCommand.getParameters();
+                    ArrayList<? extends CommandParameter> params = updateCommand.getParameters();
                     for (int i = 0, len = columns.length; i < len; i++) {
-                        ParameterInterface param = params.get(i);
+                        CommandParameter param = params.get(i);
                         Column refCol = refColumns[i].column;
                         param.setValue(newRow.getValue(refCol.getColumnId()), false);
                     }
@@ -462,7 +462,7 @@ public class ConstraintReferential extends Constraint {
         }
     }
 
-    private void updateWithSkipCheck(PreparedInterface prep) {
+    private void updateWithSkipCheck(PreparedStatement prep) {
         // TODO constraints: maybe delay the update or support delayed checks
         // (until commit)
         try {
@@ -475,12 +475,12 @@ public class ConstraintReferential extends Constraint {
         }
     }
 
-    private void setWhere(PreparedInterface command, int pos, Row row) {
+    private void setWhere(PreparedStatement command, int pos, Row row) {
         for (int i = 0, len = refColumns.length; i < len; i++) {
             int idx = refColumns[i].column.getColumnId();
             Value v = row.getValue(idx);
-            ArrayList<? extends ParameterInterface> params = command.getParameters();
-            ParameterInterface param = params.get(pos + i);
+            ArrayList<? extends CommandParameter> params = command.getParameters();
+            CommandParameter param = params.get(pos + i);
             param.setValue(v, false);
         }
     }
@@ -519,11 +519,11 @@ public class ConstraintReferential extends Constraint {
         deleteSQL = buff.toString();
     }
 
-    private PreparedInterface getUpdate(Session session) {
+    private PreparedStatement getUpdate(ServerSession session) {
         return prepare(session, updateSQL, updateAction);
     }
 
-    private PreparedInterface getDelete(Session session) {
+    private PreparedStatement getDelete(ServerSession session) {
         return prepare(session, deleteSQL, deleteAction);
     }
 
@@ -563,13 +563,13 @@ public class ConstraintReferential extends Constraint {
         buildDeleteSQL();
     }
 
-    private PreparedInterface prepare(Session session, String sql, int action) {
-        PreparedInterface command = session.prepare(sql);
+    private PreparedStatement prepare(ServerSession session, String sql, int action) {
+        PreparedStatement command = session.prepareStatement(sql);
         if (action != CASCADE) {
-            ArrayList<? extends ParameterInterface> params = command.getParameters();
+            ArrayList<? extends CommandParameter> params = command.getParameters();
             for (int i = 0, len = columns.length; i < len; i++) {
                 Column column = columns[i].column;
-                ParameterInterface param = params.get(i);
+                CommandParameter param = params.get(i);
                 Value value;
                 if (action == SET_NULL) {
                     value = ValueNull.INSTANCE;
@@ -631,7 +631,7 @@ public class ConstraintReferential extends Constraint {
     }
 
     @Override
-    public void checkExistingData(Session session) {
+    public void checkExistingData(ServerSession session) {
         if (session.getDatabase().isStarting()) {
             // don't check at startup
             return;
@@ -663,7 +663,7 @@ public class ConstraintReferential extends Constraint {
         }
         buff.append(')');
         String sql = buff.toString();
-        Result r = session.prepare(sql).query(1);
+        Result r = session.prepareStatement(sql).query(1);
         if (r.next()) {
             throw DbException.get(ErrorCode.REFERENTIAL_INTEGRITY_VIOLATED_PARENT_MISSING_1,
                     getShortDescription(null, null));

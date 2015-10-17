@@ -8,21 +8,21 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * CREATE INDEX
  */
-public class CreateIndex extends SchemaCommand {
+public class CreateIndex extends SchemaStatement {
 
     private String tableName;
     private String indexName;
@@ -31,7 +31,7 @@ public class CreateIndex extends SchemaCommand {
     private boolean ifNotExists;
     private String comment;
 
-    public CreateIndex(Session session, Schema schema) {
+    public CreateIndex(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -112,7 +112,7 @@ public class CreateIndex extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.CREATE_INDEX;
+        return SQLStatement.CREATE_INDEX;
     }
 
 }

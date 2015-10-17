@@ -9,7 +9,7 @@ package org.lealone.db.index;
 import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -33,13 +33,13 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         ArrayList<Row> rows = meta.generateRows(session, first, last);
         return new MetaCursor(rows);
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         if (scan) {
             return 10 * MetaTable.ROW_COUNT_APPROXIMATION;
         }
@@ -61,7 +61,7 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return MetaTable.ROW_COUNT_APPROXIMATION;
     }
 

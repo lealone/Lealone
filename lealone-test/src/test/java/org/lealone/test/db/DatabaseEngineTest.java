@@ -29,7 +29,6 @@ public class DatabaseEngineTest extends UnitTestBase {
 
     @Test
     public void run() {
-        initTransactionEngine();
 
         setInMemory(true);
         setEmbedded(true);

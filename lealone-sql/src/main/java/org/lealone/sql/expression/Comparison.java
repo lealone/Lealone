@@ -11,7 +11,7 @@ import java.util.Arrays;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
@@ -106,7 +106,7 @@ public class Comparison extends Condition {
     private Expression left;
     private Expression right;
 
-    public Comparison(Session session, int compareType, Expression left, Expression right) {
+    public Comparison(ServerSession session, int compareType, Expression left, Expression right) {
         this.database = session.getDatabase();
         this.left = left;
         this.right = right;
@@ -164,7 +164,7 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         left = left.optimize(session);
         if (right != null) {
             right = right.optimize(session);
@@ -212,7 +212,7 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         Value l = left.getValue(session);
         if (right == null) {
             boolean result;
@@ -333,13 +333,13 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public Expression getNotIfPossible(Session session) {
+    public Expression getNotIfPossible(ServerSession session) {
         int type = getNotCompareType();
         return new Comparison(session, type, left, right);
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         ExpressionColumn l = null;
         if (left instanceof ExpressionColumn) {
             l = (ExpressionColumn) left;
@@ -424,7 +424,7 @@ public class Comparison extends Condition {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         left.updateAggregate(session);
         if (right != null) {
             right.updateAggregate(session);
@@ -490,7 +490,7 @@ public class Comparison extends Condition {
      * @param and true for AND, false for OR
      * @return null or the third condition
      */
-    Expression getAdditional(Session session, Comparison other, boolean and) {
+    Expression getAdditional(ServerSession session, Comparison other, boolean and) {
         if (compareType == other.compareType && compareType == EQUAL) {
             boolean lc = left.isConstant(), rc = right.isConstant();
             boolean l2c = other.left.isConstant(), r2c = other.right.isConstant();

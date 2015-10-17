@@ -14,7 +14,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.Data;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.storage.fs.FileStorage;
 
@@ -66,7 +66,7 @@ class ResultDiskBuffer implements ResultExternal {
         ArrayList<Value[]> buffer = New.arrayList();
     }
 
-    ResultDiskBuffer(Session session, SortOrder sort, int columnCount) {
+    ResultDiskBuffer(ServerSession session, SortOrder sort, int columnCount) {
         this.parent = null;
         this.sort = sort;
         this.columnCount = columnCount;

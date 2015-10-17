@@ -11,14 +11,15 @@ import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.client.result.ResultRemote;
-import org.lealone.client.result.ResultRemoteCursor;
-import org.lealone.client.result.ResultRemoteInMemory;
+import org.lealone.client.result.ClientResult;
+import org.lealone.client.result.RowCountDeterminedClientResult;
+import org.lealone.client.result.RowCountUndeterminedClientResult;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.ParameterInterface;
+import org.lealone.db.Command;
+import org.lealone.db.CommandParameter;
+import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
@@ -28,20 +29,20 @@ import org.lealone.db.value.Value;
  * Represents the client-side part of a SQL statement.
  * This class is not used in embedded mode.
  */
-public class FrontendCommand implements CommandInterface {
+public class ClientCommand implements Command {
 
     private final Transfer transfer;
-    private final ArrayList<ParameterInterface> parameters;
+    private final ArrayList<CommandParameter> parameters;
     private final Trace trace;
     private final String sql;
     private final int fetchSize;
-    private FrontendSession session;
+    private ClientSession session;
     private int id;
     private boolean isQuery;
-    //private boolean readonly;
+    // private boolean readonly;
     private final int created;
 
-    public FrontendCommand(FrontendSession session, Transfer transfer, String sql, int fetchSize) {
+    public ClientCommand(ClientSession session, Transfer transfer, String sql, int fetchSize) {
         this.transfer = transfer;
         trace = session.getTrace();
         this.sql = sql;
@@ -54,25 +55,25 @@ public class FrontendCommand implements CommandInterface {
         created = session.getLastReconnect();
     }
 
-    private void prepare(FrontendSession s, boolean createParams) {
+    private void prepare(ClientSession s, boolean createParams) {
         id = s.getNextId();
         try {
             if (createParams) {
                 s.traceOperation("SESSION_PREPARE_READ_PARAMS", id);
-                transfer.writeInt(FrontendSession.SESSION_PREPARE_READ_PARAMS).writeInt(id).writeString(sql);
+                transfer.writeInt(ClientSession.SESSION_PREPARE_READ_PARAMS).writeInt(id).writeString(sql);
             } else {
                 s.traceOperation("SESSION_PREPARE", id);
-                transfer.writeInt(FrontendSession.SESSION_PREPARE).writeInt(id).writeString(sql);
+                transfer.writeInt(ClientSession.SESSION_PREPARE).writeInt(id).writeString(sql);
             }
             s.done(transfer);
             isQuery = transfer.readBoolean();
-            //readonly = transfer.readBoolean();
+            // readonly = transfer.readBoolean();
             transfer.readBoolean();
             int paramCount = transfer.readInt();
             if (createParams) {
                 parameters.clear();
                 for (int j = 0; j < paramCount; j++) {
-                    Parameter p = new Parameter(j);
+                    ClientCommandParameter p = new ClientCommandParameter(j);
                     p.readMetaData(transfer);
                     parameters.add(p);
                 }
@@ -88,7 +89,7 @@ public class FrontendCommand implements CommandInterface {
     }
 
     @Override
-    public ArrayList<ParameterInterface> getParameters() {
+    public ArrayList<CommandParameter> getParameters() {
         return parameters;
     }
 
@@ -111,15 +112,16 @@ public class FrontendCommand implements CommandInterface {
                 return null;
             }
             int objectId = session.getNextId();
-            ResultRemote result = null;
+            ClientResult result = null;
             prepareIfRequired();
             try {
                 session.traceOperation("COMMAND_GET_META_DATA", id);
-                transfer.writeInt(FrontendSession.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
+                transfer.writeInt(ClientSession.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
                 session.done(transfer);
                 int columnCount = transfer.readInt();
                 int rowCount = transfer.readInt();
-                result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, Integer.MAX_VALUE);
+                result = new RowCountDeterminedClientResult(session, transfer, objectId, columnCount, rowCount,
+                        Integer.MAX_VALUE);
             } catch (IOException e) {
                 session.handleException(e);
             }
@@ -132,18 +134,18 @@ public class FrontendCommand implements CommandInterface {
         checkParameters();
         synchronized (session) {
             int objectId = session.getNextId();
-            ResultRemote result = null;
+            ClientResult result = null;
             prepareIfRequired();
             try {
                 boolean isDistributedQuery = session.getTransaction() != null
                         && !session.getTransaction().isAutoCommit();
                 if (isDistributedQuery) {
                     session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_QUERY", id);
-                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id)
-                            .writeInt(objectId).writeInt(maxRows);
+                    transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_QUERY).writeInt(id).writeInt(objectId)
+                            .writeInt(maxRows);
                 } else {
                     session.traceOperation("COMMAND_EXECUTE_QUERY", id);
-                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_QUERY) //
+                    transfer.writeInt(ClientSession.COMMAND_EXECUTE_QUERY) //
                             .writeInt(id).writeInt(objectId).writeInt(maxRows);
                 }
                 int fetch;
@@ -163,9 +165,10 @@ public class FrontendCommand implements CommandInterface {
                 int rowCount = transfer.readInt();
 
                 if (rowCount < 0)
-                    result = new ResultRemoteCursor(session, transfer, objectId, columnCount, fetch);
+                    result = new RowCountUndeterminedClientResult(session, transfer, objectId, columnCount, fetch);
                 else
-                    result = new ResultRemoteInMemory(session, transfer, objectId, columnCount, rowCount, fetch);
+                    result = new RowCountDeterminedClientResult(session, transfer, objectId, columnCount, rowCount,
+                            fetch);
 
             } catch (IOException e) {
                 session.handleException(e);
@@ -182,17 +185,17 @@ public class FrontendCommand implements CommandInterface {
         checkParameters();
         synchronized (session) {
             int updateCount = 0;
-            //boolean autoCommit = false;
+            // boolean autoCommit = false;
             prepareIfRequired();
             try {
                 boolean isDistributedUpdate = session.getTransaction() != null
                         && !session.getTransaction().isAutoCommit();
                 if (isDistributedUpdate) {
                     session.traceOperation("COMMAND_EXECUTE_DISTRIBUTED_UPDATE", id);
-                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
+                    transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_UPDATE).writeInt(id);
                 } else {
                     session.traceOperation("COMMAND_EXECUTE_UPDATE", id);
-                    transfer.writeInt(FrontendSession.COMMAND_EXECUTE_UPDATE).writeInt(id);
+                    transfer.writeInt(ClientSession.COMMAND_EXECUTE_UPDATE).writeInt(id);
                 }
                 sendParameters(transfer);
                 session.done(transfer);
@@ -202,11 +205,11 @@ public class FrontendCommand implements CommandInterface {
 
                 updateCount = transfer.readInt();
                 transfer.readBoolean();
-                //autoCommit = transfer.readBoolean();
+                // autoCommit = transfer.readBoolean();
             } catch (IOException e) {
                 session.handleException(e);
             } catch (Exception e) {
-                //e.printStackTrace();
+                // e.printStackTrace();
                 throw e;
             }
             session.readSessionState();
@@ -215,7 +218,7 @@ public class FrontendCommand implements CommandInterface {
     }
 
     private void checkParameters() {
-        for (ParameterInterface p : parameters) {
+        for (CommandParameter p : parameters) {
             p.checkSet();
         }
     }
@@ -223,7 +226,7 @@ public class FrontendCommand implements CommandInterface {
     private void sendParameters(Transfer transfer) throws IOException {
         int len = parameters.size();
         transfer.writeInt(len);
-        for (ParameterInterface p : parameters) {
+        for (CommandParameter p : parameters) {
             transfer.writeValue(p.getParamValue());
         }
     }
@@ -236,14 +239,14 @@ public class FrontendCommand implements CommandInterface {
         synchronized (session) {
             session.traceOperation("COMMAND_CLOSE", id);
             try {
-                transfer.writeInt(FrontendSession.COMMAND_CLOSE).writeInt(id);
+                transfer.writeInt(ClientSession.COMMAND_CLOSE).writeInt(id);
             } catch (IOException e) {
                 trace.error(e, "close");
             }
         }
         session = null;
         try {
-            for (ParameterInterface p : parameters) {
+            for (CommandParameter p : parameters) {
                 Value v = p.getParamValue();
                 if (v != null) {
                     v.close();
@@ -269,8 +272,8 @@ public class FrontendCommand implements CommandInterface {
     }
 
     @Override
-    public int getCommandType() {
-        return UNKNOWN;
+    public int getType() {
+        return COMMAND;
     }
 
     int getId() {
@@ -278,9 +281,9 @@ public class FrontendCommand implements CommandInterface {
     }
 
     /**
-     * A client side (remote) parameter.
+     * A client side parameter.
      */
-    private static class Parameter implements ParameterInterface {
+    private static class ClientCommandParameter implements CommandParameter {
 
         private Value value;
         private final int index;
@@ -289,7 +292,7 @@ public class FrontendCommand implements CommandInterface {
         private int scale;
         private int nullable = ResultSetMetaData.columnNullableUnknown;
 
-        public Parameter(int index) {
+        public ClientCommandParameter(int index) {
             this.index = index;
         }
 
@@ -350,5 +353,21 @@ public class FrontendCommand implements CommandInterface {
             nullable = transfer.readInt();
         }
 
+        @Override
+        public void setValue(Value value) {
+            this.value = value;
+        }
+
+        @Override
+        public int getIndex() {
+            return index;
+        }
+
+        @Override
+        public Value getParamValue(Session session) {
+            return value;
+        }
+
     }
+
 }

@@ -31,15 +31,15 @@ import java.util.Properties;
 import java.util.concurrent.Executor;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.client.FrontendSession;
+import org.lealone.client.ClientSession;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.CloseWatcher;
 import org.lealone.common.util.Utils;
-import org.lealone.db.CommandInterface;
+import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
-import org.lealone.db.SessionInterface;
+import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.CompareMode;
@@ -74,11 +74,11 @@ public class JdbcConnection extends TraceObject implements Connection {
     // ResultSet.HOLD_CURSORS_OVER_COMMIT
     private int holdability = 1;
 
-    private SessionInterface session;
-    private CommandInterface commit, rollback;
-    private CommandInterface getReadOnly, getGeneratedKeys;
-    private CommandInterface setLockMode, getLockMode;
-    private CommandInterface setQueryTimeout, getQueryTimeout;
+    private Session session;
+    private Command commit, rollback;
+    private Command getReadOnly, getGeneratedKeys;
+    private Command setLockMode, getLockMode;
+    private Command setQueryTimeout, getQueryTimeout;
 
     private int savepointId;
     private String catalog;
@@ -106,7 +106,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 }
             }
             // this will return an embedded or server connection
-            session = new FrontendSession(ci).connectEmbeddedOrServer();
+            session = new ClientSession(ci).connectEmbeddedOrServer();
             trace = session.getTrace();
             int id = getNextId(TraceObject.CONNECTION);
             setTrace(trace, TraceObject.CONNECTION, id);
@@ -146,7 +146,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     /**
      * INTERNAL
      */
-    public JdbcConnection(SessionInterface session, String user, String url) {
+    public JdbcConnection(Session session, String user, String url) {
         this.session = session;
         trace = session.getTrace();
         int id = getNextId(TraceObject.CONNECTION);
@@ -322,7 +322,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     /**
      * INTERNAL
      */
-    public SessionInterface getSession() {
+    public Session getSession() {
         return session;
     }
 
@@ -377,7 +377,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         setQueryTimeout = closeAndSetNull(setQueryTimeout);
     }
 
-    private static CommandInterface closeAndSetNull(CommandInterface command) {
+    private static Command closeAndSetNull(Command command) {
         if (command != null) {
             command.close();
         }
@@ -560,7 +560,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("getCatalog");
             checkClosed();
             if (catalog == null) {
-                CommandInterface cat = prepareCommand("CALL DATABASE()", Integer.MAX_VALUE);
+                Command cat = prepareCommand("CALL DATABASE()", Integer.MAX_VALUE);
                 Result result = cat.executeQuery(0, false);
                 result.next();
                 catalog = result.currentRow()[0].getString();
@@ -933,8 +933,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 debugCodeAssign("Savepoint", TraceObject.SAVEPOINT, id, "setSavepoint()");
             }
             checkClosed();
-            CommandInterface set = prepareCommand("SAVEPOINT " + JdbcSavepoint.getName(null, savepointId),
-                    Integer.MAX_VALUE);
+            Command set = prepareCommand("SAVEPOINT " + JdbcSavepoint.getName(null, savepointId), Integer.MAX_VALUE);
             set.executeUpdate();
             JdbcSavepoint savepoint = new JdbcSavepoint(this, savepointId, null, trace, id);
             savepointId++;
@@ -958,7 +957,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 debugCodeAssign("Savepoint", TraceObject.SAVEPOINT, id, "setSavepoint(" + quote(name) + ")");
             }
             checkClosed();
-            CommandInterface set = prepareCommand("SAVEPOINT " + JdbcSavepoint.getName(name, 0), Integer.MAX_VALUE);
+            Command set = prepareCommand("SAVEPOINT " + JdbcSavepoint.getName(name, 0), Integer.MAX_VALUE);
             set.executeUpdate();
             JdbcSavepoint savepoint = new JdbcSavepoint(this, 0, name, trace, id);
             return savepoint;
@@ -1117,11 +1116,11 @@ public class JdbcConnection extends TraceObject implements Connection {
      * @param fetchSize the fetch size (used in remote connections)
      * @return the command
      */
-    CommandInterface prepareCommand(String sql, int fetchSize) {
+    Command prepareCommand(String sql, int fetchSize) {
         return session.prepareCommand(sql, fetchSize);
     }
 
-    private CommandInterface prepareCommand(String sql, CommandInterface old) {
+    private Command prepareCommand(String sql, Command old) {
         return old == null ? session.prepareCommand(sql, Integer.MAX_VALUE) : old;
     }
 
@@ -1414,22 +1413,6 @@ public class JdbcConnection extends TraceObject implements Connection {
     private void rollbackInternal() {
         rollback = prepareCommand("ROLLBACK", rollback);
         rollback.executeUpdate();
-    }
-
-    /**
-     * INTERNAL
-     */
-    public int getPowerOffCount() {
-        return (session == null || session.isClosed()) ? 0 : session.getPowerOffCount();
-    }
-
-    /**
-     * INTERNAL
-     */
-    public void setPowerOffCount(int count) {
-        if (session != null) {
-            session.setPowerOffCount(count);
-        }
     }
 
     /**

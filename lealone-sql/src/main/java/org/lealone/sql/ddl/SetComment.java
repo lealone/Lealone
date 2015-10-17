@@ -8,19 +8,19 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Comment;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * COMMENT
  */
-public class SetComment extends DefineCommand {
+public class SetComment extends DefineStatement {
 
     private String schemaName;
     private String objectName;
@@ -29,7 +29,7 @@ public class SetComment extends DefineCommand {
     private int objectType;
     private Expression expr;
 
-    public SetComment(Session session) {
+    public SetComment(ServerSession session) {
         super(session);
     }
 
@@ -150,7 +150,7 @@ public class SetComment extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.COMMENT;
+        return SQLStatement.COMMENT;
     }
 
 }

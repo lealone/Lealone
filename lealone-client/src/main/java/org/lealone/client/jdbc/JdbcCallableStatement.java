@@ -34,7 +34,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.TraceObject;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.New;
-import org.lealone.db.ParameterInterface;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.value.ValueNull;
 
 /**
@@ -1469,7 +1469,7 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
                 outParameters = new BitField();
             }
             checkIndexBounds(parameterIndex);
-            ParameterInterface param = command.getParameters().get(--parameterIndex);
+            CommandParameter param = command.getParameters().get(--parameterIndex);
             if (param.getParamValue() == null) {
                 param.setValue(ValueNull.INSTANCE, false);
             }

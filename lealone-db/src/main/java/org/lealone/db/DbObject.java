@@ -164,7 +164,7 @@ public interface DbObject {
      *
      * @param session the session
      */
-    void removeChildrenAndResources(Session session);
+    void removeChildrenAndResources(ServerSession session);
 
     /**
      * Check if renaming is allowed. Does nothing when allowed.

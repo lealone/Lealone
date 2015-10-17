@@ -9,26 +9,26 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP ALL OBJECTS
  */
-public class DropDatabase extends DefineCommand {
+public class DropDatabase extends DefineStatement {
 
     private boolean dropAllObjects;
     private boolean deleteFiles;
 
-    public DropDatabase(Session session) {
+    public DropDatabase(ServerSession session) {
         super(session);
     }
 
@@ -125,7 +125,7 @@ public class DropDatabase extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_ALL_OBJECTS;
+        return SQLStatement.DROP_ALL_OBJECTS;
     }
 
 }

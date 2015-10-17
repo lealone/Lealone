@@ -15,40 +15,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.lealone.sql;
 
 import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
-import org.lealone.db.ParameterInterface;
-import org.lealone.db.Session;
+import org.lealone.db.CommandParameter;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Parameter;
 
-public class BackendBatchCommand implements CommandInterface {
-    private Session session;
+public class BatchStatementImpl implements BatchStatement {
+    private ServerSession session;
     private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
     private ArrayList<Value[]> batchParameters; // 对应JdbcPreparedStatement.executeBatch()
-    private Command preparedCommand;
+    private StatementBase preparedCommand;
     private int[] result;
 
-    public BackendBatchCommand(Session session, ArrayList<String> batchCommands) {
+    public BatchStatementImpl(ServerSession session, ArrayList<String> batchCommands) {
         this.session = session;
         this.batchCommands = batchCommands;
     }
 
-    public BackendBatchCommand(Session session, Command preparedCommand, ArrayList<Value[]> batchParameters) {
+    public BatchStatementImpl(ServerSession session, StatementBase preparedCommand, ArrayList<Value[]> batchParameters) {
         this.session = session;
         this.preparedCommand = preparedCommand;
         this.batchParameters = batchParameters;
-    }
-
-    @Override
-    public int getCommandType() {
-        return UNKNOWN;
     }
 
     @Override
@@ -57,7 +50,7 @@ public class BackendBatchCommand implements CommandInterface {
     }
 
     @Override
-    public ArrayList<? extends ParameterInterface> getParameters() {
+    public ArrayList<? extends CommandParameter> getParameters() {
         throw DbException.throwInternalError();
     }
 
@@ -72,15 +65,15 @@ public class BackendBatchCommand implements CommandInterface {
             int size = batchCommands.size();
             result = new int[size];
             for (int i = 0; i < size; i++) {
-                Command c = (Command) session.prepareCommand(batchCommands.get(i));
-                result[i] = c.executeUpdate();
+                StatementBase c = (StatementBase) session.prepareStatement(batchCommands.get(i), -1);
+                result[i] = c.update();
                 c.close();
             }
         } else {
             int size = batchParameters.size();
             result = new int[size];
             Value[] values;
-            ArrayList<? extends ParameterInterface> params = preparedCommand.getParameters();
+            ArrayList<? extends CommandParameter> params = preparedCommand.getParameters();
             int paramsSize = params.size();
             for (int i = 0; i < size; i++) {
                 values = batchParameters.get(i);
@@ -88,7 +81,7 @@ public class BackendBatchCommand implements CommandInterface {
                     Parameter p = (Parameter) params.get(j);
                     p.setValue(values[j], true);
                 }
-                result[i] = preparedCommand.executeUpdate();
+                result[i] = preparedCommand.update();
             }
         }
         return 0;
@@ -122,8 +115,14 @@ public class BackendBatchCommand implements CommandInterface {
         throw DbException.throwInternalError();
     }
 
+    @Override
     public int[] getResult() {
         return result;
+    }
+
+    @Override
+    public int getType() {
+        return 0;
     }
 
 }

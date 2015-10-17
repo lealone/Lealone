@@ -30,4 +30,5 @@ public class SQLEngineManager extends PluggableEngineManager<SQLEngine> {
     private SQLEngineManager() {
         super(SQLEngine.class);
     }
+
 }

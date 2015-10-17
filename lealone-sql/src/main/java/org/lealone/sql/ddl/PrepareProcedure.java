@@ -9,22 +9,22 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Procedure;
-import org.lealone.db.Session;
-import org.lealone.sql.Prepared;
+import org.lealone.db.ServerSession;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Parameter;
 
 /**
  * This class represents the statement
  * PREPARE
  */
-public class PrepareProcedure extends DefineCommand {
+public class PrepareProcedure extends DefineStatement {
 
     private String procedureName;
-    private Prepared prepared;
+    private StatementBase prepared;
 
-    public PrepareProcedure(Session session) {
+    public PrepareProcedure(ServerSession session) {
         super(session);
     }
 
@@ -47,7 +47,7 @@ public class PrepareProcedure extends DefineCommand {
         this.procedureName = name;
     }
 
-    public void setPrepared(Prepared prep) {
+    public void setPrepared(StatementBase prep) {
         this.prepared = prep;
     }
 
@@ -58,7 +58,7 @@ public class PrepareProcedure extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.PREPARE;
+        return SQLStatement.PREPARE;
     }
 
 }

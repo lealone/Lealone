@@ -7,27 +7,27 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.StatementBase;
 
 /**
  * Represents the ROWNUM function.
  */
 public class Rownum extends Expression {
 
-    private final Prepared prepared;
+    private final StatementBase prepared;
 
-    public Rownum(Prepared prepared) {
+    public Rownum(StatementBase prepared) {
         this.prepared = prepared;
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         return ValueInt.get(prepared.getCurrentRowNumber());
     }
 
@@ -42,7 +42,7 @@ public class Rownum extends Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         return this;
     }
 
@@ -72,7 +72,7 @@ public class Rownum extends Expression {
     }
 
     @Override
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // nothing to do
     }
 

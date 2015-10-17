@@ -10,22 +10,22 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * ALTER SCHEMA RENAME
  */
-public class AlterSchemaRename extends DefineCommand {
+public class AlterSchemaRename extends DefineStatement {
 
     private Schema oldSchema;
     private String newSchemaName;
 
-    public AlterSchemaRename(Session session) {
+    public AlterSchemaRename(ServerSession session) {
         super(session);
     }
 
@@ -58,7 +58,7 @@ public class AlterSchemaRename extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.ALTER_SCHEMA_RENAME;
+        return SQLStatement.ALTER_SCHEMA_RENAME;
     }
 
 }

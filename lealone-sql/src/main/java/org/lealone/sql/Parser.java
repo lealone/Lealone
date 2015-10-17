@@ -21,13 +21,12 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbSettings;
 import org.lealone.db.Procedure;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.UserAggregate;
@@ -90,8 +89,8 @@ import org.lealone.sql.ddl.CreateUser;
 import org.lealone.sql.ddl.CreateUserDataType;
 import org.lealone.sql.ddl.CreateView;
 import org.lealone.sql.ddl.DeallocateProcedure;
-import org.lealone.sql.ddl.DefineCommand;
-import org.lealone.sql.ddl.DefineCommandWrapper;
+import org.lealone.sql.ddl.DefineStatement;
+import org.lealone.sql.ddl.DefineStatementWrapper;
 import org.lealone.sql.ddl.DropAggregate;
 import org.lealone.sql.ddl.DropConstant;
 import org.lealone.sql.ddl.DropDatabase;
@@ -109,7 +108,7 @@ import org.lealone.sql.ddl.GrantRevoke;
 import org.lealone.sql.ddl.PrepareProcedure;
 import org.lealone.sql.ddl.SetComment;
 import org.lealone.sql.ddl.TruncateTable;
-import org.lealone.sql.dml.BackupCommand;
+import org.lealone.sql.dml.Backup;
 import org.lealone.sql.dml.Call;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.ExecuteProcedure;
@@ -118,12 +117,12 @@ import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Merge;
 import org.lealone.sql.dml.NoOperation;
 import org.lealone.sql.dml.Query;
-import org.lealone.sql.dml.RunScriptCommand;
-import org.lealone.sql.dml.ScriptCommand;
+import org.lealone.sql.dml.RunScript;
+import org.lealone.sql.dml.Script;
 import org.lealone.sql.dml.Select;
 import org.lealone.sql.dml.SelectUnion;
 import org.lealone.sql.dml.Set;
-import org.lealone.sql.dml.TransactionCommand;
+import org.lealone.sql.dml.TransactionStatement;
 import org.lealone.sql.dml.Update;
 import org.lealone.sql.expression.Aggregate;
 import org.lealone.sql.expression.Alias;
@@ -171,7 +170,7 @@ public class Parser implements SQLParser {
     private static final int SPATIAL_INTERSECTS = 25;
 
     private final Database database;
-    private final Session session;
+    private final ServerSession session;
     /**
      * @see DbSettings#databaseToUpper
      */
@@ -193,7 +192,7 @@ public class Parser implements SQLParser {
     /** index into sqlCommand of current token */
     private int parseIndex;
     private CreateView createView;
-    private Prepared currentPrepared;
+    private StatementBase currentPrepared;
     private Select currentSelect;
     private ArrayList<Parameter> parameters;
     private String schemaName;
@@ -202,85 +201,54 @@ public class Parser implements SQLParser {
     private boolean recompileAlways;
     private ArrayList<Parameter> indexedParameterList;
 
-    public Parser(Session session) {
+    public Parser(ServerSession session) {
         this.database = session.getDatabase();
         this.session = session;
         this.identifiersToUpper = database.getSettings().databaseToUpper;
     }
 
     /**
-     * Parse the statement and prepare it for execution.
+     * Parse a statement or a list of statements.
      *
      * @param sql the SQL statement to parse
-     * @return the prepared object
+     * @return the parsed statement(s)
      */
     @Override
-    public Prepared prepare(String sql) {
-        Prepared p = parse(sql);
-        p.prepare();
-        if (currentTokenType != END) {
-            throw getSyntaxError();
-        }
-        return p;
-    }
-
-    /**
-     * Parse a statement or a list of statements, and prepare it for execution.
-     *
-     * @param sql the SQL statement to parse
-     * @return the command object
-     */
-    @Override
-    public Command prepareCommand(String sql) {
+    public ParsedStatement parse(String sql) {
+        StatementBase s = null;
         try {
-            Prepared p = parse(sql);
-            boolean hasMore = isToken(";");
-            if (!hasMore && currentTokenType != END) {
-                throw getSyntaxError();
+            // first, try the fast variant
+            s = parse(sql, false);
+
+            s.setPrepareAlways(recompileAlways);
+            s.setParameterList(parameters);
+
+            if (s.isDDL()) {
+                s = new DefineStatementWrapper(session, (DefineStatement) s);
             }
-            p.prepare();
-            Command c = new CommandContainer(session, sql, p);
+            StatementWrapper sp = new StatementWrapper(session, s);
+            s = sp;
+            boolean hasMore = isToken(";");
             if (hasMore) {
                 String remaining = originalSQL.substring(parseIndex);
                 if (remaining.trim().length() != 0) {
-                    return new CommandList(session, sql, c, remaining);
+                    s = new StatementWrapperList(session, sp, remaining);
                 }
+            } else if (currentTokenType != END) {
+                throw getSyntaxError();
             }
-            return c;
-        } catch (DbException e) {
-            throw e.addSQL(originalSQL);
-        }
-    }
-
-    /**
-     * Parse the statement, but don't prepare it for execution.
-     *
-     * @param sql the SQL statement to parse
-     * @return the prepared object
-     */
-    Prepared parse(String sql) {
-        Prepared p;
-        try {
-            // first, try the fast variant
-            p = parse(sql, false);
         } catch (DbException e) {
             if (e.getErrorCode() == ErrorCode.SYNTAX_ERROR_1) {
                 // now, get the detailed exception
-                p = parse(sql, true);
+                s = parse(sql, true);
             } else {
                 throw e.addSQL(sql);
             }
         }
-        p.setPrepareAlways(recompileAlways);
-        p.setParameterList(parameters);
-
-        if (p.isDDL()) {
-            p = new DefineCommandWrapper(session, (DefineCommand) p);
-        }
-        return p;
+        return s;
     }
 
-    private Prepared parse(String sql, boolean withExpectedList) {
+    private StatementBase parse(String sql, boolean withExpectedList) {
         initialize(sql);
         if (withExpectedList) {
             expectedList = New.arrayList();
@@ -294,15 +262,15 @@ public class Parser implements SQLParser {
         recompileAlways = false;
         indexedParameterList = null;
         read();
-        return parsePrepared();
+        return parseStatement();
     }
 
-    private Prepared parsePrepared() {
+    private StatementBase parseStatement() {
         int start = lastParseIndex;
-        Prepared c = null;
+        StatementBase s = null;
         String token = currentToken;
         if (token.length() == 0) {
-            c = new NoOperation(session);
+            s = new NoOperation(session);
         } else {
             char first = token.charAt(0);
             switch (first) {
@@ -313,154 +281,154 @@ public class Parser implements SQLParser {
                 parameters.get(0).setValue(ValueNull.INSTANCE);
                 read("=");
                 read("CALL");
-                c = parseCall();
+                s = parseCall();
                 break;
             case '(':
-                c = parseSelect();
+                s = parseSelect();
                 break;
             case 'a':
             case 'A':
                 if (readIf("ALTER")) {
-                    c = parseAlter();
+                    s = parseAlter();
                 } else if (readIf("ANALYZE")) {
-                    c = parseAnalyze();
+                    s = parseAnalyze();
                 }
                 break;
             case 'b':
             case 'B':
                 if (readIf("BACKUP")) {
-                    c = parseBackup();
+                    s = parseBackup();
                 } else if (readIf("BEGIN")) {
-                    c = parseBegin();
+                    s = parseBegin();
                 }
                 break;
             case 'c':
             case 'C':
                 if (readIf("COMMIT")) {
-                    c = parseCommit();
+                    s = parseCommit();
                 } else if (readIf("CREATE")) {
-                    c = parseCreate();
+                    s = parseCreate();
                 } else if (readIf("CALL")) {
-                    c = parseCall();
+                    s = parseCall();
                 } else if (readIf("CHECKPOINT")) {
-                    c = parseCheckpoint();
+                    s = parseCheckpoint();
                 } else if (readIf("COMMENT")) {
-                    c = parseComment();
+                    s = parseComment();
                 }
                 break;
             case 'd':
             case 'D':
                 if (readIf("DELETE")) {
-                    c = parseDelete();
+                    s = parseDelete();
                 } else if (readIf("DROP")) {
-                    c = parseDrop();
+                    s = parseDrop();
                 } else if (readIf("DECLARE")) {
                     // support for DECLARE GLOBAL TEMPORARY TABLE...
-                    c = parseCreate();
+                    s = parseCreate();
                 } else if (readIf("DEALLOCATE")) {
-                    c = parseDeallocate();
+                    s = parseDeallocate();
                 }
                 break;
             case 'e':
             case 'E':
                 if (readIf("EXPLAIN")) {
-                    c = parseExplain();
+                    s = parseExplain();
                 } else if (readIf("EXECUTE")) {
-                    c = parseExecute();
+                    s = parseExecute();
                 }
                 break;
             case 'f':
             case 'F':
                 if (isToken("FROM")) {
-                    c = parseSelect();
+                    s = parseSelect();
                 }
                 break;
             case 'g':
             case 'G':
                 if (readIf("GRANT")) {
-                    c = parseGrantRevoke(CommandInterface.GRANT);
+                    s = parseGrantRevoke(SQLStatement.GRANT);
                 }
                 break;
             case 'h':
             case 'H':
                 if (readIf("HELP")) {
-                    c = parseHelp();
+                    s = parseHelp();
                 }
                 break;
             case 'i':
             case 'I':
                 if (readIf("INSERT")) {
-                    c = parseInsert();
+                    s = parseInsert();
                 }
                 break;
             case 'm':
             case 'M':
                 if (readIf("MERGE")) {
-                    c = parseMerge();
+                    s = parseMerge();
                 }
                 break;
             case 'p':
             case 'P':
                 if (readIf("PREPARE")) {
-                    c = parsePrepare();
+                    s = parsePrepare();
                 }
                 break;
             case 'r':
             case 'R':
                 if (readIf("ROLLBACK")) {
-                    c = parseRollback();
+                    s = parseRollback();
                 } else if (readIf("REVOKE")) {
-                    c = parseGrantRevoke(CommandInterface.REVOKE);
+                    s = parseGrantRevoke(SQLStatement.REVOKE);
                 } else if (readIf("RUNSCRIPT")) {
-                    c = parseRunScript();
+                    s = parseRunScript();
                 } else if (readIf("RELEASE")) {
-                    c = parseReleaseSavepoint();
+                    s = parseReleaseSavepoint();
                 }
                 break;
             case 's':
             case 'S':
                 if (isToken("SELECT")) {
-                    c = parseSelect();
+                    s = parseSelect();
                 } else if (readIf("SET")) {
-                    c = parseSet();
+                    s = parseSet();
                 } else if (readIf("SAVEPOINT")) {
-                    c = parseSavepoint();
+                    s = parseSavepoint();
                 } else if (readIf("SCRIPT")) {
-                    c = parseScript();
+                    s = parseScript();
                 } else if (readIf("SHUTDOWN")) {
-                    c = parseShutdown();
+                    s = parseShutdown();
                 } else if (readIf("SHOW")) {
-                    c = parseShow();
+                    s = parseShow();
                 }
                 break;
             case 't':
             case 'T':
                 if (readIf("TRUNCATE")) {
-                    c = parseTruncate();
+                    s = parseTruncate();
                 }
                 break;
             case 'u':
             case 'U':
                 if (readIf("UPDATE")) {
-                    c = parseUpdate();
+                    s = parseUpdate();
                 } else if (readIf("USE")) {
-                    c = parseUse();
+                    s = parseUse();
                 }
                 break;
             case 'v':
             case 'V':
                 if (readIf("VALUES")) {
-                    c = parseValues();
+                    s = parseValues();
                 }
                 break;
             case 'w':
             case 'W':
                 if (readIf("WITH")) {
-                    c = parseWith();
+                    s = parseWith();
                 }
                 break;
             case ';':
-                c = new NoOperation(session);
+                s = new NoOperation(session);
                 break;
             default:
                 throw getSyntaxError();
@@ -495,11 +463,11 @@ public class Parser implements SQLParser {
                 parameters.clear();
             }
         }
-        if (c == null) {
+        if (s == null) {
             throw getSyntaxError();
         }
-        setSQL(c, null, start);
-        return c;
+        setSQL(s, null, start);
+        return s;
     }
 
     private DbException getSyntaxError() {
@@ -514,14 +482,14 @@ public class Parser implements SQLParser {
         return DbException.getSyntaxError(sqlCommand, parseIndex, buff.toString());
     }
 
-    private Prepared parseBackup() {
-        BackupCommand command = new BackupCommand(session);
+    private StatementBase parseBackup() {
+        Backup command = new Backup(session);
         read("TO");
         command.setFileName(readExpression());
         return command;
     }
 
-    private Prepared parseAnalyze() {
+    private StatementBase parseAnalyze() {
         Analyze command = new Analyze(session);
         if (readIf("SAMPLE_SIZE")) {
             command.setTop(readPositiveInt());
@@ -529,62 +497,62 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private TransactionCommand parseBegin() {
-        TransactionCommand command;
+    private TransactionStatement parseBegin() {
+        TransactionStatement command;
         if (!readIf("WORK")) {
             readIf("TRANSACTION");
         }
-        command = new TransactionCommand(session, CommandInterface.BEGIN);
+        command = new TransactionStatement(session, SQLStatement.BEGIN);
         return command;
     }
 
-    private TransactionCommand parseCommit() {
-        TransactionCommand command;
+    private TransactionStatement parseCommit() {
+        TransactionStatement command;
         if (readIf("TRANSACTION")) {
-            command = new TransactionCommand(session, CommandInterface.COMMIT_TRANSACTION);
+            command = new TransactionStatement(session, SQLStatement.COMMIT_TRANSACTION);
             command.setTransactionName(readUniqueIdentifier());
             return command;
         }
-        command = new TransactionCommand(session, CommandInterface.COMMIT);
+        command = new TransactionStatement(session, SQLStatement.COMMIT);
         readIf("WORK");
         return command;
     }
 
-    private TransactionCommand parseShutdown() {
-        int type = CommandInterface.SHUTDOWN;
+    private TransactionStatement parseShutdown() {
+        int type = SQLStatement.SHUTDOWN;
         if (readIf("IMMEDIATELY")) {
-            type = CommandInterface.SHUTDOWN_IMMEDIATELY;
+            type = SQLStatement.SHUTDOWN_IMMEDIATELY;
         } else if (readIf("COMPACT")) {
-            type = CommandInterface.SHUTDOWN_COMPACT;
+            type = SQLStatement.SHUTDOWN_COMPACT;
         } else if (readIf("DEFRAG")) {
-            type = CommandInterface.SHUTDOWN_DEFRAG;
+            type = SQLStatement.SHUTDOWN_DEFRAG;
         } else {
             readIf("SCRIPT");
         }
-        return new TransactionCommand(session, type);
+        return new TransactionStatement(session, type);
     }
 
-    private TransactionCommand parseRollback() {
-        TransactionCommand command;
+    private TransactionStatement parseRollback() {
+        TransactionStatement command;
         if (readIf("TRANSACTION")) {
-            command = new TransactionCommand(session, CommandInterface.ROLLBACK_TRANSACTION);
+            command = new TransactionStatement(session, SQLStatement.ROLLBACK_TRANSACTION);
             command.setTransactionName(readUniqueIdentifier());
             return command;
         }
         if (readIf("TO")) {
             read("SAVEPOINT");
-            command = new TransactionCommand(session, CommandInterface.ROLLBACK_TO_SAVEPOINT);
+            command = new TransactionStatement(session, SQLStatement.ROLLBACK_TO_SAVEPOINT);
             command.setSavepointName(readUniqueIdentifier());
         } else {
             readIf("WORK");
-            command = new TransactionCommand(session, CommandInterface.ROLLBACK);
+            command = new TransactionStatement(session, SQLStatement.ROLLBACK);
         }
         return command;
     }
 
-    private Prepared parsePrepare() {
+    private StatementBase parsePrepare() {
         if (readIf("COMMIT")) {
-            TransactionCommand command = new TransactionCommand(session, CommandInterface.PREPARE_COMMIT);
+            TransactionStatement command = new TransactionStatement(session, SQLStatement.PREPARE_COMMIT);
             command.setTransactionName(readUniqueIdentifier());
             return command;
         }
@@ -601,21 +569,21 @@ public class Parser implements SQLParser {
             }
         }
         read("AS");
-        Prepared prep = parsePrepared();
+        StatementBase prep = parseStatement();
         PrepareProcedure command = new PrepareProcedure(session);
         command.setProcedureName(procedureName);
         command.setPrepared(prep);
         return command;
     }
 
-    private TransactionCommand parseSavepoint() {
-        TransactionCommand command = new TransactionCommand(session, CommandInterface.SAVEPOINT);
+    private TransactionStatement parseSavepoint() {
+        TransactionStatement command = new TransactionStatement(session, SQLStatement.SAVEPOINT);
         command.setSavepointName(readUniqueIdentifier());
         return command;
     }
 
-    private Prepared parseReleaseSavepoint() {
-        Prepared command = new NoOperation(session);
+    private StatementBase parseReleaseSavepoint() {
+        StatementBase command = new NoOperation(session);
         readIf("SAVEPOINT");
         readUniqueIdentifier();
         return command;
@@ -839,7 +807,7 @@ public class Parser implements SQLParser {
         return false;
     }
 
-    private Prepared parseHelp() {
+    private StatementBase parseHelp() {
         StringBuilder buff = new StringBuilder("SELECT * FROM INFORMATION_SCHEMA.HELP");
         int i = 0;
         ArrayList<Value> paramValues = New.arrayList();
@@ -858,7 +826,7 @@ public class Parser implements SQLParser {
         return prepare(session, buff.toString(), paramValues);
     }
 
-    private Prepared parseShow() {
+    private StatementBase parseShow() {
         ArrayList<Value> paramValues = New.arrayList();
         StringBuilder buff = new StringBuilder("SELECT ");
         if (readIf("CLIENT_ENCODING")) {
@@ -921,8 +889,8 @@ public class Parser implements SQLParser {
         }
     }
 
-    private static Prepared prepare(Session s, String sql, ArrayList<Value> paramValues) {
-        Prepared prep = (Prepared) s.prepare(sql);
+    private static StatementBase prepare(ServerSession s, String sql, ArrayList<Value> paramValues) {
+        StatementBase prep = (StatementBase) s.prepareStatement(sql);
         ArrayList<Parameter> params = prep.getParameters();
         if (params != null) {
             for (int i = 0, size = params.size(); i < size; i++) {
@@ -1053,7 +1021,7 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private Prepared parseTruncate() {
+    private StatementBase parseTruncate() {
         read("TABLE");
         Table table = readTableOrView();
         TruncateTable command = new TruncateTable(session);
@@ -1069,7 +1037,7 @@ public class Parser implements SQLParser {
         return ifExists;
     }
 
-    private Prepared parseComment() {
+    private StatementBase parseComment() {
         int type = 0;
         read("ON");
         boolean column = false;
@@ -1139,7 +1107,7 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private Prepared parseDrop() {
+    private StatementBase parseDrop() {
         if (readIf("TABLE")) {
             boolean ifExists = readIfExists(false);
             String tableName = readIdentifierWithSchema();
@@ -1275,7 +1243,7 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private Prepared parseExecute() {
+    private StatementBase parseExecute() {
         ExecuteProcedure command = new ExecuteProcedure(session);
         String procedureName = readAliasIdentifier();
         Procedure p = session.getProcedure(procedureName);
@@ -1614,7 +1582,7 @@ public class Parser implements SQLParser {
                 read(")");
                 query.setParameterList(New.arrayList(parameters));
                 query.init();
-                Session s;
+                ServerSession s;
                 if (createView != null) {
                     s = database.getSystemSession();
                 } else {
@@ -1874,7 +1842,7 @@ public class Parser implements SQLParser {
         return top;
     }
 
-    private void setSQL(Prepared command, String start, int startIndex) {
+    private void setSQL(StatementBase command, String start, int startIndex) {
         String sql = originalSQL.substring(startIndex, lastParseIndex).trim();
         if (start != null) {
             sql = start + " " + sql;
@@ -3888,7 +3856,7 @@ public class Parser implements SQLParser {
         return column;
     }
 
-    private Prepared parseCreate() {
+    private StatementBase parseCreate() {
         boolean orReplace = false;
         if (readIf("OR")) {
             read("REPLACE");
@@ -4067,7 +4035,7 @@ public class Parser implements SQLParser {
                 }
             }
         }
-        if (operationType == CommandInterface.GRANT) {
+        if (operationType == SQLStatement.GRANT) {
             read("TO");
         } else {
             read("FROM");
@@ -4502,17 +4470,17 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private TransactionCommand parseCheckpoint() {
-        TransactionCommand command;
+    private TransactionStatement parseCheckpoint() {
+        TransactionStatement command;
         if (readIf("SYNC")) {
-            command = new TransactionCommand(session, CommandInterface.CHECKPOINT_SYNC);
+            command = new TransactionStatement(session, SQLStatement.CHECKPOINT_SYNC);
         } else {
-            command = new TransactionCommand(session, CommandInterface.CHECKPOINT);
+            command = new TransactionStatement(session, SQLStatement.CHECKPOINT);
         }
         return command;
     }
 
-    private Prepared parseAlter() {
+    private StatementBase parseAlter() {
         if (readIf("TABLE")) {
             return parseAlterTable();
         } else if (readIf("USER")) {
@@ -4561,7 +4529,7 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private DefineCommand parseAlterSchema() {
+    private DefineStatement parseAlterSchema() {
         String schemaName = readIdentifierWithSchema();
         if (readIf("WITH")) {
             read("REPLICATION");
@@ -4613,7 +4581,7 @@ public class Parser implements SQLParser {
         String userName = readUniqueIdentifier();
         if (readIf("SET")) {
             AlterUser command = new AlterUser(session);
-            command.setType(CommandInterface.ALTER_USER_SET_PASSWORD);
+            command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
             command.setUser(database.getUser(userName));
             if (readIf("PASSWORD")) {
                 command.setPassword(readExpression());
@@ -4628,14 +4596,14 @@ public class Parser implements SQLParser {
         } else if (readIf("RENAME")) {
             read("TO");
             AlterUser command = new AlterUser(session);
-            command.setType(CommandInterface.ALTER_USER_RENAME);
+            command.setType(SQLStatement.ALTER_USER_RENAME);
             command.setUser(database.getUser(userName));
             String newName = readUniqueIdentifier();
             command.setNewName(newName);
             return command;
         } else if (readIf("ADMIN")) {
             AlterUser command = new AlterUser(session);
-            command.setType(CommandInterface.ALTER_USER_ADMIN);
+            command.setType(SQLStatement.ALTER_USER_ADMIN);
             User user = database.getUser(userName);
             command.setUser(user);
             if (readIf("TRUE")) {
@@ -4656,7 +4624,7 @@ public class Parser implements SQLParser {
         }
     }
 
-    private Prepared parseSet() {
+    private StatementBase parseSet() {
         if (readIf("@")) {
             Set command = new Set(session, SetTypes.VARIABLE);
             command.setString(readAliasIdentifier());
@@ -4666,8 +4634,8 @@ public class Parser implements SQLParser {
         } else if (readIf("AUTOCOMMIT")) {
             readIfEqualOrTo();
             boolean value = readBooleanSetting();
-            int setting = value ? CommandInterface.SET_AUTOCOMMIT_TRUE : CommandInterface.SET_AUTOCOMMIT_FALSE;
-            return new TransactionCommand(session, setting);
+            int setting = value ? SQLStatement.SET_AUTOCOMMIT_TRUE : SQLStatement.SET_AUTOCOMMIT_FALSE;
+            return new TransactionStatement(session, setting);
         } else if (readIf("MVCC")) {
             readIfEqualOrTo();
             boolean value = readBooleanSetting();
@@ -4688,14 +4656,14 @@ public class Parser implements SQLParser {
         } else if (readIf("PASSWORD")) {
             readIfEqualOrTo();
             AlterUser command = new AlterUser(session);
-            command.setType(CommandInterface.ALTER_USER_SET_PASSWORD);
+            command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
             command.setUser(session.getUser());
             command.setPassword(readExpression());
             return command;
         } else if (readIf("SALT")) {
             readIfEqualOrTo();
             AlterUser command = new AlterUser(session);
-            command.setType(CommandInterface.ALTER_USER_SET_PASSWORD);
+            command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
             command.setUser(session.getUser());
             command.setSalt(readExpression());
             read("HASH");
@@ -4845,7 +4813,7 @@ public class Parser implements SQLParser {
         }
     }
 
-    private Prepared parseUse() {
+    private StatementBase parseUse() {
         readIfEqualOrTo();
         Set command = new Set(session, SetTypes.SCHEMA);
         command.setString(readAliasIdentifier());
@@ -4889,8 +4857,8 @@ public class Parser implements SQLParser {
         throw DbException.getInvalidValueException("BINARY_COLLATION", name);
     }
 
-    private RunScriptCommand parseRunScript() {
-        RunScriptCommand command = new RunScriptCommand(session);
+    private RunScript parseRunScript() {
+        RunScript command = new RunScript(session);
         read("FROM");
         command.setFileNameExpr(readExpression());
         if (readIf("COMPRESSION")) {
@@ -4908,8 +4876,8 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private ScriptCommand parseScript() {
-        ScriptCommand command = new ScriptCommand(session);
+    private Script parseScript() {
+        Script command = new Script(session);
         boolean data = true, passwords = true, settings = true, dropTables = false, simple = false;
         if (readIf("SIMPLE")) {
             simple = true;
@@ -5045,17 +5013,17 @@ public class Parser implements SQLParser {
         throw DbException.get(ErrorCode.SEQUENCE_NOT_FOUND_1, sequenceName);
     }
 
-    private Prepared parseAlterTable() {
+    private StatementBase parseAlterTable() {
         Table table = readTableOrView();
         if (readIf("ADD")) {
-            Prepared command = parseAlterTableAddConstraintIf(table.getName(), table.getSchema());
+            StatementBase command = parseAlterTableAddConstraintIf(table.getName(), table.getSchema());
             if (command != null) {
                 return command;
             }
             return parseAlterTableAddColumn(table);
         } else if (readIf("SET")) {
             read("REFERENTIAL_INTEGRITY");
-            int type = CommandInterface.ALTER_TABLE_SET_REFERENTIAL_INTEGRITY;
+            int type = SQLStatement.ALTER_TABLE_SET_REFERENTIAL_INTEGRITY;
             boolean value = readBooleanSetting();
             AlterTableSet command = new AlterTableSet(session, table.getSchema(), type, value);
             command.setTableName(table.getName());
@@ -5107,7 +5075,7 @@ public class Parser implements SQLParser {
                 readIf("COLUMN");
                 boolean ifExists = readIfExists(false);
                 AlterTableAlterColumn command = new AlterTableAlterColumn(session, table.getSchema());
-                command.setType(CommandInterface.ALTER_TABLE_DROP_COLUMN);
+                command.setType(SQLStatement.ALTER_TABLE_DROP_COLUMN);
                 String columnName = readColumnIdentifier();
                 command.setTable(table);
                 if (ifExists && !table.doesColumnExist(columnName)) {
@@ -5154,7 +5122,7 @@ public class Parser implements SQLParser {
                     AlterTableAlterColumn command = new AlterTableAlterColumn(session, table.getSchema());
                     command.setTable(table);
                     command.setOldColumn(column);
-                    command.setType(CommandInterface.ALTER_TABLE_ALTER_COLUMN_DEFAULT);
+                    command.setType(SQLStatement.ALTER_TABLE_ALTER_COLUMN_DEFAULT);
                     command.setDefaultExpression(null);
                     return command;
                 }
@@ -5163,7 +5131,7 @@ public class Parser implements SQLParser {
                 AlterTableAlterColumn command = new AlterTableAlterColumn(session, table.getSchema());
                 command.setTable(table);
                 command.setOldColumn(column);
-                command.setType(CommandInterface.ALTER_TABLE_ALTER_COLUMN_NULL);
+                command.setType(SQLStatement.ALTER_TABLE_ALTER_COLUMN_NULL);
                 return command;
             } else if (readIf("TYPE")) {
                 // PostgreSQL compatibility
@@ -5178,15 +5146,15 @@ public class Parser implements SQLParser {
                 command.setTable(table);
                 command.setOldColumn(column);
                 if (readIf("NULL")) {
-                    command.setType(CommandInterface.ALTER_TABLE_ALTER_COLUMN_NULL);
+                    command.setType(SQLStatement.ALTER_TABLE_ALTER_COLUMN_NULL);
                     return command;
                 } else if (readIf("NOT")) {
                     read("NULL");
-                    command.setType(CommandInterface.ALTER_TABLE_ALTER_COLUMN_NOT_NULL);
+                    command.setType(SQLStatement.ALTER_TABLE_ALTER_COLUMN_NOT_NULL);
                     return command;
                 } else if (readIf("DEFAULT")) {
                     Expression defaultExpression = readExpression();
-                    command.setType(CommandInterface.ALTER_TABLE_ALTER_COLUMN_DEFAULT);
+                    command.setType(SQLStatement.ALTER_TABLE_ALTER_COLUMN_DEFAULT);
                     command.setDefaultExpression(defaultExpression);
                     return command;
                 }
@@ -5200,7 +5168,7 @@ public class Parser implements SQLParser {
             } else if (readIf("SELECTIVITY")) {
                 AlterTableAlterColumn command = new AlterTableAlterColumn(session, table.getSchema());
                 command.setTable(table);
-                command.setType(CommandInterface.ALTER_TABLE_ALTER_COLUMN_SELECTIVITY);
+                command.setType(SQLStatement.ALTER_TABLE_ALTER_COLUMN_SELECTIVITY);
                 command.setOldColumn(column);
                 command.setSelectivity(readExpression());
                 return command;
@@ -5215,7 +5183,7 @@ public class Parser implements SQLParser {
         Column newColumn = parseColumnForTable(columnName, column.isNullable());
         AlterTableAlterColumn command = new AlterTableAlterColumn(session, table.getSchema());
         command.setTable(table);
-        command.setType(CommandInterface.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE);
+        command.setType(SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE);
         command.setOldColumn(column);
         command.setNewColumn(newColumn);
         return command;
@@ -5225,7 +5193,7 @@ public class Parser implements SQLParser {
         readIf("COLUMN");
         Schema schema = table.getSchema();
         AlterTableAlterColumn command = new AlterTableAlterColumn(session, schema);
-        command.setType(CommandInterface.ALTER_TABLE_ADD_COLUMN);
+        command.setType(SQLStatement.ALTER_TABLE_ADD_COLUMN);
         command.setTable(table);
         ArrayList<Column> columnsToAdd = New.arrayList();
         if (readIf("(")) {
@@ -5280,7 +5248,7 @@ public class Parser implements SQLParser {
         }
     }
 
-    private DefineCommand parseAlterTableAddConstraintIf(String tableName, Schema schema) {
+    private DefineStatement parseAlterTableAddConstraintIf(String tableName, Schema schema) {
         String constraintName = null, comment = null;
         boolean ifNotExists = false;
         boolean allowIndexDefinition = database.getMode().indexDefinitionInCreateTable;
@@ -5294,7 +5262,7 @@ public class Parser implements SQLParser {
         if (readIf("PRIMARY")) {
             read("KEY");
             AlterTableAddConstraint command = new AlterTableAddConstraint(session, schema, ifNotExists);
-            command.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
+            command.setType(SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
             command.setComment(comment);
             command.setConstraintName(constraintName);
             command.setTableName(tableName);
@@ -5336,13 +5304,13 @@ public class Parser implements SQLParser {
         AlterTableAddConstraint command;
         if (readIf("CHECK")) {
             command = new AlterTableAddConstraint(session, schema, ifNotExists);
-            command.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_CHECK);
+            command.setType(SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_CHECK);
             command.setCheckExpression(readExpression());
         } else if (readIf("UNIQUE")) {
             readIf("KEY");
             readIf("INDEX");
             command = new AlterTableAddConstraint(session, schema, ifNotExists);
-            command.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE);
+            command.setType(SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE);
             if (!readIf("(")) {
                 constraintName = readUniqueIdentifier();
                 read("(");
@@ -5358,7 +5326,7 @@ public class Parser implements SQLParser {
             }
         } else if (readIf("FOREIGN")) {
             command = new AlterTableAddConstraint(session, schema, ifNotExists);
-            command.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL);
+            command.setType(SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL);
             read("KEY");
             read("(");
             command.setIndexColumns(parseIndexColumnList());
@@ -5428,7 +5396,7 @@ public class Parser implements SQLParser {
             cols[0].columnName = column.getName();
             cols[0].column = column;
             AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
-            pk.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
+            pk.setType(SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
             pk.setTableName(tableName);
             pk.setIndexColumns(cols);
             command.addConstraintCommand(pk);
@@ -5450,7 +5418,7 @@ public class Parser implements SQLParser {
             cols[0].column = column;
             AlterTableAddConstraint pk = new AlterTableAddConstraint(session, schema, false);
             pk.setPrimaryKeyHash(hash);
-            pk.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
+            pk.setType(SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY);
             pk.setTableName(tableName);
             pk.setIndexColumns(cols);
             command.addConstraintCommand(pk);
@@ -5460,7 +5428,7 @@ public class Parser implements SQLParser {
         } else if (readIf("UNIQUE")) {
             AlterTableAddConstraint unique = new AlterTableAddConstraint(session, schema, false);
             unique.setConstraintName(constraintName);
-            unique.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE);
+            unique.setType(SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE);
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = columnName;
             cols[0].column = column;
@@ -5481,7 +5449,7 @@ public class Parser implements SQLParser {
         if (readIf("REFERENCES")) {
             AlterTableAddConstraint ref = new AlterTableAddConstraint(session, schema, false);
             ref.setConstraintName(constraintName);
-            ref.setType(CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL);
+            ref.setType(SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL);
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = columnName;
             cols[0].column = column;
@@ -5495,7 +5463,7 @@ public class Parser implements SQLParser {
 
     private void parseTableDefinition(Schema schema, CreateTable command, String tableName) {
         do {
-            DefineCommand c = parseAlterTableAddConstraintIf(tableName, schema);
+            DefineStatement c = parseAlterTableAddConstraintIf(tableName, schema);
             if (c != null) {
                 command.addConstraintCommand(c);
             } else {
@@ -5659,5 +5627,15 @@ public class Parser implements SQLParser {
         initialize(sql);
         read();
         return readTableOrView();
+    }
+
+    @Override
+    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
+        return new BatchStatementImpl(session, (StatementBase) ps, batchParameters);
+    }
+
+    @Override
+    public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
+        return new BatchStatementImpl(session, batchCommands);
     }
 }

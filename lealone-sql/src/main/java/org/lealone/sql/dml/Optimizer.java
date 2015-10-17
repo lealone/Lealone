@@ -9,7 +9,7 @@ package org.lealone.sql.dml;
 import java.util.Random;
 
 import org.lealone.common.util.BitField;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.table.Plan;
 import org.lealone.db.table.PlanItem;
 import org.lealone.db.table.TableFilter;
@@ -42,14 +42,14 @@ class Optimizer {
 
     private final TableFilter[] filters;
     private final Expression condition;
-    private final Session session;
+    private final ServerSession session;
 
     private Plan bestPlan;
     private TableFilter topFilter;
     private double cost;
     private Random random;
 
-    Optimizer(TableFilter[] filters, Expression condition, Session session) {
+    Optimizer(TableFilter[] filters, Expression condition, ServerSession session) {
         this.filters = filters;
         this.condition = condition;
         this.session = session;

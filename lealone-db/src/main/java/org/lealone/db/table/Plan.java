@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.lealone.common.util.New;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.TableFilter.TableFilterVisitor;
@@ -104,7 +104,7 @@ public class Plan {
      * @param session the session
      * @return the cost
      */
-    public double calculateCost(Session session) {
+    public double calculateCost(ServerSession session) {
         double cost = 1;
         boolean invalidPlan = false;
         int level = 1;

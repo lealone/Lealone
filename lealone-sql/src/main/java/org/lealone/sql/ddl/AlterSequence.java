@@ -7,21 +7,21 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * ALTER SEQUENCE
  */
-public class AlterSequence extends SchemaCommand {
+public class AlterSequence extends SchemaStatement {
 
     private Table table;
     private Sequence sequence;
@@ -32,7 +32,7 @@ public class AlterSequence extends SchemaCommand {
     private Expression maxValue;
     private Expression cacheSize;
 
-    public AlterSequence(Session session, Schema schema) {
+    public AlterSequence(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -100,7 +100,7 @@ public class AlterSequence extends SchemaCommand {
         // need to use the system session, so that the update
         // can be committed immediately - not committing it
         // would keep other transactions from using the sequence
-        Session sysSession = db.getSystemSession();
+        ServerSession sysSession = db.getSystemSession();
         synchronized (sysSession) {
             synchronized (db) {
                 db.updateMeta(sysSession, sequence);
@@ -119,7 +119,7 @@ public class AlterSequence extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.ALTER_SEQUENCE;
+        return SQLStatement.ALTER_SEQUENCE;
     }
 
 }

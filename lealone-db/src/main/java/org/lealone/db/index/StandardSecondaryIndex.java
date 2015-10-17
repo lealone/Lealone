@@ -15,7 +15,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -39,7 +39,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     private final String mapName;
     private final TransactionMap<Value, Value> dataMap;
 
-    public StandardSecondaryIndex(Session session, StandardTable table, int id, String indexName,
+    public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
             IndexColumn[] columns, IndexType indexType) {
         Database db = session.getDatabase();
         this.table = table;
@@ -73,7 +73,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void addRowsToBuffer(Session session, List<Row> rows, String bufferName) {
+    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
         TransactionMap<Value, Value> map = openMap(session, bufferName);
         for (Row row : rows) {
             ValueArray key = convertToKey(row);
@@ -82,7 +82,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void addBufferedRows(Session session, List<String> bufferNames) {
+    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
         ArrayList<String> mapNames = New.arrayList(bufferNames);
         final CompareMode compareMode = database.getCompareMode();
         /**
@@ -153,7 +153,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     // TODO 不考虑事务
-    private TransactionMap<Value, Value> openMap(Session session, String mapName) {
+    private TransactionMap<Value, Value> openMap(ServerSession session, String mapName) {
         int[] sortTypes = new int[keyColumns];
         for (int i = 0; i < indexColumns.length; i++) {
             sortTypes[i] = indexColumns[i].sortType;
@@ -174,12 +174,12 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         // ok
     }
 
     @Override
-    public void add(Session session, Row row) {
+    public void add(ServerSession session, Row row) {
         TransactionMap<Value, Value> map = getMap(session);
         ValueArray array = convertToKey(row);
         ValueArray unique = null;
@@ -235,7 +235,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void remove(Session session, Row row) {
+    public void remove(ServerSession session, Row row) {
         ValueArray array = convertToKey(row);
         TransactionMap<Value, Value> map = getMap(session);
         try {
@@ -249,7 +249,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         ValueArray min = convertToKey(first);
         if (min != null) {
             min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
@@ -301,7 +301,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         try {
             return 10 * getCostRangeIndex(masks, dataMap.rawSize(), filter, sortOrder);
         } catch (IllegalStateException e) {
@@ -310,7 +310,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void remove(Session session) {
+    public void remove(ServerSession session) {
         TransactionMap<Value, Value> map = getMap(session);
         if (!map.isClosed()) {
             map.remove();
@@ -318,7 +318,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         TransactionMap<Value, Value> map = getMap(session);
         map.clear();
     }
@@ -329,7 +329,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public Cursor findFirstOrLast(Session session, boolean first) {
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
         TransactionMap<Value, Value> map = getMap(session);
         Value key = first ? map.firstKey() : map.lastKey();
         while (true) {
@@ -358,7 +358,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         TransactionMap<Value, Value> map = getMap(session);
         return map.sizeAsLong();
     }
@@ -384,7 +384,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public Cursor findDistinct(Session session, SearchRow first, SearchRow last) {
+    public Cursor findDistinct(ServerSession session, SearchRow first, SearchRow last) {
         ValueArray min = convertToKey(first);
         if (min != null) {
             min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
@@ -403,7 +403,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
      * @param session the session
      * @return the map
      */
-    TransactionMap<Value, Value> getMap(Session session) {
+    TransactionMap<Value, Value> getMap(ServerSession session) {
         if (session == null) {
             return dataMap;
         }
@@ -420,14 +420,14 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
      */
     private class StandardSecondaryIndexCursor implements Cursor {
 
-        private final Session session;
+        private final ServerSession session;
         private final Iterator<Value> it;
         private final SearchRow last;
         private Value current;
         private SearchRow searchRow;
         private Row row;
 
-        public StandardSecondaryIndexCursor(Session session, Iterator<Value> it, SearchRow last) {
+        public StandardSecondaryIndexCursor(ServerSession session, Iterator<Value> it, SearchRow last) {
             this.session = session;
             this.it = it;
             this.last = last;
@@ -477,13 +477,13 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     private class StandardSecondaryIndexDistinctCursor implements Cursor {
         private final TransactionMap<Value, Value> map;
-        private final Session session;
+        private final ServerSession session;
         private final SearchRow last;
         private Value current;
         private SearchRow searchRow;
         private Row row;
 
-        public StandardSecondaryIndexDistinctCursor(Session session, ValueArray min, SearchRow last) {
+        public StandardSecondaryIndexDistinctCursor(ServerSession session, ValueArray min, SearchRow last) {
             this.session = session;
             this.last = last;
             map = getMap(session);

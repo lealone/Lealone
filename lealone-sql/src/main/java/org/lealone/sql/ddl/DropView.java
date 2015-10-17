@@ -8,26 +8,26 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP VIEW
  */
-public class DropView extends SchemaCommand {
+public class DropView extends SchemaStatement {
 
     private String viewName;
     private boolean ifExists;
     private int dropAction;
 
-    public DropView(Session session, Schema schema) {
+    public DropView(ServerSession session, Schema schema) {
         super(session, schema);
         dropAction = session.getDatabase().getSettings().dropRestrict ? ConstraintReferential.RESTRICT
                 : ConstraintReferential.CASCADE;
@@ -75,7 +75,7 @@ public class DropView extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_VIEW;
+        return SQLStatement.DROP_VIEW;
     }
 
 }

@@ -8,15 +8,14 @@ package org.lealone.sql.ddl;
 
 import java.util.concurrent.Callable;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.StatementBase;
 
 /**
- * This class represents a non-transaction statement, for example a CREATE or
- * DROP.
+ * This class represents a non-transaction statement, for example a CREATE or DROP.
  */
-public abstract class DefineCommand extends Prepared implements Callable<Integer> {
+public abstract class DefineStatement extends StatementBase implements Callable<Integer> {
 
     /**
      * The transactional behavior. The default is disabled, meaning the command
@@ -29,7 +28,7 @@ public abstract class DefineCommand extends Prepared implements Callable<Integer
      *
      * @param session the session
      */
-    protected DefineCommand(Session session) {
+    protected DefineStatement(ServerSession session) {
         super(session);
     }
 

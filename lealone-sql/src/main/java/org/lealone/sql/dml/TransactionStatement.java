@@ -7,23 +7,23 @@
 package org.lealone.sql.dml;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 
 /**
  * Represents a transactional statement.
  */
-public class TransactionCommand extends Prepared {
+public class TransactionStatement extends StatementBase {
     public static final String INTERNAL_SAVEPOINT = "_INTERNAL_SAVEPOINT_";
 
     private final int type;
     private String savepointName;
     private String transactionName;
 
-    public TransactionCommand(Session session, int type) {
+    public TransactionStatement(ServerSession session, int type) {
         super(session);
         this.type = type;
     }
@@ -37,56 +37,56 @@ public class TransactionCommand extends Prepared {
     @Override
     public int update() {
         switch (type) {
-        case CommandInterface.SET_AUTOCOMMIT_TRUE:
+        case SQLStatement.SET_AUTOCOMMIT_TRUE:
             session.setAutoCommit(true);
             break;
-        case CommandInterface.SET_AUTOCOMMIT_FALSE:
+        case SQLStatement.SET_AUTOCOMMIT_FALSE:
             session.setAutoCommit(false);
             break;
-        case CommandInterface.BEGIN:
+        case SQLStatement.BEGIN:
             session.begin();
             break;
-        case CommandInterface.COMMIT:
+        case SQLStatement.COMMIT:
             session.commit(false);
             break;
-        case CommandInterface.ROLLBACK:
+        case SQLStatement.ROLLBACK:
             session.rollback();
             break;
-        case CommandInterface.CHECKPOINT:
+        case SQLStatement.CHECKPOINT:
             session.getUser().checkAdmin();
             session.getDatabase().checkpoint();
             break;
-        case CommandInterface.SAVEPOINT:
+        case SQLStatement.SAVEPOINT:
             session.addSavepoint(savepointName);
             break;
-        case CommandInterface.ROLLBACK_TO_SAVEPOINT:
+        case SQLStatement.ROLLBACK_TO_SAVEPOINT:
             session.rollbackToSavepoint(savepointName);
             break;
-        case CommandInterface.CHECKPOINT_SYNC:
+        case SQLStatement.CHECKPOINT_SYNC:
             session.getUser().checkAdmin();
             session.getDatabase().sync();
             break;
-        case CommandInterface.PREPARE_COMMIT:
+        case SQLStatement.PREPARE_COMMIT:
             session.prepareCommit(transactionName);
             break;
-        case CommandInterface.COMMIT_TRANSACTION:
+        case SQLStatement.COMMIT_TRANSACTION:
             session.getUser().checkAdmin();
             session.setPreparedTransaction(transactionName, true);
             break;
-        case CommandInterface.ROLLBACK_TRANSACTION:
+        case SQLStatement.ROLLBACK_TRANSACTION:
             session.getUser().checkAdmin();
             session.setPreparedTransaction(transactionName, false);
             break;
-        case CommandInterface.SHUTDOWN_IMMEDIATELY:
+        case SQLStatement.SHUTDOWN_IMMEDIATELY:
             session.getUser().checkAdmin();
             session.getDatabase().shutdownImmediately();
             break;
-        case CommandInterface.SHUTDOWN:
-        case CommandInterface.SHUTDOWN_COMPACT:
-        case CommandInterface.SHUTDOWN_DEFRAG: {
+        case SQLStatement.SHUTDOWN:
+        case SQLStatement.SHUTDOWN_COMPACT:
+        case SQLStatement.SHUTDOWN_DEFRAG: {
             session.getUser().checkAdmin();
             session.commit(false);
-            if (type == CommandInterface.SHUTDOWN_COMPACT || type == CommandInterface.SHUTDOWN_DEFRAG) {
+            if (type == SQLStatement.SHUTDOWN_COMPACT || type == SQLStatement.SHUTDOWN_DEFRAG) {
                 session.getDatabase().setCompactMode(type);
             }
             // close the database, but don't update the persistent setting
@@ -95,7 +95,7 @@ public class TransactionCommand extends Prepared {
             // throttle, to allow testing concurrent
             // execution of shutdown and query
             session.throttle();
-            for (Session s : db.getSessions(false)) {
+            for (ServerSession s : db.getSessions(false)) {
                 if (db.isMultiThreaded()) {
                     synchronized (s) {
                         s.rollback();

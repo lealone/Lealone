@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import org.lealone.common.util.New;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 
 /**
@@ -66,7 +66,7 @@ public class CreateTableData {
     /**
      * The session.
      */
-    public Session session;
+    public ServerSession session;
 
     /**
      * The storage engine to use for creating the table.

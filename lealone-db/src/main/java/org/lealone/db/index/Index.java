@@ -6,7 +6,7 @@
  */
 package org.lealone.db.index;
 
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -33,7 +33,7 @@ public interface Index extends SchemaObject {
      *
      * @param session the session used to write data
      */
-    void close(Session session);
+    void close(ServerSession session);
 
     /**
      * Add a row to the index.
@@ -41,7 +41,7 @@ public interface Index extends SchemaObject {
      * @param session the session to use
      * @param row the row to add
      */
-    void add(Session session, Row row);
+    void add(ServerSession session, Row row);
 
     /**
      * Remove a row from the index.
@@ -49,7 +49,7 @@ public interface Index extends SchemaObject {
      * @param session the session
      * @param row the row
      */
-    void remove(Session session, Row row);
+    void remove(ServerSession session, Row row);
 
     /**
      * Find a row or a list of rows and create a cursor to iterate over the result.
@@ -59,7 +59,7 @@ public interface Index extends SchemaObject {
      * @param last the last row, or null for no limit
      * @return the cursor to iterate over the results
      */
-    Cursor find(Session session, SearchRow first, SearchRow last);
+    Cursor find(ServerSession session, SearchRow first, SearchRow last);
 
     /**
      * Find a row or a list of rows and create a cursor to iterate over the result.
@@ -83,21 +83,21 @@ public interface Index extends SchemaObject {
      * @param sortOrder the sort order
      * @return the estimated cost
      */
-    double getCost(Session session, int[] masks, TableFilter filter, SortOrder sortOrder);
+    double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder);
 
     /**
      * Remove the index.
      *
      * @param session the session
      */
-    void remove(Session session);
+    void remove(ServerSession session);
 
     /**
      * Remove all rows from the index.
      *
      * @param session the session
      */
-    void truncate(Session session);
+    void truncate(ServerSession session);
 
     /**
      * Check if the index can directly look up the lowest or highest value of a
@@ -123,7 +123,7 @@ public interface Index extends SchemaObject {
      * @param last the last row, or null for no limit
      * @return the cursor to iterate over the results
      */
-    Cursor findDistinct(Session session, SearchRow first, SearchRow last);
+    Cursor findDistinct(ServerSession session, SearchRow first, SearchRow last);
 
     /**
      * Find the first (or last) value of this index. The cursor returned is
@@ -134,7 +134,7 @@ public interface Index extends SchemaObject {
      *            value should be returned
      * @return a cursor (never null)
      */
-    Cursor findFirstOrLast(Session session, boolean first);
+    Cursor findFirstOrLast(ServerSession session, boolean first);
 
     /**
      * Check if the index needs to be rebuilt.
@@ -150,7 +150,7 @@ public interface Index extends SchemaObject {
      * @param session the session
      * @return the row count
      */
-    long getRowCount(Session session);
+    long getRowCount(ServerSession session);
 
     /**
      * Get the approximated row count for this table.
@@ -218,7 +218,7 @@ public interface Index extends SchemaObject {
      * @param key the unique key
      * @return the row
      */
-    Row getRow(Session session, long key);
+    Row getRow(ServerSession session, long key);
 
     /**
      * Does this index support lookup by row id?

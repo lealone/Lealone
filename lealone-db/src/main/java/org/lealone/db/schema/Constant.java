@@ -8,7 +8,7 @@ package org.lealone.db.schema;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ValueExpression;
 import org.lealone.db.table.Table;
@@ -48,7 +48,7 @@ public class Constant extends SchemaObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(Session session) {
+    public void removeChildrenAndResources(ServerSession session) {
         database.removeMeta(session, getId());
         invalidate();
     }

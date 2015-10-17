@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.ParameterInterface;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.SysProperties;
 import org.lealone.db.value.Value;
 
@@ -223,14 +223,14 @@ public class Trace {
      * @param parameters the parameter list
      * @return the formatted text
      */
-    public static String formatParams(ArrayList<? extends ParameterInterface> parameters) {
+    public static String formatParams(ArrayList<? extends CommandParameter> parameters) {
         if (parameters.isEmpty()) {
             return "";
         }
         StatementBuilder buff = new StatementBuilder();
         int i = 0;
         boolean params = false;
-        for (ParameterInterface p : parameters) {
+        for (CommandParameter p : parameters) {
             if (p.isValueSet()) {
                 if (!params) {
                     buff.append(" {");

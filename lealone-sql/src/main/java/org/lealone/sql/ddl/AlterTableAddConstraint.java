@@ -12,10 +12,9 @@ import java.util.HashSet;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintCheck;
@@ -28,13 +27,14 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * ALTER TABLE ADD CONSTRAINT
  */
-public class AlterTableAddConstraint extends SchemaCommand {
+public class AlterTableAddConstraint extends SchemaStatement {
 
     private int type;
     private String constraintName;
@@ -53,7 +53,7 @@ public class AlterTableAddConstraint extends SchemaCommand {
     private final boolean ifNotExists;
     private final ArrayList<Index> createdIndexes = New.arrayList();
 
-    public AlterTableAddConstraint(Session session, Schema schema, boolean ifNotExists) {
+    public AlterTableAddConstraint(ServerSession session, Schema schema, boolean ifNotExists) {
         super(session, schema);
         this.ifNotExists = ifNotExists;
     }
@@ -101,7 +101,7 @@ public class AlterTableAddConstraint extends SchemaCommand {
         table.lock(session, true, true);
         Constraint constraint;
         switch (type) {
-        case CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY: {
+        case SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY: {
             IndexColumn.mapColumns(indexColumns, table);
             index = table.findPrimaryKey();
             ArrayList<Constraint> constraints = table.getConstraints();
@@ -143,7 +143,7 @@ public class AlterTableAddConstraint extends SchemaCommand {
             constraint = pk;
             break;
         }
-        case CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE: {
+        case SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_UNIQUE: {
             IndexColumn.mapColumns(indexColumns, table);
             boolean isOwner = false;
             if (index != null && canUseUniqueIndex(index, table, indexColumns)) {
@@ -164,7 +164,7 @@ public class AlterTableAddConstraint extends SchemaCommand {
             constraint = unique;
             break;
         }
-        case CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_CHECK: {
+        case SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_CHECK: {
             int id = getObjectId();
             String name = generateConstraintName(table);
             ConstraintCheck check = new ConstraintCheck(getSchema(), id, name, table);
@@ -179,7 +179,7 @@ public class AlterTableAddConstraint extends SchemaCommand {
             }
             break;
         }
-        case CommandInterface.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL: {
+        case SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_REFERENTIAL: {
             Table refTable = refSchema.getTableOrView(session, refTableName);
             session.getUser().checkRight(refTable, Right.ALL);
             if (!refTable.canReference()) {

@@ -31,7 +31,7 @@ import org.lealone.common.util.NetUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Data;
-import org.lealone.db.SessionInterface;
+import org.lealone.db.Session;
 import org.lealone.db.result.SimpleResultSet;
 
 /**
@@ -44,7 +44,7 @@ public class Transfer {
     private static final int LOB_MAGIC = 0x1234;
     private static final int LOB_MAC_SALT_LENGTH = 16;
 
-    private SessionInterface session;
+    private Session session;
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
@@ -57,7 +57,7 @@ public class Transfer {
      *
      * @param session the session
      */
-    public Transfer(SessionInterface session, Socket socket) {
+    public Transfer(Session session, Socket socket) {
         this.session = session;
         this.socket = socket;
     }
@@ -610,7 +610,7 @@ public class Transfer {
      *
      * @param session the session
      */
-    public void setSession(SessionInterface session) {
+    public void setSession(Session session) {
         this.session = session;
     }
 

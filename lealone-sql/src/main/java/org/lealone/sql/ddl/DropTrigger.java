@@ -8,24 +8,24 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * DROP TRIGGER
  */
-public class DropTrigger extends SchemaCommand {
+public class DropTrigger extends SchemaStatement {
 
     private String triggerName;
     private boolean ifExists;
 
-    public DropTrigger(Session session, Schema schema) {
+    public DropTrigger(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -56,7 +56,7 @@ public class DropTrigger extends SchemaCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.DROP_TRIGGER;
+        return SQLStatement.DROP_TRIGGER;
     }
 
 }

@@ -12,10 +12,9 @@ import java.util.HashSet;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
@@ -32,7 +31,8 @@ import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.Parser;
-import org.lealone.sql.Prepared;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 
 /**
@@ -47,7 +47,7 @@ import org.lealone.sql.expression.Expression;
  * ALTER TABLE ALTER COLUMN SET NULL,
  * ALTER TABLE DROP COLUMN
  */
-public class AlterTableAlterColumn extends SchemaCommand {
+public class AlterTableAlterColumn extends SchemaStatement {
 
     private Table table;
     private Column oldColumn;
@@ -60,7 +60,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
     private boolean ifNotExists;
     private ArrayList<Column> columnsToAdd;
 
-    public AlterTableAlterColumn(Session session, Schema schema) {
+    public AlterTableAlterColumn(ServerSession session, Schema schema) {
         super(session, schema);
     }
 
@@ -97,7 +97,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             }
         }
         switch (type) {
-        case CommandInterface.ALTER_TABLE_ALTER_COLUMN_NOT_NULL: {
+        case SQLStatement.ALTER_TABLE_ALTER_COLUMN_NOT_NULL: {
             if (!oldColumn.isNullable()) {
                 // no change
                 break;
@@ -107,7 +107,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             db.updateMeta(session, table);
             break;
         }
-        case CommandInterface.ALTER_TABLE_ALTER_COLUMN_NULL: {
+        case SQLStatement.ALTER_TABLE_ALTER_COLUMN_NULL: {
             if (oldColumn.isNullable()) {
                 // no change
                 break;
@@ -117,7 +117,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             db.updateMeta(session, table);
             break;
         }
-        case CommandInterface.ALTER_TABLE_ALTER_COLUMN_DEFAULT: {
+        case SQLStatement.ALTER_TABLE_ALTER_COLUMN_DEFAULT: {
             checkDefaultReferencesTable(defaultExpression);
             oldColumn.setSequence(null);
             oldColumn.setDefaultExpression(session, defaultExpression);
@@ -125,7 +125,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             db.updateMeta(session, table);
             break;
         }
-        case CommandInterface.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE: {
+        case SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE: {
             // if the change is only increasing the precision, then we don't
             // need to copy the table because the length is only a constraint,
             // and does not affect the storage structure.
@@ -147,7 +147,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             }
             break;
         }
-        case CommandInterface.ALTER_TABLE_ADD_COLUMN: {
+        case SQLStatement.ALTER_TABLE_ADD_COLUMN: {
             // ifNotExists only supported for single column add
             if (ifNotExists && columnsToAdd.size() == 1 && table.doesColumnExist(columnsToAdd.get(0).getName())) {
                 break;
@@ -161,7 +161,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             copyData();
             break;
         }
-        case CommandInterface.ALTER_TABLE_DROP_COLUMN: {
+        case SQLStatement.ALTER_TABLE_DROP_COLUMN: {
             if (table.getColumns().length == 1) {
                 throw DbException.get(ErrorCode.CANNOT_DROP_LAST_COLUMN, oldColumn.getSQL());
             }
@@ -169,7 +169,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             copyData();
             break;
         }
-        case CommandInterface.ALTER_TABLE_ALTER_COLUMN_SELECTIVITY: {
+        case SQLStatement.ALTER_TABLE_ALTER_COLUMN_SELECTIVITY: {
             int value = newSelectivity.optimize(session).getValue(session).getInt();
             oldColumn.setSelectivity(value);
             db.updateMeta(session, table);
@@ -276,10 +276,10 @@ public class AlterTableAlterColumn extends SchemaCommand {
         for (Column col : columns) {
             newColumns.add(col.getClone());
         }
-        if (type == CommandInterface.ALTER_TABLE_DROP_COLUMN) {
+        if (type == SQLStatement.ALTER_TABLE_DROP_COLUMN) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
-        } else if (type == CommandInterface.ALTER_TABLE_ADD_COLUMN) {
+        } else if (type == SQLStatement.ALTER_TABLE_ADD_COLUMN) {
             int position;
             if (addBefore != null) {
                 position = table.getColumn(addBefore).getColumnId();
@@ -291,7 +291,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
             for (Column column : columnsToAdd) {
                 newColumns.add(position++, column);
             }
-        } else if (type == CommandInterface.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
+        } else if (type == SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
             newColumns.add(position, newColumn);
@@ -325,7 +325,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
                 if (columnList.length() > 0) {
                     columnList.append(", ");
                 }
-                if (type == CommandInterface.ALTER_TABLE_ADD_COLUMN && columnsToAdd.contains(nc)) {
+                if (type == SQLStatement.ALTER_TABLE_ADD_COLUMN && columnsToAdd.contains(nc)) {
                     Expression def = (Expression) nc.getDefaultExpression();
                     columnList.append(def == null ? "NULL" : def.getSQL());
                 } else {
@@ -438,14 +438,14 @@ public class AlterTableAlterColumn extends SchemaCommand {
                 // check if the query is still valid
                 // do not execute, not even with limit 1, because that could
                 // have side effects or take a very long time
-                session.prepare(sql);
+                session.prepareStatement(sql);
                 checkViewsAreValid(view);
             }
         }
     }
 
     private void execute(String sql, boolean ddl) {
-        Prepared command = (Prepared) session.prepare(sql);
+        StatementBase command = (StatementBase) session.prepareStatement(sql);
         command.setLocal(true);
         command.update();
         if (ddl) {
@@ -467,7 +467,7 @@ public class AlterTableAlterColumn extends SchemaCommand {
 
     private void checkNoNullValues() {
         String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL() + " IS NULL";
-        Prepared command = (Prepared) session.prepare(sql);
+        StatementBase command = (StatementBase) session.prepareStatement(sql);
         Result result = command.query(0);
         result.next();
         if (result.currentRow()[0].getInt() > 0) {

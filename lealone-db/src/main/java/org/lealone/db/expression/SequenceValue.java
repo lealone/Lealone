@@ -7,7 +7,7 @@
 package org.lealone.db.expression;
 
 import org.lealone.common.message.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;
@@ -27,7 +27,7 @@ public class SequenceValue implements Expression {
     }
 
     @Override
-    public Value getValue(Session session) {
+    public Value getValue(ServerSession session) {
         long value = sequence.getNext(session);
         session.setLastIdentity(ValueLong.get(value));
         return ValueLong.get(value);
@@ -44,7 +44,7 @@ public class SequenceValue implements Expression {
     }
 
     @Override
-    public Expression optimize(Session session) {
+    public Expression optimize(ServerSession session) {
         return this;
     }
 
@@ -72,7 +72,7 @@ public class SequenceValue implements Expression {
         return "(NEXT VALUE FOR " + sequence.getSQL() + ")";
     }
 
-    public void updateAggregate(Session session) {
+    public void updateAggregate(ServerSession session) {
         // nothing to do
     }
 
@@ -165,13 +165,13 @@ public class SequenceValue implements Expression {
     }
 
     @Override
-    public void createIndexConditions(Session session, TableFilter filter) {
+    public void createIndexConditions(ServerSession session, TableFilter filter) {
         // TODO Auto-generated method stub
 
     }
 
     @Override
-    public Boolean getBooleanValue(Session session) {
+    public Boolean getBooleanValue(ServerSession session) {
         // TODO Auto-generated method stub
         return null;
     }

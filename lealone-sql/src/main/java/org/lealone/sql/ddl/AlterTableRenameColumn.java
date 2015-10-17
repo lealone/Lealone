@@ -6,26 +6,26 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * ALTER TABLE ALTER COLUMN RENAME
  */
-public class AlterTableRenameColumn extends DefineCommand {
+public class AlterTableRenameColumn extends DefineStatement {
 
     private Table table;
     private Column column;
     private String newName;
 
-    public AlterTableRenameColumn(Session session) {
+    public AlterTableRenameColumn(ServerSession session) {
         super(session);
     }
 
@@ -65,7 +65,7 @@ public class AlterTableRenameColumn extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.ALTER_TABLE_ALTER_COLUMN_RENAME;
+        return SQLStatement.ALTER_TABLE_ALTER_COLUMN_RENAME;
     }
 
 }

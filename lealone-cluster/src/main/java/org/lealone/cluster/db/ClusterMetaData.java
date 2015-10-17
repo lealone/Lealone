@@ -19,6 +19,7 @@ package org.lealone.cluster.db;
 
 import java.net.InetAddress;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -34,7 +35,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
-import org.lealone.client.jdbc.Driver;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.dht.TokenFactory;
 import org.lealone.cluster.service.StorageService;
@@ -65,8 +65,8 @@ public class ClusterMetaData {
 
     static {
         try {
-            String url = Constants.URL_PREFIX + Constants.URL_EMBED + CLUSTER_DB_NAME;
-            conn = Driver.getInternalConnection(url, CLUSTER_DB_NAME, CLUSTER_DB_NAME);
+            String url = Constants.URL_PREFIX + Constants.URL_EMBED + CLUSTER_DB_NAME + ";DISABLE_AUTHENTICATION=true";
+            conn = DriverManager.getConnection(url, CLUSTER_DB_NAME, CLUSTER_DB_NAME);
             stmt = conn.createStatement();
             stmt.execute("CREATE TABLE IF NOT EXISTS " + PEERS_TABLE + "(" //
                     + "peer varchar,"//

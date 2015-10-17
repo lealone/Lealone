@@ -13,14 +13,11 @@ import java.lang.reflect.Modifier;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.client.jdbc.Driver;
-import org.lealone.client.jdbc.JdbcBlob;
-import org.lealone.client.jdbc.JdbcClob;
-import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.New;
@@ -29,7 +26,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.table.Table;
@@ -235,7 +232,7 @@ public class FunctionAlias extends SchemaObjectBase {
     }
 
     @Override
-    public synchronized void removeChildrenAndResources(Session session) {
+    public synchronized void removeChildrenAndResources(ServerSession session) {
         database.removeMeta(session, getId());
         className = null;
         methodName = null;
@@ -389,7 +386,7 @@ public class FunctionAlias extends SchemaObjectBase {
          * @param columnList true if the function should only return the column list
          * @return the value
          */
-        public Value getValue(Session session, Expression[] args, boolean columnList) {
+        public Value getValue(ServerSession session, Expression[] args, boolean columnList) {
             Class<?>[] paramClasses = method.getParameterTypes();
             Object[] params = new Object[paramClasses.length];
             int p = 0;
@@ -456,14 +453,15 @@ public class FunctionAlias extends SchemaObjectBase {
             }
             boolean old = session.isAutoCommit();
             Value identity = session.getLastScopeIdentity();
-            boolean defaultConnection = session.getDatabase().getSettings().defaultConnection;
+            // boolean defaultConnection = session.getDatabase().getSettings().defaultConnection;
             try {
                 session.setAutoCommit(false);
                 Object returnValue;
                 try {
-                    if (defaultConnection) {
-                        Driver.setDefaultConnection(session.createConnection(columnList));
-                    }
+                    // TODO
+                    // if (defaultConnection) {
+                    // Driver.setDefaultConnection(session.createConnection(columnList));
+                    // }
                     returnValue = method.invoke(null, params);
                     if (returnValue == null) {
                         return ValueNull.INSTANCE;
@@ -488,9 +486,10 @@ public class FunctionAlias extends SchemaObjectBase {
             } finally {
                 session.setLastScopeIdentity(identity);
                 session.setAutoCommit(old);
-                if (defaultConnection) {
-                    Driver.setDefaultConnection(null);
-                }
+                // TODO
+                // if (defaultConnection) {
+                // Driver.setDefaultConnection(null);
+                // }
             }
         }
 
@@ -534,11 +533,34 @@ public class FunctionAlias extends SchemaObjectBase {
      * @param paramClass the target class
      * @return the converted object
      */
-    public static Object convertTo(JdbcConnection conn, Value v, Class<?> paramClass) {
-        if (paramClass == Blob.class) {
-            return new JdbcBlob(conn, v, 0);
-        } else if (paramClass == Clob.class) {
-            return new JdbcClob(conn, v, 0);
+    // public static Object convertTo(JdbcConnection conn, Value v, Class<?> paramClass) {
+    // if (paramClass == Blob.class) {
+    // return new JdbcBlob(conn, v, 0);
+    // } else if (paramClass == Clob.class) {
+    // return new JdbcClob(conn, v, 0);
+    // }
+    // if (v.getType() == Value.JAVA_OBJECT) {
+    // Object o = SysProperties.SERIALIZE_JAVA_OBJECT ? Utils.deserialize(v.getBytes()) : v.getObject();
+    // if (paramClass.isAssignableFrom(o.getClass())) {
+    // return o;
+    // }
+    // }
+    // throw DbException.getUnsupportedException(paramClass.getName());
+    // }
+
+    public static Object convertTo(Connection conn, Value v, Class<?> paramClass) {
+        try {
+            if (paramClass == Blob.class) {
+                Blob blob;
+                blob = conn.createBlob();
+                blob.setBytes(0, v.getBytes());
+                return blob;
+            } else if (paramClass == Clob.class) {
+                Clob clob = conn.createClob(); // TODO
+                return clob;
+            }
+        } catch (SQLException e) {
+            throw DbException.convert(e);
         }
         if (v.getType() == Value.JAVA_OBJECT) {
             Object o = SysProperties.SERIALIZE_JAVA_OBJECT ? Utils.deserialize(v.getBytes()) : v.getObject();
@@ -548,5 +570,4 @@ public class FunctionAlias extends SchemaObjectBase {
         }
         throw DbException.getUnsupportedException(paramClass.getName());
     }
-
 }

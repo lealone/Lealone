@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -43,12 +43,12 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         reset();
     }
 
     @Override
-    public void add(Session session, Row row) {
+    public void add(ServerSession session, Row row) {
         Value key = row.getValue(indexColumn);
         ArrayList<Long> positions = rows.get(key);
         if (positions == null) {
@@ -60,7 +60,7 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public void remove(Session session, Row row) {
+    public void remove(ServerSession session, Row row) {
         if (rowCount == 1) {
             // last row in table
             reset();
@@ -78,7 +78,7 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public Cursor find(Session session, SearchRow first, SearchRow last) {
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         if (first == null || last == null) {
             throw DbException.throwInternalError();
         }
@@ -92,7 +92,7 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         return rowCount;
     }
 
@@ -108,13 +108,13 @@ public class NonUniqueHashIndex extends HashIndex {
      */
     private static class NonUniqueHashCursor implements Cursor {
 
-        private final Session session;
+        private final ServerSession session;
         private final ArrayList<Long> positions;
         private final TableBase tableData;
 
         private int index = -1;
 
-        public NonUniqueHashCursor(Session session, TableBase tableData, ArrayList<Long> positions) {
+        public NonUniqueHashCursor(ServerSession session, TableBase tableData, ArrayList<Long> positions) {
             this.session = session;
             this.tableData = tableData;
             this.positions = positions;

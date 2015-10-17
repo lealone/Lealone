@@ -18,11 +18,10 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.CommandInterface;
+import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.ParameterInterface;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Cursor;
@@ -44,6 +43,8 @@ import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Calculator;
 import org.lealone.sql.expression.Comparison;
 import org.lealone.sql.expression.ConditionAndOr;
@@ -91,7 +92,7 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
     private int queryLimit;
     private ResultTarget resultTarget;
 
-    public Select(Session session) {
+    public Select(ServerSession session) {
         super(session);
     }
 
@@ -319,10 +320,10 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
     }
 
     @Override
-    public void prepare() {
+    public PreparedStatement prepare() {
         if (isPrepared) {
             // sometimes a subquery is prepared twice (CREATE TABLE AS SELECT)
-            return;
+            return this;
         }
         if (SysProperties.CHECK && !checkInit) {
             DbException.throwInternalError("not initialized");
@@ -434,6 +435,8 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
         expressionArray = new Expression[expressions.size()];
         expressions.toArray(expressionArray);
         isPrepared = true;
+
+        return this;
     }
 
     private double preparePlan() {
@@ -1346,7 +1349,7 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
     }
 
     @Override
-    public void updateAggregate(Session s) {
+    public void updateAggregate(ServerSession s) {
         for (Expression e : expressions) {
             e.updateAggregate(s);
         }
@@ -1428,7 +1431,7 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
 
     @Override
     public int getType() {
-        return CommandInterface.SELECT;
+        return SQLStatement.SELECT;
     }
 
     @Override
@@ -1450,7 +1453,7 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
     }
 
     @Override
-    public void addGlobalCondition(ParameterInterface param, int columnId, int comparisonType) {
+    public void addGlobalCondition(CommandParameter param, int columnId, int comparisonType) {
         this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }
 }

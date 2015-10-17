@@ -12,7 +12,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
@@ -128,7 +128,7 @@ public abstract class TableBase extends Table {
     }
 
     @Override
-    public void close(Session session) {
+    public void close(ServerSession session) {
         for (Index index : indexes) {
             index.close(session);
         }
@@ -146,15 +146,15 @@ public abstract class TableBase extends Table {
      * @param key unique key
      * @return the row
      */
-    public Row getRow(Session session, long key) {
+    public Row getRow(ServerSession session, long key) {
         return scanIndex.getRow(session, key);
     }
 
     @Override
-    public void addRow(Session session, Row row) {
+    public void addRow(ServerSession session, Row row) {
     }
 
-    public void checkRowCount(Session session, Index index, int offset) {
+    public void checkRowCount(ServerSession session, Index index, int offset) {
         if (SysProperties.CHECK && !database.isMultiVersion()) {
             long rc = index.getRowCount(session);
             if (rc != rowCount + offset) {
@@ -165,7 +165,7 @@ public abstract class TableBase extends Table {
     }
 
     @Override
-    public Index getScanIndex(Session session) {
+    public Index getScanIndex(ServerSession session) {
         return indexes.get(0);
     }
 
@@ -185,7 +185,7 @@ public abstract class TableBase extends Table {
     }
 
     @Override
-    public abstract Index addIndex(Session session, String indexName, int indexId, IndexColumn[] cols,
+    public abstract Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
             IndexType indexType, boolean create, String indexComment);
 
     @Override
@@ -199,7 +199,7 @@ public abstract class TableBase extends Table {
     }
 
     @Override
-    public long getRowCount(Session session) {
+    public long getRowCount(ServerSession session) {
         if (database.isMultiVersion()) {
             return getScanIndex(session).getRowCount(session);
         }
@@ -207,11 +207,11 @@ public abstract class TableBase extends Table {
     }
 
     @Override
-    public void removeRow(Session session, Row row) {
+    public void removeRow(ServerSession session, Row row) {
     }
 
     @Override
-    public void truncate(Session session) {
+    public void truncate(ServerSession session) {
         lastModificationId = database.getNextModificationDataId();
         for (int i = indexes.size() - 1; i >= 0; i--) {
             Index index = indexes.get(i);
@@ -221,7 +221,7 @@ public abstract class TableBase extends Table {
         changesSinceAnalyze = 0;
     }
 
-    protected void analyzeIfRequired(Session session) {
+    protected void analyzeIfRequired(ServerSession session) {
         if (nextAnalyze == 0 || nextAnalyze > changesSinceAnalyze++) {
             return;
         }
@@ -245,7 +245,7 @@ public abstract class TableBase extends Table {
      * @throws DbException if a lock timeout occurred
      */
     @Override
-    public boolean lock(Session session, boolean exclusive, boolean forceLockEvenInMvcc) {
+    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
         return false;
     }
 

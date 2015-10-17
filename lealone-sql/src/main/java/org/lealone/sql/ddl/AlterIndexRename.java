@@ -8,23 +8,23 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
-import org.lealone.db.CommandInterface;
 import org.lealone.db.Database;
-import org.lealone.db.Session;
+import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.Index;
 import org.lealone.db.schema.Schema;
+import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * ALTER INDEX RENAME
  */
-public class AlterIndexRename extends DefineCommand {
+public class AlterIndexRename extends DefineStatement {
 
     private Index oldIndex;
     private String newIndexName;
 
-    public AlterIndexRename(Session session) {
+    public AlterIndexRename(ServerSession session) {
         super(session);
     }
 
@@ -51,7 +51,7 @@ public class AlterIndexRename extends DefineCommand {
 
     @Override
     public int getType() {
-        return CommandInterface.ALTER_INDEX_RENAME;
+        return SQLStatement.ALTER_INDEX_RENAME;
     }
 
 }

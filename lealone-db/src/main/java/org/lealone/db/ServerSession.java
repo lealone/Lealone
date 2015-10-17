@@ -7,6 +7,9 @@
 package org.lealone.db;
 
 import java.net.InetAddress;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -15,8 +18,6 @@ import java.util.Properties;
 import java.util.Random;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.client.FrontendSession;
-import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.message.TraceSystem;
@@ -32,8 +33,9 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.BackendCommand;
-import org.lealone.sql.PreparedInterface;
+import org.lealone.sql.BatchStatement;
+import org.lealone.sql.ParsedStatement;
+import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.LobStorage;
 import org.lealone.transaction.Transaction;
@@ -41,9 +43,9 @@ import org.lealone.transaction.Transaction;
 /**
  * A session represents an embedded database connection. When using the server
  * mode, this object resides on the server side and communicates with a
- * FrontendSession object on the client side.
+ * Session object on the client side.
  */
-public class Session extends SessionWithState implements Transaction.Validator {
+public class ServerSession extends SessionBase implements Transaction.Validator {
     /**
      * The prefix of generated identifiers. It may not have letters, because
      * they are case sensitive.
@@ -67,7 +69,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
     private HashMap<String, Constraint> localTempTableConstraints;
     private int throttle;
     private long lastThrottle;
-    private BackendCommand currentCommand;
+    private Command currentCommand;
     private boolean allowLiterals;
     private String currentSchemaName;
     private String[] schemaSearchPath;
@@ -91,10 +93,10 @@ public class Session extends SessionWithState implements Transaction.Validator {
     private int modificationId;
     private int objectId;
     private final int queryCacheSize;
-    private SmallLRUCache<String, BackendCommand> queryCache;
+    private SmallLRUCache<String, PreparedStatement> queryCache;
     private long modificationMetaID = -1;
 
-    public Session(Database database, User user, int id) {
+    public ServerSession(Database database, User user, int id) {
         this.database = database;
         this.queryTimeout = database.getSettings().maxQueryTimeout;
         this.queryCacheSize = database.getSettings().queryCacheSize;
@@ -358,7 +360,12 @@ public class Session extends SessionWithState implements Transaction.Validator {
     }
 
     public boolean isLocal() {
-        return local || connectionInfo == null || connectionInfo.isEmbedded() || !Session.isClusterMode();
+        return local || connectionInfo == null || connectionInfo.isEmbedded() || !ServerSession.isClusterMode();
+    }
+
+    @Override
+    public ParsedStatement parseStatement(String sql) {
+        return database.createParser(this).parse(sql);
     }
 
     /**
@@ -367,8 +374,8 @@ public class Session extends SessionWithState implements Transaction.Validator {
      * @param sql the SQL statement
      * @return the prepared statement
      */
-    public PreparedInterface prepare(String sql) {
-        return prepare(sql, false);
+    public PreparedStatement prepareStatement(String sql) {
+        return prepareStatement(sql, false);
     }
 
     /**
@@ -378,22 +385,18 @@ public class Session extends SessionWithState implements Transaction.Validator {
      * @param rightsChecked true if the rights have already been checked
      * @return the prepared statement
      */
-    public PreparedInterface prepare(String sql, boolean rightsChecked) {
+    public PreparedStatement prepareStatement(String sql, boolean rightsChecked) {
         SQLParser parser = database.createParser(this);
         parser.setRightsChecked(rightsChecked);
-        PreparedInterface p = parser.prepare(sql);
+        PreparedStatement p = parser.parse(sql).prepare();
         p.setLocal(isLocal());
         return p;
     }
 
-    public BackendCommand prepareCommandLocal(String sql) {
-        BackendCommand c = prepareCommand(sql);
-        c.getPrepared().setLocal(true);
-        return c;
-    }
-
-    public BackendCommand prepareCommand(String sql) {
-        return (BackendCommand) prepareCommand(sql, -1);
+    public PreparedStatement prepareStatementLocal(String sql) {
+        PreparedStatement ps = prepareStatement(sql, true);
+        ps.setLocal(true);
+        return ps;
     }
 
     /**
@@ -404,11 +407,16 @@ public class Session extends SessionWithState implements Transaction.Validator {
      * @return the prepared statement
      */
     @Override
-    public synchronized CommandInterface prepareCommand(String sql, int fetchSize) {
+    public synchronized Command prepareCommand(String sql, int fetchSize) {
+        return prepareStatement(sql, fetchSize);
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(String sql, int fetchSize) {
         if (closed) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
-        BackendCommand command;
+        PreparedStatement ps;
         if (queryCacheSize > 0) {
             if (queryCache == null) {
                 queryCache = SmallLRUCache.newInstance(queryCacheSize);
@@ -419,40 +427,29 @@ public class Session extends SessionWithState implements Transaction.Validator {
                     queryCache.clear();
                     modificationMetaID = newModificationMetaID;
                 }
-                command = queryCache.get(sql);
-                if (command != null && command.canReuse()) {
-                    command.reuse();
-                    return command;
+                ps = queryCache.get(sql);
+                if (ps != null && ps.canReuse()) {
+                    ps.reuse();
+                    return ps;
                 }
             }
         }
         SQLParser parser = database.createParser(this);
-        command = parser.prepareCommand(sql);
+        ps = parser.parse(sql).prepare();
         if (queryCache != null) {
-            if (command.isCacheable()) {
-                queryCache.put(sql, command);
+            if (ps.isCacheable()) {
+                queryCache.put(sql, ps);
             }
         }
-        PreparedInterface p = command.getPrepared();
-        p.setLocal(isLocal());
+        ps.setLocal(isLocal());
         if (fetchSize != -1)
-            p.setFetchSize(fetchSize);
+            ps.setFetchSize(fetchSize);
 
-        return command;
+        return ps;
     }
 
     public Database getDatabase() {
         return database;
-    }
-
-    @Override
-    public int getPowerOffCount() {
-        return database.getPowerOffCount();
-    }
-
-    @Override
-    public void setPowerOffCount(int count) {
-        database.setPowerOffCount(count);
     }
 
     public void commit(boolean ddl) {
@@ -466,6 +463,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
      *
      * @param ddl if the statement was a data definition statement
      */
+    @Override
     public void commit(boolean ddl, String allLocalTransactionNames) {
         checkCommitRollback();
         currentTransactionName = null;
@@ -515,13 +513,13 @@ public class Session extends SessionWithState implements Transaction.Validator {
     }
 
     private void endTransaction() {
-        if (!frontendSessionCache.isEmpty()) {
-            for (FrontendSession fs : frontendSessionCache.values()) {
+        if (!clientSessionCache.isEmpty()) {
+            for (Session fs : clientSessionCache.values()) {
                 fs.setTransaction(null);
-                FrontendSessionPool.release(fs);
+                SessionPool.release(fs);
             }
 
-            frontendSessionCache.clear();
+            clientSessionCache.clear();
         }
 
         if (!isRoot)
@@ -537,6 +535,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
     /**
      * Fully roll back the current transaction.
      */
+    @Override
     public void rollback() {
         checkCommitRollback();
         currentTransactionName = null;
@@ -575,6 +574,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
      *
      * @param name the savepoint name
      */
+    @Override
     public void addSavepoint(String name) {
         getTransaction().addSavepoint(name);
     }
@@ -584,6 +584,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
      *
      * @param name the savepoint name
      */
+    @Override
     public void rollbackToSavepoint(String name) {
         if (transaction != null) {
             checkCommitRollback();
@@ -672,17 +673,17 @@ public class Session extends SessionWithState implements Transaction.Validator {
         }
         sessionStateChanged = true;
 
-        releaseFrontendSessionCache();
+        releaseSessionCache();
     }
 
-    private void releaseFrontendSessionCache() {
-        if (!frontendSessionCache.isEmpty()) {
-            for (FrontendSession fs : frontendSessionCache.values()) {
-                fs.setTransaction(null);
-                FrontendSessionPool.release(fs);
+    private void releaseSessionCache() {
+        if (!clientSessionCache.isEmpty()) {
+            for (Session cs : clientSessionCache.values()) {
+                cs.setTransaction(null);
+                SessionPool.release(cs);
             }
 
-            frontendSessionCache.clear();
+            clientSessionCache.clear();
         }
     }
 
@@ -826,7 +827,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
      *
      * @param command the command
      */
-    public void setCurrentCommand(BackendCommand command) {
+    public void setCurrentCommand(Command command) {
         this.currentCommand = command;
         if (queryTimeout > 0 && command != null) {
             long now = System.currentTimeMillis();
@@ -862,7 +863,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
         return cancelAt;
     }
 
-    public BackendCommand getCurrentCommand() {
+    public Command getCurrentCommand() {
         return currentCommand;
     }
 
@@ -894,14 +895,28 @@ public class Session extends SessionWithState implements Transaction.Validator {
      * @param columnList if the url should be 'jdbc:columnlist:connection'
      * @return the internal connection
      */
-    public JdbcConnection createConnection(boolean columnList) {
+    // public JdbcConnection createConnection(boolean columnList) {
+    // String url;
+    // if (columnList) {
+    // url = Constants.CONN_URL_COLUMNLIST;
+    // } else {
+    // url = Constants.CONN_URL_INTERNAL;
+    // }
+    // return new JdbcConnection(this, getUser().getName(), url);
+    // }
+
+    public Connection createConnection(boolean columnList) {
         String url;
         if (columnList) {
             url = Constants.CONN_URL_COLUMNLIST;
         } else {
             url = Constants.CONN_URL_INTERNAL;
         }
-        return new JdbcConnection(this, getUser().getName(), url);
+        try {
+            return DriverManager.getConnection(url, getUser().getName(), "");
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
     }
 
     @Override
@@ -1048,7 +1063,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
      */
     public void waitIfExclusiveModeEnabled() {
         while (true) {
-            Session exclusive = database.getExclusiveSession();
+            ServerSession exclusive = database.getExclusiveSession();
             if (exclusive == null || exclusive == this) {
                 break;
             }
@@ -1133,6 +1148,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
         return waitForLockThread;
     }
 
+    @Override
     public int getModificationId() {
         return modificationId;
     }
@@ -1167,6 +1183,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
         return isRoot;
     }
 
+    @Override
     public void setRoot(boolean isRoot) {
         this.isRoot = isRoot;
     }
@@ -1190,11 +1207,12 @@ public class Session extends SessionWithState implements Transaction.Validator {
 
     private volatile Transaction transaction;
 
+    @Override
     public Transaction getTransaction() {
         return getTransaction(null);
     }
 
-    public Transaction getTransaction(PreparedInterface p) {
+    public Transaction getTransaction(PreparedStatement p) {
         if (transaction != null)
             return transaction;
 
@@ -1229,7 +1247,7 @@ public class Session extends SessionWithState implements Transaction.Validator {
     }
 
     public static void setClusterMode(boolean isClusterMode) {
-        Session.isClusterMode = isClusterMode;
+        ServerSession.isClusterMode = isClusterMode;
     }
 
     /**
@@ -1237,17 +1255,17 @@ public class Session extends SessionWithState implements Transaction.Validator {
      */
     private Properties originalProperties;
 
-    // 参与本次事务的其他FrontendSession
-    protected final Map<String, FrontendSession> frontendSessionCache = New.hashMap();
+    // 参与本次事务的其他Session
+    protected final Map<String, Session> clientSessionCache = New.hashMap();
 
-    public void addFrontendSession(String url, FrontendSession frontendSession) {
+    public void addSession(String url, Session cs) {
         if (transaction != null)
-            transaction.addParticipant(frontendSession);
-        frontendSessionCache.put(url, frontendSession);
+            transaction.addParticipant(cs);
+        clientSessionCache.put(url, cs);
     }
 
-    public FrontendSession getFrontendSession(String url) {
-        return frontendSessionCache.get(url);
+    public Session getSession(String url) {
+        return clientSessionCache.get(url);
     }
 
     public Properties getOriginalProperties() {
@@ -1258,23 +1276,23 @@ public class Session extends SessionWithState implements Transaction.Validator {
         this.originalProperties = originalProperties;
     }
 
-    public Map<String, FrontendSession> getFrontendSessionCache() {
-        return frontendSessionCache;
+    public Map<String, Session> getSessionCache() {
+        return clientSessionCache;
     }
 
     @Override
     public boolean validateTransaction(String localTransactionName) {
         String[] a = localTransactionName.split(":");
-        FrontendSession fs = null;
+        Session fs = null;
         try {
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, a[0], a[1]);
-            fs = FrontendSessionPool.getFrontendSession(this, url);
+            fs = SessionPool.getSession(this, url);
             return fs.validateTransaction(localTransactionName);
         } catch (Exception e) {
             throw DbException.convert(e);
         } finally {
-            FrontendSessionPool.release(fs);
+            SessionPool.release(fs);
         }
     }
 
@@ -1294,5 +1312,44 @@ public class Session extends SessionWithState implements Transaction.Validator {
 
     public SQLParser getParser() {
         return parser;
+    }
+
+    @Override
+    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
+        return parser.getBatchStatement(ps, batchParameters);
+    }
+
+    @Override
+    public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
+        return parser.getBatchStatement(batchCommands);
+    }
+
+    @Override
+    public void setTransaction(Transaction transaction) {
+        this.transaction = transaction;
+    }
+
+    @Override
+    public Session connectEmbeddedOrServer() {
+        return this;
+    }
+
+    @Override
+    public String getURL() {
+        return connectionInfo == null ? null : connectionInfo.getURL();
+    }
+
+    @Override
+    public void checkTransfers() {
+    }
+
+    @Override
+    public void commitTransaction(String localTransactionName) {
+
+    }
+
+    @Override
+    public void rollbackTransaction() {
+
     }
 }
