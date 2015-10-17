@@ -7,13 +7,13 @@ package org.lealone.sql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.common.util.MathUtils;
-import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -43,8 +43,6 @@ class StatementWrapper extends StatementBase {
      * If this query was canceled.
      */
     private volatile boolean cancel;
-
-    private boolean canReuse;
 
     StatementWrapper(ServerSession session, StatementBase statement) {
         super(session);
@@ -243,12 +241,13 @@ class StatementWrapper extends StatementBase {
 
     @Override
     public void close() {
-        canReuse = true;
+        statement.close();
     }
 
     @Override
     public void cancel() {
         this.cancel = true;
+        statement.cancel();
     }
 
     @Override
@@ -264,7 +263,7 @@ class StatementWrapper extends StatementBase {
 
     @Override
     public boolean canReuse() {
-        return canReuse;
+        return statement.canReuse();
     }
 
     /**
@@ -274,12 +273,7 @@ class StatementWrapper extends StatementBase {
 
     @Override
     public void reuse() {
-        canReuse = false;
-        ArrayList<? extends CommandParameter> parameters = getParameters();
-        for (int i = 0, size = parameters.size(); i < size; i++) {
-            CommandParameter param = parameters.get(i);
-            param.setValue(null, true);
-        }
+        statement.reuse();
     }
 
     private void recompileIfRequired() {
@@ -353,11 +347,6 @@ class StatementWrapper extends StatementBase {
         return statement.isCacheable();
     }
 
-    // @Override
-    public int getCommandType() {
-        return statement.getType();
-    }
-
     @Override
     public int getType() {
         return statement.getType();
@@ -376,5 +365,120 @@ class StatementWrapper extends StatementBase {
     @Override
     public boolean isBatch() {
         return statement.isDDL();
+    }
+
+    @Override
+    public int hashCode() {
+        return statement.hashCode();
+    }
+
+    @Override
+    public boolean needRecompile() {
+        return statement.needRecompile();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return statement.equals(obj);
+    }
+
+    @Override
+    public void setParameterList(ArrayList<Parameter> parameters) {
+        statement.setParameterList(parameters);
+    }
+
+    @Override
+    public ArrayList<Parameter> getParameters() {
+        return statement.getParameters();
+    }
+
+    @Override
+    public boolean isQuery() {
+        return statement.isQuery();
+    }
+
+    @Override
+    public PreparedStatement prepare() {
+        return statement.prepare();
+    }
+
+    @Override
+    public int updateLocal() {
+        return statement.updateLocal();
+    }
+
+    @Override
+    public Result query(int maxRows, boolean scrollable) {
+        return statement.query(maxRows, scrollable);
+    }
+
+    @Override
+    public Result queryLocal(int maxrows) {
+        return statement.queryLocal(maxrows);
+    }
+
+    @Override
+    public void setSQL(String sql) {
+        statement.setSQL(sql);
+    }
+
+    @Override
+    public String getSQL() {
+        return statement.getSQL();
+    }
+
+    @Override
+    public String getPlanSQL() {
+        return statement.getPlanSQL();
+    }
+
+    @Override
+    public void setObjectId(int i) {
+        statement.setObjectId(i);
+    }
+
+    @Override
+    public void setSession(ServerSession currentSession) {
+        statement.setSession(currentSession);
+    }
+
+    @Override
+    public void setPrepareAlways(boolean prepareAlways) {
+        statement.setPrepareAlways(prepareAlways);
+    }
+
+    @Override
+    public int getCurrentRowNumber() {
+        return statement.getCurrentRowNumber();
+    }
+
+    @Override
+    public boolean isLocal() {
+        return statement.isLocal();
+    }
+
+    @Override
+    public void setLocal(boolean local) {
+        statement.setLocal(local);
+    }
+
+    @Override
+    public int getFetchSize() {
+        return statement.getFetchSize();
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        statement.setFetchSize(fetchSize);
+    }
+
+    @Override
+    public ServerSession getSession() {
+        return statement.getSession();
+    }
+
+    @Override
+    public List<Long> getRowVersions() {
+        return statement.getRowVersions();
     }
 }

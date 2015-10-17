@@ -13,6 +13,7 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.InetAddress;
@@ -62,14 +63,39 @@ public class Transfer {
         this.socket = socket;
     }
 
+    private static class InternalErrorAwareBufferedOutputStream extends BufferedOutputStream {
+
+        public InternalErrorAwareBufferedOutputStream(OutputStream out, int size) {
+            super(out, size);
+        }
+
+        void reset() {
+            super.count = 0;
+        }
+    }
+
+    private InternalErrorAwareBufferedOutputStream bufferedOutputStream;
+
+    /**
+     * 当输出流写到一半时碰到某种异常了(可能是内部代码实现bug)，比如产生了NPE，
+     * 就会转到错误处理，生成一个新的错误协议包，但是前面产生的不完整的内容没有正常结束，
+     * 这会导致客户端无法正常解析数据，所以这里允许在生成错误协议包之前清除之前的内容，
+     * 如果之前的协议包不完整，但是已经发出去一半了，这里的方案也无能为力。
+     */
+    public void reset() {
+        bufferedOutputStream.reset();
+    }
+
     /**
      * Initialize the transfer object. This method will try to open an input and
      * output stream.
      */
     public synchronized void init() throws IOException {
         if (socket != null) {
+            bufferedOutputStream = new InternalErrorAwareBufferedOutputStream(socket.getOutputStream(),
+                    Transfer.BUFFER_SIZE);
             in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), Transfer.BUFFER_SIZE));
-            out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(), Transfer.BUFFER_SIZE));
+            out = new DataOutputStream(bufferedOutputStream);
         }
     }
 

@@ -254,6 +254,9 @@ public class TcpServerThread implements Runnable {
                 message = e.getMessage();
                 sql = null;
             }
+
+            transfer.reset(); // 为什么要reset? 见reset中的注释
+
             transfer.writeInt(Session.STATUS_ERROR).writeString(e.getSQLState()).writeString(message).writeString(sql)
                     .writeInt(e.getErrorCode()).writeString(trace).flush();
         } catch (Exception e2) {
