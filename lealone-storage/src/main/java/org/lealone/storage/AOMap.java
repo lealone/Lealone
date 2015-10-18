@@ -137,11 +137,6 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public int getId() {
-        return map.getId();
-    }
-
-    @Override
     public String getName() {
         return map.getName();
     }

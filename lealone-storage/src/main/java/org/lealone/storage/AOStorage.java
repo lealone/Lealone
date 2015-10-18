@@ -53,11 +53,10 @@ public class AOStorage implements Storage {
     // */
     // public static final String SUFFIX_AO_STORE_TEMP_FILE = ".tempFile";
 
-    public static final char MAP_NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
     public static final String SUFFIX_AO_FILE = ".db";
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
 
-    private static final String TEMP_NAME_PREFIX = "temp" + MAP_NAME_ID_SEPARATOR;
+    private static final String TEMP_NAME_PREFIX = "temp" + Constants.NAME_SEPARATOR;
 
     private static final CopyOnWriteArrayList<StorageMap<?, ?>> storageMaps = new CopyOnWriteArrayList<>();
     private static final CopyOnWriteArrayList<BufferedMap<?, ?>> bufferedMaps = new CopyOnWriteArrayList<>();
@@ -80,12 +79,11 @@ public class AOStorage implements Storage {
     }
 
     private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Integer> ids = new ConcurrentHashMap<>();
     private final Map<String, Object> config;
     private final AOStorageBackgroundThread backgroundThread;
 
-    private int lastMapId;
     private boolean closed;
+    private int nextTemporaryMapId;
 
     AOStorage(Map<String, Object> config) {
         this.config = config;
@@ -99,15 +97,6 @@ public class AOStorage implements Storage {
                     String mapFullName = fp.getName();
                     if (mapFullName.startsWith(TEMP_NAME_PREFIX)) {
                         fp.delete();
-                        continue;
-                    }
-                    int mapIdStartPos = mapFullName.lastIndexOf(MAP_NAME_ID_SEPARATOR);
-                    if (mapIdStartPos > 0) {
-                        String mapName = mapFullName.substring(0, mapIdStartPos);
-                        int mapId = Integer.parseInt(mapFullName.substring(mapIdStartPos + 1));
-                        if (mapId > lastMapId)
-                            lastMapId = mapId;
-                        ids.put(mapName, mapId);
                     }
                 }
             }
@@ -121,11 +110,6 @@ public class AOStorage implements Storage {
         M map = (M) maps.get(name);
         if (map == null) {
             HashMap<String, Object> c = new HashMap<>(config);
-            if (ids.containsKey(name))
-                c.put("id", ids.get(name));
-            else
-                c.put("id", ++lastMapId);
-
             builder.name(name).config(c);
             map = builder.openMap();
             maps.put(name, map);
@@ -178,7 +162,7 @@ public class AOStorage implements Storage {
     private static class MemoryMapBuilder<K, V> extends StorageMapBuilder<MemoryMap<K, V>, K, V> {
         @Override
         public MemoryMap<K, V> openMap() {
-            return new MemoryMap<>(id, name, keyType, valueType);
+            return new MemoryMap<>(name, keyType, valueType);
         }
     }
 
@@ -212,7 +196,6 @@ public class AOStorage implements Storage {
         aoMaps.clear();
 
         maps.clear();
-        ids.clear();
     }
 
     public synchronized void commit() {
@@ -331,6 +314,6 @@ public class AOStorage implements Storage {
 
     @Override
     public synchronized String nextTemporaryMapName() {
-        return TEMP_NAME_PREFIX + lastMapId++;
+        return TEMP_NAME_PREFIX + nextTemporaryMapId++;
     }
 }

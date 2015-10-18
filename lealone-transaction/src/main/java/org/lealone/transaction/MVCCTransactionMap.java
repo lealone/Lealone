@@ -46,11 +46,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public int getId() {
-        return map.getId();
-    }
-
-    @Override
     public String getName() {
         return map.getName();
     }
@@ -435,13 +430,13 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         synchronized (undo) {
             // re-fetch in case any transaction was committed now
             long size = map.sizeAsLong();
-            int mapId = getId();
+            String mapName = getName();
             StorageMap<Object, Integer> temp = transaction.transactionEngine.logStorage.createTempMap();
             try {
                 for (Entry<Long, Object[]> e : undo.entrySet()) {
                     Object[] op = e.getValue();
-                    int m = (Integer) op[0];
-                    if (m != mapId) {
+                    String m = (String) op[0];
+                    if (!mapName.equals(m)) {
                         // a different map - ignore
                         continue;
                     }

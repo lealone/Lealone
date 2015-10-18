@@ -19,14 +19,12 @@ package org.lealone.storage.memory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.Constants;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.DataType;
 
 public class MemoryStorage implements Storage {
-    private static final AtomicInteger counter = new AtomicInteger(0);
 
     private final ConcurrentHashMap<String, MemoryMap<?, ?>> maps = new ConcurrentHashMap<>();
 
@@ -73,8 +71,7 @@ public class MemoryStorage implements Storage {
     @Override
     public <K, V> MemoryMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
             Map<String, String> parameters) {
-        int id = counter.incrementAndGet();
-        MemoryMap<K, V> map = new MemoryMap<>(id, name, keyType, valueType);
+        MemoryMap<K, V> map = new MemoryMap<>(name, keyType, valueType);
         maps.put(name, map);
         return map;
     }

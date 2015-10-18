@@ -14,7 +14,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.AOStorage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapBuilder;
 import org.lealone.storage.StorageMapCursor;
@@ -43,7 +42,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     protected final ConcurrentArrayList<BTreePage> oldRoots = new ConcurrentArrayList<>();
 
-    protected final int id;
     protected final String name;
     protected final DataType keyType;
     protected final DataType valueType;
@@ -75,7 +73,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
             valueType = new ObjectDataType();
         }
 
-        this.id = DataUtils.readHexInt(config, "id", 0);
         this.name = name;
         this.keyType = keyType;
         this.valueType = valueType;
@@ -99,7 +96,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         if (inMemory)
             return null;
         String storageName = (String) config.get("storageName");
-        return storageName + File.separator + name + AOStorage.MAP_NAME_ID_SEPARATOR + id;
+        return storageName + File.separator + name;
     }
 
     /**
@@ -115,17 +112,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
             root = storage.readPage(rootPos);
             root.setVersion(version);
         }
-    }
-
-    /**
-     * Get the map id. Please note the map id may be different after compacting
-     * a storage.
-     * 
-     * @return the map id
-     */
-    @Override
-    public int getId() {
-        return id;
     }
 
     /**
@@ -766,7 +752,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      */
     BTreeMap<K, V> openReadOnly() {
         HashMap<String, Object> c = new HashMap<>(config);
-        c.put("id", id);
         c.put("readOnly", 1);
 
         BTreeMap<K, V> m = new BTreeMap<>(name, keyType, valueType, c, storage);
@@ -962,7 +947,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     @Override
     public int hashCode() {
-        return id;
+        return name.hashCode();
     }
 
     @Override
@@ -973,7 +958,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     @Override
     public String toString() {
         StringBuilder buff = new StringBuilder();
-        DataUtils.appendMap(buff, "id", id);
         DataUtils.appendMap(buff, "name", name);
         String type = getType();
         if (type != null) {

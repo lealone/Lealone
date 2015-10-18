@@ -41,12 +41,13 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> implements Comparable<Log
 
     protected final FileStorage fileStorage;
 
+    final int id;
     private long pos;
     private volatile K lastSyncKey;
 
     public LogChunkMap(int id, String name, DataType keyType, DataType valueType, Map<String, String> config) {
-        super(id, name, keyType, valueType);
-
+        super(name, keyType, valueType);
+        this.id = id;
         name = getChunkFileName(config, id, name);
         fileStorage = new FileStorage();
         fileStorage.open(name, config);
@@ -122,11 +123,11 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> implements Comparable<Log
 
     @Override
     public int compareTo(LogChunkMap<K, V> o) {
-        return this.getId() - o.getId();
+        return this.id - o.id;
     }
 
     @Override
     public String toString() {
-        return "LogChunkMap[" + getId() + ", " + getName() + "]";
+        return "LogChunkMap[" + id + ", " + getName() + "]";
     }
 }

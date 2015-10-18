@@ -48,11 +48,6 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     }
 
     @Override
-    public int getId() {
-        return map.getId();
-    }
-
-    @Override
     public String getName() {
         return map.getName();
     }

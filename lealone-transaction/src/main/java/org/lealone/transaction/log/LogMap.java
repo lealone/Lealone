@@ -69,9 +69,8 @@ public class LogMap<K, V> implements StorageMap<K, V> {
             logChunkSize = DEFAULT_LOG_CHUNK_SIZE;
     }
 
-    @Override
     public int getId() {
-        return current.getId();
+        return current.id;
     }
 
     @Override
@@ -101,7 +100,7 @@ public class LogMap<K, V> implements StorageMap<K, V> {
                     if (v != null)
                         return v;
                 }
-                return getFromPreviousChunk(key, chunks.first().getId());
+                return getFromPreviousChunk(key, chunks.first().id);
             }
         }
         return v;
@@ -223,7 +222,7 @@ public class LogMap<K, V> implements StorageMap<K, V> {
             c.close();
         }
 
-        Integer id = current.getId();
+        Integer id = current.id;
 
         do {
             FileUtils.delete(LogChunkMap.getChunkFileName(config, id, name));

@@ -48,7 +48,6 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
         }
     }
 
-    protected final int id;
     protected final String name;
     protected final DataType keyType;
     protected final DataType valueType;
@@ -56,22 +55,16 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
 
     protected boolean closed;
 
-    public MemoryMap(int id, String name, DataType keyType, DataType valueType) {
+    public MemoryMap(String name, DataType keyType, DataType valueType) {
         if (keyType == null)
             keyType = new ObjectDataType();
         if (valueType == null)
             valueType = new ObjectDataType();
 
-        this.id = id;
         this.name = name;
         this.keyType = keyType;
         this.valueType = valueType;
         skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<K>(keyType));
-    }
-
-    @Override
-    public int getId() {
-        return id;
     }
 
     @Override

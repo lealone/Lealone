@@ -22,13 +22,6 @@ import org.lealone.storage.type.DataType;
 public interface StorageMap<K, V> {
 
     /**
-     * Get the map id. 
-     *
-     * @return the map id
-     */
-    public int getId();
-
-    /**
      * Get the map name.
      *
      * @return the name
