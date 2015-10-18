@@ -468,7 +468,7 @@ public abstract class Table extends SchemaObjectBase {
                 addRow(session, n);
             } catch (DbException e) {
                 if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
-                    session.rollbackTo(savepointId, false);
+                    session.rollbackTo(savepointId);
                 }
                 throw e;
             }

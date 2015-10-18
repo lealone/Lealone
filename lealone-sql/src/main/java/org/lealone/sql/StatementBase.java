@@ -37,7 +37,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     /**
      * The SQL string.
      */
-    protected String sqlStatement;
+    protected String sql;
 
     /**
      * Whether to create a new object (for indexes).
@@ -234,7 +234,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      * @param sql the SQL statement
      */
     public void setSQL(String sql) {
-        this.sqlStatement = sql;
+        this.sql = sql;
     }
 
     /**
@@ -243,7 +243,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      * @return the SQL statement
      */
     public String getSQL() {
-        return sqlStatement;
+        return sql;
     }
 
     /**
@@ -327,7 +327,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         if (session.getTrace().isInfoEnabled() && startTime > 0) {
             long deltaTime = System.currentTimeMillis() - startTime;
             String params = Trace.formatParams(parameters);
-            session.getTrace().infoSQL(sqlStatement, params, rowCount, deltaTime);
+            session.getTrace().infoSQL(sql, params, rowCount, deltaTime);
         }
         if (session.getDatabase().getQueryStatistics()) {
             long deltaTime = System.currentTimeMillis() - startTime;
@@ -372,7 +372,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      */
     private void setProgress() {
         if ((currentRowNumber & 127) == 0) {
-            session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sqlStatement,
+            session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql,
                     currentRowNumber, 0);
         }
     }
@@ -384,7 +384,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      */
     @Override
     public String toString() {
-        return sqlStatement;
+        return sql;
     }
 
     /**
@@ -431,8 +431,8 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      */
     protected DbException setRow(DbException e, int rowId, String values) {
         StringBuilder buff = new StringBuilder();
-        if (sqlStatement != null) {
-            buff.append(sqlStatement);
+        if (sql != null) {
+            buff.append(sql);
         }
         buff.append(" -- ");
         if (rowId > 0) {

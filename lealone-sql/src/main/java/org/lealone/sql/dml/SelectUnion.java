@@ -99,7 +99,7 @@ public class SelectUnion extends Query {
 
     @Override
     public void setSQL(String sql) {
-        this.sqlStatement = sql;
+        this.sql = sql;
     }
 
     @Override

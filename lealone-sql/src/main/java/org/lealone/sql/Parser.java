@@ -192,7 +192,7 @@ public class Parser implements SQLParser {
     /** index into sqlCommand of current token */
     private int parseIndex;
     private CreateView createView;
-    private StatementBase currentPrepared;
+    private StatementBase currentStatement;
     private Select currentSelect;
     private ArrayList<Parameter> parameters;
     private String schemaName;
@@ -214,7 +214,7 @@ public class Parser implements SQLParser {
      * @return the parsed statement(s)
      */
     @Override
-    public ParsedStatement parse(String sql) {
+    public StatementBase parse(String sql) {
         StatementBase s = null;
         try {
             // first, try the fast variant
@@ -226,13 +226,13 @@ public class Parser implements SQLParser {
             if (s.isDDL()) {
                 s = new DefineStatementWrapper(session, (DefineStatement) s);
             }
-            StatementWrapper sp = new StatementWrapper(session, s);
-            s = sp;
+            StatementWrapper sw = new StatementWrapper(session, s);
+            s = sw;
             boolean hasMore = isToken(";");
             if (hasMore) {
                 String remaining = originalSQL.substring(parseIndex);
                 if (remaining.trim().length() != 0) {
-                    s = new StatementWrapperList(session, sp, remaining);
+                    s = new StatementWrapperList(session, sw, remaining);
                 }
             } else if (currentTokenType != END) {
                 throw getSyntaxError();
@@ -257,7 +257,7 @@ public class Parser implements SQLParser {
         }
         parameters = New.arrayList();
         currentSelect = null;
-        currentPrepared = null;
+        currentStatement = null;
         createView = null;
         recompileAlways = false;
         indexedParameterList = null;
@@ -269,7 +269,7 @@ public class Parser implements SQLParser {
         int start = lastParseIndex;
         StatementBase s = null;
         String token = currentToken;
-        if (token.length() == 0) {
+        if (token.isEmpty()) {
             s = new NoOperation(session);
         } else {
             char first = token.charAt(0);
@@ -441,7 +441,7 @@ public class Parser implements SQLParser {
                 }
                 parameters = indexedParameterList;
             }
-            if (readIf("{")) {
+            if (readIf("{")) { // 例如: "INSERT INTO test(id, name) VALUES(?,?) {1:600, 2:'zhh'}";
                 do {
                     int index = (int) readLong() - 1;
                     if (index < 0 || index >= parameters.size()) {
@@ -648,7 +648,7 @@ public class Parser implements SQLParser {
 
     private Update parseUpdate() {
         Update command = new Update(session);
-        currentPrepared = command;
+        currentStatement = command;
         int start = lastParseIndex;
         TableFilter filter = readSimpleTableFilter();
         command.setTableFilter(filter);
@@ -726,7 +726,7 @@ public class Parser implements SQLParser {
         if (readIf("TOP")) {
             limit = readTerm().optimize(session);
         }
-        currentPrepared = command;
+        currentStatement = command;
         int start = lastParseIndex;
         readIf("FROM");
         TableFilter filter = readSimpleTableFilter();
@@ -915,7 +915,7 @@ public class Parser implements SQLParser {
 
     private Merge parseMerge() {
         Merge command = new Merge(session);
-        currentPrepared = command;
+        currentStatement = command;
         read("INTO");
         Table table = readTableOrView();
         command.setTable(table);
@@ -956,7 +956,7 @@ public class Parser implements SQLParser {
 
     private Insert parseInsert() {
         Insert command = new Insert(session);
-        currentPrepared = command;
+        currentStatement = command;
         read("INTO");
         Table table = readTableOrView();
         command.setTable(table);
@@ -1339,7 +1339,7 @@ public class Parser implements SQLParser {
         int start = lastParseIndex;
         Select oldSelect = currentSelect;
         currentSelect = command;
-        currentPrepared = command;
+        currentStatement = command;
         if (fromFirst) {
             parseSelectSimpleFromPart(command);
             read("SELECT");
@@ -2332,7 +2332,7 @@ public class Parser implements SQLParser {
             read("OVER");
             read("(");
             read(")");
-            return new Rownum(currentSelect == null ? currentPrepared : currentSelect);
+            return new Rownum(currentSelect == null ? currentStatement : currentSelect);
         default:
             if (!readIf(")")) {
                 int i = 0;
@@ -2648,7 +2648,7 @@ public class Parser implements SQLParser {
             if (readIf("(")) {
                 read(")");
             }
-            r = new Rownum(currentSelect == null ? currentPrepared : currentSelect);
+            r = new Rownum(currentSelect == null ? currentStatement : currentSelect);
             break;
         case NULL:
             read();
@@ -4134,7 +4134,7 @@ public class Parser implements SQLParser {
 
     private Call parseCall() {
         Call command = new Call(session);
-        currentPrepared = command;
+        currentStatement = command;
         command.setExpression(readExpression());
         return command;
     }

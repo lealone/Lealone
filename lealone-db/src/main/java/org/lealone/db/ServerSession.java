@@ -469,17 +469,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         currentTransactionName = null;
         transactionStart = 0;
         if (transaction != null) {
-            // increment the data mod count, so that other sessions
-            // see the changes
-            // TODO should not rely on locking
-            // if (locks.size() > 0) {
-            // for (int i = 0, size = locks.size(); i < size; i++) {
-            // Table t = locks.get(i);
-            // if (t instanceof MVTable) {
-            // ((MVTable) t).commit();
-            // }
-            // }
-            // }
             // 避免重复commit
             Transaction transaction = this.transaction;
             this.transaction = null;
@@ -513,13 +502,13 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     private void endTransaction() {
-        if (!clientSessionCache.isEmpty()) {
-            for (Session fs : clientSessionCache.values()) {
+        if (!sessionCache.isEmpty()) {
+            for (Session fs : sessionCache.values()) {
                 fs.setTransaction(null);
                 SessionPool.release(fs);
             }
 
-            clientSessionCache.clear();
+            sessionCache.clear();
         }
 
         if (!isRoot)
@@ -559,10 +548,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     /**
      * Partially roll back the current transaction.
      *
-     * @param index the position to which should be rolled back
-     * @param trimToSize if the list should be trimmed
+     * @param index the position to which should be rolled back 
      */
-    public void rollbackTo(long index, boolean trimToSize) {
+    public void rollbackTo(long index) {
         if (transaction != null) {
             checkCommitRollback();
             transaction.rollbackToSavepoint(index);
@@ -677,13 +665,13 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     private void releaseSessionCache() {
-        if (!clientSessionCache.isEmpty()) {
-            for (Session cs : clientSessionCache.values()) {
+        if (!sessionCache.isEmpty()) {
+            for (Session cs : sessionCache.values()) {
                 cs.setTransaction(null);
                 SessionPool.release(cs);
             }
 
-            clientSessionCache.clear();
+            sessionCache.clear();
         }
     }
 
@@ -1177,7 +1165,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return objectId++;
     }
 
-    private boolean isRoot = true;
+    private boolean isRoot = true; // 分布式事务最开始启动时所在的session就是root session，相当于协调者
 
     public boolean isRoot() {
         return isRoot;
@@ -1223,7 +1211,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
         transaction = database.getTransactionEngine().beginTransaction(autoCommit);
         transaction.setValidator(this);
-        if (isRoot && !autoCommit && p != null && !p.isLocal())
+
+        // TODO p != null && !p.isLocal()是否需要？
+        if (isRoot && !autoCommit && isClusterMode() && p != null && !p.isLocal())
             transaction.setLocal(false);
         return transaction;
     }
@@ -1256,16 +1246,16 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private Properties originalProperties;
 
     // 参与本次事务的其他Session
-    protected final Map<String, Session> clientSessionCache = New.hashMap();
+    protected final Map<String, Session> sessionCache = New.hashMap();
 
-    public void addSession(String url, Session cs) {
+    public void addSession(String url, Session s) {
         if (transaction != null)
-            transaction.addParticipant(cs);
-        clientSessionCache.put(url, cs);
+            transaction.addParticipant(s);
+        sessionCache.put(url, s);
     }
 
     public Session getSession(String url) {
-        return clientSessionCache.get(url);
+        return sessionCache.get(url);
     }
 
     public Properties getOriginalProperties() {
@@ -1277,7 +1267,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     public Map<String, Session> getSessionCache() {
-        return clientSessionCache;
+        return sessionCache;
     }
 
     @Override

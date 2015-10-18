@@ -65,7 +65,7 @@ class StatementWrapper extends StatementBase {
     }
 
     void setProgress(int state) {
-        session.getDatabase().setProgress(state, sqlStatement, 0, 0);
+        session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
     }
 
     /**
@@ -144,9 +144,9 @@ class StatementWrapper extends StatementBase {
                     }
                 }
             } catch (DbException e) {
-                e = e.addSQL(sqlStatement);
+                e = e.addSQL(statement.getSQL());
                 SQLException s = e.getSQLException();
-                database.exceptionThrown(s, sqlStatement);
+                database.exceptionThrown(s, statement.getSQL());
                 if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
                     callStop = false;
                     database.shutdownImmediately();
@@ -188,9 +188,9 @@ class StatementWrapper extends StatementBase {
                     }
                 }
             } catch (DbException e) {
-                e = e.addSQL(sqlStatement);
+                e = e.addSQL(statement.getSQL());
                 SQLException s = e.getSQLException();
-                database.exceptionThrown(s, sqlStatement);
+                database.exceptionThrown(s, statement.getSQL());
                 if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
                     callStop = false;
                     database.shutdownImmediately();
@@ -200,7 +200,7 @@ class StatementWrapper extends StatementBase {
                 if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
                     session.rollback();
                 } else {
-                    session.rollbackTo(savepointId, false);
+                    session.rollbackTo(savepointId);
                 }
                 throw e;
             } finally {
@@ -252,7 +252,7 @@ class StatementWrapper extends StatementBase {
 
     @Override
     public String toString() {
-        return sqlStatement + Trace.formatParams(getParameters());
+        return "StatementWrapper[" + statement.toString() + "]";
     }
 
     /**
@@ -399,7 +399,8 @@ class StatementWrapper extends StatementBase {
 
     @Override
     public PreparedStatement prepare() {
-        return statement.prepare();
+        statement.prepare();
+        return this;
     }
 
     @Override
