@@ -14,6 +14,7 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.RightOwner;
 import org.lealone.db.auth.Role;
@@ -67,10 +68,9 @@ public class GrantRevoke extends DefineStatement {
     }
 
     public void setGranteeName(String granteeName) {
-        Database db = LealoneDatabase.getInstance();
-        grantee = db.findUser(granteeName);
+        grantee = Auth.findUser(granteeName);
         if (grantee == null) {
-            grantee = db.findRole(granteeName);
+            grantee = Auth.findRole(granteeName);
             if (grantee == null) {
                 throw DbException.get(ErrorCode.USER_OR_ROLE_NOT_FOUND_1, granteeName);
             }
@@ -81,10 +81,9 @@ public class GrantRevoke extends DefineStatement {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = LealoneDatabase.getInstance();
         if (roleNames != null) {
             for (String name : roleNames) {
-                Role grantedRole = db.findRole(name);
+                Role grantedRole = Auth.findRole(name);
                 if (grantedRole == null) {
                     throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, name);
                 }

@@ -12,6 +12,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
 import org.lealone.sql.SQLStatement;
@@ -41,7 +42,7 @@ public class CreateSchema extends DefineStatement {
         session.getUser().checkSchemaAdmin();
         session.commit(true);
         Database db = session.getDatabase();
-        User user = db.getUser(authorization);
+        User user = Auth.getUser(authorization);
         // during DB startup, the Right/Role records have not yet been loaded
         if (!db.isStarting()) {
             user.checkSchemaAdmin();

@@ -120,7 +120,7 @@ public class User extends RightOwner {
         if (admin) {
             return true;
         }
-        Role publicRole = database.getPublicRole();
+        Role publicRole = Auth.getPublicRole();
         if (publicRole.isRightGrantedRecursive(table, rightMask)) {
             return true;
         }
@@ -229,7 +229,7 @@ public class User extends RightOwner {
     @Override
     public ArrayList<DbObject> getChildren() {
         ArrayList<DbObject> children = New.arrayList();
-        for (Right right : database.getAllRights()) {
+        for (Right right : Auth.getAllRights()) {
             if (right.getGrantee() == this) {
                 children.add(right);
             }
@@ -244,7 +244,7 @@ public class User extends RightOwner {
 
     @Override
     public void removeChildrenAndResources(ServerSession session) {
-        for (Right right : database.getAllRights()) {
+        for (Right right : Auth.getAllRights()) {
             if (right.getGrantee() == this) {
                 database.removeDatabaseObject(session, right);
             }

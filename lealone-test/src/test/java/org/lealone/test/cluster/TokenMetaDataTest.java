@@ -35,6 +35,7 @@ import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.locator.SimpleStrategy;
 import org.lealone.cluster.locator.TokenMetaData;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.schema.Schema;
 import org.lealone.test.db.DbObjectTestBase;
 
@@ -105,7 +106,7 @@ public class TokenMetaDataTest extends DbObjectTestBase {
         executeUpdate("CREATE USER IF NOT EXISTS " + userName + " PASSWORD 'abc' ADMIN");
         int id = db.allocateObjectId();
         String schemaName = "test";
-        Schema schema = new Schema(db, id, schemaName, db.getUser(userName), false);
+        Schema schema = new Schema(db, id, schemaName, Auth.getUser(userName), false);
         configOptions.put("class", SimpleStrategy.class.getName());
         schema.setReplicationProperties(configOptions);
 

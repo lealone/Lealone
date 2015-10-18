@@ -31,6 +31,7 @@ import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.ConstraintReferential;
@@ -4582,7 +4583,7 @@ public class Parser implements SQLParser {
         if (readIf("SET")) {
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
-            command.setUser(database.getUser(userName));
+            command.setUser(Auth.getUser(userName));
             if (readIf("PASSWORD")) {
                 command.setPassword(readExpression());
             } else if (readIf("SALT")) {
@@ -4597,14 +4598,14 @@ public class Parser implements SQLParser {
             read("TO");
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_RENAME);
-            command.setUser(database.getUser(userName));
+            command.setUser(Auth.getUser(userName));
             String newName = readUniqueIdentifier();
             command.setNewName(newName);
             return command;
         } else if (readIf("ADMIN")) {
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_ADMIN);
-            User user = database.getUser(userName);
+            User user = Auth.getUser(userName);
             command.setUser(user);
             if (readIf("TRUE")) {
                 command.setAdmin(true);

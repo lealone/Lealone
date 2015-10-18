@@ -64,19 +64,19 @@ public class Role extends RightOwner {
 
     @Override
     public void removeChildrenAndResources(ServerSession session) {
-        for (User user : database.getAllUsers()) {
+        for (User user : Auth.getAllUsers()) {
             Right right = user.getRightForRole(this);
             if (right != null) {
                 database.removeDatabaseObject(session, right);
             }
         }
-        for (Role r2 : database.getAllRoles()) {
+        for (Role r2 : Auth.getAllRoles()) {
             Right right = r2.getRightForRole(this);
             if (right != null) {
                 database.removeDatabaseObject(session, right);
             }
         }
-        for (Right right : database.getAllRights()) {
+        for (Right right : Auth.getAllRights()) {
             if (right.getGrantee() == this) {
                 database.removeDatabaseObject(session, right);
             }

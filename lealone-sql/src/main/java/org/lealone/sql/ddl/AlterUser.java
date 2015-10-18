@@ -11,6 +11,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -80,7 +81,7 @@ public class AlterUser extends DefineStatement {
             break;
         case SQLStatement.ALTER_USER_RENAME:
             session.getUser().checkAdmin();
-            if (db.findUser(newName) != null || newName.equals(user.getName())) {
+            if (Auth.findUser(newName) != null || newName.equals(user.getName())) {
                 throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, newName);
             }
             db.renameDatabaseObject(session, user, newName);

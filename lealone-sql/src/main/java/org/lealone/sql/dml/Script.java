@@ -39,6 +39,7 @@ import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -171,10 +172,10 @@ public class Script extends ScriptBase {
             if (out != null) {
                 add("", true);
             }
-            for (User user : db.getAllUsers()) {
+            for (User user : Auth.getAllUsers()) {
                 add(user.getCreateSQL(passwords), false);
             }
-            for (Role role : db.getAllRoles()) {
+            for (Role role : Auth.getAllRoles()) {
                 add(role.getCreateSQL(true), false);
             }
             for (Schema schema : db.getAllSchemas()) {
@@ -342,7 +343,7 @@ public class Script extends ScriptBase {
                 add(trigger.getCreateSQL(), false);
             }
             // Generate GRANT ...
-            for (Right right : db.getAllRights()) {
+            for (Right right : Auth.getAllRights()) {
                 DbObject object = right.getGrantedObject();
                 if (object != null) {
                     if (object instanceof Schema) {

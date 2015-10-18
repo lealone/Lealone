@@ -18,6 +18,7 @@
 package org.lealone.test.db;
 
 import org.junit.Test;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.schema.Schema;
 
 public class SchemaTest extends DbObjectTestBase {
@@ -28,7 +29,7 @@ public class SchemaTest extends DbObjectTestBase {
 
         int id = db.allocateObjectId();
         String schemaName = "test";
-        Schema schema = new Schema(db, id, schemaName, db.getUser(userName), false);
+        Schema schema = new Schema(db, id, schemaName, Auth.getUser(userName), false);
         assertEquals(id, schema.getId());
 
         db.addDatabaseObject(session, schema);
@@ -37,8 +38,8 @@ public class SchemaTest extends DbObjectTestBase {
         db.removeDatabaseObject(session, schema);
         assertNull(db.findSchema(schemaName));
 
-        //测试SQL
-        //-----------------------------------------------
+        // 测试SQL
+        // -----------------------------------------------
         executeUpdate("CREATE SCHEMA IF NOT EXISTS " + schemaName + " AUTHORIZATION " + userName);
         assertNotNull(db.findSchema(schemaName));
         executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);

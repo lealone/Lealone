@@ -18,11 +18,16 @@
 package org.lealone.db;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 
+import org.lealone.common.util.New;
+import org.lealone.db.auth.Auth;
+
 /**
- * 管理所有Database、User、Role
+ * 
+ * 管理所有Database，并负责Auth的初始化
  * 
  * @author zhh
  */
@@ -42,6 +47,8 @@ public class LealoneDatabase extends Database {
         return INSTANCE;
     }
 
+    private final HashMap<String, Database> databases = New.hashMap();
+
     private LealoneDatabase() {
         super(0, NAME, null);
         databases.put(NAME, this);
@@ -53,11 +60,18 @@ public class LealoneDatabase extends Database {
         ci.setBaseDir(SysProperties.getBaseDir());
         init(ci);
 
-        if (getAllUsers().isEmpty()) {
+        if (Auth.getAllUsers().isEmpty()) {
             getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS lealone PASSWORD 'lealone' ADMIN")
                     .executeUpdate();
             getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS sa PASSWORD '' ADMIN").executeUpdate();
         }
+    }
+
+    @Override
+    protected void initTraceSystem(ConnectionInfo ci) {
+        super.initTraceSystem(ci);
+        // Auth里的User、Role用到TraceSystem，初始化TraceSystem后才能初始化Auth
+        Auth.init(this);
     }
 
     public synchronized Database findDatabase(String dbName) {
@@ -77,5 +91,9 @@ public class LealoneDatabase extends Database {
 
     synchronized List<Database> getDatabases() {
         return new ArrayList<>(databases.values());
+    }
+
+    synchronized HashMap<String, Database> getDatabasesMap() {
+        return databases;
     }
 }

@@ -12,6 +12,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
@@ -90,12 +91,12 @@ public class DropDatabase extends DefineStatement {
             }
             db.removeSchemaObject(session, obj);
         }
-        for (User user : db.getAllUsers()) {
+        for (User user : Auth.getAllUsers()) {
             if (user != session.getUser()) {
                 db.removeDatabaseObject(session, user);
             }
         }
-        for (Role role : db.getAllRoles()) {
+        for (Role role : Auth.getAllRoles()) {
             String sql = role.getCreateSQL();
             // the role PUBLIC must not be dropped
             if (sql != null) {
@@ -103,7 +104,7 @@ public class DropDatabase extends DefineStatement {
             }
         }
         ArrayList<DbObject> dbObjects = New.arrayList();
-        dbObjects.addAll(db.getAllRights());
+        dbObjects.addAll(Auth.getAllRights());
         dbObjects.addAll(db.getAllAggregates());
         dbObjects.addAll(db.getAllUserDataTypes());
         for (DbObject obj : dbObjects) {

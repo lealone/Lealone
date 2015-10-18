@@ -394,9 +394,10 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     public PreparedStatement prepareStatementLocal(String sql) {
-        PreparedStatement ps = prepareStatement(sql, true);
-        ps.setLocal(true);
-        return ps;
+        SQLParser parser = database.createParser(this);
+        PreparedStatement p = parser.parse(sql).prepare();
+        p.setLocal(true);
+        return p;
     }
 
     /**

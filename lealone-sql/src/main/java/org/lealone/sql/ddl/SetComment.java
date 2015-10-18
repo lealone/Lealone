@@ -12,6 +12,7 @@ import org.lealone.db.Comment;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -59,7 +60,7 @@ public class SetComment extends DefineStatement {
             break;
         case DbObject.ROLE:
             schemaName = null;
-            object = db.findRole(objectName);
+            object = Auth.findRole(objectName);
             errorCode = ErrorCode.ROLE_NOT_FOUND_1;
             break;
         case DbObject.SCHEMA:
@@ -79,7 +80,7 @@ public class SetComment extends DefineStatement {
             break;
         case DbObject.USER:
             schemaName = null;
-            object = db.getUser(objectName);
+            object = Auth.getUser(objectName);
             break;
         case DbObject.USER_DATATYPE:
             schemaName = null;

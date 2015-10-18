@@ -36,8 +36,7 @@ import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.common.util.Utils;
-import org.lealone.db.auth.Right;
-import org.lealone.db.auth.Role;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Cursor;
@@ -95,26 +94,16 @@ public class Database implements DataHandler, DbObject {
      */
     public static final int LOG_MODE_SYNC = 2;
 
-    /**
-     * The default name of the system user. This name is only used as long as
-     * there is no administrator user registered.
-     */
-    private static final String SYSTEM_USER_NAME = "DBA";
-
     private String databaseURL;
     private String cipher;
     private byte[] filePasswordHash;
     private byte[] fileEncryptionKey;
 
-    private final HashMap<String, Role> roles = New.hashMap();
-    private final HashMap<String, User> users = New.hashMap();
     private final HashMap<String, Setting> settings = New.hashMap();
     private final HashMap<String, Schema> schemas = New.hashMap();
-    private final HashMap<String, Right> rights = New.hashMap();
     private final HashMap<String, UserDataType> userDataTypes = New.hashMap();
     private final HashMap<String, UserAggregate> aggregates = New.hashMap();
     private final HashMap<String, Comment> comments = New.hashMap();
-    protected final HashMap<String, Database> databases = New.hashMap();
 
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<ServerSession>());
     private ServerSession exclusiveSession;
@@ -125,14 +114,12 @@ public class Database implements DataHandler, DbObject {
     private Schema infoSchema;
     private int nextSessionId;
     private int nextTempTableId;
-    private User systemUser;
     private ServerSession systemSession;
     private Table meta;
     private Index metaIdIndex;
     private boolean starting;
     private TraceSystem traceSystem;
     private Trace trace;
-    private Role publicRole;
     private long modificationDataId;
     private long modificationMetaId;
     private CompareMode compareMode;
@@ -308,7 +295,7 @@ public class Database implements DataHandler, DbObject {
         initialized = true;
     }
 
-    private void initTraceSystem(ConnectionInfo ci) {
+    protected void initTraceSystem(ConnectionInfo ci) {
         if (persistent) {
             int traceLevelFile = ci.getIntProperty(SetTypes.TRACE_LEVEL_FILE, TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
             int traceLevelSystemOut = ci.getIntProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT,
@@ -341,14 +328,11 @@ public class Database implements DataHandler, DbObject {
     private void openDatabase() {
         try {
             // 初始化traceSystem后才能做下面这些
-            systemUser = new User(this, 0, SYSTEM_USER_NAME, true);
+            User systemUser = Auth.getSystemUser();
             mainSchema = new Schema(this, 0, Constants.SCHEMA_MAIN, systemUser, true);
             infoSchema = new Schema(this, -1, "INFORMATION_SCHEMA", systemUser, true);
             schemas.put(mainSchema.getName(), mainSchema);
             schemas.put(infoSchema.getName(), infoSchema);
-            publicRole = new Role(this, 0, Constants.PUBLIC_ROLE_NAME, true);
-            roles.put(Constants.PUBLIC_ROLE_NAME, publicRole);
-            systemUser.setAdmin(true);
             systemSession = new ServerSession(this, systemUser, ++nextSessionId);
 
             openMetaTable();
@@ -749,16 +733,16 @@ public class Database implements DataHandler, DbObject {
         HashMap<String, ? extends DbObject> result;
         switch (type) {
         case DbObject.USER:
-            result = users;
+            result = Auth.getUsersMap();
             break;
         case DbObject.SETTING:
             result = settings;
             break;
         case DbObject.ROLE:
-            result = roles;
+            result = Auth.getRolesMap();
             break;
         case DbObject.RIGHT:
-            result = rights;
+            result = Auth.getRightsMap();
             break;
         case DbObject.SCHEMA:
             result = schemas;
@@ -773,7 +757,7 @@ public class Database implements DataHandler, DbObject {
             result = aggregates;
             break;
         case DbObject.DATABASE:
-            result = databases;
+            result = LealoneDatabase.getInstance().getDatabasesMap();
             break;
         default:
             throw DbException.throwInternalError("type=" + type);
@@ -809,12 +793,12 @@ public class Database implements DataHandler, DbObject {
             checkWritingAllowed();
         }
         HashMap<String, DbObject> map = getMap(obj.getType());
-        if (obj.getType() == DbObject.USER) {
-            User user = (User) obj;
-            if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
-                systemUser.rename(user.getName());
-            }
-        }
+        // if (obj.getType() == DbObject.USER) {
+        // User user = (User) obj;
+        // if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
+        // systemUser.rename(user.getName());
+        // }
+        // }
         String name = obj.getName();
         if (SysProperties.CHECK && map.get(name) != null) {
             DbException.throwInternalError("object already exists");
@@ -850,19 +834,6 @@ public class Database implements DataHandler, DbObject {
     }
 
     /**
-     * Get the role if it exists, or null if not.
-     *
-     * @param roleName the name of the role
-     * @return the role or null
-     */
-    public Role findRole(String roleName) {
-        Role role = roles.get(name);
-        if (role == null && this != LealoneDatabase.getInstance())
-            role = LealoneDatabase.getInstance().findRole(name);
-        return role;
-    }
-
-    /**
      * Get the schema if it exists, or null if not.
      *
      * @param schemaName the name of the schema
@@ -887,19 +858,6 @@ public class Database implements DataHandler, DbObject {
     }
 
     /**
-     * Get the user if it exists, or null if not.
-     *
-     * @param name the name of the user
-     * @return the user or null
-     */
-    public User findUser(String name) {
-        User user = users.get(name);
-        if (user == null && this != LealoneDatabase.getInstance())
-            user = LealoneDatabase.getInstance().findUser(name);
-        return user;
-    }
-
-    /**
      * Get the user defined data type if it exists, or null if not.
      *
      * @param name the name of the user defined data type
@@ -907,22 +865,6 @@ public class Database implements DataHandler, DbObject {
      */
     public UserDataType findUserDataType(String name) {
         return userDataTypes.get(name);
-    }
-
-    /**
-     * Get user with the given name. This method throws an exception if the user
-     * does not exist.
-     *
-     * @param name the user name
-     * @return the user
-     * @throws DbException if the user does not exist
-     */
-    public User getUser(String name) {
-        User user = findUser(name);
-        if (user == null) {
-            throw DbException.get(ErrorCode.USER_NOT_FOUND_1, name);
-        }
-        return user;
     }
 
     /**
@@ -1139,14 +1081,6 @@ public class Database implements DataHandler, DbObject {
         return allowLiterals;
     }
 
-    public ArrayList<Right> getAllRights() {
-        return New.arrayList(rights.values());
-    }
-
-    public ArrayList<Role> getAllRoles() {
-        return New.arrayList(roles.values());
-    }
-
     /**
      * Get all schema objects.
      *
@@ -1208,10 +1142,6 @@ public class Database implements DataHandler, DbObject {
 
     public ArrayList<UserDataType> getAllUserDataTypes() {
         return New.arrayList(userDataTypes.values());
-    }
-
-    public ArrayList<User> getAllUsers() {
-        return New.arrayList(users.values());
     }
 
     public CompareMode getCompareMode() {
@@ -1513,10 +1443,6 @@ public class Database implements DataHandler, DbObject {
         lockMeta(systemSession);
         addDatabaseObject(systemSession, user);
         systemSession.commit(true);
-    }
-
-    public Role getPublicRole() {
-        return publicRole;
     }
 
     /**
@@ -2034,7 +1960,7 @@ public class Database implements DataHandler, DbObject {
         // return conn;
 
         try {
-            return DriverManager.getConnection(url, systemUser.getName(), "");
+            return DriverManager.getConnection(url, Auth.getSystemUser().getName(), "");
         } catch (SQLException e) {
             throw DbException.convert(e);
         }

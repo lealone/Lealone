@@ -22,6 +22,8 @@ import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
+import org.lealone.db.auth.User;
 import org.lealone.db.result.Result;
 import org.lealone.test.UnitTestBase;
 
@@ -65,5 +67,9 @@ public class DbObjectTestBase extends UnitTestBase {
 
     public Database findDatabase(String dbName) {
         return LealoneDatabase.getInstance().findDatabase(dbName);
+    }
+
+    public User findUser(String userName) {
+        return Auth.findUser(userName);
     }
 }

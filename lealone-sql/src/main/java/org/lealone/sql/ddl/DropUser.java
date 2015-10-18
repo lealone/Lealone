@@ -11,6 +11,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.sql.SQLStatement;
 
@@ -40,7 +41,7 @@ public class DropUser extends DefineStatement {
         session.getUser().checkAdmin();
         session.commit(true);
         Database db = LealoneDatabase.getInstance();
-        User user = db.findUser(userName);
+        User user = Auth.findUser(userName);
         if (user == null) {
             if (!ifExists) {
                 throw DbException.get(ErrorCode.USER_NOT_FOUND_1, userName);
@@ -48,7 +49,7 @@ public class DropUser extends DefineStatement {
         } else {
             if (user == session.getUser()) {
                 int adminUserCount = 0;
-                for (User u : db.getAllUsers()) {
+                for (User u : Auth.getAllUsers()) {
                     if (u.isAdmin()) {
                         adminUserCount++;
                     }

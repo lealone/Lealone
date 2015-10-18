@@ -13,6 +13,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -89,10 +90,10 @@ public class CreateUser extends DefineStatement {
         session.getUser().checkAdmin();
         session.commit(true);
         Database db = LealoneDatabase.getInstance();
-        if (db.findRole(userName) != null) {
+        if (Auth.findRole(userName) != null) {
             throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, userName);
         }
-        if (db.findUser(userName) != null) {
+        if (Auth.findUser(userName) != null) {
             if (ifNotExists) {
                 return 0;
             }

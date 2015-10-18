@@ -11,6 +11,7 @@ import org.lealone.common.message.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Role;
 import org.lealone.sql.SQLStatement;
 
@@ -40,10 +41,10 @@ public class CreateRole extends DefineStatement {
         session.getUser().checkAdmin();
         session.commit(true);
         Database db = LealoneDatabase.getInstance();
-        if (db.findUser(roleName) != null) {
+        if (Auth.findUser(roleName) != null) {
             throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, roleName);
         }
-        if (db.findRole(roleName) != null) {
+        if (Auth.findRole(roleName) != null) {
             if (ifNotExists) {
                 return 0;
             }

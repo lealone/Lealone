@@ -12,6 +12,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Role;
 import org.lealone.sql.SQLStatement;
 
@@ -40,7 +41,7 @@ public class DropRole extends DefineStatement {
         if (roleName.equals(Constants.PUBLIC_ROLE_NAME)) {
             throw DbException.get(ErrorCode.ROLE_CAN_NOT_BE_DROPPED_1, roleName);
         }
-        Role role = db.findRole(roleName);
+        Role role = Auth.findRole(roleName);
         if (role == null) {
             if (!ifExists) {
                 throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, roleName);

@@ -34,6 +34,7 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.Setting;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -740,7 +741,7 @@ public class MetaTable extends Table {
             break;
         }
         case USERS: {
-            for (User u : database.getAllUsers()) {
+            for (User u : Auth.getAllUsers()) {
                 if (admin || session.getUser() == u) {
                     add(rows,
                     // NAME
@@ -756,7 +757,7 @@ public class MetaTable extends Table {
             break;
         }
         case ROLES: {
-            for (Role r : database.getAllRoles()) {
+            for (Role r : Auth.getAllRoles()) {
                 if (admin || session.getUser().isRoleGranted(r)) {
                     add(rows,
                     // NAME
@@ -771,7 +772,7 @@ public class MetaTable extends Table {
         }
         case RIGHTS: {
             if (admin) {
-                for (Right r : database.getAllRights()) {
+                for (Right r : Auth.getAllRights()) {
                     Role role = r.getGrantedRole();
                     DbObject grantee = r.getGrantee();
                     String rightType = grantee.getType() == DbObject.USER ? "USER" : "ROLE";
@@ -973,7 +974,7 @@ public class MetaTable extends Table {
             break;
         }
         case TABLE_PRIVILEGES: {
-            for (Right r : database.getAllRights()) {
+            for (Right r : Auth.getAllRights()) {
                 DbObject object = r.getGrantedObject();
                 if (!(object instanceof Table)) {
                     continue;
@@ -991,7 +992,7 @@ public class MetaTable extends Table {
             break;
         }
         case COLUMN_PRIVILEGES: {
-            for (Right r : database.getAllRights()) {
+            for (Right r : Auth.getAllRights()) {
                 DbObject object = r.getGrantedObject();
                 if (!(object instanceof Table)) {
                     continue;

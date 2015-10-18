@@ -18,6 +18,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
+import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.expression.Expression;
@@ -358,7 +359,7 @@ public abstract class Table extends SchemaObjectBase {
         if (views != null) {
             children.addAll(views);
         }
-        ArrayList<Right> rights = database.getAllRights();
+        ArrayList<Right> rights = Auth.getAllRights();
         for (Right right : rights) {
             if (right.getGrantedObject() == this) {
                 children.add(right);
@@ -505,7 +506,7 @@ public abstract class Table extends SchemaObjectBase {
             constraints.remove(0);
             database.removeSchemaObject(session, constraint);
         }
-        for (Right right : database.getAllRights()) {
+        for (Right right : Auth.getAllRights()) {
             if (right.getGrantedObject() == this) {
                 database.removeDatabaseObject(session, right);
             }
