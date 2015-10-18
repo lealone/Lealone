@@ -1184,34 +1184,6 @@ public class BTreeStorage {
     }
 
     /**
-     * Rename a map.
-     * 
-     * @param map the map
-     * @param newName the new name
-     */
-    public synchronized void renameMap(BTreeMap<?, ?> map, String newName) { // TODO
-        if (map.isInMemory())
-            return;
-        checkOpen();
-        String oldName = map.getName();
-        if (oldName.equals(newName)) {
-            return;
-        }
-
-        String fileName = (String) map.config.get("storageName");
-        if (fileName != null) {
-            fileName = fileName + File.separator + newName;
-            if (!FileUtils.exists(fileName))
-                FileUtils.createDirectories(fileName);
-
-            close();
-
-            FileUtils.move(btreeStorageName, fileName);
-            // btreeStorageName = fileName;
-        }
-    }
-
-    /**
      * Remove this storage. Please note rolling back this operation does not restore
      * the data; if you need this ability, use Map.clear().
      */
