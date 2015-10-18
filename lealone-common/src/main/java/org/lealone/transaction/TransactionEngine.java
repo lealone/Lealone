@@ -25,6 +25,8 @@ public interface TransactionEngine extends PluggableEngine {
 
     boolean validateTransaction(String localTransactionName);
 
+    boolean supportsMVCC();
+
     void close();
 
 }

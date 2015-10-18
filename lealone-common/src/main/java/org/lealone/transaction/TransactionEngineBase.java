@@ -32,4 +32,8 @@ public abstract class TransactionEngineBase implements TransactionEngine {
         return name;
     }
 
+    @Override
+    public boolean supportsMVCC() {
+        return false;
+    }
 }

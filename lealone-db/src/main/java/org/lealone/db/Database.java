@@ -299,7 +299,7 @@ public class Database implements DataHandler, DbObject {
         if (modeName != null) {
             mode = Mode.getInstance(modeName);
         }
-        multiVersion = ci.getProperty("MVCC", false);
+        multiVersion = ci.getProperty("MVCC", transactionEngine.supportsMVCC());
         logMode = ci.getProperty("LOG", LOG_MODE_SYNC);
 
         initTraceSystem(ci);
@@ -805,8 +805,6 @@ public class Database implements DataHandler, DbObject {
             }
         }
         String name = obj.getName();
-        if (obj.getType() == DbObject.DATABASE)
-            name = ((Database) obj).name;
         if (SysProperties.CHECK && map.get(name) != null) {
             DbException.throwInternalError("object already exists");
         }
@@ -2098,19 +2096,19 @@ public class Database implements DataHandler, DbObject {
     // 每个数据库只有一个StorageBuilder
     private StorageBuilder storageBuilder;
 
-    private final ConcurrentHashMap<String, Storage> storageMaps = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Storage> storages = new ConcurrentHashMap<>();
 
     public List<Storage> getStorages() {
-        return new ArrayList<>(storageMaps.values());
+        return new ArrayList<>(storages.values());
     }
 
     public synchronized Storage getStorage(StorageEngine storageEngine) {
-        Storage storage = storageMaps.get(storageEngine.getName());
+        Storage storage = storages.get(storageEngine.getName());
         if (storage != null)
             return storage;
 
         storage = getStorageBuilder(storageEngine).openStorage();
-        storageMaps.put(storageEngine.getName(), storage);
+        storages.put(storageEngine.getName(), storage);
         return storage;
     }
 

@@ -475,6 +475,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         return TransactionStatusTable.validateTransaction(localTransactionName);
     }
 
+    @Override
+    public boolean supportsMVCC() {
+        return true;
+    }
+
     /**
      * Get the changes of the given transaction, starting from the latest log id
      * back to the given log id.
