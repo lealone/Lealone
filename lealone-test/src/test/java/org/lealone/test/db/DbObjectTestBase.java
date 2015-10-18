@@ -20,6 +20,7 @@ package org.lealone.test.db;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.test.UnitTestBase;
@@ -39,7 +40,7 @@ public class DbObjectTestBase extends UnitTestBase {
         ConnectionInfo ci = new ConnectionInfo(getURL(DB_NAME));
         session = DatabaseEngine.createSession(ci);
         db = session.getDatabase();
-        session = db.getSystemSession();
+        // session = db.getSystemSession();
     }
 
     public int executeUpdate(String sql) {
@@ -60,5 +61,9 @@ public class DbObjectTestBase extends UnitTestBase {
 
     public int getInt(String sql, int index) {
         return getInt(executeQuery(sql), index);
+    }
+
+    public Database findDatabase(String dbName) {
+        return LealoneDatabase.getInstance().findDatabase(dbName);
     }
 }

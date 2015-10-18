@@ -692,12 +692,23 @@ public class Database implements DataHandler, DbObject {
     }
 
     private void checkMetaFree(ServerSession session, int id) {
-        SearchRow r = meta.getTemplateSimpleRow(false);
-        r.setValue(0, ValueInt.get(id));
-        Cursor cursor = metaIdIndex.find(session, r, r);
+        Cursor cursor = getMetaCursor(session, id);
         if (cursor.next()) {
             DbException.throwInternalError();
         }
+    }
+
+    private Cursor getMetaCursor(ServerSession session, int id) {
+        SearchRow r = meta.getTemplateSimpleRow(false);
+        r.setValue(0, ValueInt.get(id));
+        return metaIdIndex.find(session, r, r);
+    }
+
+    // 用于测试
+    public SearchRow findMeta(ServerSession session, int id) {
+        Cursor cursor = getMetaCursor(session, id);
+        cursor.next();
+        return cursor.getSearchRow();
     }
 
     /**
@@ -2241,7 +2252,7 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public boolean isTemporary() {
-        return persistent;
+        return !persistent;
     }
 
     @Override
