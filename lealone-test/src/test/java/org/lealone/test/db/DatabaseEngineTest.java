@@ -26,7 +26,6 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.test.UnitTestBase;
 
 public class DatabaseEngineTest extends UnitTestBase {
-
     @Test
     public void run() {
 

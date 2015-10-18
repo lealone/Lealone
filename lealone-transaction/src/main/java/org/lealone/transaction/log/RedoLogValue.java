@@ -20,12 +20,12 @@ package org.lealone.transaction.log;
 import java.nio.ByteBuffer;
 
 public class RedoLogValue {
-    final int mapId;
+    final String mapName;
     final ByteBuffer key;
     final ByteBuffer value;
 
-    public RedoLogValue(int mapId, ByteBuffer key, ByteBuffer value) {
-        this.mapId = mapId;
+    public RedoLogValue(String mapName, ByteBuffer key, ByteBuffer value) {
+        this.mapName = mapName;
         this.key = key;
         this.value = value;
     }

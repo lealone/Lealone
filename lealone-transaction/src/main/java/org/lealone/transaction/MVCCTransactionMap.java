@@ -220,10 +220,10 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         VersionedValue newValue = new VersionedValue();
         newValue.operationId = MVCCTransactionEngine.getOperationId(transaction.transactionId, transaction.logId);
         newValue.value = value;
-        int mapId = getId();
+        String mapName = getName();
         if (current == null) {
             // a new value
-            transaction.log(mapId, key, current);
+            transaction.log(mapName, key, current);
             VersionedValue old = map.putIfAbsent(key, newValue);
             if (old != null) {
                 transaction.logUndo();
@@ -234,7 +234,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         long id = current.operationId;
         if (id == 0) {
             // committed
-            transaction.log(mapId, key, current);
+            transaction.log(mapName, key, current);
             // the transaction is committed:
             // overwrite the value
             if (!map.replace(key, current, newValue)) {
@@ -247,7 +247,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         int tx = MVCCTransactionEngine.getTransactionId(current.operationId);
         if (tx == transaction.transactionId) {
             // added or updated by this transaction
-            transaction.log(mapId, key, current);
+            transaction.log(mapName, key, current);
             if (!map.replace(key, current, newValue)) {
                 // strange, somebody overwrote the value
                 // even though the change was not committed
@@ -530,7 +530,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public void remove() {
         map.remove();
-        transaction.transactionEngine.removeMap(getId());
+        transaction.transactionEngine.removeMap(getName());
     }
 
     @Override

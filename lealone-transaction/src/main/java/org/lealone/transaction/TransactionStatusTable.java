@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.lealone.common.util.New;
 import org.lealone.storage.type.ObjectDataType;
+import org.lealone.storage.type.StringDataType;
 import org.lealone.transaction.log.LogMap;
 import org.lealone.transaction.log.LogStorage;
 
@@ -50,7 +51,7 @@ class TransactionStatusTable {
 
     static synchronized void init(LogStorage logStorage) {
         if (map == null) {
-            map = logStorage.openLogMap("transactionStatusTable", new ObjectDataType(), new ObjectDataType());
+            map = logStorage.openLogMap("transactionStatusTable", StringDataType.INSTANCE, new ObjectDataType());
         }
     }
 

@@ -329,12 +329,12 @@ public class MVCCTransaction implements Transaction {
     /**
      * Add a log entry.
      *
-     * @param mapId the map id
+     * @param mapName the map name
      * @param key the key
      * @param oldValue the old value
      */
-    void log(int mapId, Object key, Object oldValue) {
-        transactionEngine.log(this, logId, mapId, key, oldValue);
+    void log(String mapName, Object key, Object oldValue) {
+        transactionEngine.log(this, logId, mapName, key, oldValue);
         // only increment the log id if logging was successful
         logId++;
     }

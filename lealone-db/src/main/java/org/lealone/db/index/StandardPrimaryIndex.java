@@ -65,7 +65,7 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         ValueDataType keyType = new ValueDataType(null, null, null);
         ValueDataType valueType = new ValueDataType(database.getCompareMode(), database, sortTypes);
-        mapName = StandardTable.getMapNameForTable(getId());
+        mapName = table.getMapNameForTable(getId());
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();

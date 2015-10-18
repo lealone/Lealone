@@ -57,7 +57,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
         ValueDataType keyType = new ValueDataType(db.getCompareMode(), db, sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
-        mapName = StandardTable.getMapNameForIndex(getId());
+        mapName = table.getMapNameForIndex(getId());
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();

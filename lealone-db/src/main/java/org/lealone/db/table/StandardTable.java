@@ -402,8 +402,8 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment) {
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment) {
         if (indexType.isPrimaryKey()) {
             for (IndexColumn c : cols) {
                 Column column = c.column;
@@ -817,12 +817,13 @@ public class StandardTable extends TableBase {
     // return rowVersionMap;
     // }
 
-    public static String getMapNameForTable(int id) {
-        return getMapName("table", id);
+    // 只要组合数据库id和表或索引的id就能得到一个全局唯一的map名了
+    public String getMapNameForTable(int id) {
+        return getMapName("t", database.getId(), id);
     }
 
-    public static String getMapNameForIndex(int id) {
-        return getMapName("index", id);
+    public String getMapNameForIndex(int id) {
+        return getMapName("i", database.getId(), id);
     }
 
     private static String getMapName(Object... args) {

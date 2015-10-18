@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StringDataType;
 import org.lealone.storage.type.WriteBuffer;
 
 public class RedoLogValueType implements DataType {
@@ -39,7 +40,7 @@ public class RedoLogValueType implements DataType {
     @Override
     public void write(WriteBuffer buff, Object obj) {
         RedoLogValue v = (RedoLogValue) obj;
-        buff.putVarInt(v.mapId);
+        StringDataType.INSTANCE.write(buff, v.mapName);
         buff.putVarInt(v.key.remaining());
         buff.put(v.key);
         buff.putVarInt(v.value.remaining());
@@ -55,7 +56,7 @@ public class RedoLogValueType implements DataType {
 
     @Override
     public Object read(ByteBuffer buff) {
-        int mapId = DataUtils.readVarInt(buff);
+        String mapName = StringDataType.INSTANCE.read(buff);
 
         byte[] key = new byte[DataUtils.readVarInt(buff)];
         buff.get(key);
@@ -64,7 +65,7 @@ public class RedoLogValueType implements DataType {
         byte[] value = new byte[DataUtils.readVarInt(buff)];
         buff.get(value);
         ByteBuffer valueBuffer = ByteBuffer.wrap(value);
-        return new RedoLogValue(mapId, keyBuffer, valueBuffer);
+        return new RedoLogValue(mapName, keyBuffer, valueBuffer);
     }
 
     @Override
