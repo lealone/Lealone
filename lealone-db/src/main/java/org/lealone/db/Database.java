@@ -729,8 +729,8 @@ public class Database implements DataHandler, DbObject {
     }
 
     @SuppressWarnings("unchecked")
-    private HashMap<String, DbObject> getMap(int type) {
-        HashMap<String, ? extends DbObject> result;
+    private Map<String, DbObject> getMap(int type) {
+        Map<String, ? extends DbObject> result;
         switch (type) {
         case DbObject.USER:
             result = Auth.getUsersMap();
@@ -792,7 +792,7 @@ public class Database implements DataHandler, DbObject {
         if (id > 0 && !starting) {
             checkWritingAllowed();
         }
-        HashMap<String, DbObject> map = getMap(obj.getType());
+        Map<String, DbObject> map = getMap(obj.getType());
         // if (obj.getType() == DbObject.USER) {
         // User user = (User) obj;
         // if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
@@ -1233,7 +1233,7 @@ public class Database implements DataHandler, DbObject {
     public synchronized void renameDatabaseObject(ServerSession session, DbObject obj, String newName) {
         checkWritingAllowed();
         int type = obj.getType();
-        HashMap<String, DbObject> map = getMap(type);
+        Map<String, DbObject> map = getMap(type);
         if (SysProperties.CHECK) {
             if (!map.containsKey(obj.getName())) {
                 DbException.throwInternalError("not found: " + obj.getName());
@@ -1305,7 +1305,7 @@ public class Database implements DataHandler, DbObject {
         checkWritingAllowed();
         String objName = obj.getName();
         int type = obj.getType();
-        HashMap<String, DbObject> map = getMap(type);
+        Map<String, DbObject> map = getMap(type);
         if (SysProperties.CHECK && !map.containsKey(objName)) {
             DbException.throwInternalError("not found: " + objName);
         }

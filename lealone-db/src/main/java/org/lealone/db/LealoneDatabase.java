@@ -18,11 +18,11 @@
 package org.lealone.db;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.common.util.New;
 import org.lealone.db.auth.Auth;
 
 /**
@@ -47,7 +47,7 @@ public class LealoneDatabase extends Database {
         return INSTANCE;
     }
 
-    private final HashMap<String, Database> databases = New.hashMap();
+    private final ConcurrentHashMap<String, Database> databases = new ConcurrentHashMap<>();
 
     private LealoneDatabase() {
         super(0, NAME, null);
@@ -74,7 +74,7 @@ public class LealoneDatabase extends Database {
         Auth.init(this);
     }
 
-    public synchronized Database findDatabase(String dbName) {
+    public Database findDatabase(String dbName) {
         return databases.get(dbName);
     }
 
@@ -85,15 +85,15 @@ public class LealoneDatabase extends Database {
         return db;
     }
 
-    synchronized void closeDatabase(String dbName) {
+    void closeDatabase(String dbName) {
         databases.remove(dbName);
     }
 
-    synchronized List<Database> getDatabases() {
+    List<Database> getDatabases() {
         return new ArrayList<>(databases.values());
     }
 
-    synchronized HashMap<String, Database> getDatabasesMap() {
+    Map<String, Database> getDatabasesMap() {
         return databases;
     }
 }

@@ -77,7 +77,7 @@ public class CreateUser extends DefineStatement {
         char[] passwordChars = pwd == null ? new char[0] : pwd.toCharArray();
         byte[] userPasswordHash;
         String userName = user.getName();
-        if (userName.length() == 0 && passwordChars.length == 0) {
+        if (userName.isEmpty() && passwordChars.length == 0) {
             userPasswordHash = new byte[0];
         } else {
             userPasswordHash = SHA256.getKeyPasswordHash(userName, passwordChars);
@@ -89,7 +89,6 @@ public class CreateUser extends DefineStatement {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = LealoneDatabase.getInstance();
         if (Auth.findRole(userName) != null) {
             throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, userName);
         }
@@ -99,6 +98,7 @@ public class CreateUser extends DefineStatement {
             }
             throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, userName);
         }
+        Database db = LealoneDatabase.getInstance();
         int id = getObjectId(db);
         User user = new User(db, id, userName, false);
         user.setAdmin(admin);

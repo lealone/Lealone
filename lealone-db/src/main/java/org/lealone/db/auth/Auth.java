@@ -18,7 +18,8 @@
 package org.lealone.db.auth;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
@@ -40,9 +41,9 @@ public class Auth {
      */
     private static final String SYSTEM_USER_NAME = "DBA";
 
-    private static final HashMap<String, Role> roles = New.hashMap();
-    private static final HashMap<String, User> users = New.hashMap();
-    private static final HashMap<String, Right> rights = New.hashMap();
+    private static final ConcurrentHashMap<String, Role> roles = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, User> users = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Right> rights = new ConcurrentHashMap<>();
 
     private static User systemUser;
     private static Role publicRole;
@@ -82,7 +83,7 @@ public class Auth {
         return New.arrayList(roles.values());
     }
 
-    public static HashMap<String, Role> getRolesMap() {
+    public static Map<String, Role> getRolesMap() {
         return roles;
     }
 
@@ -116,7 +117,7 @@ public class Auth {
         return New.arrayList(users.values());
     }
 
-    public static HashMap<String, User> getUsersMap() {
+    public static Map<String, User> getUsersMap() {
         return users;
     }
 
@@ -124,7 +125,7 @@ public class Auth {
         return New.arrayList(rights.values());
     }
 
-    public static HashMap<String, Right> getRightsMap() {
+    public static Map<String, Right> getRightsMap() {
         return rights;
     }
 }

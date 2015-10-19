@@ -364,7 +364,7 @@ class StatementWrapper extends StatementBase {
 
     @Override
     public boolean isBatch() {
-        return statement.isDDL();
+        return statement.isBatch();
     }
 
     @Override
