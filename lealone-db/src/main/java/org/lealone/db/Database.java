@@ -762,7 +762,7 @@ public class Database implements DataHandler, DbObject {
         default:
             throw DbException.throwInternalError("type=" + type);
         }
-        return (HashMap<String, DbObject>) result;
+        return (Map<String, DbObject>) result;
     }
 
     /**

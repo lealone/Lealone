@@ -89,7 +89,7 @@ public class AlterUser extends DefineStatement {
         case SQLStatement.ALTER_USER_ADMIN:
             session.getUser().checkAdmin();
             if (!admin) {
-                user.checkOwnsNoSchemas();
+                user.checkOwnsNoSchemas(session);
             }
             user.setAdmin(admin);
             break;

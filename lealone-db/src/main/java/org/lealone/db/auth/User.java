@@ -267,8 +267,8 @@ public class User extends RightOwner {
      *
      * @throws DbException if this user owns a schema
      */
-    public void checkOwnsNoSchemas() {
-        for (Schema s : database.getAllSchemas()) {
+    public void checkOwnsNoSchemas(ServerSession session) {
+        for (Schema s : session.getDatabase().getAllSchemas()) {
             if (this == s.getOwner()) {
                 throw DbException.get(ErrorCode.CANNOT_DROP_2, getName(), s.getName());
             }
