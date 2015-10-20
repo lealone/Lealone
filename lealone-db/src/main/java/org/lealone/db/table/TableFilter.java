@@ -16,7 +16,6 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.auth.Right;
 import org.lealone.db.expression.Comparison;
-import org.lealone.db.expression.ConditionAndOr;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionColumn;
 import org.lealone.db.expression.Select;
@@ -497,13 +496,15 @@ public class TableFilter implements ColumnResolver {
             if (joinCondition == null) {
                 joinCondition = condition;
             } else {
-                joinCondition = new ConditionAndOr(ConditionAndOr.AND, joinCondition, condition);
+                joinCondition = (Expression) session.getDatabase().getSQLEngine()
+                        .createConditionAndOr(true, joinCondition, condition);
             }
         } else {
             if (filterCondition == null) {
                 filterCondition = condition;
             } else {
-                filterCondition = new ConditionAndOr(ConditionAndOr.AND, filterCondition, condition);
+                filterCondition = (Expression) session.getDatabase().getSQLEngine()
+                        .createConditionAndOr(true, filterCondition, condition);
             }
         }
     }

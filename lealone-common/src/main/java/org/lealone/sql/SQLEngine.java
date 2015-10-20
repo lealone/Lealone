@@ -33,4 +33,6 @@ public interface SQLEngine extends PluggableEngine {
     Expression createValueExpression(Value value);
 
     Expression createSequenceValue(Object sequence);
+
+    Expression createConditionAndOr(boolean and, Expression left, Expression right);
 }

@@ -18,7 +18,6 @@ import org.lealone.db.Constants;
 import org.lealone.db.Mode;
 import org.lealone.db.SQLEngineHolder;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.ConditionAndOr;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.Row;
@@ -664,7 +663,8 @@ public class Column {
         if (checkConstraint == null) {
             checkConstraint = expr;
         } else {
-            checkConstraint = new ConditionAndOr(ConditionAndOr.AND, checkConstraint, expr);
+            checkConstraint = (Expression) session.getDatabase().getSQLEngine()
+                    .createConditionAndOr(true, checkConstraint, expr);
         }
         checkConstraintSQL = getCheckConstraintSQL(session, name);
     }

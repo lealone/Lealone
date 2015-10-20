@@ -24,6 +24,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Session;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.value.Value;
+import org.lealone.sql.expression.ConditionAndOr;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
@@ -66,5 +67,11 @@ public class LealoneSQLEngine implements SQLEngine {
     @Override
     public Expression createSequenceValue(Object sequence) {
         return new SequenceValue((Sequence) sequence);
+    }
+
+    @Override
+    public Expression createConditionAndOr(boolean and, Expression left, Expression right) {
+        return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR,
+                (org.lealone.sql.expression.Expression) left, (org.lealone.sql.expression.Expression) right);
     }
 }
