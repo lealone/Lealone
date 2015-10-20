@@ -24,6 +24,7 @@ import org.lealone.db.DatabaseEngine;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Auth;
+import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SearchRow;
@@ -73,6 +74,10 @@ public class DbObjectTestBase extends UnitTestBase {
 
     public User findUser(String userName) {
         return Auth.findUser(userName);
+    }
+
+    public Role findRole(String roleName) {
+        return Auth.findRole(roleName);
     }
 
     public SearchRow findMeta(int id) {
