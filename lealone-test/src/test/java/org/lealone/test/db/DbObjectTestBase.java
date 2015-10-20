@@ -62,14 +62,27 @@ public class DbObjectTestBase extends UnitTestBase {
 
     // index从1开始
     public int getInt(Result result, int index) {
+        return result.currentRow()[index - 1].getInt();
+    }
+
+    public int getInt(String sql, int index) {
+        Result result = executeQuery(sql);
         if (result.next())
             return result.currentRow()[index - 1].getInt();
         else
             return -1;
     }
 
-    public int getInt(String sql, int index) {
-        return getInt(executeQuery(sql), index);
+    public String getString(Result result, int index) {
+        return result.currentRow()[index - 1].getString();
+    }
+
+    public String getString(String sql, int index) {
+        Result result = executeQuery(sql);
+        if (result.next())
+            return result.currentRow()[index - 1].getString();
+        else
+            return null;
     }
 
     public Database findDatabase(String dbName) {
