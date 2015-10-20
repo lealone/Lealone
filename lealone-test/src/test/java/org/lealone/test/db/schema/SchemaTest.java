@@ -15,12 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.db;
+package org.lealone.test.db.schema;
 
 import org.junit.Test;
 import org.lealone.api.ErrorCode;
 import org.lealone.db.auth.Auth;
 import org.lealone.db.schema.Schema;
+import org.lealone.test.db.DbObjectTestBase;
 
 public class SchemaTest extends DbObjectTestBase {
     String userName = "sa1";

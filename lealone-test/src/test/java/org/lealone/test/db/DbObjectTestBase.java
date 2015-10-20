@@ -19,6 +19,7 @@ package org.lealone.test.db;
 
 import org.lealone.common.message.DbException;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
 import org.lealone.db.LealoneDatabase;
@@ -28,6 +29,7 @@ import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SearchRow;
+import org.lealone.db.schema.Schema;
 import org.lealone.test.UnitTestBase;
 
 public class DbObjectTestBase extends UnitTestBase {
@@ -35,6 +37,7 @@ public class DbObjectTestBase extends UnitTestBase {
 
     protected Database db;
     protected ServerSession session;
+    protected Schema schema;
 
     protected String sql;
 
@@ -46,6 +49,7 @@ public class DbObjectTestBase extends UnitTestBase {
         session = DatabaseEngine.createSession(ci);
         db = session.getDatabase();
         // session = db.getSystemSession();
+        schema = db.findSchema(Constants.SCHEMA_MAIN);
     }
 
     public int executeUpdate(String sql) {

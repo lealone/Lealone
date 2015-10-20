@@ -15,23 +15,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.sql.ddl;
+package org.lealone.test.db.schema;
 
 import org.junit.Test;
-import org.lealone.test.sql.SqlTestBase;
+import org.lealone.test.db.DbObjectTestBase;
 
-public class SetCommentTest extends SqlTestBase {
+public class ConstantTest extends DbObjectTestBase {
+
     @Test
     public void run() {
-        executeUpdate("DROP TABLE IF EXISTS SetCommentTest");
-        executeUpdate("CREATE TABLE IF NOT EXISTS SetCommentTest (f1 int)");
-
-        executeUpdate("DROP ROLE IF EXISTS myrole");
-        executeUpdate("CREATE ROLE IF NOT EXISTS myrole");
-
-        executeUpdate("COMMENT ON COLUMN " + DB_NAME + ".public.SetCommentTest.f1 IS 'column comment'");
-        executeUpdate("COMMENT ON TABLE public.SetCommentTest IS 'table comment'");
-
-        executeUpdate("COMMENT ON ROLE myrole IS 'role comment'");
+        create();
+        drop();
     }
+
+    void create() {
+        executeUpdate("CREATE CONSTANT IF NOT EXISTS ConstantTest VALUE 10");
+        assertNotNull(schema.findConstant("ConstantTest"));
+
+        sql = "select ConstantTest";
+        assertEquals(10, getInt(sql, 1));
+    }
+
+    void drop() {
+        executeUpdate("DROP CONSTANT IF EXISTS ConstantTest");
+        assertNull(schema.findConstant("ConstantTest"));
+    }
+
 }
