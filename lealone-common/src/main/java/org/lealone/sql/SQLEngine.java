@@ -20,6 +20,7 @@ package org.lealone.sql;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.Session;
+import org.lealone.db.value.Value;
 
 public interface SQLEngine extends PluggableEngine {
 
@@ -28,5 +29,7 @@ public interface SQLEngine extends PluggableEngine {
     String quoteIdentifier(String identifier);
 
     CommandParameter createParameter(int index);
+
+    Expression createValueExpression(Value value);
 
 }

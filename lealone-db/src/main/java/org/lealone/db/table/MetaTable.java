@@ -42,7 +42,6 @@ import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintCheck;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.constraint.ConstraintUnique;
-import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.index.MetaIndex;
@@ -61,6 +60,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueStringIgnoreCase;
+import org.lealone.sql.Expression;
 
 /**
  * This class is responsible to build the database meta data pseudo tables.

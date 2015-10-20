@@ -22,7 +22,9 @@ import java.util.Map;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
+import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.expression.ValueExpression;
 
 public class LealoneSQLEngine implements SQLEngine {
 
@@ -54,4 +56,8 @@ public class LealoneSQLEngine implements SQLEngine {
         return new Parameter(index);
     }
 
+    @Override
+    public Expression createValueExpression(Value value) {
+        return ValueExpression.get(value);
+    }
 }

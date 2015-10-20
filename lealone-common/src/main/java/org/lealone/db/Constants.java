@@ -148,18 +148,6 @@ public class Constants {
     public static final int DEFAULT_CACHE_SIZE = 16 * 1024;
 
     /**
-     * The database URL used when calling a function if only the column list
-     * should be returned.
-     */
-    public static final String CONN_URL_COLUMNLIST = "jdbc:columnlist:connection";
-
-    /**
-     * The database URL used when calling a function if the data should be
-     * returned.
-     */
-    public static final String CONN_URL_INTERNAL = "jdbc:default:connection";
-
-    /**
      * The cost is calculated on rowcount + this offset,
      * to avoid using the wrong or no index if the table
      * contains no rows _currently_ (when preparing the statement)
@@ -391,6 +379,18 @@ public class Constants {
     public static final String URL_TCP = "tcp:";
     public static final String URL_SSL = "ssl:";
     public static final String URL_EMBED = "embed:";
+
+    /**
+     * The database URL used when calling a function if only the column list
+     * should be returned.
+     */
+    public static final String CONN_URL_COLUMNLIST = URL_PREFIX + "columnlist:connection";
+
+    /**
+     * The database URL used when calling a function if the data should be
+     * returned.
+     */
+    public static final String CONN_URL_INTERNAL = URL_PREFIX + "default:connection";
 
     /**
      * The file name suffix of all database files.

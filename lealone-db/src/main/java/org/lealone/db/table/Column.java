@@ -22,7 +22,6 @@ import org.lealone.db.expression.ConditionAndOr;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.expression.SequenceValue;
-import org.lealone.db.expression.ValueExpression;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
@@ -293,7 +292,8 @@ public class Column {
         if (defaultExpression != null) {
             defaultExpression = defaultExpression.optimize(session);
             if (defaultExpression.isConstant()) {
-                defaultExpression = ValueExpression.get(defaultExpression.getValue(session));
+                defaultExpression = (Expression) session.getDatabase().getSQLEngine()
+                        .createValueExpression((defaultExpression.getValue(session)));
             }
         }
         this.defaultExpression = defaultExpression;

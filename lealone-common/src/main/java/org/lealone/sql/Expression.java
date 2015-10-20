@@ -18,5 +18,8 @@
 package org.lealone.sql;
 
 public interface Expression {
+    int getType();
+
+    String getSQL();
 
 }

@@ -9,10 +9,9 @@ import org.lealone.common.message.DbException;
 import org.lealone.common.message.Trace;
 import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ValueExpression;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
+import org.lealone.sql.Expression;
 
 /**
  * A user-defined constant as created by the SQL statement
@@ -21,7 +20,7 @@ import org.lealone.db.value.Value;
 public class Constant extends SchemaObjectBase {
 
     private Value value;
-    private ValueExpression expression;
+    private Expression expression;
 
     public Constant(Schema schema, int id, String name) {
         initSchemaObjectBase(schema, id, name, Trace.SCHEMA);
@@ -60,7 +59,7 @@ public class Constant extends SchemaObjectBase {
 
     public void setValue(Value value) {
         this.value = value;
-        expression = ValueExpression.get(value);
+        expression = database.getSQLEngine().createValueExpression(value);
     }
 
     public Expression getValue() {
