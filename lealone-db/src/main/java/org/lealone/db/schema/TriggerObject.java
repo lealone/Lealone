@@ -26,7 +26,7 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 
 /**
- *A trigger is created using the statement
+ * A trigger is created using the statement
  * CREATE TRIGGER
  */
 public class TriggerObject extends SchemaObjectBase {

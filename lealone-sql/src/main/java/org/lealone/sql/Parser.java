@@ -4333,7 +4333,12 @@ public class Parser implements SQLParser {
             command.setQueueSize(readPositiveInt());
         }
         command.setNoWait(readIf("NOWAIT"));
-        read("CALL");
+        if (readIf("AS")) {
+            command.setTriggerSource(readString());
+        } else {
+            read("CALL");
+            command.setTriggerClassName(readUniqueIdentifier());
+        }
         command.setTriggerClassName(readUniqueIdentifier());
         return command;
     }
