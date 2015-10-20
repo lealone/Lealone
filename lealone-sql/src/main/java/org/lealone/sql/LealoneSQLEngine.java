@@ -22,8 +22,10 @@ import java.util.Map;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
+import org.lealone.db.schema.Sequence;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
 
 public class LealoneSQLEngine implements SQLEngine {
@@ -59,5 +61,10 @@ public class LealoneSQLEngine implements SQLEngine {
     @Override
     public Expression createValueExpression(Value value) {
         return ValueExpression.get(value);
+    }
+
+    @Override
+    public Expression createSequenceValue(Object sequence) {
+        return new SequenceValue((Sequence) sequence);
     }
 }

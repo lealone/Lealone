@@ -32,4 +32,5 @@ public interface SQLEngine extends PluggableEngine {
 
     Expression createValueExpression(Value value);
 
+    Expression createSequenceValue(Object sequence);
 }

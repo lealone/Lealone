@@ -21,7 +21,6 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ConditionAndOr;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.expression.SequenceValue;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
@@ -474,8 +473,7 @@ public class Column {
             session.getDatabase().addSchemaObject(session, seq);
         }
         setAutoIncrement(false, 0, 0);
-        SequenceValue seqValue = new SequenceValue(seq);
-        setDefaultExpression(session, seqValue);
+        setDefaultExpression(session, (Expression) session.getDatabase().getSQLEngine().createSequenceValue(seq));
         setSequence(seq);
     }
 
