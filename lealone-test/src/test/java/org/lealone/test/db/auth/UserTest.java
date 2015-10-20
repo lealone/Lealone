@@ -19,7 +19,6 @@ package org.lealone.test.db.auth;
 
 import org.junit.Test;
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.auth.User;
 import org.lealone.db.result.SearchRow;
@@ -34,15 +33,9 @@ public class UserTest extends DbObjectTestBase {
         assertEquals(userName, user.getName());
 
         assertTrue(!user.isTemporary());
-        SearchRow row = LealoneDatabase.getInstance().findMeta(session, id);
+        SearchRow row = findMeta(LealoneDatabase.getInstance(), id);
         assertNotNull(row);
         assertEquals(id, row.getValue(0).getInt());
-    }
-
-    private void assertException(Exception e, int expectedErrorCode) {
-        assertTrue(e instanceof DbException);
-        assertEquals(expectedErrorCode, ((DbException) e).getErrorCode());
-        // p(e.getMessage());
     }
 
     @Test
@@ -75,7 +68,7 @@ public class UserTest extends DbObjectTestBase {
             executeUpdate("CREATE USER IF NOT EXISTS sa3 PASWORD 'abc'"); // PASWORD少了一个S
             fail();
         } catch (Exception e) {
-            assertException(e, ErrorCode.SYNTAX_ERROR_2);
+            assertException(e, ErrorCode.ADMIN_RIGHTS_REQUIRED);
         }
 
         // 虽然sa1存在了，但是使用了IF NOT EXISTS
@@ -149,7 +142,7 @@ public class UserTest extends DbObjectTestBase {
         executeUpdate("DROP USER sa33");
         user = findUser("sa33");
         assertNull(user);
-        SearchRow row = LealoneDatabase.getInstance().findMeta(session, id);
+        SearchRow row = findMeta(id);
         assertNull(row);
         try {
             executeUpdate("DROP USER UserTest_Not_Exists_User");

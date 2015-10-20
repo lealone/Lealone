@@ -793,12 +793,6 @@ public class Database implements DataHandler, DbObject {
             checkWritingAllowed();
         }
         Map<String, DbObject> map = getMap(obj.getType());
-        // if (obj.getType() == DbObject.USER) {
-        // User user = (User) obj;
-        // if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
-        // systemUser.rename(user.getName());
-        // }
-        // }
         String name = obj.getName();
         if (SysProperties.CHECK && map.get(name) != null) {
             DbException.throwInternalError("object already exists");

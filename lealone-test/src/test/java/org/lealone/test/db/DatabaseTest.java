@@ -34,7 +34,7 @@ public class DatabaseTest extends DbObjectTestBase {
         assertNotNull(db);
         id = db.getId();
         assertTrue(id > 0);
-        SearchRow row = LealoneDatabase.getInstance().findMeta(session, id);
+        SearchRow row = findMeta(LealoneDatabase.getInstance(), id);
         if (db.isPersistent()) {// 只有非内存数据库才会在meta表中保存一条记录用来代表它
             assertNotNull(row);
             assertEquals(id, row.getValue(0).getInt());

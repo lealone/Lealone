@@ -53,7 +53,7 @@ public class DropUser extends DefineStatement {
                     }
                 }
                 // 运行到这里时当前用户必定是有Admin权限的，如果当前用户想删除它自己，
-                // 同时系统中又没当其他Admin权限的用户了，那么不允许它删除自己
+                // 同时系统中又没有其他Admin权限的用户了，那么不允许它删除自己
                 if (adminUserCount == 1) {
                     throw DbException.get(ErrorCode.CANNOT_DROP_CURRENT_USER);
                 }

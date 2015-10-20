@@ -18,54 +18,129 @@
 package org.lealone.test.db;
 
 import org.junit.Test;
+import org.lealone.api.ErrorCode;
 import org.lealone.db.auth.Auth;
 import org.lealone.db.schema.Schema;
 
 public class SchemaTest extends DbObjectTestBase {
+    String userName = "sa1";
+    String schemaName = "SchemaTest";
+    Schema schema;
+    int id;
+
     @Test
     public void run() {
-        String userName = "sa1";
+        create();
+        alter();
+        drop();
+
+    }
+
+    void create() {
         executeUpdate("CREATE USER IF NOT EXISTS " + userName + " PASSWORD 'abc' ADMIN");
 
-        int id = db.allocateObjectId();
-        String schemaName = "test";
+        id = db.allocateObjectId();
+
         Schema schema = new Schema(db, id, schemaName, Auth.getUser(userName), false);
         assertEquals(id, schema.getId());
 
         db.addDatabaseObject(session, schema);
         assertNotNull(db.findSchema(schemaName));
+        assertNotNull(findMeta(id));
 
         db.removeDatabaseObject(session, schema);
         assertNull(db.findSchema(schemaName));
+        assertNull(findMeta(id));
 
         // 测试SQL
         // -----------------------------------------------
         executeUpdate("CREATE SCHEMA IF NOT EXISTS " + schemaName + " AUTHORIZATION " + userName);
+        schema = db.findSchema(schemaName);
+        assertNotNull(schema);
+        id = schema.getId();
+        assertNotNull(findMeta(id));
+
+        try {
+            executeUpdate("CREATE SCHEMA " + schemaName + " AUTHORIZATION " + userName);
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.SCHEMA_ALREADY_EXISTS_1);
+        }
+
+        try {
+            // SchemaTest_u1需要有Right.ALTER_ANY_SCHEMA权限
+            executeUpdate("CREATE USER IF NOT EXISTS SchemaTest_u1 PASSWORD 'abc'");
+            executeUpdate("CREATE SCHEMA IF NOT EXISTS SchemaTest_s1 AUTHORIZATION SchemaTest_u1");
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.ADMIN_RIGHTS_REQUIRED);
+        } finally {
+            executeUpdate("DROP USER IF EXISTS SchemaTest_u1");
+        }
+    }
+
+    void alter() {
+        executeUpdate("CREATE SCHEMA IF NOT EXISTS SchemaTest_s1 AUTHORIZATION " + userName);
+
+        try {
+            // 不能RENAME INFORMATION_SCHEMA(system Schema)
+            executeUpdate("ALTER SCHEMA INFORMATION_SCHEMA RENAME TO SchemaTest_u1");
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1);
+        }
+
+        try {
+            executeUpdate("ALTER SCHEMA SchemaTest_s1 RENAME TO " + schemaName);
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.SCHEMA_ALREADY_EXISTS_1);
+        }
+
+        String schemaName = "SchemaTest_s2";
+        executeUpdate("ALTER SCHEMA SchemaTest_s1 RENAME TO " + schemaName);
+        assertNull(db.findSchema("SchemaTest_s1"));
         assertNotNull(db.findSchema(schemaName));
         executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
-        assertNull(db.findSchema(schemaName));
 
-        executeUpdate("CREATE SCHEMA IF NOT EXISTS test2 AUTHORIZATION " + userName);
-        executeUpdate("ALTER SCHEMA test2 RENAME TO " + schemaName);
-        assertNotNull(db.findSchema(schemaName));
-        executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
-
+        schemaName = "SchemaTest_s3";
         executeUpdate("CREATE SCHEMA IF NOT EXISTS " + schemaName + " AUTHORIZATION " + userName //
-                + " WITH REPLICATION = ('class': 'SimpleStrategy', 'replication_factor':1)");
+                + " WITH REPLICATION = (class: 'SimpleStrategy', replication_factor:1)");
         schema = db.findSchema(schemaName);
         assertNotNull(schema);
         assertNotNull(schema.getReplicationProperties());
         assertTrue(schema.getReplicationProperties().containsKey("class"));
 
         executeUpdate("ALTER SCHEMA " + schemaName //
-                + " WITH REPLICATION = ('class': 'SimpleStrategy', 'replication_factor':2)");
+                + " WITH REPLICATION = (class: 'SimpleStrategy', replication_factor:2)");
 
         schema = db.findSchema(schemaName);
         assertNotNull(schema);
         assertNotNull(schema.getReplicationProperties());
         assertEquals("2", schema.getReplicationProperties().get("replication_factor"));
-
         executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
-        executeUpdate("DROP USER " + userName);
     }
+
+    void drop() {
+        executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
+        schema = db.findSchema(schemaName);
+        assertNull(schema);
+        assertNull(findMeta(id));
+        try {
+            executeUpdate("DROP SCHEMA " + schemaName + " AUTHORIZATION " + userName);
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.SCHEMA_NOT_FOUND_1);
+        }
+
+        try {
+            // 不能删除system Schema
+            executeUpdate("DROP SCHEMA INFORMATION_SCHEMA");
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1);
+        }
+        executeUpdate("DROP USER IF EXISTS " + userName);
+    }
+
 }

@@ -43,10 +43,8 @@ public class CreateSchema extends DefineStatement {
         session.commit(true);
         Database db = session.getDatabase();
         User user = Auth.getUser(authorization);
-        // during DB startup, the Right/Role records have not yet been loaded
-        if (!db.isStarting()) {
-            user.checkSchemaAdmin();
-        }
+        user.checkSchemaAdmin();
+
         if (db.findSchema(schemaName) != null) {
             if (ifNotExists) {
                 return 0;
