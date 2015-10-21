@@ -20,6 +20,7 @@ package org.lealone.db.expression;
 import org.lealone.db.result.SortOrder;
 
 public interface Select extends Query {
+
     SortOrder getSortOrder();
 
 }

@@ -36,5 +36,6 @@ public class SettingTest extends DbObjectTestBase {
         db.removeDatabaseObject(session, s);
         s = db.findSetting(name);
         assertNull(s);
+        session.commit(true);
     }
 }

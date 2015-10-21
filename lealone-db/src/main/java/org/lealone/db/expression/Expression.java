@@ -35,6 +35,7 @@ public interface Expression extends org.lealone.sql.Expression {
 
     String getColumnName();
 
+    @Override
     int getType();
 
     long getPrecision();
@@ -45,6 +46,7 @@ public interface Expression extends org.lealone.sql.Expression {
 
     int getScale();
 
+    @Override
     String getSQL();
 
     String getSQL(boolean isDistributed);

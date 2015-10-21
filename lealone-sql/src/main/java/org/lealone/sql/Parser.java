@@ -195,17 +195,59 @@ public class Parser implements SQLParser {
     private CreateView createView;
     private StatementBase currentStatement;
     private Select currentSelect;
-    private ArrayList<Parameter> parameters;
     private String schemaName;
-    private ArrayList<String> expectedList;
     private boolean rightsChecked;
     private boolean recompileAlways;
+    private ArrayList<String> expectedList;
+    private ArrayList<Parameter> parameters;
     private ArrayList<Parameter> indexedParameterList;
 
     public Parser(ServerSession session) {
         this.database = session.getDatabase();
         this.session = session;
         this.identifiersToUpper = database.getSettings().databaseToUpper;
+    }
+
+    @Override
+    public void setRightsChecked(boolean rightsChecked) {
+        this.rightsChecked = rightsChecked;
+    }
+
+    @Override
+    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
+        return new BatchStatementImpl(session, (StatementBase) ps, batchParameters);
+    }
+
+    @Override
+    public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
+        return new BatchStatementImpl(session, batchCommands);
+    }
+
+    /**
+     * Parse a SQL code snippet that represents an expression.
+     *
+     * @param sql the code snippet
+     * @return the expression object
+     */
+    @Override
+    public Expression parseExpression(String sql) {
+        parameters = New.arrayList();
+        initialize(sql);
+        read();
+        return readExpression();
+    }
+
+    /**
+     * Parse a SQL code snippet that represents a table name.
+     *
+     * @param sql the code snippet
+     * @return the table object
+     */
+    public Table parseTableName(String sql) {
+        parameters = New.arrayList();
+        initialize(sql);
+        read();
+        return readTableOrView();
     }
 
     /**
@@ -5659,45 +5701,4 @@ public class Parser implements SQLParser {
         return s;
     }
 
-    @Override
-    public void setRightsChecked(boolean rightsChecked) {
-        this.rightsChecked = rightsChecked;
-    }
-
-    /**
-     * Parse a SQL code snippet that represents an expression.
-     *
-     * @param sql the code snippet
-     * @return the expression object
-     */
-    @Override
-    public Expression parseExpression(String sql) {
-        parameters = New.arrayList();
-        initialize(sql);
-        read();
-        return readExpression();
-    }
-
-    /**
-     * Parse a SQL code snippet that represents a table name.
-     *
-     * @param sql the code snippet
-     * @return the table object
-     */
-    public Table parseTableName(String sql) {
-        parameters = New.arrayList();
-        initialize(sql);
-        read();
-        return readTableOrView();
-    }
-
-    @Override
-    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
-        return new BatchStatementImpl(session, (StatementBase) ps, batchParameters);
-    }
-
-    @Override
-    public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
-        return new BatchStatementImpl(session, batchCommands);
-    }
 }

@@ -68,7 +68,7 @@ public class UserTest extends DbObjectTestBase {
             executeUpdate("CREATE USER IF NOT EXISTS sa3 PASWORD 'abc'"); // PASWORD少了一个S
             fail();
         } catch (Exception e) {
-            assertException(e, ErrorCode.ADMIN_RIGHTS_REQUIRED);
+            assertException(e, ErrorCode.SYNTAX_ERROR_2);
         }
 
         // 虽然sa1存在了，但是使用了IF NOT EXISTS
