@@ -15,16 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.sql.ddl;
+package org.lealone.test.db.schema;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
 import org.junit.Test;
+import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
-import org.lealone.test.sql.SqlTestBase;
+import org.lealone.db.result.Result;
+import org.lealone.test.db.DbObjectTestBase;
 
-public class CreateTriggerTest extends SqlTestBase {
+public class TriggerObjectTest extends DbObjectTestBase {
 
     public static class MyTrigger implements Trigger {
 
@@ -42,53 +44,75 @@ public class CreateTriggerTest extends SqlTestBase {
 
         @Override
         public void close() throws SQLException {
-            System.out.println("org.lealone.test.sql.ddl.CreateTriggerTest.MyInsertTrigger.close()");
+            System.out.println("org.lealone.test.db.schema.TriggerObjectTest.MyInsertTrigger.close()");
         }
 
         @Override
         public void remove() throws SQLException {
-            System.out.println("org.lealone.test.sql.ddl.CreateTriggerTest.MyInsertTrigger.remove()");
+            System.out.println("org.lealone.test.db.schema.TriggerObjectTest.MyInsertTrigger.remove()");
         }
 
     }
 
     @Test
     public void run() throws Exception {
-        conn.setAutoCommit(false);
+        create();
+        drop();
+    }
+
+    void create() {
+        session.setAutoCommit(false);
 
         executeUpdate("DROP TABLE IF EXISTS CreateTriggerTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS CreateTriggerTest(id int, name varchar(500))");
 
         executeUpdate("CREATE FORCE TRIGGER IF NOT EXISTS MyTrigger1"
                 + " BEFORE INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest"
-                + " QUEUE 10 NOWAIT CALL \"org.lealone.test.sql.ddl.CreateTriggerTest$MyTrigger\"");
+                + " QUEUE 10 NOWAIT CALL \"org.lealone.test.db.schema.TriggerObjectTest$MyTrigger\"");
+
+        assertNotNull(schema.findTrigger("MyTrigger1"));
 
         try {
-            stmt.executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger2"
-                    + " AFTER INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
-                    + " QUEUE 10 NOWAIT CALL \"org.lealone.test.sql.ddl.CreateTriggerTest$MyTrigger\"");
-            fail("do not throw SQLException");
-        } catch (SQLException e) {
-            assertEquals(90005, e.getErrorCode());
+            // QUEUE不能是负数
+            executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger2"//
+                    + " AFTER INSERT ON CreateTriggerTest"
+                    + " QUEUE -1 CALL \"org.lealone.test.db.schema.TriggerObjectTest$MyTrigger\"");
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.INVALID_VALUE_2);
         }
 
-        //INSTEAD OF也是BEFORE类型
+        try {
+            executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger2"
+                    + " AFTER INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
+                    + " QUEUE 10 NOWAIT CALL \"org.lealone.test.db.schema.TriggerObjectTest$MyTrigger\"");
+            fail();
+        } catch (Exception e) {
+            assertException(e, ErrorCode.TRIGGER_SELECT_AND_ROW_BASED_NOT_SUPPORTED);
+        }
+
+        // INSTEAD OF也是BEFORE类型
         executeUpdate("CREATE TRIGGER IF NOT EXISTS MyTrigger3"
                 + " INSTEAD OF INSERT,UPDATE,DELETE,ROLLBACK ON CreateTriggerTest FOR EACH ROW"
-                + " QUEUE 10 NOWAIT CALL \"org.lealone.test.sql.ddl.CreateTriggerTest$MyTrigger\"");
+                + " QUEUE 10 NOWAIT CALL \"org.lealone.test.db.schema.TriggerObjectTest$MyTrigger\"");
 
-        //这种语法可查入多条记录
-        //null null
-        //10 a
-        //20 b
+        // 这种语法可查入多条记录
+        // null null
+        // 10 a
+        // 20 b
         executeUpdate("INSERT INTO CreateTriggerTest VALUES(DEFAULT, DEFAULT),(10, 'a'),(20, 'b')");
 
         sql = "select id,name from CreateTriggerTest";
-        rs = stmt.executeQuery(sql);
+        Result rs = executeQuery(sql);
         while (rs.next()) {
-            System.out.println(rs.getString(1) + " " + rs.getString(2));
+            System.out.println(getString(rs, 1) + " " + getString(rs, 2));
         }
 
-        conn.commit();
+        session.commit(false);
+    }
+
+    void drop() {
+        executeUpdate("DROP TRIGGER IF EXISTS MyTrigger1");
+        assertNull(schema.findTrigger("MyTrigger1"));
     }
 }
