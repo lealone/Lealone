@@ -62,9 +62,15 @@ public class RedoLogValueType implements DataType {
         buff.get(key);
         ByteBuffer keyBuffer = ByteBuffer.wrap(key);
 
-        byte[] value = new byte[DataUtils.readVarInt(buff)];
-        buff.get(value);
-        ByteBuffer valueBuffer = ByteBuffer.wrap(value);
+        ByteBuffer valueBuffer;
+        int len = DataUtils.readVarInt(buff);
+        if (len > 0) {
+            byte[] value = new byte[len];
+            buff.get(value);
+            valueBuffer = ByteBuffer.wrap(value);
+        } else {
+            valueBuffer = LogChunkMap.EMPTY_BUFFER;
+        }
         return new RedoLogValue(mapName, keyBuffer, valueBuffer);
     }
 

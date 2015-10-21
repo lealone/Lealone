@@ -69,6 +69,7 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> implements Comparable<Log
             K k = (K) keyType.read(buffer);
             V v = (V) valueType.read(buffer);
             put(k, v);
+            lastSyncKey = k;
         }
     }
 

@@ -7,9 +7,11 @@ package org.lealone.transaction;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -62,6 +64,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
      */
     LogMap<Long, RedoLogValue> redoLog;
 
+    HashMap<String, ArrayList<RedoLogValue>> pendingRedoLog = new HashMap<>();
+
     public MVCCTransactionEngine() {
         super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
     }
@@ -97,6 +101,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         undoLog = logStorage.openLogMap("undoLog", new ObjectDataType(), undoLogValueType);
 
         redoLog = logStorage.openLogMap("redoLog", new ObjectDataType(), new RedoLogValueType());
+        initPendingRedoLog();
 
         initTransactions();
 
@@ -108,6 +113,17 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
         if (isClusterMode)
             TransactionValidator.getInstance().start();
+    }
+
+    private void initPendingRedoLog() {
+        for (Entry<Long, RedoLogValue> e : redoLog.entrySet()) {
+            ArrayList<RedoLogValue> logs = pendingRedoLog.get(e.getValue().mapName);
+            if (logs == null) {
+                logs = new ArrayList<>();
+                pendingRedoLog.put(e.getValue().mapName, logs);
+            }
+            logs.add(e.getValue());
+        }
     }
 
     private void initTransactions() {
@@ -322,23 +338,47 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         removeUndoLog(tid, Long.MAX_VALUE);
     }
 
-    private void redoLog(Long operationId, String mapName, Object key, VersionedValue value) {
+    @SuppressWarnings("unchecked")
+    <K, V> void redo(StorageMap<K, V> map) {
+        ArrayList<RedoLogValue> logs = pendingRedoLog.remove(map.getName());
+        if (logs != null) {
+            K key;
+            DataType kt = map.getKeyType();
+            DataType dt = ((VersionedValueType) map.getValueType()).valueType;
+            for (RedoLogValue log : logs) {
+                key = (K) kt.read(log.key);
+                if (log.value == LogChunkMap.EMPTY_BUFFER)
+                    map.remove(key);
+                else {
+                    map.put(key, (V) new VersionedValue(dt.read(log.value)));
+                }
+            }
+        }
+    }
+
+    private void addRedoLog(Long operationId, String mapName, Object key, VersionedValue value) {
         WriteBuffer writeBuffer = WriteBufferPool.poll();
         StorageMap<?, ?> map = maps.get(mapName);
 
         map.getKeyType().write(writeBuffer, key);
-        ByteBuffer keyBuffer = writeBuffer.getBuffer();
+
+        ByteBuffer buffer = writeBuffer.getBuffer();
+        buffer.flip();
+
+        ByteBuffer keyBuffer = ByteBuffer.allocateDirect(buffer.limit());
+        keyBuffer.put(buffer);
         keyBuffer.flip();
-        keyBuffer = keyBuffer.duplicate();
 
         writeBuffer.clear();
 
         ByteBuffer valueBuffer;
         if (value != null) {
             ((VersionedValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
-            valueBuffer = writeBuffer.getBuffer();
+            buffer = writeBuffer.getBuffer();
+            buffer.flip();
+            valueBuffer = ByteBuffer.allocateDirect(buffer.limit());
+            valueBuffer.put(buffer);
             valueBuffer.flip();
-            valueBuffer = valueBuffer.duplicate();
         } else {
             valueBuffer = LogChunkMap.EMPTY_BUFFER;
         }
@@ -377,7 +417,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     if (value == null) {
                         // nothing to do
                     } else if (value.value == null) {
-                        redoLog(undoKey, mapName, key, null);
+                        addRedoLog(undoKey, mapName, key, null);
                         // remove the value
                         // map.remove(key);
                         logs.add(new Object[] { map, key, undoKey });
@@ -385,7 +425,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     } else {
                         VersionedValue v2 = new VersionedValue();
                         v2.value = value.value;
-                        redoLog(undoKey, mapName, key, v2);
+                        addRedoLog(undoKey, mapName, key, v2);
                         // map.put(key, v2);
                         logs.add(new Object[] { map, key, v2, undoKey });
                         lastOperationId = undoKey;

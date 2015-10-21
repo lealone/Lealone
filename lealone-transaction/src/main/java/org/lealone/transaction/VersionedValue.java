@@ -20,6 +20,13 @@ class VersionedValue {
      */
     public Object value;
 
+    public VersionedValue() {
+    }
+
+    public VersionedValue(Object value) {
+        this.value = value;
+    }
+
     @Override
     public String toString() {
         StringBuilder buff = new StringBuilder();

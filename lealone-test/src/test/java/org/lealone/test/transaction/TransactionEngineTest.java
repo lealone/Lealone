@@ -58,6 +58,7 @@ public class TransactionEngineTest extends UnitTestBase {
         te.init(config);
         Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap("test", storage);
+        map.clear();
         map.put("1", "a");
         map.put("2", "b");
         assertEquals("a", map.get("1"));
