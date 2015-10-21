@@ -17,6 +17,7 @@ import java.util.logging.Logger;
 import org.lealone.common.message.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
+import org.lealone.db.Session;
 
 /**
  * The database driver. An application should not use this class directly. 
@@ -52,7 +53,9 @@ public class Driver implements java.sql.Driver {
                 return null;
             }
             if (url.equals(DEFAULT_URL)) {
-                return DEFAULT_CONNECTION.get();
+                Session s = ConnectionInfo.getInternalSession();
+                return new JdbcConnection(s, info.getProperty("user"), url);
+                // return DEFAULT_CONNECTION.get();
             }
 
             return new JdbcConnection(url, info);

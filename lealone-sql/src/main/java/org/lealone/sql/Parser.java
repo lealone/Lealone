@@ -4339,7 +4339,6 @@ public class Parser implements SQLParser {
             read("CALL");
             command.setTriggerClassName(readUniqueIdentifier());
         }
-        command.setTriggerClassName(readUniqueIdentifier());
         return command;
     }
 

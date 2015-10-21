@@ -25,6 +25,30 @@ import org.lealone.storage.fs.FileUtils;
  * Encapsulates the connection settings, including user name and password.
  */
 public class ConnectionInfo implements Cloneable {
+
+    private static final ThreadLocal<Session> INTERNAL_SESSION = new ThreadLocal<>();
+
+    /**
+     * INTERNAL
+     */
+    public static void setInternalSession(Session s) {
+        INTERNAL_SESSION.set(s);
+    }
+
+    /**
+     * INTERNAL
+     */
+    public static Session getInternalSession() {
+        return INTERNAL_SESSION.get();
+    }
+
+    /**
+     * INTERNAL
+     */
+    public static void removeInternalSession() {
+        INTERNAL_SESSION.remove();
+    }
+
     private static final HashSet<String> KNOWN_SETTINGS = New.hashSet();
 
     static {

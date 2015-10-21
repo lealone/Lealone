@@ -881,19 +881,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      * Create an internal connection. This connection is used when initializing
      * triggers, and when calling user defined functions.
      *
-     * @param columnList if the url should be 'jdbc:columnlist:connection'
+     * @param columnList if the url should be 'jdbc:lealone:columnlist:connection'
      * @return the internal connection
      */
-    // public JdbcConnection createConnection(boolean columnList) {
-    // String url;
-    // if (columnList) {
-    // url = Constants.CONN_URL_COLUMNLIST;
-    // } else {
-    // url = Constants.CONN_URL_INTERNAL;
-    // }
-    // return new JdbcConnection(this, getUser().getName(), url);
-    // }
-
     public Connection createConnection(boolean columnList) {
         String url;
         if (columnList) {
@@ -902,9 +892,12 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             url = Constants.CONN_URL_INTERNAL;
         }
         try {
+            ConnectionInfo.setInternalSession(this);
             return DriverManager.getConnection(url, getUser().getName(), "");
         } catch (SQLException e) {
             throw DbException.convert(e);
+        } finally {
+            ConnectionInfo.removeInternalSession();
         }
     }
 
