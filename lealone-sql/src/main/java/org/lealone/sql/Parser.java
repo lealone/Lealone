@@ -3891,7 +3891,7 @@ public class Parser implements SQLParser {
         } else if (readIf("DATABASE")) {
             return parseCreateDatabase();
         }
-        // tables or linked tables
+        // table or index
         boolean memory = false, cached = false;
         if (readIf("MEMORY")) {
             memory = true;
