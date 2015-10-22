@@ -31,7 +31,7 @@ public class LogMapTest extends UnitTestBase {
         Map<String, String> config = new HashMap<>();
         config.put("base_dir", joinDirs("transaction-test"));
         config.put("transaction_log_dir", "tlog");
-        config.put("log_sync_type", "none");
+        config.put("log_sync_type", LogStorage.LOG_SYNC_TYPE_NO_SYNC);
         config.put("log_chunk_size", "128");
 
         LogStorage ls = new LogStorage(config);

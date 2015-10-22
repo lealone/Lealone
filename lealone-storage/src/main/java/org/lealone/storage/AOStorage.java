@@ -58,13 +58,8 @@ public class AOStorage implements Storage {
 
     private static final String TEMP_NAME_PREFIX = "temp" + Constants.NAME_SEPARATOR;
 
-    private static final CopyOnWriteArrayList<StorageMap<?, ?>> storageMaps = new CopyOnWriteArrayList<>();
     private static final CopyOnWriteArrayList<BufferedMap<?, ?>> bufferedMaps = new CopyOnWriteArrayList<>();
     private static final CopyOnWriteArrayList<AOMap<?, ?>> aoMaps = new CopyOnWriteArrayList<>();
-
-    public static void addStorageMap(StorageMap<?, ?> map) {
-        storageMaps.add(map);
-    }
 
     public static void addBufferedMap(BufferedMap<?, ?> map) {
         bufferedMaps.add(map);
@@ -102,7 +97,8 @@ public class AOStorage implements Storage {
             }
         }
 
-        backgroundThread = new AOStorageBackgroundThread(this);
+        backgroundThread = new AOStorageBackgroundThread();
+        backgroundThread.start();
     }
 
     @SuppressWarnings("unchecked")
@@ -113,8 +109,6 @@ public class AOStorage implements Storage {
             builder.name(name).config(c);
             map = builder.openMap();
             maps.put(name, map);
-
-            addStorageMap(map);
         }
 
         return map;
@@ -191,7 +185,6 @@ public class AOStorage implements Storage {
         for (StorageMap<?, ?> map : maps.values())
             map.close();
 
-        storageMaps.clear();
         bufferedMaps.clear();
         aoMaps.clear();
 
@@ -223,10 +216,9 @@ public class AOStorage implements Storage {
         private final int sleep;
         private boolean running = true;
 
-        AOStorageBackgroundThread(AOStorage storage) {
+        AOStorageBackgroundThread() {
             super("AOStorageBackgroundThread");
-            // this.storage = storage;
-            this.sleep = 1000;
+            this.sleep = 3000;
             setDaemon(true);
         }
 
@@ -245,7 +237,6 @@ public class AOStorage implements Storage {
 
                 adaptiveOptimization();
                 merge();
-                flush();
             }
         }
 
@@ -272,12 +263,6 @@ public class AOStorage implements Storage {
             }
 
             futures.clear();
-        }
-
-        private void flush() {
-            for (StorageMap<?, ?> map : AOStorage.storageMaps) {
-                map.save();
-            }
         }
     }
 
