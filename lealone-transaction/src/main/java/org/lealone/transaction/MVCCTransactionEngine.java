@@ -231,7 +231,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (!init) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
-        long tid = nextTransactionId(autoCommit);
+        long tid = getTransactionId(autoCommit);
         MVCCTransaction t = new MVCCTransaction(this, tid, MVCCTransaction.STATUS_OPEN, 0);
         t.setAutoCommit(autoCommit);
         currentTransactions.put(tid, t);
@@ -249,7 +249,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         }
     }
 
-    private long nextTransactionId(boolean autoCommit) {
+    private long getTransactionId(boolean autoCommit) {
         // 分布式事务使用奇数的事务ID
         if (!autoCommit && isClusterMode) {
             return nextOddTransactionId();
@@ -259,23 +259,14 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     long nextOddTransactionId() {
-        long oldLast;
-        long last;
-        int delta;
-        do {
-            oldLast = lastTransactionId.get();
-            last = oldLast;
-            if (last % 2 == 0)
-                delta = 1;
-            else
-                delta = 2;
-
-            last += delta;
-        } while (!lastTransactionId.compareAndSet(oldLast, last));
-        return last;
+        return nextTransactionId(false);
     }
 
     private long nextEvenTransactionId() {
+        return nextTransactionId(true);
+    }
+
+    private long nextTransactionId(boolean isEven) {
         long oldLast;
         long last;
         int delta;
@@ -283,9 +274,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             oldLast = lastTransactionId.get();
             last = oldLast;
             if (last % 2 == 0)
-                delta = 2;
+                delta = isEven ? 2 : 1;
             else
-                delta = 1;
+                delta = isEven ? 1 : 2;
 
             last += delta;
         } while (!lastTransactionId.compareAndSet(oldLast, last));
@@ -303,6 +294,10 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         }
 
         endTransaction(t);
+    }
+
+    void endTransaction(MVCCTransaction t) {
+        t.setStatus(MVCCTransaction.STATUS_CLOSED);
     }
 
     void commitAfterValidate(long tid) {
@@ -366,11 +361,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
         WriteBufferPool.offer(writeBuffer);
         return new RedoLogValue(values);
-    }
-
-    synchronized void endTransaction(MVCCTransaction t) {
-        t.setStatus(MVCCTransaction.STATUS_CLOSED);
-        currentTransactions.remove(t.transactionId);
     }
 
     boolean validateTransaction(long tid, MVCCTransaction currentTransaction) {
