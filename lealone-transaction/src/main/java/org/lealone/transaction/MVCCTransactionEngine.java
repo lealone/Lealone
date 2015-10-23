@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
@@ -90,28 +92,44 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     private class StorageMapSaveService extends Thread {
-        private final int sleep;
-        private boolean running = true;
+        private volatile boolean isClosed;
         private volatile long lastSavedAt = System.currentTimeMillis();
+        private final Semaphore semaphore = new Semaphore(1);
+        private final int sleep;
 
         StorageMapSaveService(int sleep) {
             super("StorageMapSaveService");
-            this.sleep = 1000;
-            setDaemon(true);
+            this.sleep = sleep;
+
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    StorageMapSaveService.this.closeService();
+                    try {
+                        StorageMapSaveService.this.join();
+                    } catch (InterruptedException e) {
+                    }
+                }
+            }, StorageMapSaveService.this.getName() + "ShutdownHook");
+            Runtime.getRuntime().addShutdownHook(t);
         }
 
-        void close() {
-            running = false;
+        void closeService() {
+            if (!isClosed) {
+                isClosed = true;
+                semaphore.release();
+            }
         }
 
         @Override
         public void run() {
             Long checkpoint = null;
-            while (running) {
+            while (true) {
                 try {
-                    sleep(sleep);
+                    semaphore.tryAcquire(sleep, TimeUnit.MILLISECONDS);
+                    semaphore.drainPermits();
                 } catch (InterruptedException e) {
-                    continue;
+                    throw new AssertionError();
                 }
 
                 long now = System.currentTimeMillis();
@@ -121,7 +139,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
                 boolean writeCheckpoint = false;
                 for (Entry<String, Integer> e : estimatedMemory.entrySet()) {
-                    if (e.getValue() > mapCacheSize || lastSavedAt + mapCacheSize > now) {
+                    if (isClosed || e.getValue() > mapCacheSize || lastSavedAt + mapCacheSize > now) {
                         maps.get(e.getKey()).save();
                         writeCheckpoint = true;
                     }
@@ -133,6 +151,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     redoLog.put(checkpoint, new RedoLogValue(checkpoint));
                     logStorage.logSyncService.maybeWaitForSync(redoLog, redoLog.getLastSyncKey());
                 }
+
+                if (isClosed)
+                    break;
             }
         }
     }
@@ -244,8 +265,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (isClusterMode)
             TransactionValidator.getInstance().close();
         if (storageMapSaveService != null) {
-            storageMapSaveService.close();
-            storageMapSaveService.interrupt();
+            storageMapSaveService.closeService();
+            try {
+                storageMapSaveService.join();
+            } catch (InterruptedException e) {
+            }
         }
     }
 
@@ -288,23 +312,17 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         redoLog.put(t.transactionId, v);
         logStorage.logSyncService.maybeWaitForSync(redoLog, t.transactionId);
 
-        // 分布式事务推迟删除undoLog
-        if (t.transactionId % 2 == 0) {
-            removeUndoLog(t.transactionId);
+        // 分布式事务推迟提交
+        if (t.isLocal()) {
+            commitFinal(t.transactionId);
         }
-
-        endTransaction(t);
-    }
-
-    void endTransaction(MVCCTransaction t) {
-        t.setStatus(MVCCTransaction.STATUS_CLOSED);
     }
 
     void commitAfterValidate(long tid) {
-        removeUndoLog(tid);
+        commitFinal(tid);
     }
 
-    private void removeUndoLog(long tid) {
+    private void commitFinal(long tid) {
         LinkedList<LogRecord> logRecords = currentTransactions.get(tid).logRecords;
         StorageMap<Object, VersionedValue> map;
         for (LogRecord r : logRecords) {
@@ -323,7 +341,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 }
             }
         }
-        currentTransactions.remove(tid);
+
+        currentTransactions.get(tid).endTransaction();
     }
 
     RedoLogValue getRedoLog(MVCCTransaction t) {

@@ -222,7 +222,6 @@ public class MVCCTransaction implements Transaction {
     public void commit() {
         if (local) {
             commitLocal();
-            endTransaction();
         } else
             commit(null);
     }
@@ -238,8 +237,14 @@ public class MVCCTransaction implements Transaction {
         commitLocalAndTransactionStatusTable(allLocalTransactionNames);
         if (futures != null)
             waitFutures(futures);
+    }
 
-        endTransaction();
+    void endTransaction() {
+        savepoints = null;
+        logRecords = null;
+        status = STATUS_CLOSED;
+
+        transactionEngine.currentTransactions.remove(transactionId);
     }
 
     private void commitLocal() {
@@ -271,10 +276,8 @@ public class MVCCTransaction implements Transaction {
         }
     }
 
-    private void endTransaction() {
-        savepoints = null;
-        logRecords = null;
-        status = STATUS_CLOSED;
+    boolean isLocal() {
+        return transactionId % 2 == 0;
     }
 
     private List<Future<Void>> parallelCommitOrRollback(final String allLocalTransactionNames) {
@@ -300,7 +303,6 @@ public class MVCCTransaction implements Transaction {
         try {
             checkNotClosed();
             rollbackTo(0);
-            transactionEngine.endTransaction(this);
         } finally {
             endTransaction();
         }
