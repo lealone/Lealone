@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.StringDataType;
 import org.lealone.storage.type.WriteBuffer;
@@ -60,7 +61,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     private final HashMap<String, ArrayList<ByteBuffer>> pendingRedoLog = new HashMap<>();
 
     // key: transactionId
-    LogMap<Long, RedoLogValue> redoLog;
+    private LogMap<Long, RedoLogValue> redoLog;
     LogStorage logStorage;
 
     private boolean init;
@@ -178,8 +179,16 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     private void initPendingRedoLog() {
+        Long checkpoint = null;
         for (Entry<Long, RedoLogValue> e : redoLog.entrySet()) {
-            RedoLogValue v = e.getValue();
+            if (e.getValue().checkpoint != null)
+                checkpoint = e.getValue().checkpoint;
+        }
+
+        StorageMapCursor<Long, RedoLogValue> cursor = redoLog.cursor(checkpoint);
+        while (cursor.hasNext()) {
+            cursor.next();
+            RedoLogValue v = cursor.getValue();
             ByteBuffer buff = v.values;
             while (buff.hasRemaining()) {
                 String mapName = StringDataType.INSTANCE.read(buff);
@@ -189,7 +198,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     logs = new ArrayList<>();
                     pendingRedoLog.put(mapName, logs);
                 }
-                int len = buff.getShort();
+                int len = buff.getInt();
                 byte[] keyValue = new byte[len];
                 buff.get(keyValue);
                 logs.add(ByteBuffer.wrap(keyValue));
@@ -204,10 +213,10 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             K key;
             Object value;
             DataType kt = map.getKeyType();
-            DataType dt = ((VersionedValueType) map.getValueType()).valueType;
+            DataType vt = ((VersionedValueType) map.getValueType()).valueType;
             for (ByteBuffer log : logs) {
                 key = (K) kt.read(log);
-                value = dt.read(log);
+                value = vt.read(log);
                 if (value == null)
                     map.remove(key);
                 else {
@@ -337,12 +346,12 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
             StringDataType.INSTANCE.write(writeBuffer, mapName);
             keyValueStart = writeBuffer.position();
-            writeBuffer.putShort((short) 0);
+            writeBuffer.putInt(0);
 
             map.getKeyType().write(writeBuffer, r.key);
             ((VersionedValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
 
-            writeBuffer.putShort(keyValueStart, (short) (writeBuffer.position() - keyValueStart - 2));
+            writeBuffer.putInt(keyValueStart, writeBuffer.position() - keyValueStart - 4);
             memory = estimatedMemory.get(mapName);
             memory += writeBuffer.position() - lastPosition;
             lastPosition = writeBuffer.position();

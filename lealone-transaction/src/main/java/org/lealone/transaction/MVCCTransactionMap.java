@@ -187,9 +187,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      */
     public boolean trySet(K key, V value) {
         VersionedValue current = map.get(key);
-        VersionedValue newValue = new VersionedValue(value);
-        newValue.tid = transaction.transactionId;
-        newValue.logId = transaction.logId;
+        VersionedValue newValue = new VersionedValue(transaction.transactionId, transaction.logId, value);
 
         String mapName = getName();
         if (current == null) {
@@ -550,8 +548,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @SuppressWarnings("unchecked")
     public V putCommitted(K key, V value) {
         DataUtils.checkArgument(value != null, "The value may not be null");
-        VersionedValue newValue = new VersionedValue();
-        newValue.value = value;
+        VersionedValue newValue = new VersionedValue(value);
         VersionedValue oldValue = map.put(key, newValue);
         return (V) (oldValue == null ? null : oldValue.value);
     }

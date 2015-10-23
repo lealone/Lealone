@@ -195,8 +195,8 @@ public class MVCCTransaction implements Transaction {
             valueType = new ObjectDataType();
 
         checkNotClosed();
-        StorageMap<K, VersionedValue> map = storage.openMap(name, mapType, keyType, new VersionedValueType(valueType),
-                null);
+        valueType = new VersionedValueType(valueType);
+        StorageMap<K, VersionedValue> map = storage.openMap(name, mapType, keyType, valueType, null);
         transactionEngine.redo(map);
         transactionEngine.addMap((StorageMap<Object, VersionedValue>) map);
         return new MVCCTransactionMap<>(this, map);

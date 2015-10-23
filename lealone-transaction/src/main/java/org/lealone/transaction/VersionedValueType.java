@@ -28,7 +28,7 @@ class VersionedValueType implements DataType {
     @Override
     public int getMemory(Object obj) {
         VersionedValue v = (VersionedValue) obj;
-        return valueType.getMemory(v.value) + 8;
+        return valueType.getMemory(v.value) + 12;
     }
 
     @Override
@@ -40,7 +40,9 @@ class VersionedValueType implements DataType {
         VersionedValue b = (VersionedValue) bObj;
         long comp = a.tid - b.tid;
         if (comp == 0) {
-            return valueType.compare(a.value, b.value);
+            comp = a.logId - b.logId;
+            if (comp == 0)
+                return valueType.compare(a.value, b.value);
         }
         return Long.signum(comp);
     }
@@ -48,11 +50,9 @@ class VersionedValueType implements DataType {
     @Override
     public void read(ByteBuffer buff, Object[] obj, int len, boolean key) {
         if (buff.get() == 0) {
-            // fast path (no op ids or null entries)
+            // fast path (no tid/logId or null entries)
             for (int i = 0; i < len; i++) {
-                VersionedValue v = new VersionedValue();
-                v.value = valueType.read(buff);
-                obj[i] = v;
+                obj[i] = new VersionedValue(valueType.read(buff));
             }
         } else {
             // slow path (some entries may be null)
@@ -64,12 +64,13 @@ class VersionedValueType implements DataType {
 
     @Override
     public Object read(ByteBuffer buff) {
-        VersionedValue v = new VersionedValue();
-        v.tid = DataUtils.readVarLong(buff);
+        long tid = DataUtils.readVarLong(buff);
+        int logId = DataUtils.readVarInt(buff);
+        Object value = null;
         if (buff.get() == 1) {
-            v.value = valueType.read(buff);
+            value = valueType.read(buff);
         }
-        return v;
+        return new VersionedValue(tid, logId, value);
     }
 
     @Override
@@ -89,7 +90,7 @@ class VersionedValueType implements DataType {
             }
         } else {
             // slow path:
-            // store op ids, and some entries may be null
+            // store tid/logId, and some entries may be null
             buff.put((byte) 1);
             for (int i = 0; i < len; i++) {
                 write(buff, obj[i]);
@@ -101,6 +102,7 @@ class VersionedValueType implements DataType {
     public void write(WriteBuffer buff, Object obj) {
         VersionedValue v = (VersionedValue) obj;
         buff.putVarLong(v.tid);
+        buff.putVarInt(v.logId);
         if (v.value == null) {
             buff.put((byte) 0);
         } else {
