@@ -51,14 +51,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public V putCommitted(K key, V value);
 
     /**
-     * Get the most recent value for the given key.
-     *
-     * @param key the key
-     * @return the value or null
-     */
-    public V getLatest(K key);
-
-    /**
      * Whether the entry for this key was added or removed from this
      * session.
      *

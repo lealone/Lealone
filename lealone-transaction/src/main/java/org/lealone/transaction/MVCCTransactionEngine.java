@@ -1,70 +1,74 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
- * and the EPL 1.0 (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.transaction;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StringDataType;
 import org.lealone.storage.type.WriteBuffer;
-import org.lealone.transaction.log.LogChunkMap;
+import org.lealone.transaction.MVCCTransaction.LogRecord;
 import org.lealone.transaction.log.LogMap;
 import org.lealone.transaction.log.LogStorage;
+import org.lealone.transaction.log.RedoLogKeyType;
 import org.lealone.transaction.log.RedoLogValue;
 import org.lealone.transaction.log.RedoLogValueType;
 import org.lealone.transaction.log.WriteBufferPool;
 
-/**
- * The transaction engine that supports concurrent MVCC read-committed transactions.
- */
 public class MVCCTransactionEngine extends TransactionEngineBase {
 
+    private static final int DEFAULT_MAP_CACHE_SIZE = 32 * 1024 * 1024; // 32M
+    private static final int DEFAULT_MAP_SAVE_PERIOD = 1 * 60 * 60 * 1000; // 1小时
+
+    private int mapCacheSize = DEFAULT_MAP_CACHE_SIZE;
+    private int mapSavePeriod = DEFAULT_MAP_SAVE_PERIOD;
+    private StorageMapSaveService storageMapSaveService;
+
+    // key: mapName
     private final ConcurrentHashMap<String, StorageMap<Object, VersionedValue>> maps = new ConcurrentHashMap<>();
-    private final AtomicInteger lastTransactionId = new AtomicInteger();
-    private int maxTransactionId = 0xffff;
+    // key: mapName, value: memory size
+    private final ConcurrentHashMap<String, Integer> estimatedMemory = new ConcurrentHashMap<>();
+
+    private final AtomicLong lastTransactionId = new AtomicLong();
+    // key: mapName, value: map key/value ByteBuffer list
+    private final HashMap<String, ArrayList<ByteBuffer>> pendingRedoLog = new HashMap<>();
+
+    // key: transactionId
+    LogMap<Long, RedoLogValue> redoLog;
+    LogStorage logStorage;
 
     private boolean init;
     private boolean isClusterMode;
     String hostAndPort;
 
-    LogStorage logStorage;
-
-    /**
-     * The undo log.
-     * <p>
-     * If the first entry for a transaction doesn't have a logId
-     * of 0, then the transaction is partially committed (which means rollback
-     * is not possible). Log entries are written before the data is changed
-     * (write-ahead).
-     * <p>
-     * Key: opId, value: [ mapName, key, oldValue ].
-     */
-    LogMap<Long, Object[]> undoLog;
-
-    /**
-     * The redo log.
-     * 
-     * Key: opId, value: [ mapName, key, newValue ].
-     */
-    LogMap<Long, RedoLogValue> redoLog;
-
-    HashMap<String, ArrayList<RedoLogValue>> pendingRedoLog = new HashMap<>();
+    // key: transactionId
+    final ConcurrentSkipListMap<Long, MVCCTransaction> currentTransactions = new ConcurrentSkipListMap<>();
 
     public MVCCTransactionEngine() {
         super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
@@ -75,11 +79,61 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     void addMap(StorageMap<Object, VersionedValue> map) {
+        estimatedMemory.put(map.getName(), 0);
         maps.put(map.getName(), map);
     }
 
     void removeMap(String mapName) {
+        estimatedMemory.remove(mapName);
         maps.remove(mapName);
+    }
+
+    private class StorageMapSaveService extends Thread {
+        private final int sleep;
+        private boolean running = true;
+        private volatile long lastSavedAt = System.currentTimeMillis();
+
+        StorageMapSaveService(int sleep) {
+            super("StorageMapSaveService");
+            this.sleep = 1000;
+            setDaemon(true);
+        }
+
+        void close() {
+            running = false;
+        }
+
+        @Override
+        public void run() {
+            Long checkpoint = null;
+            while (running) {
+                try {
+                    sleep(sleep);
+                } catch (InterruptedException e) {
+                    continue;
+                }
+
+                long now = System.currentTimeMillis();
+
+                if (redoLog.getLastSyncKey() != null)
+                    checkpoint = redoLog.getLastSyncKey();
+
+                boolean writeCheckpoint = false;
+                for (Entry<String, Integer> e : estimatedMemory.entrySet()) {
+                    if (e.getValue() > mapCacheSize || lastSavedAt + mapCacheSize > now) {
+                        maps.get(e.getKey()).save();
+                        writeCheckpoint = true;
+                    }
+                }
+                if (lastSavedAt + mapCacheSize > now)
+                    lastSavedAt = now;
+
+                if (writeCheckpoint && checkpoint != null) {
+                    redoLog.put(checkpoint, new RedoLogValue(checkpoint));
+                    logStorage.logSyncService.maybeWaitForSync(redoLog, redoLog.getLastSyncKey());
+                }
+            }
+        }
     }
 
     @Override
@@ -90,91 +144,88 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         isClusterMode = Boolean.parseBoolean(config.get("is_cluster_mode"));
         hostAndPort = config.get("host_and_port");
 
+        String v = config.get("map_cache_size_in_mb");
+        if (v != null)
+            mapCacheSize = Integer.parseInt(v) * 1024 * 1024;
+
+        v = config.get("map_save_period");
+        if (v != null)
+            mapSavePeriod = Integer.parseInt(v);
+
+        int sleep = 1 * 60 * 1000;// 1分钟
+        v = config.get("map_save_service_sleep_interval");
+        if (v != null)
+            sleep = Integer.parseInt(v);
+
+        if (mapSavePeriod < sleep)
+            sleep = mapSavePeriod;
+
         logStorage = new LogStorage(config);
 
-        // undoLog中存放的是所有事务的事务日志，
-        // 就算是在同一个事务中也可能涉及同一个数据库中的多个表甚至多个数据库的多个表，
-        // 所以要序列化数据，只能用ObjectDataType
-        VersionedValueType oldValueType = new VersionedValueType(new ObjectDataType());
-        ArrayType undoLogValueType = new ArrayType(new DataType[] { StringDataType.INSTANCE, new ObjectDataType(),
-                oldValueType });
-        undoLog = logStorage.openLogMap("undoLog", new ObjectDataType(), undoLogValueType);
-
-        redoLog = logStorage.openLogMap("redoLog", new ObjectDataType(), new RedoLogValueType());
+        // 不使用ObjectDataType，因为ObjectDataType需要自动侦测，会有一些开销
+        redoLog = logStorage.openLogMap("redoLog", new RedoLogKeyType(), new RedoLogValueType());
         initPendingRedoLog();
-
-        initTransactions();
 
         Long key = redoLog.lastKey();
         if (key != null)
-            lastTransactionId.set(getTransactionId(key));
-
-        TransactionStatusTable.init(logStorage);
+            lastTransactionId.set(key);
 
         if (isClusterMode)
             TransactionValidator.getInstance().start();
+
+        storageMapSaveService = new StorageMapSaveService(sleep);
+        storageMapSaveService.start();
     }
 
     private void initPendingRedoLog() {
         for (Entry<Long, RedoLogValue> e : redoLog.entrySet()) {
-            ArrayList<RedoLogValue> logs = pendingRedoLog.get(e.getValue().mapName);
-            if (logs == null) {
-                logs = new ArrayList<>();
-                pendingRedoLog.put(e.getValue().mapName, logs);
-            }
-            logs.add(e.getValue());
-        }
-    }
+            RedoLogValue v = e.getValue();
+            ByteBuffer buff = v.values;
+            while (buff.hasRemaining()) {
+                String mapName = StringDataType.INSTANCE.read(buff);
 
-    private void initTransactions() {
-        List<Transaction> list = getOpenTransactions();
-        for (Transaction t : list) {
-            if (t.getStatus() == Transaction.STATUS_COMMITTING) {
-                t.commit();
-            } else {
-                t.rollback();
+                ArrayList<ByteBuffer> logs = pendingRedoLog.get(mapName);
+                if (logs == null) {
+                    logs = new ArrayList<>();
+                    pendingRedoLog.put(mapName, logs);
+                }
+                int len = buff.getShort();
+                byte[] keyValue = new byte[len];
+                buff.get(keyValue);
+                logs.add(ByteBuffer.wrap(keyValue));
             }
         }
     }
 
-    /**
-     * Get the list of unclosed transactions that have pending writes.
-     *
-     * @return the list of transactions (sorted by id)
-     */
-    private List<Transaction> getOpenTransactions() {
-        ArrayList<Transaction> list = New.arrayList();
-        Long key = undoLog.firstKey();
-        while (key != null) {
-            int transactionId = getTransactionId(key);
-            key = undoLog.lowerKey(getOperationId(transactionId + 1, 0));
-            long logId = getLogId(key) + 1;
-            int status;
-            if (undoLog.containsKey(getOperationId(transactionId, 0))) {
-                status = MVCCTransaction.STATUS_OPEN;
-            } else {
-                status = MVCCTransaction.STATUS_COMMITTING;
+    @SuppressWarnings("unchecked")
+    <K> void redo(StorageMap<K, VersionedValue> map) {
+        ArrayList<ByteBuffer> logs = pendingRedoLog.remove(map.getName());
+        if (logs != null) {
+            K key;
+            Object value;
+            DataType kt = map.getKeyType();
+            DataType dt = ((VersionedValueType) map.getValueType()).valueType;
+            for (ByteBuffer log : logs) {
+                key = (K) kt.read(log);
+                value = dt.read(log);
+                if (value == null)
+                    map.remove(key);
+                else {
+                    map.put(key, new VersionedValue(value));
+                }
             }
-            MVCCTransaction t = new MVCCTransaction(this, transactionId, status, logId);
-            list.add(t);
-            key = undoLog.ceilingKey(getOperationId(transactionId + 1, 0));
         }
-        return list;
     }
 
-    /**
-     * Begin a new transaction.
-     *
-     * @return the transaction
-     */
     @Override
     public MVCCTransaction beginTransaction(boolean autoCommit) {
         if (!init) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
-        int tid = nextTransactionId(autoCommit);
+        long tid = nextTransactionId(autoCommit);
         MVCCTransaction t = new MVCCTransaction(this, tid, MVCCTransaction.STATUS_OPEN, 0);
         t.setAutoCommit(autoCommit);
+        currentTransactions.put(tid, t);
         return t;
     }
 
@@ -183,9 +234,13 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         logStorage.close();
         if (isClusterMode)
             TransactionValidator.getInstance().close();
+        if (storageMapSaveService != null) {
+            storageMapSaveService.close();
+            storageMapSaveService.interrupt();
+        }
     }
 
-    private int nextTransactionId(boolean autoCommit) {
+    private long nextTransactionId(boolean autoCommit) {
         // 分布式事务使用奇数的事务ID
         if (!autoCommit && isClusterMode) {
             return nextOddTransactionId();
@@ -194,9 +249,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         return nextEvenTransactionId();
     }
 
-    private int nextOddTransactionId() {
-        int oldLast;
-        int last;
+    long nextOddTransactionId() {
+        long oldLast;
+        long last;
         int delta;
         do {
             oldLast = lastTransactionId.get();
@@ -207,16 +262,13 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 delta = 2;
 
             last += delta;
-
-            if (last >= maxTransactionId)
-                last = 1;
         } while (!lastTransactionId.compareAndSet(oldLast, last));
         return last;
     }
 
-    private int nextEvenTransactionId() {
-        int oldLast;
-        int last;
+    private long nextEvenTransactionId() {
+        long oldLast;
+        long last;
         int delta;
         do {
             oldLast = lastTransactionId.get();
@@ -227,287 +279,92 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 delta = 1;
 
             last += delta;
-
-            if (last >= maxTransactionId)
-                last = 2;
         } while (!lastTransactionId.compareAndSet(oldLast, last));
         return last;
     }
 
-    /**
-     * Set the maximum transaction id, after which ids are re-used. If the old
-     * transaction is still in use when re-using an old id, the new transaction
-     * fails.
-     *
-     * @param max the maximum id
-     */
-    public void setMaxTransactionId(int max) {
-        this.maxTransactionId = max;
-    }
+    void commit(MVCCTransaction t, RedoLogValue v) {
+        // 先写redoLog
+        redoLog.put(t.transactionId, v);
+        logStorage.logSyncService.maybeWaitForSync(redoLog, t.transactionId);
 
-    /**
-     * Combine the transaction id and the log id to an operation id.
-     *
-     * @param transactionId the transaction id
-     * @param logId the log id
-     * @return the operation id
-     */
-    static long getOperationId(int transactionId, long logId) {
-        DataUtils.checkArgument(transactionId >= 0 && transactionId < (1 << 24), "Transaction id out of range: {0}",
-                transactionId);
-        DataUtils.checkArgument(logId >= 0 && logId < (1L << 40), "Transaction log id out of range: {0}", logId);
-        return ((long) transactionId << 40) | logId;
-    }
-
-    /**
-     * Get the transaction id for the given operation id.
-     *
-     * @param operationId the operation id
-     * @return the transaction id
-     */
-    static int getTransactionId(long operationId) {
-        return (int) (operationId >>> 40);
-    }
-
-    /**
-     * Get the log id for the given operation id.
-     *
-     * @param operationId the operation id
-     * @return the log id
-     */
-    static long getLogId(long operationId) {
-        return operationId & ((1L << 40) - 1);
-    }
-
-    /**
-     * Log an entry.
-     *
-     * @param t the transaction
-     * @param logId the log id
-     * @param mapName the map name
-     * @param key the key
-     * @param oldValue the old value
-     */
-    void log(MVCCTransaction t, long logId, String mapName, Object key, Object oldValue) {
-        Long undoKey = getOperationId(t.transactionId, logId);
-        Object[] log = new Object[] { mapName, key, oldValue };
-        synchronized (undoLog) {
-            if (logId == 0) {
-                if (undoLog.containsKey(undoKey)) {
-                    throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_STILL_OPEN,
-                            "An old transaction with the same id " + "is still open: {0}", t.transactionId);
-                }
-            }
-            undoLog.put(undoKey, log);
-        }
-    }
-
-    /**
-     * Remove a log entry.
-     *
-     * @param t the transaction
-     * @param logId the log id
-     */
-    void logUndo(MVCCTransaction t, long logId) {
-        Long undoKey = getOperationId(t.transactionId, logId);
-        synchronized (undoLog) {
-            Object[] old = undoLog.remove(undoKey);
-            if (old == null) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE,
-                        "Transaction {0} was concurrently rolled back", t.transactionId);
-            }
-        }
-    }
-
-    /**
-     * Commit a transaction.
-     *
-     * @param t the transaction
-     * @param maxLogId the last log id
-     */
-    void commit(MVCCTransaction t, long maxLogId) {
         // 分布式事务推迟删除undoLog
         if (t.transactionId % 2 == 0) {
-            removeUndoLog(t.transactionId, maxLogId);
+            removeUndoLog(t.transactionId);
         }
 
         endTransaction(t);
     }
 
-    void commitAfterValidate(int tid) {
-        removeUndoLog(tid, Long.MAX_VALUE);
+    void commitAfterValidate(long tid) {
+        removeUndoLog(tid);
     }
 
-    @SuppressWarnings("unchecked")
-    <K, V> void redo(StorageMap<K, V> map) {
-        ArrayList<RedoLogValue> logs = pendingRedoLog.remove(map.getName());
-        if (logs != null) {
-            K key;
-            DataType kt = map.getKeyType();
-            DataType dt = ((VersionedValueType) map.getValueType()).valueType;
-            for (RedoLogValue log : logs) {
-                key = (K) kt.read(log.key);
-                if (log.value == LogChunkMap.EMPTY_BUFFER)
-                    map.remove(key);
-                else {
-                    map.put(key, (V) new VersionedValue(dt.read(log.value)));
+    private void removeUndoLog(long tid) {
+        LinkedList<LogRecord> logRecords = currentTransactions.get(tid).logRecords;
+        StorageMap<Object, VersionedValue> map;
+        for (LogRecord r : logRecords) {
+            map = getMap(r.mapName);
+            if (map == null) {
+                // map was later removed
+            } else {
+                VersionedValue value = map.get(r.key);
+                if (value == null) {
+                    // nothing to do
+                } else if (value.value == null) {
+                    // remove the value
+                    map.remove(r.key);
+                } else {
+                    map.put(r.key, new VersionedValue(value.value));
                 }
             }
         }
+        currentTransactions.remove(tid);
     }
 
-    private void addRedoLog(Long operationId, String mapName, Object key, VersionedValue value) {
+    RedoLogValue getRedoLog(MVCCTransaction t) {
         WriteBuffer writeBuffer = WriteBufferPool.poll();
-        StorageMap<?, ?> map = maps.get(mapName);
 
-        map.getKeyType().write(writeBuffer, key);
+        String mapName;
+        VersionedValue value;
+        StorageMap<?, ?> map;
+        int lastPosition = 0, keyValueStart, memory;
+
+        for (LogRecord r : t.logRecords) {
+            mapName = r.mapName;
+            value = r.newValue;
+            map = maps.get(mapName);
+
+            StringDataType.INSTANCE.write(writeBuffer, mapName);
+            keyValueStart = writeBuffer.position();
+            writeBuffer.putShort((short) 0);
+
+            map.getKeyType().write(writeBuffer, r.key);
+            ((VersionedValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
+
+            writeBuffer.putShort(keyValueStart, (short) (writeBuffer.position() - keyValueStart - 2));
+            memory = estimatedMemory.get(mapName);
+            memory += writeBuffer.position() - lastPosition;
+            lastPosition = writeBuffer.position();
+            estimatedMemory.put(mapName, memory);
+        }
 
         ByteBuffer buffer = writeBuffer.getBuffer();
         buffer.flip();
-
-        ByteBuffer keyBuffer = ByteBuffer.allocateDirect(buffer.limit());
-        keyBuffer.put(buffer);
-        keyBuffer.flip();
-
-        writeBuffer.clear();
-
-        ByteBuffer valueBuffer;
-        if (value != null) {
-            ((VersionedValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
-            buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            valueBuffer = ByteBuffer.allocateDirect(buffer.limit());
-            valueBuffer.put(buffer);
-            valueBuffer.flip();
-        } else {
-            valueBuffer = LogChunkMap.EMPTY_BUFFER;
-        }
-
-        RedoLogValue v = new RedoLogValue(mapName, keyBuffer, valueBuffer);
-        redoLog.put(operationId, v);
+        ByteBuffer values = ByteBuffer.allocateDirect(buffer.limit());
+        values.put(buffer);
+        values.flip();
 
         WriteBufferPool.offer(writeBuffer);
+        return new RedoLogValue(values);
     }
 
-    @SuppressWarnings("unchecked")
-    private void removeUndoLog(int tid, long maxLogId) {
-        Long lastOperationId = null;
-        // TODO could synchronize on blocks (100 at a time or so)
-        synchronized (undoLog) {
-            ArrayList<Object[]> logs = new ArrayList<>();
-            for (long logId = 0; logId < maxLogId; logId++) {
-                Long undoKey = getOperationId(tid, logId);
-                Object[] op = undoLog.get(undoKey);
-                if (op == null) {
-                    // partially committed: load next
-                    undoKey = undoLog.ceilingKey(undoKey);
-                    if (undoKey == null || getTransactionId(undoKey) != tid) {
-                        break;
-                    }
-                    logId = getLogId(undoKey) - 1;
-                    continue;
-                }
-                String mapName = (String) op[0];
-                StorageMap<Object, VersionedValue> map = getMap(mapName);
-                if (map == null) {
-                    // map was later removed
-                } else {
-                    Object key = op[1];
-                    VersionedValue value = map.get(key);
-                    if (value == null) {
-                        // nothing to do
-                    } else if (value.value == null) {
-                        addRedoLog(undoKey, mapName, key, null);
-                        // remove the value
-                        // map.remove(key);
-                        logs.add(new Object[] { map, key, undoKey });
-                        lastOperationId = undoKey;
-                    } else {
-                        VersionedValue v2 = new VersionedValue();
-                        v2.value = value.value;
-                        addRedoLog(undoKey, mapName, key, v2);
-                        // map.put(key, v2);
-                        logs.add(new Object[] { map, key, v2, undoKey });
-                        lastOperationId = undoKey;
-                    }
-                }
-                // undoLog.remove(undoKey);
-            }
-
-            // 先写redoLog
-            // redoLog.save();
-            if (lastOperationId != null)
-                logStorage.logSyncService.maybeWaitForSync(redoLog, lastOperationId);
-            Object[] a;
-            for (int i = 0, size = logs.size(); i < size; i++) {
-                a = logs.get(i);
-                if (a.length == 3) {
-                    ((StorageMap<Object, VersionedValue>) a[0]).remove(a[1]);
-                    undoLog.remove((Long) a[2]);
-                } else {
-                    ((StorageMap<Object, VersionedValue>) a[0]).put(a[1], (VersionedValue) a[2]);
-                    undoLog.remove((Long) a[3]);
-                }
-            }
-        }
-    }
-
-    /**
-     * End this transaction
-     *
-     * @param t the transaction
-     */
     synchronized void endTransaction(MVCCTransaction t) {
         t.setStatus(MVCCTransaction.STATUS_CLOSED);
+        currentTransactions.remove(t.transactionId);
     }
 
-    /**
-     * Rollback to an old savepoint.
-     *
-     * @param t the transaction
-     * @param maxLogId the last log id
-     * @param toLogId the log id to roll back to
-     */
-    void rollbackTo(MVCCTransaction t, long maxLogId, long toLogId) {
-        // TODO could synchronize on blocks (100 at a time or so)
-        synchronized (undoLog) {
-            for (long logId = maxLogId - 1; logId >= toLogId; logId--) {
-                Long undoKey = getOperationId(t.transactionId, logId);
-                Object[] op = undoLog.get(undoKey);
-                if (op == null) {
-                    // partially rolled back: load previous
-                    undoKey = undoLog.floorKey(undoKey);
-                    if (undoKey == null || getTransactionId(undoKey) != t.transactionId) {
-                        break;
-                    }
-                    logId = getLogId(undoKey) + 1;
-                    continue;
-                }
-                String mapName = (String) op[0];
-                StorageMap<Object, VersionedValue> map = getMap(mapName);
-                if (map != null) {
-                    Object key = op[1];
-                    VersionedValue oldValue = (VersionedValue) op[2];
-                    if (oldValue == null) {
-                        // this transaction added the value
-                        map.remove(key);
-                    } else {
-                        // this transaction updated the value
-                        map.put(key, oldValue);
-                    }
-                }
-                undoLog.remove(undoKey);
-            }
-        }
-    }
-
-    void commitTransactionStatusTable(MVCCTransaction t, String allLocalTransactionNames) {
-        t.setCommitTimestamp(nextOddTransactionId());
-        TransactionStatusTable.commit(t, allLocalTransactionNames);
-        TransactionValidator.enqueue(t, allLocalTransactionNames);
-    }
-
-    boolean validateTransaction(int tid, MVCCTransaction currentTransaction) {
+    boolean validateTransaction(long tid, MVCCTransaction currentTransaction) {
         return TransactionStatusTable.validateTransaction(hostAndPort, tid, currentTransaction);
     }
 
@@ -520,80 +377,4 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     public boolean supportsMVCC() {
         return true;
     }
-
-    /**
-     * Get the changes of the given transaction, starting from the latest log id
-     * back to the given log id.
-     *
-     * @param t the transaction
-     * @param maxLogId the maximum log id
-     * @param toLogId the minimum log id
-     * @return the changes
-     */
-    // TODO 目前未使用，H2里面的作用主要是通知触发器
-    Iterator<Change> getChanges(final MVCCTransaction t, final long maxLogId, final long toLogId) {
-        return new Iterator<Change>() {
-
-            private long logId = maxLogId - 1;
-            private Change current;
-
-            {
-                fetchNext();
-            }
-
-            private void fetchNext() {
-                synchronized (undoLog) {
-                    while (logId >= toLogId) {
-                        Long undoKey = getOperationId(t.transactionId, logId);
-                        Object[] op = undoLog.get(undoKey);
-                        logId--;
-                        if (op == null) {
-                            // partially rolled back: load previous
-                            undoKey = undoLog.floorKey(undoKey);
-                            if (undoKey == null || getTransactionId(undoKey) != t.transactionId) {
-                                break;
-                            }
-                            logId = getLogId(undoKey);
-                            continue;
-                        }
-                        String mapName = (String) op[0];
-                        StorageMap<Object, VersionedValue> m = getMap(mapName);
-                        if (m == null) {
-                            // map was removed later on
-                        } else {
-                            current = new Change();
-                            current.mapName = m.getName();
-                            current.key = op[1];
-                            VersionedValue oldValue = (VersionedValue) op[2];
-                            current.value = oldValue == null ? null : oldValue.value;
-                            return;
-                        }
-                    }
-                }
-                current = null;
-            }
-
-            @Override
-            public boolean hasNext() {
-                return current != null;
-            }
-
-            @Override
-            public Change next() {
-                if (current == null) {
-                    throw DataUtils.newUnsupportedOperationException("no data");
-                }
-                Change result = current;
-                fetchNext();
-                return result;
-            }
-
-            @Override
-            public void remove() {
-                throw DataUtils.newUnsupportedOperationException("remove");
-            }
-
-        };
-    }
-
 }

@@ -447,7 +447,7 @@ public abstract class Table extends SchemaObjectBase {
         // }
 
         // in case we need to undo the update
-        long savepointId = session.getTransaction().getSavepointId();
+        int savepointId = session.getTransaction().getSavepointId();
         // remove the old rows
         int rowScanCount = 0;
         for (rows.reset(); rows.hasNext();) {

@@ -26,13 +26,13 @@ import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageEngineManager;
-import org.lealone.test.UnitTestBase;
+import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 import org.lealone.transaction.TransactionMap;
 
-public class TransactionEngineTest extends UnitTestBase {
+public class TransactionEngineTest extends TestBase {
     @Test
     public void run() {
         TransactionEngine te = TransactionEngineManager.getInstance().getEngine(

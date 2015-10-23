@@ -19,43 +19,27 @@ package org.lealone.transaction.log;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.common.message.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.StringDataType;
 import org.lealone.storage.type.WriteBuffer;
 
-public class RedoLogValueType implements DataType {
+public class RedoLogKeyType implements DataType {
 
     @Override
     public int compare(Object a, Object b) {
-        throw DbException.getUnsupportedException("compare");
+        Long a1 = (Long) a;
+        Long b1 = (Long) b;
+        return a1.compareTo(b1);
     }
 
     @Override
     public int getMemory(Object obj) {
-        throw DbException.getUnsupportedException("getMemory");
+        return 30;
     }
 
     @Override
     public void write(WriteBuffer buff, Object obj) {
-        RedoLogValue v = (RedoLogValue) obj;
-
-        if (v.checkpoint != null) {
-            buff.put((byte) 0);
-            buff.putVarLong(v.checkpoint);
-        } else {
-            if (v.transactionName == null) {
-                buff.put((byte) 1);
-            } else {
-                buff.put((byte) 2);
-                StringDataType.INSTANCE.write(buff, v.transactionName);
-                StringDataType.INSTANCE.write(buff, v.allLocalTransactionNames);
-                buff.putVarLong(v.commitTimestamp);
-            }
-            buff.putVarInt(v.values.remaining());
-            buff.put(v.values);
-        }
+        buff.putVarLong((Long) obj);
     }
 
     @Override
@@ -67,26 +51,7 @@ public class RedoLogValueType implements DataType {
 
     @Override
     public Object read(ByteBuffer buff) {
-        int type = buff.get();
-        if (type == 0)
-            return new RedoLogValue(DataUtils.readVarLong(buff));
-
-        RedoLogValue v = new RedoLogValue();
-        if (type == 2) {
-            v.transactionName = StringDataType.INSTANCE.read(buff);
-            v.allLocalTransactionNames = StringDataType.INSTANCE.read(buff);
-            v.commitTimestamp = DataUtils.readVarLong(buff);
-        }
-
-        int len = DataUtils.readVarInt(buff);
-        if (len > 0) {
-            byte[] value = new byte[len];
-            buff.get(value);
-            v.values = ByteBuffer.wrap(value);
-        } else {
-            v.values = LogChunkMap.EMPTY_BUFFER;
-        }
-        return v;
+        return DataUtils.readVarLong(buff);
     }
 
     @Override

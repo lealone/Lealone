@@ -19,14 +19,27 @@ package org.lealone.transaction.log;
 
 import java.nio.ByteBuffer;
 
+//RedoLog文件中会有三种类型的日志条目
 public class RedoLogValue {
-    public final String mapName;
-    public final ByteBuffer key;
-    public final ByteBuffer value;
+    // 1. 本地事务只包含这个字段
+    public ByteBuffer values;
 
-    public RedoLogValue(String mapName, ByteBuffer key, ByteBuffer value) {
-        this.mapName = mapName;
-        this.key = key;
-        this.value = value;
+    // 2. 分布式事务多加这三个字段
+    public String transactionName;
+    public String allLocalTransactionNames;
+    public long commitTimestamp;
+
+    // 3. 检查点只有这个字段
+    public Long checkpoint;
+
+    public RedoLogValue() {
+    }
+
+    public RedoLogValue(ByteBuffer values) {
+        this.values = values;
+    }
+
+    public RedoLogValue(Long checkpoint) {
+        this.checkpoint = checkpoint;
     }
 }

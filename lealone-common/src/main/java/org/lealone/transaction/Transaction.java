@@ -89,7 +89,7 @@ public interface Transaction {
 
     void addSavepoint(String name);
 
-    long getSavepointId();
+    int getSavepointId();
 
     void commit();
 
@@ -99,7 +99,7 @@ public interface Transaction {
 
     void rollbackToSavepoint(String name);
 
-    void rollbackToSavepoint(long savepointId);
+    void rollbackToSavepoint(int savepointId);
 
     interface Participant {
         void addSavepoint(String name);

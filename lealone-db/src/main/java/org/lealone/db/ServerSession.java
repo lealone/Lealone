@@ -551,7 +551,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      *
      * @param index the position to which should be rolled back 
      */
-    public void rollbackTo(long index) {
+    public void rollbackTo(int index) {
         if (transaction != null) {
             checkCommitRollback();
             transaction.rollbackToSavepoint(index);

@@ -48,7 +48,6 @@ class TransactionValidator extends Thread {
 
     @Override
     public void run() {
-        // keeping list (batch) size small for now; that way we don't have an unbounded array (that we never resize)
         final List<QueuedMessage> drainedMessages = new ArrayList<>(128);
         outer: while (true) {
             if (backlog.drainTo(drainedMessages, drainedMessages.size()) == 0) {

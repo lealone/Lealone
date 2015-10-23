@@ -6,14 +6,17 @@
 package org.lealone.transaction;
 
 /**
- * A versioned value (possibly null). It contains a pointer to the old
- * value, and the value itself.
+ * A versioned value (possibly null). 
+ * It contains a pointer to the old value, and the value itself.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class VersionedValue {
-    /**
-     * The operation id.
-     */
-    public long operationId;
+
+    public long tid;
+
+    public int logId;
 
     /**
      * The value.
@@ -31,14 +34,7 @@ class VersionedValue {
     public String toString() {
         StringBuilder buff = new StringBuilder();
         buff.append("VersionedValue[ value = ").append(value);
-        buff.append(", operationId = ").append(operationId);
-
-        if (operationId != 0) {
-            buff.append(", transactionId = ").append(MVCCTransactionEngine.getTransactionId(operationId));
-            buff.append(", logId = ").append(MVCCTransactionEngine.getLogId(operationId));
-        }
-
-        buff.append("]");
+        buff.append(", tid = ").append(tid).append(", logId = ").append(logId).append(" ]");
         return buff.toString();
     }
 }

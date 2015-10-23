@@ -64,6 +64,9 @@ import java.util.concurrent.locks.LockSupport;
  * to be met that we no longer need.
  * <p>5. This scheme is not fair</p>
  * <p>6. Only the thread that calls register() may call await()</p>
+ * 
+ * @author Cassandra Group
+ * @author zhh
  */
 public final class WaitQueue {
 

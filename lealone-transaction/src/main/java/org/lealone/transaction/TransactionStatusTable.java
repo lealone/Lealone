@@ -18,24 +18,19 @@
 package org.lealone.transaction;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.util.New;
-import org.lealone.storage.type.ObjectDataType;
-import org.lealone.storage.type.StringDataType;
-import org.lealone.transaction.log.LogMap;
-import org.lealone.transaction.log.LogStorage;
 
 class TransactionStatusTable {
+
     private TransactionStatusTable() {
     }
 
     private final static Map<String, TransactionStatusCache> hostAndPortMap = New.hashMap();
 
-    /**
-     * The persisted map of transactionStatusTable.
-     * Key: transactionName, value: [ allLocalTransactionNames, commitTimestamp ].
-     */
-    private static LogMap<String, Object[]> map;
+    // key: transactionName, value: [ allLocalTransactionNames, commitTimestamp ].
+    private final static ConcurrentHashMap<String, Object[]> map = new ConcurrentHashMap<>();
 
     private static TransactionStatusCache newCache(String hostAndPort) {
         synchronized (TransactionStatusTable.class) {
@@ -49,13 +44,7 @@ class TransactionStatusTable {
         }
     }
 
-    static synchronized void init(LogStorage logStorage) {
-        if (map == null) {
-            map = logStorage.openLogMap("transactionStatusTable", StringDataType.INSTANCE, new ObjectDataType());
-        }
-    }
-
-    static void commit(MVCCTransaction transaction, String allLocalTransactionNames) {
+    static void put(MVCCTransaction transaction, String allLocalTransactionNames) {
         Object[] v = { allLocalTransactionNames, transaction.getCommitTimestamp() };
         map.put(transaction.transactionName, v);
     }

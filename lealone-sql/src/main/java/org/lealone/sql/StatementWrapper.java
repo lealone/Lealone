@@ -170,7 +170,7 @@ class StatementWrapper extends StatementBase {
         session.waitIfExclusiveModeEnabled();
         boolean callStop = true;
         synchronized (sync) {
-            long savepointId = session.getTransaction(statement).getSavepointId();
+            int savepointId = session.getTransaction(statement).getSavepointId();
             session.setCurrentCommand(this);
             try {
                 while (true) {

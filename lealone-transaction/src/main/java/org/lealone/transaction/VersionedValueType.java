@@ -13,6 +13,9 @@ import org.lealone.storage.type.WriteBuffer;
 
 /**
  * The value type for a versioned value.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class VersionedValueType implements DataType {
 
@@ -35,7 +38,7 @@ class VersionedValueType implements DataType {
         }
         VersionedValue a = (VersionedValue) aObj;
         VersionedValue b = (VersionedValue) bObj;
-        long comp = a.operationId - b.operationId;
+        long comp = a.tid - b.tid;
         if (comp == 0) {
             return valueType.compare(a.value, b.value);
         }
@@ -62,7 +65,7 @@ class VersionedValueType implements DataType {
     @Override
     public Object read(ByteBuffer buff) {
         VersionedValue v = new VersionedValue();
-        v.operationId = DataUtils.readVarLong(buff);
+        v.tid = DataUtils.readVarLong(buff);
         if (buff.get() == 1) {
             v.value = valueType.read(buff);
         }
@@ -74,7 +77,7 @@ class VersionedValueType implements DataType {
         boolean fastPath = true;
         for (int i = 0; i < len; i++) {
             VersionedValue v = (VersionedValue) obj[i];
-            if (v.operationId != 0 || v.value == null) {
+            if (v.tid != 0 || v.value == null) {
                 fastPath = false;
             }
         }
@@ -97,7 +100,7 @@ class VersionedValueType implements DataType {
     @Override
     public void write(WriteBuffer buff, Object obj) {
         VersionedValue v = (VersionedValue) obj;
-        buff.putVarLong(v.operationId);
+        buff.putVarLong(v.tid);
         if (v.value == null) {
             buff.put((byte) 0);
         } else {

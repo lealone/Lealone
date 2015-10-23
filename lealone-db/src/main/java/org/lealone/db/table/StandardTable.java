@@ -611,7 +611,7 @@ public class StandardTable extends TableBase {
     public void removeRow(ServerSession session, Row row) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
-        long savepointId = t.getSavepointId();
+        int savepointId = t.getSavepointId();
         try {
             for (int i = indexes.size() - 1; i >= 0; i--) {
                 Index index = indexes.get(i);
@@ -640,7 +640,7 @@ public class StandardTable extends TableBase {
     public void addRow(ServerSession session, Row row) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
-        long savepointId = t.getSavepointId();
+        int savepointId = t.getSavepointId();
         try {
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);

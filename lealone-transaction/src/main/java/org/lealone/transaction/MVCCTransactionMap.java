@@ -6,19 +6,23 @@
 package org.lealone.transaction;
 
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
-import org.lealone.transaction.log.LogMap;
+import org.lealone.transaction.MVCCTransaction.LogRecord;
 
 /**
  * A map that supports transactions.
  *
  * @param <K> the key type
  * @param <V> the value type
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
@@ -31,14 +35,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * Value: { transactionId, oldVersion, value }
      */
     private final StorageMap<K, VersionedValue> map;
-
-    /**
-     * If a record was read that was updated by this transaction, and the
-     * update occurred before this log id, the older version is read. 
-     * This is so that changes are not immediately visible, to support statement
-     * processing (for example "update test set id = id + 1").
-     */
-    private final long readLogId = Long.MAX_VALUE;
 
     MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, VersionedValue> map) {
         this.transaction = transaction;
@@ -66,81 +62,60 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * @param key the key
      * @return the value or null
      */
+    @SuppressWarnings("unchecked")
     @Override
     public V get(K key) {
-        return get(key, readLogId);
-    }
-
-    /**
-     * Get the value for the given key.
-     *
-     * @param key the key
-     * @param maxLogId the maximum log id
-     * @return the value or null
-     */
-    @SuppressWarnings("unchecked")
-    public V get(K key, long maxLogId) {
-        VersionedValue data = getValue(key, maxLogId);
-        return data == null ? null : (V) data.value;
-    }
-
-    private VersionedValue getValue(K key, long maxLog) {
         VersionedValue data = map.get(key);
-        return getValue(key, maxLog, data);
+        data = getValue(key, data);
+        return data == null ? null : (V) data.value;
     }
 
     /**
      * Get the versioned value for the given key.
      *
      * @param key the key
-     * @param maxLog the maximum log id of the entry
      * @param data the value stored in the main map
      * @return the value
      */
-    VersionedValue getValue(K key, long maxLog, VersionedValue data) {
+    private VersionedValue getValue(K key, VersionedValue data) {
         while (true) {
             if (data == null) {
                 // doesn't exist or deleted by a committed transaction
                 return null;
             }
-            long id = data.operationId;
-            if (id == 0) {
+            long tid = data.tid;
+            if (tid == 0) {
                 // it is committed
                 return data;
             }
-            int tx = MVCCTransactionEngine.getTransactionId(id);
-            if (tx == transaction.transactionId) {
-                // added by this transaction
-                if (MVCCTransactionEngine.getLogId(id) < maxLog) {
-                    return data;
-                }
+            if (tid == transaction.transactionId) {
+                return data;
             }
 
-            if (tx % 2 == 1) {
-                boolean isValid = transaction.transactionEngine.validateTransaction(tx, transaction);
+            if (tid % 2 == 1) {
+                boolean isValid = transaction.transactionEngine.validateTransaction(tid, transaction);
                 if (isValid) {
-                    transaction.transactionEngine.commitAfterValidate(tx);
-                    return getValue(key, maxLog, map.get(key));
+                    transaction.transactionEngine.commitAfterValidate(tid);
+                    return getValue(key, map.get(key));
                 }
             }
             // get the value before the uncommitted transaction
-            Object[] d;
-            synchronized (transaction.transactionEngine.undoLog) {
-                d = transaction.transactionEngine.undoLog.get(id);
-            }
+            LinkedList<LogRecord> d = transaction.transactionEngine.currentTransactions.get(tid).logRecords;
+
             if (d == null) {
                 // this entry should be committed or rolled back
                 // in the meantime (the transaction might still be open)
                 // or it might be changed again in a different
                 // transaction (possibly one with the same id)
                 data = map.get(key);
-                if (data != null && data.operationId == id) {
+                if (data != null && data.tid == tid) {
                     // the transaction was not committed correctly
                     throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
                             "The transaction log might be corrupt for key {0}", key);
                 }
             } else {
-                data = (VersionedValue) d[2];
+                LogRecord r = d.get(data.logId);
+                data = r.oldValue;
             }
         }
     }
@@ -212,13 +187,14 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      */
     public boolean trySet(K key, V value) {
         VersionedValue current = map.get(key);
-        VersionedValue newValue = new VersionedValue();
-        newValue.operationId = MVCCTransactionEngine.getOperationId(transaction.transactionId, transaction.logId);
-        newValue.value = value;
+        VersionedValue newValue = new VersionedValue(value);
+        newValue.tid = transaction.transactionId;
+        newValue.logId = transaction.logId;
+
         String mapName = getName();
         if (current == null) {
             // a new value
-            transaction.log(mapName, key, current);
+            transaction.log(mapName, key, current, newValue);
             VersionedValue old = map.putIfAbsent(key, newValue);
             if (old != null) {
                 transaction.logUndo();
@@ -226,10 +202,10 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             }
             return true;
         }
-        long id = current.operationId;
-        if (id == 0) {
+        long tid = current.tid;
+        if (tid == 0) {
             // committed
-            transaction.log(mapName, key, current);
+            transaction.log(mapName, key, current, newValue);
             // the transaction is committed:
             // overwrite the value
             if (!map.replace(key, current, newValue)) {
@@ -239,10 +215,9 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             }
             return true;
         }
-        int tx = MVCCTransactionEngine.getTransactionId(current.operationId);
-        if (tx == transaction.transactionId) {
+        if (tid == transaction.transactionId) {
             // added or updated by this transaction
-            transaction.log(mapName, key, current);
+            transaction.log(mapName, key, current, newValue);
             if (!map.replace(key, current, newValue)) {
                 // strange, somebody overwrote the value
                 // even though the change was not committed
@@ -252,10 +227,10 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             return true;
         }
 
-        if (tx % 2 == 1) {
-            boolean isValid = transaction.transactionEngine.validateTransaction(tx, transaction);
+        if (tid % 2 == 1) {
+            boolean isValid = transaction.transactionEngine.validateTransaction(tid, transaction);
             if (isValid) {
-                transaction.transactionEngine.commitAfterValidate(tx);
+                transaction.transactionEngine.commitAfterValidate(tid);
                 return trySet(key, value);
             }
         }
@@ -402,10 +377,9 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public long sizeAsLong() {
         long sizeRaw = map.sizeAsLong();
-        LogMap<Long, Object[]> undo = transaction.transactionEngine.undoLog;
-        long undoLogSize;
-        synchronized (undo) {
-            undoLogSize = undo.sizeAsLong();
+        long undoLogSize = 0;
+        for (MVCCTransaction t : transaction.transactionEngine.currentTransactions.values()) {
+            undoLogSize += t.logRecords.size();
         }
         if (undoLogSize == 0) {
             return sizeRaw;
@@ -418,7 +392,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             while (cursor.hasNext()) {
                 K key = cursor.next();
                 VersionedValue data = cursor.getValue();
-                data = getValue(key, readLogId, data);
+                data = getValue(key, data);
                 if (data != null && data.value != null) {
                     size++;
                 }
@@ -427,21 +401,21 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         }
         // the undo log is smaller than the map -
         // scan the undo log and subtract invisible entries
-        synchronized (undo) {
-            // re-fetch in case any transaction was committed now
-            long size = map.sizeAsLong();
-            String mapName = getName();
-            StorageMap<Object, Integer> temp = transaction.transactionEngine.logStorage.createTempMap();
-            try {
-                for (Entry<Long, Object[]> e : undo.entrySet()) {
-                    Object[] op = e.getValue();
-                    String m = (String) op[0];
+        // re-fetch in case any transaction was committed now
+        long size = map.sizeAsLong();
+        String mapName = getName();
+        StorageMap<Object, Integer> temp = transaction.transactionEngine.logStorage.createTempMap();
+        try {
+            for (MVCCTransaction t : transaction.transactionEngine.currentTransactions.values()) {
+                LinkedList<LogRecord> records = t.logRecords;
+                for (LogRecord r : records) {
+                    String m = r.mapName;
                     if (!mapName.equals(m)) {
                         // a different map - ignore
                         continue;
                     }
                     @SuppressWarnings("unchecked")
-                    K key = (K) op[1];
+                    K key = (K) r.key;
                     if (get(key) == null) {
                         Integer old = temp.put(key, 1);
                         // count each key only once (there might be multiple
@@ -451,11 +425,11 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                         }
                     }
                 }
-            } finally {
-                temp.remove();
             }
-            return size;
+        } finally {
+            temp.remove();
         }
+        return size;
     }
 
     /**
@@ -583,17 +557,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     /**
-     * Get the most recent value for the given key.
-     *
-     * @param key the key
-     * @return the value or null
-     */
-    @Override
-    public V getLatest(K key) {
-        return get(key, Long.MAX_VALUE);
-    }
-
-    /**
      * Whether the entry for this key was added or removed from this
      * session.
      *
@@ -607,8 +570,8 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             // doesn't exist or deleted by a committed transaction
             return false;
         }
-        int tx = MVCCTransactionEngine.getTransactionId(data.operationId);
-        return tx == transaction.transactionId;
+
+        return data.tid == transaction.transactionId;
     }
 
     /**
@@ -653,7 +616,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                     }
                     final K key = k;
                     VersionedValue data = cursor.getValue();
-                    data = getValue(key, readLogId, data);
+                    data = getValue(key, data);
                     if (data != null && data.value != null) {
                         @SuppressWarnings("unchecked")
                         final V value = (V) data.value;

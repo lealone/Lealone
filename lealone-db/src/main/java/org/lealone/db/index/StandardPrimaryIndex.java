@@ -126,7 +126,7 @@ public class StandardPrimaryIndex extends IndexBase {
 
         TransactionMap<Value, Value> map = getMap(session);
         Value key = ValueLong.get(row.getKey());
-        Value old = map.getLatest(key);
+        Value old = map.get(key);
         if (old != null) {
             String sql = "PRIMARY KEY ON " + table.getSQL();
             if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
