@@ -69,7 +69,7 @@ public class AOMap<K, V> implements StorageMap<K, V> {
             try {
                 bmap = new BufferedMap<>(map);
                 map = bmap;
-                AOStorage.addBufferedMap(bmap);
+                AOStorageService.addBufferedMap(bmap);
                 resetCount();
             } finally {
                 switching = false;
@@ -82,7 +82,7 @@ public class AOMap<K, V> implements StorageMap<K, V> {
         waitWriteFinishIfNeeded();
         synchronized (sync) {
             try {
-                AOStorage.removeBufferedMap(bmap);
+                AOStorageService.removeBufferedMap(bmap);
                 bmap.merge();
                 map = bmap.getMap();
                 resetCount();
@@ -289,6 +289,7 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     @Override
     public void close() {
         map.close();
+        AOStorageService.removeAOMap(this);
     }
 
     @Override

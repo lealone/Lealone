@@ -265,6 +265,7 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     public void close() {
         buffer.clear();
         map.close();
+        AOStorageService.removeBufferedMap(this);
     }
 
     @Override

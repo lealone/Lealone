@@ -17,6 +17,8 @@
  */
 package org.lealone.storage;
 
+import java.util.Map;
+
 import org.lealone.db.Constants;
 
 public class AOStorageEngine extends StorageEngineBase {
@@ -30,4 +32,16 @@ public class AOStorageEngine extends StorageEngineBase {
     public StorageBuilder getStorageBuilder() {
         return new AOStorageBuilder();
     }
+
+    @Override
+    public void init(Map<String, String> config) {
+        super.init(config);
+        AOStorageService.getInstance().start();
+    }
+
+    @Override
+    public void close() {
+        AOStorageService.getInstance().close();
+    }
+
 }

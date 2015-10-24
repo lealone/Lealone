@@ -17,17 +17,12 @@
  */
 package org.lealone.storage;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import org.lealone.db.Constants;
 import org.lealone.storage.btree.BTreeMap;
@@ -58,22 +53,6 @@ public class AOStorage implements Storage {
 
     private static final String TEMP_NAME_PREFIX = "temp" + Constants.NAME_SEPARATOR;
 
-    private static final CopyOnWriteArrayList<BufferedMap<?, ?>> bufferedMaps = new CopyOnWriteArrayList<>();
-    private static final CopyOnWriteArrayList<AOMap<?, ?>> aoMaps = new CopyOnWriteArrayList<>();
-    private static final AOStorageBackgroundThread backgroundThread = new AOStorageBackgroundThread();
-
-    public static void addBufferedMap(BufferedMap<?, ?> map) {
-        bufferedMaps.add(map);
-    }
-
-    public static void removeBufferedMap(BufferedMap<?, ?> map) {
-        bufferedMaps.remove(map);
-    }
-
-    public static void addAOMap(AOMap<?, ?> map) {
-        aoMaps.add(map);
-    }
-
     private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
     private final Map<String, Object> config;
 
@@ -96,8 +75,6 @@ public class AOStorage implements Storage {
                 }
             }
         }
-
-        backgroundThread.start();
     }
 
     @SuppressWarnings("unchecked")
@@ -134,14 +111,14 @@ public class AOStorage implements Storage {
     public <K, V> AOMap<K, V> openAOMap(String name, DataType keyType, DataType valueType) {
         BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType);
         AOMap<K, V> map = new AOMap<>(btreeMap);
-        addAOMap(map);
+        AOStorageService.addAOMap(map);
         return map;
     }
 
     public <K, V> BufferedMap<K, V> openBufferedMap(String name, DataType keyType, DataType valueType) {
         BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType);
         BufferedMap<K, V> map = new BufferedMap<>(btreeMap);
-        addBufferedMap(map);
+        AOStorageService.addBufferedMap(map);
         return map;
     }
 
@@ -179,13 +156,9 @@ public class AOStorage implements Storage {
 
     private void close(boolean closeMaps) {
         closed = true;
-        backgroundThread.close();
 
         for (StorageMap<?, ?> map : maps.values())
             map.close();
-
-        bufferedMaps.clear();
-        aoMaps.clear();
 
         maps.clear();
     }
@@ -206,71 +179,6 @@ public class AOStorage implements Storage {
     @Override
     public boolean hasMap(String name) {
         return maps.containsKey(name);
-    }
-
-    private static class AOStorageBackgroundThread extends Thread {
-        private static final ExecutorService executorService = Executors.newCachedThreadPool();
-        private static final ArrayList<Future<Void>> futures = new ArrayList<>();
-
-        private final int sleep;
-        private boolean running;
-
-        AOStorageBackgroundThread() {
-            super("AOStorageBackgroundThread");
-            this.sleep = 3000;
-            setDaemon(true);
-        }
-
-        void close() {
-            running = false;
-        }
-
-        @Override
-        public synchronized void start() {
-            if (!running) {
-                running = true;
-                super.start();
-            }
-        }
-
-        @Override
-        public void run() {
-            while (running) {
-                try {
-                    sleep(sleep);
-                } catch (InterruptedException e) {
-                    continue;
-                }
-
-                adaptiveOptimization();
-                merge();
-            }
-        }
-
-        private void adaptiveOptimization() {
-            for (AOMap<?, ?> map : AOStorage.aoMaps) {
-                if (map.getReadPercent() > 50)
-                    map.switchToNoBufferedMap();
-                else if (map.getWritePercent() > 50)
-                    map.switchToBufferedMap();
-            }
-        }
-
-        private void merge() {
-            for (BufferedMap<?, ?> map : AOStorage.bufferedMaps) {
-                futures.add(executorService.submit(map));
-            }
-
-            for (Future<Void> f : futures) {
-                try {
-                    f.get();
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-
-            futures.clear();
-        }
     }
 
     @Override
