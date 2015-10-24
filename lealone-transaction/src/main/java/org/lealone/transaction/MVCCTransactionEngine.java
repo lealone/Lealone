@@ -104,7 +104,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             Thread t = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    StorageMapSaveService.this.closeService();
+                    StorageMapSaveService.this.close();
                     try {
                         StorageMapSaveService.this.join();
                     } catch (InterruptedException e) {
@@ -114,7 +114,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             Runtime.getRuntime().addShutdownHook(t);
         }
 
-        void closeService() {
+        void close() {
             if (!isClosed) {
                 isClosed = true;
                 semaphore.release();
@@ -268,7 +268,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (isClusterMode)
             TransactionValidator.getInstance().close();
         if (storageMapSaveService != null) {
-            storageMapSaveService.closeService();
+            storageMapSaveService.close();
             try {
                 storageMapSaveService.join();
             } catch (InterruptedException e) {

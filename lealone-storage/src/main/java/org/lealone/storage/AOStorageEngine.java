@@ -22,6 +22,7 @@ import java.util.Map;
 import org.lealone.db.Constants;
 
 public class AOStorageEngine extends StorageEngineBase {
+
     public static final String NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
 
     public AOStorageEngine() {
