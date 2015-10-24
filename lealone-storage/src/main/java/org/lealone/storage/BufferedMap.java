@@ -86,11 +86,13 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
 
     @Override
     public V remove(K key) {
-        Object v = buffer.remove(key);
-        if (v == null)
-            v = map.remove(key);
+        Object v1 = buffer.remove(key);
+        Object v2 = map.remove(key);
 
-        return (V) v;
+        if (v1 == null)
+            v1 = v2;
+
+        return (V) v1;
     }
 
     @Override
@@ -359,10 +361,18 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
                     }
                 }
 
-                if (keyType.compare(bufferIteratorEntry.getKey(), mapCursorKey) < 0) {
+                int result = keyType.compare(bufferIteratorEntry.getKey(), mapCursorKey);
+                if (result <= 0) {
                     key = (K) bufferIteratorEntry.getKey();
                     value = (V) bufferIteratorEntry.getValue();
                     bufferIteratorEntry = null; // 下次bufferIterator要执行next
+
+                    // 相等时，使用bufferIterator中的，mapCursor下次也要next，
+                    // 有些上层Map(比如MVCCTransactionMap)会把remove操作变成put操作，
+                    // 把null值封装在一个VersionedValue中，然后调用get时取出VersionedValue，
+                    // 里面是null值的话，等事务提交后再从最原始的Map中删除它
+                    if (result == 0)
+                        mapCursorKey = null;
                 } else {
                     key = mapCursorKey;
                     value = mapCursor.getValue();
