@@ -32,7 +32,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * The map used for writing (the latest version).
      * <p>
      * Key: the key of the data.
-     * Value: { transactionId, oldVersion, value }
+     * Value: { transactionId, logId, value }
      */
     private final StorageMap<K, VersionedValue> map;
 

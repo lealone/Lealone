@@ -125,6 +125,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         public void run() {
             Long checkpoint = null;
             while (true) {
+                if (isClosed)
+                    break;
+
                 try {
                     semaphore.tryAcquire(sleep, TimeUnit.MILLISECONDS);
                     semaphore.drainPermits();
@@ -253,7 +256,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
         long tid = getTransactionId(autoCommit);
-        MVCCTransaction t = new MVCCTransaction(this, tid, MVCCTransaction.STATUS_OPEN, 0);
+        MVCCTransaction t = new MVCCTransaction(this, tid);
         t.setAutoCommit(autoCommit);
         currentTransactions.put(tid, t);
         return t;
@@ -323,7 +326,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     private void commitFinal(long tid) {
-        LinkedList<LogRecord> logRecords = currentTransactions.get(tid).logRecords;
+        // 避免并发提交(TransactionValidator线程和其他读写线程都有可能在检查到分布式事务有效后帮助提交最终事务)
+        MVCCTransaction t = currentTransactions.remove(tid);
+        if (t == null)
+            return;
+        LinkedList<LogRecord> logRecords = t.logRecords;
         StorageMap<Object, VersionedValue> map;
         for (LogRecord r : logRecords) {
             map = getMap(r.mapName);
@@ -342,7 +349,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             }
         }
 
-        currentTransactions.get(tid).endTransaction();
+        t.endTransaction();
     }
 
     RedoLogValue getRedoLog(MVCCTransaction t) {

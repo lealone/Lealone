@@ -65,13 +65,11 @@ public class MVCCTransaction implements Transaction {
 
     LinkedList<LogRecord> logRecords = new LinkedList<>();
 
-    MVCCTransaction(MVCCTransactionEngine engine, long tid, int status, int logId) {
+    MVCCTransaction(MVCCTransactionEngine engine, long tid) {
         transactionEngine = engine;
         transactionId = tid;
         transactionName = getTransactionName(engine.hostAndPort, tid);
-
-        this.status = status;
-        this.logId = logId;
+        status = MVCCTransaction.STATUS_OPEN;
     }
 
     static class LogRecord {
