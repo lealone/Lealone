@@ -33,7 +33,7 @@ import org.lealone.storage.rtree.RTreeMap;
 import org.lealone.storage.type.DataType;
 
 /**
- * adaptive optimization storage
+ * Adaptive optimization storage
  * 
  * @author zhh
  */

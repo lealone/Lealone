@@ -15,8 +15,7 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.storage.fs.FileStorage;
 
 /**
- * A storage mechanism that "persists" data in the off-heap area of the main
- * memory.
+ * A storage mechanism that "persists" data in the off-heap area of the main memory.
  * 
  * @author H2 Group
  * @author zhh

@@ -22,7 +22,6 @@ import java.util.Map;
 import org.lealone.storage.type.DataType;
 
 public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
-    protected int id;
     protected String name;
     protected DataType keyType;
     protected DataType valueType;
@@ -33,16 +32,6 @@ public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
         return this;
     }
 
-    public StorageMapBuilder<M, K, V> id(int id) {
-        this.id = id;
-        return this;
-    }
-
-    public StorageMapBuilder<M, K, V> config(Map<String, Object> config) {
-        this.config = config;
-        return this;
-    }
-
     public StorageMapBuilder<M, K, V> keyType(DataType keyType) {
         this.keyType = keyType;
         return this;
@@ -50,6 +39,11 @@ public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
 
     public StorageMapBuilder<M, K, V> valueType(DataType valueType) {
         this.valueType = valueType;
+        return this;
+    }
+
+    public StorageMapBuilder<M, K, V> config(Map<String, Object> config) {
+        this.config = config;
         return this;
     }
 

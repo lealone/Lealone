@@ -10,7 +10,7 @@ import java.util.HashMap;
 import org.lealone.common.util.DataUtils;
 
 /**
- * A builder for an AOStorage.
+ * A builder for AOStorage.
  * 
  * @author H2 Group
  * @author zhh
