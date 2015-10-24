@@ -48,4 +48,7 @@ public abstract class StorageEngineBase implements StorageEngine {
         throw DbException.getUnsupportedException("getLobStorage()");
     }
 
+    @Override
+    public void close() {
+    }
 }

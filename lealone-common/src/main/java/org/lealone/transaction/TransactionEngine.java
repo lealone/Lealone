@@ -27,6 +27,4 @@ public interface TransactionEngine extends PluggableEngine {
 
     boolean supportsMVCC();
 
-    void close();
-
 }

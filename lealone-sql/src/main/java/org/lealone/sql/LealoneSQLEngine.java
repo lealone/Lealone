@@ -74,4 +74,9 @@ public class LealoneSQLEngine implements SQLEngine {
         return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR,
                 (org.lealone.sql.expression.Expression) left, (org.lealone.sql.expression.Expression) right);
     }
+
+    @Override
+    public void close() {
+    }
+
 }

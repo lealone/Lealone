@@ -60,6 +60,7 @@ public class AOStorage implements Storage {
 
     private static final CopyOnWriteArrayList<BufferedMap<?, ?>> bufferedMaps = new CopyOnWriteArrayList<>();
     private static final CopyOnWriteArrayList<AOMap<?, ?>> aoMaps = new CopyOnWriteArrayList<>();
+    private static final AOStorageBackgroundThread backgroundThread = new AOStorageBackgroundThread();
 
     public static void addBufferedMap(BufferedMap<?, ?> map) {
         bufferedMaps.add(map);
@@ -75,7 +76,6 @@ public class AOStorage implements Storage {
 
     private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
     private final Map<String, Object> config;
-    private final AOStorageBackgroundThread backgroundThread;
 
     private boolean closed;
     private int nextTemporaryMapId;
@@ -97,7 +97,6 @@ public class AOStorage implements Storage {
             }
         }
 
-        backgroundThread = new AOStorageBackgroundThread();
         backgroundThread.start();
     }
 
@@ -214,7 +213,7 @@ public class AOStorage implements Storage {
         private static final ArrayList<Future<Void>> futures = new ArrayList<>();
 
         private final int sleep;
-        private boolean running = true;
+        private boolean running;
 
         AOStorageBackgroundThread() {
             super("AOStorageBackgroundThread");
@@ -224,6 +223,14 @@ public class AOStorage implements Storage {
 
         void close() {
             running = false;
+        }
+
+        @Override
+        public synchronized void start() {
+            if (!running) {
+                running = true;
+                super.start();
+            }
         }
 
         @Override

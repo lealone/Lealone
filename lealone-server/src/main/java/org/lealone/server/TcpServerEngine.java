@@ -37,4 +37,10 @@ public class TcpServerEngine implements ProtocolServerEngine {
     public void init(Map<String, String> config) {
         // tcpServer.init(config);
     }
+
+    @Override
+    public void close() {
+        tcpServer.stop();
+    }
+
 }
