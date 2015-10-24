@@ -266,6 +266,7 @@ public class Database implements DataHandler, DbObject {
         if (initialized)
             return;
 
+        initialized = true;
         compareMode = CompareMode.getInstance(null, 0, false);
         filePasswordHash = ci.getFilePasswordHash();
         fileEncryptionKey = ci.getFileEncryptionKey();
@@ -292,7 +293,6 @@ public class Database implements DataHandler, DbObject {
         initTraceSystem(ci);
         openDatabase();
         addShutdownHook();
-        initialized = true;
     }
 
     protected void initTraceSystem(ConnectionInfo ci) {
