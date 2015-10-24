@@ -82,6 +82,11 @@ public class Right extends DbObjectBase {
         this.grantee = grantee;
         this.grantedRight = grantedRight;
         this.grantedObject = grantedObject;
+
+        // TODO 如何更优雅的处理临时对象的授权(或者内存数据库中的所有对象的授权)
+        // grantedObject有可能为null，如: GRANT ALTER ANY SCHEMA
+        if (grantedObject != null && (grantedObject.isTemporary() || !grantedObject.getDatabase().isPersistent()))
+            setTemporary(true);
     }
 
     private static boolean appendRight(StringBuilder buff, int right, int mask, String name, boolean comma) {
