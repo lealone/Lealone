@@ -240,10 +240,10 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             DataType vt = ((VersionedValueType) map.getValueType()).valueType;
             for (ByteBuffer log : logs) {
                 key = (K) kt.read(log);
-                value = vt.read(log);
-                if (value == null)
+                if (log.get() == 0)
                     map.remove(key);
                 else {
+                    value = vt.read(log);
                     map.put(key, new VersionedValue(value));
                 }
             }
@@ -370,7 +370,12 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             writeBuffer.putInt(0);
 
             map.getKeyType().write(writeBuffer, r.key);
-            ((VersionedValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
+            if (value.value == null)
+                writeBuffer.put((byte) 0);
+            else {
+                writeBuffer.put((byte) 1);
+                ((VersionedValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
+            }
 
             writeBuffer.putInt(keyValueStart, writeBuffer.position() - keyValueStart - 4);
             memory = estimatedMemory.get(mapName);
