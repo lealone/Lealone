@@ -105,36 +105,38 @@ public class MetaRecord implements Comparable<MetaRecord> {
      */
     private int getCreateOrder() {
         switch (objectType) {
-        case DbObject.SETTING:
+        case DbObject.DATABASE:
             return 0;
-        case DbObject.USER:
+        case DbObject.SETTING:
             return 1;
-        case DbObject.SCHEMA:
+        case DbObject.USER:
             return 2;
-        case DbObject.FUNCTION_ALIAS:
+        case DbObject.SCHEMA:
             return 3;
-        case DbObject.USER_DATATYPE:
+        case DbObject.FUNCTION_ALIAS:
             return 4;
-        case DbObject.SEQUENCE:
+        case DbObject.USER_DATATYPE:
             return 5;
-        case DbObject.CONSTANT:
+        case DbObject.SEQUENCE:
             return 6;
-        case DbObject.TABLE_OR_VIEW:
+        case DbObject.CONSTANT:
             return 7;
-        case DbObject.INDEX:
+        case DbObject.TABLE_OR_VIEW:
             return 8;
-        case DbObject.CONSTRAINT:
+        case DbObject.INDEX:
             return 9;
-        case DbObject.TRIGGER:
+        case DbObject.CONSTRAINT:
             return 10;
-        case DbObject.ROLE:
+        case DbObject.TRIGGER:
             return 11;
-        case DbObject.RIGHT:
+        case DbObject.ROLE:
             return 12;
-        case DbObject.AGGREGATE:
+        case DbObject.RIGHT:
             return 13;
-        case DbObject.COMMENT:
+        case DbObject.AGGREGATE:
             return 14;
+        case DbObject.COMMENT:
+            return 15;
         default:
             throw DbException.throwInternalError("type=" + objectType);
         }
