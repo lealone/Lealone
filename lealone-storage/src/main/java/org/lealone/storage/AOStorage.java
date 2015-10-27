@@ -38,15 +38,6 @@ import org.lealone.storage.type.DataType;
  * @author zhh
  */
 public class AOStorage implements Storage {
-    // /**
-    // * The file name suffix of a new AOStorage file, used when compacting a storage.
-    // */
-    // public static final String SUFFIX_AO_STORE_NEW_FILE = ".newFile";
-    //
-    // /**
-    // * The file name suffix of a temporary AOStorage file, used when compacting a storage.
-    // */
-    // public static final String SUFFIX_AO_STORE_TEMP_FILE = ".tempFile";
 
     public static final String SUFFIX_AO_FILE = ".db";
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();

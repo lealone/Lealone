@@ -6,6 +6,7 @@
 package org.lealone.storage;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import org.lealone.common.util.DataUtils;
 
@@ -16,6 +17,14 @@ import org.lealone.common.util.DataUtils;
  * @author zhh
  */
 public class AOStorageBuilder extends StorageBuilder {
+
+    public AOStorageBuilder() {
+    }
+
+    public AOStorageBuilder(Map<String, String> defaultConfig) {
+        if (defaultConfig != null)
+            config.putAll(defaultConfig);
+    }
 
     /**
      * Open the storage.

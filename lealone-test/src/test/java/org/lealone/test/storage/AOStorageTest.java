@@ -11,18 +11,24 @@
  * KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-package org.lealone.storage;
+package org.lealone.test.storage;
 
 import java.util.ArrayList;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.storage.AOStorage;
+import org.lealone.storage.AOStorageBuilder;
+import org.lealone.storage.BufferedMap;
+import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.btree.BTreeChunk;
 import org.lealone.storage.btree.BTreeMap;
 import org.lealone.storage.rtree.RTreeMap;
 import org.lealone.storage.rtree.SpatialKey;
 import org.lealone.storage.type.StringDataType;
+import org.lealone.test.TestBase;
 
 public class AOStorageTest extends TestBase {
+
     public static void main(String[] args) {
         new AOStorageTest().run();
     }
@@ -38,14 +44,14 @@ public class AOStorageTest extends TestBase {
     AOStorage storage;
     BTreeMap<String, String> map;
     RTreeMap<String> rmap;
-    String storageName = TestBase.TEST_DIR + "aose";
+    String storageName = joinDirs("aose");
 
     void run() {
-        testPagePos();
+        // testPagePos();
         openStorage();
         try {
-            // openMap();
-            // testPut();
+            openMap();
+            testPut();
             // testSplit();
             // testGet();
             // testCompact();
@@ -56,7 +62,7 @@ public class AOStorageTest extends TestBase {
             // testPrintPage();
 
             // testBTreeMap();
-            testBufferedMap();
+            // testBufferedMap();
 
             // openRTreeMap();
             // testRTreePut();
@@ -66,7 +72,7 @@ public class AOStorageTest extends TestBase {
     }
 
     void testBufferedMap() {
-        BufferedMap<Integer, String> bmap = storage.openBufferedMap("bmap", null, null);
+        BufferedMap<Integer, String> bmap = storage.openBufferedMap("testBufferedMap", null, null);
         p(bmap.firstKey());
 
         for (int i = 10; i < 20; i += 2) {
@@ -202,12 +208,12 @@ public class AOStorageTest extends TestBase {
     }
 
     void openMap() {
-        map = storage.openBTreeMap("test", StringDataType.INSTANCE, StringDataType.INSTANCE);
+        map = storage.openBTreeMap("testBTreeMap", StringDataType.INSTANCE, StringDataType.INSTANCE);
         p(storage.getMapNames());
     }
 
     void openRTreeMap() {
-        rmap = storage.openRTreeMap("rtest", StringDataType.INSTANCE, 3);
+        rmap = storage.openRTreeMap("testRTreeMap", StringDataType.INSTANCE, 3);
         p(storage.getMapNames());
     }
 
@@ -260,7 +266,7 @@ public class AOStorageTest extends TestBase {
     }
 
     void testPut() {
-        for (int i = 10; i < 100; i++) {
+        for (int i = 10; i < 1000; i++) {
             map.put("" + i, "value" + i);
         }
         long version = map.commit();
