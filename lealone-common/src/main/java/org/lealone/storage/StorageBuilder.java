@@ -29,38 +29,6 @@ public abstract class StorageBuilder {
     }
 
     /**
-     * Disable auto-commit, by setting the auto-commit delay and auto-commit
-     * buffer size to 0.
-     * 
-     * @return this
-     */
-    public StorageBuilder autoCommitDisabled() {
-        // we have a separate config option so that
-        // no thread is started if the write delay is 0
-        // (if we only had a setter in the AOStore,
-        // the thread would need to be started in any case)
-        set("autoCommitBufferSize", 0);
-        return set("autoCommitDelay", 0);
-    }
-
-    /**
-     * Set the size of the write buffer, in KB disk space (for file-based
-     * stores). Unless auto-commit is disabled, changes are automatically
-     * saved if there are more than this amount of changes.
-     * <p>
-     * The default is 1024 KB.
-     * <p>
-     * When the value is set to 0 or lower, data is not automatically
-     * stored.
-     * 
-     * @param kb the write buffer size, in kilobytes
-     * @return this
-     */
-    public StorageBuilder autoCommitBufferSize(int kb) {
-        return set("autoCommitBufferSize", kb);
-    }
-
-    /**
      * Set the auto-compact target fill rate. If the average fill rate (the
      * percentage of the storage space that contains active data) of the
      * chunks is lower, then the chunks with a low fill rate are re-written.

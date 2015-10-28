@@ -19,7 +19,7 @@ import org.lealone.storage.type.WriteBuffer;
  * For b-tree nodes, the key at a given index is larger than the largest key of
  * the child at the same index.
  * <p>
- * File format: page length (including length): int check value: short map id:
+ * File format: page length (including length): int check value:
  * varInt number of keys: varInt type: byte (0: leaf, 1: node; +2: compressed)
  * compressed: bytes saved (varInt) keys leaf: values (one for each key) node:
  * children (1 more than keys)
@@ -48,7 +48,7 @@ public class BTreePage {
     /**
      * The total entry count of this page and all children.
      */
-    protected long totalCount;
+    private long totalCount;
 
     /**
      * The last result of a find operation is cached.
@@ -58,28 +58,28 @@ public class BTreePage {
     /**
      * The estimated memory used.
      */
-    protected int memory;
+    private int memory;
 
     /**
      * The keys.
      * <p>
      * The array might be larger than needed, to avoid frequent re-sizing.
      */
-    protected Object[] keys;
+    private Object[] keys;
 
     /**
      * The values.
      * <p>
      * The array might be larger than needed, to avoid frequent re-sizing.
      */
-    protected Object[] values;
+    private Object[] values;
 
     /**
      * The child page references.
      * <p>
      * The array might be larger than needed, to avoid frequent re-sizing.
      */
-    protected PageReference[] children;
+    private PageReference[] children;
 
     /**
      * Whether the page is an in-memory (not stored, or not yet stored) page,
@@ -535,6 +535,9 @@ public class BTreePage {
         int keyLength = keys.length;
         int type = children != null ? DataUtils.PAGE_TYPE_NODE : DataUtils.PAGE_TYPE_LEAF;
         buff.putInt(0).putShort((byte) 0).putVarInt(keyLength);
+        // if (type == DataUtils.PAGE_TYPE_LEAF && keyLength > 0) {
+        // map.getValueType().write(buff, keys[0]);
+        // }
         int typePos = buff.position();
         buff.put((byte) type);
         if (type == DataUtils.PAGE_TYPE_NODE) {
@@ -544,7 +547,7 @@ public class BTreePage {
             }
         }
         int compressStart = buff.position();
-        map.getKeyType().write(buff, keys, keyLength, true);
+        map.getKeyType().write(buff, keys, keyLength, true); // TODO 第4个参数目前未使用，考虑删除
         if (type == DataUtils.PAGE_TYPE_LEAF) {
             map.getValueType().write(buff, values, keyLength, false);
         }
@@ -556,10 +559,10 @@ public class BTreePage {
                 Compressor compressor;
                 int compressType;
                 if (compressionLevel == 1) {
-                    compressor = map.getStorage().getCompressorFast();
+                    compressor = storage.getCompressorFast();
                     compressType = DataUtils.PAGE_COMPRESSED;
                 } else {
-                    compressor = map.getStorage().getCompressorHigh();
+                    compressor = storage.getCompressorHigh();
                     compressType = DataUtils.PAGE_COMPRESSED_HIGH;
                 }
                 byte[] exp = new byte[expLen];
@@ -584,6 +587,11 @@ public class BTreePage {
         pos = DataUtils.getPagePos(chunkId, start, pageLength, type);
         chunk.pagePositions.add(pos);
         chunk.pagePositions.add(oldPos);
+        if (type == DataUtils.PAGE_TYPE_LEAF) {
+            chunk.leafPagePositions.add(pos);
+            chunk.leafPagePositions.add((long) pageLength);
+            chunk.leafPageCount++;
+        }
         storage.cachePage(pos, this, getMemory());
         if (type == DataUtils.PAGE_TYPE_NODE) {
             // cache again - this will make sure nodes stays in the cache
@@ -595,11 +603,15 @@ public class BTreePage {
         chunk.maxLenLive += max;
         chunk.pageCount++;
         chunk.pageCountLive++;
+
+        if (chunk.maxLen > BTreeChunk.MAX_SIZE)
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
+                    "Chunk too large, max size: {0}, current size: {1}", BTreeChunk.MAX_SIZE, chunk.maxLen);
         if (removedInMemory) {
             // if the page was removed _before_ the position was assigned, we
             // need to mark it removed here, so the fields are updated
             // when the next chunk is stored
-            map.storage.removePage(pos, memory);
+            storage.removePage(pos, memory);
         }
         return typePos + 1;
     }
@@ -941,32 +953,8 @@ public class BTreePage {
             p.addMemory(memory);
         }
 
-        map.storage.registerUnsavedPage(p.memory);
         return p;
     }
-
-    /**
-     * Create a copy of a page.
-     * 
-     * @param map the map
-     * @param version the version
-     * @param source the source page
-     * @return the page
-     */
-    // public static BTreePage create(BTreeMap<?, ?> map, long version, BTreePage source) {
-    // BTreePage p = new BTreePage(map, version);
-    // // the position is 0
-    // p.keys = source.keys;
-    // p.values = source.values;
-    // p.children = source.children;
-    // p.totalCount = source.totalCount;
-    // p.memory = source.memory;
-    // BTreeStore storage = map.storage;
-    // if (storage != null) {
-    // storage.registerUnsavedPage(p.memory);
-    // }
-    // return p;
-    // }
 
     /**
      * Read a page.

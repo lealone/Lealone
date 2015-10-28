@@ -17,13 +17,13 @@
  */
 package org.lealone.storage;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.storage.btree.BTreeMap;
 import org.lealone.storage.fs.FilePath;
@@ -131,45 +131,8 @@ public class AOStorage implements Storage {
         return config.containsKey("readOnly");
     }
 
-    public boolean isClosed() {
-        return closed;
-    }
-
-    @Override
-    public synchronized void close() {
-        close(true);
-    }
-
-    @Override
-    public void closeImmediately() {
-        close(false);
-    }
-
-    private void close(boolean closeMaps) {
-        closed = true;
-
-        for (StorageMap<?, ?> map : maps.values())
-            map.close();
-
-        maps.clear();
-    }
-
-    public synchronized void commit() {
-        for (StorageMap<?, ?> map : maps.values())
-            map.save();
-    }
-
     public Set<String> getMapNames() {
         return new HashSet<String>(maps.keySet());
-    }
-
-    public Collection<StorageMap<?, ?>> getMaps() {
-        return maps.values();
-    }
-
-    @Override
-    public boolean hasMap(String name) {
-        return maps.containsKey(name);
     }
 
     @Override
@@ -184,8 +147,18 @@ public class AOStorage implements Storage {
         } else if (mapType.equalsIgnoreCase("MemoryMap)")) {
             return openMemoryMap(name, keyType, valueType);
         } else {
-            return openAOMap(name, keyType, valueType);
+            throw DataUtils.newIllegalArgumentException("Unknow map type: {0}", mapType);
         }
+    }
+
+    @Override
+    public synchronized String nextTemporaryMapName() {
+        return TEMP_NAME_PREFIX + nextTemporaryMapId++;
+    }
+
+    @Override
+    public boolean hasMap(String name) {
+        return maps.containsKey(name);
     }
 
     @Override
@@ -195,16 +168,40 @@ public class AOStorage implements Storage {
 
     @Override
     public void flush() {
-        commit();
+        save();
     }
 
     @Override
     public void sync() {
-        commit();
+        save();
+    }
+
+    public synchronized void save() {
+        for (StorageMap<?, ?> map : maps.values())
+            map.save();
+    }
+
+    public boolean isClosed() {
+        return closed;
     }
 
     @Override
-    public synchronized String nextTemporaryMapName() {
-        return TEMP_NAME_PREFIX + nextTemporaryMapId++;
+    public void close() {
+        close(true);
     }
+
+    @Override
+    public void closeImmediately() {
+        close(false);
+    }
+
+    private synchronized void close(boolean closeMaps) {
+        closed = true;
+
+        for (StorageMap<?, ?> map : maps.values())
+            map.close();
+
+        maps.clear();
+    }
+
 }

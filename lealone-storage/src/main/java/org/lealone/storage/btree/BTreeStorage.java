@@ -81,17 +81,6 @@ public class BTreeStorage {
     private Compressor compressorHigh;
 
     private final Object compactSync = new Object();
-    private final int autoCompactFillRate;
-    private long autoCompactLastFileOpCount;
-
-    /**
-     * The estimated memory used by unsaved pages. This number is not accurate,
-     * also because it may be changed concurrently, and because temporary pages
-     * are counted.
-     */
-    private int unsavedMemory;
-    private final int autoCommitMemory;
-    private boolean saveNeeded;
 
     final long createVersion;
 
@@ -106,7 +95,6 @@ public class BTreeStorage {
     BTreeChunk lastChunk;
     private int lastChunkId;
 
-    private long lastCommitTime;
     private long lastTimeAbsolute;
 
     /**
@@ -153,8 +141,6 @@ public class BTreeStorage {
         if (map.isInMemory()) {
             cache = null;
             compressionLevel = 0;
-            autoCompactFillRate = 0;
-            autoCommitMemory = 0;
 
             createVersion = 0;
             creationTime = getTimeAbsolute();
@@ -173,14 +159,6 @@ public class BTreeStorage {
 
         value = config.get("compress");
         compressionLevel = value == null ? 0 : (Integer) value;
-
-        value = config.get("autoCompactFillRate");
-        autoCompactFillRate = value == null ? 50 : (Integer) value;
-
-        value = config.get("autoCommitBufferSize");
-        int kb = value == null ? 1024 : (Integer) value;
-        // 19 KB memory is about 1 KB storage
-        autoCommitMemory = kb * 1024 * 19;
 
         lastChunkId = 0;
         long createVersion = Long.MAX_VALUE;
@@ -212,7 +190,6 @@ public class BTreeStorage {
             creationTime = lastChunk.creationTime;
         else
             creationTime = getTimeAbsolute();
-        lastCommitTime = getTimeSinceCreation();
     }
 
     private long getTimeAbsolute() {
@@ -603,10 +580,8 @@ public class BTreeStorage {
     }
 
     private long save() {
-        int currentUnsavedMemory = unsavedMemory;
         long version = ++currentVersion;
         long time = getTimeSinceCreation();
-        lastCommitTime = time;
 
         WriteBuffer buff = getWriteBuffer();
         BTreeChunk c = new BTreeChunk(++lastChunkId);
@@ -614,6 +589,7 @@ public class BTreeStorage {
         c.time = time;
         c.version = version;
         c.pagePositions = new ArrayList<Long>();
+        c.leafPagePositions = new ArrayList<Long>();
 
         BTreePage p = map.root;
         if (p.getTotalCount() > 0) {
@@ -624,6 +600,9 @@ public class BTreeStorage {
 
         c.pagePositionsOffset = buff.position();
         for (long pos : c.pagePositions)
+            buff.putLong(pos);
+        c.leafPagePositionsOffset = buff.position();
+        for (long pos : c.leafPagePositions)
             buff.putLong(pos);
 
         int chunkBodyLength = buff.position();
@@ -649,11 +628,7 @@ public class BTreeStorage {
         }
 
         releaseWriteBuffer(buff);
-
-        // some pages might have been changed in the meantime (in the newest version)
-        unsavedMemory = Math.max(0, unsavedMemory - currentUnsavedMemory);
         lastStoredVersion = version - 1;
-
         return version;
     }
 
@@ -684,16 +659,6 @@ public class BTreeStorage {
         if (buff.capacity() <= 4 * 1024 * 1024) {
             writeBuffer = buff;
         }
-    }
-
-    /**
-     * Force all stored changes to be written to the storage. The default
-     * implementation calls FileChannel.force(true).
-     */
-    public void sync() { // TODO 不是必须的
-        checkOpen();
-        if (lastChunk != null && lastChunk.fileStorage != null)
-            lastChunk.fileStorage.sync();
     }
 
     /**
@@ -875,7 +840,7 @@ public class BTreeStorage {
      * @param pos the position
      * @return the chunk
      */
-    private BTreeChunk getChunk(long pos) {
+    BTreeChunk getChunk(long pos) {
         int chunkId = DataUtils.getPageChunkId(pos);
         BTreeChunk c = chunks.get(chunkId);
         if (c == null)
@@ -933,11 +898,6 @@ public class BTreeStorage {
         // we need to keep temporary pages,
         // to support reading old versions and rollback
         if (pos == 0) {
-            // the page was not yet stored:
-            // just using "unsavedMemory -= memory" could result in negative
-            // values, because in some cases a page is allocated, but never
-            // stored, so we need to use max
-            unsavedMemory = Math.max(0, unsavedMemory - memory);
             return;
         }
 
@@ -1019,32 +979,6 @@ public class BTreeStorage {
             v = Math.min(v, storeVersion);
         }
         return v;
-    }
-
-    /**
-     * Increment the number of unsaved pages.
-     * 
-     * @param memory the memory usage of the page
-     */
-    void registerUnsavedPage(int memory) {
-        unsavedMemory += memory;
-        int newValue = unsavedMemory;
-        if (newValue > autoCommitMemory && autoCommitMemory > 0) {
-            saveNeeded = true;
-        }
-    }
-
-    /**
-     * This method is called before writing to a map.
-     */
-    void beforeWrite() {
-        if (saveNeeded) {
-            saveNeeded = false;
-            // check again, because it could have been written by now
-            if (unsavedMemory > autoCommitMemory && autoCommitMemory > 0) {
-                commitAndSave();
-            }
-        }
     }
 
     /**
@@ -1194,56 +1128,6 @@ public class BTreeStorage {
     }
 
     /**
-     * Commit and save all changes, if there are any, and compact the storage if needed.
-     */
-    public void writeInBackground(int autoCommitDelay) {
-        if (closed) {
-            return;
-        }
-
-        // could also commit when there are many unsaved pages,
-        // but according to a test it doesn't really help
-        long time = getTimeSinceCreation();
-        if (time <= lastCommitTime + autoCommitDelay) {
-            return;
-        }
-        if (hasUnsavedChanges()) {
-            try {
-                commitAndSave();
-            } catch (Exception e) {
-                if (backgroundExceptionHandler != null) {
-                    backgroundExceptionHandler.uncaughtException(null, e);
-                    return;
-                }
-            }
-        }
-        if (autoCompactFillRate > 0 && lastChunk != null && lastChunk.fileStorage != null) {
-            FileStorage fileStorage = lastChunk.fileStorage;
-            try {
-                // whether there were file read or write operations since
-                // the last time
-                boolean fileOps;
-                long fileOpCount = fileStorage.getWriteCount() + fileStorage.getReadCount();
-                if (autoCompactLastFileOpCount != fileOpCount) {
-                    fileOps = true;
-                } else {
-                    fileOps = false;
-                }
-                // use a lower fill rate if there were any file operations
-                int fillRate = fileOps ? autoCompactFillRate / 3 : autoCompactFillRate;
-                // TODO how to avoid endless compaction if there is a bug
-                // in the bookkeeping?
-                compact(fillRate, autoCommitMemory);
-                autoCompactLastFileOpCount = fileStorage.getWriteCount() + fileStorage.getReadCount();
-            } catch (Exception e) {
-                if (backgroundExceptionHandler != null) {
-                    backgroundExceptionHandler.uncaughtException(null, e);
-                }
-            }
-        }
-    }
-
-    /**
      * Get the amount of memory used for caching, in MB.
      * 
      * @return the amount of memory used for caching
@@ -1286,27 +1170,5 @@ public class BTreeStorage {
      */
     public CacheLongKeyLIRS<BTreePage> getCache() {
         return cache;
-    }
-
-    /**
-     * Get the maximum memory (in bytes) used for unsaved pages. If this number
-     * is exceeded, unsaved changes are stored to disk.
-     * 
-     * @return the memory in bytes
-     */
-    public int getAutoCommitMemory() {
-        return autoCommitMemory;
-    }
-
-    /**
-     * Get the estimated memory (in bytes) of unsaved data. If the value exceeds
-     * the auto-commit memory, the changes are committed.
-     * <p>
-     * The returned value is an estimation only.
-     * 
-     * @return the memory in bytes
-     */
-    public int getUnsavedMemory() {
-        return unsavedMemory;
     }
 }

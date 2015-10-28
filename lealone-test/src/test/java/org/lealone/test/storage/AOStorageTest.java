@@ -200,7 +200,6 @@ public class AOStorageTest extends TestBase {
         AOStorageBuilder builder = new AOStorageBuilder();
         builder.storageName(storageName);
         builder.compress();
-        builder.autoCommitDisabled();
         builder.pageSplitSize(1024);
         builder.encryptionKey("mykey".toCharArray());
         // builder.inMemory();

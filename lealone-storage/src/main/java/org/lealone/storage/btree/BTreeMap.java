@@ -201,7 +201,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         if (readOnly) {
             throw DataUtils.newUnsupportedOperationException("This map is read-only");
         }
-        storage.beforeWrite();
     }
 
     /**
@@ -900,51 +899,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return writtenPageCount;
     }
 
-    // /**
-    // * Copy a map. All pages are copied.
-    // *
-    // * @param sourceMap the source map
-    // */
-    // public void copyFrom(BTreeMap<K, V> sourceMap) {
-    // beforeWrite();
-    // newRoot(copy(sourceMap.root, null));
-    // }
-    //
-    // private BTreePage copy(BTreePage source, CursorPos parent) {
-    // BTreePage target = BTreePage.create(this, storage.getCurrentVersion(), source);
-    // if (source.isLeaf()) {
-    // BTreePage child = target;
-    // for (CursorPos p = parent; p != null; p = p.parent) {
-    // p.page.setChild(p.index, child);
-    // p.page = p.page.copy(storage.getCurrentVersion());
-    // child = p.page;
-    // if (p.parent == null) {
-    // newRoot(p.page);
-    // beforeWrite();
-    // }
-    // }
-    // } else {
-    // // temporarily, replace child pages with empty pages,
-    // // to ensure there are no links to the old storage
-    // for (int i = 0; i < getChildPageCount(target); i++) {
-    // target.setChild(i, null);
-    // }
-    // CursorPos pos = new CursorPos(target, 0, parent);
-    // for (int i = 0; i < getChildPageCount(target); i++) {
-    // pos.index = i;
-    // long p = source.getChildPagePos(i);
-    // if (p != 0) {
-    // // p == 0 means no child
-    // // (for example the last entry of an r-tree node)
-    // // (the MVMap is also used for r-trees for compacting)
-    // copy(source.getChildPage(i), pos);
-    // }
-    // }
-    // target = pos.page;
-    // }
-    // return target;
-    // }
-
     @Override
     public int hashCode() {
         return name.hashCode();
@@ -999,10 +953,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     public void rollbackTo(long version) {
         storage.rollbackTo(version);
-    }
-
-    void writeInBackground(int autoCommitDelay) {
-        storage.writeInBackground(autoCommitDelay);
     }
 
     @Override

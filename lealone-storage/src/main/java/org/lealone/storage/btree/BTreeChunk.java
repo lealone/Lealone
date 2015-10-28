@@ -23,6 +23,8 @@ import org.lealone.storage.fs.FileStorage;
  */
 public class BTreeChunk {
 
+    public static final int MAX_SIZE = 1 << 31 - BTreeStorage.CHUNK_HEADER_SIZE;
+
     private static final int FORMAT_VERSION = 1;
 
     /**
@@ -87,6 +89,9 @@ public class BTreeChunk {
      */
     public ArrayList<Long> pagePositions;
     public int pagePositionsOffset;
+    public ArrayList<Long> leafPagePositions;
+    public int leafPagePositionsOffset;
+    public int leafPageCount;
 
     /**
      * The garbage collection priority. Priority 0 means it needs to be
@@ -162,6 +167,8 @@ public class BTreeChunk {
         }
 
         DataUtils.appendMap(buff, "pagePositionsOffset", pagePositionsOffset);
+        DataUtils.appendMap(buff, "leafPagePositionsOffset", leafPagePositionsOffset);
+        DataUtils.appendMap(buff, "leafPageCount", leafPageCount);
 
         DataUtils.appendMap(buff, "blockSize", BTreeStorage.BLOCK_SIZE);
         DataUtils.appendMap(buff, "format", FORMAT_VERSION);
@@ -194,6 +201,8 @@ public class BTreeChunk {
         c.unused = DataUtils.readHexLong(map, "unused", 0);
 
         c.pagePositionsOffset = DataUtils.readHexInt(map, "pagePositionsOffset", 0);
+        c.leafPagePositionsOffset = DataUtils.readHexInt(map, "leafPagePositionsOffset", 0);
+        c.leafPageCount = DataUtils.readHexInt(map, "leafPageCount", 0);
 
         long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {
