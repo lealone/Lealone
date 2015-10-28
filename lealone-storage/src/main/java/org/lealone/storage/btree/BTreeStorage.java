@@ -71,6 +71,12 @@ public class BTreeStorage {
      * number of entries.
      */
     private final CacheLongKeyLIRS<BTreePage> cache;
+    /**
+     * The time the storage was created, in milliseconds since 1970.
+     */
+    private final long creationTime;
+
+    private final Object compactSync = new Object();
 
     /**
      * The compression level for new pages (0 for disabled, 1 for fast, 2 for high).
@@ -79,13 +85,6 @@ public class BTreeStorage {
     private final int compressionLevel;
     private Compressor compressorFast;
     private Compressor compressorHigh;
-
-    private final Object compactSync = new Object();
-
-    /**
-     * The time the storage was created, in milliseconds since 1970.
-     */
-    private final long creationTime;
 
     /**
      * The newest chunk. If nothing was stored yet, this field is not set.
@@ -156,16 +155,17 @@ public class BTreeStorage {
         }
 
         try {
-            if (lastChunkId > 0)
-                readLastChunk();
+            if (lastChunkId > 0) {
+                lastChunk = readChunkHeader(lastChunkId);
+                currentVersion = lastChunk.version;
+                creationTime = lastChunk.creationTime;
+            } else {
+                currentVersion = 0;
+                creationTime = getTimeAbsolute();
+            }
         } catch (IllegalStateException e) {
-            panic(e);
+            throw panic(e);
         }
-
-        if (lastChunk != null)
-            creationTime = lastChunk.creationTime;
-        else
-            creationTime = getTimeAbsolute();
     }
 
     private long getTimeAbsolute() {
@@ -185,28 +185,13 @@ public class BTreeStorage {
         return Math.max(0, getTimeAbsolute() - creationTime);
     }
 
-    private void panic(IllegalStateException e) {
+    private IllegalStateException panic(IllegalStateException e) {
         if (backgroundExceptionHandler != null) {
             backgroundExceptionHandler.uncaughtException(null, e);
         }
         panicException = e;
         closeImmediately();
-        throw e;
-    }
-
-    private void readLastChunk() {
-        BTreeChunk last = readChunkHeader(lastChunkId);
-        setLastChunk(last);
-    }
-
-    private synchronized void setLastChunk(BTreeChunk last) {
-        lastChunk = last;
-        if (last == null) {
-            // no valid chunk
-            currentVersion = 0;
-        } else {
-            currentVersion = last.version;
-        }
+        return e;
     }
 
     private FileStorage getFileStorage(int chunkId) {
@@ -275,8 +260,7 @@ public class BTreeStorage {
         try {
             fileStorage.writeFully(pos, buffer);
         } catch (IllegalStateException e) {
-            panic(e);
-            throw e;
+            throw panic(e);
         }
     }
 
@@ -512,8 +496,7 @@ public class BTreeStorage {
         try {
             return save0();
         } catch (IllegalStateException e) {
-            panic(e);
-            return -1;
+            throw panic(e);
         }
     }
 
