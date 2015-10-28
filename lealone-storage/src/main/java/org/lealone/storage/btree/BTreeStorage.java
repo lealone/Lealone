@@ -392,6 +392,7 @@ public class BTreeStorage {
         }
 
         for (BTreeChunk c : chunks) {
+            c.unusedPages = new HashSet<>();
             int size = c.pagePositions.size();
             int unusedPageCount = 0;
             for (int i = 0; i < size; i += 2) {
@@ -399,6 +400,7 @@ public class BTreeStorage {
                 UnusedPage unusedPage = unusedPages.get(livePagePos);
                 if (unusedPage != null && unusedPage.versionCount() > 0) { // versionsToKeep) {
                     unusedPageCount++;
+                    c.unusedPages.add(livePagePos);
                 } else {
                     // break;
                 }
@@ -623,44 +625,10 @@ public class BTreeStorage {
     }
 
     /**
-     * Compact the storage by moving all live pages to new chunks.
-     * 
-     * @return if anything was written
-     */
-    public synchronized boolean compactRewriteFully() {
-        checkOpen();
-        if (lastChunk == null) {
-            // nothing to do
-            return false;
-        }
-        BTreeCursor<?, ?> cursor = (BTreeCursor<?, ?>) map.cursor(null);
-        BTreePage lastPage = null;
-        while (cursor.hasNext()) {
-            cursor.next();
-            BTreePage p = cursor.getPage();
-            if (p == lastPage) {
-                continue;
-            }
-            Object k = p.getKey(0);
-            Object v = p.getValue(0);
-            map.put(k, v);
-            lastPage = p;
-        }
-        save();
-        // TODO 删除之前的所有chunk
-        return true;
-    }
-
-    public boolean compact() {
-        return compact(100, Integer.MAX_VALUE);
-    }
-
-    /**
-     * Try to increase the fill rate by re-writing partially full chunks. Chunks
-     * with a low number of live items are re-written.
+     * Try to increase the fill rate by re-writing partially full chunks. 
+     * Chunks with a low number of live items are re-written.
      * <p>
-     * If the current fill rate is higher than the target fill rate, nothing is
-     * done.
+     * If the current fill rate is higher than the target fill rate, nothing is done.
      * <p>
      * Please note this method will not necessarily reduce the file size, as
      * empty chunks are not overwritten.
@@ -679,7 +647,7 @@ public class BTreeStorage {
             synchronized (this) {
                 old = compactGetOldChunks(targetFillRate, write);
             }
-            if (old == null || old.size() == 0) {
+            if (old == null || old.isEmpty()) {
                 return false;
             }
             compactRewrite(old);
@@ -784,12 +752,20 @@ public class BTreeStorage {
     }
 
     private void compactRewrite(ArrayList<BTreeChunk> old) {
-        HashSet<Integer> set = New.hashSet();
         for (BTreeChunk c : old) {
-            set.add(c.id);
-        }
-        if (!map.rewrite(set)) {
-            return;
+            for (int i = 0, size = c.pagePositions.size(); i < size; i += 2) {
+                long pos = c.pagePositions.get(i);
+                if (DataUtils.getPageType(pos) == DataUtils.PAGE_TYPE_LEAF && !c.unusedPages.contains(pos)) {
+                    BTreePage p = readPage(pos);
+                    if (p.getKeyCount() > 0) {
+                        Object key = p.getKey(0);
+                        Object value = map.get(key);
+                        if (value != null) {
+                            map.replace(key, value, value);
+                        }
+                    }
+                }
+            }
         }
         freeUnusedChunks();
         save();
@@ -940,43 +916,6 @@ public class BTreeStorage {
     }
 
     /**
-     * Open an old, stored version of a map.
-     * 
-     * @param version the version
-     * 
-     * @return the read-only map
-     */
-    @SuppressWarnings("unchecked")
-    <T extends BTreeMap<?, ?>> T openMapVersion(long version) {
-        BTreeChunk c = getChunkForVersion(version);
-        DataUtils.checkArgument(c != null, "Unknown version {0}", version);
-        BTreeMap<?, ?> m = map.openReadOnly();
-        m.setRootPos(c.rootPagePos, version);
-        return (T) m;
-    }
-
-    private BTreeChunk getChunkForVersion(long version) {
-        BTreeChunk c = getInMemoryChunkForVersion(version);
-        if (c == null) {
-            readAllChunks(false);
-            c = getInMemoryChunkForVersion(version);
-        }
-        return c;
-    }
-
-    private BTreeChunk getInMemoryChunkForVersion(long version) {
-        BTreeChunk newest = null;
-        for (BTreeChunk c : chunks.values()) {
-            if (c.version <= version) {
-                if (newest == null || c.id > newest.id) {
-                    newest = c;
-                }
-            }
-        }
-        return newest;
-    }
-
-    /**
      * Get the current version of the data. When a new storage is created, the
      * version is 0.
      * 
@@ -1032,12 +971,4 @@ public class BTreeStorage {
         }
     }
 
-    /**
-     * Get the cache.
-     * 
-     * @return the cache
-     */
-    public CacheLongKeyLIRS<BTreePage> getCache() {
-        return cache;
-    }
 }

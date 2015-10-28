@@ -157,7 +157,8 @@ public class AOStorageTest extends TestBase {
     }
 
     void testCompact() {
-        map.getStorage().compactRewriteFully();
+        int targetFillRate = 30;
+        map.getStorage().compact(targetFillRate, Integer.MAX_VALUE);
     }
 
     void testPagePos() {

@@ -7,6 +7,7 @@ package org.lealone.storage.btree;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.fs.FileStorage;
@@ -92,6 +93,8 @@ public class BTreeChunk {
     public ArrayList<Long> leafPagePositions;
     public int leafPagePositionsOffset;
     public int leafPageCount;
+
+    public HashSet<Long> unusedPages;
 
     /**
      * The garbage collection priority. Priority 0 means it needs to be

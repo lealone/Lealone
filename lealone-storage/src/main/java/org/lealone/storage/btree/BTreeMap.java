@@ -7,7 +7,6 @@ package org.lealone.storage.btree;
 
 import java.io.File;
 import java.util.AbstractSet;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -609,16 +608,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     }
 
     /**
-     * Iterate over a number of keys.
-     * 
-     * @param from the first key to return
-     * @return the iterator
-     */
-    public Iterator<K> keyIterator(K from) {
-        return new BTreeCursor<>(this, root, from);
-    }
-
-    /**
      * Get a cursor to iterate over a number of keys and values.
      * 
      * @param from the first key to return
@@ -694,61 +683,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return root.isLeaf() && root.getKeyCount() == 0;
     }
 
-    /**
-     * Open an old version for the given map.
-     * 
-     * @param version the version
-     * @return the map
-     */
-    private BTreeMap<K, V> openVersion(long version) {
-        if (readOnly) {
-            throw DataUtils.newUnsupportedOperationException("This map is read-only; need to call "
-                    + "the method on the writable map");
-        }
-        DataUtils.checkArgument(version >= storage.createVersion,
-                "Unknown version {0}; this map was created in version is {1}", version, storage.createVersion);
-        BTreePage newest = null;
-        // need to copy because it can change
-        BTreePage r = root;
-        if (version >= r.getVersion()
-                && (version == storage.getCurrentVersion() || version == storage.createVersion || r.getVersion() >= 0)) {
-            newest = r;
-        } else {
-            BTreePage last = oldRoots.peekFirst();
-            if (last == null || version < last.getVersion()) {
-                // smaller than all in-memory versions
-                return storage.openMapVersion(version);
-            }
-            Iterator<BTreePage> it = oldRoots.iterator();
-            while (it.hasNext()) {
-                BTreePage p = it.next();
-                if (p.getVersion() > version) {
-                    break;
-                }
-                last = p;
-            }
-            newest = last;
-        }
-        BTreeMap<K, V> m = openReadOnly();
-        m.root = newest;
-        return m;
-    }
-
-    /**
-     * Open a copy of the map in read-only mode.
-     * 
-     * @return the opened map
-     */
-    BTreeMap<K, V> openReadOnly() {
-        HashMap<String, Object> c = new HashMap<>(config);
-        c.put("readOnly", 1);
-
-        BTreeMap<K, V> m = new BTreeMap<>(name, keyType, valueType, c, storage);
-        m.root = root;
-        return m;
-    }
-
-    public long getVersion() {
+    long getVersion() {
         return root.getVersion();
     }
 
@@ -771,97 +706,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      */
     public String getType() {
         return "BTree";
-    }
-
-    /**
-     * Re-write any pages that belong to one of the chunks in the given set.
-     * 
-     * @param set the set of chunk ids
-     * @return whether rewriting was successful
-     */
-    boolean rewrite(Set<Integer> set) {
-        // read from old version, to avoid concurrent reads
-        long previousVersion = storage.getCurrentVersion() - 1;
-        if (previousVersion < storage.createVersion) {
-            // a new map
-            return true;
-        }
-        BTreeMap<K, V> readMap;
-        try {
-            readMap = openVersion(previousVersion);
-        } catch (IllegalArgumentException e) {
-            // unknown version: ok
-            // TODO should not rely on exception handling
-            return true;
-        }
-        try {
-            rewrite(readMap.root, set);
-            return true;
-        } catch (IllegalStateException e) {
-            // TODO should not rely on exception handling
-            if (DataUtils.getErrorCode(e.getMessage()) == DataUtils.ERROR_CHUNK_NOT_FOUND) {
-                // ignore
-                return false;
-            }
-            throw e;
-        }
-    }
-
-    private int rewrite(BTreePage p, Set<Integer> set) {
-        if (p.isLeaf()) {
-            long pos = p.getPos();
-            int chunkId = DataUtils.getPageChunkId(pos);
-            if (!set.contains(chunkId)) {
-                return 0;
-            }
-            if (p.getKeyCount() > 0) {
-                @SuppressWarnings("unchecked")
-                K key = (K) p.getKey(0);
-                V value = get(key);
-                if (value != null) {
-                    replace(key, value, value);
-                }
-            }
-            return 1;
-        }
-        int writtenPageCount = 0;
-        for (int i = 0; i < getChildPageCount(p); i++) {
-            long childPos = p.getChildPagePos(i);
-            if (childPos != 0 && DataUtils.getPageType(childPos) == DataUtils.PAGE_TYPE_LEAF) {
-                // we would need to load the page, and it's a leaf:
-                // only do that if it's within the set of chunks we are
-                // interested in
-                int chunkId = DataUtils.getPageChunkId(childPos);
-                if (!set.contains(chunkId)) {
-                    continue;
-                }
-            }
-            writtenPageCount += rewrite(p.getChildPage(i), set);
-        }
-        if (writtenPageCount == 0) {
-            long pos = p.getPos();
-            int chunkId = DataUtils.getPageChunkId(pos);
-            if (set.contains(chunkId)) {
-                // an inner node page that is in one of the chunks,
-                // but only points to chunks that are not in the set:
-                // if no child was changed, we need to do that now
-                // (this is not needed if anyway one of the children
-                // was changed, as this would have updated this
-                // page as well)
-                BTreePage p2 = p;
-                while (!p2.isLeaf()) {
-                    p2 = p2.getChildPage(0);
-                }
-                @SuppressWarnings("unchecked")
-                K key = (K) p2.getKey(0);
-                V value = get(key);
-                if (value != null) {
-                    replace(key, value, value);
-                }
-                writtenPageCount++;
-            }
-        }
-        return writtenPageCount;
     }
 
     @Override
