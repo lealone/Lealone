@@ -16,7 +16,7 @@ public class CursorPos {
     /**
      * The current page.
      */
-    public BTreePage page;
+    public final BTreePage page;
 
     /**
      * The current index.

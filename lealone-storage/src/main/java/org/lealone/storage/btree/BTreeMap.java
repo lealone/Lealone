@@ -38,6 +38,16 @@ import org.lealone.storage.type.ObjectDataType;
  */
 public class BTreeMap<K, V> implements StorageMap<K, V> {
 
+    /**
+     * A builder for this class.
+     */
+    public static class Builder<K, V> extends StorageMapBuilder<BTreeMap<K, V>, K, V> {
+        @Override
+        public BTreeMap<K, V> openMap() {
+            return new BTreeMap<>(name, keyType, valueType, config);
+        }
+    }
+
     protected final String name;
     protected final DataType keyType;
     protected final DataType valueType;
@@ -51,13 +61,8 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      */
     protected volatile BTreePage root;
 
-    protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config) {
-        this(name, keyType, valueType, config, null);
-    }
-
     @SuppressWarnings("unchecked")
-    protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config,
-            BTreeStorage storage) {
+    protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config) {
         DataUtils.checkArgument(name != null, "The name may not be null");
         DataUtils.checkArgument(config != null, "The config may not be null");
 
@@ -74,11 +79,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         this.readOnly = config.containsKey("readOnly");
         this.config = config;
 
-        if (storage == null) {
-            storage = new BTreeStorage((BTreeMap<Object, Object>) this);
-        }
-
-        this.storage = storage;
+        storage = new BTreeStorage((BTreeMap<Object, Object>) this);
 
         if (storage.lastChunk != null)
             setRootPos(storage.lastChunk.rootPagePos, storage.lastChunk.version);
@@ -131,17 +132,40 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return valueType;
     }
 
-    public boolean isReadOnly() {
-        return readOnly;
-    }
-
+    /**
+     * Get a value.
+     * 
+     * @param key the key
+     * @return the value, or null if not found
+     */
     @Override
-    public boolean isInMemory() {
-        return false;
+    @SuppressWarnings("unchecked")
+    public V get(Object key) {
+        return (V) binarySearch(root, key);
     }
 
-    public BTreeStorage getStorage() {
-        return storage;
+    /**
+     * Get the value for the given key, or null if not found.
+     * 
+     * @param p the page
+     * @param key the key
+     * @return the value or null
+     */
+    protected Object binarySearch(BTreePage p, Object key) {
+        int index = p.binarySearch(key);
+        if (!p.isLeaf()) {
+            if (index < 0) {
+                index = -index - 1;
+            } else {
+                index++;
+            }
+            p = p.getChildPage(index);
+            return binarySearch(p, key);
+        }
+        if (index >= 0) {
+            return p.getValue(index);
+        }
+        return null;
     }
 
     /**
@@ -274,237 +298,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     }
 
     /**
-     * Get a value.
-     * 
-     * @param key the key
-     * @return the value, or null if not found
-     */
-    @Override
-    @SuppressWarnings("unchecked")
-    public V get(Object key) {
-        return (V) binarySearch(root, key);
-    }
-
-    /**
-     * Get the value for the given key, or null if not found.
-     * 
-     * @param p the page
-     * @param key the key
-     * @return the value or null
-     */
-    protected Object binarySearch(BTreePage p, Object key) {
-        int index = p.binarySearch(key);
-        if (!p.isLeaf()) {
-            if (index < 0) {
-                index = -index - 1;
-            } else {
-                index++;
-            }
-            p = p.getChildPage(index);
-            return binarySearch(p, key);
-        }
-        if (index >= 0) {
-            return p.getValue(index);
-        }
-        return null;
-    }
-
-    /**
-     * Get the first key, or null if the map is empty.
-     * 
-     * @return the first key, or null
-     */
-    @Override
-    public K firstKey() {
-        return getFirstLast(true);
-    }
-
-    /**
-     * Get the last key, or null if the map is empty.
-     * 
-     * @return the last key, or null
-     */
-    @Override
-    public K lastKey() {
-        return getFirstLast(false);
-    }
-
-    /**
-     * Get the first (lowest) or last (largest) key.
-     * 
-     * @param first whether to retrieve the first key
-     * @return the key, or null if the map is empty
-     */
-    @SuppressWarnings("unchecked")
-    protected K getFirstLast(boolean first) {
-        if (sizeAsLong() == 0) {
-            return null;
-        }
-        BTreePage p = root;
-        while (true) {
-            if (p.isLeaf()) {
-                return (K) p.getKey(first ? 0 : p.getKeyCount() - 1);
-            }
-            p = p.getChildPage(first ? 0 : getChildPageCount(p) - 1);
-        }
-    }
-
-    /**
-     * Get the smallest key that is larger than the given key, or null if no
-     * such key exists.
-     * 
-     * @param key the key
-     * @return the result
-     */
-    @Override
-    public K higherKey(K key) {
-        return getMinMax(key, false, true);
-    }
-
-    /**
-     * Get the smallest key that is larger or equal to this key.
-     * 
-     * @param key the key
-     * @return the result
-     */
-    @Override
-    public K ceilingKey(K key) {
-        return getMinMax(key, false, false);
-    }
-
-    /**
-     * Get the largest key that is smaller than the given key, or null if no
-     * such key exists.
-     * 
-     * @param key the key
-     * @return the result
-     */
-    @Override
-    public K lowerKey(K key) {
-        return getMinMax(key, true, true);
-    }
-
-    /**
-     * Get the largest key that is smaller or equal to this key.
-     * 
-     * @param key the key
-     * @return the result
-     */
-    @Override
-    public K floorKey(K key) {
-        return getMinMax(key, true, false);
-    }
-
-    /**
-     * Get the smallest or largest key using the given bounds.
-     * 
-     * @param key the key
-     * @param min whether to retrieve the smallest key
-     * @param excluding if the given upper/lower bound is exclusive
-     * @return the key, or null if no such key exists
-     */
-    protected K getMinMax(K key, boolean min, boolean excluding) {
-        return getMinMax(root, key, min, excluding);
-    }
-
-    @SuppressWarnings("unchecked")
-    private K getMinMax(BTreePage p, K key, boolean min, boolean excluding) {
-        if (p.isLeaf()) {
-            int x = p.binarySearch(key);
-            if (x < 0) {
-                x = -x - (min ? 2 : 1);
-            } else if (excluding) {
-                x += min ? -1 : 1;
-            }
-            if (x < 0 || x >= p.getKeyCount()) {
-                return null;
-            }
-            return (K) p.getKey(x);
-        }
-        int x = p.binarySearch(key);
-        if (x < 0) {
-            x = -x - 1;
-        } else {
-            x++;
-        }
-        while (true) {
-            if (x < 0 || x >= getChildPageCount(p)) {
-                return null;
-            }
-            K k = getMinMax(p.getChildPage(x), key, min, excluding);
-            if (k != null) {
-                return k;
-            }
-            x += min ? -1 : 1;
-        }
-    }
-
-    @Override
-    public boolean containsKey(Object key) {
-        return get(key) != null;
-    }
-
-    /**
-     * Remove all entries.
-     */
-    @Override
-    public synchronized void clear() {
-        beforeWrite();
-        // TODO 如何跟踪被删除的page pos
-        root.removeAllRecursive();
-        newRoot(BTreePage.createEmpty(this, storage.getCurrentVersion()));
-    }
-
-    /**
-     * Close the map. Accessing the data is still possible (to allow concurrent
-     * reads), but it is marked as closed.
-     */
-    @Override
-    public void close() {
-        storage.close();
-    }
-
-    @Override
-    public boolean isClosed() {
-        return storage.isClosed();
-    }
-
-    /**
-     * Check whether the two values are equal.
-     * 
-     * @param a the first value
-     * @param b the second value
-     * @return true if they are equal
-     */
-    @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        if (a == b) {
-            return true;
-        } else if (a == null || b == null) {
-            return false;
-        }
-        return valueType.compare(a, b) == 0;
-    }
-
-    /**
-     * Replace a value for an existing key, if the value matches.
-     * 
-     * @param key the key (may not be null)
-     * @param oldValue the expected value
-     * @param newValue the new value
-     * @return true if the value was replaced
-     */
-    @Override
-    public synchronized boolean replace(K key, V oldValue, V newValue) {
-        V old = get(key);
-        if (areValuesEqual(old, oldValue)) {
-            put(key, newValue);
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * Remove a key-value pair, if the key exists.
      * 
      * @param key the key (may not be null)
@@ -575,14 +368,242 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     }
 
     /**
-     * Get a cursor to iterate over a number of keys and values.
+     * Replace a value for an existing key, if the value matches.
      * 
-     * @param from the first key to return
-     * @return the cursor
+     * @param key the key (may not be null)
+     * @param oldValue the expected value
+     * @param newValue the new value
+     * @return true if the value was replaced
      */
+    @Override
+    public synchronized boolean replace(K key, V oldValue, V newValue) {
+        V old = get(key);
+        if (areValuesEqual(old, oldValue)) {
+            put(key, newValue);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Get the first key, or null if the map is empty.
+     * 
+     * @return the first key, or null
+     */
+    @Override
+    public K firstKey() {
+        return getFirstLast(true);
+    }
+
+    /**
+     * Get the last key, or null if the map is empty.
+     * 
+     * @return the last key, or null
+     */
+    @Override
+    public K lastKey() {
+        return getFirstLast(false);
+    }
+
+    /**
+     * Get the first (lowest) or last (largest) key.
+     * 
+     * @param first whether to retrieve the first key
+     * @return the key, or null if the map is empty
+     */
+    @SuppressWarnings("unchecked")
+    protected K getFirstLast(boolean first) {
+        if (sizeAsLong() == 0) {
+            return null;
+        }
+        BTreePage p = root;
+        while (true) {
+            if (p.isLeaf()) {
+                return (K) p.getKey(first ? 0 : p.getKeyCount() - 1);
+            }
+            p = p.getChildPage(first ? 0 : getChildPageCount(p) - 1);
+        }
+    }
+
+    /**
+     * Get the largest key that is smaller than the given key, or null if no
+     * such key exists.
+     * 
+     * @param key the key
+     * @return the result
+     */
+    @Override
+    public K lowerKey(K key) {
+        return getMinMax(key, true, true);
+    }
+
+    /**
+     * Get the largest key that is smaller or equal to this key.
+     * 
+     * @param key the key
+     * @return the result
+     */
+    @Override
+    public K floorKey(K key) {
+        return getMinMax(key, true, false);
+    }
+
+    /**
+     * Get the smallest key that is larger than the given key, or null if no
+     * such key exists.
+     * 
+     * @param key the key
+     * @return the result
+     */
+    @Override
+    public K higherKey(K key) {
+        return getMinMax(key, false, true);
+    }
+
+    /**
+     * Get the smallest key that is larger or equal to this key.
+     * 
+     * @param key the key
+     * @return the result
+     */
+    @Override
+    public K ceilingKey(K key) {
+        return getMinMax(key, false, false);
+    }
+
+    /**
+     * Get the smallest or largest key using the given bounds.
+     * 
+     * @param key the key
+     * @param min whether to retrieve the smallest key
+     * @param excluding if the given upper/lower bound is exclusive
+     * @return the key, or null if no such key exists
+     */
+    protected K getMinMax(K key, boolean min, boolean excluding) {
+        return getMinMax(root, key, min, excluding);
+    }
+
+    @SuppressWarnings("unchecked")
+    private K getMinMax(BTreePage p, K key, boolean min, boolean excluding) {
+        if (p.isLeaf()) {
+            int x = p.binarySearch(key);
+            if (x < 0) {
+                x = -x - (min ? 2 : 1);
+            } else if (excluding) {
+                x += min ? -1 : 1;
+            }
+            if (x < 0 || x >= p.getKeyCount()) {
+                return null;
+            }
+            return (K) p.getKey(x);
+        }
+        int x = p.binarySearch(key);
+        if (x < 0) {
+            x = -x - 1;
+        } else {
+            x++;
+        }
+        while (true) {
+            if (x < 0 || x >= getChildPageCount(p)) {
+                return null;
+            }
+            K k = getMinMax(p.getChildPage(x), key, min, excluding);
+            if (k != null) {
+                return k;
+            }
+            x += min ? -1 : 1;
+        }
+    }
+
+    /**
+     * Check whether the two values are equal.
+     * 
+     * @param a the first value
+     * @param b the second value
+     * @return true if they are equal
+     */
+    @Override
+    public boolean areValuesEqual(Object a, Object b) {
+        if (a == b) {
+            return true;
+        } else if (a == null || b == null) {
+            return false;
+        }
+        return valueType.compare(a, b) == 0;
+    }
+
+    @Override
+    public int size() {
+        long size = sizeAsLong();
+        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
+    }
+
+    @Override
+    public long sizeAsLong() {
+        return root.getTotalCount();
+    }
+
+    @Override
+    public boolean containsKey(Object key) {
+        return get(key) != null;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return sizeAsLong() == 0;
+    }
+
+    @Override
+    public boolean isInMemory() {
+        return false;
+    }
+
     @Override
     public StorageMapCursor<K, V> cursor(K from) {
         return new BTreeCursor<>(this, root, from);
+    }
+
+    /**
+     * Remove all entries.
+     */
+    @Override
+    public synchronized void clear() {
+        beforeWrite();
+        // TODO 如何跟踪被删除的page pos
+        root.removeAllRecursive();
+        newRoot(BTreePage.createEmpty(this, storage.getCurrentVersion()));
+    }
+
+    @Override
+    public void remove() {
+        storage.remove();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return storage.isClosed();
+    }
+
+    /**
+     * Close the map. Accessing the data is still possible (to allow concurrent
+     * reads), but it is marked as closed.
+     */
+    @Override
+    public void close() {
+        storage.close();
+    }
+
+    @Override
+    public void save() {
+        storage.save();
+    }
+
+    public boolean isReadOnly() {
+        return readOnly;
+    }
+
+    public BTreeStorage getStorage() {
+        return storage;
     }
 
     public Set<Map.Entry<K, V>> entrySet() {
@@ -628,28 +649,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     }
 
-    @Override
-    public int size() {
-        long size = sizeAsLong();
-        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
-    }
-
-    /**
-    * Get the number of entries, as a long.
-    * 
-    * @return the number of entries
-    */
-    @Override
-    public long sizeAsLong() {
-        return root.getTotalCount();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        // could also use (sizeAsLong() == 0)
-        return root.isLeaf() && root.getKeyCount() == 0;
-    }
-
     long getVersion() {
         return root.getVersion();
     }
@@ -666,12 +665,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return p.getRawChildPageCount();
     }
 
-    /**
-     * Get the map type. When opening an existing map, the map type must match.
-     * 
-     * @return the map type
-     */
-    public String getType() {
+    protected String getType() {
         return "BTree";
     }
 
@@ -704,23 +698,4 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         System.out.println(root.getPrettyPageInfo(readOffLinePage));
     }
 
-    /**
-     * A builder for this class.
-     */
-    public static class Builder<K, V> extends StorageMapBuilder<BTreeMap<K, V>, K, V> {
-        @Override
-        public BTreeMap<K, V> openMap() {
-            return new BTreeMap<>(name, keyType, valueType, config);
-        }
-    }
-
-    @Override
-    public void remove() {
-        storage.remove();
-    }
-
-    @Override
-    public void save() {
-        storage.save();
-    }
 }

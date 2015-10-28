@@ -19,7 +19,7 @@ import org.lealone.storage.StorageMapCursor;
  * @author H2 Group
  * @author zhh
  */
-public class BTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
+class BTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
 
     private final BTreeMap<K, ?> map;
     private final K from;

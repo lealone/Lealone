@@ -25,6 +25,7 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.storage.AOStorage;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
+import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.WriteBuffer;
@@ -113,7 +114,7 @@ public class BTreeStorage {
      *             occurred while opening
      * @throws IllegalArgumentException if the directory does not exist
      */
-    protected BTreeStorage(BTreeMap<Object, Object> map) {
+    BTreeStorage(BTreeMap<Object, Object> map) {
         this.map = map;
         Map<String, Object> config = map.config;
         String storageName = (String) config.get("storageName");
@@ -421,7 +422,16 @@ public class BTreeStorage {
         }
     }
 
-    public boolean isClosed() {
+    /**
+     * Remove this storage.
+     */
+    synchronized void remove() {
+        checkOpen();
+        closeImmediately();
+        FilePath.get(btreeStorageName).delete();
+    }
+
+    boolean isClosed() {
         return closed;
     }
 
@@ -514,11 +524,9 @@ public class BTreeStorage {
      */
     private boolean hasUnsavedChanges() {
         checkOpen();
-        if (!map.isClosed()) {
-            long v = map.getVersion();
-            if (v >= 0 && v > lastStoredVersion) {
-                return true;
-            }
+        long v = map.getVersion();
+        if (v >= 0 && v > lastStoredVersion) {
+            return true;
         }
         return false;
     }
@@ -872,16 +880,6 @@ public class BTreeStorage {
      */
     public long getCurrentVersion() {
         return currentVersion;
-    }
-
-    /**
-     * Remove this storage. Please note rolling back this operation does not restore
-     * the data; if you need this ability, use Map.clear().
-     */
-    public synchronized void remove() {
-        checkOpen();
-        map.clear();
-        save();
     }
 
     /**
