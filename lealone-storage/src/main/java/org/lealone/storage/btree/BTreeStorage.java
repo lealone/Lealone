@@ -60,7 +60,6 @@ public class BTreeStorage {
      * If smaller zero, chunks are directly overwritten if unused.
      */
     private final long retentionTime;
-    private final int versionsToKeep;
     private final boolean reuseSpace;
     private final int pageSplitSize;
     private final UncaughtExceptionHandler backgroundExceptionHandler;
@@ -82,8 +81,6 @@ public class BTreeStorage {
 
     private final Object compactSync = new Object();
 
-    final long createVersion;
-
     /**
      * The time the storage was created, in milliseconds since 1970.
      */
@@ -102,10 +99,6 @@ public class BTreeStorage {
      */
     private long lastStoredVersion = -1;
 
-    /**
-     * The version of the current store operation (if any).
-     */
-    private volatile long currentStoreVersion = -1;
     private long currentVersion;
 
     private boolean closed;
@@ -122,14 +115,12 @@ public class BTreeStorage {
      */
     protected BTreeStorage(BTreeMap<Object, Object> map) {
         this.map = map;
-        btreeStorageName = map.getBTreeStorageName();
         Map<String, Object> config = map.config;
+        String storageName = (String) config.get("storageName");
+        btreeStorageName = storageName + File.separator + map.getName();
 
         Object value = config.get("retentionTime");
         retentionTime = value == null ? 45000 : (Long) value;
-
-        value = config.get("versionsToKeep");
-        versionsToKeep = value == null ? 5 : (Integer) value;
 
         reuseSpace = config.containsKey("reuseSpace");
 
@@ -152,7 +143,6 @@ public class BTreeStorage {
         compressionLevel = value == null ? 0 : (Integer) value;
 
         lastChunkId = 0;
-        long createVersion = Long.MAX_VALUE;
         if (!FileUtils.exists(btreeStorageName))
             FileUtils.createDirectories(btreeStorageName);
         String[] files = new File(btreeStorageName).list();
@@ -161,14 +151,8 @@ public class BTreeStorage {
                 int id = Integer.parseInt(f.substring(0, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
                 if (id > lastChunkId)
                     lastChunkId = id;
-
-                if (id < createVersion)
-                    createVersion = id;
             }
         }
-        if (createVersion == Long.MAX_VALUE)
-            createVersion = 0;
-        this.createVersion = createVersion;
 
         try {
             if (lastChunkId > 0)
@@ -516,13 +500,10 @@ public class BTreeStorage {
         }
 
         try {
-            currentStoreVersion = currentVersion;
             return save0();
         } catch (IllegalStateException e) {
             panic(e);
             return -1;
-        } finally {
-            currentStoreVersion = -1;
         }
     }
 
@@ -881,38 +862,6 @@ public class BTreeStorage {
 
     public int getPageSplitSize() {
         return pageSplitSize;
-    }
-
-    public boolean getReuseSpace() {
-        return reuseSpace;
-    }
-
-    public long getRetentionTime() {
-        return retentionTime;
-    }
-
-    /**
-     * Get the oldest version to retain in memory (for in-memory storages).
-     * 
-     * @return the version
-     */
-    public long getVersionsToKeep() {
-        return versionsToKeep;
-    }
-
-    /**
-     * Get the oldest version to retain in memory, which is the manually set
-     * retain version, or the current store version (whatever is older).
-     * 
-     * @return the version
-     */
-    long getOldestVersionToKeep() {
-        long v = currentVersion;
-        long storeVersion = currentStoreVersion;
-        if (storeVersion > -1) {
-            v = Math.min(v, storeVersion);
-        }
-        return v;
     }
 
     /**

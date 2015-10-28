@@ -5,7 +5,6 @@
  */
 package org.lealone.storage.btree;
 
-import java.io.File;
 import java.util.AbstractSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -38,8 +37,6 @@ import org.lealone.storage.type.ObjectDataType;
  * @author zhh
  */
 public class BTreeMap<K, V> implements StorageMap<K, V> {
-
-    protected final ConcurrentArrayList<BTreePage> oldRoots = new ConcurrentArrayList<>();
 
     protected final String name;
     protected final DataType keyType;
@@ -89,18 +86,13 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
             setRootPos(0, -1);
     }
 
-    String getBTreeStorageName() {
-        String storageName = (String) config.get("storageName");
-        return storageName + File.separator + name;
-    }
-
     /**
      * Set the position of the root page.
      * 
      * @param rootPos the position, 0 for empty
      * @param version the version of the root
      */
-    void setRootPos(long rootPos, long version) {
+    private void setRootPos(long rootPos, long version) {
         if (rootPos == 0) {
             root = BTreePage.createEmpty(this, version);
         } else {
@@ -261,32 +253,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      */
     protected void newRoot(BTreePage newRoot) {
         if (root != newRoot) {
-            removeUnusedOldVersions();
-            if (root.getVersion() != newRoot.getVersion()) {
-                BTreePage last = oldRoots.peekLast();
-                if (last == null || last.getVersion() != root.getVersion()) {
-                    oldRoots.add(root);
-                }
-            }
             root = newRoot;
-        }
-    }
-
-    /**
-     * Forget those old versions that are no longer needed.
-     */
-    void removeUnusedOldVersions() {
-        long oldest = storage.getOldestVersionToKeep();
-        if (oldest == -1) {
-            return;
-        }
-        BTreePage last = oldRoots.peekLast(); // 后面的是最近加入的
-        while (true) {
-            BTreePage p = oldRoots.peekFirst();
-            if (p == null || p.getVersion() >= oldest || p == last) { // 保留最后一个
-                break;
-            }
-            oldRoots.removeFirst(p);
         }
     }
 
