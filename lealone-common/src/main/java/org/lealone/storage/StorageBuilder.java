@@ -5,7 +5,6 @@
  */
 package org.lealone.storage;
 
-import java.nio.file.FileStore;
 import java.util.HashMap;
 
 import org.lealone.common.util.DataUtils;
@@ -26,24 +25,6 @@ public abstract class StorageBuilder {
     private StorageBuilder set(String key, Object value) {
         config.put(key, value);
         return this;
-    }
-
-    /**
-     * Set the auto-compact target fill rate. If the average fill rate (the
-     * percentage of the storage space that contains active data) of the
-     * chunks is lower, then the chunks with a low fill rate are re-written.
-     * Also, if the percentage of empty space between chunks is higher than
-     * this value, then chunks at the end of the file are moved. Compaction
-     * stops if the target fill rate is reached.
-     * <p>
-     * The default value is 50 (50%). The value 0 disables auto-compacting.
-     * <p>
-     * 
-     * @param percent the target fill rate
-     * @return this
-     */
-    public StorageBuilder autoCompactFillRate(int percent) {
-        return set("autoCompactFillRate", percent);
     }
 
     /**
@@ -163,55 +144,13 @@ public abstract class StorageBuilder {
     }
 
     /**
-     * Use the provided file storage instead of the default one.
-     * <p>
-     * File storages passed in this way need to be open. They are not closed
-     * when closing the storage.
-     * <p>
-     * Please note that any kind of storage (including an off-heap storage) is
-     * considered a "persistence", while an "in-memory storage" means objects
-     * are not persisted and fully kept in the JVM heap.
-     * 
-     * @param fileStorage the file storage
-     * @return this
-     */
-    public StorageBuilder fileStorage(FileStore fileStorage) {
-        return set("fileStorage", fileStorage);
-    }
-
-    /**
-     * How long to retain old, persisted chunks, in milliseconds. Chunks that
-     * are older may be overwritten once they contain no live data.
-     * <p>
-     * The default value is 45000 (45 seconds) when using the default file
-     * store. It is assumed that a file system and hard disk will flush all
-     * write buffers within this time. Using a lower value might be dangerous,
-     * unless the file system and hard disk flush the buffers earlier. To
-     * manually flush the buffers, use
-     * <code>MVStore.getFile().force(true)</code>, however please note that
-     * according to various tests this does not always work as expected
-     * depending on the operating system and hardware.
-     * <p>
-     * The retention time needs to be long enough to allow reading old chunks
-     * while traversing over the entries of a map.
-     * <p>
-     * This setting is not persisted.
-     * 
-     * @param ms how many milliseconds to retain old chunks (0 to overwrite them
-     *            as early as possible)
-     */
-    public StorageBuilder retentionTime(int ms) {
-        return set("retentionTime", ms);
-    }
-
-    /**
-     * How many versions to retain for in-memory stores. If not set, 5 old
+     * How many versions to retain. If not set, 3 old
      * versions are retained.
      * 
      * @param count the number of versions to keep
      */
-    public StorageBuilder versionsToKeep(int count) {
-        return set("versionsToKeep", count);
+    public StorageBuilder maxVersions(int count) {
+        return set("maxVersions", count);
     }
 
     /**

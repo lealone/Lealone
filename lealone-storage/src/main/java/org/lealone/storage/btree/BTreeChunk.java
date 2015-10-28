@@ -34,11 +34,6 @@ public class BTreeChunk {
     public final int id;
 
     /**
-     * The chunk creation time.
-     */
-    public final long creationTime;
-
-    /**
      * The version stored in this chunk.
      */
     public long version;
@@ -74,18 +69,6 @@ public class BTreeChunk {
     public long maxLenLive;
 
     /**
-     * When this chunk was created, in milliseconds after the storage was created.
-     */
-    public long time;
-
-    /**
-     * When this chunk was no longer needed, in milliseconds after the storage was
-     * created. After this, the chunk is kept alive a bit longer (in case it is
-     * referenced in older versions).
-     */
-    public long unused;
-
-    /**
      * New and old page positions.
      */
     public ArrayList<Long> pagePositions;
@@ -108,12 +91,6 @@ public class BTreeChunk {
 
     BTreeChunk(int id) {
         this.id = id;
-        creationTime = System.currentTimeMillis();
-    }
-
-    BTreeChunk(int id, long creationTime) {
-        this.id = id;
-        this.creationTime = creationTime;
     }
 
     /**
@@ -149,7 +126,6 @@ public class BTreeChunk {
         StringBuilder buff = new StringBuilder();
 
         DataUtils.appendMap(buff, "id", id);
-        DataUtils.appendMap(buff, "creationTime", creationTime);
         DataUtils.appendMap(buff, "version", version);
         DataUtils.appendMap(buff, "rootPagePos", rootPagePos);
 
@@ -162,11 +138,6 @@ public class BTreeChunk {
         DataUtils.appendMap(buff, "maxLen", maxLen);
         if (maxLen != maxLenLive) {
             DataUtils.appendMap(buff, "maxLenLive", maxLenLive);
-        }
-
-        DataUtils.appendMap(buff, "time", time);
-        if (unused != 0) {
-            DataUtils.appendMap(buff, "unused", unused);
         }
 
         DataUtils.appendMap(buff, "pagePositionsOffset", pagePositionsOffset);
@@ -187,8 +158,7 @@ public class BTreeChunk {
     public static BTreeChunk fromString(String s) {
         HashMap<String, String> map = DataUtils.parseMap(s);
         int id = DataUtils.readHexInt(map, "id", 0);
-        long creationTime = DataUtils.readHexLong(map, "creationTime", 0);
-        BTreeChunk c = new BTreeChunk(id, creationTime);
+        BTreeChunk c = new BTreeChunk(id);
         c.version = DataUtils.readHexLong(map, "version", id);
         c.rootPagePos = DataUtils.readHexLong(map, "rootPagePos", 0);
 
@@ -199,9 +169,6 @@ public class BTreeChunk {
 
         c.maxLen = DataUtils.readHexLong(map, "maxLen", 0);
         c.maxLenLive = DataUtils.readHexLong(map, "maxLenLive", c.maxLen);
-
-        c.time = DataUtils.readHexLong(map, "time", 0);
-        c.unused = DataUtils.readHexLong(map, "unused", 0);
 
         c.pagePositionsOffset = DataUtils.readHexInt(map, "pagePositionsOffset", 0);
         c.leafPagePositionsOffset = DataUtils.readHexInt(map, "leafPagePositionsOffset", 0);

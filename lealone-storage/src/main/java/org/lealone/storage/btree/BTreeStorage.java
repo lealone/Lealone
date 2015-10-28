@@ -58,15 +58,9 @@ public class BTreeStorage {
     private final BTreeMap<Object, Object> map;
     private final String btreeStorageName;
 
-    /**
-     * How long to retain old, persisted chunks, in milliseconds. 
-     * For larger or equal to zero, a chunk is never directly overwritten if unused, 
-     * but instead, the unused field is set. 
-     * If smaller zero, chunks are directly overwritten if unused.
-     */
-    private final long retentionTime;
     private final boolean reuseSpace;
     private final int pageSplitSize;
+    private final int maxVersions;
     private final UncaughtExceptionHandler backgroundExceptionHandler;
 
     /**
@@ -75,10 +69,6 @@ public class BTreeStorage {
      * number of entries.
      */
     private final CacheLongKeyLIRS<BTreePage> cache;
-    /**
-     * The time the storage was created, in milliseconds since 1970.
-     */
-    private final long creationTime;
 
     private final Object compactSync = new Object();
 
@@ -94,8 +84,6 @@ public class BTreeStorage {
      * The newest chunk. If nothing was stored yet, this field is not set.
      */
     final BTreeChunk lastChunk;
-
-    private long lastTimeAbsolute;
 
     /**
      * The version of the last stored chunk, or -1 if nothing was stored so far.
@@ -122,13 +110,15 @@ public class BTreeStorage {
         String storageName = (String) config.get("storageName");
         btreeStorageName = storageName + File.separator + map.getName();
 
-        Object value = config.get("retentionTime");
-        retentionTime = value == null ? 45000 : (Long) value;
+        Object value = null;
 
         reuseSpace = config.containsKey("reuseSpace");
 
         value = config.get("pageSplitSize");
         pageSplitSize = value != null ? (Integer) value : 16 * 1024;
+
+        value = config.get("maxVersions");
+        maxVersions = value != null ? (Integer) value : 3;
 
         backgroundExceptionHandler = (UncaughtExceptionHandler) config.get("backgroundExceptionHandler");
 
@@ -165,17 +155,15 @@ public class BTreeStorage {
             if (lastChunkId > 0) {
                 lastChunk = readChunkHeader(lastChunkId);
                 currentVersion = lastChunk.version;
-                creationTime = lastChunk.creationTime;
             } else {
                 lastChunk = null;
                 currentVersion = 0;
-                creationTime = getTimeAbsolute();
             }
         } catch (IllegalStateException e) {
             throw panic(e);
         } catch (IOException e) {
             throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
-                    "Failed to read lastChunkIdFile: {0}",file, e));
+                    "Failed to read lastChunkIdFile: {0}", file, e));
         }
     }
 
@@ -194,23 +182,6 @@ public class BTreeStorage {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Failed to write lastChunkId: {0}, file: {1}", lastChunkId, lastChunkIdFile, e);
         }
-    }
-
-    private long getTimeAbsolute() {
-        long now = System.currentTimeMillis();
-        if (lastTimeAbsolute != 0 && now < lastTimeAbsolute) {
-            // time seems to have run backwards - this can happen
-            // when the system time is adjusted, for example
-            // on a leap second
-            now = lastTimeAbsolute;
-        } else {
-            lastTimeAbsolute = now;
-        }
-        return now;
-    }
-
-    private long getTimeSinceCreation() {
-        return Math.max(0, getTimeAbsolute() - creationTime);
     }
 
     private IllegalStateException panic(IllegalStateException e) {
@@ -395,34 +366,20 @@ public class BTreeStorage {
             for (int i = 0; i < size; i += 2) {
                 long livePagePos = c.pagePositions.get(i);
                 UnusedPage unusedPage = unusedPages.get(livePagePos);
-                if (unusedPage != null && unusedPage.versionCount() > 0) { // versionsToKeep) {
-                    unusedPageCount++;
+                if (unusedPage != null) {
                     c.unusedPages.add(livePagePos);
-                } else {
-                    // break;
+                    if (unusedPage.versionCount() > maxVersions) {
+                        unusedPageCount++;
+                    }
                 }
             }
 
-            if (unusedPageCount == size / 2) {
-                // long time = getTimeSinceCreation();
-                // if (canOverwriteChunk(c, time))
+            if (unusedPageCount == (size / 2)) {
                 unusedChunks.add(c);
             }
         }
         return unusedChunks;
     }
-
-    // private boolean canOverwriteChunk(BTreeChunk c, long time) {
-    // if (retentionTime >= 0) {
-    // if (c.time + retentionTime > time) {
-    // return false;
-    // }
-    // if (c.unused == 0 || c.unused + retentionTime / 2 > time) {
-    // return false;
-    // }
-    // }
-    // return true;
-    // }
 
     public synchronized void freeUnusedChunks() {
         ArrayList<BTreeChunk> unusedChunks = findUnusedChunks();
@@ -550,14 +507,11 @@ public class BTreeStorage {
 
     private long save0() {
         long version = ++currentVersion;
-        long time = getTimeSinceCreation();
-
         WriteBuffer buff = getWriteBuffer();
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
         BTreeChunk c = new BTreeChunk(id);
         chunks.put(c.id, c);
-        c.time = time;
         c.version = version;
         c.pagePositions = new ArrayList<Long>();
         c.leafPagePositions = new ArrayList<Long>();
@@ -676,13 +630,7 @@ public class BTreeStorage {
         long maxLengthSum = 0;
         long maxLengthLiveSum = 0;
 
-        long time = getTimeSinceCreation();
-
         for (BTreeChunk c : chunks.values()) {
-            // ignore young chunks, because we don't optimize those
-            if (c.time + retentionTime > time) {
-                continue;
-            }
             maxLengthSum += c.maxLen;
             maxLengthLiveSum += c.maxLenLive;
         }
@@ -704,12 +652,6 @@ public class BTreeStorage {
         ArrayList<BTreeChunk> old = New.arrayList();
         BTreeChunk last = chunks.get(lastChunk.id);
         for (BTreeChunk c : chunks.values()) {
-            // only look at chunk older than the retention time
-            // (it's possible to compact chunks earlier, but right
-            // now we don't do that)
-            if (c.time + retentionTime > time) {
-                continue;
-            }
             long age = last.version - c.version + 1;
             c.collectPriority = (int) (c.getFillRate() * 1000 / age);
             old.add(c);
