@@ -24,7 +24,7 @@ import org.lealone.storage.fs.FileStorage;
  */
 public class BTreeChunk {
 
-    public static final int MAX_SIZE = 1 << 31 - BTreeStorage.CHUNK_HEADER_SIZE;
+    public static final int MAX_SIZE = Integer.MAX_VALUE - BTreeStorage.CHUNK_HEADER_SIZE;
 
     private static final int FORMAT_VERSION = 1;
 

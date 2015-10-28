@@ -6,6 +6,8 @@
 package org.lealone.storage.btree;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -20,12 +22,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.lealone.common.compress.CompressDeflate;
 import org.lealone.common.compress.CompressLZF;
 import org.lealone.common.compress.Compressor;
+import org.lealone.common.util.BitField;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.storage.AOStorage;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
-import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.WriteBuffer;
@@ -50,6 +52,8 @@ public class BTreeStorage {
      * The map of chunks.
      */
     private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<>();
+    private final BitField chunkIds = new BitField();
+    private final RandomAccessFile lastChunkIdFile;
 
     private final BTreeMap<Object, Object> map;
     private final String btreeStorageName;
@@ -89,8 +93,7 @@ public class BTreeStorage {
     /**
      * The newest chunk. If nothing was stored yet, this field is not set.
      */
-    BTreeChunk lastChunk;
-    private int lastChunkId;
+    final BTreeChunk lastChunk;
 
     private long lastTimeAbsolute;
 
@@ -142,29 +145,54 @@ public class BTreeStorage {
         value = config.get("compress");
         compressionLevel = value == null ? 0 : (Integer) value;
 
-        lastChunkId = 0;
         if (!FileUtils.exists(btreeStorageName))
             FileUtils.createDirectories(btreeStorageName);
         String[] files = new File(btreeStorageName).list();
         if (files != null && files.length > 0) {
             for (String f : files) {
-                int id = Integer.parseInt(f.substring(0, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
-                if (id > lastChunkId)
-                    lastChunkId = id;
+                if (f.endsWith(AOStorage.SUFFIX_AO_FILE)) {
+                    int id = Integer.parseInt(f.substring(0, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
+                    chunkIds.set(id);
+                }
             }
         }
 
+        String file = btreeStorageName + File.separator + "lastChunkId";
         try {
+            lastChunkIdFile = new RandomAccessFile(file, "rw");
+            int lastChunkId = readLastChunkId();
+
             if (lastChunkId > 0) {
                 lastChunk = readChunkHeader(lastChunkId);
                 currentVersion = lastChunk.version;
                 creationTime = lastChunk.creationTime;
             } else {
+                lastChunk = null;
                 currentVersion = 0;
                 creationTime = getTimeAbsolute();
             }
         } catch (IllegalStateException e) {
             throw panic(e);
+        } catch (IOException e) {
+            throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
+                    "Failed to read lastChunkIdFile: {0}",file, e));
+        }
+    }
+
+    private int readLastChunkId() throws IOException {
+        if (lastChunkIdFile.length() <= 0)
+            return 0;
+        return lastChunkIdFile.readInt();
+    }
+
+    private void writeLastChunkId(int lastChunkId) {
+        try {
+            lastChunkIdFile.seek(0);
+            lastChunkIdFile.writeInt(lastChunkId);
+            lastChunkIdFile.getFD().sync();
+        } catch (IOException e) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
+                    "Failed to write lastChunkId: {0}, file: {1}", lastChunkId, lastChunkIdFile, e);
         }
     }
 
@@ -403,6 +431,7 @@ public class BTreeStorage {
             c.fileStorage.close();
             c.fileStorage.delete();
             chunks.remove(c.id);
+            chunkIds.clear(c.id);
         }
     }
 
@@ -412,7 +441,7 @@ public class BTreeStorage {
     synchronized void remove() {
         checkOpen();
         closeImmediately();
-        FilePath.get(btreeStorageName).delete();
+        FileUtils.deleteRecursive(btreeStorageName, true);
     }
 
     boolean isClosed() {
@@ -469,6 +498,11 @@ public class BTreeStorage {
             if (cache != null)
                 cache.clear();
             chunks.clear();
+
+            try {
+                lastChunkIdFile.close();
+            } catch (IOException e) {
+            }
         }
     }
 
@@ -519,7 +553,9 @@ public class BTreeStorage {
         long time = getTimeSinceCreation();
 
         WriteBuffer buff = getWriteBuffer();
-        BTreeChunk c = new BTreeChunk(++lastChunkId);
+        int id = chunkIds.nextClearBit(1);
+        chunkIds.set(id);
+        BTreeChunk c = new BTreeChunk(id);
         chunks.put(c.id, c);
         c.time = time;
         c.version = version;
@@ -553,6 +589,7 @@ public class BTreeStorage {
         // chunk body
         write(c.fileStorage, CHUNK_HEADER_SIZE, buff.getBuffer());
         c.fileStorage.sync();
+        writeLastChunkId(c.id);
 
         for (BTreeChunk chunk : chunks.values()) {
             if (chunk.changed) {

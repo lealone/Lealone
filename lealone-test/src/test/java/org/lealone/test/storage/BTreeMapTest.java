@@ -40,6 +40,7 @@ public class BTreeMapTest extends TestBase {
         BTreeMap<Integer, String> map = storage.openBTreeMap("BTreeMapTest");
 
         Object v = null;
+        map.clear();
 
         v = map.put(10, "a");
         assertNull(v);
@@ -119,7 +120,10 @@ public class BTreeMapTest extends TestBase {
         assertEquals(199, map.size());
 
         // map.printPage();
-        map.remove();
+        // map.remove();
+
+        map.save();
+        map.close();
 
         assertTrue(map.isClosed());
 
