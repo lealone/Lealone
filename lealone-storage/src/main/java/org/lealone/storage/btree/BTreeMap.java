@@ -700,7 +700,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      * @param version the version
      * @return the map
      */
-    public BTreeMap<K, V> openVersion(long version) {
+    private BTreeMap<K, V> openVersion(long version) {
         if (readOnly) {
             throw DataUtils.newUnsupportedOperationException("This map is read-only; need to call "
                     + "the method on the writable map");
@@ -771,31 +771,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      */
     public String getType() {
         return "BTree";
-    }
-
-    /**
-     * Rollback to the given version.
-     * 
-     * @param version the version
-     */
-    void internalRollbackTo(long version) {
-        beforeWrite();
-        if (version <= storage.createVersion) {
-            // the map is removed later
-        } else if (root.getVersion() >= version) {
-            while (true) {
-                BTreePage last = oldRoots.peekLast();
-                if (last == null) {
-                    break;
-                }
-                // slow, but rollback is not a common operation
-                oldRoots.removeLast(last);
-                root = last;
-                if (root.getVersion() < version) {
-                    break;
-                }
-            }
-        }
     }
 
     /**
@@ -933,20 +908,8 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         storage.remove();
     }
 
-    public long commit() {
-        return storage.commit();
-    }
-
-    public void rollback() {
-        storage.rollback();
-    }
-
-    public void rollbackTo(long version) {
-        storage.rollbackTo(version);
-    }
-
     @Override
     public void save() {
-        commit();
+        storage.save();
     }
 }

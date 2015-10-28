@@ -453,7 +453,7 @@ public class BTreeStorage {
             return;
         }
         if (hasUnsavedChanges()) {
-            commitAndSave();
+            save();
         }
         closeStorage();
     }
@@ -493,24 +493,6 @@ public class BTreeStorage {
     }
 
     /**
-     * Commit the changes.
-     * <p>
-     * For in-memory storages, this method increments the version.
-     * <p>
-     * For persistent storages, it also writes changes to disk. It does nothing if
-     * there are no unsaved changes, and returns the old version. It is not
-     * necessary to call this method when auto-commit is enabled (the default
-     * setting), as in this case it is automatically called from time to time or
-     * when enough changes have accumulated. However, it may still be called to
-     * flush all changes to disk.
-     * 
-     * @return the new version
-     */
-    public synchronized long commit() {
-        return commitAndSave();
-    }
-
-    /**
      * Commit all changes and persist them to disk. This method does nothing if
      * there are no unsaved changes, otherwise it increments the current version
      * and stores the data (for file based storages).
@@ -519,7 +501,7 @@ public class BTreeStorage {
      * 
      * @return the new version (incremented if there were changes)
      */
-    private synchronized long commitAndSave() {
+    synchronized long save() {
         if (closed) {
             return currentVersion;
         }
@@ -533,7 +515,7 @@ public class BTreeStorage {
 
         try {
             currentStoreVersion = currentVersion;
-            return save();
+            return save0();
         } catch (IllegalStateException e) {
             panic(e);
             return -1;
@@ -558,7 +540,7 @@ public class BTreeStorage {
         return false;
     }
 
-    private long save() {
+    private long save0() {
         long version = ++currentVersion;
         long time = getTimeSinceCreation();
 
@@ -664,7 +646,7 @@ public class BTreeStorage {
             map.put(k, v);
             lastPage = p;
         }
-        commitAndSave();
+        save();
         // TODO 删除之前的所有chunk
         return true;
     }
@@ -810,7 +792,7 @@ public class BTreeStorage {
             return;
         }
         freeUnusedChunks();
-        commitAndSave();
+        save();
     }
 
     /**
@@ -958,95 +940,6 @@ public class BTreeStorage {
     }
 
     /**
-     * Revert to the beginning of the current version, reverting all uncommitted
-     * changes.
-     */
-    public void rollback() {
-        rollbackTo(currentVersion);
-    }
-
-    /**
-     * Revert to the beginning of the given version. All later changes (stored
-     * or not) are forgotten. All maps that were created later are closed. A
-     * rollback to a version before the last stored version is immediately
-     * persisted. Rollback to version 0 means all data is removed.
-     * 
-     * @param version the version to revert to
-     */
-    public synchronized void rollbackTo(long version) {
-        checkOpen();
-        if (version == 0) {
-            // special case: remove all data
-            map.close();
-            chunks.clear();
-            currentVersion = version;
-            return;
-        }
-        DataUtils.checkArgument(isKnownVersion(version), "Unknown version {0}", version);
-        map.internalRollbackTo(version);
-
-        boolean loadFromFile = false;
-        // find out which chunks to remove,
-        // and which is the newest chunk to keep
-        // (the chunk list can have gaps)
-        ArrayList<Integer> remove = new ArrayList<Integer>();
-        BTreeChunk keep = null;
-        for (BTreeChunk c : chunks.values()) {
-            if (c.version > version) {
-                remove.add(c.id);
-            } else if (keep == null || keep.id < c.id) {
-                keep = c;
-            }
-        }
-        if (remove.size() > 0) {
-            // remove the youngest first, so we don't create gaps
-            // (in case we remove many chunks)
-            Collections.sort(remove, Collections.reverseOrder());
-            map.removeUnusedOldVersions();
-            loadFromFile = true;
-            for (int id : remove) {
-                BTreeChunk c = chunks.remove(id);
-                c.fileStorage.close();
-                c.fileStorage.delete();
-            }
-            lastChunkId = keep.id;
-            setLastChunk(keep);
-        }
-        if (createVersion >= version) {
-            map.close();
-        } else {
-            if (loadFromFile) {
-                map.setRootPos(lastChunk.rootPagePos, lastChunk.version);
-            }
-        }
-        currentVersion = version;
-    }
-
-    /**
-     * Check whether all data can be read from this version. This requires that
-     * all chunks referenced by this version are still available (not
-     * overwritten).
-     * 
-     * @param version the version
-     * @return true if all data can be read
-     */
-    private boolean isKnownVersion(long version) {
-        if (version > currentVersion || version < 0) {
-            return false;
-        }
-        if (version == currentVersion || chunks.isEmpty()) {
-            // no stored data
-            return true;
-        }
-        // need to check if a chunk for this version exists
-        BTreeChunk c = getChunkForVersion(version);
-        if (c == null) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
      * Open an old, stored version of a map.
      * 
      * @param version the version
@@ -1100,7 +993,7 @@ public class BTreeStorage {
     public synchronized void remove() {
         checkOpen();
         map.clear();
-        commit();
+        save();
     }
 
     /**

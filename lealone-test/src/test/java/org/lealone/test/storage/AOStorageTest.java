@@ -57,8 +57,6 @@ public class AOStorageTest extends TestBase {
             // testCompact();
             // testUnusedChunks();
 
-            // testOpenVersion();
-
             // testPrintPage();
 
             // testBTreeMap();
@@ -150,26 +148,6 @@ public class AOStorageTest extends TestBase {
         map.clear();
     }
 
-    void testOpenVersion() {
-        map.put("10", "a");
-        long version = map.commit();
-        map.put("10", "b");
-        version = map.commit();
-
-        // version和version - 1得到的值一样，因为version此时是最新的版本，它要比root page中的version要大1
-        BTreeMap<String, String> m = map.openVersion(version);
-        p(m.get("10"));
-
-        m = map.openVersion(version - 1);
-        p(m.get("10"));
-
-        m = map.openVersion(version - 2);
-        p(m.get("10"));
-
-        m = map.openVersion(1);
-        p(m.get("10"));
-    }
-
     void testUnusedChunks() {
         ArrayList<BTreeChunk> unusedChunks = map.getStorage().findUnusedChunks();
         for (BTreeChunk c : unusedChunks)
@@ -220,7 +198,7 @@ public class AOStorageTest extends TestBase {
         for (int i = 10; i < 100; i++) {
             rmap.put(new SpatialKey(i, i * 1.0F, i * 2.0F), "value" + i); // TODO 还有bug，h2也有
         }
-        rmap.commit();
+        rmap.save();
 
         p(rmap.size());
         p(new SpatialKey(1, 1 * 1.0F, 1 * 2.0F));
@@ -230,7 +208,7 @@ public class AOStorageTest extends TestBase {
         for (int i = 10; i < 200; i++) {
             map.put("" + i, "value" + i);
         }
-        map.commit();
+        map.save();
 
         map.printPage();
     }
@@ -244,35 +222,32 @@ public class AOStorageTest extends TestBase {
         for (int i = 51; i < 100; i += 2) {
             map.put("" + i, "value" + i);
         }
-        map.commit();
+        map.save();
 
         for (int i = 11; i < 50; i += 2) {
             map.put("" + i, "value" + i);
         }
-        map.commit();
+        map.save();
 
         // for (int i = 10; i < 100; i += 2) {
         // map.put("" + i, "value" + i);
         // }
         //
-        // map.commit();
+        // map.save();
 
         // for (int i = 11; i < 100; i += 2) {
         // map.put("" + i, "value" + i);
         // }
         //
-        // map.commit();
+        // map.save();
     }
 
     void testPut() {
         for (int i = 10; i < 1000; i++) {
             map.put("" + i, "value" + i);
         }
-        long version = map.commit();
 
-        map.commit();
-
-        p("version=" + version);
+        map.save();
 
         // for (int i = 100; i < 200; i++) {
         // map.put("" + i, "value" + i);
@@ -282,19 +257,6 @@ public class AOStorageTest extends TestBase {
 
         map.put("" + 30, "value" + 30);
 
-        version = map.commit();
-        p("version=" + version);
-
-        map.put("" + 30, "value" + 40);
-
-        map.rollback();
-
-        p(map.get("" + 30));
-
-        // map.rollbackTo(version - 2);
-
-        //
-        // map.remove("10");
         p(map.size());
     }
 
