@@ -52,18 +52,15 @@ public class AOStorage implements Storage {
 
     AOStorage(Map<String, Object> config) {
         this.config = config;
-        if (!config.containsKey("inMemory")) {
-            String storageName = (String) config.get("storageName");
-            if (storageName != null) {
-                if (!FileUtils.exists(storageName))
-                    FileUtils.createDirectories(storageName);
-                FilePath dir = FilePath.get(storageName);
-                for (FilePath fp : dir.newDirectoryStream()) {
-                    String mapFullName = fp.getName();
-                    if (mapFullName.startsWith(TEMP_NAME_PREFIX)) {
-                        fp.delete();
-                    }
-                }
+        String storageName = (String) config.get("storageName");
+        DataUtils.checkArgument(storageName != null, "The storage name may not be null");
+        if (!FileUtils.exists(storageName))
+            FileUtils.createDirectories(storageName);
+        FilePath dir = FilePath.get(storageName);
+        for (FilePath fp : dir.newDirectoryStream()) {
+            String mapFullName = fp.getName();
+            if (mapFullName.startsWith(TEMP_NAME_PREFIX)) {
+                fp.delete();
             }
         }
     }

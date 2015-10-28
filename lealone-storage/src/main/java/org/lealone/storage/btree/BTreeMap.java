@@ -46,7 +46,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     protected final DataType keyType;
     protected final DataType valueType;
     protected final boolean readOnly;
-    protected final boolean inMemory;
 
     protected final Map<String, Object> config;
     protected final BTreeStorage storage;
@@ -77,7 +76,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         this.keyType = keyType;
         this.valueType = valueType;
         this.readOnly = config.containsKey("readOnly");
-        this.inMemory = config.get("storageName") == null || config.containsKey("inMemory");
         this.config = config;
 
         if (storage == null) {
@@ -93,8 +91,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     }
 
     String getBTreeStorageName() {
-        if (inMemory)
-            return null;
         String storageName = (String) config.get("storageName");
         return storageName + File.separator + name;
     }
@@ -148,15 +144,9 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return readOnly;
     }
 
-    /**
-     * Whether this is in-memory map, meaning that changes are not persisted. 
-     * By default (even if the storage is not persisted), maps are not in-memory.
-     * 
-     * @return whether this map is in-memory
-     */
     @Override
     public boolean isInMemory() {
-        return inMemory;
+        return false;
     }
 
     public BTreeStorage getStorage() {

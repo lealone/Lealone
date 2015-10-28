@@ -161,6 +161,11 @@ public interface StorageMap<K, V> {
 
     boolean isEmpty();
 
+    /**
+     * Whether this is in-memory map, meaning that changes are not persisted.
+     * 
+     * @return whether this map is in-memory
+     */
     boolean isInMemory();
 
     /**

@@ -134,18 +134,9 @@ public class BTreeStorage {
         reuseSpace = config.containsKey("reuseSpace");
 
         value = config.get("pageSplitSize");
-        pageSplitSize = value != null ? (Integer) value : (map.isInMemory() ? 4 * 1024 : 16 * 1024);
+        pageSplitSize = value != null ? (Integer) value : 16 * 1024;
 
         backgroundExceptionHandler = (UncaughtExceptionHandler) config.get("backgroundExceptionHandler");
-
-        if (map.isInMemory()) {
-            cache = null;
-            compressionLevel = 0;
-
-            createVersion = 0;
-            creationTime = getTimeAbsolute();
-            return;
-        }
 
         value = config.get("cacheSize");
         int mb = value == null ? 16 : (Integer) value;
@@ -461,10 +452,8 @@ public class BTreeStorage {
         if (closed) {
             return;
         }
-        if (!map.isInMemory()) {
-            if (hasUnsavedChanges()) {
-                commitAndSave();
-            }
+        if (hasUnsavedChanges()) {
+            commitAndSave();
         }
         closeStorage();
     }
@@ -490,9 +479,6 @@ public class BTreeStorage {
         }
 
         closed = true;
-        if (map.isInMemory()) {
-            return;
-        }
         synchronized (this) {
             for (BTreeChunk c : chunks.values()) {
                 if (c.fileStorage != null)
@@ -521,10 +507,6 @@ public class BTreeStorage {
      * @return the new version
      */
     public synchronized long commit() {
-        if (map.isInMemory()) {
-            return ++currentVersion;
-
-        }
         return commitAndSave();
     }
 
@@ -540,9 +522,6 @@ public class BTreeStorage {
     private synchronized long commitAndSave() {
         if (closed) {
             return currentVersion;
-        }
-        if (map.isInMemory()) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "This is an in-memory storage");
         }
         if (map.isReadOnly()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "This storage is read-only");
@@ -971,9 +950,6 @@ public class BTreeStorage {
      */
     long getOldestVersionToKeep() {
         long v = currentVersion;
-        if (map.isInMemory()) {
-            return v - versionsToKeep;
-        }
         long storeVersion = currentStoreVersion;
         if (storeVersion > -1) {
             v = Math.min(v, storeVersion);
