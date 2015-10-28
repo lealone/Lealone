@@ -120,7 +120,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     }
 
     @Override
-    protected synchronized Object remove(BTreePage p, long writeVersion, Object key) {
+    protected synchronized Object remove(BTreePage p, Object key) {
         Object result = null;
         if (p.isLeaf()) {
             for (int i = 0; i < p.getKeyCount(); i++) {
@@ -138,9 +138,9 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
                 // this will mark the old page as deleted
                 // so we need to update the parent in any case
                 // (otherwise the old page might be deleted again)
-                BTreePage c = cOld.copy(writeVersion);
+                BTreePage c = cOld.copy();
                 long oldSize = c.getTotalCount();
-                result = remove(c, writeVersion, key);
+                result = remove(c, key);
                 p.setChild(i, c);
                 if (oldSize == c.getTotalCount()) {
                     continue;
@@ -190,28 +190,27 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     private synchronized Object putOrAdd(SpatialKey key, V value, boolean alwaysAdd) {
         beforeWrite();
-        long v = storage.getCurrentVersion();
-        BTreePage p = root.copy(v);
+        BTreePage p = root.copy();
         Object result;
         if (alwaysAdd || get(key) == null) {
             if (p.getMemory() > storage.getPageSplitSize() && p.getKeyCount() > 3) {
                 // only possible if this is the root, else we would have
                 // split earlier (this requires pageSplitSize is fixed)
                 long totalCount = p.getTotalCount();
-                BTreePage split = split(p, v);
+                BTreePage split = split(p);
                 Object k1 = getBounds(p);
                 Object k2 = getBounds(split);
                 Object[] keys = { k1, k2 };
                 BTreePage.PageReference[] children = { new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
                         new BTreePage.PageReference(split, split.getPos(), split.getTotalCount()),
                         new BTreePage.PageReference(null, 0, 0) };
-                p = BTreePage.create(this, v, keys, null, children, totalCount, 0);
+                p = BTreePage.create(this, keys, null, children, totalCount, 0);
                 // now p is a node; continues
             }
-            add(p, v, key, value);
+            add(p, key, value);
             result = null;
         } else {
-            result = set(p, v, key, value);
+            result = set(p, key, value);
         }
         newRoot(p);
         return result;
@@ -221,12 +220,11 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
      * Update the value for the given key. The key must exist.
      *
      * @param p the page
-     * @param writeVersion the write version
      * @param key the key
      * @param value the new value
      * @return the old value (never null)
      */
-    private Object set(BTreePage p, long writeVersion, Object key, Object value) {
+    private Object set(BTreePage p, Object key, Object value) {
         if (p.isLeaf()) {
             for (int i = 0; i < p.getKeyCount(); i++) {
                 if (keyType.equals(p.getKey(i), key)) {
@@ -238,8 +236,8 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
                 if (contains(p, i, key)) {
                     BTreePage c = p.getChildPage(i);
                     if (get(c, key) != null) {
-                        c = c.copy(writeVersion);
-                        Object result = set(c, writeVersion, key, value);
+                        c = c.copy();
+                        Object result = set(c, key, value);
                         p.setChild(i, c);
                         return result;
                     }
@@ -249,7 +247,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
         throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Not found: {0}", key);
     }
 
-    private void add(BTreePage p, long writeVersion, Object key, Object value) {
+    private void add(BTreePage p, Object key, Object value) {
         if (p.isLeaf()) {
             p.insertLeaf(p.getKeyCount(), key, value);
             return;
@@ -274,39 +272,39 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
                 }
             }
         }
-        BTreePage c = p.getChildPage(index).copy(writeVersion);
+        BTreePage c = p.getChildPage(index).copy();
         if (c.getMemory() > storage.getPageSplitSize() && c.getKeyCount() > 4) {
             // split on the way down
-            BTreePage split = split(c, writeVersion);
+            BTreePage split = split(c);
             p.setKey(index, getBounds(c));
             p.setChild(index, c);
             p.insertNode(index, getBounds(split), split);
             // now we are not sure where to add
-            add(p, writeVersion, key, value);
+            add(p, key, value);
             return;
         }
-        add(c, writeVersion, key, value);
+        add(c, key, value);
         Object bounds = p.getKey(index);
         keyType.increaseBounds(bounds, key);
         p.setKey(index, bounds);
         p.setChild(index, c);
     }
 
-    private BTreePage split(BTreePage p, long writeVersion) {
-        return quadraticSplit ? splitQuadratic(p, writeVersion) : splitLinear(p, writeVersion);
+    private BTreePage split(BTreePage p) {
+        return quadraticSplit ? splitQuadratic(p) : splitLinear(p);
     }
 
-    private BTreePage splitLinear(BTreePage p, long writeVersion) {
+    private BTreePage splitLinear(BTreePage p) {
         ArrayList<Object> keys = New.arrayList();
         for (int i = 0; i < p.getKeyCount(); i++) {
             keys.add(p.getKey(i));
         }
         int[] extremes = keyType.getExtremes(keys);
         if (extremes == null) {
-            return splitQuadratic(p, writeVersion);
+            return splitQuadratic(p);
         }
-        BTreePage splitA = newPage(p.isLeaf(), writeVersion);
-        BTreePage splitB = newPage(p.isLeaf(), writeVersion);
+        BTreePage splitA = newPage(p.isLeaf());
+        BTreePage splitB = newPage(p.isLeaf());
         move(p, splitA, extremes[0]);
         if (extremes[1] > extremes[0]) {
             extremes[1]--;
@@ -332,9 +330,9 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
         return splitA;
     }
 
-    private BTreePage splitQuadratic(BTreePage p, long writeVersion) {
-        BTreePage splitA = newPage(p.isLeaf(), writeVersion);
-        BTreePage splitB = newPage(p.isLeaf(), writeVersion);
+    private BTreePage splitQuadratic(BTreePage p) {
+        BTreePage splitA = newPage(p.isLeaf());
+        BTreePage splitB = newPage(p.isLeaf());
         float largest = Float.MIN_VALUE;
         int ia = 0, ib = 0;
         for (int a = 0; a < p.getKeyCount(); a++) {
@@ -388,7 +386,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
         return splitA;
     }
 
-    private BTreePage newPage(boolean leaf, long writeVersion) {
+    private BTreePage newPage(boolean leaf) {
         Object[] values;
         BTreePage.PageReference[] refs;
         if (leaf) {
@@ -398,7 +396,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
             values = null;
             refs = new BTreePage.PageReference[] { new BTreePage.PageReference(null, 0, 0) };
         }
-        return BTreePage.create(this, writeVersion, BTreePage.EMPTY_OBJECT_ARRAY, values, refs, 0, 0);
+        return BTreePage.create(this, BTreePage.EMPTY_OBJECT_ARRAY, values, refs, 0, 0);
     }
 
     private static void move(BTreePage source, BTreePage target, int sourceIndex) {

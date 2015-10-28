@@ -82,62 +82,39 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         storage = new BTreeStorage((BTreeMap<Object, Object>) this);
 
         if (storage.lastChunk != null)
-            setRootPos(storage.lastChunk.rootPagePos, storage.lastChunk.version);
+            setRootPos(storage.lastChunk.rootPagePos);
         else
-            setRootPos(0, -1);
+            setRootPos(0);
     }
 
     /**
      * Set the position of the root page.
      * 
      * @param rootPos the position, 0 for empty
-     * @param version the version of the root
      */
-    private void setRootPos(long rootPos, long version) {
+    private void setRootPos(long rootPos) {
         if (rootPos == 0) {
-            root = BTreePage.createEmpty(this, version);
+            root = BTreePage.createEmpty(this);
         } else {
             root = storage.readPage(rootPos);
-            root.setVersion(version);
         }
     }
 
-    /**
-     * Get the map name.
-     * 
-     * @return the name
-     */
     @Override
     public String getName() {
         return name;
     }
 
-    /**
-     * Get the key type.
-     * 
-     * @return the key type
-     */
     @Override
     public DataType getKeyType() {
         return keyType;
     }
 
-    /**
-     * Get the value type.
-     * 
-     * @return the value type
-     */
     @Override
     public DataType getValueType() {
         return valueType;
     }
 
-    /**
-     * Get a value.
-     * 
-     * @param key the key
-     * @return the value, or null if not found
-     */
     @Override
     @SuppressWarnings("unchecked")
     public V get(Object key) {
@@ -168,36 +145,26 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return null;
     }
 
-    /**
-     * Add or replace a key-value pair.
-     * 
-     * @param key the key (may not be null)
-     * @param value the value (may not be null)
-     * @return the old value if the key existed, or null otherwise
-     */
     @Override
     @SuppressWarnings("unchecked")
     public synchronized V put(K key, V value) {
         DataUtils.checkArgument(value != null, "The value may not be null");
         beforeWrite();
-        long v = storage.getCurrentVersion();
-        BTreePage p = root.copy(v);
+        BTreePage p = root.copy();
 
         if (p.needSplit())
-            p = splitRoot(p, v);
+            p = splitRoot(p);
 
-        Object result = put(p, v, key, value);
+        Object result = put(p, key, value);
         newRoot(p);
         return (V) result;
     }
 
     /**
      * This method is called before writing to the map. 
-     * The default implementation checks whether writing is allowed, and tries to detect
-     * concurrent modification.
+     * The default implementation checks whether writing is allowed.
      * 
-     * @throws UnsupportedOperationException if the map is read-only, or if
-     *             another thread is concurrently writing
+     * @throws UnsupportedOperationException if the map is read-only.
      */
     protected void beforeWrite() {
         if (storage.isClosed()) {
@@ -212,10 +179,9 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      * Split the root page.
      * 
      * @param p the page
-     * @param writeVersion the write version
      * @return the new sibling
      */
-    protected BTreePage splitRoot(BTreePage p, long writeVersion) {
+    protected BTreePage splitRoot(BTreePage p) {
         BTreePage oldPage = p;
         long totalCount = p.getTotalCount();
         int at = p.getKeyCount() / 2;
@@ -224,7 +190,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         Object[] keys = { k };
         BTreePage.PageReference[] children = { new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
                 new BTreePage.PageReference(split, split.getPos(), split.getTotalCount()), };
-        p = BTreePage.create(this, writeVersion, keys, null, children, totalCount, 0);
+        p = BTreePage.create(this, keys, null, children, totalCount, 0);
         p.setOldPos(oldPage); // 记下最初的page pos
         return p;
     }
@@ -233,12 +199,11 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      * Add or update a key-value pair.
      * 
      * @param p the page
-     * @param writeVersion the write version
      * @param key the key (may not be null)
      * @param value the value (may not be null)
      * @return the old value, or null
      */
-    protected Object put(BTreePage p, long writeVersion, Object key, Object value) {
+    protected Object put(BTreePage p, Object key, Object value) {
         int index = p.binarySearch(key);
         if (p.isLeaf()) {
             if (index < 0) {
@@ -254,7 +219,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         } else {
             index++;
         }
-        BTreePage c = p.getChildPage(index).copy(writeVersion);
+        BTreePage c = p.getChildPage(index).copy();
         if (c.needSplit()) {
             // split on the way down
             int at = c.getKeyCount() / 2;
@@ -263,9 +228,9 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
             p.setChild(index, split);
             p.insertNode(index, k, c);
             // now we are not sure where to add
-            return put(p, writeVersion, key, value);
+            return put(p, key, value);
         }
-        Object result = put(c, writeVersion, key, value);
+        Object result = put(c, key, value);
         p.setChild(index, c);
         return result;
     }
@@ -281,13 +246,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         }
     }
 
-    /**
-     * Add a key-value pair if it does not yet exist.
-     * 
-     * @param key the key (may not be null)
-     * @param value the new value
-     * @return the old value if the key existed, or null otherwise
-     */
     @Override
     public synchronized V putIfAbsent(K key, V value) {
         V old = get(key);
@@ -297,12 +255,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return old;
     }
 
-    /**
-     * Remove a key-value pair, if the key exists.
-     * 
-     * @param key the key (may not be null)
-     * @return the old value if the key existed, or null otherwise
-     */
     @Override
     @SuppressWarnings("unchecked")
     public V remove(Object key) {
@@ -311,13 +263,12 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         if (result == null) {
             return null;
         }
-        long v = storage.getCurrentVersion();
         synchronized (this) {
-            BTreePage p = root.copy(v);
-            result = (V) remove(p, v, key);
+            BTreePage p = root.copy();
+            result = (V) remove(p, key);
             if (!p.isLeaf() && p.getTotalCount() == 0) {
                 p.removePage();
-                p = BTreePage.createEmpty(this, p.getVersion());
+                p = BTreePage.createEmpty(this);
             }
             newRoot(p);
         }
@@ -328,11 +279,10 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      * Remove a key-value pair.
      * 
      * @param p the page (may not be null)
-     * @param writeVersion the write version
      * @param key the key
      * @return the old value, or null if the key did not exist
      */
-    protected Object remove(BTreePage p, long writeVersion, Object key) {
+    protected Object remove(BTreePage p, Object key) {
         int index = p.binarySearch(key);
         Object result = null;
         if (p.isLeaf()) {
@@ -349,8 +299,8 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
             index++;
         }
         BTreePage cOld = p.getChildPage(index);
-        BTreePage c = cOld.copy(writeVersion);
-        result = remove(c, writeVersion, key);
+        BTreePage c = cOld.copy();
+        result = remove(c, key);
         if (result == null || c.getTotalCount() != 0) {
             // no change, or
             // there are more nodes
@@ -367,14 +317,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return result;
     }
 
-    /**
-     * Replace a value for an existing key, if the value matches.
-     * 
-     * @param key the key (may not be null)
-     * @param oldValue the expected value
-     * @param newValue the new value
-     * @return true if the value was replaced
-     */
     @Override
     public synchronized boolean replace(K key, V oldValue, V newValue) {
         V old = get(key);
@@ -385,21 +327,11 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return false;
     }
 
-    /**
-     * Get the first key, or null if the map is empty.
-     * 
-     * @return the first key, or null
-     */
     @Override
     public K firstKey() {
         return getFirstLast(true);
     }
 
-    /**
-     * Get the last key, or null if the map is empty.
-     * 
-     * @return the last key, or null
-     */
     @Override
     public K lastKey() {
         return getFirstLast(false);
@@ -425,47 +357,21 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         }
     }
 
-    /**
-     * Get the largest key that is smaller than the given key, or null if no
-     * such key exists.
-     * 
-     * @param key the key
-     * @return the result
-     */
     @Override
     public K lowerKey(K key) {
         return getMinMax(key, true, true);
     }
 
-    /**
-     * Get the largest key that is smaller or equal to this key.
-     * 
-     * @param key the key
-     * @return the result
-     */
     @Override
     public K floorKey(K key) {
         return getMinMax(key, true, false);
     }
 
-    /**
-     * Get the smallest key that is larger than the given key, or null if no
-     * such key exists.
-     * 
-     * @param key the key
-     * @return the result
-     */
     @Override
     public K higherKey(K key) {
         return getMinMax(key, false, true);
     }
 
-    /**
-     * Get the smallest key that is larger or equal to this key.
-     * 
-     * @param key the key
-     * @return the result
-     */
     @Override
     public K ceilingKey(K key) {
         return getMinMax(key, false, false);
@@ -515,13 +421,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         }
     }
 
-    /**
-     * Check whether the two values are equal.
-     * 
-     * @param a the first value
-     * @param b the second value
-     * @return true if they are equal
-     */
     @Override
     public boolean areValuesEqual(Object a, Object b) {
         if (a == b) {
@@ -563,15 +462,12 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return new BTreeCursor<>(this, root, from);
     }
 
-    /**
-     * Remove all entries.
-     */
     @Override
     public synchronized void clear() {
         beforeWrite();
         // TODO 如何跟踪被删除的page pos
         root.removeAllRecursive();
-        newRoot(BTreePage.createEmpty(this, storage.getCurrentVersion()));
+        newRoot(BTreePage.createEmpty(this));
     }
 
     @Override
@@ -584,10 +480,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         return storage.isClosed();
     }
 
-    /**
-     * Close the map. Accessing the data is still possible (to allow concurrent
-     * reads), but it is marked as closed.
-     */
     @Override
     public void close() {
         storage.close();
@@ -647,10 +539,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
         };
 
-    }
-
-    long getVersion() {
-        return root.getVersion();
     }
 
     /**

@@ -85,16 +85,11 @@ public class BTreeStorage {
      */
     final BTreeChunk lastChunk;
 
-    /**
-     * The version of the last stored chunk, or -1 if nothing was stored so far.
-     */
-    private long lastStoredVersion = -1;
-
-    private long currentVersion;
-
     private boolean closed;
     private IllegalStateException panicException;
     private WriteBuffer writeBuffer;
+
+    private volatile boolean hasUnsavedChanges;
 
     /**
      * Create and open the storage.
@@ -151,13 +146,10 @@ public class BTreeStorage {
         try {
             lastChunkIdFile = new RandomAccessFile(file, "rw");
             int lastChunkId = readLastChunkId();
-
             if (lastChunkId > 0) {
                 lastChunk = readChunkHeader(lastChunkId);
-                currentVersion = lastChunk.version;
             } else {
                 lastChunk = null;
-                currentVersion = 0;
             }
         } catch (IllegalStateException e) {
             throw panic(e);
@@ -465,27 +457,25 @@ public class BTreeStorage {
 
     /**
      * Commit all changes and persist them to disk. This method does nothing if
-     * there are no unsaved changes, otherwise it increments the current version
-     * and stores the data (for file based storages).
+     * there are no unsaved changes.
      * <p>
      * At most one storage operation may run at any time.
-     * 
-     * @return the new version (incremented if there were changes)
+     *
      */
-    synchronized long save() {
+    synchronized void save() {
         if (closed) {
-            return currentVersion;
+            return;
         }
         if (map.isReadOnly()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "This storage is read-only");
         }
 
         if (!hasUnsavedChanges()) {
-            return currentVersion;
+            return;
         }
 
         try {
-            return save0();
+            save0();
         } catch (IllegalStateException e) {
             throw panic(e);
         }
@@ -498,21 +488,17 @@ public class BTreeStorage {
      */
     private boolean hasUnsavedChanges() {
         checkOpen();
-        long v = map.getVersion();
-        if (v >= 0 && v > lastStoredVersion) {
-            return true;
-        }
-        return false;
+        boolean b = hasUnsavedChanges;
+        hasUnsavedChanges = false;
+        return b;
     }
 
-    private long save0() {
-        long version = ++currentVersion;
+    private void save0() {
         WriteBuffer buff = getWriteBuffer();
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
         BTreeChunk c = new BTreeChunk(id);
         chunks.put(c.id, c);
-        c.version = version;
         c.pagePositions = new ArrayList<Long>();
         c.leafPagePositions = new ArrayList<Long>();
 
@@ -554,8 +540,6 @@ public class BTreeStorage {
         }
 
         releaseWriteBuffer(buff);
-        lastStoredVersion = version - 1;
-        return version;
     }
 
     /**
@@ -650,13 +634,11 @@ public class BTreeStorage {
 
         // the 'old' list contains the chunks we want to free up
         ArrayList<BTreeChunk> old = New.arrayList();
-        BTreeChunk last = chunks.get(lastChunk.id);
         for (BTreeChunk c : chunks.values()) {
-            long age = last.version - c.version + 1;
-            c.collectPriority = (int) (c.getFillRate() * 1000 / age);
+            c.collectPriority = c.getFillRate() * 1000;
             old.add(c);
         }
-        if (old.size() == 0) {
+        if (old.isEmpty()) {
             return null;
         }
 
@@ -783,16 +765,13 @@ public class BTreeStorage {
      * @param memory the memory usage
      */
     void removePage(long pos, int memory) {
-        // we need to keep temporary pages,
-        // to support reading old versions and rollback
+        hasUnsavedChanges = true;
+
+        // we need to keep temporary pages
         if (pos == 0) {
             return;
         }
 
-        // This could result in a cache miss if the operation is rolled back,
-        // but we don't optimize for rollback.
-        // We could also keep the page in the cache, as somebody
-        // could still read it (reading the old version).
         if (cache != null) {
             if (DataUtils.getPageType(pos) == DataUtils.PAGE_TYPE_LEAF) {
                 // keep nodes in the cache, because they are still used for
@@ -832,16 +811,6 @@ public class BTreeStorage {
 
     public int getPageSplitSize() {
         return pageSplitSize;
-    }
-
-    /**
-     * Get the current version of the data. When a new storage is created, the
-     * version is 0.
-     * 
-     * @return the version
-     */
-    public long getCurrentVersion() {
-        return currentVersion;
     }
 
     /**

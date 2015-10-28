@@ -34,11 +34,6 @@ public class BTreeChunk {
     public final int id;
 
     /**
-     * The version stored in this chunk.
-     */
-    public long version;
-
-    /**
      * The position of the root page.
      */
     public long rootPagePos;
@@ -126,7 +121,6 @@ public class BTreeChunk {
         StringBuilder buff = new StringBuilder();
 
         DataUtils.appendMap(buff, "id", id);
-        DataUtils.appendMap(buff, "version", version);
         DataUtils.appendMap(buff, "rootPagePos", rootPagePos);
 
         DataUtils.appendMap(buff, "blockCount", blockCount);
@@ -159,7 +153,6 @@ public class BTreeChunk {
         HashMap<String, String> map = DataUtils.parseMap(s);
         int id = DataUtils.readHexInt(map, "id", 0);
         BTreeChunk c = new BTreeChunk(id);
-        c.version = DataUtils.readHexLong(map, "version", id);
         c.rootPagePos = DataUtils.readHexLong(map, "rootPagePos", 0);
 
         c.blockCount = DataUtils.readHexInt(map, "blockCount", 0);

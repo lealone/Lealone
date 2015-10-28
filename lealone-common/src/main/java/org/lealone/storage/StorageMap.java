@@ -188,6 +188,10 @@ public interface StorageMap<K, V> {
 
     boolean isClosed();
 
+    /**
+     * Close the map. Accessing the data is still possible (to allow concurrent
+     * reads), but it is marked as closed.
+     */
     void close();
 
     void save();

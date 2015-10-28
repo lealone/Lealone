@@ -41,7 +41,6 @@ public class BTreePage {
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
     private final BTreeMap<?, ?> map;
-    private long version;
     private long pos;
     private long oldPos;
 
@@ -89,9 +88,8 @@ public class BTreePage {
      */
     private volatile boolean removedInMemory;
 
-    BTreePage(BTreeMap<?, ?> map, long version) {
+    BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
-        this.version = version;
     }
 
     /**
@@ -245,7 +243,7 @@ public class BTreePage {
         System.arraycopy(values, a, bValues, 0, b);
         values = aValues;
         totalCount = a;
-        BTreePage newPage = create(map, version, bKeys, bValues, null, bKeys.length, 0);
+        BTreePage newPage = create(map, bKeys, bValues, null, bKeys.length, 0);
         recalculateMemory();
         return newPage;
     }
@@ -274,7 +272,7 @@ public class BTreePage {
         for (PageReference x : bChildren) {
             t += x.count;
         }
-        BTreePage newPage = create(map, version, bKeys, null, bChildren, t, 0);
+        BTreePage newPage = create(map, bKeys, null, bChildren, t, 0);
         recalculateMemory();
         return newPage;
     }
@@ -672,14 +670,6 @@ public class BTreePage {
         }
     }
 
-    long getVersion() {
-        return version;
-    }
-
-    void setVersion(long version) {
-        this.version = version;
-    }
-
     public int getRawChildPageCount() {
         return children.length;
     }
@@ -718,12 +708,11 @@ public class BTreePage {
 
     /**
      * Create a copy of this page.
-     * 
-     * @param version the new version
-     * @return a page with the given version
+     *
+     * @return a page
      */
-    public BTreePage copy(long version) {
-        BTreePage newPage = create(map, version, keys, values, children, totalCount, getMemory());
+    public BTreePage copy() {
+        BTreePage newPage = create(map, keys, values, children, totalCount, getMemory());
         newPage.setOldPos(this);
         newPage.cachedCompare = cachedCompare;
         // mark the old as deleted
@@ -801,7 +790,6 @@ public class BTreePage {
 
         StringBuilder buff = new StringBuilder();
         buff.append("id: ").append(System.identityHashCode(this)).append('\n');
-        buff.append("version: ").append(Long.toHexString(version)).append("\n");
         buff.append("pos: ").append(Long.toHexString(pos)).append("\n");
         if (pos != 0) {
             int chunkId = DataUtils.getPageChunkId(pos);
@@ -860,7 +848,6 @@ public class BTreePage {
             info.levelCount = levelCount;
 
         buff.append(indent).append("type: ").append(isLeaf() ? "leaf" : "node").append('\n');
-        buff.append(indent).append("version: ").append(version).append('\n');
         buff.append(indent).append("pos: ").append(pos).append('\n');
         buff.append(indent).append("oldPos: ").append(oldPos).append('\n');
         buff.append(indent).append("chunkId: ").append(DataUtils.getPageChunkId(pos)).append('\n');
@@ -920,18 +907,16 @@ public class BTreePage {
      * Create a new, empty page.
      * 
      * @param map the map
-     * @param version the version
      * @return the new page
      */
-    static BTreePage createEmpty(BTreeMap<?, ?> map, long version) {
-        return create(map, version, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, null, 0, DataUtils.PAGE_MEMORY);
+    static BTreePage createEmpty(BTreeMap<?, ?> map) {
+        return create(map, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, null, 0, DataUtils.PAGE_MEMORY);
     }
 
     /**
      * Create a new page. The arrays are not cloned.
      * 
      * @param map the map
-     * @param version the version
      * @param keys the keys
      * @param values the values
      * @param children the child page positions
@@ -939,9 +924,9 @@ public class BTreePage {
      * @param memory the memory used in bytes
      * @return the page
      */
-    public static BTreePage create(BTreeMap<?, ?> map, long version, Object[] keys, Object[] values,
-            PageReference[] children, long totalCount, int memory) {
-        BTreePage p = new BTreePage(map, version);
+    public static BTreePage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, PageReference[] children,
+            long totalCount, int memory) {
+        BTreePage p = new BTreePage(map);
         // the position is 0
         p.keys = keys;
         p.values = values;
@@ -980,7 +965,7 @@ public class BTreePage {
                     "Illegal page length {0} reading at {1}; max pos {2} ", length, filePos, maxPos);
         }
         buff = fileStorage.readFully(filePos, length);
-        BTreePage p = new BTreePage(map, 0);
+        BTreePage p = new BTreePage(map);
         p.pos = pos;
         int chunkId = DataUtils.getPageChunkId(pos);
         int offset = DataUtils.getPageOffset(pos);
