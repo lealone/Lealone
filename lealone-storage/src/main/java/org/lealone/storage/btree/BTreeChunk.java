@@ -128,7 +128,6 @@ public class BTreeChunk {
         c.blockCount = DataUtils.readHexInt(map, "blockCount", 0);
 
         c.pageCount = DataUtils.readHexInt(map, "pageCount", 0);
-
         c.sumOfPageLength = DataUtils.readHexLong(map, "sumOfPageLength", 0);
 
         c.pagePositionsOffset = DataUtils.readHexInt(map, "pagePositionsOffset", 0);

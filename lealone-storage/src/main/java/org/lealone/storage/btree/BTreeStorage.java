@@ -614,13 +614,13 @@ public class BTreeStorage {
      * If the current fill rate is higher than the minimum fill rate, nothing is done.
      */
     private void executeCompact(TreeSet<Long> removedPages) {
-        if (minFillRate <= 0)
-            return;
-
         if (removedPages.isEmpty())
             return;
 
         removeUnusedChunks(removedPages);
+
+        if (minFillRate <= 0)
+            return;
 
         if (!removedPages.isEmpty()) {
             List<BTreeChunk> old = getOldChunks();

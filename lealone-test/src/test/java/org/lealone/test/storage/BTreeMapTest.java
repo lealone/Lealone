@@ -143,9 +143,13 @@ public class BTreeMapTest extends TestBase {
 
         map.save();
 
+        for (int i = 1; i <= 200; i++)
+            map.put(i, "value" + i);
+        map.save();
+
         // map.printPage();
 
-        for (int i = 100; i <= 200; i++)
+        for (int i = 50; i <= 200; i++)
             map.put(i, "value" + i);
 
         map.save();
