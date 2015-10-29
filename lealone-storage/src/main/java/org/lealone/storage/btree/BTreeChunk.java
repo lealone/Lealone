@@ -48,27 +48,16 @@ public class BTreeChunk {
     public int pageCount;
 
     /**
-     * The number of pages still alive.
+     * The sum of the length of all pages.
      */
-    public int pageCountLive;
+    public long sumOfPageLength;
 
-    /**
-     * The sum of the max length of all pages.
-     */
-    public long maxLen;
+    public long sumOfLivePageLength;
 
-    /**
-     * The sum of the max length of all pages that are in use.
-     */
-    public long maxLenLive;
-
-    public ArrayList<Long> leafPagePositions;
-    public int leafPagePositionsOffset;
-    public int leafPageCount;
     public ArrayList<Long> pagePositions;
     public int pagePositionsOffset;
-
-    public boolean changed;
+    public ArrayList<Integer> pageLengths;
+    public int pageLengthsOffset;
 
     public FileStorage fileStorage;
 
@@ -81,13 +70,13 @@ public class BTreeChunk {
      *
      * @return the fill rate
      */
-    public int getFillRate() {
-        if (maxLenLive <= 0) {
+    int getFillRate() {
+        if (sumOfLivePageLength <= 0) {
             return 0;
-        } else if (maxLenLive == maxLen) {
+        } else if (sumOfLivePageLength == sumOfPageLength) {
             return 100;
         }
-        return 1 + (int) (98 * maxLenLive / maxLen);
+        return 1 + (int) (98 * sumOfLivePageLength / sumOfPageLength);
     }
 
     @Override
@@ -114,17 +103,10 @@ public class BTreeChunk {
         DataUtils.appendMap(buff, "blockCount", blockCount);
 
         DataUtils.appendMap(buff, "pageCount", pageCount);
-        if (pageCount != pageCountLive) {
-            DataUtils.appendMap(buff, "pageCountLive", pageCountLive);
-        }
-        DataUtils.appendMap(buff, "maxLen", maxLen);
-        if (maxLen != maxLenLive) {
-            DataUtils.appendMap(buff, "maxLenLive", maxLenLive);
-        }
+        DataUtils.appendMap(buff, "sumOfPageLength", sumOfPageLength);
 
-        DataUtils.appendMap(buff, "leafPagePositionsOffset", leafPagePositionsOffset);
-        DataUtils.appendMap(buff, "leafPageCount", leafPageCount);
         DataUtils.appendMap(buff, "pagePositionsOffset", pagePositionsOffset);
+        DataUtils.appendMap(buff, "pageLengthsOffset", pageLengthsOffset);
 
         DataUtils.appendMap(buff, "blockSize", BTreeStorage.BLOCK_SIZE);
         DataUtils.appendMap(buff, "format", FORMAT_VERSION);
@@ -146,14 +128,11 @@ public class BTreeChunk {
         c.blockCount = DataUtils.readHexInt(map, "blockCount", 0);
 
         c.pageCount = DataUtils.readHexInt(map, "pageCount", 0);
-        c.pageCountLive = DataUtils.readHexInt(map, "pageCountLive", c.pageCount);
 
-        c.maxLen = DataUtils.readHexLong(map, "maxLen", 0);
-        c.maxLenLive = DataUtils.readHexLong(map, "maxLenLive", c.maxLen);
+        c.sumOfPageLength = DataUtils.readHexLong(map, "sumOfPageLength", 0);
 
-        c.leafPagePositionsOffset = DataUtils.readHexInt(map, "leafPagePositionsOffset", 0);
-        c.leafPageCount = DataUtils.readHexInt(map, "leafPageCount", 0);
         c.pagePositionsOffset = DataUtils.readHexInt(map, "pagePositionsOffset", 0);
+        c.pageLengthsOffset = DataUtils.readHexInt(map, "pageLengthsOffset", 0);
 
         long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {

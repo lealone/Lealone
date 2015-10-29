@@ -17,8 +17,6 @@
  */
 package org.lealone.test.storage;
 
-import java.util.Map.Entry;
-
 import org.junit.Test;
 import org.lealone.storage.AOStorage;
 import org.lealone.storage.AOStorageBuilder;
@@ -105,14 +103,6 @@ public class BTreeMapTest extends TestBase {
         }
         assertEquals(50, count);
 
-        assertEquals(200, map.entrySet().size());
-        count = 0;
-        for (Entry<Integer, String> e : map.entrySet()) {
-            count++;
-            assertEquals(count, e.getKey().intValue());
-        }
-        assertEquals(200, count);
-
         v = map.remove(150);
         assertNotNull(v);
         assertEquals(199, map.size());
@@ -121,8 +111,6 @@ public class BTreeMapTest extends TestBase {
         // map.remove();
 
         map.save();
-
-        map.getStorage().compact();
 
         map.close();
 

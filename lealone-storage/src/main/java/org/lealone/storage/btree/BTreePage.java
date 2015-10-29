@@ -582,26 +582,19 @@ public class BTreePage {
         }
         pos = DataUtils.getPagePos(chunkId, start, pageLength, type);
         chunk.pagePositions.add(pos);
-        if (type == DataUtils.PAGE_TYPE_LEAF) {
-            chunk.leafPagePositions.add(pos);
-            chunk.leafPagePositions.add((long) pageLength);
-            chunk.leafPageCount++;
-        }
+        chunk.pageLengths.add(pageLength);
         storage.cachePage(pos, this, getMemory());
         if (type == DataUtils.PAGE_TYPE_NODE) {
             // cache again - this will make sure nodes stays in the cache
             // for a longer time
             storage.cachePage(pos, this, getMemory());
         }
-        long max = DataUtils.getPageMaxLength(pos);
-        chunk.maxLen += max;
-        chunk.maxLenLive += max;
+        chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;
-        chunk.pageCountLive++;
 
-        if (chunk.maxLen > BTreeChunk.MAX_SIZE)
+        if (chunk.sumOfPageLength > BTreeChunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
-                    "Chunk too large, max size: {0}, current size: {1}", BTreeChunk.MAX_SIZE, chunk.maxLen);
+                    "Chunk too large, max size: {0}, current size: {1}", BTreeChunk.MAX_SIZE, chunk.sumOfPageLength);
         if (removedInMemory) {
             // if the page was removed _before_ the position was assigned, we
             // need to mark it removed here, so the fields are updated

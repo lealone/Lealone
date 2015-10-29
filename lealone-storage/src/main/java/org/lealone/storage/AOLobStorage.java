@@ -16,7 +16,6 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CodingErrorAction;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Map.Entry;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.message.DbException;
@@ -279,11 +278,13 @@ public class AOLobStorage implements LobStorage {
         // this might not be very efficient -
         // to speed it up, we would need yet another map
         ArrayList<Long> list = New.arrayList();
-        for (Entry<Long, Object[]> e : lobMap.entrySet()) {
-            Object[] value = e.getValue();
+        StorageMapCursor<Long, Object[]> cursor = lobMap.cursor(null);
+        while (cursor.hasNext()) {
+            cursor.next();
+            Object[] value = cursor.getValue();
             int t = (Integer) value[1];
             if (t == tableId) {
-                list.add(e.getKey());
+                list.add(cursor.getKey());
             }
         }
         for (long lobId : list) {
