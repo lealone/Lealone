@@ -26,6 +26,7 @@ public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
     protected DataType keyType;
     protected DataType valueType;
     protected Map<String, Object> config;
+    protected AOStorage aoStorage;
 
     public StorageMapBuilder<M, K, V> name(String name) {
         this.name = name;
@@ -44,6 +45,11 @@ public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
 
     public StorageMapBuilder<M, K, V> config(Map<String, Object> config) {
         this.config = config;
+        return this;
+    }
+
+    public StorageMapBuilder<M, K, V> aoStorage(AOStorage aoStorage) {
+        this.aoStorage = aoStorage;
         return this;
     }
 

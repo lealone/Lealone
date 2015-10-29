@@ -65,12 +65,16 @@ public class AOStorage implements Storage {
         }
     }
 
+    public void closeMap(String name) {
+        maps.remove(name);
+    }
+
     @SuppressWarnings("unchecked")
     public synchronized <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder) {
         M map = (M) maps.get(name);
         if (map == null) {
             HashMap<String, Object> c = new HashMap<>(config);
-            builder.name(name).config(c);
+            builder.name(name).config(c).aoStorage(this);
             map = builder.openMap();
             maps.put(name, map);
         }

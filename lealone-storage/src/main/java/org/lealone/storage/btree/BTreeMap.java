@@ -8,6 +8,7 @@ package org.lealone.storage.btree;
 import java.util.Map;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.storage.AOStorage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapBuilder;
 import org.lealone.storage.StorageMapCursor;
@@ -40,7 +41,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     public static class Builder<K, V> extends StorageMapBuilder<BTreeMap<K, V>, K, V> {
         @Override
         public BTreeMap<K, V> openMap() {
-            return new BTreeMap<>(name, keyType, valueType, config);
+            return new BTreeMap<>(name, keyType, valueType, config, aoStorage);
         }
     }
 
@@ -51,6 +52,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     protected final Map<String, Object> config;
     protected final BTreeStorage storage;
+    protected final AOStorage aoStorage;
 
     /**
      * The current root page (may not be null).
@@ -58,7 +60,8 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     protected volatile BTreePage root;
 
     @SuppressWarnings("unchecked")
-    protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config) {
+    protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config,
+            AOStorage aoStorage) {
         DataUtils.checkArgument(name != null, "The name may not be null");
         DataUtils.checkArgument(config != null, "The config may not be null");
 
@@ -74,6 +77,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         this.valueType = valueType;
         this.readOnly = config.containsKey("readOnly");
         this.config = config;
+        this.aoStorage = aoStorage;
 
         storage = new BTreeStorage((BTreeMap<Object, Object>) this);
 
@@ -453,6 +457,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     @Override
     public void remove() {
         storage.remove();
+        aoStorage.closeMap(name);
     }
 
     @Override
@@ -463,6 +468,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     @Override
     public void close() {
         storage.close();
+        aoStorage.closeMap(name);
     }
 
     @Override
