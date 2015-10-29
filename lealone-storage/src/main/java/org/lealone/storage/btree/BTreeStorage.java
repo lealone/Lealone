@@ -172,23 +172,23 @@ public class BTreeStorage {
         return chunkMetaData.readInt();
     }
 
-    // private synchronized TreeSet<Long> readRemovedPages() {
-    // try {
-    // TreeSet<Long> removedPages = new TreeSet<>();
-    // if (chunkMetaData.length() > 8) {
-    // chunkMetaData.seek(4);
-    // int removedPagesCount = chunkMetaData.readInt();
-    //
-    // for (int i = 0; i < removedPagesCount; i++)
-    // removedPages.add(chunkMetaData.readLong());
-    // }
-    //
-    // return removedPages;
-    // } catch (IOException e) {
-    // throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
-    // "Failed to readRemovedPages", e));
-    // }
-    // }
+    private synchronized TreeSet<Long> readRemovedPages() {
+        try {
+            TreeSet<Long> removedPages = new TreeSet<>();
+            if (chunkMetaData.length() > 8) {
+                chunkMetaData.seek(4);
+                int removedPagesCount = chunkMetaData.readInt();
+
+                for (int i = 0; i < removedPagesCount; i++)
+                    removedPages.add(chunkMetaData.readLong());
+            }
+
+            return removedPages;
+        } catch (IOException e) {
+            throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
+                    "Failed to readRemovedPages", e));
+        }
+    }
 
     private synchronized void writeChunkMetaData(int lastChunkId, TreeSet<Long> removedPages) {
         try {
@@ -569,6 +569,7 @@ public class BTreeStorage {
         write(c.fileStorage, CHUNK_HEADER_SIZE, buff.getBuffer());
         c.fileStorage.sync();
 
+        removedPages.addAll(readRemovedPages());
         writeChunkMetaData(c.id, removedPages);
 
         releaseWriteBuffer(buff);
@@ -611,46 +612,40 @@ public class BTreeStorage {
      * Chunks with a low number of live items are re-written.
      * <p>
      * If the current fill rate is higher than the minimum fill rate, nothing is done.
-     *
      */
-    private void executeCompact(TreeSet<Long> removedPagesOld) {
+    private void executeCompact(TreeSet<Long> removedPages) {
         if (minFillRate <= 0)
             return;
 
-        if (removedPagesOld.isEmpty())
+        if (removedPages.isEmpty())
             return;
 
-        TreeSet<Long> removedPagesNew = new TreeSet<Long>(removedPagesOld);
-        removeUnusedChunks(removedPagesNew);
-        if (removedPagesNew.isEmpty()) {
-            writeChunkMetaData(lastChunk.id, removedPagesNew);
-            return;
-        }
+        removeUnusedChunks(removedPages);
 
-        List<BTreeChunk> old = getOldChunks();
-        if (old.isEmpty())
-            return;
-
-        boolean saveIfNeeded = rewrite(old, removedPagesNew);
-        if (saveIfNeeded) {
-            removedPagesOld = executeSave();
-            removedPagesNew.addAll(removedPagesOld);
-            removeUnusedChunks(removedPagesNew);
-            writeChunkMetaData(lastChunk.id, removedPagesNew);
-        } else {
-            if (!removedPagesOld.containsAll(removedPagesNew)) {
-                writeChunkMetaData(lastChunk.id, removedPagesNew);
+        if (!removedPages.isEmpty()) {
+            List<BTreeChunk> old = getOldChunks();
+            if (!old.isEmpty()) {
+                boolean saveIfNeeded = rewrite(old, removedPages);
+                if (saveIfNeeded) {
+                    removedPages = executeSave();
+                    removeUnusedChunks(removedPages);
+                }
             }
         }
     }
 
     private void removeUnusedChunks(TreeSet<Long> removedPages) {
+        int size = removedPages.size();
         for (BTreeChunk c : findUnusedChunks(removedPages)) {
             c.fileStorage.close();
             c.fileStorage.delete();
             chunks.remove(c.id);
             chunkIds.clear(c.id);
             removedPages.removeAll(c.pagePositions);
+        }
+
+        if (size > removedPages.size()) {
+            writeChunkMetaData(lastChunk.id, removedPages);
         }
     }
 
@@ -662,12 +657,12 @@ public class BTreeStorage {
         readAllChunks();
 
         for (BTreeChunk c : chunks.values()) {
+            c.sumOfLivePageLength = 0;
             boolean unused = true;
             for (int i = 0, size = c.pagePositions.size(); i < size; i++) {
                 if (!removedPages.contains(c.pagePositions.get(i))) {
-                    unused = false;
-                } else {
                     c.sumOfLivePageLength += c.pageLengths.get(i);
+                    unused = false;
                 }
             }
             if (unused)

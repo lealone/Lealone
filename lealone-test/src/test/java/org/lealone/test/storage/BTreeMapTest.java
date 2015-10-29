@@ -25,16 +25,26 @@ import org.lealone.storage.btree.BTreeMap;
 import org.lealone.test.TestBase;
 
 public class BTreeMapTest extends TestBase {
+    private AOStorage storage;
+    private BTreeMap<Integer, String> map;
 
     @Test
     public void run() {
+        init();
+        testMapOperations();
+        testCompact();
+    }
+
+    private void init() {
         AOStorageBuilder builder = new AOStorageBuilder();
         String storageName = joinDirs("aose");
         builder.storageName(storageName).compress().reuseSpace().pageSplitSize(1024).minFillRate(30);
-        AOStorage storage = builder.openStorage();
+        storage = builder.openStorage();
 
-        BTreeMap<Integer, String> map = storage.openBTreeMap("BTreeMapTest");
+        map = storage.openBTreeMap("BTreeMapTest");
+    }
 
+    private void testMapOperations() {
         Object v = null;
         map.clear();
 
@@ -110,8 +120,6 @@ public class BTreeMapTest extends TestBase {
         // map.printPage();
         // map.remove();
 
-        map.save();
-
         map.close();
 
         assertTrue(map.isClosed());
@@ -122,5 +130,24 @@ public class BTreeMapTest extends TestBase {
         } catch (IllegalStateException e) {
             // e.printStackTrace();
         }
+    }
+
+    private void testCompact() {
+        map = storage.openBTreeMap("BTreeMapTest");
+
+        map.clear();
+
+        map.put(1, "v1");
+        map.put(50, "v50");
+        map.put(100, "v100");
+
+        map.save();
+
+        // map.printPage();
+
+        for (int i = 100; i <= 200; i++)
+            map.put(i, "value" + i);
+
+        map.save();
     }
 }
