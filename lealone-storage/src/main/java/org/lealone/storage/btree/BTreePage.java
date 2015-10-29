@@ -42,7 +42,6 @@ public class BTreePage {
 
     private final BTreeMap<?, ?> map;
     private long pos;
-    private long oldPos;
 
     /**
      * The total entry count of this page and all children.
@@ -225,7 +224,6 @@ public class BTreePage {
      */
     BTreePage split(int at) {
         BTreePage p = isLeaf() ? splitLeaf(at) : splitNode(at);
-        p.setOldPos(this);
         return p;
     }
 
@@ -584,7 +582,6 @@ public class BTreePage {
         }
         pos = DataUtils.getPagePos(chunkId, start, pageLength, type);
         chunk.pagePositions.add(pos);
-        chunk.pagePositions.add(oldPos);
         if (type == DataUtils.PAGE_TYPE_LEAF) {
             chunk.leafPagePositions.add(pos);
             chunk.leafPagePositions.add((long) pageLength);
@@ -713,18 +710,10 @@ public class BTreePage {
      */
     public BTreePage copy() {
         BTreePage newPage = create(map, keys, values, children, totalCount, getMemory());
-        newPage.setOldPos(this);
         newPage.cachedCompare = cachedCompare;
         // mark the old as deleted
         removePage();
         return newPage;
-    }
-
-    void setOldPos(BTreePage oldPage) {
-        if (oldPage.oldPos > 0)
-            oldPos = oldPage.oldPos;
-        else if (oldPage.pos > 0)
-            oldPos = oldPage.pos;
     }
 
     /**
@@ -849,9 +838,7 @@ public class BTreePage {
 
         buff.append(indent).append("type: ").append(isLeaf() ? "leaf" : "node").append('\n');
         buff.append(indent).append("pos: ").append(pos).append('\n');
-        buff.append(indent).append("oldPos: ").append(oldPos).append('\n');
         buff.append(indent).append("chunkId: ").append(DataUtils.getPageChunkId(pos)).append('\n');
-        buff.append(indent).append("oldChunkId: ").append(DataUtils.getPageChunkId(oldPos)).append('\n');
         buff.append(indent).append("totalCount: ").append(totalCount).append('\n');
         buff.append(indent).append("memory: ").append(memory).append('\n');
         buff.append(indent).append("keyLength: ").append(keys.length).append('\n');

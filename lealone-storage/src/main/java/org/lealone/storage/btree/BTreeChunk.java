@@ -7,7 +7,6 @@ package org.lealone.storage.btree;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.fs.FileStorage;
@@ -63,16 +62,11 @@ public class BTreeChunk {
      */
     public long maxLenLive;
 
-    /**
-     * New and old page positions.
-     */
-    public ArrayList<Long> pagePositions;
-    public int pagePositionsOffset;
     public ArrayList<Long> leafPagePositions;
     public int leafPagePositionsOffset;
     public int leafPageCount;
-
-    public HashSet<Long> unusedPages;
+    public ArrayList<Long> pagePositions;
+    public int pagePositionsOffset;
 
     public boolean changed;
 
@@ -128,9 +122,9 @@ public class BTreeChunk {
             DataUtils.appendMap(buff, "maxLenLive", maxLenLive);
         }
 
-        DataUtils.appendMap(buff, "pagePositionsOffset", pagePositionsOffset);
         DataUtils.appendMap(buff, "leafPagePositionsOffset", leafPagePositionsOffset);
         DataUtils.appendMap(buff, "leafPageCount", leafPageCount);
+        DataUtils.appendMap(buff, "pagePositionsOffset", pagePositionsOffset);
 
         DataUtils.appendMap(buff, "blockSize", BTreeStorage.BLOCK_SIZE);
         DataUtils.appendMap(buff, "format", FORMAT_VERSION);
@@ -157,9 +151,9 @@ public class BTreeChunk {
         c.maxLen = DataUtils.readHexLong(map, "maxLen", 0);
         c.maxLenLive = DataUtils.readHexLong(map, "maxLenLive", c.maxLen);
 
-        c.pagePositionsOffset = DataUtils.readHexInt(map, "pagePositionsOffset", 0);
         c.leafPagePositionsOffset = DataUtils.readHexInt(map, "leafPagePositionsOffset", 0);
         c.leafPageCount = DataUtils.readHexInt(map, "leafPageCount", 0);
+        c.pagePositionsOffset = DataUtils.readHexInt(map, "pagePositionsOffset", 0);
 
         long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {

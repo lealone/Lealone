@@ -169,7 +169,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
      * @return the new sibling
      */
     protected BTreePage splitRoot(BTreePage p) {
-        BTreePage oldPage = p;
         long totalCount = p.getTotalCount();
         int at = p.getKeyCount() / 2;
         Object k = p.getKey(at);
@@ -178,7 +177,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         BTreePage.PageReference[] children = { new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
                 new BTreePage.PageReference(split, split.getPos(), split.getTotalCount()), };
         p = BTreePage.create(this, keys, null, children, totalCount, 0);
-        p.setOldPos(oldPage); // 记下最初的page pos
         return p;
     }
 

@@ -13,14 +13,11 @@
  */
 package org.lealone.test.storage;
 
-import java.util.ArrayList;
-
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.AOStorage;
 import org.lealone.storage.AOStorageBuilder;
 import org.lealone.storage.BufferedMap;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.btree.BTreeChunk;
 import org.lealone.storage.btree.BTreeMap;
 import org.lealone.storage.rtree.RTreeMap;
 import org.lealone.storage.rtree.SpatialKey;
@@ -54,8 +51,6 @@ public class AOStorageTest extends TestBase {
             testPut();
             // testSplit();
             // testGet();
-            // testCompact();
-            // testUnusedChunks();
 
             // testPrintPage();
 
@@ -146,19 +141,6 @@ public class AOStorageTest extends TestBase {
         p(v);
 
         map.clear();
-    }
-
-    void testUnusedChunks() {
-        ArrayList<BTreeChunk> unusedChunks = map.getStorage().findUnusedChunks();
-        for (BTreeChunk c : unusedChunks)
-            p("id=" + c.id + ", pageCountLive=" + c.pageCountLive);
-
-        map.getStorage().freeUnusedChunks();
-    }
-
-    void testCompact() {
-        int targetFillRate = 30;
-        map.getStorage().compact(targetFillRate, Integer.MAX_VALUE);
     }
 
     void testPagePos() {

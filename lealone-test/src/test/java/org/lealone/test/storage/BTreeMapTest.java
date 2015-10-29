@@ -32,7 +32,7 @@ public class BTreeMapTest extends TestBase {
     public void run() {
         AOStorageBuilder builder = new AOStorageBuilder();
         String storageName = joinDirs("aose");
-        builder.storageName(storageName).compress().reuseSpace().pageSplitSize(1024);
+        builder.storageName(storageName).compress().reuseSpace().pageSplitSize(1024).minFillRate(30);
         AOStorage storage = builder.openStorage();
 
         BTreeMap<Integer, String> map = storage.openBTreeMap("BTreeMapTest");
@@ -122,9 +122,7 @@ public class BTreeMapTest extends TestBase {
 
         map.save();
 
-        int targetFillRate = 60;
-        long maxBytesToWrite = 4 * 1024 * 1024 * 1024; // 最多compact 4G
-        map.getStorage().compact(targetFillRate, maxBytesToWrite);
+        map.getStorage().compact();
 
         map.close();
 

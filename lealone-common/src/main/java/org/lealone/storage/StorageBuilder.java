@@ -144,16 +144,6 @@ public abstract class StorageBuilder {
     }
 
     /**
-     * How many versions to retain. If not set, 3 old
-     * versions are retained.
-     * 
-     * @param count the number of versions to keep
-     */
-    public StorageBuilder maxVersions(int count) {
-        return set("maxVersions", count);
-    }
-
-    /**
      * Whether empty space in the file should be re-used. If enabled, old data
      * is overwritten (default). If disabled, writes are appended at the end of
      * the file.
@@ -166,6 +156,10 @@ public abstract class StorageBuilder {
      */
     public StorageBuilder reuseSpace() {
         return set("reuseSpace", 1);
+    }
+
+    public StorageBuilder minFillRate(int minFillRate) {
+        return set("minFillRate", minFillRate);
     }
 
     @Override
