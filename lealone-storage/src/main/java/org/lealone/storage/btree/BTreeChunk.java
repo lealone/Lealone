@@ -74,12 +74,6 @@ public class BTreeChunk {
 
     public HashSet<Long> unusedPages;
 
-    /**
-     * The garbage collection priority. Priority 0 means it needs to be
-     * collected, a high value means low priority.
-     */
-    public int collectPriority;
-
     public boolean changed;
 
     public FileStorage fileStorage;

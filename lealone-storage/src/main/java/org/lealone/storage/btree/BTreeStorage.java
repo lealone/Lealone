@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -48,19 +48,21 @@ public class BTreeStorage {
     public static final int CHUNK_HEADER_BLOCKS = 2;
     public static final int CHUNK_HEADER_SIZE = CHUNK_HEADER_BLOCKS * BLOCK_SIZE;
 
-    /**
-     * The map of chunks.
-     */
+    private final BTreeMap<Object, Object> map;
+    private final String btreeStorageName;
+
     private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
     private final RandomAccessFile lastChunkIdFile;
 
-    private final BTreeMap<Object, Object> map;
-    private final String btreeStorageName;
+    /**
+    * The newest chunk. If nothing was stored yet, this field is not set.
+    */
+    final BTreeChunk lastChunk;
 
-    private final boolean reuseSpace;
     private final int pageSplitSize;
     private final int maxVersions;
+    private final boolean reuseSpace;
     private final UncaughtExceptionHandler backgroundExceptionHandler;
 
     /**
@@ -80,11 +82,6 @@ public class BTreeStorage {
     private Compressor compressorFast;
     private Compressor compressorHigh;
 
-    /**
-     * The newest chunk. If nothing was stored yet, this field is not set.
-     */
-    final BTreeChunk lastChunk;
-
     private boolean closed;
     private IllegalStateException panicException;
     private WriteBuffer writeBuffer;
@@ -95,25 +92,19 @@ public class BTreeStorage {
      * Create and open the storage.
      * 
      * @param map the map to use
-     * @throws IllegalStateException if the file is corrupt, or an exception
-     *             occurred while opening
-     * @throws IllegalArgumentException if the directory does not exist
+     * @throws IllegalStateException if the file is corrupt, or an exception occurred while opening
      */
     BTreeStorage(BTreeMap<Object, Object> map) {
         this.map = map;
         Map<String, Object> config = map.config;
-        String storageName = (String) config.get("storageName");
-        btreeStorageName = storageName + File.separator + map.getName();
 
-        Object value = null;
-
-        reuseSpace = config.containsKey("reuseSpace");
-
-        value = config.get("pageSplitSize");
+        Object value = config.get("pageSplitSize");
         pageSplitSize = value != null ? (Integer) value : 16 * 1024;
 
         value = config.get("maxVersions");
         maxVersions = value != null ? (Integer) value : 3;
+
+        reuseSpace = config.containsKey("reuseSpace");
 
         backgroundExceptionHandler = (UncaughtExceptionHandler) config.get("backgroundExceptionHandler");
 
@@ -122,7 +113,7 @@ public class BTreeStorage {
         if (mb > 0) {
             CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
             cc.maxMemory = mb * 1024L * 1024L;
-            cache = new CacheLongKeyLIRS<BTreePage>(cc);
+            cache = new CacheLongKeyLIRS<>(cc);
         } else {
             cache = null;
         }
@@ -130,15 +121,12 @@ public class BTreeStorage {
         value = config.get("compress");
         compressionLevel = value == null ? 0 : (Integer) value;
 
+        btreeStorageName = (String) config.get("storageName") + File.separator + map.getName();
         if (!FileUtils.exists(btreeStorageName))
             FileUtils.createDirectories(btreeStorageName);
-        String[] files = new File(btreeStorageName).list();
-        if (files != null && files.length > 0) {
-            for (String f : files) {
-                if (f.endsWith(AOStorage.SUFFIX_AO_FILE)) {
-                    int id = Integer.parseInt(f.substring(0, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
-                    chunkIds.set(id);
-                }
+        else {
+            for (int id : getAllChunkIds()) {
+                chunkIds.set(id);
             }
         }
 
@@ -157,6 +145,20 @@ public class BTreeStorage {
             throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
                     "Failed to read lastChunkIdFile: {0}", file, e));
         }
+    }
+
+    private List<Integer> getAllChunkIds() {
+        List<Integer> ids = New.arrayList();
+        String[] files = new File(btreeStorageName).list();
+        if (files != null && files.length > 0) {
+            for (String f : files) {
+                if (f.endsWith(AOStorage.SUFFIX_AO_FILE)) {
+                    int id = Integer.parseInt(f.substring(0, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
+                    ids.add(id);
+                }
+            }
+        }
+        return ids;
     }
 
     private int readLastChunkId() throws IOException {
@@ -260,26 +262,21 @@ public class BTreeStorage {
     }
 
     private void readAllChunks(boolean readPagePositions) {
-        String[] files = new File(btreeStorageName).list();
-        if (files != null && files.length > 0) {
-            for (String f : files) {
-                int chunkId = Integer.parseInt(f.substring(0, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
-                if (!chunks.containsKey(chunkId)) {
-                    readChunkHeader(chunkId);
-                }
+        for (int id : getAllChunkIds()) {
+            if (!chunks.containsKey(id)) {
+                readChunkHeader(id);
             }
+        }
+        if (readPagePositions) {
+            for (BTreeChunk c : chunks.values()) {
+                if (c.pagePositions == null) {
+                    ByteBuffer pagePositions = c.fileStorage.readFully(c.pagePositionsOffset + CHUNK_HEADER_SIZE,
+                            c.pageCount * 2 * 8);
 
-            if (readPagePositions) {
-                for (BTreeChunk c : chunks.values()) {
-                    if (c.pagePositions == null) {
-                        ByteBuffer pagePositions = c.fileStorage.readFully(c.pagePositionsOffset + CHUNK_HEADER_SIZE,
-                                c.pageCount * 2 * 8);
-
-                        int size = c.pageCount * 2;
-                        c.pagePositions = new ArrayList<Long>();
-                        for (int i = 0; i < size; i++) {
-                            c.pagePositions.add(pagePositions.getLong());
-                        }
+                    int size = c.pageCount * 2;
+                    c.pagePositions = new ArrayList<Long>();
+                    for (int i = 0; i < size; i++) {
+                        c.pagePositions.add(pagePositions.getLong());
                     }
                 }
             }
@@ -366,7 +363,7 @@ public class BTreeStorage {
                 }
             }
 
-            if (unusedPageCount == (size / 2)) {
+            if (unusedPageCount * 2 == size) {
                 unusedChunks.add(c);
             }
         }
@@ -418,7 +415,6 @@ public class BTreeStorage {
 
     /**
      * Close the file and the storage, without writing anything.
-     * This will stop the background thread. 
      * This method ignores all errors.
      */
     private void closeImmediately() {
@@ -442,42 +438,17 @@ public class BTreeStorage {
                 if (c.fileStorage != null)
                     c.fileStorage.close();
             }
+            chunks.clear();
+
             // release memory early - this is important when called
             // because of out of memory
             if (cache != null)
                 cache.clear();
-            chunks.clear();
 
             try {
                 lastChunkIdFile.close();
             } catch (IOException e) {
             }
-        }
-    }
-
-    /**
-     * Commit all changes and persist them to disk. This method does nothing if
-     * there are no unsaved changes.
-     * <p>
-     * At most one storage operation may run at any time.
-     *
-     */
-    synchronized void save() {
-        if (closed) {
-            return;
-        }
-        if (map.isReadOnly()) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "This storage is read-only");
-        }
-
-        if (!hasUnsavedChanges()) {
-            return;
-        }
-
-        try {
-            save0();
-        } catch (IllegalStateException e) {
-            throw panic(e);
         }
     }
 
@@ -493,14 +464,38 @@ public class BTreeStorage {
         return b;
     }
 
+    /**
+     * Save all changes and persist them to disk.
+     * This method does nothing if there are no unsaved changes.
+     */
+    synchronized void save() {
+        if (closed) {
+            return;
+        }
+
+        if (map.isReadOnly()) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED, "This storage is read-only");
+        }
+
+        if (!hasUnsavedChanges()) {
+            return;
+        }
+
+        try {
+            save0();
+        } catch (IllegalStateException e) {
+            throw panic(e);
+        }
+    }
+
     private void save0() {
         WriteBuffer buff = getWriteBuffer();
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
         BTreeChunk c = new BTreeChunk(id);
         chunks.put(c.id, c);
-        c.pagePositions = new ArrayList<Long>();
-        c.leafPagePositions = new ArrayList<Long>();
+        c.pagePositions = new ArrayList<>();
+        c.leafPagePositions = new ArrayList<>();
 
         BTreePage p = map.root;
         if (p.getTotalCount() > 0) {
@@ -576,25 +571,21 @@ public class BTreeStorage {
      * Chunks with a low number of live items are re-written.
      * <p>
      * If the current fill rate is higher than the target fill rate, nothing is done.
-     * <p>
-     * Please note this method will not necessarily reduce the file size, as
-     * empty chunks are not overwritten.
      * 
      * @param targetFillRate the minimum percentage of live entries
-     * @param write the minimum number of bytes to write
+     * @param maxBytesToWrite the maximum number of bytes to write
      * @return if a chunk was re-written
      */
-    public boolean compact(int targetFillRate, int write) {
-        if (!reuseSpace) {
+    public boolean compact(int targetFillRate, long maxBytesToWrite) {
+        checkOpen();
+        if (!reuseSpace || lastChunk == null) {
             return false;
         }
+
         synchronized (compactSync) {
-            checkOpen();
-            ArrayList<BTreeChunk> old;
-            synchronized (this) {
-                old = compactGetOldChunks(targetFillRate, write);
-            }
-            if (old == null || old.isEmpty()) {
+            freeUnusedChunks();
+            List<BTreeChunk> old = compactGetOldChunks(targetFillRate, maxBytesToWrite);
+            if (old.isEmpty()) {
                 return false;
             }
             compactRewrite(old);
@@ -602,89 +593,41 @@ public class BTreeStorage {
         }
     }
 
-    private ArrayList<BTreeChunk> compactGetOldChunks(int targetFillRate, int write) {
-        if (lastChunk == null) {
-            // nothing to do
-            return null;
-        }
-
+    private synchronized List<BTreeChunk> compactGetOldChunks(int targetFillRate, long maxBytesToWrite) {
         readAllChunks();
 
-        // calculate the fill rate
-        long maxLengthSum = 0;
-        long maxLengthLiveSum = 0;
-
+        List<BTreeChunk> old = New.arrayList();
         for (BTreeChunk c : chunks.values()) {
-            maxLengthSum += c.maxLen;
-            maxLengthLiveSum += c.maxLenLive;
-        }
-        if (maxLengthLiveSum < 0) {
-            // no old data
-            return null;
-        }
-        // the fill rate of all chunks combined
-        if (maxLengthSum <= 0) {
-            // avoid division by 0
-            maxLengthSum = 1;
-        }
-        int fillRate = (int) (100 * maxLengthLiveSum / maxLengthSum);
-        if (fillRate >= targetFillRate) {
-            return null;
-        }
-
-        // the 'old' list contains the chunks we want to free up
-        ArrayList<BTreeChunk> old = New.arrayList();
-        for (BTreeChunk c : chunks.values()) {
-            c.collectPriority = c.getFillRate() * 1000;
+            if (c.getFillRate() > targetFillRate)
+                continue;
             old.add(c);
         }
-        if (old.isEmpty()) {
-            return null;
-        }
+        if (old.isEmpty())
+            return old;
 
-        // sort the list, so the first entry should be collected first
         Collections.sort(old, new Comparator<BTreeChunk>() {
-
             @Override
             public int compare(BTreeChunk o1, BTreeChunk o2) {
-                int comp = new Integer(o1.collectPriority).compareTo(o2.collectPriority);
+                long comp = o1.getFillRate() - o2.getFillRate();
                 if (comp == 0) {
-                    comp = new Long(o1.maxLenLive).compareTo(o2.maxLenLive);
+                    comp = o1.maxLenLive - o2.maxLenLive;
                 }
-                return comp;
+                return Long.signum(comp);
             }
         });
-        // find out up to were in the old list we need to move
-        long written = 0;
-        int chunkCount = 0;
-        BTreeChunk move = null;
-        for (BTreeChunk c : old) {
-            if (move != null) {
-                if (c.collectPriority > 0 && written > write) {
-                    break;
-                }
-            }
-            written += c.maxLenLive;
-            chunkCount++;
-            move = c;
+
+        long bytes = 0;
+        int index = 0;
+        int size = old.size();
+        for (; index < size; index++) {
+            bytes += old.get(index).maxLenLive;
+            if (bytes > maxBytesToWrite)
+                break;
         }
-        if (chunkCount < 1) {
-            return null;
-        }
-        // remove the chunks we want to keep from this list
-        boolean remove = false;
-        for (Iterator<BTreeChunk> it = old.iterator(); it.hasNext();) {
-            BTreeChunk c = it.next();
-            if (move == c) {
-                remove = true;
-            } else if (remove) {
-                it.remove();
-            }
-        }
-        return old;
+        return index == size ? old : old.subList(0, index + 1);
     }
 
-    private void compactRewrite(ArrayList<BTreeChunk> old) {
+    private void compactRewrite(List<BTreeChunk> old) {
         for (BTreeChunk c : old) {
             for (int i = 0, size = c.pagePositions.size(); i < size; i += 2) {
                 long pos = c.pagePositions.get(i);

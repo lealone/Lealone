@@ -82,22 +82,9 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         storage = new BTreeStorage((BTreeMap<Object, Object>) this);
 
         if (storage.lastChunk != null)
-            setRootPos(storage.lastChunk.rootPagePos);
+            root = storage.readPage(storage.lastChunk.rootPagePos);
         else
-            setRootPos(0);
-    }
-
-    /**
-     * Set the position of the root page.
-     * 
-     * @param rootPos the position, 0 for empty
-     */
-    private void setRootPos(long rootPos) {
-        if (rootPos == 0) {
             root = BTreePage.createEmpty(this);
-        } else {
-            root = storage.readPage(rootPos);
-        }
     }
 
     @Override
