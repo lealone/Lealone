@@ -17,6 +17,10 @@
  */
 package org.lealone.storage;
 
+import java.io.IOException;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+
 import org.lealone.storage.type.DataType;
 
 public interface StorageMap<K, V> {
@@ -196,4 +200,7 @@ public interface StorageMap<K, V> {
 
     void save();
 
+    void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException;
+
+    void transferFrom(ReadableByteChannel src) throws IOException;
 }

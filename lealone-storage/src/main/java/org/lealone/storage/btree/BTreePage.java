@@ -5,7 +5,11 @@
  */
 package org.lealone.storage.btree;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.util.ArrayList;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
@@ -223,8 +227,7 @@ public class BTreePage {
      * @return the page with the entries after the split index
      */
     BTreePage split(int at) {
-        BTreePage p = isLeaf() ? splitLeaf(at) : splitNode(at);
-        return p;
+        return isLeaf() ? splitLeaf(at) : splitNode(at);
     }
 
     private BTreePage splitLeaf(int at) {
@@ -459,7 +462,7 @@ public class BTreePage {
      * @param offset the offset within the chunk
      * @param maxLength the maximum length
      */
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength) {
+    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean isLeaf) {
         int start = buff.position();
         int pageLength = buff.getInt();
         if (pageLength > maxLength || pageLength < 4) {
@@ -469,6 +472,8 @@ public class BTreePage {
                             pageLength);
         }
         buff.limit(start + pageLength);
+        if (isLeaf)
+            map.getKeyType().read(buff); // read first key
         short check = buff.getShort();
         int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
                 ^ DataUtils.getCheckValue(pageLength);
@@ -530,10 +535,14 @@ public class BTreePage {
         int start = buff.position();
         int keyLength = keys.length;
         int type = children != null ? DataUtils.PAGE_TYPE_NODE : DataUtils.PAGE_TYPE_LEAF;
-        buff.putInt(0).putShort((byte) 0).putVarInt(keyLength);
-        // if (type == DataUtils.PAGE_TYPE_LEAF && keyLength > 0) {
-        // map.getValueType().write(buff, keys[0]);
-        // }
+        buff.putInt(0);
+        if (type == DataUtils.PAGE_TYPE_LEAF) { // write first key
+            if (keyLength == 0)
+                throw new AssertionError();
+            map.getValueType().write(buff, keys[0]);
+        }
+        int checkPos = buff.position();
+        buff.putShort((byte) 0).putVarInt(keyLength);
         int typePos = buff.position();
         buff.put((byte) type);
         if (type == DataUtils.PAGE_TYPE_NODE) {
@@ -576,7 +585,7 @@ public class BTreePage {
         int chunkId = chunk.id;
         int check = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(start)
                 ^ DataUtils.getCheckValue(pageLength);
-        buff.putInt(start, pageLength).putShort(start + 4, (short) check);
+        buff.putInt(start, pageLength).putShort(checkPos, (short) check);
         if (pos != 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
@@ -949,7 +958,7 @@ public class BTreePage {
         p.pos = pos;
         int chunkId = DataUtils.getPageChunkId(pos);
         int offset = DataUtils.getPageOffset(pos);
-        p.read(buff, chunkId, offset, maxLength);
+        p.read(buff, chunkId, offset, maxLength, DataUtils.getPageType(pos) == DataUtils.PAGE_TYPE_LEAF);
         return p;
     }
 
@@ -982,6 +991,81 @@ public class BTreePage {
         @Override
         public String toString() {
             return "PageReference[ pos=" + pos + ", count=" + count + " ]";
+        }
+    }
+
+    void transferTo(WritableByteChannel target, Object firstKey, Object lastKey) throws IOException {
+        BTreePage firstPage = binarySearchLeafPage(this, firstKey);
+        BTreePage lastPage = binarySearchLeafPage(this, lastKey);
+
+        BTreeChunk chunk = map.storage.getChunk(firstPage.pos);
+        long firstPos = firstPage.pos;
+        long lastPos = lastPage.pos;
+
+        map.storage.readPagePositions(chunk);
+        ArrayList<long[]> pairs = new ArrayList<>();
+        long pos;
+        long pageLength;
+        int index = 0;
+        long[] pair;
+        for (int i = 0, size = chunk.pagePositions.size(); i < size; i++) {
+            pos = chunk.pagePositions.get(i);
+            if (DataUtils.getPageType(pos) == DataUtils.PAGE_TYPE_LEAF) {
+                if (firstPos <= pos && pos <= lastPos) {
+                    pos = DataUtils.getPageOffset(pos);
+                    pageLength = chunk.pageLengths.get(i);
+                    if (index > 0) {
+                        pair = pairs.get(index - 1);
+                        if (pair[0] + pair[1] == pos) {
+                            pair[1] += pageLength;
+                            continue;
+                        }
+                    }
+                    pair = new long[] { pos, pageLength };
+                    pairs.add(pair);
+                    index++;
+                }
+            }
+        }
+
+        long filePos;
+        ByteBuffer buffer;
+        for (long[] p : pairs) {
+            filePos = BTreeStorage.getFilePos((int) p[0]);
+            buffer = chunk.fileStorage.readFully(filePos, (int) p[1]);
+            target.write(buffer);
+        }
+    }
+
+    private BTreePage binarySearchLeafPage(BTreePage p, Object key) {
+        int index = p.binarySearch(key);
+        if (!p.isLeaf()) {
+            if (index < 0) {
+                index = -index - 1;
+            } else {
+                index++;
+            }
+            p = p.getChildPage(index);
+            return binarySearchLeafPage(p, key);
+        }
+        if (index >= 0) {
+            return p;
+        }
+        throw new AssertionError(); // 调用者已经确保key总是存在
+    }
+
+    void transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
+        ByteBuffer buff = ByteBuffer.allocateDirect((int) count);
+        src.read(buff);
+        buff.position((int) position);
+
+        int pos = 0;
+        while (buff.remaining() > 0) {
+            int pageLength = buff.getInt();
+            Object firstKey = map.getKeyType().read(buff);
+            System.out.println("pageLength=" + pageLength + ", firstKey=" + firstKey);
+            pos += pageLength;
+            buff.position(pos);
         }
     }
 }

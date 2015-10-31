@@ -412,7 +412,7 @@ public class DatabaseDescriptor {
     }
 
     public static boolean isAutoBootstrap() {
-        return Boolean.parseBoolean(Config.getProperty("lealone.auto.bootstrap", conf.auto_bootstrap.toString()));
+        return Boolean.parseBoolean(Config.getProperty("auto.bootstrap", conf.auto_bootstrap.toString()));
     }
 
     public static int getDynamicUpdateInterval() {
@@ -476,5 +476,29 @@ public class DatabaseDescriptor {
         }
         String arch = System.getProperty("os.arch");
         return arch.contains("64") || arch.contains("sparcv9");
+    }
+
+    public static int getStreamThroughputOutboundMegabitsPerSec() {
+        return conf.stream_throughput_outbound_megabits_per_sec;
+    }
+
+    public static void setStreamThroughputOutboundMegabitsPerSec(int value) {
+        conf.stream_throughput_outbound_megabits_per_sec = value;
+    }
+
+    public static int getInterDCStreamThroughputOutboundMegabitsPerSec() {
+        return conf.inter_dc_stream_throughput_outbound_megabits_per_sec;
+    }
+
+    public static void setInterDCStreamThroughputOutboundMegabitsPerSec(int value) {
+        conf.inter_dc_stream_throughput_outbound_megabits_per_sec = value;
+    }
+
+    public static int getStreamingSocketTimeout() {
+        return conf.streaming_socket_timeout_in_ms;
+    }
+
+    public static int getMaxStreamingRetries() {
+        return conf.max_streaming_retries;
     }
 }

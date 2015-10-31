@@ -188,7 +188,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
             return new VersionedValue(rackId);
         }
 
-        public VersionedValue rpcaddress(InetAddress endpoint) {
+        public VersionedValue rpcAddress(InetAddress endpoint) {
             return new VersionedValue(endpoint.getHostAddress());
         }
 

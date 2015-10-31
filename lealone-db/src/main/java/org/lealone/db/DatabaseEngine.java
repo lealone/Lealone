@@ -132,25 +132,24 @@ public class DatabaseEngine {
                 database = LealoneDatabase.getInstance().createDatabase(dbName, ci);
                 database.init(ci);
                 opened = true;
-
-                // 内部JDBC访问时不需要认证，需要建立一个默认有Admin权限的用户
-                if (!ci.isAuthenticationEnabled()) {
-                    // if (database.getAllUsers().isEmpty()) {
-                    // // users is the last thing we add, so if no user is around,
-                    // // the database is new (or not initialized correctly)
-                    // user = new User(database, database.allocateObjectId(), ci.getUserName(), false);
-                    // user.setAdmin(true);
-                    // user.setUserPasswordHash(ci.getUserPasswordHash());
-                    // database.setMasterUser(user);
-                    // }
-
-                    user = Auth.getSystemUser();
-                }
             } else {
                 if (!database.isInitialized())
                     database.init(ci);
             }
 
+            // 内部JDBC访问时不需要认证，需要建立一个默认有Admin权限的用户
+            if (!ci.isAuthenticationEnabled()) {
+                // if (database.getAllUsers().isEmpty()) {
+                // // users is the last thing we add, so if no user is around,
+                // // the database is new (or not initialized correctly)
+                // user = new User(database, database.allocateObjectId(), ci.getUserName(), false);
+                // user.setAdmin(true);
+                // user.setUserPasswordHash(ci.getUserPasswordHash());
+                // database.setMasterUser(user);
+                // }
+
+                user = Auth.getSystemUser();
+            }
             synchronized (database) {
                 if (opened) {
                     // start the thread when already synchronizing on the database

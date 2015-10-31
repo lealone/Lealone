@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.StringUtils;
+import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.gms.EndpointState;
 import org.lealone.cluster.gms.Gossiper;
@@ -32,6 +34,8 @@ import org.lealone.cluster.gms.IFailureDetector;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.locator.TokenMetaData;
+import org.lealone.cluster.streaming.StreamPlan;
+import org.lealone.cluster.streaming.StreamResultFuture;
 import org.lealone.cluster.utils.Utils;
 import org.lealone.db.schema.Schema;
 import org.slf4j.Logger;
@@ -60,11 +64,9 @@ public class RangeStreamer {
     // map的key是keyspaceName
     private final Multimap<String, Map.Entry<InetAddress, Collection<Range<Token>>>> toFetch = HashMultimap.create();
     private final Set<ISourceFilter> sourceFilters = new HashSet<>();
-    // private final StreamPlan streamPlan;
+    private final StreamPlan streamPlan;
     private final boolean useStrictConsistency;
     private final IEndpointSnitch snitch;
-
-    // private final StreamStateStore stateStore;
 
     /**
      * A filter applied to sources to stream from when constructing a fetch map.
@@ -109,16 +111,14 @@ public class RangeStreamer {
     }
 
     public RangeStreamer(TokenMetaData metadata, Collection<Token> tokens, InetAddress address, String description,
-            boolean useStrictConsistency, IEndpointSnitch snitch) {// , StreamStateStore stateStore) {
+            boolean useStrictConsistency, IEndpointSnitch snitch) {
         this.metadata = metadata;
         this.tokens = tokens;
         this.address = address;
         this.description = description;
-        // this.streamPlan = new StreamPlan(description, true);
+        this.streamPlan = new StreamPlan(description);
         this.useStrictConsistency = useStrictConsistency;
         this.snitch = snitch;
-        // this.stateStore = stateStore;
-        // streamPlan.listeners(this.stateStore);
     }
 
     public void addSourceFilter(ISourceFilter filter) {
@@ -135,7 +135,7 @@ public class RangeStreamer {
         Multimap<Range<Token>, InetAddress> rangesForKeyspace = useStrictSourcesForRanges(schema) ? getAllRangesWithStrictSourcesFor(
                 schema, ranges) : getAllRangesWithSourcesFor(schema, ranges);
 
-        String schemaName = schema.getName();
+        String schemaName = schema.getFullName();
         if (logger.isDebugEnabled()) {
             for (Map.Entry<Range<Token>, InetAddress> entry : rangesForKeyspace.entries())
                 logger.debug(String.format("%s: range %s exists on %s", description, entry.getKey(), entry.getValue()));
@@ -305,27 +305,27 @@ public class RangeStreamer {
         return toFetch;
     }
 
-    // public StreamResultFuture fetchAsync() {
-    // for (Map.Entry<String, Map.Entry<InetAddress, Collection<Range<Token>>>> entry : toFetch.entries()) {
-    // String keyspace = entry.getKey();
-    // InetAddress source = entry.getValue().getKey();
-    // InetAddress preferred = SystemKeyspace.getPreferredIP(source);
-    // Collection<Range<Token>> ranges = entry.getValue().getValue();
-    //
-    // // filter out already streamed ranges
-    // Set<Range<Token>> availableRanges = stateStore.getAvailableRanges(keyspace,
-    // StorageService.instance.getTokenMetaData().partitioner);
-    // if (ranges.removeAll(availableRanges)) {
-    // logger.info("Some ranges of {} are already available. Skipping streaming those ranges.",
-    // availableRanges);
-    // }
-    //
-    // if (logger.isDebugEnabled())
-    // logger.debug("{}ing from {} ranges {}", description, source, StringUtils.join(ranges, ", "));
-    // /* Send messages to respective folks to stream data over to me */
-    // streamPlan.requestRanges(source, preferred, keyspace, ranges);
-    // }
-    //
-    // return streamPlan.execute();
-    // }
+    public StreamResultFuture fetchAsync() {
+        for (Map.Entry<String, Map.Entry<InetAddress, Collection<Range<Token>>>> entry : toFetch.entries()) {
+            String keyspace = entry.getKey();
+            InetAddress source = entry.getValue().getKey();
+            InetAddress preferred = ClusterMetaData.getPreferredIP(source);
+            Collection<Range<Token>> ranges = entry.getValue().getValue();
+
+            // filter out already streamed ranges
+            // Set<Range<Token>> availableRanges = stateStore.getAvailableRanges(keyspace,
+            // StorageService.instance.getTokenMetaData().partitioner);
+            // if (ranges.removeAll(availableRanges)) {
+            // logger.info("Some ranges of {} are already available. Skipping streaming those ranges.",
+            // availableRanges);
+            // }
+
+            if (logger.isDebugEnabled())
+                logger.debug("{}ing from {} ranges {}", description, source, StringUtils.join(ranges, ", "));
+            /* Send messages to respective folks to stream data over to me */
+            streamPlan.requestRanges(source, preferred, keyspace, ranges);
+        }
+
+        return streamPlan.execute();
+    }
 }

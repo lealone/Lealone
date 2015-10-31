@@ -51,6 +51,7 @@ public class Utils extends org.lealone.common.util.Utils {
 
     private static volatile InetAddress localInetAddress;
     private static volatile InetAddress broadcastInetAddress;
+    private static volatile String releaseVersion;
 
     public static final int MAX_UNSIGNED_SHORT = 0xFFFF;
 
@@ -147,22 +148,26 @@ public class Utils extends org.lealone.common.util.Utils {
     }
 
     public static String getReleaseVersionString() {
+        if (releaseVersion != null)
+            return releaseVersion;
         InputStream in = null;
         try {
             in = Utils.class.getClassLoader().getResourceAsStream("org/lealone/res/version.properties");
             if (in == null) {
-                return Config.getProperty("release.version", "Unknown");
+                releaseVersion = Config.getProperty("release.version", "Unknown");
+            } else {
+                Properties props = new Properties();
+                props.load(in);
+                releaseVersion = props.getProperty("lealoneVersion");
             }
-            Properties props = new Properties();
-            props.load(in);
-            return props.getProperty("lealoneVersion");
         } catch (Exception e) {
             JVMStabilityInspector.inspectThrowable(e);
             logger.warn("Unable to load version.properties", e);
-            return "debug version";
+            releaseVersion = "debug version";
         } finally {
             FileUtils.closeQuietly(in);
         }
+        return releaseVersion;
     }
 
     public static IPartitioner newPartitioner(String partitionerClassName) throws ConfigurationException {

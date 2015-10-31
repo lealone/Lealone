@@ -149,7 +149,7 @@ public class BackgroundActivityMonitor {
             if (!Gossiper.instance.isEnabled())
                 return;
             report += manual_severity.get(); // add manual severity setting.
-            VersionedValue updated = StorageService.instance.valueFactory.severity(report);
+            VersionedValue updated = StorageService.VALUE_FACTORY.severity(report);
             Gossiper.instance.addLocalApplicationState(ApplicationState.SEVERITY, updated);
         }
     }

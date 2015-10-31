@@ -9,6 +9,7 @@ package org.lealone.db.table;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
@@ -39,6 +40,7 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.storage.StorageMap;
 import org.lealone.transaction.TransactionMap;
 
 /**
@@ -1197,5 +1199,9 @@ public abstract class Table extends SchemaObjectBase {
 
     public TransactionMap<Long, Long> getRowVersionMap() {
         return null;
+    }
+
+    public List<StorageMap<Object, Object>> getAllStorageMaps() {
+        return new ArrayList<>(0);
     }
 }

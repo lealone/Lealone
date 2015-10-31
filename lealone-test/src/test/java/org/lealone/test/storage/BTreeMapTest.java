@@ -17,6 +17,11 @@
  */
 package org.lealone.test.storage;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
+
 import org.junit.Test;
 import org.lealone.storage.AOStorage;
 import org.lealone.storage.AOStorageBuilder;
@@ -26,25 +31,27 @@ import org.lealone.test.TestBase;
 
 public class BTreeMapTest extends TestBase {
     private AOStorage storage;
+    private String storageName;
     private BTreeMap<Integer, String> map;
 
     @Test
     public void run() {
         init();
-        testMapOperations();
-        testCompact();
+        // testMapOperations();
+        // testCompact();
+        testTransfer();
     }
 
     private void init() {
         AOStorageBuilder builder = new AOStorageBuilder();
-        String storageName = joinDirs("aose");
+        storageName = joinDirs("aose");
         builder.storageName(storageName).compress().reuseSpace().pageSplitSize(1024).minFillRate(30);
         storage = builder.openStorage();
 
         map = storage.openBTreeMap("BTreeMapTest");
     }
 
-    private void testMapOperations() {
+    void testMapOperations() {
         Object v = null;
         map.clear();
 
@@ -132,7 +139,7 @@ public class BTreeMapTest extends TestBase {
         }
     }
 
-    private void testCompact() {
+    void testCompact() {
         map = storage.openBTreeMap("BTreeMapTest");
 
         map.clear();
@@ -152,6 +159,51 @@ public class BTreeMapTest extends TestBase {
         for (int i = 50; i <= 200; i++)
             map.put(i, "value" + i);
 
+        map.save();
+    }
+
+    void testTransfer() {
+        String file = storageName + File.separator + map.getName() + "TransferTo" + AOStorage.SUFFIX_AO_FILE;
+
+        // put();
+        // testTransferTo(file);
+        testTransferFrom(file);
+
+        // map.get(3000);
+    }
+
+    void testTransferTo(String file) {
+        // put();
+        try {
+            RandomAccessFile raf = new RandomAccessFile(file, "rw");
+            FileChannel channel = raf.getChannel();
+            int firstKey = 2000;
+            int lastKey = 3000;
+            raf.seek(raf.length());
+            map.transferTo(channel, firstKey, lastKey);
+            raf.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // map.get(3000);
+    }
+
+    void testTransferFrom(String file) {
+        try {
+            RandomAccessFile raf = new RandomAccessFile(file, "rw");
+            FileChannel channel = raf.getChannel();
+            map.transferFrom(channel, 0, raf.length());
+            raf.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void put() {
+        for (int i = 1000; i < 4000; i++) {
+            map.put(i, "value" + i);
+        }
         map.save();
     }
 }

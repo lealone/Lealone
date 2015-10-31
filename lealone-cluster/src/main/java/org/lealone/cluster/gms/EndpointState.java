@@ -64,7 +64,7 @@ public class EndpointState {
     /**
      * TODO replace this with operations that don't expose private state
      */
-    //@Deprecated
+    // @Deprecated
     public Map<ApplicationState, VersionedValue> getApplicationStateMap() {
         return applicationState;
     }
@@ -99,7 +99,7 @@ public class EndpointState {
 
     @Override
     public String toString() {
-        return "EndpointState: HeartBeatState = " + hbState + ", AppStateMap = " + applicationState;
+        return String.format("EndpointState[ %s, AppStateMap = %s ]", hbState, applicationState);
     }
 
     private static class EndpointStateSerializer implements IVersionedSerializer<EndpointState> {

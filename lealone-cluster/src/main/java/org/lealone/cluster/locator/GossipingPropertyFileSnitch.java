@@ -27,13 +27,14 @@ import org.lealone.cluster.gms.ApplicationState;
 import org.lealone.cluster.gms.EndpointState;
 import org.lealone.cluster.gms.Gossiper;
 import org.lealone.cluster.service.StorageService;
-import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.ResourceWatcher;
+import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.WrappedRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch// implements IEndpointStateChangeSubscriber
+public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch// implements
+                                                                              // IEndpointStateChangeSubscriber
 {
     private static final Logger logger = LoggerFactory.getLogger(GossipingPropertyFileSnitch.class);
 
@@ -137,7 +138,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageService.instance.valueFactory.internalIP(Utils.getLocalAddress().getHostAddress()));
+                StorageService.VALUE_FACTORY.internalIP(Utils.getLocalAddress().getHostAddress()));
 
         reloadGossiperState();
 

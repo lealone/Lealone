@@ -5,6 +5,9 @@
  */
 package org.lealone.transaction;
 
+import java.io.IOException;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map.Entry;
@@ -513,6 +516,16 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public void save() {
         map.save();
+    }
+
+    @Override
+    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
+        map.transferTo(target, firstKey, lastKey);
+    }
+
+    @Override
+    public void transferFrom(ReadableByteChannel src) throws IOException {
+        map.transferFrom(src);
     }
 
     /**

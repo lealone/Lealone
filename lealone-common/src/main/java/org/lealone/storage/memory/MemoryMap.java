@@ -17,6 +17,9 @@
  */
 package org.lealone.storage.memory;
 
+import java.io.IOException;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentSkipListMap;
 
@@ -225,5 +228,17 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
 
     @Override
     public void save() {
+    }
+
+    @Override
+    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void transferFrom(ReadableByteChannel src) throws IOException {
+        // TODO Auto-generated method stub
+
     }
 }

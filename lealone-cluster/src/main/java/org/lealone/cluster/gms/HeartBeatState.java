@@ -60,7 +60,7 @@ class HeartBeatState {
 
     @Override
     public String toString() {
-        return String.format("HeartBeat: generation = %d, version = %d", generation, version);
+        return String.format("HeartBeatState[ generation = %d, version = %d ]", generation, version);
     }
 
     private static class HeartBeatStateSerializer implements IVersionedSerializer<HeartBeatState> {

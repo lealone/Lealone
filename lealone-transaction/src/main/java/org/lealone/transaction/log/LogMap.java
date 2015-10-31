@@ -17,6 +17,9 @@
  */
 package org.lealone.transaction.log;
 
+import java.io.IOException;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -263,5 +266,13 @@ public class LogMap<K, V> implements StorageMap<K, V> {
     @Override
     public String toString() {
         return "LogMap[" + getId() + ", " + getName() + "]";
+    }
+
+    @Override
+    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
+    }
+
+    @Override
+    public void transferFrom(ReadableByteChannel src) throws IOException {
     }
 }

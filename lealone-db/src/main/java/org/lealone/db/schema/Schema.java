@@ -30,6 +30,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFactory;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageEngineManager;
+import org.lealone.storage.memory.MemoryStorageEngine;
 
 /**
  * A schema as created by the SQL statement
@@ -132,7 +133,8 @@ public class Schema extends DbObjectBase {
         }
 
         StatementBuilder sql = new StatementBuilder();
-        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ").append(owner.getSQL());
+        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(database.getSQL()).append(getSQL()).append(" AUTHORIZATION ")
+                .append(owner.getSQL());
         if (replicationProperties != null && !replicationProperties.isEmpty()) {
             sql.append(" WITH REPLICATION = (");
             for (Map.Entry<String, String> e : replicationProperties.entrySet()) {
@@ -604,6 +606,9 @@ public class Schema extends DbObjectBase {
                 database.lockMeta(data.session);
             }
             data.schema = this;
+
+            if (data.isMemoryTable())
+                data.storageEngineName = MemoryStorageEngine.NAME;
 
             // 用默认的数据库参数
             if (data.storageEngineName == null) {

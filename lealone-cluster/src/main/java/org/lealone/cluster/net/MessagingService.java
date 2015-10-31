@@ -17,7 +17,9 @@
  */
 package org.lealone.cluster.net;
 
+import java.io.Closeable;
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.IOError;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -37,6 +39,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,6 +53,10 @@ import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.concurrent.StageManager;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.config.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.cluster.db.PullSchema;
+import org.lealone.cluster.db.PullSchemaAck;
+import org.lealone.cluster.db.PullSchemaAckVerbHandler;
+import org.lealone.cluster.db.PullSchemaVerbHandler;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.EchoMessage;
 import org.lealone.cluster.gms.EchoVerbHandler;
@@ -76,6 +83,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 @SuppressWarnings({ "rawtypes" })
 public final class MessagingService implements MessagingServiceMBean {
@@ -89,6 +97,8 @@ public final class MessagingService implements MessagingServiceMBean {
         GOSSIP_SHUTDOWN,
         INTERNAL_RESPONSE, // responses to internal calls
         ECHO,
+        PULL_SCHEMA,
+        PULL_SCHEMA_ACK,
         // remember to add new verbs at the end, since we serialize by ordinal
         UNUSED_1,
         UNUSED_2,
@@ -135,6 +145,9 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.GOSSIP_SHUTDOWN, Stage.GOSSIP);
             put(Verb.ECHO, Stage.GOSSIP);
 
+            put(Verb.PULL_SCHEMA, Stage.REQUEST_RESPONSE);
+            put(Verb.PULL_SCHEMA_ACK, Stage.REQUEST_RESPONSE);
+
             put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);
             put(Verb.UNUSED_2, Stage.INTERNAL_RESPONSE);
             put(Verb.UNUSED_3, Stage.INTERNAL_RESPONSE);
@@ -159,6 +172,8 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
             put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
             put(Verb.ECHO, EchoMessage.serializer);
+            put(Verb.PULL_SCHEMA, PullSchema.serializer);
+            put(Verb.PULL_SCHEMA_ACK, PullSchemaAck.serializer);
         }
     };
 
@@ -233,6 +248,8 @@ public final class MessagingService implements MessagingServiceMBean {
         registerVerbHandler(Verb.GOSSIP_DIGEST_ACK, new GossipDigestAckVerbHandler());
         registerVerbHandler(Verb.GOSSIP_DIGEST_ACK2, new GossipDigestAck2VerbHandler());
         registerVerbHandler(Verb.ECHO, new EchoVerbHandler());
+        registerVerbHandler(Verb.PULL_SCHEMA, new PullSchemaVerbHandler());
+        registerVerbHandler(Verb.PULL_SCHEMA_ACK, new PullSchemaAckVerbHandler());
     }
 
     private MessagingService() {
@@ -397,6 +414,7 @@ public final class MessagingService implements MessagingServiceMBean {
 
     private static class SocketThread extends Thread {
         private final ServerSocket server;
+        private final Set<Closeable> connections = Sets.newConcurrentHashSet();
 
         SocketThread(ServerSocket server, String name) {
             super(name);
@@ -410,13 +428,36 @@ public final class MessagingService implements MessagingServiceMBean {
                 try {
                     socket = server.accept();
                     if (!authenticate(socket)) {
-                        if (logger.isDebugEnabled())
-                            logger.debug("remote failed to authenticate");
+                        logger.trace("remote failed to authenticate");
                         socket.close();
                         continue;
                     }
+                    // new IncomingTcpConnection(socket).start();
 
-                    new IncomingTcpConnection(socket).start();
+                    socket.setKeepAlive(true);
+                    // socket.setSoTimeout(2 * OutboundTcpConnection.WAIT_FOR_VERSION_MAX_TIME);
+                    socket.setSoTimeout(2 * 1000000); // 我加上的，不让超时，方便调试
+                    // determine the connection type to decide whether to buffer
+                    DataInputStream in = new DataInputStream(socket.getInputStream());
+                    int magic = in.readInt();
+                    Thread thread;
+                    if (magic != PROTOCOL_MAGIC) {
+                        thread = new IncomingAdminConnection(socket, connections);
+                    } else {
+                        // MessagingService.validateMagic(in.readInt());
+                        // 写入的格式见:OutboundTcpConnection.connect()
+                        int header = in.readInt();
+                        boolean isStream = MessagingService.getBits(header, 3, 1) == 1;
+                        int version = MessagingService.getBits(header, 15, 8);
+                        logger.trace("Connection version {} from {}", version, socket.getInetAddress());
+                        socket.setSoTimeout(0);
+
+                        thread = isStream ? new IncomingStreamingConnection(version, socket, connections)
+                                : new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1,
+                                        socket, connections);
+                    }
+                    thread.start();
+                    connections.add((Closeable) thread);
 
                 } catch (AsynchronousCloseException e) {
                     if (logger.isDebugEnabled())
@@ -437,15 +478,31 @@ public final class MessagingService implements MessagingServiceMBean {
         }
 
         void close() throws IOException {
-            if (logger.isDebugEnabled())
-                logger.debug("Closing accept() thread");
-            server.close();
+            logger.trace("Closing accept() thread");
+
+            try {
+                server.close();
+            } catch (IOException e) {
+                // dirty hack for clean shutdown on OSX w/ Java >= 1.8.0_20
+                // see https://issues.apache.org/jira/browse/CASSANDRA-8220
+                // see https://bugs.openjdk.java.net/browse/JDK-8050499
+                if (!"Unknown error: 316".equals(e.getMessage()) || !"Mac OS X".equals(System.getProperty("os.name")))
+                    throw e;
+            }
+
+            for (Closeable connection : connections) {
+                connection.close();
+            }
         }
 
         private boolean authenticate(Socket socket) {
             return DatabaseDescriptor.getInternodeAuthenticator().authenticate(socket.getInetAddress(),
                     socket.getPort());
         }
+    }
+
+    public static int getBits(int packed, int start, int count) {
+        return packed >>> (start + 1) - count & ~(-1 << count);
     }
 
     /**
@@ -520,12 +577,12 @@ public final class MessagingService implements MessagingServiceMBean {
      * @param to      endpoint to which the message needs to be sent
      */
     public void sendOneWay(MessageOut message, int id, InetAddress to) {
-        if (logger.isTraceEnabled())
-            logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
-
-        if (to.equals(Utils.getBroadcastAddress()))
-            if (logger.isTraceEnabled())
+        if (logger.isTraceEnabled()) {
+            if (to.equals(Utils.getBroadcastAddress()))
                 logger.trace("Message-to-self {} going over MessagingService", message);
+            else
+                logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
+        }
 
         // get pooled connection (really, connection queue)
         OutboundTcpConnection connection = getConnection(to);

@@ -63,6 +63,11 @@ public class Config {
     public Integer dynamic_snitch_reset_interval_in_ms = 600000;
     public Double dynamic_snitch_badness_threshold = 0.1;
 
+    public volatile Integer stream_throughput_outbound_megabits_per_sec = 200;
+    public volatile Integer inter_dc_stream_throughput_outbound_megabits_per_sec = 0;
+    public Integer streaming_socket_timeout_in_ms = 0;
+    public Integer max_streaming_retries = 3;
+
     public ServerEncryptionOptions server_encryption_options = new ServerEncryptionOptions();
     public ClientEncryptionOptions client_encryption_options = new ClientEncryptionOptions();
 

@@ -17,6 +17,9 @@
  */
 package org.lealone.storage;
 
+import java.io.IOException;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
@@ -396,5 +399,15 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
         public V getValue() {
             return value;
         }
+    }
+
+    @Override
+    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
+        map.transferTo(target, firstKey, lastKey);
+    }
+
+    @Override
+    public void transferFrom(ReadableByteChannel src) throws IOException {
+        map.transferFrom(src);
     }
 }

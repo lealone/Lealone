@@ -76,6 +76,11 @@
             <version>1.2.0</version>
         </dependency>
         <dependency>
+            <groupId>com.ning</groupId>
+            <artifactId>compress-lzf</artifactId>
+            <version>0.8.4</version>
+        </dependency>
+        <dependency>
             <groupId>net.ju-n.compile-command-annotations</groupId>
             <artifactId>compile-command-annotations</artifactId>
             <version>1.2.0</version>

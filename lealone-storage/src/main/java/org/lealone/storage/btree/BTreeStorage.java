@@ -48,7 +48,7 @@ public class BTreeStorage {
     public static final int CHUNK_HEADER_BLOCKS = 2;
     public static final int CHUNK_HEADER_SIZE = CHUNK_HEADER_BLOCKS * BLOCK_SIZE;
 
-    private static long getFilePos(int offset) {
+    static long getFilePos(int offset) {
         long filePos = offset + CHUNK_HEADER_SIZE;
         if (filePos < 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}", filePos);
@@ -678,21 +678,7 @@ public class BTreeStorage {
             }
         }
         for (BTreeChunk c : chunks.values()) {
-            int size = c.pageCount;
-            if (c.pagePositions == null) {
-                ByteBuffer buffer = c.fileStorage.readFully(getFilePos(c.pagePositionsOffset), size * 8);
-                c.pagePositions = new ArrayList<Long>(size);
-                for (int i = 0; i < size; i++) {
-                    c.pagePositions.add(buffer.getLong());
-                }
-            }
-            if (c.pageLengths == null) {
-                ByteBuffer buffer = c.fileStorage.readFully(getFilePos(c.pageLengthsOffset), size * 4);
-                c.pageLengths = new ArrayList<Integer>(size);
-                for (int i = 0; i < size; i++) {
-                    c.pageLengths.add(buffer.getInt());
-                }
-            }
+            readPagePositions(c);
         }
     }
 
@@ -749,5 +735,24 @@ public class BTreeStorage {
         }
         return saveIfNeeded;
     }
+
     // //////////////////////////////// Compact END /////////////////////////////////////
+
+    void readPagePositions(BTreeChunk c) {
+        int size = c.pageCount;
+        if (c.pagePositions == null) {
+            ByteBuffer buffer = c.fileStorage.readFully(getFilePos(c.pagePositionsOffset), size * 8);
+            c.pagePositions = new ArrayList<Long>(size);
+            for (int i = 0; i < size; i++) {
+                c.pagePositions.add(buffer.getLong());
+            }
+        }
+        if (c.pageLengths == null) {
+            ByteBuffer buffer = c.fileStorage.readFully(getFilePos(c.pageLengthsOffset), size * 4);
+            c.pageLengths = new ArrayList<Integer>(size);
+            for (int i = 0; i < size; i++) {
+                c.pageLengths.add(buffer.getInt());
+            }
+        }
+    }
 }

@@ -50,6 +50,7 @@ import org.lealone.cluster.concurrent.Stage;
 import org.lealone.cluster.concurrent.StageManager;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.dht.Token;
+import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.net.IAsyncCallback;
 import org.lealone.cluster.net.MessageIn;
 import org.lealone.cluster.net.MessageOut;
@@ -195,7 +196,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     }
 
     private Gossiper() {
-        /* register with the Failure Detector for receiving Failure detector events */
+        // register with the Failure Detector for receiving Failure detector events
         FailureDetector.instance.registerFailureDetectionEventListener(this);
 
         // Register this instance with JMX
@@ -216,7 +217,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
      */
     public void start(int generationNbr, Map<ApplicationState, VersionedValue> preloadLocalStates) {
         buildSeedsList();
-        /* initialize the heartbeat state for this localEndpoint */
+        // initialize the heartbeat state for this localEndpoint
         maybeInitializeLocalState(generationNbr);
         EndpointState localState = endpointStateMap.get(Utils.getBroadcastAddress());
         for (Map.Entry<ApplicationState, VersionedValue> entry : preloadLocalStates.entrySet())
@@ -617,10 +618,9 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         logger.info("Advertising removal for {}", endpoint);
         epState.updateTimestamp(); // make sure we don't evict it too soon
         epState.getHeartBeatState().forceNewerGenerationUnsafe();
-        epState.addApplicationState(ApplicationState.STATUS,
-                StorageService.instance.valueFactory.removingNonlocal(hostId));
+        epState.addApplicationState(ApplicationState.STATUS, StorageService.VALUE_FACTORY.removingNonlocal(hostId));
         epState.addApplicationState(ApplicationState.REMOVAL_COORDINATOR,
-                StorageService.instance.valueFactory.removalCoordinator(localHostId));
+                StorageService.VALUE_FACTORY.removalCoordinator(localHostId));
         endpointStateMap.put(endpoint, epState);
     }
 
@@ -637,7 +637,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         epState.getHeartBeatState().forceNewerGenerationUnsafe();
         long expireTime = computeExpireTime();
         epState.addApplicationState(ApplicationState.STATUS,
-                StorageService.instance.valueFactory.removedNonlocal(hostId, expireTime));
+                StorageService.VALUE_FACTORY.removedNonlocal(hostId, expireTime));
         logger.info("Completing removal of {}", endpoint);
         addExpireTimeForEndpoint(endpoint, expireTime);
         endpointStateMap.put(endpoint, epState);
@@ -697,7 +697,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
         // do not pass go, do not collect 200 dollars, just gtfo
         epState.addApplicationState(ApplicationState.STATUS,
-                StorageService.instance.valueFactory.left(tokens, computeExpireTime()));
+                StorageService.VALUE_FACTORY.left(tokens, computeExpireTime()));
         handleMajorStateChange(endpoint, epState);
         Uninterruptibles.sleepUninterruptibly(INTERVAL_IN_MILLIS * 4, TimeUnit.MILLISECONDS);
         logger.warn("Finished assassinating {}", endpoint);
@@ -1181,7 +1181,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         // Notifications may have taken some time, so preventively raise the version
         // of the new value, otherwise it could be ignored by the remote node
         // if another value with a newer version was received in the meantime:
-        value = StorageService.instance.valueFactory.cloneWithHigherVersion(value);
+        value = StorageService.VALUE_FACTORY.cloneWithHigherVersion(value);
         // Add to local application state and fire "on change" notifications:
         epState.addApplicationState(state, value);
         doOnChangeNotifications(epAddr, state, value);
@@ -1230,9 +1230,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         EndpointState localState = oldState == null ? newState : oldState;
 
         // always add the version state
-        localState.addApplicationState(ApplicationState.NET_VERSION,
-                StorageService.instance.valueFactory.networkVersion());
-        localState.addApplicationState(ApplicationState.HOST_ID, StorageService.instance.valueFactory.hostId(uuid));
+        localState.addApplicationState(ApplicationState.NET_VERSION, StorageService.VALUE_FACTORY.networkVersion());
+        localState.addApplicationState(ApplicationState.HOST_ID, StorageService.VALUE_FACTORY.hostId(uuid));
     }
 
     @VisibleForTesting
@@ -1267,6 +1266,21 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
             if (FailureDetector.instance.isAlive(seed))
                 return seed;
         }
-        return null;
+        throw new IllegalStateException("Unable to find any live seeds!");
+    }
+
+    public InetAddress getLiveSeedEndpoint() {
+        IEndpointSnitch snitch = DatabaseDescriptor.getEndpointSnitch();
+        String dc = snitch.getDatacenter(Utils.getBroadcastAddress());
+        for (InetAddress seed : DatabaseDescriptor.getSeedList()) {
+            if (FailureDetector.instance.isAlive(seed) && dc.equals(snitch.getDatacenter(seed)))
+                return seed;
+        }
+
+        for (InetAddress seed : DatabaseDescriptor.getSeedList()) {
+            if (FailureDetector.instance.isAlive(seed))
+                return seed;
+        }
+        throw new IllegalStateException("Unable to find any live seeds!");
     }
 }

@@ -19,6 +19,7 @@ package org.lealone.cluster.net;
 
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -53,7 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.util.concurrent.Uninterruptibles;
 
-class OutboundTcpConnection extends Thread {
+public class OutboundTcpConnection extends Thread {
     private static final Logger logger = LoggerFactory.getLogger(OutboundTcpConnection.class);
 
     private static final MessageOut<Void> CLOSE_SENTINEL = new MessageOut<>(MessagingService.Verb.INTERNAL_RESPONSE);
@@ -222,7 +223,7 @@ class OutboundTcpConnection extends Thread {
                     logger.debug("error writing to {}", remoteEndpoint, e);
 
                 // if the message was important, such as a repair acknowledgement, put it back on the queue
-                // to retry after re-connecting.  See lealone-5393
+                // to retry after re-connecting. See lealone-5393
                 if (qm.shouldRetry()) {
                     try {
                         backlog.put(new RetriedQueuedMessage(qm));
@@ -284,11 +285,13 @@ class OutboundTcpConnection extends Thread {
                     }
                 }
                 out = new DataOutputStreamPlus(new BufferedOutputStream(socket.getOutputStream(), 4096));
-
-                //write header
+                out.writeInt(MessagingService.PROTOCOL_MAGIC);
+                writeHeader(out, targetVersion, shouldCompressConnection());
+                out.flush();
+                // write header
                 out.writeInt(MessagingService.PROTOCOL_MAGIC);
                 out.writeInt(targetVersion);
-                out.writeBoolean(shouldCompressConnection());
+                // out.writeBoolean(shouldCompressConnection());
                 CompactEndpointSerializationHelper.serialize(Utils.getBroadcastAddress(), out);
                 out.flush();
 
@@ -334,6 +337,20 @@ class OutboundTcpConnection extends Thread {
         return false;
     }
 
+    private static void writeHeader(DataOutput out, int version, boolean compressionEnabled) throws IOException {
+        // 2 bits: unused. used to be "serializer type," which was always Binary
+        // 1 bit: compression
+        // 1 bit: streaming mode
+        // 3 bits: unused
+        // 8 bits: version
+        // 15 bits: unused
+        int header = 0;
+        if (compressionEnabled)
+            header |= 4;
+        header |= (version << 8);
+        out.writeInt(header);
+    }
+
     private void expireMessages() {
         Iterator<QueuedMessage> iter = backlog.iterator();
         while (iter.hasNext()) {
@@ -349,7 +366,7 @@ class OutboundTcpConnection extends Thread {
         return newSocket(endpoint());
     }
 
-    private static Socket newSocket(InetAddress endpoint) throws IOException {
+    public static Socket newSocket(InetAddress endpoint) throws IOException {
         // zero means 'bind on any available port.'
         if (isEncryptedChannel(endpoint)) {
             if (Config.getOutboundBindAny())

@@ -5,6 +5,9 @@
  */
 package org.lealone.storage.btree;
 
+import java.io.IOException;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.Map;
 
 import org.lealone.common.util.DataUtils;
@@ -529,4 +532,38 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
         System.out.println(root.getPrettyPageInfo(readOffLinePage));
     }
 
+    @Override
+    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
+        if (firstKey == null)
+            firstKey = firstKey();
+        else
+            firstKey = ceilingKey(firstKey);
+
+        if (firstKey == null)
+            return;
+
+        if (lastKey == null)
+            lastKey = lastKey();
+        else
+            lastKey = floorKey(lastKey);
+
+        if (keyType.compare(firstKey, lastKey) > 0)
+            return;
+
+        BTreePage p = root;
+        if (p.getTotalCount() > 0) {
+            p.transferTo(target, firstKey, lastKey);
+        }
+    }
+
+    @Override
+    public void transferFrom(ReadableByteChannel src) throws IOException {
+
+    }
+
+    // 1.root为空时怎么处理；2.不为空时怎么处理
+    public void transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
+        BTreePage p = root;
+        p.transferFrom(src, position, count);
+    }
 }

@@ -18,6 +18,7 @@
 package org.lealone.cluster.net;
 
 import java.io.BufferedInputStream;
+import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketException;
+import java.util.Set;
 import java.util.zip.Checksum;
 
 import net.jpountz.lz4.LZ4BlockInputStream;
@@ -39,30 +41,36 @@ import org.lealone.cluster.gms.Gossiper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class IncomingTcpConnection extends Thread {
+class IncomingTcpConnection extends Thread implements Closeable {
     private static final Logger logger = LoggerFactory.getLogger(IncomingTcpConnection.class);
 
     private final int version;
-    private final boolean compressed;
     private final InetAddress from;
     private final Socket socket;
     private final DataInputStream in;
     private final DataOutputStream out;
 
-    IncomingTcpConnection(Socket socket) throws IOException {
+    private final Set<Closeable> group;
+
+    IncomingTcpConnection(int version, boolean compressed, Socket socket, Set<Closeable> group) throws IOException {
         super("IncomingTcpConnection-" + socket.getInetAddress());
-
+        this.version = version;
         this.socket = socket;
-
-        socket.setKeepAlive(true);
-        socket.setSoTimeout(2 * OutboundTcpConnection.WAIT_FOR_VERSION_MAX_TIME);
+        this.group = group;
+        if (DatabaseDescriptor.getInternodeRecvBufferSize() != null) {
+            try {
+                this.socket.setReceiveBufferSize(DatabaseDescriptor.getInternodeRecvBufferSize());
+            } catch (SocketException se) {
+                logger.warn("Failed to set receive buffer size on internode socket.", se);
+            }
+        }
         // determine the connection type to decide whether to buffer
         DataInputStream in = new DataInputStream(socket.getInputStream());
 
-        //read header
+        // read header
         MessagingService.validateMagic(in.readInt());
         version = in.readInt();
-        compressed = in.readBoolean();
+        // compressed = in.readBoolean();
         from = CompactEndpointSerializationHelper.deserialize(in);
 
         if (logger.isDebugEnabled())
@@ -116,12 +124,16 @@ class IncomingTcpConnection extends Thread {
         }
     }
 
-    private void close() {
+    @Override
+    public void close() {
         try {
-            socket.close();
+            if (!socket.isClosed()) {
+                socket.close();
+            }
         } catch (IOException e) {
-            if (logger.isDebugEnabled())
-                logger.debug("Error closing socket", e);
+            logger.trace("Error closing socket", e);
+        } finally {
+            group.remove(this);
         }
     }
 
@@ -138,7 +150,7 @@ class IncomingTcpConnection extends Thread {
         }
     }
 
-    //对应OutboundTcpConnection.sendMessage
+    // 对应OutboundTcpConnection.sendMessage
     private void receiveMessage() throws IOException {
         MessagingService.validateMagic(in.readInt());
         int id = in.readInt();
