@@ -26,6 +26,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.storage.StorageMap;
 
 /**
  * Most index implementations extend the base index.
@@ -486,5 +487,9 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public long getDiskSpaceUsed() {
         return 0;
+    }
+
+    public StorageMap<? extends Object, ? extends Object> getStorageMap() {
+        return null;
     }
 }

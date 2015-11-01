@@ -52,8 +52,8 @@ public class StreamTransferTask extends StreamTask {
 
     private long totalSize;
 
-    public StreamTransferTask(StreamSession session, String cfId) {
-        super(session, cfId);
+    public StreamTransferTask(StreamSession session, String mapName) {
+        super(session, mapName);
     }
 
     public synchronized void addTransferFile(StorageMap<Object, Object> map, long estimatedKeys,

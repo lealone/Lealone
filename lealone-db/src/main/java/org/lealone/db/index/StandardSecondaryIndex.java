@@ -29,6 +29,7 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.Storage;
+import org.lealone.storage.StorageMap;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
@@ -413,6 +414,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public boolean isInMemory() {
         return dataMap.isInMemory();
+    }
+
+    @Override
+    public StorageMap<? extends Object, ? extends Object> getStorageMap() {
+        return dataMap;
     }
 
     /**

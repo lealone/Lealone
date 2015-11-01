@@ -269,6 +269,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private Collection<StorageMap<Object, Object>> getStorageMaps(String dbName, Collection<String> tableNames) {
         Collection<StorageMap<Object, Object>> stores = new HashSet<>();
         for (Database db : DatabaseEngine.getDatabases()) {
@@ -276,7 +277,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
                 for (Schema schema : db.getAllSchemas()) {
                     for (Table table : schema.getAllTablesAndViews()) {
                         if (tableNames.isEmpty() || tableNames.contains(table.getName()))
-                            stores.addAll(table.getAllStorageMaps());
+                            stores.addAll((Collection<? extends StorageMap<Object, Object>>) table.getAllStorageMaps());
                     }
                 }
             }

@@ -45,6 +45,6 @@ public class StreamReader {
     }
 
     public void read(ReadableByteChannel channel) throws IOException {
-        map.transferFrom(channel);
+        // map.transferFrom(channel);
     }
 }

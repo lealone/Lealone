@@ -9,6 +9,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,6 +42,7 @@ import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.storage.StorageEngine;
+import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
 public class StandardTable extends TableBase {
@@ -834,5 +836,15 @@ public class StandardTable extends TableBase {
             name.append(arg.toString());
         }
         return name.toString();
+    }
+
+    @Override
+    public List<StorageMap<? extends Object, ? extends Object>> getAllStorageMaps() {
+        List<StorageMap<? extends Object, ? extends Object>> maps = new ArrayList<>(indexes.size());
+        for (Index i : indexes) {
+            if (i.getStorageMap() != null)
+                maps.add(i.getStorageMap());
+        }
+        return maps;
     }
 }

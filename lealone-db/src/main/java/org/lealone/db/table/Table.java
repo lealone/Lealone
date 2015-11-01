@@ -1201,7 +1201,7 @@ public abstract class Table extends SchemaObjectBase {
         return null;
     }
 
-    public List<StorageMap<Object, Object>> getAllStorageMaps() {
+    public List<StorageMap<? extends Object, ? extends Object>> getAllStorageMaps() {
         return new ArrayList<>(0);
     }
 }

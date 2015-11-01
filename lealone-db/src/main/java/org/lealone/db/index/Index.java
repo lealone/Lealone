@@ -15,6 +15,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
+import org.lealone.storage.StorageMap;
 
 /**
  * An index. Indexes are used to speed up searching data.
@@ -243,4 +244,5 @@ public interface Index extends SchemaObject {
      */
     void setSortedInsertMode(boolean sortedInsertMode);
 
+    StorageMap<? extends Object, ? extends Object> getStorageMap();
 }

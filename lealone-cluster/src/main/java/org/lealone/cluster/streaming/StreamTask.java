@@ -26,9 +26,9 @@ public abstract class StreamTask {
 
     protected final String mapName;
 
-    protected StreamTask(StreamSession session, String cfId) {
+    protected StreamTask(StreamSession session, String mapName) {
         this.session = session;
-        this.mapName = cfId;
+        this.mapName = mapName;
     }
 
     /**

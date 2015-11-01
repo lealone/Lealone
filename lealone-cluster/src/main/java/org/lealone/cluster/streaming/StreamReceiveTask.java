@@ -34,18 +34,16 @@ public class StreamReceiveTask extends StreamTask {
     // true if task is done (either completed or aborted)
     private boolean done = false;
 
-    public StreamReceiveTask(StreamSession session, String cfId, int totalFiles, long totalSize) {
-        super(session, cfId);
+    public StreamReceiveTask(StreamSession session, String mapName, int totalFiles, long totalSize) {
+        super(session, mapName);
         this.totalFiles = totalFiles;
         this.totalSize = totalSize;
     }
 
     /**
      * Process received file.
-     *
-     * @param sstable SSTable file received.
-    //     */
-    public synchronized void received(String cfId) {
+     */
+    public synchronized void received(String mapName) {
         if (done)
             return;
     }
