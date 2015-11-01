@@ -272,8 +272,8 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
     private Collection<StorageMap<Object, Object>> getStorageMaps(String dbName, Collection<String> tableNames) {
         Collection<StorageMap<Object, Object>> stores = new HashSet<>();
         for (Database db : DatabaseEngine.getDatabases()) {
-            for (Schema schema : db.getAllSchemas()) {
-                if (schema.getFullName().equalsIgnoreCase(dbName)) {
+            if (db.getName().equalsIgnoreCase(dbName)) {
+                for (Schema schema : db.getAllSchemas()) {
                     for (Table table : schema.getAllTablesAndViews()) {
                         if (tableNames.isEmpty() || tableNames.contains(table.getName()))
                             stores.addAll(table.getAllStorageMaps());
@@ -571,7 +571,8 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
 
     private void prepareReceiving(StreamSummary summary) {
         if (summary.files > 0)
-            receivers.put(summary.mapName, new StreamReceiveTask(this, summary.mapName, summary.files, summary.totalSize));
+            receivers.put(summary.mapName, new StreamReceiveTask(this, summary.mapName, summary.files,
+                    summary.totalSize));
     }
 
     private void startStreamingFiles() {

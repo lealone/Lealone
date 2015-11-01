@@ -33,7 +33,6 @@ import org.lealone.cluster.locator.TokenMetaData;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.streaming.StreamEvent;
 import org.lealone.cluster.streaming.StreamEventHandler;
-import org.lealone.cluster.streaming.StreamResultFuture;
 import org.lealone.cluster.streaming.StreamState;
 import org.lealone.cluster.utils.progress.ProgressEvent;
 import org.lealone.cluster.utils.progress.ProgressEventNotifierSupport;
@@ -80,8 +79,7 @@ public class BootStrapper extends ProgressEventNotifierSupport {
             streamer.addRanges(db, strategy.getPendingAddressRanges(tokenMetaData, tokens, address));
         }
 
-        StreamResultFuture bootstrapStreamResult = streamer.fetchAsync();
-        bootstrapStreamResult.addEventListener(new StreamEventHandler() {
+        streamer.addStreamEventHandler(new StreamEventHandler() {
             private final AtomicInteger receivedFiles = new AtomicInteger();
             private final AtomicInteger totalFilesToReceive = new AtomicInteger();
 
@@ -139,7 +137,8 @@ public class BootStrapper extends ProgressEventNotifierSupport {
                 fireProgressEvent("bootstrap", currentProgress);
             }
         });
-        return bootstrapStreamResult;
+
+        return streamer.fetchAsync();
     }
 
     /**

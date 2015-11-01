@@ -54,8 +54,8 @@ public class StreamRequest {
                 Token.serializer.serialize(range.right, out);
             }
             out.writeInt(request.tableNames.size());
-            for (String cf : request.tableNames)
-                out.writeUTF(cf);
+            for (String t : request.tableNames)
+                out.writeUTF(t);
         }
 
         @Override
@@ -68,9 +68,9 @@ public class StreamRequest {
                 Token right = Token.serializer.deserialize(in);
                 ranges.add(new Range<>(left, right));
             }
-            int cfCount = in.readInt();
-            List<String> tableNames = new ArrayList<>(cfCount);
-            for (int i = 0; i < cfCount; i++)
+            int tCount = in.readInt();
+            List<String> tableNames = new ArrayList<>(tCount);
+            for (int i = 0; i < tCount; i++)
                 tableNames.add(in.readUTF());
             return new StreamRequest(dbName, ranges, tableNames);
         }
@@ -84,8 +84,8 @@ public class StreamRequest {
                 size += Token.serializer.serializedSize(range.right, TypeSizes.NATIVE);
             }
             size += TypeSizes.NATIVE.sizeof(request.tableNames.size());
-            for (String cf : request.tableNames)
-                size += TypeSizes.NATIVE.sizeof(cf);
+            for (String t : request.tableNames)
+                size += TypeSizes.NATIVE.sizeof(t);
             return size;
         }
     }

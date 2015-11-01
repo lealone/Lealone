@@ -32,6 +32,7 @@ import org.lealone.cluster.gms.IFailureDetector;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.locator.IEndpointSnitch;
 import org.lealone.cluster.locator.TokenMetaData;
+import org.lealone.cluster.streaming.StreamEventHandler;
 import org.lealone.cluster.streaming.StreamPlan;
 import org.lealone.cluster.streaming.StreamResultFuture;
 import org.lealone.cluster.utils.Utils;
@@ -125,6 +126,10 @@ public class RangeStreamer {
 
     public void addSourceFilter(ISourceFilter filter) {
         sourceFilters.add(filter);
+    }
+
+    public void addStreamEventHandler(StreamEventHandler handler) {
+        streamPlan.listeners(handler);
     }
 
     /**
