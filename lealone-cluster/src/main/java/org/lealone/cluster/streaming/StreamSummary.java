@@ -33,7 +33,7 @@ import com.google.common.base.Objects;
 public class StreamSummary implements Serializable {
     public static final IVersionedSerializer<StreamSummary> serializer = new StreamSummarySerializer();
 
-    public final String cfId;
+    public final String mapName;
 
     /**
      * Number of files to transfer. Can be 0 if nothing to transfer for some streaming request.
@@ -41,8 +41,8 @@ public class StreamSummary implements Serializable {
     public final int files;
     public final long totalSize;
 
-    public StreamSummary(String cfId, int files, long totalSize) {
-        this.cfId = cfId;
+    public StreamSummary(String mapName, int files, long totalSize) {
+        this.mapName = mapName;
         this.files = files;
         this.totalSize = totalSize;
     }
@@ -54,18 +54,18 @@ public class StreamSummary implements Serializable {
         if (o == null || getClass() != o.getClass())
             return false;
         StreamSummary summary = (StreamSummary) o;
-        return files == summary.files && totalSize == summary.totalSize && cfId.equals(summary.cfId);
+        return files == summary.files && totalSize == summary.totalSize && mapName.equals(summary.mapName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(cfId, files, totalSize);
+        return Objects.hashCode(mapName, files, totalSize);
     }
 
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("StreamSummary{");
-        sb.append("path=").append(cfId);
+        sb.append("mapName=").append(mapName);
         sb.append(", files=").append(files);
         sb.append(", totalSize=").append(totalSize);
         sb.append('}');
@@ -76,22 +76,22 @@ public class StreamSummary implements Serializable {
         // arbitrary version is fine for UUIDSerializer for now...
         @Override
         public void serialize(StreamSummary summary, DataOutputPlus out, int version) throws IOException {
-            out.writeUTF(summary.cfId);
+            out.writeUTF(summary.mapName);
             out.writeInt(summary.files);
             out.writeLong(summary.totalSize);
         }
 
         @Override
         public StreamSummary deserialize(DataInput in, int version) throws IOException {
-            String cfId = in.readUTF();
+            String mapName = in.readUTF();
             int files = in.readInt();
             long totalSize = in.readLong();
-            return new StreamSummary(cfId, files, totalSize);
+            return new StreamSummary(mapName, files, totalSize);
         }
 
         @Override
         public long serializedSize(StreamSummary summary, int version) {
-            long size = TypeSizes.NATIVE.sizeof(summary.cfId);
+            long size = TypeSizes.NATIVE.sizeof(summary.mapName);
             size += TypeSizes.NATIVE.sizeof(summary.files);
             size += TypeSizes.NATIVE.sizeof(summary.totalSize);
             return size;

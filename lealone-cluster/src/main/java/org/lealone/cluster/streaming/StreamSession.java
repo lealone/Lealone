@@ -85,7 +85,7 @@ import com.google.common.collect.Sets;
  *
  *   (a) This phase is started when the initiator onInitializationComplete() method is called. This method sends a
  *       PrepareMessage that includes what files/sections this node will stream to the follower
- *       (stored in a StreamTransferTask, each column family has it's own transfer task) and what
+ *       (stored in a StreamTransferTask, each table has it's own transfer task) and what
  *       the follower needs to stream back (StreamReceiveTask, same as above). If the initiator has
  *       nothing to receive from the follower, it goes directly to its Streaming phase. Otherwise,
  *       it waits for the follower PrepareMessage.
@@ -105,10 +105,10 @@ import com.google.common.collect.Sets;
  *       content for that file (StreamWriter in FileMessage.serialize()). When a file is fully sent, the
  *       fileSent() method is called for that file. If all the files for a StreamTransferTask are sent
  *       (StreamTransferTask.complete()), the task is marked complete (taskCompleted()).
- *   (b) On the receiving side, a SSTable will be written for the incoming file (StreamReader in
+ *   (b) On the receiving side, a table will be written for the incoming file (StreamReader in
  *       FileMessage.deserialize()) and once the FileMessage is fully received, the file will be marked as
- *       complete (received()). When all files for the StreamReceiveTask have been received, the sstables
- *       are added to the CFS (and 2ndary index are built, StreamReceiveTask.complete()) and the task
+ *       complete (received()). When all files for the StreamReceiveTask have been received, the tables
+ *       are added to the Database (and 2ndary index are built, StreamReceiveTask.complete()) and the task
  *       is marked complete (taskCompleted())
  *   (b) If during the streaming of a particular file an I/O error occurs on the receiving end of a stream
  *       (FileMessage.deserialize), the node will retry the file (up to DatabaseDescriptor.getMaxStreamingRetries())
@@ -142,12 +142,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
 
     // stream requests to send to the peer
     protected final Set<StreamRequest> requests = Sets.newConcurrentHashSet();
-    // streaming tasks are created and managed per ColumnFamily ID
+    // streaming tasks are created and managed per StorageMap name
     private final ConcurrentHashMap<String, StreamTransferTask> transfers = new ConcurrentHashMap<>();
     // data receivers, filled after receiving prepare message
     private final Map<String, StreamReceiveTask> receivers = new ConcurrentHashMap<>();
     private final StreamingMetrics metrics;
-    /* can be null when session is created in remote */
+    // can be null when session is created in remote
     private final StreamConnectionFactory factory;
 
     public final ConnectionHandler handler;
@@ -232,28 +232,28 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
     /**
      * Request data fetch task to this session.
      *
-     * @param keyspace Requesting keyspace
+     * @param dbName Requesting dbName
      * @param ranges Ranges to retrieve data
-     * @param columnFamilies ColumnFamily names. Can be empty if requesting all CF under the keyspace.
+     * @param tableNames ColumnFamily names. Can be empty if requesting all CF under the dbName.
      */
-    public void addStreamRequest(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies) {
-        requests.add(new StreamRequest(keyspace, ranges, columnFamilies));
+    public void addStreamRequest(String dbName, Collection<Range<Token>> ranges, Collection<String> tableNames) {
+        requests.add(new StreamRequest(dbName, ranges, tableNames));
     }
 
     /**
-     * Set up transfer for specific keyspace/ranges/CFs
+     * Set up transfer for specific dbName/ranges/CFs
      *
      * Used in repair - a streamed sstable in repair will be marked with the given repairedAt time
      *
-     * @param keyspace Transfer keyspace
+     * @param dbName Transfer dbName
      * @param ranges Transfer ranges
-     * @param columnFamilies Transfer ColumnFamilies
+     * @param tableNames Transfer ColumnFamilies
      * @param flushTables flush tables?
      * @param repairedAt the time the repair started.
      */
-    public void addTransferRanges(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies,
+    public void addTransferRanges(String dbName, Collection<Range<Token>> ranges, Collection<String> tableNames,
             boolean flushTables) {
-        Collection<StorageMap<Object, Object>> stores = getStorageMaps(keyspace, columnFamilies);
+        Collection<StorageMap<Object, Object>> stores = getStorageMaps(dbName, tableNames);
         List<Range<Token>> normalizedRanges = Range.normalize(ranges);
 
         for (StorageMap<Object, Object> map : stores) {
@@ -269,38 +269,19 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
         }
     }
 
-    private Collection<StorageMap<Object, Object>> getStorageMaps(String keyspace, Collection<String> columnFamilies) {
+    private Collection<StorageMap<Object, Object>> getStorageMaps(String dbName, Collection<String> tableNames) {
         Collection<StorageMap<Object, Object>> stores = new HashSet<>();
         for (Database db : DatabaseEngine.getDatabases()) {
             for (Schema schema : db.getAllSchemas()) {
-                if (schema.getFullName().equalsIgnoreCase(keyspace)) {
+                if (schema.getFullName().equalsIgnoreCase(dbName)) {
                     for (Table table : schema.getAllTablesAndViews()) {
-                        if (columnFamilies.isEmpty() || columnFamilies.contains(table.getName()))
+                        if (tableNames.isEmpty() || tableNames.contains(table.getName()))
                             stores.addAll(table.getAllStorageMaps());
                     }
                 }
             }
         }
         return stores;
-    }
-
-    public void addTransferRanges(InetAddress original, String keyspace, Collection<Range<Token>> ranges,
-            Collection<String> columnFamilies, boolean flushTables) {
-        Collection<StorageMap<Object, Object>> stores = getStorageMaps(keyspace, columnFamilies);
-
-        List<Range<Token>> normalizedRanges = Range.normalize(ranges);
-
-        for (StorageMap<Object, Object> map : stores) {
-            StreamTransferTask task = transfers.get(map.getName());
-            if (task == null) {
-                // guarantee atomicity
-                StreamTransferTask newTask = new StreamTransferTask(this, map.getName());
-                task = transfers.putIfAbsent(map.getName(), newTask);
-                if (task == null)
-                    task = newTask;
-            }
-            task.addTransferFile(map, 0, normalizedRanges, 0);
-        }
     }
 
     private synchronized void closeSession(State finalState) {
@@ -358,12 +339,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
 
         case RECEIVED:
             ReceivedMessage received = (ReceivedMessage) message;
-            received(received.cfId, received.sequenceNumber);
+            received(received.mapName, received.sequenceNumber);
             break;
 
         case RETRY:
             RetryMessage retry = (RetryMessage) message;
-            retry(retry.cfId, retry.sequenceNumber);
+            retry(retry.mapName, retry.sequenceNumber);
             break;
 
         case COMPLETE:
@@ -415,7 +396,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
         state(State.PREPARING);
         for (StreamRequest request : requests)
             // always flush on stream request
-            addTransferRanges(request.keyspace, request.ranges, request.columnFamilies, true);
+            addTransferRanges(request.dbName, request.ranges, request.tableNames, true);
 
         for (StreamSummary summary : summaries)
             prepareReceiving(summary);
@@ -468,18 +449,18 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
     // streamResult.handleProgress(progress);
     // }
 
-    public void received(String cfId, int sequenceNumber) {
-        transfers.get(cfId).complete(sequenceNumber);
+    public void received(String mapName, int sequenceNumber) {
+        transfers.get(mapName).complete(sequenceNumber);
     }
 
     /**
      * Call back on receiving {@code StreamMessage.Type.RETRY} message.
      *
-     * @param cfId ColumnFamily ID
+     * @param mapName StorageMap name
      * @param sequenceNumber Sequence number to indicate which file to stream again
      */
-    public void retry(String cfId, int sequenceNumber) {
-        OutgoingFileMessage message = transfers.get(cfId).createMessageForRetry(sequenceNumber);
+    public void retry(String mapName, int sequenceNumber) {
+        OutgoingFileMessage message = transfers.get(mapName).createMessageForRetry(sequenceNumber);
         handler.sendMessage(message);
     }
 
@@ -529,12 +510,12 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
     }
 
     public synchronized void taskCompleted(StreamReceiveTask completedTask) {
-        receivers.remove(completedTask.cfId);
+        receivers.remove(completedTask.mapName);
         maybeCompleted();
     }
 
     public synchronized void taskCompleted(StreamTransferTask completedTask) {
-        transfers.remove(completedTask.cfId);
+        transfers.remove(completedTask.mapName);
         maybeCompleted();
     }
 
@@ -590,7 +571,7 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
 
     private void prepareReceiving(StreamSummary summary) {
         if (summary.files > 0)
-            receivers.put(summary.cfId, new StreamReceiveTask(this, summary.cfId, summary.files, summary.totalSize));
+            receivers.put(summary.mapName, new StreamReceiveTask(this, summary.mapName, summary.files, summary.totalSize));
     }
 
     private void startStreamingFiles() {

@@ -33,60 +33,58 @@ import org.lealone.cluster.io.IVersionedSerializer;
 public class StreamRequest {
     public static final IVersionedSerializer<StreamRequest> serializer = new StreamRequestSerializer();
 
-    public final String keyspace;
+    public final String dbName;
     public final Collection<Range<Token>> ranges;
-    public final Collection<String> columnFamilies = new HashSet<>();
+    public final Collection<String> tableNames = new HashSet<>();
 
-    public StreamRequest(String keyspace, Collection<Range<Token>> ranges, Collection<String> columnFamilies) {
-        this.keyspace = keyspace;
+    public StreamRequest(String dbName, Collection<Range<Token>> ranges, Collection<String> tableNames) {
+        this.dbName = dbName;
         this.ranges = ranges;
-        this.columnFamilies.addAll(columnFamilies);
+        this.tableNames.addAll(tableNames);
     }
 
     public static class StreamRequestSerializer implements IVersionedSerializer<StreamRequest> {
         @Override
         public void serialize(StreamRequest request, DataOutputPlus out, int version) throws IOException {
-            out.writeUTF(request.keyspace);
+            out.writeUTF(request.dbName);
             out.writeInt(request.ranges.size());
             for (Range<Token> range : request.ranges) {
                 // MessagingService.validatePartitioner(range);
                 Token.serializer.serialize(range.left, out);
                 Token.serializer.serialize(range.right, out);
             }
-            out.writeInt(request.columnFamilies.size());
-            for (String cf : request.columnFamilies)
+            out.writeInt(request.tableNames.size());
+            for (String cf : request.tableNames)
                 out.writeUTF(cf);
         }
 
         @Override
         public StreamRequest deserialize(DataInput in, int version) throws IOException {
-            String keyspace = in.readUTF();
+            String dbName = in.readUTF();
             int rangeCount = in.readInt();
             List<Range<Token>> ranges = new ArrayList<>(rangeCount);
             for (int i = 0; i < rangeCount; i++) {
-                // Token left = Token.serializer.deserialize(in, MessagingService.globalPartitioner(), version);
-                // Token right = Token.serializer.deserialize(in, MessagingService.globalPartitioner(), version);
                 Token left = Token.serializer.deserialize(in);
                 Token right = Token.serializer.deserialize(in);
                 ranges.add(new Range<>(left, right));
             }
             int cfCount = in.readInt();
-            List<String> columnFamilies = new ArrayList<>(cfCount);
+            List<String> tableNames = new ArrayList<>(cfCount);
             for (int i = 0; i < cfCount; i++)
-                columnFamilies.add(in.readUTF());
-            return new StreamRequest(keyspace, ranges, columnFamilies);
+                tableNames.add(in.readUTF());
+            return new StreamRequest(dbName, ranges, tableNames);
         }
 
         @Override
         public long serializedSize(StreamRequest request, int version) {
-            long size = TypeSizes.NATIVE.sizeof(request.keyspace);
+            long size = TypeSizes.NATIVE.sizeof(request.dbName);
             size += TypeSizes.NATIVE.sizeof(request.ranges.size());
             for (Range<Token> range : request.ranges) {
                 size += Token.serializer.serializedSize(range.left, TypeSizes.NATIVE);
                 size += Token.serializer.serializedSize(range.right, TypeSizes.NATIVE);
             }
-            size += TypeSizes.NATIVE.sizeof(request.columnFamilies.size());
-            for (String cf : request.columnFamilies)
+            size += TypeSizes.NATIVE.sizeof(request.tableNames.size());
+            for (String cf : request.tableNames)
                 size += TypeSizes.NATIVE.sizeof(cf);
             return size;
         }

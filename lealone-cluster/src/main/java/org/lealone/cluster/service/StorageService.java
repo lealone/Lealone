@@ -44,7 +44,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.db.ClusterMetaData;
-import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.db.PullSchema;
 import org.lealone.cluster.dht.BootStrapper;
 import org.lealone.cluster.dht.IPartitioner;
@@ -71,7 +70,7 @@ import org.lealone.cluster.utils.Pair;
 import org.lealone.cluster.utils.Utils;
 import org.lealone.cluster.utils.WrappedRunnable;
 import org.lealone.cluster.utils.progress.jmx.JMXProgressSupport;
-import org.lealone.db.schema.Schema;
+import org.lealone.db.Database;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -327,8 +326,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         // The seed check allows us to skip the RING_DELAY sleep for the single-node cluster case,
         // which is useful for both new users and testing.
         //
-        // We attempted to replace this with a schema-presence check, but you need a meaningful sleep
-        // to get schema info from gossip which defeats the purpose. See lealone-4427 for the gory details.
+        // We attempted to replace this with a db-presence check, but you need a meaningful sleep
+        // to get db info from gossip which defeats the purpose. See lealone-4427 for the gory details.
         Set<InetAddress> current = new HashSet<>();
         if (logger.isDebugEnabled())
             logger.debug("Bootstrap variables: {} {} {} {}", DatabaseDescriptor.isAutoBootstrap(), ClusterMetaData
@@ -344,7 +343,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 ClusterMetaData.setBootstrapState(ClusterMetaData.BootstrapState.IN_PROGRESS);
 
             if (logger.isDebugEnabled())
-                logger.debug("... got ring + schema info");
+                logger.debug("... got ring + db info");
 
             if (Boolean.parseBoolean(Config.getProperty("consistent.rangemovement", "true"))
                     && (tokenMetaData.getBootstrapTokens().valueSet().size() > 0 //
@@ -440,10 +439,10 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         MessagingService.instance().sendOneWay(message, seed);
 
         while (!pullSchemaFinished) {
-            setMode(Mode.JOINING, "waiting for schema information to complete", true);
+            setMode(Mode.JOINING, "waiting for db information to complete", true);
             Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
         }
-        setMode(Mode.JOINING, "schema complete, ready to bootstrap", true);
+        setMode(Mode.JOINING, "db complete, ready to bootstrap", true);
     }
 
     private boolean bootstrap(final Collection<Token> tokens) {
@@ -506,10 +505,6 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         }
     }
 
-    public void finishBootstrapping() {
-        isBootstrapMode = false;
-    }
-
     /** This method updates the local token on disk  */
     private void setTokens(Collection<Token> tokens) {
         if (logger.isDebugEnabled())
@@ -524,8 +519,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         setMode(Mode.NORMAL, false);
     }
 
-    public Collection<Range<Token>> getLocalRanges(Schema schema) {
-        return getRangesForEndpoint(schema, Utils.getBroadcastAddress());
+    public Collection<Range<Token>> getLocalRanges(Database db) {
+        return getRangesForEndpoint(db, Utils.getBroadcastAddress());
     }
 
     public void register(IEndpointLifecycleSubscriber subscriber) {
@@ -748,7 +743,7 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             }
             break;
         case SCHEMA:
-            ClusterMetaData.updatePeerInfo(endpoint, "schema_version", UUID.fromString(value.value));
+            ClusterMetaData.updatePeerInfo(endpoint, "db_version", UUID.fromString(value.value));
             break;
         case HOST_ID:
             ClusterMetaData.updatePeerInfo(endpoint, "host_id", UUID.fromString(value.value));
@@ -1176,8 +1171,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
      * @param ep endpoint we are interested in.
      * @return ranges for the specified endpoint.
      */
-    Collection<Range<Token>> getRangesForEndpoint(Schema schema, InetAddress ep) {
-        return Keyspace.getReplicationStrategy(schema).getAddressRanges().get(ep);
+    Collection<Range<Token>> getRangesForEndpoint(Database db, InetAddress ep) {
+        return ClusterMetaData.getReplicationStrategy(db).getAddressRanges().get(ep);
     }
 
     /**
@@ -1204,36 +1199,36 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         return ranges;
     }
 
-    public List<InetAddress> getNaturalEndpoints(Schema schema, ByteBuffer key) {
-        return getNaturalEndpoints(schema, getPartitioner().getToken(key));
+    public List<InetAddress> getNaturalEndpoints(Database db, ByteBuffer key) {
+        return getNaturalEndpoints(db, getPartitioner().getToken(key));
     }
 
     /**
      * This method returns the N endpoints that are responsible for storing the
      * specified key i.e for replication.
      *
-     * @param schema the schema
+     * @param db the db
      * @param pos position for which we need to find the endpoint
      * @return the endpoint responsible for this token
      */
-    public List<InetAddress> getNaturalEndpoints(Schema schema, RingPosition<?> pos) {
-        return Keyspace.getReplicationStrategy(schema).getNaturalEndpoints(pos);
+    public List<InetAddress> getNaturalEndpoints(Database db, RingPosition<?> pos) {
+        return ClusterMetaData.getReplicationStrategy(db).getNaturalEndpoints(pos);
     }
 
     /**
      * This method attempts to return N endpoints that are responsible for storing the
      * specified key i.e for replication.
      *
-     * @param schema the schema
+     * @param db the db
      * @param key key for which we need to find the endpoint
      * @return the endpoint responsible for this key
      */
-    public List<InetAddress> getLiveNaturalEndpoints(Schema schema, ByteBuffer key) {
-        return getLiveNaturalEndpoints(schema, getPartitioner().decorateKey(key));
+    public List<InetAddress> getLiveNaturalEndpoints(Database db, ByteBuffer key) {
+        return getLiveNaturalEndpoints(db, getPartitioner().decorateKey(key));
     }
 
-    public List<InetAddress> getLiveNaturalEndpoints(Schema schema, RingPosition<?> pos) {
-        List<InetAddress> endpoints = Keyspace.getReplicationStrategy(schema).getNaturalEndpoints(pos);
+    public List<InetAddress> getLiveNaturalEndpoints(Database db, RingPosition<?> pos) {
+        List<InetAddress> endpoints = ClusterMetaData.getReplicationStrategy(db).getNaturalEndpoints(pos);
         List<InetAddress> liveEps = new ArrayList<>(endpoints.size());
 
         for (InetAddress endpoint : endpoints) {

@@ -26,7 +26,6 @@ import org.lealone.cluster.net.MessageOut;
 import org.lealone.cluster.net.MessagingService;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
-import org.lealone.db.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,12 +42,6 @@ public class PullSchemaVerbHandler implements IVerbHandler<PullSchema> {
             String sql = db.getCreateSQL();
             if (sql != null)
                 sqls.add(sql);
-
-            for (Schema schema : db.getAllSchemas()) {
-                sql = schema.getCreateSQL();
-                if (sql != null)
-                    sqls.add(sql);
-            }
         }
         MessageOut<PullSchemaAck> pullSchemaAck = new MessageOut<>(MessagingService.Verb.PULL_SCHEMA_ACK,
                 new PullSchemaAck(sqls), PullSchemaAck.serializer);

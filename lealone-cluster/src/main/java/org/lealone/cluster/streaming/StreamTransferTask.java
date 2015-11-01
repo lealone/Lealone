@@ -59,7 +59,7 @@ public class StreamTransferTask extends StreamTask {
     public synchronized void addTransferFile(StorageMap<Object, Object> map, long estimatedKeys,
             List<Range<Token>> ranges, long repairedAt) {
         OutgoingFileMessage message = new OutgoingFileMessage(map, sequenceNumber.getAndIncrement(), estimatedKeys,
-                ranges, repairedAt);
+                ranges);
         files.put(message.header.sequenceNumber, message);
         // totalSize += message.header.size();
         totalSize = 0;

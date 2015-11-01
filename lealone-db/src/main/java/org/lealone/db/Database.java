@@ -174,6 +174,9 @@ public class Database implements DataHandler, DbObject {
     private String fullName;
     private String storageName; // 不使用原始的名称，而是用id替换数据库名
 
+    private Map<String, String> replicationProperties;
+    private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
+
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
         this.name = name;
@@ -256,6 +259,24 @@ public class Database implements DataHandler, DbObject {
 
     public String getDefaultStorageEngineName() {
         return dbSettings.defaultStorageEngine;
+    }
+
+    public Map<String, String> getReplicationProperties() {
+        return replicationProperties;
+    }
+
+    public void setReplicationProperties(Map<String, String> replicationProperties) {
+        this.replicationProperties = replicationProperties;
+        if (replicationPropertiesChangeListener != null)
+            replicationPropertiesChangeListener.replicationPropertiesChanged(this);
+    }
+
+    public void setReplicationPropertiesChangeListener(ReplicationPropertiesChangeListener listener) {
+        replicationPropertiesChangeListener = listener;
+    }
+
+    public static interface ReplicationPropertiesChangeListener {
+        void replicationPropertiesChanged(Database db);
     }
 
     public boolean isInitialized() {
@@ -2108,14 +2129,14 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public String getSQL() {
-        return getSQL(quoteIdentifier(name), dbSettings);
+        return getSQL(quoteIdentifier(name), dbSettings, replicationProperties);
     }
 
     public static String getSQL(String dbName, ConnectionInfo ci) {
-        return getSQL(dbName, ci.getDbSettings());
+        return getSQL(dbName, ci.getDbSettings(), null);
     }
 
-    public static String getSQL(String dbName, DbSettings dbSettings) {
+    public static String getSQL(String dbName, DbSettings dbSettings, Map<String, String> replicationProperties) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
         sql.append(dbName).append(" WITH ( ");
 
@@ -2125,6 +2146,15 @@ public class Database implements DataHandler, DbObject {
             sql.append(e.getKey()).append('=').append("'").append(e.getValue()).append("'");
         }
         sql.append(" )");
+
+        if (replicationProperties != null && !replicationProperties.isEmpty()) {
+            sql.append(" REPLICATION (");
+            for (Map.Entry<String, String> e : replicationProperties.entrySet()) {
+                sql.appendExceptFirst(",");
+                sql.append('\'').append(e.getKey()).append("':'").append(e.getValue()).append('\'');
+            }
+            sql.append(')');
+        }
         return sql.toString();
     }
 

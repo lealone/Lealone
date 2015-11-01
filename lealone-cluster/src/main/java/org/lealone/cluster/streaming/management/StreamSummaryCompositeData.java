@@ -31,12 +31,9 @@ import org.lealone.cluster.streaming.StreamSummary;
 
 import com.google.common.base.Throwables;
 
-/**
- */
 public class StreamSummaryCompositeData {
-    private static final String[] ITEM_NAMES = new String[] { "cfId", "files", "totalSize" };
-    private static final String[] ITEM_DESCS = new String[] { "ColumnFamilu ID", "Number of files",
-            "Total bytes of the files" };
+    private static final String[] ITEM_NAMES = new String[] { "mapName", "files", "totalSize" };
+    private static final String[] ITEM_DESCS = new String[] { "Map Name", "Number of files", "Total bytes of the files" };
     private static final OpenType<?>[] ITEM_TYPES = new OpenType[] { SimpleType.STRING, SimpleType.INTEGER,
             SimpleType.LONG };
 
@@ -52,7 +49,7 @@ public class StreamSummaryCompositeData {
 
     public static CompositeData toCompositeData(StreamSummary streamSummary) {
         Map<String, Object> valueMap = new HashMap<>();
-        valueMap.put(ITEM_NAMES[0], streamSummary.cfId.toString());
+        valueMap.put(ITEM_NAMES[0], streamSummary.mapName.toString());
         valueMap.put(ITEM_NAMES[1], streamSummary.files);
         valueMap.put(ITEM_NAMES[2], streamSummary.totalSize);
         try {

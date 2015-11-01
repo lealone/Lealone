@@ -37,24 +37,24 @@ public class RetryMessage extends StreamMessage {
         @Override
         public void serialize(RetryMessage message, DataOutputStreamPlus out, int version, StreamSession session)
                 throws IOException {
-            out.writeUTF(message.cfId);
+            out.writeUTF(message.mapName);
             out.writeInt(message.sequenceNumber);
         }
     };
 
-    public final String cfId;
+    public final String mapName;
     public final int sequenceNumber;
 
-    public RetryMessage(String cfId, int sequenceNumber) {
+    public RetryMessage(String mapName, int sequenceNumber) {
         super(Type.RETRY);
-        this.cfId = cfId;
+        this.mapName = mapName;
         this.sequenceNumber = sequenceNumber;
     }
 
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Retry (");
-        sb.append(cfId).append(", #").append(sequenceNumber).append(')');
+        sb.append(mapName).append(", #").append(sequenceNumber).append(')');
         return sb.toString();
     }
 }

@@ -38,17 +38,12 @@ public class FileMessageHeader {
     public final int sequenceNumber;
     public final long estimatedKeys;
     public final List<Range<Token>> ranges;
-    public final long repairedAt;
-    public final int sstableLevel;
 
-    public FileMessageHeader(String mapName, int sequenceNumber, long estimatedKeys, List<Range<Token>> ranges,
-            long repairedAt, int sstableLevel) {
+    public FileMessageHeader(String mapName, int sequenceNumber, long estimatedKeys, List<Range<Token>> ranges) {
         this.mapName = mapName;
         this.sequenceNumber = sequenceNumber;
         this.estimatedKeys = estimatedKeys;
         this.ranges = ranges;
-        this.repairedAt = repairedAt;
-        this.sstableLevel = sstableLevel;
     }
 
     /**
@@ -69,8 +64,6 @@ public class FileMessageHeader {
         sb.append(", #").append(sequenceNumber);
         sb.append(", estimated keys: ").append(estimatedKeys);
         // sb.append(", transfer size: ").append(size());
-        sb.append(", repairedAt: ").append(repairedAt);
-        sb.append(", level: ").append(sstableLevel);
         sb.append(')');
         return sb.toString();
     }
@@ -104,9 +97,6 @@ public class FileMessageHeader {
                 Token.serializer.serialize(range.left, out);
                 Token.serializer.serialize(range.right, out);
             }
-            out.writeLong(header.repairedAt);
-            out.writeInt(header.sstableLevel);
-
         }
 
         @Override
@@ -121,10 +111,8 @@ public class FileMessageHeader {
                 Token right = Token.serializer.deserialize(in);
                 ranges.add(new Range<>(left, right));
             }
-            long repairedAt = in.readLong();
-            int sstableLevel = in.readInt();
 
-            return new FileMessageHeader(mapName, sequenceNumber, estimatedKeys, ranges, repairedAt, sstableLevel);
+            return new FileMessageHeader(mapName, sequenceNumber, estimatedKeys, ranges);
         }
 
         @Override
@@ -139,7 +127,6 @@ public class FileMessageHeader {
                 size += Token.serializer.serializedSize(range.left, TypeSizes.NATIVE);
                 size += Token.serializer.serializedSize(range.right, TypeSizes.NATIVE);
             }
-            size += TypeSizes.NATIVE.sizeof(header.sstableLevel);
 
             return size;
         }

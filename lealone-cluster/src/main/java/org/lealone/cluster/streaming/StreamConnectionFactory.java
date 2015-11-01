@@ -24,7 +24,6 @@ import java.net.Socket;
 /**
  * Interface that creates connection used by streaming.
  */
-public interface StreamConnectionFactory
-{
+public interface StreamConnectionFactory {
     Socket createConnection(InetAddress peer) throws IOException;
 }

@@ -53,12 +53,12 @@ public class OutgoingFileMessage extends StreamMessage {
     private boolean completed = false;
 
     public OutgoingFileMessage(StorageMap<Object, Object> map, int sequenceNumber, long estimatedKeys,
-            List<Range<Token>> ranges, long repairedAt) {
+            List<Range<Token>> ranges) {
         super(Type.FILE);
         this.map = map;
 
         filename = map.getName();
-        this.header = new FileMessageHeader(map.getName(), sequenceNumber, estimatedKeys, ranges, repairedAt, 0);
+        this.header = new FileMessageHeader(map.getName(), sequenceNumber, estimatedKeys, ranges);
     }
 
     public synchronized void serialize(DataOutputStreamPlus out, int version, StreamSession session) throws IOException {

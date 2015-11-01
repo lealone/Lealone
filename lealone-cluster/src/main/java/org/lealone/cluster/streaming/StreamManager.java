@@ -28,24 +28,23 @@ import javax.management.NotificationFilter;
 import javax.management.NotificationListener;
 import javax.management.openmbean.CompositeData;
 
+import org.cliffc.high_scale_lib.NonBlockingHashMap;
+import org.lealone.cluster.config.DatabaseDescriptor;
+import org.lealone.cluster.streaming.management.StreamEventJMXNotifier;
+import org.lealone.cluster.streaming.management.StreamStateCompositeData;
+
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.RateLimiter;
 
-import org.cliffc.high_scale_lib.NonBlockingHashMap;
-import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.streaming.management.StreamEventJMXNotifier;
-import org.lealone.cluster.streaming.management.StreamStateCompositeData;
-
 /**
  * StreamManager manages currently running {@link StreamResultFuture}s and provides status of all operation invoked.
  *
  * All stream operation should be created through this class to track streaming status and progress.
  */
-public class StreamManager implements StreamManagerMBean
-{
+public class StreamManager implements StreamManagerMBean {
     public static final StreamManager instance = new StreamManager();
 
     /**
@@ -56,35 +55,32 @@ public class StreamManager implements StreamManagerMBean
      *
      * @return StreamRateLimiter with rate limit set based on peer location.
      */
-    public static StreamRateLimiter getRateLimiter(InetAddress peer)
-    {
+    public static StreamRateLimiter getRateLimiter(InetAddress peer) {
         return new StreamRateLimiter(peer);
     }
 
-    public static class StreamRateLimiter
-    {
+    public static class StreamRateLimiter {
         private static final double BYTES_PER_MEGABIT = (1024 * 1024) / 8; // from bits
         private static final RateLimiter limiter = RateLimiter.create(Double.MAX_VALUE);
         private static final RateLimiter interDCLimiter = RateLimiter.create(Double.MAX_VALUE);
         private final boolean isLocalDC;
 
-        public StreamRateLimiter(InetAddress peer)
-        {
+        public StreamRateLimiter(InetAddress peer) {
             double throughput = DatabaseDescriptor.getStreamThroughputOutboundMegabitsPerSec() * BYTES_PER_MEGABIT;
             mayUpdateThroughput(throughput, limiter);
 
-            double interDCThroughput = DatabaseDescriptor.getInterDCStreamThroughputOutboundMegabitsPerSec() * BYTES_PER_MEGABIT;
+            double interDCThroughput = DatabaseDescriptor.getInterDCStreamThroughputOutboundMegabitsPerSec()
+                    * BYTES_PER_MEGABIT;
             mayUpdateThroughput(interDCThroughput, interDCLimiter);
 
             if (DatabaseDescriptor.getLocalDataCenter() != null && DatabaseDescriptor.getEndpointSnitch() != null)
                 isLocalDC = DatabaseDescriptor.getLocalDataCenter().equals(
-                            DatabaseDescriptor.getEndpointSnitch().getDatacenter(peer));
+                        DatabaseDescriptor.getEndpointSnitch().getDatacenter(peer));
             else
                 isLocalDC = true;
         }
 
-        private void mayUpdateThroughput(double limit, RateLimiter rateLimiter)
-        {
+        private void mayUpdateThroughput(double limit, RateLimiter rateLimiter) {
             // if throughput is set to 0, throttling is disabled
             if (limit == 0)
                 limit = Double.MAX_VALUE;
@@ -92,8 +88,7 @@ public class StreamManager implements StreamManagerMBean
                 rateLimiter.setRate(limit);
         }
 
-        public void acquire(int toTransfer)
-        {
+        public void acquire(int toTransfer) {
             limiter.acquire(toTransfer);
             if (!isLocalDC)
                 interDCLimiter.acquire(toTransfer);
@@ -110,25 +105,24 @@ public class StreamManager implements StreamManagerMBean
     private final Map<UUID, StreamResultFuture> initiatedStreams = new NonBlockingHashMap<>();
     private final Map<UUID, StreamResultFuture> receivingStreams = new NonBlockingHashMap<>();
 
-    public Set<CompositeData> getCurrentStreams()
-    {
-        return Sets.newHashSet(Iterables.transform(Iterables.concat(initiatedStreams.values(), receivingStreams.values()), new Function<StreamResultFuture, CompositeData>()
-        {
-            public CompositeData apply(StreamResultFuture input)
-            {
-                return StreamStateCompositeData.toCompositeData(input.getCurrentState());
-            }
-        }));
+    @Override
+    public Set<CompositeData> getCurrentStreams() {
+        return Sets.newHashSet(Iterables.transform(
+                Iterables.concat(initiatedStreams.values(), receivingStreams.values()),
+                new Function<StreamResultFuture, CompositeData>() {
+                    @Override
+                    public CompositeData apply(StreamResultFuture input) {
+                        return StreamStateCompositeData.toCompositeData(input.getCurrentState());
+                    }
+                }));
     }
 
-    public void register(final StreamResultFuture result)
-    {
+    public void register(final StreamResultFuture result) {
         result.addEventListener(notifier);
         // Make sure we remove the stream on completion (whether successful or not)
-        result.addListener(new Runnable()
-        {
-            public void run()
-            {
+        result.addListener(new Runnable() {
+            @Override
+            public void run() {
                 initiatedStreams.remove(result.planId);
             }
         }, MoreExecutors.sameThreadExecutor());
@@ -136,14 +130,12 @@ public class StreamManager implements StreamManagerMBean
         initiatedStreams.put(result.planId, result);
     }
 
-    public void registerReceiving(final StreamResultFuture result)
-    {
+    public void registerReceiving(final StreamResultFuture result) {
         result.addEventListener(notifier);
         // Make sure we remove the stream on completion (whether successful or not)
-        result.addListener(new Runnable()
-        {
-            public void run()
-            {
+        result.addListener(new Runnable() {
+            @Override
+            public void run() {
                 receivingStreams.remove(result.planId);
             }
         }, MoreExecutors.sameThreadExecutor());
@@ -151,28 +143,28 @@ public class StreamManager implements StreamManagerMBean
         receivingStreams.put(result.planId, result);
     }
 
-    public StreamResultFuture getReceivingStream(UUID planId)
-    {
+    public StreamResultFuture getReceivingStream(UUID planId) {
         return receivingStreams.get(planId);
     }
 
-    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback)
-    {
+    @Override
+    public void addNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) {
         notifier.addNotificationListener(listener, filter, handback);
     }
 
-    public void removeNotificationListener(NotificationListener listener) throws ListenerNotFoundException
-    {
+    @Override
+    public void removeNotificationListener(NotificationListener listener) throws ListenerNotFoundException {
         notifier.removeNotificationListener(listener);
     }
 
-    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback) throws ListenerNotFoundException
-    {
+    @Override
+    public void removeNotificationListener(NotificationListener listener, NotificationFilter filter, Object handback)
+            throws ListenerNotFoundException {
         notifier.removeNotificationListener(listener, filter, handback);
     }
 
-    public MBeanNotificationInfo[] getNotificationInfo()
-    {
+    @Override
+    public MBeanNotificationInfo[] getNotificationInfo() {
         return notifier.getNotificationInfo();
     }
 }

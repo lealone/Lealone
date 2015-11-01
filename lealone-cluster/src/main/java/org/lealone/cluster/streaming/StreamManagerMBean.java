@@ -18,11 +18,11 @@
 package org.lealone.cluster.streaming;
 
 import java.util.Set;
+
 import javax.management.NotificationEmitter;
 import javax.management.openmbean.CompositeData;
 
-public interface StreamManagerMBean extends NotificationEmitter
-{
+public interface StreamManagerMBean extends NotificationEmitter {
     public static final String OBJECT_NAME = "org.lealone.cluster.net:type=StreamManager";
 
     /**

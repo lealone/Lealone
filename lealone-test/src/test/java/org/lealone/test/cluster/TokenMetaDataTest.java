@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.UUID;
 
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.db.Keyspace;
 import org.lealone.cluster.dht.Murmur3Partitioner.LongToken;
 import org.lealone.cluster.dht.Range;
 import org.lealone.cluster.dht.RangeStreamer;
@@ -110,15 +109,12 @@ public class TokenMetaDataTest extends DbObjectTestBase {
         configOptions.put("class", SimpleStrategy.class.getName());
         schema.setReplicationProperties(configOptions);
 
-        strategy = Keyspace.getReplicationStrategy(schema);
-        ranges = strategy.getPendingAddressRanges(tokenMetaData, tokens, endpoint);
-
         RangeStreamer rangeStreamer;
 
         rangeStreamer = new RangeStreamer(tokenMetaData, tokens, endpoint, "testRangeStreamer", true, snitch);
-        rangeStreamer.addRanges(schema, ranges);
+        rangeStreamer.addRanges(db, ranges);
 
         rangeStreamer = new RangeStreamer(tokenMetaData, tokens, endpoint, "testRangeStreamer", false, snitch);
-        rangeStreamer.addRanges(schema, ranges);
+        rangeStreamer.addRanges(db, ranges);
     }
 }

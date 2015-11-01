@@ -22,26 +22,24 @@ import java.nio.channels.ReadableByteChannel;
 import org.lealone.cluster.io.DataOutputStreamPlus;
 import org.lealone.cluster.streaming.StreamSession;
 
-public class CompleteMessage extends StreamMessage
-{
-    public static Serializer<CompleteMessage> serializer = new Serializer<CompleteMessage>()
-    {
-        public CompleteMessage deserialize(ReadableByteChannel in, int version, StreamSession session)
-        {
+public class CompleteMessage extends StreamMessage {
+    public static Serializer<CompleteMessage> serializer = new Serializer<CompleteMessage>() {
+        @Override
+        public CompleteMessage deserialize(ReadableByteChannel in, int version, StreamSession session) {
             return new CompleteMessage();
         }
 
-        public void serialize(CompleteMessage message, DataOutputStreamPlus out, int version, StreamSession session) {}
+        @Override
+        public void serialize(CompleteMessage message, DataOutputStreamPlus out, int version, StreamSession session) {
+        }
     };
 
-    public CompleteMessage()
-    {
+    public CompleteMessage() {
         super(Type.COMPLETE);
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "Complete";
     }
 }

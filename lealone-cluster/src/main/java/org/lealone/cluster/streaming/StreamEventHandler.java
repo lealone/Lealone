@@ -19,8 +19,7 @@ package org.lealone.cluster.streaming;
 
 import com.google.common.util.concurrent.FutureCallback;
 
-public interface StreamEventHandler extends FutureCallback<StreamState>
-{
+public interface StreamEventHandler extends FutureCallback<StreamState> {
     /**
      * Callback for various streaming events.
      *

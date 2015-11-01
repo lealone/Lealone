@@ -35,12 +35,15 @@ public class CreateDatabase extends DefineStatement {
     private final String dbName;
     private final boolean ifNotExists;
     private final Map<String, String> parameters;
+    private final Map<String, String> replicationProperties;
 
-    public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, Map<String, String> parameters) {
+    public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, Map<String, String> parameters,
+            Map<String, String> replicationProperties) {
         super(session);
         this.dbName = dbName;
         this.ifNotExists = ifNotExists;
         this.parameters = parameters;
+        this.replicationProperties = replicationProperties;
     }
 
     @Override
@@ -56,6 +59,7 @@ public class CreateDatabase extends DefineStatement {
         }
         int id = getObjectId(db);
         Database newDb = new Database(id, dbName, parameters);
+        newDb.setReplicationProperties(replicationProperties);
         db.addDatabaseObject(session, newDb);
         return 0;
     }

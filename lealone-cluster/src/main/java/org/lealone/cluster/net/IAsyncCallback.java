@@ -17,11 +17,6 @@
  */
 package org.lealone.cluster.net;
 
-import java.net.InetAddress;
-
-import com.google.common.base.Predicate;
-
-import org.lealone.cluster.gms.FailureDetector;
 
 /**
  * implementors of IAsyncCallback need to make sure that any public methods
@@ -30,16 +25,10 @@ import org.lealone.cluster.gms.FailureDetector;
  * response alone synchronized will not suffice.
  */
 public interface IAsyncCallback<T> {
-    public static Predicate<InetAddress> isAlive = new Predicate<InetAddress>() {
-        public boolean apply(InetAddress endpoint) {
-            return FailureDetector.instance.isAlive(endpoint);
-        }
-    };
-
     /**
      * @param msg response received.
      */
-    public void response(MessageIn<T> msg);
+    void response(MessageIn<T> msg);
 
     /**
      * @return true if this callback is on the read path and its latency should be

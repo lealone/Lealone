@@ -4193,9 +4193,14 @@ public class Parser implements SQLParser {
         boolean ifNotExists = readIfNoExists();
         String dbName = readUniqueIdentifier();
         Map<String, String> parameters = null;
+        Map<String, String> replicationProperties = null;
         if (readIf("WITH"))
             parameters = parseParameters();
-        return new CreateDatabase(session, dbName, ifNotExists, parameters);
+        if (readIf("REPLICATION")) {
+            replicationProperties = parseParameters();
+            checkReplicationProperties(replicationProperties);
+        }
+        return new CreateDatabase(session, dbName, ifNotExists, parameters, replicationProperties);
     }
 
     private CreateSchema parseCreateSchema() {

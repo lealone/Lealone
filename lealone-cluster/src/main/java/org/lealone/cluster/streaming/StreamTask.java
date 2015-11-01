@@ -17,19 +17,18 @@
  */
 package org.lealone.cluster.streaming;
 
-
 /**
- * StreamTask is an abstraction of the streaming task performed over specific ColumnFamily.
+ * StreamTask is an abstraction of the streaming task performed over specific StorageMap.
  */
 public abstract class StreamTask {
     /** StreamSession that this task belongs */
     protected final StreamSession session;
 
-    protected final String cfId;
+    protected final String mapName;
 
     protected StreamTask(StreamSession session, String cfId) {
         this.session = session;
-        this.cfId = cfId;
+        this.mapName = cfId;
     }
 
     /**
@@ -52,6 +51,6 @@ public abstract class StreamTask {
      * @return StreamSummary that describes this task
      */
     public StreamSummary getSummary() {
-        return new StreamSummary(cfId, getTotalNumberOfFiles(), getTotalSize());
+        return new StreamSummary(mapName, getTotalNumberOfFiles(), getTotalSize());
     }
 }

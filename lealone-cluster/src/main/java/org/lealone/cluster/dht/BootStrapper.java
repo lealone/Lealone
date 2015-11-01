@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.cluster.config.Config;
 import org.lealone.cluster.config.DatabaseDescriptor;
-import org.lealone.cluster.db.Keyspace;
+import org.lealone.cluster.db.ClusterMetaData;
 import org.lealone.cluster.exceptions.ConfigurationException;
 import org.lealone.cluster.gms.FailureDetector;
 import org.lealone.cluster.locator.AbstractReplicationStrategy;
@@ -40,7 +40,6 @@ import org.lealone.cluster.utils.progress.ProgressEventNotifierSupport;
 import org.lealone.cluster.utils.progress.ProgressEventType;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
-import org.lealone.db.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,19 +50,19 @@ public class BootStrapper extends ProgressEventNotifierSupport {
     private static final boolean useStrictConsistency = Boolean.valueOf(Config.getProperty("consistent.rangemovement",
             "true"));
 
-    /* endpoint that needs to be bootstrapped */
-    protected final InetAddress address;
-    /* token of the node being bootstrapped. */
-    protected final Collection<Token> tokens;
-    protected final TokenMetaData tokenMetaData;
+    // endpoint that needs to be bootstrapped
+    private final InetAddress address;
+    // token of the node being bootstrapped
+    private final Collection<Token> tokens;
+    private final TokenMetaData tokenMetaData;
 
-    public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetaData tmd) {
+    public BootStrapper(InetAddress address, Collection<Token> tokens, TokenMetaData tokenMetaData) {
         assert address != null;
         assert tokens != null && !tokens.isEmpty();
 
         this.address = address;
         this.tokens = tokens;
-        tokenMetaData = tmd;
+        this.tokenMetaData = tokenMetaData;
     }
 
     public ListenableFuture<StreamState> bootstrap() {
@@ -77,10 +76,8 @@ public class BootStrapper extends ProgressEventNotifierSupport {
             if (!db.isPersistent())
                 continue;
 
-            for (Schema schema : db.getAllSchemas()) {
-                AbstractReplicationStrategy strategy = Keyspace.getReplicationStrategy(schema);
-                streamer.addRanges(schema, strategy.getPendingAddressRanges(tokenMetaData, tokens, address));
-            }
+            AbstractReplicationStrategy strategy = ClusterMetaData.getReplicationStrategy(db);
+            streamer.addRanges(db, strategy.getPendingAddressRanges(tokenMetaData, tokens, address));
         }
 
         StreamResultFuture bootstrapStreamResult = streamer.fetchAsync();

@@ -17,7 +17,7 @@
  */
 package org.lealone.cluster.streaming.messages;
 
-import java.io.*;
+import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
@@ -30,12 +30,11 @@ import org.lealone.cluster.streaming.StreamRequest;
 import org.lealone.cluster.streaming.StreamSession;
 import org.lealone.cluster.streaming.StreamSummary;
 
-public class PrepareMessage extends StreamMessage
-{
-    public static Serializer<PrepareMessage> serializer = new Serializer<PrepareMessage>()
-    {
-        public PrepareMessage deserialize(ReadableByteChannel in, int version, StreamSession session) throws IOException
-        {
+public class PrepareMessage extends StreamMessage {
+    public static Serializer<PrepareMessage> serializer = new Serializer<PrepareMessage>() {
+        @Override
+        public PrepareMessage deserialize(ReadableByteChannel in, int version, StreamSession session)
+                throws IOException {
             DataInputPlus input = new DataInputStreamPlus(Channels.newInputStream(in));
             PrepareMessage message = new PrepareMessage();
             // requests
@@ -49,8 +48,9 @@ public class PrepareMessage extends StreamMessage
             return message;
         }
 
-        public void serialize(PrepareMessage message, DataOutputStreamPlus out, int version, StreamSession session) throws IOException
-        {
+        @Override
+        public void serialize(PrepareMessage message, DataOutputStreamPlus out, int version, StreamSession session)
+                throws IOException {
             // requests
             out.writeInt(message.requests.size());
             for (StreamRequest request : message.requests)
@@ -72,14 +72,12 @@ public class PrepareMessage extends StreamMessage
      */
     public final Collection<StreamSummary> summaries = new ArrayList<>();
 
-    public PrepareMessage()
-    {
+    public PrepareMessage() {
         super(Type.PREPARE);
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         final StringBuilder sb = new StringBuilder("Prepare (");
         sb.append(requests.size()).append(" requests, ");
         int totalFile = 0;

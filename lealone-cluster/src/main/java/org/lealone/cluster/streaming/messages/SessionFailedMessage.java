@@ -22,26 +22,24 @@ import java.nio.channels.ReadableByteChannel;
 import org.lealone.cluster.io.DataOutputStreamPlus;
 import org.lealone.cluster.streaming.StreamSession;
 
-public class SessionFailedMessage extends StreamMessage
-{
-    public static Serializer<SessionFailedMessage> serializer = new Serializer<SessionFailedMessage>()
-    {
-        public SessionFailedMessage deserialize(ReadableByteChannel in, int version, StreamSession session)
-        {
+public class SessionFailedMessage extends StreamMessage {
+    public static Serializer<SessionFailedMessage> serializer = new Serializer<SessionFailedMessage>() {
+        @Override
+        public SessionFailedMessage deserialize(ReadableByteChannel in, int version, StreamSession session) {
             return new SessionFailedMessage();
         }
 
-        public void serialize(SessionFailedMessage message, DataOutputStreamPlus out, int version, StreamSession session) {}
+        @Override
+        public void serialize(SessionFailedMessage message, DataOutputStreamPlus out, int version, StreamSession session) {
+        }
     };
 
-    public SessionFailedMessage()
-    {
+    public SessionFailedMessage() {
         super(Type.SESSION_FAILED);
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "Session Failed";
     }
 }

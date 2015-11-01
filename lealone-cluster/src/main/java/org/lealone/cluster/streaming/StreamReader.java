@@ -30,14 +30,10 @@ import org.lealone.storage.StorageMap;
  * StreamReader reads from stream and writes to SSTable.
  */
 public class StreamReader {
-
-    // private static final Logger logger = LoggerFactory.getLogger(StreamReader.class);
     protected final String mapName;
     protected final long estimatedKeys;
     protected final List<Range<Token>> ranges;
     protected final StreamSession session;
-    protected final long repairedAt;
-    protected final int sstableLevel;
     protected final StorageMap<Object, Object> map;
 
     public StreamReader(FileMessageHeader header, StreamSession session, StorageMap<Object, Object> map) {
@@ -45,13 +41,10 @@ public class StreamReader {
         this.mapName = header.mapName;
         this.estimatedKeys = header.estimatedKeys;
         this.ranges = header.ranges;
-        this.repairedAt = header.repairedAt;
-        this.sstableLevel = header.sstableLevel;
         this.map = map;
     }
 
     public void read(ReadableByteChannel channel) throws IOException {
         map.transferFrom(channel);
     }
-
 }

@@ -29,7 +29,7 @@ import com.google.common.base.Throwables;
 import org.lealone.cluster.streaming.ProgressInfo;
 
 public class ProgressInfoCompositeData
-{
+{ 
     private static final String[] ITEM_NAMES = new String[]{"planId",
                                                             "peer",
                                                             "sessionIndex",

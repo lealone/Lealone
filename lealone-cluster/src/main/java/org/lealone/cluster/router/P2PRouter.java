@@ -36,13 +36,13 @@ import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Utils;
 import org.lealone.common.message.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.SessionPool;
 import org.lealone.db.Command;
+import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
+import org.lealone.db.SessionPool;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
-import org.lealone.db.schema.Schema;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueUuid;
@@ -198,7 +198,7 @@ public class P2PRouter implements Router {
     private static int executeInsertOrMerge(InsertOrMerge iom) {
         final String localDataCenter = DatabaseDescriptor.getEndpointSnitch()
                 .getDatacenter(Utils.getBroadcastAddress());
-        Schema schema = iom.getTable().getSchema();
+        Database db = iom.getTable().getDatabase();
         List<Row> localRows = null;
         Map<InetAddress, List<Row>> localDataCenterRows = null;
         Map<InetAddress, List<Row>> remoteDataCenterRows = null;
@@ -210,9 +210,9 @@ public class P2PRouter implements Router {
             if (partitionKey == null)
                 partitionKey = ValueUuid.getNewRandom();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(partitionKey.getBytesNoCopy()));
-            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(schema, tk);
+            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(db, tk);
             Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetaData().pendingEndpointsFor(
-                    tk, schema.getFullName());
+                    tk, db.getName());
 
             Iterable<InetAddress> targets = Iterables.concat(naturalEndpoints, pendingEndpoints);
             for (InetAddress destination : targets) {
@@ -440,11 +440,11 @@ public class P2PRouter implements Router {
         Value pk = StatementBase.getPartitionKey(tableFilter);
 
         if (pk != null) {
-            Schema schema = tableFilter.getTable().getSchema();
+            Database db = tableFilter.getTable().getDatabase();
             Token tk = StorageService.getPartitioner().getToken(ByteBuffer.wrap(pk.getBytesNoCopy()));
-            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(schema, tk);
+            List<InetAddress> naturalEndpoints = StorageService.instance.getNaturalEndpoints(db, tk);
             Collection<InetAddress> pendingEndpoints = StorageService.instance.getTokenMetaData().pendingEndpointsFor(
-                    tk, schema.getFullName());
+                    tk, db.getName());
 
             naturalEndpoints.addAll(pendingEndpoints);
             return naturalEndpoints;

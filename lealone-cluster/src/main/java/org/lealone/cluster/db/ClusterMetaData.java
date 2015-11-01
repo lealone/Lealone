@@ -35,11 +35,15 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
+import org.lealone.cluster.config.DatabaseDescriptor;
 import org.lealone.cluster.dht.Token;
 import org.lealone.cluster.dht.TokenFactory;
+import org.lealone.cluster.exceptions.ConfigurationException;
+import org.lealone.cluster.locator.AbstractReplicationStrategy;
 import org.lealone.cluster.service.StorageService;
 import org.lealone.cluster.utils.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.Database;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +63,29 @@ public class ClusterMetaData {
     private static final String LOCAL_TABLE = "local";
     private static final String PEERS_TABLE = "peers";
     private static final String LOCAL_KEY = "local";
+
+    private static final HashMap<Database, AbstractReplicationStrategy> replicationStrategys = new HashMap<>();
+    private static final AbstractReplicationStrategy defaultReplicationStrategy = DatabaseDescriptor
+            .getDefaultReplicationStrategy();
+
+    public static AbstractReplicationStrategy getReplicationStrategy(Database db) {
+        if (db.getReplicationProperties() == null)
+            return defaultReplicationStrategy;
+        AbstractReplicationStrategy replicationStrategy = replicationStrategys.get(db);
+        if (replicationStrategy == null) {
+            HashMap<String, String> map = new HashMap<>(db.getReplicationProperties());
+            String className = map.remove("class");
+            if (className == null) {
+                throw new ConfigurationException("Missing replication strategy class");
+            }
+
+            replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getName(),
+                    AbstractReplicationStrategy.getClass(className), StorageService.instance.getTokenMetaData(),
+                    DatabaseDescriptor.getEndpointSnitch(), map);
+            replicationStrategys.put(db, replicationStrategy);
+        }
+        return replicationStrategy;
+    }
 
     private static Connection conn;
     private static Statement stmt;

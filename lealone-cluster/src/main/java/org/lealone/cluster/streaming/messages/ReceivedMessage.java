@@ -38,24 +38,24 @@ public class ReceivedMessage extends StreamMessage {
         @Override
         public void serialize(ReceivedMessage message, DataOutputStreamPlus out, int version, StreamSession session)
                 throws IOException {
-            out.writeUTF(message.cfId);
+            out.writeUTF(message.mapName);
             out.writeInt(message.sequenceNumber);
         }
     };
 
-    public final String cfId;
+    public final String mapName;
     public final int sequenceNumber;
 
-    public ReceivedMessage(String cfId, int sequenceNumber) {
+    public ReceivedMessage(String mapName, int sequenceNumber) {
         super(Type.RECEIVED);
-        this.cfId = cfId;
+        this.mapName = mapName;
         this.sequenceNumber = sequenceNumber;
     }
 
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Received (");
-        sb.append(cfId).append(", #").append(sequenceNumber).append(')');
+        sb.append(mapName).append(", #").append(sequenceNumber).append(')');
         return sb.toString();
     }
 }

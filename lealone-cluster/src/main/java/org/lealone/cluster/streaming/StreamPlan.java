@@ -58,74 +58,74 @@ public class StreamPlan {
     }
 
     /**
-     * Request data in {@code schema} and {@code ranges} from specific node.
+     * Request data in {@code dbName} and {@code ranges} from specific node.
      *
      * @param from endpoint address to fetch data from.
      * @param connecting Actual connecting address for the endpoint
-     * @param schemaName name of schema
+     * @param dbName name of database
      * @param ranges ranges to fetch
      * @return this object for chaining
      */
-    public StreamPlan requestRanges(InetAddress from, InetAddress connecting, String schemaName,
+    public StreamPlan requestRanges(InetAddress from, InetAddress connecting, String dbName,
             Collection<Range<Token>> ranges) {
-        return requestRanges(from, connecting, schemaName, ranges, new String[0]);
+        return requestRanges(from, connecting, dbName, ranges, new String[0]);
     }
 
     /**
-     * Request data in {@code tableNames} under {@code schema} and {@code ranges} from specific node.
+     * Request data in {@code tableNames} under {@code dbName} and {@code ranges} from specific node.
      *
      * @param from endpoint address to fetch data from.
      * @param connecting Actual connecting address for the endpoint
-     * @param schemaName name of schema
+     * @param dbName name of database
      * @param ranges ranges to fetch
      * @param tableNames specific table names
      * @return this object for chaining
      */
-    public StreamPlan requestRanges(InetAddress from, InetAddress connecting, String schemaName,
+    public StreamPlan requestRanges(InetAddress from, InetAddress connecting, String dbName,
             Collection<Range<Token>> ranges, String... tableNames) {
         StreamSession session = coordinator.getOrCreateNextSession(from, connecting);
-        session.addStreamRequest(schemaName, ranges, Arrays.asList(tableNames));
+        session.addStreamRequest(dbName, ranges, Arrays.asList(tableNames));
         return this;
     }
 
     /**
-     * Add transfer task to send data of specific {@code tableNames} under {@code schema} and {@code ranges}.
+     * Add transfer task to send data of specific {@code tableNames} under {@code dbName} and {@code ranges}.
      *
      * @see #transferRanges(java.net.InetAddress, java.net.InetAddress, String, java.util.Collection, String...)
      */
-    public StreamPlan transferRanges(InetAddress to, String schema, Collection<Range<Token>> ranges,
+    public StreamPlan transferRanges(InetAddress to, String dbName, Collection<Range<Token>> ranges,
             String... tableNames) {
-        return transferRanges(to, to, schema, ranges, tableNames);
+        return transferRanges(to, to, dbName, ranges, tableNames);
     }
 
     /**
-     * Add transfer task to send data of specific schema and ranges.
+     * Add transfer task to send data of specific database and ranges.
      *
      * @param to endpoint address of receiver
      * @param connecting Actual connecting address of the endpoint
-     * @param schema name of schema
+     * @param dbName name of database
      * @param ranges ranges to send
      * @return this object for chaining
      */
-    public StreamPlan transferRanges(InetAddress to, InetAddress connecting, String schema,
+    public StreamPlan transferRanges(InetAddress to, InetAddress connecting, String dbName,
             Collection<Range<Token>> ranges) {
-        return transferRanges(to, connecting, schema, ranges, new String[0]);
+        return transferRanges(to, connecting, dbName, ranges, new String[0]);
     }
 
     /**
-     * Add transfer task to send data of specific {@code tableNames} under {@code schema} and {@code ranges}.
+     * Add transfer task to send data of specific {@code tableNames} under {@code dbName} and {@code ranges}.
      *
      * @param to endpoint address of receiver
      * @param connecting Actual connecting address of the endpoint
-     * @param schema name of schema
+     * @param dbName name of database
      * @param ranges ranges to send
-     * @param tableNames specific column families
+     * @param tableNames specific tables
      * @return this object for chaining
      */
-    public StreamPlan transferRanges(InetAddress to, InetAddress connecting, String schema,
+    public StreamPlan transferRanges(InetAddress to, InetAddress connecting, String dbName,
             Collection<Range<Token>> ranges, String... tableNames) {
         StreamSession session = coordinator.getOrCreateNextSession(to, connecting);
-        session.addTransferRanges(schema, ranges, Arrays.asList(tableNames), flushBeforeTransfer);
+        session.addTransferRanges(dbName, ranges, Arrays.asList(tableNames), flushBeforeTransfer);
         return this;
     }
 
