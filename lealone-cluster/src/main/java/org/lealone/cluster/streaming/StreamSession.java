@@ -276,8 +276,10 @@ public class StreamSession implements IEndpointStateChangeSubscriber {
             if (db.getName().equalsIgnoreCase(dbName)) {
                 for (Schema schema : db.getAllSchemas()) {
                     for (Table table : schema.getAllTablesAndViews()) {
-                        if (tableNames.isEmpty() || tableNames.contains(table.getName()))
-                            stores.addAll((Collection<? extends StorageMap<Object, Object>>) table.getAllStorageMaps());
+                        if (tableNames.isEmpty() || tableNames.contains(table.getName())) {
+                            for(StorageMap<? extends Object, ? extends Object> map: table.getAllStorageMaps())
+                            stores.add((StorageMap<Object, Object>) map);
+                        }
                     }
                 }
             }
