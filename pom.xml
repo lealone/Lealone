@@ -32,8 +32,6 @@
         <module>lealone-sql</module>
         <module>lealone-server</module>
         <module>lealone-transaction</module>
-        <module>lealone-cluster</module>
-        <module>lealone-bootstrap</module>
         <module>lealone-storage</module>
         <module>lealone-test</module>
     </modules>

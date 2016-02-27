@@ -31,7 +31,27 @@
     <dependencies>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-bootstrap</artifactId>
+            <artifactId>lealone-storage</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lealone</groupId>
+            <artifactId>lealone-transaction</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lealone</groupId>
+            <artifactId>lealone-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lealone</groupId>
+            <artifactId>lealone-server</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lealone</groupId>
+            <artifactId>lealone-sql</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

@@ -36,7 +36,9 @@
             <includes>
                 <include>org.lealone:lealone-storage</include>
                 <include>org.lealone:lealone-transaction</include>
-                <include>org.lealone:lealone-bootstrap</include>
+                <include>org.lealone:lealone-client</include>
+                <include>org.lealone:lealone-server</include>
+                <include>org.lealone:lealone-sql</include>
             </includes>
             <binaries>
                 <unpack>false</unpack>

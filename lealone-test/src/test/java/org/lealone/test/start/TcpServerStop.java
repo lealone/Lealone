@@ -15,31 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.cluster.locator;
+package org.lealone.test.start;
 
-import java.net.UnknownHostException;
+import org.lealone.server.TcpServer;
+import org.lealone.test.TestBase;
 
-/**
- * MBean exposing standard Snitch info
- */
-public interface EndpointSnitchInfoMBean {
-    /**
-     * Provides the Rack name depending on the respective snitch used, given the host name/ip
-     * @param host
-     * @throws UnknownHostException
-     */
-    public String getRack(String host) throws UnknownHostException;
-
-    /**
-     * Provides the Datacenter name depending on the respective snitch used, given the hostname/ip
-     * @param host
-     * @throws UnknownHostException
-     */
-    public String getDatacenter(String host) throws UnknownHostException;
-
-    /**
-     * Provides the snitch name of the cluster
-     * @return Snitch name
-     */
-    public String getSnitchName();
+public class TcpServerStop {
+    public static void main(String[] args) throws Exception {
+        TestBase test = new TestBase();
+        TcpServer.shutdown(test.getHost(), test.getPort(), "", false, true);
+    }
 }

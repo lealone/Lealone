@@ -15,22 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.start.client_server_mode;
+package org.lealone.test.start;
 
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.lealone.bootstrap.Lealone;
+import org.lealone.server.TcpServer;
 import org.lealone.test.TestBase;
 
 public class TcpServerStart {
     public static void main(String[] args) throws SQLException {
         setProperty();
-        Lealone.main(args);
+        TestBase.initTransactionEngine();
+        Map<String, String> config = new HashMap<>();
+        config.put("base_dir", TestBase.TEST_DIR);
+        TcpServer server = new TcpServer();
+        server.init(config);
+        server.start();
+        System.out.println("TcpServer started, port: " + server.getPort());
     }
 
     private static void setProperty() {
-        System.setProperty("lealone.config", "lealone-cs.yaml");
-
         // System.setProperty("DATABASE_TO_UPPER", "false");
         System.setProperty("lealone.lobInDatabase", "false");
         System.setProperty("lealone.lobClientMaxSizeMemory", "1024");

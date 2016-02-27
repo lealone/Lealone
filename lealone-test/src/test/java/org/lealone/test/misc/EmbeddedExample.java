@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.start.embedded_mode;
+package org.lealone.test.misc;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
