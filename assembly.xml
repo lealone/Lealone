@@ -37,6 +37,7 @@
                 <include>org.lealone:lealone-client</include>
                 <include>org.lealone:lealone-server</include>
                 <include>org.lealone:lealone-sql</include>
+                <include>org.lealone:lealone-mvstore</include>
             </includes>
             <binaries>
                 <unpack>false</unpack>
