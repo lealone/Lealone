@@ -107,7 +107,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public V get(Object key) {
+    public V get(K key) {
         return (V) binarySearch(root, key);
     }
 
@@ -245,7 +245,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public V remove(Object key) {
+    public V remove(K key) {
         beforeWrite();
         V result = get(key);
         if (result == null) {
@@ -431,7 +431,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public boolean containsKey(Object key) {
+    public boolean containsKey(K key) {
         return get(key) != null;
     }
 
