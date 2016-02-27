@@ -10,9 +10,9 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.common.message.TraceObject;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.StringUtils;
 
 /**
@@ -63,7 +63,7 @@ public class JdbcSavepoint extends TraceObject implements Savepoint {
      */
     void rollback() {
         checkValid();
-        conn.prepareCommand("ROLLBACK TO SAVEPOINT " + getName(name, savepointId), Integer.MAX_VALUE).executeUpdate();
+        conn.prepareCommand("ROLLBACK TO SAVEPOINT " + getName(name, savepointId), Integer.MAX_VALUE).update();
     }
 
     private void checkValid() {

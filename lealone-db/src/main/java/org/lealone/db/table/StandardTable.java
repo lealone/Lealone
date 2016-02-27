@@ -16,12 +16,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
+import org.lealone.common.util.StatementBuilder;
+import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
-import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.constraint.Constraint;
@@ -45,12 +47,14 @@ import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
-public class StandardTable extends TableBase {
+public class StandardTable extends Table {
 
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = New.arrayList();
-    private long lastModificationId;
-    private volatile ServerSession lockExclusiveSession;
+    private final StorageEngine storageEngine;
+    private final Map<String, String> storageEngineParams;
+    private final String mapType;
+    private final boolean globalTemporary;
 
     // using a ConcurrentHashMap as a set
     private final ConcurrentHashMap<ServerSession, ServerSession> lockSharedSessions = new ConcurrentHashMap<>();
@@ -61,34 +65,25 @@ public class StandardTable extends TableBase {
      */
     private final ArrayDeque<ServerSession> waitingSessions = new ArrayDeque<>();
     private final Trace traceLock;
+    private volatile ServerSession lockExclusiveSession;
+
+    private long lastModificationId;
     private int changesSinceAnalyze;
     private int nextAnalyze;
     private boolean containsLargeObject;
     private Column rowIdColumn;
-
-    private final StorageEngine storageEngine;
-    private final Map<String, String> storageEngineParams;
-    private final String mapType;
     private boolean containsGlobalUniqueIndex;
-
-    // private final TransactionMap<Long, Long> rowVersionMap;
+    private long rowCount;
 
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
-        super(data);
+        super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
+        storageEngineName = data.storageEngineName;
+        isHidden = data.isHidden;
+        globalTemporary = data.globalTemporary;
+        traceLock = database.getTrace(Trace.LOCK);
         nextAnalyze = database.getSettings().analyzeAuto;
         this.storageEngine = storageEngine;
-        this.storageEngineParams = data.storageEngineParams;
-        this.isHidden = data.isHidden;
-        for (Column col : getColumns()) {
-            if (DataType.isLargeObject(col.getType())) {
-                containsLargeObject = true;
-            }
-        }
-        traceLock = database.getTrace(Trace.LOCK);
-
-        // rowVersionMap = storageEngine.openMap(data.session, getName() + "_row_version", new ObjectDataType(),
-        // new ObjectDataType());
-
+        storageEngineParams = data.storageEngineParams;
         if (storageEngineParams != null) {
             if (database.getSettings().databaseToUpper)
                 mapType = storageEngineParams.get("MAP_TYPE");
@@ -96,7 +91,13 @@ public class StandardTable extends TableBase {
                 mapType = storageEngineParams.get("map_type");
         } else
             mapType = null;
-
+        setTemporary(data.temporary);
+        setColumns(data.columns.toArray(new Column[0]));
+        for (Column col : getColumns()) {
+            if (DataType.isLargeObject(col.getType())) {
+                containsLargeObject = true;
+            }
+        }
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
     }
@@ -111,6 +112,108 @@ public class StandardTable extends TableBase {
 
     public StorageEngine getStorageEngine() {
         return storageEngine;
+    }
+
+    /**
+     * Set the row count of this table.
+     *
+     * @param count the row count
+     */
+    public void setRowCount(long count) {
+        this.rowCount = count;
+    }
+
+    @Override
+    public String getCreateSQL() {
+        StatementBuilder buff = new StatementBuilder("CREATE ");
+        if (isTemporary()) {
+            if (isGlobalTemporary()) {
+                buff.append("GLOBAL ");
+            } else {
+                buff.append("LOCAL ");
+            }
+            buff.append("TEMPORARY ");
+        } else if (isPersistIndexes()) {
+            buff.append("CACHED ");
+        } else {
+            buff.append("MEMORY ");
+        }
+        buff.append("TABLE ");
+        if (isHidden) {
+            buff.append("IF NOT EXISTS ");
+        }
+        buff.append(getSQL());
+        if (comment != null) {
+            buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
+        }
+        buff.append("(\n    ");
+        for (Column column : columns) {
+            buff.appendExceptFirst(",\n    ");
+            buff.append(column.getCreateSQL());
+        }
+        buff.append("\n)");
+        if (storageEngineName != null) {
+            String d = getDatabase().getSettings().defaultStorageEngine;
+            if (d == null || !storageEngineName.endsWith(d)) {
+                buff.append("\nENGINE \"");
+                buff.append(storageEngineName);
+                buff.append('\"');
+            }
+        }
+        if (!isPersistIndexes() && !isPersistData()) {
+            buff.append("\nNOT PERSISTENT");
+        }
+        if (isHidden) {
+            buff.append("\nHIDDEN");
+        }
+        return buff.toString();
+    }
+
+    @Override
+    public String getDropSQL() {
+        return "DROP TABLE IF EXISTS " + getSQL() + " CASCADE";
+    }
+
+    @Override
+    public void close(ServerSession session) {
+        for (Index index : indexes) {
+            index.close(session);
+        }
+    }
+
+    @Override
+    public boolean isGlobalTemporary() {
+        return globalTemporary;
+    }
+
+    public void checkRowCount(ServerSession session, Index index, int offset) {
+        if (SysProperties.CHECK && !database.isMultiVersion()) {
+            long rc = index.getRowCount(session);
+            if (rc != rowCount + offset) {
+                DbException.throwInternalError("rowCount expected " + (rowCount + offset) //
+                        + " got " + rc + " " + getName() + "." + index.getName());
+            }
+        }
+    }
+
+    @Override
+    public Index getUniqueIndex() {
+        for (Index idx : indexes) {
+            if (idx.getIndexType().isUnique()) {
+                return idx;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Create a row from the values.
+     *
+     * @param data the value list
+     * @return the row
+     */
+    public static Row createRow(Value[] data) {
+        return new Row(data, Row.MEMORY_CALCULATE);
     }
 
     @Override
@@ -393,12 +496,6 @@ public class StandardTable extends TableBase {
         return true;
     }
 
-    @Override
-    public void close(ServerSession session) {
-        // ignore
-    }
-
-    @Override
     public Row getRow(ServerSession session, long key) {
         return primaryIndex.getRow(session, key);
     }
@@ -464,7 +561,7 @@ public class StandardTable extends TableBase {
     }
 
     private boolean isGlobalUniqueIndex(ServerSession session, IndexType indexType) {
-        return indexType.isUnique() && !indexType.isPrimaryKey() && ServerSession.isClusterMode()
+        return indexType.isUnique() && !indexType.isPrimaryKey() && session.isShardingMode()
                 && session.getConnectionInfo() != null && !session.getConnectionInfo().isEmbedded(); // &&
                                                                                                      // !session.isLocal();
     }
@@ -624,7 +721,6 @@ public class StandardTable extends TableBase {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        // rowVersionMap.remove(row.getKey());
     }
 
     @Override
@@ -635,7 +731,6 @@ public class StandardTable extends TableBase {
             index.truncate(session);
         }
         changesSinceAnalyze = 0;
-        // rowVersionMap.clear();
     }
 
     @Override
@@ -653,11 +748,8 @@ public class StandardTable extends TableBase {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        // rowVersionMap = rowVersionMap.getInstance(session.getTransaction(), Long.MAX_VALUE);
-        // rowVersionMap.put(row.getKey(), (long) 1);
     }
 
-    @Override
     protected void analyzeIfRequired(ServerSession session) {
         if (nextAnalyze == 0 || nextAnalyze > changesSinceAnalyze++) {
             return;
@@ -688,11 +780,6 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public Index getUniqueIndex() {
-        return primaryIndex;
-    }
-
-    @Override
     public ArrayList<Index> getIndexes() {
         return indexes;
     }
@@ -702,7 +789,6 @@ public class StandardTable extends TableBase {
         return lastModificationId;
     }
 
-    @Override
     public boolean getContainsLargeObject() {
         return containsLargeObject;
     }
@@ -742,7 +828,7 @@ public class StandardTable extends TableBase {
             indexes.remove(index);
         }
         if (SysProperties.CHECK) {
-            for (SchemaObject obj : database.getAllSchemaObjects(DbObject.INDEX)) {
+            for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.INDEX)) {
                 Index index = (Index) obj;
                 if (index.getTable() == this) {
                     DbException.throwInternalError("index not dropped: " + index.getName());
@@ -771,11 +857,6 @@ public class StandardTable extends TableBase {
     }
 
     @Override
-    public void checkRename() {
-        // ok
-    }
-
-    @Override
     public Column getRowIdColumn() {
         if (rowIdColumn == null) {
             rowIdColumn = new Column(Column.ROWID, Value.LONG);
@@ -787,11 +868,6 @@ public class StandardTable extends TableBase {
     @Override
     public String toString() {
         return getSQL();
-    }
-
-    @Override
-    public boolean isMVStore() {
-        return true;
     }
 
     /**
@@ -808,16 +884,6 @@ public class StandardTable extends TableBase {
     public boolean containsGlobalUniqueIndex() {
         return containsGlobalUniqueIndex;
     }
-
-    // @Override
-    // public long getRowVersion(long rowKey) {
-    // return rowVersionMap.get(rowKey);
-    // }
-    //
-    // @Override
-    // public TransactionMap<Long, Long> getRowVersionMap() {
-    // return rowVersionMap;
-    // }
 
     // 只要组合数据库id和表或索引的id就能得到一个全局唯一的map名了
     public String getMapNameForTable(int id) {

@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -41,12 +41,16 @@ public class CreateTable extends SchemaStatement {
     private boolean onCommitTruncate;
     private Query asQuery;
     private String comment;
-    private boolean sortedInsertMode;
 
     public CreateTable(ServerSession session, Schema schema) {
         super(session, schema);
         data.persistIndexes = true;
         data.persistData = true;
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_TABLE;
     }
 
     public void setQuery(Query query) {
@@ -173,9 +177,7 @@ public class CreateTable extends SchemaStatement {
                 command.update();
             }
             if (asQuery != null) {
-                Insert insert = null;
-                insert = new Insert(session);
-                insert.setSortedInsertMode(sortedInsertMode);
+                Insert insert = new Insert(session);
                 insert.setQuery(asQuery);
                 insert.setTable(table);
                 insert.setInsertFromSelect(true);
@@ -281,10 +283,6 @@ public class CreateTable extends SchemaStatement {
         }
     }
 
-    public void setSortedInsertMode(boolean sortedInsertMode) {
-        this.sortedInsertMode = sortedInsertMode;
-    }
-
     public void setStorageEngineName(String storageEngineName) {
         data.storageEngineName = storageEngineName;
     }
@@ -295,11 +293,6 @@ public class CreateTable extends SchemaStatement {
 
     public void setHidden(boolean isHidden) {
         data.isHidden = isHidden;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_TABLE;
     }
 
 }

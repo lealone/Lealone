@@ -12,19 +12,19 @@ import org.lealone.db.DbObjectBase;
  */
 public abstract class SchemaObjectBase extends DbObjectBase implements SchemaObject {
 
-    private Schema schema;
+    protected final Schema schema;
 
     /**
      * Initialize some attributes of this object.
      *
-     * @param newSchema the schema
+     * @param schema the schema
      * @param id the object id
-     * @param name the name
+     * @param name the object name
      * @param traceModuleId the trace module id
      */
-    protected void initSchemaObjectBase(Schema newSchema, int id, String name, int traceModuleId) {
-        initDbObjectBase(newSchema.getDatabase(), id, name, traceModuleId);
-        this.schema = newSchema;
+    protected SchemaObjectBase(Schema schema, int id, String name, int traceModuleId) {
+        super(schema.getDatabase(), id, name, traceModuleId);
+        this.schema = schema;
     }
 
     @Override
@@ -33,13 +33,13 @@ public abstract class SchemaObjectBase extends DbObjectBase implements SchemaObj
     }
 
     @Override
-    public String getSQL() {
-        return schema.getSQL() + "." + super.getSQL();
+    public boolean isHidden() {
+        return false;
     }
 
     @Override
-    public boolean isHidden() {
-        return false;
+    public String getSQL() {
+        return schema.getSQL() + "." + super.getSQL();
     }
 
 }

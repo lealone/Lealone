@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.client;
@@ -13,10 +12,11 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.JdbcSQLException;
-import org.lealone.common.message.Trace;
-import org.lealone.common.message.TraceSystem;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.exceptions.JdbcSQLException;
+import org.lealone.common.exceptions.LealoneException;
+import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.NetUtils;
 import org.lealone.common.util.SmallLRUCache;
@@ -28,28 +28,30 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
-import org.lealone.db.SessionFactory;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
+import org.lealone.replication.ReplicationSession;
 import org.lealone.sql.BatchStatement;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
+import org.lealone.storage.StorageCommand;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
 
 /**
  * The client side part of a session when using the server mode. 
- * This object communicates with a Session on the server side.
+ * This object communicates with a session on the server side.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class ClientSession extends SessionBase implements DataHandler, Transaction.Participant {
 
     private static final Random random = new Random(System.currentTimeMillis());
-
-    private SessionFactory sessionFactory;
 
     private TraceSystem traceSystem;
     private Trace trace;
@@ -62,114 +64,11 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private final Object lobSyncObject = new Object();
     private String sessionId;
     private int clientVersion;
-    private int lastReconnect;
-    private Session embedded;
     private LobStorage lobStorage;
     private Transaction transaction;
 
     public ClientSession(ConnectionInfo ci) {
         this.connectionInfo = ci;
-    }
-
-    private Transfer initTransfer(ConnectionInfo ci, String server) throws IOException {
-        Socket socket = NetUtils.createSocket(server, Constants.DEFAULT_TCP_PORT, ci.isSSL());
-        Transfer trans = new Transfer(this, socket);
-        trans.setSSL(ci.isSSL());
-        trans.init();
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
-        trans.writeString(ci.getDatabaseName());
-        trans.writeString(ci.getURL()); // 不带参数的URL
-        trans.writeString(ci.getUserName());
-        trans.writeBytes(ci.getUserPasswordHash());
-        trans.writeBytes(ci.getFilePasswordHash());
-        trans.writeBytes(ci.getFileEncryptionKey());
-        String[] keys = ci.getKeys();
-        trans.writeInt(keys.length);
-        for (String key : keys) {
-            trans.writeString(key).writeString(ci.getProperty(key));
-        }
-        try {
-            done(trans);
-            clientVersion = trans.readInt();
-            trans.setVersion(clientVersion);
-            trans.writeInt(ClientSession.SESSION_SET_ID);
-            trans.writeString(sessionId);
-            done(trans);
-            autoCommit = trans.readBoolean();
-        } catch (DbException e) {
-            trans.close();
-            throw e;
-        }
-        return trans;
-    }
-
-    @Override
-    public void cancel() {
-        // this method is called when closing the connection
-        // the statement that is currently running is not canceled in this case
-        // however Statement.cancel is supported
-    }
-
-    /**
-     * Cancel the statement with the given id.
-     *
-     * @param id the statement id
-     */
-    public void cancelStatement(int id) {
-        try {
-            Transfer trans = transfer.openNewConnection();
-            trans.init();
-            trans.writeInt(clientVersion);
-            trans.writeInt(clientVersion);
-            trans.writeString(null);
-            trans.writeString(null);
-            trans.writeString(sessionId);
-            trans.writeInt(ClientSession.SESSION_CANCEL_STATEMENT);
-            trans.writeInt(id);
-            trans.close();
-        } catch (IOException e) {
-            trace.debug(e, "could not cancel statement");
-        }
-    }
-
-    @Override
-    public boolean isAutoCommit() {
-        return autoCommit;
-    }
-
-    @Override
-    public void setAutoCommit(boolean autoCommit) {
-        setAutoCommitSend(autoCommit);
-        this.autoCommit = autoCommit;
-    }
-
-    public void setAutoCommitFromServer(boolean autoCommit) {
-        this.autoCommit = autoCommit;
-    }
-
-    private void setAutoCommitSend(boolean autoCommit) {
-        try {
-            traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            transfer.writeInt(ClientSession.SESSION_SET_AUTOCOMMIT).writeBoolean(autoCommit);
-            done(transfer);
-        } catch (IOException e) {
-            handleException(e);
-        }
-    }
-
-    private String getFilePrefix(String dir, String dbName) {
-        StringBuilder buff = new StringBuilder(dir);
-        buff.append('/');
-        for (int i = 0; i < dbName.length(); i++) {
-            char ch = dbName.charAt(i);
-            if (Character.isLetterOrDigit(ch)) {
-                buff.append(ch);
-            } else {
-                buff.append('_');
-            }
-        }
-        return buff.toString();
     }
 
     /**
@@ -180,17 +79,22 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public Session connectEmbeddedOrServer() {
         ConnectionInfo ci = connectionInfo;
-        if (ci.isRemote()) {
+        if (ci.isReplicaSetMode()) {
+            String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
+            int size = servers.length;
+            Session[] sessions = new ClientSession[size];
+            for (int i = 0; i < size; i++) {
+                ci = connectionInfo.copyForReplicaSet(servers[i]);
+                sessions[i] = new ClientSession(ci);
+                sessions[i] = sessions[i].connectEmbeddedOrServer();
+            }
+            return new ReplicationSession(sessions);
+        } else if (ci.isRemote()) {
             connectServer(ci);
             return this;
         }
-        // create the session using reflection,
-        // so that the JDBC layer can be compiled without it
         try {
-            if (sessionFactory == null) {
-                sessionFactory = ci.getSessionFactory();
-            }
-            return sessionFactory.createSession(ci);
+            return ci.getSessionFactory().createSession(ci);
         } catch (Exception e) {
             throw DbException.convert(e);
         }
@@ -254,17 +158,135 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             traceSystem.close();
             throw e;
         }
+
     }
 
-    // TODO
+    private Transfer initTransfer(ConnectionInfo ci, String server) throws IOException {
+        Socket socket = NetUtils.createSocket(server, Constants.DEFAULT_TCP_PORT, ci.isSSL());
+        Transfer trans = new Transfer(this, socket);
+        trans.setSSL(ci.isSSL());
+        trans.init();
+        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
+        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
+        trans.writeString(ci.getDatabaseName());
+        trans.writeString(ci.getURL()); // 不带参数的URL
+        trans.writeString(ci.getUserName());
+        trans.writeBytes(ci.getUserPasswordHash());
+        trans.writeBytes(ci.getFilePasswordHash());
+        trans.writeBytes(ci.getFileEncryptionKey());
+        String[] keys = ci.getKeys();
+        trans.writeInt(keys.length);
+        for (String key : keys) {
+            trans.writeString(key).writeString(ci.getProperty(key));
+        }
+        try {
+            done(trans);
+            clientVersion = trans.readInt();
+            trans.setVersion(clientVersion);
+            trans.writeInt(Session.SESSION_SET_ID);
+            trans.writeString(sessionId);
+            done(trans);
+            autoCommit = trans.readBoolean();
+        } catch (DbException e) {
+            trans.close();
+            throw e;
+        }
+        return trans;
+    }
+
+    @Override
+    public void cancel() {
+        // this method is called when closing the connection
+        // the statement that is currently running is not canceled in this case
+        // however Statement.cancel is supported
+    }
+
+    /**
+     * Cancel the statement with the given id.
+     *
+     * @param id the statement id
+     */
+    public void cancelStatement(int id) {
+        try {
+            Transfer trans = transfer.openNewConnection();
+            trans.init();
+            trans.writeInt(clientVersion);
+            trans.writeInt(clientVersion);
+            trans.writeString(null);
+            trans.writeString(null);
+            trans.writeString(sessionId);
+            trans.writeInt(Session.SESSION_CANCEL_STATEMENT);
+            trans.writeInt(id);
+            trans.close();
+        } catch (IOException e) {
+            trace.debug(e, "could not cancel statement");
+        }
+    }
+
+    @Override
+    public boolean isAutoCommit() {
+        return autoCommit;
+    }
+
+    @Override
+    public void setAutoCommit(boolean autoCommit) {
+        setAutoCommitSend(autoCommit);
+        this.autoCommit = autoCommit;
+    }
+
+    public void setAutoCommitFromServer(boolean autoCommit) {
+        this.autoCommit = autoCommit;
+    }
+
+    private void setAutoCommitSend(boolean autoCommit) {
+        try {
+            traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
+            transfer.writeInt(Session.SESSION_SET_AUTO_COMMIT).writeBoolean(autoCommit);
+            done(transfer);
+        } catch (IOException e) {
+            handleException(e);
+        }
+    }
+
+    private String getFilePrefix(String dir, String dbName) {
+        StringBuilder buff = new StringBuilder(dir);
+        buff.append('/');
+        for (int i = 0; i < dbName.length(); i++) {
+            char ch = dbName.charAt(i);
+            if (Character.isLetterOrDigit(ch)) {
+                buff.append(ch);
+            } else {
+                buff.append('_');
+            }
+        }
+        return buff.toString();
+    }
+
     public void handleException(Exception e) {
         checkClosed();
+        throw new LealoneException(e);
+    }
+
+    @Override
+    public Command createCommand(String sql, int fetchSize) {
+        return createCommand(sql, fetchSize, false);
+    }
+
+    @Override
+    public StorageCommand createStorageCommand() {
+        checkClosed();
+        return new ClientCommand(this, transfer, null, -1, false);
     }
 
     @Override
     public synchronized Command prepareCommand(String sql, int fetchSize) {
+        return createCommand(sql, fetchSize, true);
+    }
+
+    private synchronized Command createCommand(String sql, int fetchSize, boolean prepare) {
         checkClosed();
-        return new ClientCommand(this, transfer, sql, fetchSize);
+        return new ClientCommand(this, transfer, sql, fetchSize, prepare);
+
     }
 
     /**
@@ -281,27 +303,22 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public void close() {
         RuntimeException closeError = null;
-        if (transfer != null) {
-            synchronized (this) {
-                try {
-                    traceOperation("SESSION_CLOSE", 0);
-                    transfer.writeInt(ClientSession.SESSION_CLOSE);
-                    done(transfer);
-                    transfer.close();
-                } catch (RuntimeException e) {
-                    trace.error(e, "close");
-                    closeError = e;
-                } catch (Exception e) {
-                    trace.error(e, "close");
-                }
+        synchronized (this) {
+            try {
+                traceOperation("SESSION_CLOSE", 0);
+                transfer.writeInt(Session.SESSION_CLOSE);
+                done(transfer);
+                transfer.close();
+            } catch (RuntimeException e) {
+                trace.error(e, "close");
+                closeError = e;
+            } catch (Exception e) {
+                trace.error(e, "close");
             }
-            transfer = null;
+
         }
+        transfer = null;
         traceSystem.close();
-        if (embedded != null) {
-            embedded.close();
-            embedded = null;
-        }
         if (closeError != null) {
             throw closeError;
         }
@@ -331,12 +348,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
      *             and server
      */
     public void done(Transfer transfer) throws IOException {
-        // 正常来讲不会出现这种情况，如果出现了，说明存在bug，找出为什么transfer的输入流没正常读完的原因
-        if (transfer.available() > 0) {
-            throw DbException.throwInternalError("before transfer flush, the available bytes was "
-                    + transfer.available());
-        }
-
         transfer.flush();
         int status = transfer.readInt();
         if (status == STATUS_ERROR) {
@@ -446,10 +457,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         return null;
     }
 
-    public int getLastReconnect() {
-        return lastReconnect;
-    }
-
     @Override
     public TempFileDeleter getTempFileDeleter() {
         return TempFileDeleter.getInstance();
@@ -470,10 +477,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
-
         try {
             traceOperation("LOB_READ", (int) lobId);
-            transfer.writeInt(ClientSession.LOB_READ);
+            transfer.writeInt(Session.COMMAND_READ_LOB);
             transfer.writeLong(lobId);
             transfer.writeBytes(hmac);
             transfer.writeLong(offset);
@@ -495,7 +501,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
-            transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_COMMIT).writeString(allLocalTransactionNames);
+            transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT).writeString(allLocalTransactionNames);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
@@ -506,7 +512,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void rollbackTransaction() {
         checkClosed();
         try {
-            transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK);
+            transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
@@ -517,7 +523,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void addSavepoint(String name) {
         checkClosed();
         try {
-            transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD).writeString(name);
+            transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT).writeString(name);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
@@ -528,7 +534,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void rollbackToSavepoint(String name) {
         checkClosed();
         try {
-            transfer.writeInt(ClientSession.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK).writeString(name);
+            transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT).writeString(name);
             done(transfer);
         } catch (IOException e) {
             handleException(e);
@@ -539,7 +545,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized boolean validateTransaction(String localTransactionName) {
         checkClosed();
         try {
-            transfer.writeInt(ClientSession.COMMAND_EXECUTE_TRANSACTION_VALIDATE).writeString(localTransactionName);
+            transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE).writeString(localTransactionName);
             done(transfer);
             return transfer.readBoolean();
         } catch (Exception e) {
@@ -576,62 +582,44 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
-    public synchronized void checkTransfers() {
-        if (transfer != null) {
-            try {
-                if (transfer.available() > 0)
-                    throw DbException.throwInternalError("the transfer available bytes was " + transfer.available());
-            } catch (IOException e) {
-                throw DbException.convert(e);
-            }
-        }
-    }
-
-    @Override
     public ParsedStatement parseStatement(String sql) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int fetchSize) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
-    public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
-        // TODO Auto-generated method stub
+    public BatchStatement getBatchStatement(ArrayList<String> batchStatements) {
         return null;
     }
 
     @Override
     public int getModificationId() {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public void rollback() {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public void setRoot(boolean isRoot) {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public void commit(boolean ddl, String allLocalTransactionNames) {
-        // TODO Auto-generated method stub
+    }
 
+    @Override
+    public ConnectionInfo getConnectionInfo() {
+        return connectionInfo;
     }
 }

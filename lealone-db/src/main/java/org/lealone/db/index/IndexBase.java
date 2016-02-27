@@ -7,13 +7,12 @@
 package org.lealone.db.index;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.common.util.MathUtils;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
-import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.Mode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
@@ -33,32 +32,41 @@ import org.lealone.storage.StorageMap;
  */
 public abstract class IndexBase extends SchemaObjectBase implements Index {
 
+    protected final Table table;
+    protected final IndexType indexType;
     protected IndexColumn[] indexColumns;
     protected Column[] columns;
     protected int[] columnIds;
-    protected Table table;
-    protected IndexType indexType;
-    protected boolean isMultiVersion;
 
     /**
      * Initialize the base index.
      *
-     * @param newTable the table
+     * @param table the table
      * @param id the object id
      * @param name the index name
-     * @param newIndexColumns the columns that are indexed or null if this is
-     *            not yet known
-     * @param newIndexType the index type
+     * @param indexType the index type
      */
-    protected void initIndexBase(Table newTable, int id, String name, IndexColumn[] newIndexColumns,
-            IndexType newIndexType) {
-        initSchemaObjectBase(newTable.getSchema(), id, name, Trace.INDEX);
-        this.indexType = newIndexType;
-        this.table = newTable;
+    protected IndexBase(Table table, int id, String name, IndexType indexType) {
+        super(table.getSchema(), id, name, Trace.INDEX);
+        this.table = table;
+        this.indexType = indexType;
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.INDEX;
+    }
+
+    /**
+     * Initialize the index columns.
+     *
+     * @param newIndexColumns the columns that are indexed or null if this is not yet known
+     */
+    protected void setIndexColumns(IndexColumn[] newIndexColumns) {
         if (newIndexColumns != null) {
-            this.indexColumns = newIndexColumns;
-            columns = new Column[newIndexColumns.length];
-            int len = columns.length;
+            int len = newIndexColumns.length;
+            indexColumns = newIndexColumns;
+            columns = new Column[len];
             columnIds = new int[len];
             for (int i = 0; i < len; i++) {
                 Column col = newIndexColumns[i].column;
@@ -66,11 +74,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
                 columnIds[i] = col.getColumnId();
             }
         }
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
     }
 
     /**
@@ -300,11 +303,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         long k1 = rowData.getKey();
         long k2 = compare.getKey();
         if (k1 == k2) {
-            if (isMultiVersion) {
-                int v1 = rowData.getVersion();
-                int v2 = compare.getVersion();
-                return MathUtils.compareInt(v2, v1);
-            }
             return 0;
         }
         return k1 > k2 ? 1 : -1;
@@ -387,17 +385,8 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public int getType() {
-        return DbObject.INDEX;
-    }
-
-    @Override
     public Table getTable() {
         return table;
-    }
-
-    void setMultiVersion(boolean multiVersion) {
-        this.isMultiVersion = multiVersion;
     }
 
     @Override
@@ -418,11 +407,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public boolean canScan() {
         return true;
-    }
-
-    @Override
-    public void setSortedInsertMode(boolean sortedInsertMode) {
-        // ignore
     }
 
     /**
@@ -489,6 +473,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         return 0;
     }
 
+    @Override
     public StorageMap<? extends Object, ? extends Object> getStorageMap() {
         return null;
     }

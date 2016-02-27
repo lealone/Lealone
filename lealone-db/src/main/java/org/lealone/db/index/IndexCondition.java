@@ -12,7 +12,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Comparison;

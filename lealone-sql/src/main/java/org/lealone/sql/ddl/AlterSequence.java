@@ -6,7 +6,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
@@ -34,6 +34,11 @@ public class AlterSequence extends SchemaStatement {
 
     public AlterSequence(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.ALTER_SEQUENCE;
     }
 
     public void setSequence(Sequence sequence) {
@@ -115,11 +120,6 @@ public class AlterSequence extends SchemaStatement {
             return null;
         }
         return expr.optimize(session).getValue(session).getLong();
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.ALTER_SEQUENCE;
     }
 
 }

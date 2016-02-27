@@ -109,7 +109,7 @@ public class ResultTempTable implements ResultExternal {
         }
         String indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_INDEX);
         int indexId = session.getDatabase().allocateObjectId();
-        IndexType indexType = IndexType.createNonUnique(true);
+        IndexType indexType = IndexType.createNonUnique();
         index = table.addIndex(session, indexName, indexId, indexCols, indexType, true, null);
     }
 

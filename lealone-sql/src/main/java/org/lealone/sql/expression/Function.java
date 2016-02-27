@@ -26,7 +26,7 @@ import java.util.regex.PatternSyntaxException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.compress.CompressTool;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.BlockCipher;
 import org.lealone.common.security.CipherFactory;
 import org.lealone.common.security.SHA256;

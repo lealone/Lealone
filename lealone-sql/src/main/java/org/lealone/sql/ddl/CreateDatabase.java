@@ -20,30 +20,42 @@ package org.lealone.sql.ddl;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.sql.SQLStatement;
+import org.lealone.sql.router.RouterHolder;
 
 /**
  * This class represents the statement
  * CREATE DATABASE
  */
-public class CreateDatabase extends DefineStatement {
+public class CreateDatabase extends DefineStatement implements DatabaseStatement {
 
     private final String dbName;
     private final boolean ifNotExists;
-    private final Map<String, String> parameters;
+    private final RunMode runMode;
     private final Map<String, String> replicationProperties;
+    // private final Map<String, String> resourceQuota;
+    private final Map<String, String> parameters;
 
-    public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, Map<String, String> parameters,
-            Map<String, String> replicationProperties) {
+    public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, RunMode runMode,
+            Map<String, String> replicationProperties, Map<String, String> parameters) {
         super(session);
         this.dbName = dbName;
         this.ifNotExists = ifNotExists;
-        this.parameters = parameters;
+        this.runMode = runMode;
         this.replicationProperties = replicationProperties;
+        // this.resourceQuota = resourceQuota;
+        this.parameters = parameters;
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_DATABASE;
     }
 
     @Override
@@ -60,13 +72,14 @@ public class CreateDatabase extends DefineStatement {
         int id = getObjectId(db);
         Database newDb = new Database(id, dbName, parameters);
         newDb.setReplicationProperties(replicationProperties);
+        newDb.setRunMode(runMode);
+        if (!parameters.containsKey("hostIds")) {
+            int[] hostIds = RouterHolder.getRouter().getHostIds(newDb);
+            if (hostIds != null && hostIds.length > 0)
+                newDb.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
+        }
         db.addDatabaseObject(session, newDb);
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_DATABASE;
     }
 
 }

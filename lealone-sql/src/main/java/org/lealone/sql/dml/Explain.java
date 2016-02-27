@@ -27,7 +27,7 @@ import org.lealone.sql.expression.ExpressionColumn;
  * This class represents the statement
  * EXPLAIN
  */
-public class Explain extends StatementBase {
+public class Explain extends ManipulateStatement {
 
     private StatementBase command;
     private LocalResult result;
@@ -37,8 +37,32 @@ public class Explain extends StatementBase {
         super(session);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.EXPLAIN;
+    }
+
+    @Override
+    public boolean isQuery() {
+        return true;
+    }
+
+    @Override
+    public boolean isReadOnly() {
+        return command.isReadOnly();
+    }
+
     public void setCommand(StatementBase command) {
         this.command = command;
+    }
+
+    public void setExecuteCommand(boolean executeCommand) {
+        this.executeCommand = executeCommand;
+    }
+
+    @Override
+    public Result getMetaData() {
+        return query(-1);
     }
 
     @Override
@@ -47,28 +71,19 @@ public class Explain extends StatementBase {
         return this;
     }
 
-    public void setExecuteCommand(boolean executeCommand) {
-        this.executeCommand = executeCommand;
-    }
-
     @Override
-    public Result queryMeta() {
-        return query(-1);
-    }
-
-    @Override
-    public Result query(int maxrows) {
+    public Result query(int maxRows) {
         Column column = new Column("PLAN", Value.STRING);
         Database db = session.getDatabase();
         ExpressionColumn expr = new ExpressionColumn(db, column);
         Expression[] expressions = { expr };
         result = new LocalResult(session, expressions, 1);
-        if (maxrows >= 0) {
+        if (maxRows >= 0) {
             String plan;
             if (executeCommand) {
                 db.statisticsStart();
                 if (command.isQuery()) {
-                    command.query(maxrows);
+                    command.query(maxRows);
                 } else {
                     command.update();
                 }
@@ -109,25 +124,5 @@ public class Explain extends StatementBase {
     private void add(String text) {
         Value[] row = { ValueString.get(text) };
         result.addRow(row);
-    }
-
-    @Override
-    public boolean isQuery() {
-        return true;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
-    public boolean isReadOnly() {
-        return command.isReadOnly();
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.EXPLAIN;
     }
 }

@@ -9,7 +9,7 @@ package org.lealone.common.compress;
 import java.io.IOException;
 import java.io.InputStream;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 
 /**

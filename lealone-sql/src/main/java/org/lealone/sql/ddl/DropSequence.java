@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
@@ -25,6 +25,11 @@ public class DropSequence extends SchemaStatement {
 
     public DropSequence(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_SEQUENCE;
     }
 
     public void setIfExists(boolean b) {
@@ -52,11 +57,6 @@ public class DropSequence extends SchemaStatement {
             db.removeSchemaObject(session, sequence);
         }
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_SEQUENCE;
     }
 
 }

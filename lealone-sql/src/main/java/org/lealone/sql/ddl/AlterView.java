@@ -6,7 +6,7 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.table.TableView;
@@ -24,6 +24,11 @@ public class AlterView extends DefineStatement {
         super(session);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.ALTER_VIEW;
+    }
+
     public void setView(TableView view) {
         this.view = view;
     }
@@ -37,11 +42,6 @@ public class AlterView extends DefineStatement {
             throw e;
         }
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.ALTER_VIEW;
     }
 
 }

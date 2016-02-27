@@ -19,7 +19,6 @@ package org.lealone.test.db.schema;
 
 import org.junit.Test;
 import org.lealone.api.ErrorCode;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.schema.Schema;
 import org.lealone.test.db.DbObjectTestBase;
 
@@ -42,7 +41,7 @@ public class SchemaTest extends DbObjectTestBase {
 
         id = db.allocateObjectId();
 
-        Schema schema = new Schema(db, id, schemaName, Auth.getUser(userName), false);
+        Schema schema = new Schema(db, id, schemaName, db.getUser(userName), false);
         assertEquals(id, schema.getId());
 
         db.addDatabaseObject(session, schema);

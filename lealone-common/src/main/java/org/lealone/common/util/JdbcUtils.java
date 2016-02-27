@@ -16,7 +16,7 @@ import java.util.Properties;
 import javax.naming.Context;
 import javax.sql.DataSource;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 
 /**
  * This is a utility class with JDBC helper functions.

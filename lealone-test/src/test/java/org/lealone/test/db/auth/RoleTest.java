@@ -20,7 +20,6 @@ package org.lealone.test.db.auth;
 import org.junit.Test;
 import org.lealone.api.ErrorCode;
 import org.lealone.db.Constants;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.db.auth.Role;
 import org.lealone.db.result.SearchRow;
 import org.lealone.test.db.DbObjectTestBase;
@@ -34,7 +33,7 @@ public class RoleTest extends DbObjectTestBase {
         assertEquals(roleName, role.getName());
 
         assertTrue(!role.isTemporary());
-        SearchRow row = findMeta(LealoneDatabase.getInstance(), id);
+        SearchRow row = findMeta(id);
         assertNotNull(row);
         assertEquals(id, row.getValue(0).getInt());
     }

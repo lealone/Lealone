@@ -22,9 +22,8 @@ package org.lealone.db;
 import java.util.List;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 
 /**
@@ -67,11 +66,10 @@ public class DatabaseEngine {
             dbName = Database.parseDatabaseShortName(ci.getDbSettings(), dbName);
 
             try {
-                User user = authenticate(dbName, ci);
                 boolean ifExists = ci.getProperty("IFEXISTS", false);
                 ServerSession session;
                 for (int i = 0;; i++) {
-                    session = createSession(dbName, ci, user, ifExists);
+                    session = createSession(dbName, ci, ifExists);
                     if (session != null) {
                         break;
                     }
@@ -100,31 +98,13 @@ public class DatabaseEngine {
             }
         }
 
-        private User authenticate(String dbName, ConnectionInfo ci) {
-            User user = null;
-            if (ci.isAuthenticationEnabled()) {
-                // 不允许Client访问LealoneDatabase
-                if (LealoneDatabase.NAME.equalsIgnoreCase(dbName))
-                    throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
+        private ServerSession createSession(String dbName, ConnectionInfo ci, boolean ifExists) {
+            // 不允许Client访问LealoneDatabase
+            if (ci.isRemote() && LealoneDatabase.NAME.equalsIgnoreCase(dbName))
+                throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
 
-                Database database = LealoneDatabase.getInstance();
-                if (database.validateFilePasswordHash(ci.getProperty("CIPHER", null), ci.getFilePasswordHash())) {
-                    user = Auth.findUser(ci.getUserName());
-                    if (user != null) {
-                        if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
-                            user = null;
-                        }
-                    }
-                }
-                if (user == null)
-                    throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
-            }
-
-            return user;
-        }
-
-        private ServerSession createSession(String dbName, ConnectionInfo ci, User user, boolean ifExists) {
             boolean opened = false;
+            User user = null;
             Database database = LealoneDatabase.getInstance().findDatabase(dbName);
             if (database == null) {
                 if (ifExists)
@@ -132,24 +112,19 @@ public class DatabaseEngine {
                 database = LealoneDatabase.getInstance().createDatabase(dbName, ci);
                 database.init(ci);
                 opened = true;
+                if (database.getAllUsers().isEmpty()) {
+                    // users is the last thing we add, so if no user is around,
+                    // the database is new (or not initialized correctly)
+                    user = new User(database, database.allocateObjectId(), ci.getUserName(), false);
+                    user.setAdmin(true);
+                    user.setUserPasswordHash(ci.getUserPasswordHash());
+                    database.setMasterUser(user);
+                }
             } else {
                 if (!database.isInitialized())
                     database.init(ci);
             }
 
-            // 内部JDBC访问时不需要认证，需要建立一个默认有Admin权限的用户
-            if (!ci.isAuthenticationEnabled()) {
-                // if (database.getAllUsers().isEmpty()) {
-                // // users is the last thing we add, so if no user is around,
-                // // the database is new (or not initialized correctly)
-                // user = new User(database, database.allocateObjectId(), ci.getUserName(), false);
-                // user.setAdmin(true);
-                // user.setUserPasswordHash(ci.getUserPasswordHash());
-                // database.setMasterUser(user);
-                // }
-
-                user = Auth.getSystemUser();
-            }
             synchronized (database) {
                 if (opened) {
                     // start the thread when already synchronizing on the database
@@ -159,6 +134,25 @@ public class DatabaseEngine {
                 }
                 if (database.isClosing()) {
                     return null;
+                }
+                if (user == null) {
+                    if (database.validateFilePasswordHash(ci.getProperty("CIPHER", null), ci.getFilePasswordHash())) {
+                        user = database.findUser(ci.getUserName());
+                        if (user != null) {
+                            if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
+                                user = null;
+                            }
+                        }
+                    }
+                    if (opened && (user == null || !user.isAdmin())) {
+                        // reset - because the user is not an admin, and has no
+                        // right to listen to exceptions
+                        database.setEventListener(null);
+                    }
+                }
+                if (user == null) {
+                    database.removeSession(null);
+                    throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
                 }
                 ServerSession session = database.createSession(user);
                 session.setConnectionInfo(ci);
@@ -175,8 +169,8 @@ public class DatabaseEngine {
                 if (SetTypes.contains(setting)) {
                     String value = ci.getProperty(setting);
                     try {
-                        session.prepareStatementLocal(
-                                "SET " + session.getDatabase().quoteIdentifier(setting) + " " + value).executeUpdate();
+                        String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " " + value;
+                        session.prepareStatementLocal(sql).update();
                     } catch (DbException e) {
                         if (!ignoreUnknownSetting) {
                             session.close();
@@ -187,7 +181,7 @@ public class DatabaseEngine {
             }
             if (init != null) {
                 try {
-                    session.prepareStatement(init, Integer.MAX_VALUE).executeUpdate();
+                    session.prepareStatement(init, Integer.MAX_VALUE).update();
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {
                         session.close();

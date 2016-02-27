@@ -22,7 +22,7 @@ import java.sql.Time;
 import java.sql.Timestamp;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.MathUtils;
@@ -40,7 +40,6 @@ import org.lealone.db.value.ValueFloat;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueJavaObject;
 import org.lealone.db.value.ValueLob;
-import org.lealone.db.value.ValueLobDb;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
@@ -596,39 +595,16 @@ public class Data {
         case Value.BLOB:
         case Value.CLOB: {
             writeByte((byte) type);
-            if (v instanceof ValueLob) {
-                ValueLob lob = (ValueLob) v;
-                lob.convertToFileIfRequired(handler);
-                byte[] small = lob.getSmall();
-                if (small == null) {
-                    int t = -1;
-                    if (!lob.isLinked()) {
-                        t = -2;
-                    }
-                    writeVarInt(t);
-                    writeVarInt(lob.getTableId());
-                    writeVarInt(lob.getObjectId());
-                    writeVarLong(lob.getPrecision());
-                    writeByte((byte) (lob.isCompressed() ? 1 : 0));
-                    if (t == -2) {
-                        writeString(lob.getFileName());
-                    }
-                } else {
-                    writeVarInt(small.length);
-                    write(small, 0, small.length);
-                }
+            ValueLob lob = (ValueLob) v;
+            byte[] small = lob.getSmall();
+            if (small == null) {
+                writeVarInt(-1);
+                writeVarInt(lob.getTableId());
+                writeVarLong(lob.getLobId());
+                writeVarLong(lob.getPrecision());
             } else {
-                ValueLobDb lob = (ValueLobDb) v;
-                byte[] small = lob.getSmall();
-                if (small == null) {
-                    writeVarInt(-3);
-                    writeVarInt(lob.getTableId());
-                    writeVarLong(lob.getLobId());
-                    writeVarLong(lob.getPrecision());
-                } else {
-                    writeVarInt(small.length);
-                    write(small, 0, small.length);
-                }
+                writeVarInt(small.length);
+                write(small, 0, small.length);
             }
             break;
         }
@@ -787,29 +763,13 @@ public class Data {
             if (smallLen >= 0) {
                 byte[] small = DataUtils.newBytes(smallLen);
                 read(small, 0, smallLen);
-                return ValueLobDb.createSmallLob(type, small);
-            } else if (smallLen == -3) {
+                return ValueLob.createSmallLob(type, small);
+            } else {
                 int tableId = readVarInt();
                 long lobId = readVarLong();
                 long precision = readVarLong();
-                ValueLobDb lob = ValueLobDb.create(type, handler, tableId, lobId, null, precision);
+                ValueLob lob = ValueLob.create(type, handler, tableId, lobId, null, precision);
                 return lob;
-            } else {
-                int tableId = readVarInt();
-                int objectId = readVarInt();
-                long precision = 0;
-                boolean compression = false;
-                // -1: regular; -2: regular, but not linked (in this case:
-                // including file name)
-                if (smallLen == -1 || smallLen == -2) {
-                    precision = readVarLong();
-                    compression = readByte() == 1;
-                }
-                if (smallLen == -2) {
-                    String filename = readString();
-                    return ValueLob.openUnlinked(type, handler, tableId, objectId, precision, compression, filename);
-                }
-                return ValueLob.openLinked(type, handler, tableId, objectId, precision, compression);
             }
         }
         case Value.ARRAY: {
@@ -1000,39 +960,16 @@ public class Data {
         case Value.BLOB:
         case Value.CLOB: {
             int len = 1;
-            if (v instanceof ValueLob) {
-                ValueLob lob = (ValueLob) v;
-                lob.convertToFileIfRequired(handler);
-                byte[] small = lob.getSmall();
-                if (small == null) {
-                    int t = -1;
-                    if (!lob.isLinked()) {
-                        t = -2;
-                    }
-                    len += getVarIntLen(t);
-                    len += getVarIntLen(lob.getTableId());
-                    len += getVarIntLen(lob.getObjectId());
-                    len += getVarLongLen(lob.getPrecision());
-                    len += 1;
-                    if (t == -2) {
-                        len += getStringLen(lob.getFileName());
-                    }
-                } else {
-                    len += getVarIntLen(small.length);
-                    len += small.length;
-                }
+            ValueLob lob = (ValueLob) v;
+            byte[] small = lob.getSmall();
+            if (small == null) {
+                len += getVarIntLen(-1);
+                len += getVarIntLen(lob.getTableId());
+                len += getVarLongLen(lob.getLobId());
+                len += getVarLongLen(lob.getPrecision());
             } else {
-                ValueLobDb lob = (ValueLobDb) v;
-                byte[] small = lob.getSmall();
-                if (small == null) {
-                    len += getVarIntLen(-3);
-                    len += getVarIntLen(lob.getTableId());
-                    len += getVarLongLen(lob.getLobId());
-                    len += getVarLongLen(lob.getPrecision());
-                } else {
-                    len += getVarIntLen(small.length);
-                    len += small.length;
-                }
+                len += getVarIntLen(small.length);
+                len += small.length;
             }
             return len;
         }

@@ -13,13 +13,14 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Properties;
+import java.util.List;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.JdbcSQLException;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.exceptions.JdbcSQLException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
@@ -33,10 +34,15 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueLobDb;
+import org.lealone.db.value.ValueLob;
+import org.lealone.replication.Replication;
 import org.lealone.sql.BatchStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
+import org.lealone.storage.StorageMap;
+import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.WriteBuffer;
+import org.lealone.storage.type.WriteBufferPool;
 
 /**
  * One server thread is opened per client connection.
@@ -44,30 +50,30 @@ import org.lealone.storage.LobStorage;
  * @author H2 Group
  * @author zhh
  */
-public class TcpServerThread implements Runnable {
+public class TcpServerThread extends Thread implements Comparable<TcpServerThread> {
 
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
-    private final SmallLRUCache<Long, CachedInputStream> lobs = SmallLRUCache.newInstance(Math.max(
-            SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+    private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
 
     private final TcpServer server;
-    private final int threadId;
     private final Transfer transfer;
 
     private Session session;
-    private boolean stop;
-    private Thread thread;
-    private int clientVersion;
     private String sessionId;
+    private boolean stop;
 
-    protected TcpServerThread(Socket socket, TcpServer server, int threadId) {
+    protected TcpServerThread(Socket socket, TcpServer server) {
         this.server = server;
-        this.threadId = threadId;
-        transfer = new Transfer(null, socket);
+        this.transfer = new Transfer(socket);
     }
 
     private void trace(String s) {
         server.trace(this + " " + s);
+    }
+
+    @Override
+    public int compareTo(TcpServerThread o) {
+        return getName().compareTo(o.getName());
     }
 
     @Override
@@ -90,6 +96,7 @@ public class TcpServerThread implements Runnable {
                     throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion, ""
                             + Constants.TCP_PROTOCOL_VERSION_MAX);
                 }
+                int clientVersion;
                 int maxClientVersion = transfer.readInt();
                 if (maxClientVersion >= Constants.TCP_PROTOCOL_VERSION_MAX) {
                     clientVersion = Constants.TCP_PROTOCOL_VERSION_CURRENT;
@@ -97,9 +104,9 @@ public class TcpServerThread implements Runnable {
                     clientVersion = minClientVersion;
                 }
                 transfer.setVersion(clientVersion);
-                String db = transfer.readString();
+                String dbName = transfer.readString();
                 String originalURL = transfer.readString();
-                if (db == null && originalURL == null) {
+                if (dbName == null && originalURL == null) {
                     String targetSessionId = transfer.readString();
                     int command = transfer.readInt();
                     stop = true;
@@ -114,12 +121,11 @@ public class TcpServerThread implements Runnable {
 
                 String userName = transfer.readString();
                 userName = StringUtils.toUpperEnglish(userName);
-                session = createSession(db, originalURL, userName, transfer);
+                session = createSession(originalURL, dbName, userName);
                 transfer.setSession(session);
                 transfer.writeInt(Session.STATUS_OK);
                 transfer.writeInt(clientVersion);
                 transfer.flush();
-                server.addConnection(threadId, originalURL, userName);
                 if (server.isTraceEnabled())
                     trace("Connected");
             } catch (Throwable e) {
@@ -144,24 +150,18 @@ public class TcpServerThread implements Runnable {
         }
     }
 
-    private Session createSession(String dbName, String originalURL, String userName, Transfer transfer)
-            throws IOException {
-        byte[] userPasswordHash = transfer.readBytes();
-        byte[] filePasswordHash = transfer.readBytes();
-        byte[] fileEncryptionKey = transfer.readBytes();
-
-        dbName = server.checkKeyAndGetDatabaseName(dbName);
+    private Session createSession(String originalURL, String dbName, String userName) throws IOException {
         ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
+        ci.setUserName(userName);
+        ci.setUserPasswordHash(transfer.readBytes());
+        ci.setFilePasswordHash(transfer.readBytes());
+        ci.setFileEncryptionKey(transfer.readBytes());
 
-        Properties originalProperties = new Properties();
-
-        String key, value;
         int len = transfer.readInt();
         for (int i = 0; i < len; i++) {
-            key = transfer.readString();
-            value = transfer.readString();
+            String key = transfer.readString();
+            String value = transfer.readString();
             ci.addProperty(key, value, true); // 一些不严谨的client driver可能会发送重复的属性名
-            originalProperties.setProperty(key, value);
         }
 
         String baseDir = server.getBaseDir();
@@ -176,15 +176,11 @@ public class TcpServerThread implements Runnable {
         if (server.getIfExists()) {
             ci.setProperty("IFEXISTS", "TRUE");
         }
-        ci.setUserName(userName);
-        ci.setUserPasswordHash(userPasswordHash);
-        ci.setFilePasswordHash(filePasswordHash);
-        ci.setFileEncryptionKey(fileEncryptionKey);
 
         try {
             Session session = ci.getSessionFactory().createSession(ci);
-            // session.setOriginalProperties(originalProperties);
-            // session.setLocal(ci.getProperty("IS_LOCAL", false));
+            if (ci.getProperty("IS_LOCAL") != null)
+                session.setLocal(Boolean.parseBoolean(ci.getProperty("IS_LOCAL")));
             return session;
         } catch (SQLException e) {
             throw DbException.convert(e);
@@ -195,7 +191,7 @@ public class TcpServerThread implements Runnable {
         if (session != null) {
             RuntimeException closeError = null;
             try {
-                session.prepareStatement("ROLLBACK", -1).executeUpdate();
+                session.prepareStatement("ROLLBACK", -1).update();
             } catch (RuntimeException e) {
                 closeError = e;
                 server.traceError(e);
@@ -204,7 +200,6 @@ public class TcpServerThread implements Runnable {
             }
             try {
                 session.close();
-                server.removeConnection(threadId);
             } catch (RuntimeException e) {
                 if (closeError == null) {
                     closeError = e;
@@ -235,6 +230,19 @@ public class TcpServerThread implements Runnable {
             if (server.isTraceEnabled())
                 trace("Close");
             server.remove(this);
+        }
+    }
+
+    /**
+     * Cancel a running statement.
+     *
+     * @param targetSessionId the session id
+     * @param statementId the statement to cancel
+     */
+    void cancelStatement(String targetSessionId, int statementId) {
+        if (StringUtils.equals(targetSessionId, this.sessionId)) {
+            PreparedStatement cmd = (PreparedStatement) cache.getObject(statementId, false);
+            cmd.cancel();
         }
     }
 
@@ -270,17 +278,78 @@ public class TcpServerThread implements Runnable {
 
     private void setParameters(PreparedStatement command) throws IOException {
         int len = transfer.readInt();
-        ArrayList<? extends CommandParameter> params = command.getParameters();
+        List<? extends CommandParameter> params = command.getParameters();
         for (int i = 0; i < len; i++) {
             CommandParameter p = params.get(i);
             p.setValue(transfer.readValue());
         }
     }
 
+    /**
+     * Write the parameter meta data to the transfer object.
+     *
+     * @param p the parameter
+     */
+    private void writeParameterMetaData(CommandParameter p) throws IOException {
+        transfer.writeInt(p.getType());
+        transfer.writeLong(p.getPrecision());
+        transfer.writeInt(p.getScale());
+        transfer.writeInt(p.getNullable());
+    }
+
+    /**
+     * Write a result column to the given output.
+     *
+     * @param result the result
+     * @param i the column index
+     */
+    private void writeColumn(Result result, int i) throws IOException {
+        transfer.writeString(result.getAlias(i));
+        transfer.writeString(result.getSchemaName(i));
+        transfer.writeString(result.getTableName(i));
+        transfer.writeString(result.getColumnName(i));
+        transfer.writeInt(result.getColumnType(i));
+        transfer.writeLong(result.getColumnPrecision(i));
+        transfer.writeInt(result.getColumnScale(i));
+        transfer.writeInt(result.getDisplaySize(i));
+        transfer.writeBoolean(result.isAutoIncrement(i));
+        transfer.writeInt(result.getNullable(i));
+    }
+
+    private void writeRow(Result result, int count) throws IOException {
+        try {
+            int visibleColumnCount = result.getVisibleColumnCount();
+            for (int i = 0; i < count; i++) {
+                if (result.next()) {
+                    transfer.writeBoolean(true);
+                    Value[] v = result.currentRow();
+                    for (int j = 0; j < visibleColumnCount; j++) {
+                        transfer.writeValue(v[j]);
+                    }
+                } else {
+                    transfer.writeBoolean(false);
+                    break;
+                }
+            }
+        } catch (Throwable e) {
+            // 如果取结果集的下一行记录时发生了异常，
+            // 结果集包必须加一个结束标记，结果集包后面跟一个异常包。
+            transfer.writeBoolean(false);
+            throw DbException.convert(e);
+        }
+    }
+
+    private int getState(int oldModificationId) {
+        if (session.getModificationId() == oldModificationId) {
+            return Session.STATUS_OK;
+        }
+        return Session.STATUS_OK_STATE_CHANGED;
+    }
+
     private void executeBatch(int size, BatchStatement command) throws IOException {
         int old = session.getModificationId();
         synchronized (session) {
-            command.executeUpdate();
+            command.update();
         }
 
         int status;
@@ -297,33 +366,252 @@ public class TcpServerThread implements Runnable {
         transfer.flush();
     }
 
+    private void executeQuery(PreparedStatement command, int operation, int objectId, int maxRows, int fetchSize,
+            int oldModificationId) throws IOException {
+        Result result;
+        synchronized (session) {
+            result = command.query(maxRows, false);
+        }
+        cache.addObject(objectId, result);
+        transfer.writeInt(getState(oldModificationId));
+
+        if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
+                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY)
+            transfer.writeString(session.getTransaction().getLocalTransactionNames());
+
+        int columnCount = result.getVisibleColumnCount();
+        transfer.writeInt(columnCount);
+        int rowCount = result.getRowCount();
+        transfer.writeInt(rowCount);
+        for (int i = 0; i < columnCount; i++) {
+            writeColumn(result, i);
+        }
+        int fetch = fetchSize;
+        if (rowCount != -1)
+            fetch = Math.min(rowCount, fetchSize);
+        writeRow(result, fetch);
+        transfer.flush();
+    }
+
+    private void executeUpdate(PreparedStatement command, int operation, int oldModificationId) throws IOException {
+        int updateCount;
+        synchronized (session) {
+            updateCount = command.update();
+        }
+        int status;
+        if (session.isClosed()) {
+            status = Session.STATUS_CLOSED;
+        } else {
+            status = getState(oldModificationId);
+        }
+        transfer.writeInt(status);
+        if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
+                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
+            transfer.writeString(session.getTransaction().getLocalTransactionNames());
+
+        transfer.writeInt(updateCount);
+        transfer.flush();
+    }
+
     private void process() throws IOException {
         int operation = transfer.readInt();
         switch (operation) {
-        case Session.SESSION_PREPARE_READ_PARAMS:
-        case Session.SESSION_PREPARE: {
+        case Session.COMMAND_PREPARE_READ_PARAMS:
+        case Session.COMMAND_PREPARE: {
             int id = transfer.readInt();
             String sql = transfer.readString();
             int old = session.getModificationId();
             PreparedStatement command = session.prepareStatement(sql, -1);
-            boolean readonly = command.isReadOnly();
             cache.addObject(id, command);
             boolean isQuery = command.isQuery();
-            ArrayList<? extends CommandParameter> params = command.getParameters();
-            transfer.writeInt(getState(old)).writeBoolean(isQuery).writeBoolean(readonly).writeInt(params.size());
-            if (operation == Session.SESSION_PREPARE_READ_PARAMS) {
+            transfer.writeInt(getState(old)).writeBoolean(isQuery);
+            if (operation == Session.COMMAND_PREPARE_READ_PARAMS) {
+                List<? extends CommandParameter> params = command.getParameters();
+                transfer.writeInt(params.size());
                 for (CommandParameter p : params) {
-                    writeMetaData(transfer, p);
+                    writeParameterMetaData(p);
                 }
             }
             transfer.flush();
             break;
         }
-        case Session.SESSION_CLOSE: {
-            stop = true;
-            closeSession();
-            transfer.writeInt(Session.STATUS_OK).flush();
-            close();
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY: {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
+        case Session.COMMAND_QUERY: {
+            int id = transfer.readInt();
+            String sql = transfer.readString();
+            int objectId = transfer.readInt();
+            int maxRows = transfer.readInt();
+            int fetchSize = transfer.readInt();
+            int old = session.getModificationId();
+            PreparedStatement command = session.prepareStatement(sql, fetchSize);
+            cache.addObject(id, command);
+            executeQuery(command, operation, objectId, maxRows, fetchSize, old);
+            break;
+        }
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY: {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
+        case Session.COMMAND_PREPARED_QUERY: {
+            int id = transfer.readInt();
+            int objectId = transfer.readInt();
+            int maxRows = transfer.readInt();
+            int fetchSize = transfer.readInt();
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            command.setFetchSize(fetchSize);
+            setParameters(command);
+            int old = session.getModificationId();
+            executeQuery(command, operation, objectId, maxRows, fetchSize, old);
+            break;
+        }
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE: {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
+        case Session.COMMAND_UPDATE:
+        case Session.COMMAND_REPLICATION_UPDATE: {
+            int id = transfer.readInt();
+            String sql = transfer.readString();
+            int old = session.getModificationId();
+            if (operation == Session.COMMAND_REPLICATION_UPDATE)
+                session.setReplicationName(transfer.readString());
+
+            PreparedStatement command = session.prepareStatement(sql, -1);
+            cache.addObject(id, command);
+            executeUpdate(command, operation, old);
+            break;
+        }
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE: {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
+        case Session.COMMAND_PREPARED_UPDATE:
+        case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
+            int id = transfer.readInt();
+            if (operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE)
+                session.setReplicationName(transfer.readString());
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            setParameters(command);
+            int old = session.getModificationId();
+            executeUpdate(command, operation, old);
+            break;
+        }
+        case Session.COMMAND_STORAGE_DISTRIBUTED_PUT: {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
+        case Session.COMMAND_STORAGE_PUT:
+        case Session.COMMAND_STORAGE_REPLICATION_PUT: {
+            String mapName = transfer.readString();
+            byte[] key = transfer.readBytes();
+            byte[] value = transfer.readBytes();
+            int old = session.getModificationId();
+            if (operation == Session.COMMAND_STORAGE_REPLICATION_PUT)
+                session.setReplicationName(transfer.readString());
+
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+
+            DataType valueType = map.getValueType();
+            // synchronized (session) {
+            Object result = map
+                    .put(map.getKeyType().read(ByteBuffer.wrap(key)), valueType.read(ByteBuffer.wrap(value)));
+            // }
+            int status;
+            if (session.isClosed()) {
+                status = Session.STATUS_CLOSED;
+            } else {
+                status = getState(old);
+            }
+            transfer.writeInt(status);
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
+                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+
+            WriteBuffer writeBuffer = WriteBufferPool.poll();
+            valueType.write(writeBuffer, result);
+            ByteBuffer buffer = writeBuffer.getBuffer();
+            buffer.flip();
+            WriteBufferPool.offer(writeBuffer);
+            transfer.writeByteBuffer(buffer);
+            transfer.flush();
+            break;
+        }
+        case Session.COMMAND_STORAGE_DISTRIBUTED_GET: {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
+        case Session.COMMAND_STORAGE_GET: {
+            String mapName = transfer.readString();
+            byte[] key = transfer.readBytes();
+            int old = session.getModificationId();
+
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+
+            DataType valueType = map.getValueType();
+            // synchronized (session) {
+            Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
+            // }
+
+            int status;
+            if (session.isClosed()) {
+                status = Session.STATUS_CLOSED;
+            } else {
+                status = getState(old);
+            }
+            transfer.writeInt(status);
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
+                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+
+            WriteBuffer writeBuffer = WriteBufferPool.poll();
+            valueType.write(writeBuffer, result);
+            ByteBuffer buffer = writeBuffer.getBuffer();
+            buffer.flip();
+            WriteBufferPool.offer(writeBuffer);
+            transfer.writeByteBuffer(buffer);
+            transfer.flush();
+            break;
+        }
+        case Session.COMMAND_STORAGE_MOVE_LEAF_PAGE: {
+            String mapName = transfer.readString();
+            ByteBuffer splitKey = transfer.readByteBuffer();
+            ByteBuffer page = transfer.readByteBuffer();
+            int old = session.getModificationId();
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+
+            if (map instanceof Replication) {
+                ((Replication) map).addLeafPage(splitKey, page);
+            }
+
+            int status;
+            if (session.isClosed()) {
+                status = Session.STATUS_CLOSED;
+            } else {
+                status = getState(old);
+            }
+            transfer.writeInt(status);
+            transfer.flush();
+            break;
+        }
+        case Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE: {
+            String mapName = transfer.readString();
+            ByteBuffer key = transfer.readByteBuffer();
+            int old = session.getModificationId();
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+
+            if (map instanceof Replication) {
+                ((Replication) map).removeLeafPage(key);
+            }
+
+            int status;
+            if (session.isClosed()) {
+                status = Session.STATUS_CLOSED;
+            } else {
+                status = getState(old);
+            }
+            transfer.writeInt(status);
+            transfer.flush();
             break;
         }
         case Session.COMMAND_GET_META_DATA: {
@@ -335,77 +623,12 @@ public class TcpServerThread implements Runnable {
             int columnCount = result.getVisibleColumnCount();
             transfer.writeInt(Session.STATUS_OK).writeInt(columnCount).writeInt(0);
             for (int i = 0; i < columnCount; i++) {
-                writeColumn(transfer, result, i);
+                writeColumn(result, i);
             }
             transfer.flush();
             break;
         }
-        case Session.COMMAND_EXECUTE_DISTRIBUTED_QUERY: {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
-        case Session.COMMAND_EXECUTE_QUERY: {
-            int id = transfer.readInt();
-            int objectId = transfer.readInt();
-            int maxRows = transfer.readInt();
-            int fetchSize = transfer.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-            command.setFetchSize(fetchSize);
-            setParameters(command);
-            int old = session.getModificationId();
-            Result result;
-            synchronized (session) {
-                result = command.executeQuery(maxRows, false);
-            }
-            cache.addObject(objectId, result);
-            int columnCount = result.getVisibleColumnCount();
-            int state = getState(old);
-            transfer.writeInt(state);
-
-            if (operation == Session.COMMAND_EXECUTE_DISTRIBUTED_QUERY)
-                transfer.writeString(session.getTransaction().getLocalTransactionNames());
-
-            transfer.writeInt(columnCount);
-            int rowCount = result.getRowCount();
-            transfer.writeInt(rowCount);
-            for (int i = 0; i < columnCount; i++) {
-                writeColumn(transfer, result, i);
-            }
-            int fetch = fetchSize;
-            if (rowCount != -1)
-                fetch = Math.min(rowCount, fetchSize);
-            sendRow(result, fetch);
-            transfer.flush();
-            break;
-        }
-        case Session.COMMAND_EXECUTE_DISTRIBUTED_UPDATE: {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
-        case Session.COMMAND_EXECUTE_UPDATE: {
-            int id = transfer.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-            setParameters(command);
-            int old = session.getModificationId();
-            int updateCount;
-            synchronized (session) {
-                updateCount = command.executeUpdate();
-            }
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
-            if (operation == Session.COMMAND_EXECUTE_DISTRIBUTED_UPDATE)
-                transfer.writeString(session.getTransaction().getLocalTransactionNames());
-
-            transfer.writeInt(updateCount).writeBoolean(session.isAutoCommit());
-            transfer.flush();
-            break;
-        }
-        case Session.COMMAND_EXECUTE_DISTRIBUTED_COMMIT: {
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
             int old = session.getModificationId();
             synchronized (session) {
                 session.commit(false, transfer.readString());
@@ -420,7 +643,7 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case Session.COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK: {
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
             int old = session.getModificationId();
             synchronized (session) {
                 session.rollback();
@@ -435,12 +658,12 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case Session.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD:
-        case Session.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK: {
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT:
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT: {
             int old = session.getModificationId();
             String name = transfer.readString();
             synchronized (session) {
-                if (operation == Session.COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD)
+                if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT)
                     session.addSavepoint(name);
                 else
                     session.rollbackToSavepoint(name);
@@ -455,7 +678,7 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case Session.COMMAND_EXECUTE_TRANSACTION_VALIDATE: {
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE: {
             int old = session.getModificationId();
             boolean isValid = session.validateTransaction(transfer.readString());
             int status;
@@ -469,7 +692,7 @@ public class TcpServerThread implements Runnable {
             transfer.flush();
             break;
         }
-        case Session.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT: {
+        case Session.COMMAND_BATCH_STATEMENT_UPDATE: {
             int size = transfer.readInt();
             ArrayList<String> batchCommands = New.arrayList(size);
             for (int i = 0; i < size; i++)
@@ -479,7 +702,7 @@ public class TcpServerThread implements Runnable {
             executeBatch(size, command);
             break;
         }
-        case Session.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT: {
+        case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
             int id = transfer.readInt();
             int size = transfer.readInt();
             PreparedStatement preparedCommand = (PreparedStatement) cache.getObject(id, false);
@@ -511,7 +734,7 @@ public class TcpServerThread implements Runnable {
             int count = transfer.readInt();
             Result result = (Result) cache.getObject(id, false);
             transfer.writeInt(Session.STATUS_OK);
-            sendRow(result, count);
+            writeRow(result, count);
             transfer.flush();
             break;
         }
@@ -519,6 +742,14 @@ public class TcpServerThread implements Runnable {
             int id = transfer.readInt();
             Result result = (Result) cache.getObject(id, false);
             result.reset();
+            break;
+        }
+        case Session.RESULT_CHANGE_ID: {
+            int oldId = transfer.readInt();
+            int newId = transfer.readInt();
+            Object obj = cache.getObject(oldId, false);
+            cache.freeObject(oldId);
+            cache.addObject(newId, obj);
             break;
         }
         case Session.RESULT_CLOSE: {
@@ -530,28 +761,31 @@ public class TcpServerThread implements Runnable {
             }
             break;
         }
-        case Session.CHANGE_ID: {
-            int oldId = transfer.readInt();
-            int newId = transfer.readInt();
-            Object obj = cache.getObject(oldId, false);
-            cache.freeObject(oldId);
-            cache.addObject(newId, obj);
-            break;
-        }
         case Session.SESSION_SET_ID: {
             sessionId = transfer.readString();
-            transfer.writeInt(Session.STATUS_OK).flush();
+            transfer.writeInt(Session.STATUS_OK);
             transfer.writeBoolean(session.isAutoCommit());
             transfer.flush();
             break;
         }
-        case Session.SESSION_SET_AUTOCOMMIT: {
+        case Session.SESSION_SET_AUTO_COMMIT: {
             boolean autoCommit = transfer.readBoolean();
             session.setAutoCommit(autoCommit);
             transfer.writeInt(Session.STATUS_OK).flush();
             break;
         }
-        case Session.LOB_READ: {
+        case Session.SESSION_CLOSE: {
+            stop = true;
+            closeSession();
+            transfer.writeInt(Session.STATUS_OK).flush();
+            close();
+            break;
+        }
+        case Session.COMMAND_READ_LOB: {
+            if (lobs == null) {
+                lobs = SmallLRUCache.newInstance(Math.max(SysProperties.SERVER_CACHED_OBJECTS,
+                        SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+            }
             long lobId = transfer.readLong();
             byte[] hmac = transfer.readBytes();
             CachedInputStream in = lobs.get(lobId);
@@ -565,7 +799,7 @@ public class TcpServerThread implements Runnable {
             if (in.getPos() != offset) {
                 LobStorage lobStorage = session.getDataHandler().getLobStorage();
                 // only the lob id is used
-                ValueLobDb lob = ValueLobDb.create(Value.BLOB, null, -1, lobId, hmac, -1);
+                ValueLob lob = ValueLob.create(Value.BLOB, null, -1, lobId, hmac, -1);
                 InputStream lobIn = lobStorage.getInputStream(lob, hmac, -1);
                 in = new CachedInputStream(lobIn);
                 lobs.put(lobId, in);
@@ -589,62 +823,10 @@ public class TcpServerThread implements Runnable {
         }
     }
 
-    private int getState(int oldModificationId) {
-        if (session.getModificationId() == oldModificationId) {
-            return Session.STATUS_OK;
-        }
-        return Session.STATUS_OK_STATE_CHANGED;
-    }
-
-    private void sendRow(Result result, int count) throws IOException {
-        try {
-            int visibleColumnCount = result.getVisibleColumnCount();
-            for (int i = 0; i < count; i++) {
-                if (result.next()) {
-                    transfer.writeBoolean(true);
-                    Value[] v = result.currentRow();
-                    for (int j = 0; j < visibleColumnCount; j++) {
-                        transfer.writeValue(v[j]);
-                    }
-                } else {
-                    transfer.writeBoolean(false);
-                    break;
-                }
-            }
-        } catch (Throwable e) {
-            // 如果取结果集的下一行记录时发生了异常，
-            // 比如在HBase环境一个结果集可能涉及多个region，当切换到下一个region时此region有可能在进行split，
-            // 此时就会抛异常，所以结果集包必须加一个结束标记，结果集包后面跟一个异常包。
-            transfer.writeBoolean(false);
-            throw DbException.convert(e);
-        }
-    }
-
-    void setThread(Thread thread) {
-        this.thread = thread;
-    }
-
-    Thread getThread() {
-        return thread;
-    }
-
-    /**
-     * Cancel a running statement.
-     *
-     * @param targetSessionId the session id
-     * @param statementId the statement to cancel
-     */
-    void cancelStatement(String targetSessionId, int statementId) {
-        if (StringUtils.equals(targetSessionId, this.sessionId)) {
-            PreparedStatement cmd = (PreparedStatement) cache.getObject(statementId, false);
-            cmd.cancel();
-        }
-    }
-
     /**
      * An input stream with a position.
      */
-    static class CachedInputStream extends FilterInputStream {
+    private static class CachedInputStream extends FilterInputStream {
 
         private static final ByteArrayInputStream DUMMY = new ByteArrayInputStream(new byte[0]);
         private long pos;
@@ -687,39 +869,6 @@ public class TcpServerThread implements Runnable {
             return pos;
         }
 
-    }
-
-    /**
-     * Write the parameter meta data to the transfer object.
-     *
-     * @param transfer the transfer object
-     * @param p the parameter
-     */
-    private static void writeMetaData(Transfer transfer, CommandParameter p) throws IOException {
-        transfer.writeInt(p.getType());
-        transfer.writeLong(p.getPrecision());
-        transfer.writeInt(p.getScale());
-        transfer.writeInt(p.getNullable());
-    }
-
-    /**
-     * Write a result column to the given output.
-     *
-     * @param out the object to where to write the data
-     * @param result the result
-     * @param i the column index
-     */
-    public static void writeColumn(Transfer out, Result result, int i) throws IOException {
-        out.writeString(result.getAlias(i));
-        out.writeString(result.getSchemaName(i));
-        out.writeString(result.getTableName(i));
-        out.writeString(result.getColumnName(i));
-        out.writeInt(result.getColumnType(i));
-        out.writeLong(result.getColumnPrecision(i));
-        out.writeInt(result.getColumnScale(i));
-        out.writeInt(result.getDisplaySize(i));
-        out.writeBoolean(result.isAutoIncrement(i));
-        out.writeInt(result.getNullable(i));
     }
 
 }

@@ -17,12 +17,13 @@
  */
 package org.lealone.storage;
 
+import org.lealone.db.DataHandler;
 import org.lealone.db.PluggableEngine;
 
 public interface StorageEngine extends PluggableEngine {
 
     StorageBuilder getStorageBuilder();
 
-    LobStorage getLobStorage();
+    LobStorage getLobStorage(DataHandler dataHandler, Storage storage);
 
 }

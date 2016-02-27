@@ -5,65 +5,28 @@
  */
 package org.lealone.db;
 
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.table.Table;
 
 /**
  * Represents a database object comment.
  */
 public class Comment extends DbObjectBase {
 
-    private final int objectType;
+    private final DbObjectType objectType;
     private final String objectName;
     private String commentText;
 
     public Comment(Database database, int id, DbObject obj) {
-        initDbObjectBase(database, id, getKey(obj), Trace.DATABASE);
+        super(database, id, getKey(obj), Trace.DATABASE);
         this.objectType = obj.getType();
         this.objectName = obj.getSQL();
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
-    private static String getTypeName(int type) {
-        switch (type) {
-        case DbObject.CONSTANT:
-            return "CONSTANT";
-        case DbObject.CONSTRAINT:
-            return "CONSTRAINT";
-        case DbObject.FUNCTION_ALIAS:
-            return "ALIAS";
-        case DbObject.INDEX:
-            return "INDEX";
-        case DbObject.ROLE:
-            return "ROLE";
-        case DbObject.SCHEMA:
-            return "SCHEMA";
-        case DbObject.SEQUENCE:
-            return "SEQUENCE";
-        case DbObject.TABLE_OR_VIEW:
-            return "TABLE";
-        case DbObject.TRIGGER:
-            return "TRIGGER";
-        case DbObject.USER:
-            return "USER";
-        case DbObject.USER_DATATYPE:
-            return "DOMAIN";
-        default:
-            // not supported by parser, but required when trying to find a
-            // comment
-            return "type" + type;
-        }
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
+    public DbObjectType getType() {
+        return DbObjectType.COMMENT;
     }
 
     @Override
@@ -79,29 +42,8 @@ public class Comment extends DbObjectBase {
     }
 
     @Override
-    public int getType() {
-        return DbObject.COMMENT;
-    }
-
-    @Override
-    public void removeChildrenAndResources(ServerSession session) {
-        database.removeMeta(session, getId());
-    }
-
-    @Override
     public void checkRename() {
         DbException.throwInternalError();
-    }
-
-    /**
-     * Get the comment key name for the given database object. This key name is
-     * used internally to associate the comment to the object.
-     *
-     * @param obj the object
-     * @return the key name
-     */
-    public static String getKey(DbObject obj) {
-        return getTypeName(obj.getType()) + " " + obj.getSQL();
     }
 
     /**
@@ -116,4 +58,29 @@ public class Comment extends DbObjectBase {
     public String getCommentText() {
         return commentText;
     }
+
+    /**
+     * Get the comment key name for the given database object. This key name is
+     * used internally to associate the comment to the object.
+     *
+     * @param obj the object
+     * @return the key name
+     */
+    public static String getKey(DbObject obj) {
+        return getTypeName(obj.getType()) + " " + obj.getSQL();
+    }
+
+    private static String getTypeName(DbObjectType type) {
+        switch (type) {
+        case FUNCTION_ALIAS:
+            return "ALIAS";
+        case TABLE_OR_VIEW:
+            return "TABLE";
+        case USER_DATATYPE:
+            return "DOMAIN";
+        default:
+            return type.name();
+        }
+    }
+
 }

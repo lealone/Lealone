@@ -10,11 +10,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.Callable;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
@@ -65,7 +64,7 @@ import org.lealone.sql.expression.Parameter;
  * @author Thomas Mueller
  * @author Joel Turkel (Group sorted query)
  */
-public class Select extends Query implements Callable<Result>, org.lealone.db.expression.Select {
+public class Select extends Query implements org.lealone.db.expression.Select {
     private TableFilter topTableFilter;
     private final ArrayList<TableFilter> filters = New.arrayList();
     private final ArrayList<TableFilter> topFilters = New.arrayList();
@@ -89,11 +88,18 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
     private SortOrder sort;
     private int currentGroupRowId;
 
-    private int queryLimit;
-    private ResultTarget resultTarget;
-
     public Select(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.SELECT;
+    }
+
+    @Override
+    public boolean isCacheable() {
+        return !isForUpdate;
     }
 
     public void setExpressions(ArrayList<Expression> expressions) {
@@ -648,23 +654,6 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
     }
 
     @Override
-    public Result query(int limit, ResultTarget target) {
-        queryLimit = limit;
-        resultTarget = target;
-        return org.lealone.sql.RouterHolder.getRouter().executeSelect(this, limit, false);
-    }
-
-    @Override
-    public Result queryLocal(int maxRows) {
-        return super.query(maxRows, resultTarget);
-    }
-
-    @Override
-    public Result call() {
-        return super.query(queryLimit, resultTarget);
-    }
-
-    @Override
     protected LocalResult queryWithoutCache(int maxRows, ResultTarget target) {
         int limitRows = maxRows == 0 ? -1 : maxRows;
         if (limitExpr != null) {
@@ -1091,7 +1080,7 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
     }
 
     @Override
-    public Result queryMeta() {
+    public Result getMetaData() {
         LocalResult result = new LocalResult(session, expressionArray, visibleColumnCount);
         result.done();
         return result;
@@ -1422,16 +1411,6 @@ public class Select extends Query implements Callable<Result>, org.lealone.db.ex
     @Override
     public boolean isReadOnly() {
         return isEverything(ExpressionVisitor.READONLY_VISITOR);
-    }
-
-    @Override
-    public boolean isCacheable() {
-        return !isForUpdate;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.SELECT;
     }
 
     @Override

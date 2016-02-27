@@ -23,7 +23,7 @@ import java.util.Properties;
 import java.util.TreeMap;
 import java.util.Vector;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.storage.fs.FileUtils;
 
 /**

@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.db.Constants;
 import org.lealone.storage.Storage;
+import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
 
 public class MemoryStorage implements Storage {
@@ -61,6 +62,11 @@ public class MemoryStorage implements Storage {
             if (!maps.containsKey(name))
                 return name;
         }
+    }
+
+    @Override
+    public StorageMap<?, ?> getStorageMap(String name) {
+        return maps.get(name);
     }
 
     @Override

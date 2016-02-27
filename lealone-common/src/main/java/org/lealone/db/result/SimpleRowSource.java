@@ -33,4 +33,5 @@ public interface SimpleRowSource {
      * @throws SQLException if this operation is not supported
      */
     void reset() throws SQLException;
+
 }

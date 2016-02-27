@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 
@@ -160,11 +160,11 @@ public class StringUtils {
         for (int i = 0; i < length; i++) {
             char c = s.charAt(i);
             switch (c) {
-            //            case '\b':
-            //                // BS backspace
-            //                // not supported in properties files
-            //                buff.append("\\b");
-            //                break;
+            // case '\b':
+            // // BS backspace
+            // // not supported in properties files
+            // buff.append("\\b");
+            // break;
             case '\t':
                 // HT horizontal tab
                 buff.append("\\t");
@@ -474,6 +474,18 @@ public class StringUtils {
         return array;
     }
 
+    public static int[] arraySplitAsInt(String s, char separatorChar) {
+        String[] array = arraySplit(s, separatorChar, true);
+        if (array == null)
+            return null;
+
+        int[] intArray = new int[array.length];
+        for (int i = 0; i < array.length; i++) {
+            intArray[i] = Integer.parseInt(array[i]);
+        }
+        return intArray;
+    }
+
     /**
      * Combine an array of strings to one array using the given separator
      * character. A backslash and the separator character and escaped using a
@@ -497,6 +509,16 @@ public class StringUtils {
                 }
                 buff.append(c);
             }
+        }
+        return buff.toString();
+    }
+
+    public static String arrayCombine(int[] list, char separatorChar) {
+        StringBuilder buff = new StringBuilder();
+        for (int i : list) {
+            if (buff.length() > 0)
+                buff.append(',');
+            buff.append(i);
         }
         return buff.toString();
     }

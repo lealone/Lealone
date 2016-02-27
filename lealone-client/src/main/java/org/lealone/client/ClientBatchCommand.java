@@ -1,6 +1,4 @@
 /*
- * Copyright 2011 The Apache Software Foundation
- *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -21,15 +19,17 @@ package org.lealone.client;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
+import org.lealone.sql.BatchStatement;
 
-public class ClientBatchCommand implements Command {
+public class ClientBatchCommand implements BatchStatement {
     private ClientSession session;
     private Transfer transfer;
     private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
@@ -55,7 +55,7 @@ public class ClientBatchCommand implements Command {
 
     @Override
     public int getType() {
-        return COMMAND;
+        return CLIENT_BATCH_COMMAND;
     }
 
     @Override
@@ -64,51 +64,61 @@ public class ClientBatchCommand implements Command {
     }
 
     @Override
-    public ArrayList<? extends CommandParameter> getParameters() {
+    public List<? extends CommandParameter> getParameters() {
         throw DbException.throwInternalError();
     }
 
     @Override
-    public Result executeQuery(int maxRows, boolean scrollable) {
+    public Result query(int maxRows) {
+        return query(maxRows, false);
+    }
+
+    @Override
+    public Result query(int maxRows, boolean scrollable) {
         throw DbException.throwInternalError();
     }
 
     @Override
-    public int executeUpdate() {
+    public int update(String replicationName) {
+        return update();
+    }
+
+    @Override
+    public int update() {
         if (id == -1)
             id = session.getNextId();
 
         try {
             if (batchCommands != null) {
-                session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT", id);
-                transfer.writeInt(ClientSession.COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT);
+                session.traceOperation("COMMAND_BATCH_STATEMENT_UPDATE", id);
+                transfer.writeInt(ClientSession.COMMAND_BATCH_STATEMENT_UPDATE);
                 int size = batchCommands.size();
                 result = new int[size];
                 transfer.writeInt(size);
-                for (int j = 0; j < size; j++)
-                    transfer.writeString(batchCommands.get(j));
+                for (int i = 0; i < size; i++)
+                    transfer.writeString(batchCommands.get(i));
                 session.done(transfer);
 
-                for (int j = 0; j < size; j++)
-                    result[j] = transfer.readInt();
+                for (int i = 0; i < size; i++)
+                    result[i] = transfer.readInt();
             } else {
-                session.traceOperation("COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT", id);
-                transfer.writeInt(ClientSession.COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT).writeInt(id);
+                session.traceOperation("COMMAND_BATCH_STATEMENT_PREPARED_UPDATE", id);
+                transfer.writeInt(ClientSession.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE).writeInt(id);
                 int size = batchParameters.size();
                 result = new int[size];
                 transfer.writeInt(size);
                 Value[] values;
                 int len;
-                for (int j = 0; j < size; j++) {
-                    values = batchParameters.get(j);
+                for (int i = 0; i < size; i++) {
+                    values = batchParameters.get(i);
                     len = values.length;
                     for (int m = 0; m < len; m++)
                         transfer.writeValue(values[m]);
                 }
                 session.done(transfer);
 
-                for (int j = 0; j < size; j++)
-                    result[j] = transfer.readInt();
+                for (int i = 0; i < size; i++)
+                    result[i] = transfer.readInt();
             }
         } catch (IOException e) {
             session.handleException(e);
@@ -147,6 +157,7 @@ public class ClientBatchCommand implements Command {
         throw DbException.throwInternalError();
     }
 
+    @Override
     public int[] getResult() {
         return result;
     }

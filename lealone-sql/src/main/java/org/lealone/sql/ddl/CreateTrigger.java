@@ -8,7 +8,7 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
@@ -39,6 +39,11 @@ public class CreateTrigger extends SchemaStatement {
 
     public CreateTrigger(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_TRIGGER;
     }
 
     public void setInsteadOf(boolean insteadOf) {
@@ -124,11 +129,6 @@ public class CreateTrigger extends SchemaStatement {
 
     public void setOnRollback(boolean onRollback) {
         this.onRollback = onRollback;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_TRIGGER;
     }
 
 }

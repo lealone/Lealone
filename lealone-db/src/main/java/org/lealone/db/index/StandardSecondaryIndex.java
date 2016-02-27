@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.TreeSet;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -42,9 +42,9 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
             IndexColumn[] columns, IndexType indexType) {
-        Database db = session.getDatabase();
+        super(table, id, indexName, indexType);
         this.table = table;
-        initIndexBase(table, id, indexName, columns, indexType);
+        setIndexColumns(columns);
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }
@@ -56,21 +56,32 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             sortTypes[i] = columns[i].sortType;
         }
         sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
-        ValueDataType keyType = new ValueDataType(db.getCompareMode(), db, sortTypes);
+        Database db = session.getDatabase();
+        ValueDataType keyType = new ValueDataType(db, db.getCompareMode(), sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
         mapName = table.getMapNameForIndex(getId());
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        dataMap = transactionEngine.beginTransaction(false).openMap(mapName, table.getMapType(), keyType, valueType,
-                storage);
-
+        boolean isShardingMode = session.isShardingMode();
+        dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
+                keyType, valueType, storage, isShardingMode);
+        transactionEngine.addTransactionMap(dataMap);
         // TODO
         // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs
         session.commit(false);
         if (!keyType.equals(dataMap.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }
+    }
+
+    @Override
+    public StandardTable getTable() {
+        return table;
+    }
+
+    public String getMapName() {
+        return mapName;
     }
 
     @Override
@@ -160,14 +171,15 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             sortTypes[i] = indexColumns[i].sortType;
         }
         sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
-        ValueDataType keyType = new ValueDataType(database.getCompareMode(), database, sortTypes);
+        ValueDataType keyType = new ValueDataType(database, database.getCompareMode(), sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false).openMap(mapName,
-                table.getMapType(), keyType, valueType, storage);
-
+        boolean isShardingMode = session.isShardingMode();
+        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName,
+                table.getMapType(), keyType, valueType, storage, isShardingMode);
+        transactionEngine.addTransactionMap(map);
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }
@@ -297,11 +309,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public StandardTable getTable() {
-        return table;
-    }
-
-    @Override
     public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
         try {
             return 10 * getCostRangeIndex(masks, dataMap.rawSize(), filter, sortOrder);
@@ -391,11 +398,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         }
         return new StandardSecondaryIndexDistinctCursor(session, min, last);
-    }
-
-    @Override
-    public void checkRename() {
-        // ok
     }
 
     /**

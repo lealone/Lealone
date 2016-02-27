@@ -8,7 +8,7 @@ package org.lealone.db;
 
 import java.sql.Connection;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.storage.LobStorage;
@@ -17,6 +17,8 @@ import org.lealone.storage.fs.FileStorage;
 /**
  * A data handler contains a number of callback methods.
  * The most important implementing class is a database.
+ * 
+ * @author H2 Group
  */
 public interface DataHandler {
 

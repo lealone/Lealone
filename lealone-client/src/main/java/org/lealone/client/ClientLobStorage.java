@@ -10,15 +10,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DataHandler;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueLobDb;
+import org.lealone.db.value.ValueLob;
 import org.lealone.storage.LobStorage;
 
 /**
- * This factory creates in-memory objects and temporary files. It is used on the
- * client side.
+ * This factory creates in-memory objects and temporary files.
+ * It is used on the client side.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class ClientLobStorage implements LobStorage {
 
@@ -29,24 +32,8 @@ public class ClientLobStorage implements LobStorage {
     }
 
     @Override
-    public void removeLob(ValueLobDb lob) {
-        // not stored in the database
-    }
-
-    /**
-     * Get the input stream for the given lob.
-     *
-     * @param lob the lob
-     * @param hmac the message authentication code (for remote input streams)
-     * @param byteCount the number of bytes to read, or -1 if not known
-     * @return the stream
-     */
-    @Override
-    public InputStream getInputStream(ValueLobDb lob, byte[] hmac, long byteCount) throws IOException {
-        if (byteCount < 0) {
-            byteCount = Long.MAX_VALUE;
-        }
-        return new BufferedInputStream(new ClientLobStorageInputStream(handler, lob, hmac, byteCount));
+    public void init() {
+        // nothing to do
     }
 
     @Override
@@ -55,26 +42,11 @@ public class ClientLobStorage implements LobStorage {
     }
 
     @Override
-    public ValueLobDb copyLob(ValueLobDb old, int tableId, long length) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setTable(ValueLobDb lob, int tableIdSessionVariable) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void removeAllForTable(int tableId) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public Value createBlob(InputStream in, long maxLength) {
         // need to use a temp file, because the input stream could come from
         // the same database, which would create a weird situation (trying
         // to read a block while writing something)
-        return ValueLobDb.createTempBlob(in, maxLength, handler);
+        return ValueLob.createTempBlob(in, maxLength, handler);
     }
 
     /**
@@ -89,12 +61,43 @@ public class ClientLobStorage implements LobStorage {
         // need to use a temp file, because the input stream could come from
         // the same database, which would create a weird situation (trying
         // to read a block while writing something)
-        return ValueLobDb.createTempClob(reader, maxLength, handler);
+        return ValueLob.createTempClob(reader, maxLength, handler);
     }
 
     @Override
-    public void init() {
-        // nothing to do
+    public ValueLob copyLob(ValueLob old, int tableId, long length) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+    * Get the input stream for the given lob.
+    *
+    * @param lob the lob
+    * @param hmac the message authentication code (for remote input streams)
+    * @param byteCount the number of bytes to read, or -1 if not known
+    * @return the stream
+    */
+    @Override
+    public InputStream getInputStream(ValueLob lob, byte[] hmac, long byteCount) throws IOException {
+        if (byteCount < 0) {
+            byteCount = Long.MAX_VALUE;
+        }
+        return new BufferedInputStream(new ClientLobStorageInputStream(handler, lob, hmac, byteCount));
+    }
+
+    @Override
+    public void setTable(ValueLob lob, int tableIdSessionVariable) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removeAllForTable(int tableId) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removeLob(ValueLob lob) {
+        // not stored in the database
     }
 
     /**
@@ -110,7 +113,7 @@ public class ClientLobStorage implements LobStorage {
         /**
          * The lob id.
          */
-        private final long lob;
+        private final long lobId;
 
         private final byte[] hmac;
 
@@ -124,9 +127,9 @@ public class ClientLobStorage implements LobStorage {
          */
         private long remainingBytes;
 
-        ClientLobStorageInputStream(DataHandler handler, ValueLobDb lob, byte[] hmac, long byteCount) {
+        ClientLobStorageInputStream(DataHandler handler, ValueLob lob, byte[] hmac, long byteCount) {
             this.handler = handler;
-            this.lob = lob.getLobId();
+            this.lobId = lob.getLobId();
             this.hmac = hmac;
             remainingBytes = byteCount;
         }
@@ -153,7 +156,7 @@ public class ClientLobStorage implements LobStorage {
                 return -1;
             }
             try {
-                length = handler.readLob(lob, hmac, pos, buff, off, length);
+                length = handler.readLob(lobId, hmac, pos, buff, off, length);
             } catch (DbException e) {
                 throw DbException.convertToIOException(e);
             }

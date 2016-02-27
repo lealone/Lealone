@@ -6,7 +6,7 @@
  */
 package org.lealone.common.security;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.SysProperties;
 
 /**

@@ -6,7 +6,7 @@
  */
 package org.lealone.db;
 
-import org.lealone.common.message.TraceSystem;
+import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.Utils;
 

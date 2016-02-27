@@ -7,11 +7,9 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Role;
 import org.lealone.sql.SQLStatement;
 
@@ -19,13 +17,18 @@ import org.lealone.sql.SQLStatement;
  * This class represents the statement
  * CREATE ROLE
  */
-public class CreateRole extends DefineStatement {
+public class CreateRole extends DefineStatement implements AuthStatement {
 
     private String roleName;
     private boolean ifNotExists;
 
     public CreateRole(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_ROLE;
     }
 
     public void setIfNotExists(boolean ifNotExists) {
@@ -40,25 +43,20 @@ public class CreateRole extends DefineStatement {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = LealoneDatabase.getInstance();
-        if (Auth.findUser(roleName) != null) {
+        Database db = session.getDatabase();
+        if (db.findUser(roleName) != null) {
             throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, roleName);
         }
-        if (Auth.findRole(roleName) != null) {
+        if (db.findRole(roleName) != null) {
             if (ifNotExists) {
                 return 0;
             }
             throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, roleName);
         }
-        int id = getObjectId(db);
+        int id = getObjectId();
         Role role = new Role(db, id, roleName, false);
         db.addDatabaseObject(session, role);
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_ROLE;
     }
 
 }

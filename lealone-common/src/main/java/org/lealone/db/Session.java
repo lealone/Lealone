@@ -9,56 +9,82 @@ package org.lealone.db;
 import java.io.Closeable;
 import java.util.ArrayList;
 
-import org.lealone.common.message.Trace;
+import org.lealone.common.trace.Trace;
 import org.lealone.db.value.Value;
 import org.lealone.sql.BatchStatement;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.storage.StorageCommand;
+import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
 /**
  * A client or server session. A session represents a database connection.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface Session extends Closeable, Transaction.Participant {
 
-    public static final int SESSION_PREPARE = 0;
-    public static final int SESSION_CLOSE = 1;
-    public static final int COMMAND_EXECUTE_QUERY = 2;
-    public static final int COMMAND_EXECUTE_UPDATE = 3;
-    public static final int COMMAND_CLOSE = 4;
-    public static final int RESULT_FETCH_ROWS = 5;
-    public static final int RESULT_RESET = 6;
-    public static final int RESULT_CLOSE = 7;
-    // public static final int COMMAND_COMMIT = 8; //不再使用
-    public static final int CHANGE_ID = 9;
-    public static final int COMMAND_GET_META_DATA = 10;
-    public static final int SESSION_PREPARE_READ_PARAMS = 11;
-    public static final int SESSION_SET_ID = 12;
-    public static final int SESSION_CANCEL_STATEMENT = 13;
-    // public static final int SESSION_CHECK_KEY = 14; //不再使用
-    public static final int SESSION_SET_AUTOCOMMIT = 15;
-    // public static final int SESSION_UNDO_LOG_POS = 16; //不再使用
-    public static final int LOB_READ = 17;
+    // 命令值会包含在协议包中不能随便改动，不同类型的命令值之间有意设置了间隔，用于后续加新命令
 
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_QUERY = 100;
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_UPDATE = 101;
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_COMMIT = 102;
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_ROLLBACK = 103;
+    public static final int SESSION_SET_ID = 0;
+    public static final int SESSION_CANCEL_STATEMENT = 1;
+    public static final int SESSION_SET_AUTO_COMMIT = 2;
+    public static final int SESSION_CLOSE = 3;
 
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ADD = 104;
-    public static final int COMMAND_EXECUTE_DISTRIBUTED_SAVEPOINT_ROLLBACK = 105;
+    public static final int RESULT_FETCH_ROWS = 30;
+    public static final int RESULT_CHANGE_ID = 31;
+    public static final int RESULT_RESET = 32;
+    public static final int RESULT_CLOSE = 33;
 
-    public static final int COMMAND_EXECUTE_TRANSACTION_VALIDATE = 106;
+    public static final int COMMAND_QUERY = 50;
+    public static final int COMMAND_UPDATE = 51;
 
-    public static final int COMMAND_EXECUTE_BATCH_UPDATE_STATEMENT = 120;
-    public static final int COMMAND_EXECUTE_BATCH_UPDATE_PREPAREDSTATEMENT = 121;
+    public static final int COMMAND_PREPARE = 52;
+    public static final int COMMAND_PREPARE_READ_PARAMS = 53;
+    public static final int COMMAND_PREPARED_QUERY = 54;
+    public static final int COMMAND_PREPARED_UPDATE = 55;
+
+    public static final int COMMAND_GET_META_DATA = 56;
+    public static final int COMMAND_READ_LOB = 57;
+    public static final int COMMAND_CLOSE = 58;
+
+    public static final int COMMAND_REPLICATION_UPDATE = 80;
+    public static final int COMMAND_REPLICATION_PREPARED_UPDATE = 81;
+
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_QUERY = 100;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY = 101;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_UPDATE = 102;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE = 103;
+
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_COMMIT = 120;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK = 121;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT = 122;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT = 123;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE = 124;
+
+    public static final int COMMAND_BATCH_STATEMENT_UPDATE = 140;
+    public static final int COMMAND_BATCH_STATEMENT_PREPARED_UPDATE = 141;
+
+    public static final int COMMAND_STORAGE_PUT = 160;
+    public static final int COMMAND_STORAGE_REPLICATION_PUT = 161;
+    public static final int COMMAND_STORAGE_DISTRIBUTED_PUT = 162;
+
+    public static final int COMMAND_STORAGE_GET = 170;
+    public static final int COMMAND_STORAGE_DISTRIBUTED_GET = 171;
+
+    public static final int COMMAND_STORAGE_MOVE_LEAF_PAGE = 180;
+    public static final int COMMAND_STORAGE_REMOVE_LEAF_PAGE = 181;
 
     public static final int STATUS_ERROR = 0;
     public static final int STATUS_OK = 1;
-    public static final int STATUS_CLOSED = 2;
-    public static final int STATUS_OK_STATE_CHANGED = 3;
+    public static final int STATUS_OK_STATE_CHANGED = 2;
+    public static final int STATUS_CLOSED = 3;
 
-    ParsedStatement parseStatement(String sql);
+    Command createCommand(String sql, int fetchSize);
+
+    StorageCommand createStorageCommand();
 
     /**
      * Parse a command and prepare it for execution.
@@ -69,11 +95,13 @@ public interface Session extends Closeable, Transaction.Participant {
      */
     Command prepareCommand(String sql, int fetchSize);
 
+    ParsedStatement parseStatement(String sql);
+
     PreparedStatement prepareStatement(String sql, int fetchSize);
 
     BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters);
 
-    BatchStatement getBatchStatement(ArrayList<String> batchCommands);
+    BatchStatement getBatchStatement(ArrayList<String> batchStatements);
 
     /**
      * Check if this session is in auto-commit mode.
@@ -113,7 +141,7 @@ public interface Session extends Closeable, Transaction.Participant {
      * Roll back pending transactions and close the session.
      */
     @Override
-    void close();
+    public void close();
 
     /**
      * Check if close was called.
@@ -130,12 +158,6 @@ public interface Session extends Closeable, Transaction.Participant {
 
     void rollback();
 
-    @Override
-    void addSavepoint(String name);
-
-    @Override
-    void rollbackToSavepoint(String name);
-
     void setRoot(boolean isRoot);
 
     boolean validateTransaction(String localTransactionName);
@@ -146,5 +168,17 @@ public interface Session extends Closeable, Transaction.Participant {
 
     String getURL();
 
-    void checkTransfers();
+    String getReplicationName();
+
+    void setReplicationName(String replicationName);
+
+    ConnectionInfo getConnectionInfo();
+
+    void setLocal(boolean local);
+
+    boolean isLocal();
+
+    boolean isShardingMode();
+
+    StorageMap<Object, Object> getStorageMap(String mapName);
 }

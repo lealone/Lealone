@@ -19,7 +19,8 @@ package org.lealone.storage;
 
 import java.util.Map;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.db.DataHandler;
 
 public abstract class StorageEngineBase implements StorageEngine {
 
@@ -44,8 +45,8 @@ public abstract class StorageEngineBase implements StorageEngine {
     }
 
     @Override
-    public LobStorage getLobStorage() {
-        throw DbException.getUnsupportedException("getLobStorage()");
+    public LobStorage getLobStorage(DataHandler dataHandler, Storage storage) {
+        throw DbException.getUnsupportedException("getLobStorage");
     }
 
     @Override

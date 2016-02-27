@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;

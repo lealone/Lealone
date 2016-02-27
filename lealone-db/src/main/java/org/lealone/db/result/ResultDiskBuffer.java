@@ -9,7 +9,7 @@ package org.lealone.db.result;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.Data;

@@ -15,7 +15,7 @@ import java.util.Calendar;
 import java.util.TimeZone;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.MathUtils;
 

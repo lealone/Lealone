@@ -8,13 +8,11 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.RightOwner;
 import org.lealone.db.auth.Role;
@@ -29,7 +27,7 @@ import org.lealone.sql.SQLStatement;
  * REVOKE RIGHT,
  * REVOKE ROLE
  */
-public class GrantRevoke extends DefineStatement {
+public class GrantRevoke extends DefineStatement implements AuthStatement {
 
     private ArrayList<String> roleNames;
     private int operationType;
@@ -42,8 +40,18 @@ public class GrantRevoke extends DefineStatement {
         super(session);
     }
 
+    @Override
+    public int getType() {
+        return operationType;
+    }
+
     public void setOperationType(int operationType) {
         this.operationType = operationType;
+    }
+
+    @Override
+    public boolean isTransactional() {
+        return false;
     }
 
     /**
@@ -68,22 +76,56 @@ public class GrantRevoke extends DefineStatement {
     }
 
     public void setGranteeName(String granteeName) {
-        grantee = Auth.findUser(granteeName);
+        Database db = session.getDatabase();
+        grantee = db.findUser(granteeName);
         if (grantee == null) {
-            grantee = Auth.findRole(granteeName);
+            grantee = db.findRole(granteeName);
             if (grantee == null) {
                 throw DbException.get(ErrorCode.USER_OR_ROLE_NOT_FOUND_1, granteeName);
             }
         }
     }
 
+    /**
+     * Add the specified table to the list of tables.
+     *
+     * @param table the table
+     */
+    public void addTable(Table table) {
+        tables.add(table);
+    }
+
+    /**
+     * Set the specified schema
+     *
+     * @param schema the schema
+     */
+    public void setSchema(Schema schema) {
+        this.schema = schema;
+    }
+
+    /**
+     * @return true if this command is using Roles
+     */
+    public boolean isRoleMode() {
+        return roleNames != null;
+    }
+
+    /**
+     * @return true if this command is using Rights
+     */
+    public boolean isRightMode() {
+        return rightMask != 0;
+    }
+
     @Override
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
+        Database db = session.getDatabase();
         if (roleNames != null) {
             for (String name : roleNames) {
-                Role grantedRole = Auth.findRole(name);
+                Role grantedRole = db.findRole(name);
                 if (grantedRole == null) {
                     throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, name);
                 }
@@ -117,10 +159,10 @@ public class GrantRevoke extends DefineStatement {
     }
 
     private void grantRight(DbObject object) {
-        Database db = LealoneDatabase.getInstance();
+        Database db = session.getDatabase();
         Right right = grantee.getRightForObject(object);
         if (right == null) {
-            int id = getObjectId(db);
+            int id = getObjectId();
             right = new Right(db, id, grantee, rightMask, object);
             grantee.grantRight(object, right);
             db.addDatabaseObject(session, right);
@@ -141,8 +183,8 @@ public class GrantRevoke extends DefineStatement {
                 throw DbException.get(ErrorCode.ROLE_ALREADY_GRANTED_1, grantedRole.getSQL());
             }
         }
-        Database db = LealoneDatabase.getInstance();
-        int id = getObjectId(db);
+        Database db = session.getDatabase();
+        int id = getObjectId();
         Right right = new Right(db, id, grantee, grantedRole);
         db.addDatabaseObject(session, right);
         grantee.grantRole(grantedRole, right);
@@ -164,7 +206,7 @@ public class GrantRevoke extends DefineStatement {
         }
         int mask = right.getRightMask();
         int newRight = mask & ~rightMask;
-        Database db = LealoneDatabase.getInstance();
+        Database db = session.getDatabase();
         if (newRight == 0) {
             db.removeDatabaseObject(session, right);
         } else {
@@ -178,49 +220,8 @@ public class GrantRevoke extends DefineStatement {
         if (right == null) {
             return;
         }
-        Database db = LealoneDatabase.getInstance();
+        Database db = session.getDatabase();
         db.removeDatabaseObject(session, right);
     }
 
-    @Override
-    public boolean isTransactional() {
-        return false;
-    }
-
-    /**
-     * Add the specified table to the list of tables.
-     *
-     * @param table the table
-     */
-    public void addTable(Table table) {
-        tables.add(table);
-    }
-
-    /**
-     * Set the specified schema
-     *
-     * @param schema the schema
-     */
-    public void setSchema(Schema schema) {
-        this.schema = schema;
-    }
-
-    @Override
-    public int getType() {
-        return operationType;
-    }
-
-    /**
-     * @return true if this command is using Roles
-     */
-    public boolean isRoleMode() {
-        return roleNames != null;
-    }
-
-    /**
-     * @return true if this command is using Rights
-     */
-    public boolean isRightMode() {
-        return rightMask != 0;
-    }
 }

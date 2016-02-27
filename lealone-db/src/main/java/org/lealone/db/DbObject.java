@@ -5,7 +5,7 @@
  */
 package org.lealone.db;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.db.table.Table;
 
@@ -15,97 +15,11 @@ import org.lealone.db.table.Table;
 public interface DbObject {
 
     /**
-     * The object is of the type table or view.
-     */
-    int TABLE_OR_VIEW = 0;
-
-    /**
-     * This object is an index.
-     */
-    int INDEX = 1;
-
-    /**
-     * This object is a user.
-     */
-    int USER = 2;
-
-    /**
-     * This object is a sequence.
-     */
-    int SEQUENCE = 3;
-
-    /**
-     * This object is a trigger.
-     */
-    int TRIGGER = 4;
-
-    /**
-     * This object is a constraint (check constraint, unique constraint, or
-     * referential constraint).
-     */
-    int CONSTRAINT = 5;
-
-    /**
-     * This object is a setting.
-     */
-    int SETTING = 6;
-
-    /**
-     * This object is a role.
-     */
-    int ROLE = 7;
-
-    /**
-     * This object is a right.
-     */
-    int RIGHT = 8;
-
-    /**
-     * This object is an alias for a Java function.
-     */
-    int FUNCTION_ALIAS = 9;
-
-    /**
-     * This object is a schema.
-     */
-    int SCHEMA = 10;
-
-    /**
-     * This object is a constant.
-     */
-    int CONSTANT = 11;
-
-    /**
-     * This object is a user data type (domain).
-     */
-    int USER_DATATYPE = 12;
-
-    /**
-     * This object is a comment.
-     */
-    int COMMENT = 13;
-
-    /**
-     * This object is a user-defined aggregate function.
-     */
-    int AGGREGATE = 14;
-
-    int DATABASE = 15;
-
-    /**
-     * Get the SQL name of this object (may be quoted).
+     * Get the object type.
      *
-     * @return the SQL name
+     * @return the object type
      */
-    String getSQL();
-
-    /**
-     * Get the list of dependent children (for tables, this includes indexes and
-     * so on).
-     *
-     * @return the list of children
-     */
-    ArrayList<DbObject> getChildren();
+    DbObjectType getType();
 
     /**
      * Get the database.
@@ -122,11 +36,18 @@ public interface DbObject {
     int getId();
 
     /**
-     * Get the name.
+     * Get the object name.
      *
-     * @return the name
+     * @return the object name
      */
     String getName();
+
+    /**
+     * Get the SQL name of this object (may be quoted).
+     *
+     * @return the SQL name
+     */
+    String getSQL();
 
     /**
      * Build a SQL statement to re-create the object, or to create a copy of the
@@ -153,11 +74,11 @@ public interface DbObject {
     String getDropSQL();
 
     /**
-     * Get the object type.
+     * Get the list of dependent children (for tables, this includes indexes and so on).
      *
-     * @return the object type
+     * @return the list of children
      */
-    int getType();
+    List<DbObject> getChildren();
 
     /**
      * Delete all dependent children objects and resources of this object.

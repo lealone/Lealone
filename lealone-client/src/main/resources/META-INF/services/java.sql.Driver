@@ -1,1 +1,1 @@
-org.lealone.client.jdbc.Driver
+org.lealone.client.jdbc.JdbcDriver

@@ -5,68 +5,91 @@
  */
 package org.lealone.db;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.db.result.Result;
 
 /**
- * Represents a SQL statement.
+ * Represents a command.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface Command {
 
-    int COMMAND = -1;
+    int CLIENT_COMMAND = -1;
+    int CLIENT_BATCH_COMMAND = -2;
+
+    int SERVER_COMMAND = -3;
+    int SERVER_BATCH_COMMAND = -4;
 
     /**
      * Get command type.
      *
-     * @return one of the constants above
+     * @return the command type.
      */
     int getType();
 
     /**
-    * Check if this is a query.
-    *
-    * @return true if it is a query
-    */
+     * Get the parameters (if any).
+     *
+     * @return the parameters
+     */
+    List<? extends CommandParameter> getParameters();
+
+    /**
+     * Get an empty result set containing the meta data of the result.
+     *
+     * @return the empty result
+     */
+    Result getMetaData();
+
+    /**
+     * Check if this is a query.
+     *
+     * @return true if it is a query
+     */
     boolean isQuery();
 
     /**
-    * Get the parameters (if any).
-    *
-    * @return the parameters
-    */
-    ArrayList<? extends CommandParameter> getParameters();
+     * Execute the query.
+     *
+     * @param maxRows the maximum number of rows returned
+     * @return the result
+     */
+    Result query(int maxRows);
 
     /**
-    * Execute the query.
-    *
-    * @param maxRows the maximum number of rows returned
-    * @param scrollable if the result set must be scrollable
-    * @return the result
-    */
-    Result executeQuery(int maxRows, boolean scrollable);
+     * Execute the query.
+     *
+     * @param maxRows the maximum number of rows returned
+     * @param scrollable if the result set must be scrollable
+     * @return the result
+     */
+    Result query(int maxRows, boolean scrollable);
 
     /**
-    * Execute the statement
-    *
-    * @return the update count
-    */
-    int executeUpdate();
+     * Execute the update command
+     *
+     * @return the update count
+     */
+    int update();
 
     /**
-    * Close the statement.
-    */
-    void close();
+     * Execute the update command
+     *
+     * @param replicationName the replication name
+     * @return the update count
+     */
+    int update(String replicationName);
 
     /**
-    * Cancel the statement if it is still processing.
-    */
+     * Cancel the command if it is still processing.
+     */
     void cancel();
 
     /**
-    * Get an empty result set containing the meta data of the result.
-    *
-    * @return the empty result
-    */
-    Result getMetaData();
+     * Close the command.
+     */
+    void close();
 }

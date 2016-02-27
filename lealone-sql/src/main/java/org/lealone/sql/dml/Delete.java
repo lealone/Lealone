@@ -6,13 +6,10 @@
  */
 package org.lealone.sql.dml;
 
-import java.util.concurrent.Callable;
-
 import org.lealone.api.Trigger;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
-import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.RowList;
 import org.lealone.db.table.PlanItem;
@@ -22,17 +19,16 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * DELETE
  */
-public class Delete extends StatementBase implements Callable<Integer> {
+public class Delete extends ManipulateStatement {
 
     private Expression condition;
-    protected TableFilter tableFilter;
+    private TableFilter tableFilter;
 
     /**
      * The limit expression as specified in the LIMIT or TOP clause.
@@ -43,12 +39,27 @@ public class Delete extends StatementBase implements Callable<Integer> {
         super(session);
     }
 
-    public void setTableFilter(TableFilter tableFilter) {
-        this.tableFilter = tableFilter;
+    @Override
+    public int getType() {
+        return SQLStatement.DELETE;
     }
 
-    public TableFilter getTableFilter() {
-        return tableFilter;
+    @Override
+    public boolean isCacheable() {
+        return true;
+    }
+
+    public void setLimit(Expression limit) {
+        this.limitExpr = limit;
+    }
+
+    @Override
+    public boolean isBatch() {
+        return !containsEqualPartitionKeyComparisonType(tableFilter);
+    }
+
+    public void setTableFilter(TableFilter tableFilter) {
+        this.tableFilter = tableFilter;
     }
 
     public void setCondition(Expression condition) {
@@ -56,21 +67,21 @@ public class Delete extends StatementBase implements Callable<Integer> {
     }
 
     @Override
+    public PreparedStatement prepare() {
+        if (condition != null) {
+            condition.mapColumns(tableFilter, 0);
+            condition = condition.optimize(session);
+            condition.createIndexConditions(session, tableFilter);
+        }
+        PlanItem item = tableFilter.getBestPlanItem(session, 1);
+        tableFilter.setPlanItem(item);
+        tableFilter.prepare();
+
+        return this;
+    }
+
+    @Override
     public int update() {
-        return org.lealone.sql.RouterHolder.getRouter().executeDelete(this);
-    }
-
-    @Override
-    public int updateLocal() {
-        return deleteRows();
-    }
-
-    @Override
-    public Integer call() {
-        return Integer.valueOf(deleteRows());
-    }
-
-    private int deleteRows() {
         tableFilter.startQuery(session);
         tableFilter.reset();
         Table table = tableFilter.getTable();
@@ -140,50 +151,4 @@ public class Delete extends StatementBase implements Callable<Integer> {
         return buff.toString();
     }
 
-    @Override
-    public PreparedStatement prepare() {
-        if (condition != null) {
-            condition.mapColumns(tableFilter, 0);
-            condition = condition.optimize(session);
-            condition.createIndexConditions(session, tableFilter);
-        }
-        PlanItem item = tableFilter.getBestPlanItem(session, 1);
-        tableFilter.setPlanItem(item);
-        tableFilter.prepare();
-
-        return this;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
-    public Result queryMeta() {
-        return null;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DELETE;
-    }
-
-    public void setLimit(Expression limit) {
-        this.limitExpr = limit;
-    }
-
-    @Override
-    public boolean isCacheable() {
-        return true;
-    }
-
-    public Table getTable() {
-        return tableFilter.getTable();
-    }
-
-    @Override
-    public boolean isBatch() {
-        return !containsEqualPartitionKeyComparisonType(tableFilter);
-    }
 }

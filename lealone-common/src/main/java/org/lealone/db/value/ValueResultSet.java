@@ -11,7 +11,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.result.SimpleResultSet;
 
@@ -43,11 +43,11 @@ public class ValueResultSet extends Value {
      * be fully read in memory. The original result set is not closed.
      *
      * @param rs the result set
-     * @param maxrows the maximum number of rows to read (0 to just read the
+     * @param maxRows the maximum number of rows to read (0 to just read the
      *            meta data)
      * @return the value
      */
-    public static ValueResultSet getCopy(ResultSet rs, int maxrows) {
+    public static ValueResultSet getCopy(ResultSet rs, int maxRows) {
         try {
             ResultSetMetaData meta = rs.getMetaData();
             int columnCount = meta.getColumnCount();
@@ -61,7 +61,7 @@ public class ValueResultSet extends Value {
                 int scale = meta.getScale(i + 1);
                 simple.addColumn(name, sqlType, precision, scale);
             }
-            for (int i = 0; i < maxrows && rs.next(); i++) {
+            for (int i = 0; i < maxRows && rs.next(); i++) {
                 Object[] list = new Object[columnCount];
                 for (int j = 0; j < columnCount; j++) {
                     list[j] = rs.getObject(j + 1);

@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Constant;
@@ -30,6 +30,11 @@ public class CreateConstant extends SchemaStatement {
         super(session, schema);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_CONSTANT;
+    }
+
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
     }
@@ -46,10 +51,9 @@ public class CreateConstant extends SchemaStatement {
             throw DbException.get(ErrorCode.CONSTANT_ALREADY_EXISTS_1, constantName);
         }
         int id = getObjectId();
-        Constant constant = new Constant(getSchema(), id, constantName);
         expression = expression.optimize(session);
         Value value = expression.getValue(session);
-        constant.setValue(value);
+        Constant constant = new Constant(getSchema(), id, constantName, value);
         db.addSchemaObject(session, constant);
         return 0;
     }
@@ -60,11 +64,6 @@ public class CreateConstant extends SchemaStatement {
 
     public void setExpression(Expression expr) {
         this.expression = expr;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_CONSTANT;
     }
 
 }

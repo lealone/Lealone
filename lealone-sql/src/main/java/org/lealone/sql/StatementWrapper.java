@@ -7,12 +7,11 @@ package org.lealone.sql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
@@ -21,6 +20,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.router.RouterHolder;
 
 /**
  * Represents a SQL statement wrapper.
@@ -51,8 +51,8 @@ class StatementWrapper extends StatementBase {
     }
 
     @Override
-    public final Result getMetaData() {
-        return queryMeta();
+    public Result getMetaData() {
+        return statement.getMetaData();
     }
 
     /**
@@ -113,9 +113,8 @@ class StatementWrapper extends StatementBase {
      * @param scrollable if the result set must be scrollable (ignored)
      * @return the result set
      */
-
     @Override
-    public Result executeQuery(int maxRows, boolean scrollable) {
+    public Result query(int maxRows, boolean scrollable) {
         startTime = 0;
         long start = 0;
         Database database = session.getDatabase();
@@ -128,7 +127,7 @@ class StatementWrapper extends StatementBase {
                 while (true) {
                     database.checkPowerOff();
                     try {
-                        return query(maxRows);
+                        return queryInternal(maxRows);
                     } catch (DbException e) {
                         start = filterConcurrentUpdate(e, start);
                     } catch (OutOfMemoryError e) {
@@ -162,8 +161,19 @@ class StatementWrapper extends StatementBase {
         }
     }
 
+    private Result queryInternal(int maxRows) {
+        recompileIfRequired();
+        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+        start();
+        statement.checkParameters();
+        Result result = RouterHolder.getRouter().executeQuery(statement, maxRows);
+        statement.trace(startTime, result.getRowCount());
+        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+        return result;
+    }
+
     @Override
-    public int executeUpdate() {
+    public int update() {
         long start = 0;
         Database database = session.getDatabase();
         Object sync = database.isMultiThreaded() ? session : database;
@@ -176,7 +186,7 @@ class StatementWrapper extends StatementBase {
                 while (true) {
                     database.checkPowerOff();
                     try {
-                        return update();
+                        return updateInternal();
                     } catch (DbException e) {
                         start = filterConcurrentUpdate(e, start);
                     } catch (OutOfMemoryError e) {
@@ -209,6 +219,18 @@ class StatementWrapper extends StatementBase {
                 }
             }
         }
+    }
+
+    private int updateInternal() {
+        recompileIfRequired();
+        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+        start();
+        session.setLastScopeIdentity(ValueNull.INSTANCE);
+        statement.checkParameters();
+        int updateCount = RouterHolder.getRouter().executeUpdate(statement);
+        statement.trace(startTime, updateCount);
+        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+        return updateCount;
     }
 
     private long filterConcurrentUpdate(DbException e, long start) {
@@ -260,7 +282,6 @@ class StatementWrapper extends StatementBase {
      *
      * @return true if it can be re-used
      */
-
     @Override
     public boolean canReuse() {
         return statement.canReuse();
@@ -270,7 +291,6 @@ class StatementWrapper extends StatementBase {
      * The command is now re-used, therefore reset the canReuse flag, and the
      * parameter values.
      */
-
     @Override
     public void reuse() {
         statement.reuse();
@@ -300,31 +320,6 @@ class StatementWrapper extends StatementBase {
         }
     }
 
-    @Override
-    public int update() {
-        recompileIfRequired();
-        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-        start();
-        session.setLastScopeIdentity(ValueNull.INSTANCE);
-        statement.checkParameters();
-        int updateCount = statement.update();
-        statement.trace(startTime, updateCount);
-        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
-        return updateCount;
-    }
-
-    @Override
-    public Result query(int maxrows) {
-        recompileIfRequired();
-        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-        start();
-        statement.checkParameters();
-        Result result = statement.query(maxrows);
-        statement.trace(startTime, result.getRowCount());
-        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
-        return result;
-    }
-
     private boolean readOnlyKnown;
     private boolean readOnly;
 
@@ -335,11 +330,6 @@ class StatementWrapper extends StatementBase {
             readOnlyKnown = true;
         }
         return readOnly;
-    }
-
-    @Override
-    public Result queryMeta() {
-        return statement.queryMeta();
     }
 
     @Override
@@ -355,11 +345,6 @@ class StatementWrapper extends StatementBase {
     @Override
     public boolean isTransactional() {
         return statement.isTransactional();
-    }
-
-    @Override
-    public boolean isDDL() {
-        return statement.isDDL();
     }
 
     @Override
@@ -401,21 +386,6 @@ class StatementWrapper extends StatementBase {
     public PreparedStatement prepare() {
         statement.prepare();
         return this;
-    }
-
-    @Override
-    public int updateLocal() {
-        return statement.updateLocal();
-    }
-
-    @Override
-    public Result query(int maxRows, boolean scrollable) {
-        return statement.query(maxRows, scrollable);
-    }
-
-    @Override
-    public Result queryLocal(int maxrows) {
-        return statement.queryLocal(maxrows);
     }
 
     @Override
@@ -476,10 +446,5 @@ class StatementWrapper extends StatementBase {
     @Override
     public ServerSession getSession() {
         return statement.getSession();
-    }
-
-    @Override
-    public List<Long> getRowVersions() {
-        return statement.getRowVersions();
     }
 }

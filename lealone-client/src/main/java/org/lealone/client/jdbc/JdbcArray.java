@@ -13,8 +13,8 @@ import java.sql.Types;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.TraceObject;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.TraceObject;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.value.Value;
 
@@ -23,8 +23,8 @@ import org.lealone.db.value.Value;
  */
 public class JdbcArray extends TraceObject implements Array {
 
-    private Value value;
     private final JdbcConnection conn;
+    private Value value;
 
     /**
      * INTERNAL
@@ -41,6 +41,7 @@ public class JdbcArray extends TraceObject implements Array {
      *
      * @return the Object array
      */
+    @Override
     public Object getArray() throws SQLException {
         try {
             debugCodeCall("getArray");
@@ -58,6 +59,7 @@ public class JdbcArray extends TraceObject implements Array {
      * @param map is ignored. Only empty or null maps are supported
      * @return the Object array
      */
+    @Override
     public Object getArray(Map<String, Class<?>> map) throws SQLException {
         try {
             debugCode("getArray(" + quoteMap(map) + ");");
@@ -78,6 +80,7 @@ public class JdbcArray extends TraceObject implements Array {
      * @param count the maximum number of values
      * @return the Object array
      */
+    @Override
     public Object getArray(long index, int count) throws SQLException {
         try {
             debugCode("getArray(" + index + ", " + count + ");");
@@ -98,6 +101,7 @@ public class JdbcArray extends TraceObject implements Array {
      * @param map is ignored. Only empty or null maps are supported
      * @return the Object array
      */
+    @Override
     public Object getArray(long index, int count, Map<String, Class<?>> map) throws SQLException {
         try {
             debugCode("getArray(" + index + ", " + count + ", " + quoteMap(map) + ");");
@@ -115,6 +119,7 @@ public class JdbcArray extends TraceObject implements Array {
      *
      * @return Types.NULL
      */
+    @Override
     public int getBaseType() throws SQLException {
         try {
             debugCodeCall("getBaseType");
@@ -131,6 +136,7 @@ public class JdbcArray extends TraceObject implements Array {
      *
      * @return "NULL"
      */
+    @Override
     public String getBaseTypeName() throws SQLException {
         try {
             debugCodeCall("getBaseTypeName");
@@ -148,6 +154,7 @@ public class JdbcArray extends TraceObject implements Array {
      *
      * @return the result set
      */
+    @Override
     public ResultSet getResultSet() throws SQLException {
         try {
             debugCodeCall("getResultSet");
@@ -165,6 +172,7 @@ public class JdbcArray extends TraceObject implements Array {
      * @param map is ignored. Only empty or null maps are supported
      * @return the result set
      */
+    @Override
     public ResultSet getResultSet(Map<String, Class<?>> map) throws SQLException {
         try {
             debugCode("getResultSet(" + quoteMap(map) + ");");
@@ -186,6 +194,7 @@ public class JdbcArray extends TraceObject implements Array {
      * @param count the maximum number of values
      * @return the result set
      */
+    @Override
     public ResultSet getResultSet(long index, int count) throws SQLException {
         try {
             debugCode("getResultSet(" + index + ", " + count + ");");
@@ -208,6 +217,7 @@ public class JdbcArray extends TraceObject implements Array {
      * @param map is ignored. Only empty or null maps are supported
      * @return the result set
      */
+    @Override
     public ResultSet getResultSet(long index, int count, Map<String, Class<?>> map) throws SQLException {
         try {
             debugCode("getResultSet(" + index + ", " + count + ", " + quoteMap(map) + ");");
@@ -222,6 +232,7 @@ public class JdbcArray extends TraceObject implements Array {
     /**
      * Release all resources of this object.
      */
+    @Override
     public void free() {
         debugCodeCall("free");
         value = null;
@@ -271,6 +282,7 @@ public class JdbcArray extends TraceObject implements Array {
     /**
      * INTERNAL
      */
+    @Override
     public String toString() {
         return getTraceObjectName() + ": " + value.getTraceSQL();
     }

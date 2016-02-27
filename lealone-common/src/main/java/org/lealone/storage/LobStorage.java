@@ -10,18 +10,15 @@ import java.io.InputStream;
 import java.io.Reader;
 
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueLobDb;
+import org.lealone.db.value.ValueLob;
 
 /**
  * A mechanism to store and retrieve lob data.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface LobStorage {
-
-    /**
-     * The name of the lob data table. If this table exists, then lob storage is
-     * used.
-     */
-    final String LOB_DATA_TABLE = "LOB_DATA";
 
     /**
      * The table id for session variables (LOBs not assigned to a table).
@@ -39,13 +36,16 @@ public interface LobStorage {
     int TABLE_RESULT = -3;
 
     /**
-     * Create a CLOB object.
-     *
-     * @param reader the reader
-     * @param maxLength the maximum length (-1 if not known)
-     * @return the LOB
+     * Initialize the lob storage.
      */
-    Value createClob(Reader reader, long maxLength);
+    void init();
+
+    /**
+     * Whether the storage is read-only
+     *
+     * @return true if yes
+     */
+    boolean isReadOnly();
 
     /**
      * Create a BLOB object.
@@ -57,6 +57,15 @@ public interface LobStorage {
     Value createBlob(InputStream in, long maxLength);
 
     /**
+     * Create a CLOB object.
+     *
+     * @param reader the reader
+     * @param maxLength the maximum length (-1 if not known)
+     * @return the LOB
+     */
+    Value createClob(Reader reader, long maxLength);
+
+    /**
      * Copy a lob.
      *
      * @param old the old lob
@@ -64,7 +73,7 @@ public interface LobStorage {
      * @param length the length
      * @return the new lob
      */
-    ValueLobDb copyLob(ValueLobDb old, int tableId, long length);
+    ValueLob copyLob(ValueLob old, int tableId, long length);
 
     /**
      * Get the input stream for the given lob.
@@ -74,7 +83,7 @@ public interface LobStorage {
      * @param byteCount the number of bytes to read, or -1 if not known
      * @return the stream
      */
-    InputStream getInputStream(ValueLobDb lob, byte[] hmac, long byteCount) throws IOException;
+    InputStream getInputStream(ValueLob lob, byte[] hmac, long byteCount) throws IOException;
 
     /**
      * Set the table reference of this lob.
@@ -82,14 +91,7 @@ public interface LobStorage {
      * @param lob the lob
      * @param table the table
      */
-    void setTable(ValueLobDb lob, int table);
-
-    /**
-     * Delete a LOB (from the database, if it is stored there).
-     *
-     * @param lob the lob
-     */
-    void removeLob(ValueLobDb lob);
+    void setTable(ValueLob lob, int table);
 
     /**
      * Remove all LOBs for this table.
@@ -99,15 +101,10 @@ public interface LobStorage {
     void removeAllForTable(int tableId);
 
     /**
-     * Initialize the lob storage.
-     */
-    void init();
-
-    /**
-     * Whether the storage is read-only
+     * Delete a LOB (from the database, if it is stored there).
      *
-     * @return true if yes
+     * @param lob the lob
      */
-    boolean isReadOnly();
+    void removeLob(ValueLob lob);
 
 }

@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandParameter;
@@ -125,7 +125,7 @@ public class SelectUnion extends Query {
     }
 
     @Override
-    public Result queryMeta() {
+    public Result getMetaData() {
         int columnCount = left.getColumnCount();
         LocalResult result = new LocalResult(session, expressionArray, columnCount);
         result.done();

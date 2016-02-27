@@ -6,7 +6,7 @@
  */
 package org.lealone.db.util;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 
 /**
  * A hash map with int key and int values. There is a restriction: the

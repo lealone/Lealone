@@ -7,11 +7,9 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -22,7 +20,7 @@ import org.lealone.sql.expression.Expression;
  * ALTER USER RENAME,
  * ALTER USER SET PASSWORD
  */
-public class AlterUser extends DefineStatement {
+public class AlterUser extends DefineStatement implements AuthStatement {
 
     private int type;
     private User user;
@@ -34,6 +32,11 @@ public class AlterUser extends DefineStatement {
 
     public AlterUser(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return type;
     }
 
     public void setType(int type) {
@@ -67,7 +70,7 @@ public class AlterUser extends DefineStatement {
     @Override
     public int update() {
         session.commit(true);
-        Database db = LealoneDatabase.getInstance();
+        Database db = session.getDatabase();
         switch (type) {
         case SQLStatement.ALTER_USER_SET_PASSWORD:
             if (user != session.getUser()) {
@@ -81,7 +84,7 @@ public class AlterUser extends DefineStatement {
             break;
         case SQLStatement.ALTER_USER_RENAME:
             session.getUser().checkAdmin();
-            if (Auth.findUser(newName) != null || newName.equals(user.getName())) {
+            if (db.findUser(newName) != null || newName.equals(user.getName())) {
                 throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, newName);
             }
             db.renameDatabaseObject(session, user, newName);
@@ -98,11 +101,6 @@ public class AlterUser extends DefineStatement {
         }
         db.updateMeta(session, user);
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return type;
     }
 
 }

@@ -18,18 +18,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
-import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.expression.Expression;
-import org.lealone.db.table.Table;
 import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -52,7 +51,12 @@ public class FunctionAlias extends SchemaObjectBase {
     private boolean bufferResultSetToLocalTemp = true;
 
     private FunctionAlias(Schema schema, int id, String name) {
-        initSchemaObjectBase(schema, id, name, Trace.FUNCTION);
+        super(schema, id, name, Trace.FUNCTION);
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.FUNCTION_ALIAS;
     }
 
     /**
@@ -190,16 +194,6 @@ public class FunctionAlias extends SchemaObjectBase {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public String getDropSQL() {
-        return "DROP ALIAS IF EXISTS " + getSQL();
-    }
-
-    @Override
     public String getSQL() {
         // TODO can remove this method once FUNCTIONS_IN_SCHEMA is enabled
         if (database.getSettings().functionsInSchema || !getSchema().getName().equals(Constants.SCHEMA_MAIN)) {
@@ -227,8 +221,8 @@ public class FunctionAlias extends SchemaObjectBase {
     }
 
     @Override
-    public int getType() {
-        return DbObject.FUNCTION_ALIAS;
+    public String getDropSQL() {
+        return "DROP ALIAS IF EXISTS " + getSQL();
     }
 
     @Override

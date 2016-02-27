@@ -9,9 +9,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
@@ -19,6 +19,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.MetaTable;
@@ -39,6 +40,11 @@ public class User extends RightOwner {
     public User(Database database, int id, String userName, boolean systemUser) {
         super(database, id, userName, Trace.USER);
         this.systemUser = systemUser;
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.USER;
     }
 
     public void setAdmin(boolean admin) {
@@ -78,21 +84,6 @@ public class User extends RightOwner {
         }
     }
 
-    @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public String getCreateSQL() {
-        return getCreateSQL(true);
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
-    }
-
     /**
      * Checks that this user has the given rights for this database object.
      *
@@ -120,7 +111,7 @@ public class User extends RightOwner {
         if (admin) {
             return true;
         }
-        Role publicRole = Auth.getPublicRole();
+        Role publicRole = database.getPublicRole();
         if (publicRole.isRightGrantedRecursive(table, rightMask)) {
             return true;
         }
@@ -153,31 +144,6 @@ public class User extends RightOwner {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Get the CREATE SQL statement for this object.
-     *
-     * @param password true if the password (actually the salt and hash) should
-     *            be returned
-     * @return the SQL statement
-     */
-    public String getCreateSQL(boolean password) {
-        StringBuilder buff = new StringBuilder("CREATE USER IF NOT EXISTS ");
-        buff.append(getSQL());
-        if (comment != null) {
-            buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
-        }
-        if (password) {
-            buff.append(" SALT '").append(StringUtils.convertBytesToHex(salt)).append("' HASH '")
-                    .append(StringUtils.convertBytesToHex(passwordHash)).append('\'');
-        } else {
-            buff.append(" PASSWORD ''");
-        }
-        if (admin) {
-            buff.append(" ADMIN");
-        }
-        return buff.toString();
     }
 
     /**
@@ -221,15 +187,54 @@ public class User extends RightOwner {
         }
     }
 
+    /**
+     * Check that this user does not own any schema. An exception is thrown if
+     * he owns one or more schemas.
+     *
+     * @throws DbException if this user owns a schema
+     */
+    public void checkOwnsNoSchemas(ServerSession session) {
+        for (Schema s : session.getDatabase().getAllSchemas()) {
+            if (this == s.getOwner()) {
+                throw DbException.get(ErrorCode.CANNOT_DROP_2, getName(), s.getName());
+            }
+        }
+    }
+
+    /**
+     * Get the CREATE SQL statement for this object.
+     *
+     * @param password true if the password (actually the salt and hash) should
+     *            be returned
+     * @return the SQL statement
+     */
+    public String getCreateSQL(boolean password) {
+        StringBuilder buff = new StringBuilder("CREATE USER IF NOT EXISTS ");
+        buff.append(getSQL());
+        if (comment != null) {
+            buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
+        }
+        if (password) {
+            buff.append(" SALT '").append(StringUtils.convertBytesToHex(salt)).append("' HASH '")
+                    .append(StringUtils.convertBytesToHex(passwordHash)).append('\'');
+        } else {
+            buff.append(" PASSWORD ''");
+        }
+        if (admin) {
+            buff.append(" ADMIN");
+        }
+        return buff.toString();
+    }
+
     @Override
-    public int getType() {
-        return DbObject.USER;
+    public String getCreateSQL() {
+        return getCreateSQL(true);
     }
 
     @Override
     public ArrayList<DbObject> getChildren() {
         ArrayList<DbObject> children = New.arrayList();
-        for (Right right : Auth.getAllRights()) {
+        for (Right right : database.getAllRights()) {
             if (right.getGrantee() == this) {
                 children.add(right);
             }
@@ -244,35 +249,15 @@ public class User extends RightOwner {
 
     @Override
     public void removeChildrenAndResources(ServerSession session) {
-        for (Right right : Auth.getAllRights()) {
+        for (Right right : database.getAllRights()) {
             if (right.getGrantee() == this) {
                 database.removeDatabaseObject(session, right);
             }
         }
-        database.removeMeta(session, getId());
         salt = null;
         Arrays.fill(passwordHash, (byte) 0);
         passwordHash = null;
-        invalidate();
-    }
-
-    @Override
-    public void checkRename() {
-        // ok
-    }
-
-    /**
-     * Check that this user does not own any schema. An exception is thrown if
-     * he owns one or more schemas.
-     *
-     * @throws DbException if this user owns a schema
-     */
-    public void checkOwnsNoSchemas(ServerSession session) {
-        for (Schema s : session.getDatabase().getAllSchemas()) {
-            if (this == s.getOwner()) {
-                throw DbException.get(ErrorCode.CANNOT_DROP_2, getName(), s.getName());
-            }
-        }
+        super.removeChildrenAndResources(session);
     }
 
 }

@@ -17,14 +17,13 @@
  */
 package org.lealone.test.db;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.result.Result;
@@ -48,16 +47,15 @@ public class DbObjectTestBase extends UnitTestBase {
         ConnectionInfo ci = new ConnectionInfo(getURL(DB_NAME));
         session = DatabaseEngine.createSession(ci);
         db = session.getDatabase();
-        // session = db.getSystemSession();
         schema = db.findSchema(Constants.SCHEMA_MAIN);
     }
 
     public int executeUpdate(String sql) {
-        return session.prepareStatementLocal(sql).executeUpdate();
+        return session.prepareStatementLocal(sql).update();
     }
 
     public Result executeQuery(String sql) {
-        return session.prepareStatementLocal(sql).executeQuery(0, false);
+        return session.prepareStatementLocal(sql).query(0, false);
     }
 
     // index从1开始
@@ -90,18 +88,14 @@ public class DbObjectTestBase extends UnitTestBase {
     }
 
     public User findUser(String userName) {
-        return Auth.findUser(userName);
+        return db.findUser(userName);
     }
 
     public Role findRole(String roleName) {
-        return Auth.findRole(roleName);
+        return db.findRole(roleName);
     }
 
     public SearchRow findMeta(int id) {
-        return db.findMeta(session, id);
-    }
-
-    public SearchRow findMeta(Database db, int id) {
         return db.findMeta(session, id);
     }
 

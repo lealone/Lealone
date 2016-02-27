@@ -8,7 +8,7 @@ package org.lealone.db.index;
 
 import java.util.ArrayList;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -27,7 +27,8 @@ public class MetaIndex extends IndexBase {
     private final boolean scan;
 
     public MetaIndex(MetaTable meta, IndexColumn[] columns, boolean scan) {
-        initIndexBase(meta, 0, null, columns, IndexType.createNonUnique(true));
+        super(meta, 0, null, IndexType.createNonUnique());
+        setIndexColumns(columns);
         this.meta = meta;
         this.scan = scan;
     }

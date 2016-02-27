@@ -6,7 +6,7 @@
  */
 package org.lealone.db.util;
 
-import org.lealone.common.message.Trace;
+import org.lealone.common.trace.Trace;
 
 /**
  * The cache writer is called by the cache to persist changed data that needs to

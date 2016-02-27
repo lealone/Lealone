@@ -16,22 +16,23 @@ import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.DbSettings;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Procedure;
+import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.ConstraintReferential;
@@ -63,6 +64,8 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
+import org.lealone.sql.admin.ShutdownServer;
+import org.lealone.sql.ddl.AlterDatabase;
 import org.lealone.sql.ddl.AlterIndexRename;
 import org.lealone.sql.ddl.AlterSchemaRename;
 import org.lealone.sql.ddl.AlterSchemaWithReplication;
@@ -91,7 +94,6 @@ import org.lealone.sql.ddl.CreateUserDataType;
 import org.lealone.sql.ddl.CreateView;
 import org.lealone.sql.ddl.DeallocateProcedure;
 import org.lealone.sql.ddl.DefineStatement;
-import org.lealone.sql.ddl.DefineStatementWrapper;
 import org.lealone.sql.ddl.DropAggregate;
 import org.lealone.sql.ddl.DropConstant;
 import org.lealone.sql.ddl.DropDatabase;
@@ -215,12 +217,12 @@ public class Parser implements SQLParser {
 
     @Override
     public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
-        return new BatchStatementImpl(session, (StatementBase) ps, batchParameters);
+        return new ServerBatchStatement(session, (StatementBase) ps, batchParameters);
     }
 
     @Override
     public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
-        return new BatchStatementImpl(session, batchCommands);
+        return new ServerBatchStatement(session, batchCommands);
     }
 
     /**
@@ -265,10 +267,6 @@ public class Parser implements SQLParser {
 
             s.setPrepareAlways(recompileAlways);
             s.setParameterList(parameters);
-
-            if (s.isDDL()) {
-                s = new DefineStatementWrapper(session, (DefineStatement) s);
-            }
             StatementWrapper sw = new StatementWrapper(session, s);
             s = sw;
             boolean hasMore = isToken(";");
@@ -335,6 +333,8 @@ public class Parser implements SQLParser {
                     s = parseAlter();
                 } else if (readIf("ANALYZE")) {
                     s = parseAnalyze();
+                } else if (readIf("ADMIN")) {
+                    s = parseAdmin();
                 }
                 break;
             case 'b':
@@ -538,6 +538,21 @@ public class Parser implements SQLParser {
             command.setTop(readPositiveInt());
         }
         return command;
+    }
+
+    private StatementBase parseAdmin() {
+        if (readIf("SHUTDOWN")) {
+            return parseShutdownServer();
+        } else {
+            throw getSyntaxError();
+        }
+
+    }
+
+    private StatementBase parseShutdownServer() {
+        read("SERVER");
+        int port = readInt();
+        return new ShutdownServer(session, port);
     }
 
     private TransactionStatement parseBegin() {
@@ -1016,9 +1031,6 @@ public class Parser implements SQLParser {
         if (readIf("DIRECT")) {
             command.setInsertFromSelect(true);
         }
-        if (readIf("SORTED")) {
-            command.setSortedInsertMode(true);
-        }
         if (readIf("DEFAULT")) {
             read("VALUES");
             Expression[] expr = {};
@@ -1081,34 +1093,34 @@ public class Parser implements SQLParser {
     }
 
     private StatementBase parseComment() {
-        int type = 0;
+        DbObjectType type = null;
         read("ON");
         boolean column = false;
         if (readIf("TABLE") || readIf("VIEW")) {
-            type = DbObject.TABLE_OR_VIEW;
+            type = DbObjectType.TABLE_OR_VIEW;
         } else if (readIf("COLUMN")) {
             column = true;
-            type = DbObject.TABLE_OR_VIEW;
+            type = DbObjectType.TABLE_OR_VIEW;
         } else if (readIf("CONSTANT")) {
-            type = DbObject.CONSTANT;
+            type = DbObjectType.CONSTANT;
         } else if (readIf("CONSTRAINT")) {
-            type = DbObject.CONSTRAINT;
+            type = DbObjectType.CONSTRAINT;
         } else if (readIf("ALIAS")) {
-            type = DbObject.FUNCTION_ALIAS;
+            type = DbObjectType.FUNCTION_ALIAS;
         } else if (readIf("INDEX")) {
-            type = DbObject.INDEX;
+            type = DbObjectType.INDEX;
         } else if (readIf("ROLE")) {
-            type = DbObject.ROLE;
+            type = DbObjectType.ROLE;
         } else if (readIf("SCHEMA")) {
-            type = DbObject.SCHEMA;
+            type = DbObjectType.SCHEMA;
         } else if (readIf("SEQUENCE")) {
-            type = DbObject.SEQUENCE;
+            type = DbObjectType.SEQUENCE;
         } else if (readIf("TRIGGER")) {
-            type = DbObject.TRIGGER;
+            type = DbObjectType.TRIGGER;
         } else if (readIf("USER")) {
-            type = DbObject.USER;
+            type = DbObjectType.USER;
         } else if (readIf("DOMAIN")) {
-            type = DbObject.USER_DATATYPE;
+            type = DbObjectType.USER_DATATYPE;
         } else {
             throw getSyntaxError();
         }
@@ -2919,14 +2931,6 @@ public class Parser implements SQLParser {
         }
         String s = currentToken;
         read();
-        if (table.supportsColumnFamily() && readIf(".")) {
-            if (currentTokenType != IDENTIFIER) {
-                throw DbException.getSyntaxError(sqlCommand, parseIndex, "identifier");
-            }
-            s = s + "." + currentToken;
-
-            read();
-        }
         return s;
     }
 
@@ -3932,6 +3936,8 @@ public class Parser implements SQLParser {
             return parseCreateAggregate(force);
         } else if (readIf("DATABASE")) {
             return parseCreateDatabase();
+        } else if (readIf("TENANT")) {
+            return parseCreateDatabase();
         }
         // table or index
         boolean memory = false, cached = false;
@@ -3969,7 +3975,7 @@ public class Parser implements SQLParser {
                 }
                 primaryKey = true;
                 if (!isToken("ON")) {
-                    ifNotExists = readIfNoExists();
+                    ifNotExists = readIfNotExists();
                     indexName = readIdentifierWithSchema(null);
                     oldSchema = getSchema();
                 }
@@ -3982,7 +3988,7 @@ public class Parser implements SQLParser {
                 }
                 if (readIf("INDEX")) {
                     if (!isToken("ON")) {
-                        ifNotExists = readIfNoExists();
+                        ifNotExists = readIfNotExists();
                         indexName = readIdentifierWithSchema(null);
                         oldSchema = getSchema();
                     }
@@ -4184,28 +4190,56 @@ public class Parser implements SQLParser {
 
     private CreateRole parseCreateRole() {
         CreateRole command = new CreateRole(session);
-        command.setIfNotExists(readIfNoExists());
+        command.setIfNotExists(readIfNotExists());
         command.setRoleName(readUniqueIdentifier());
         return command;
     }
 
     private CreateDatabase parseCreateDatabase() {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         String dbName = readUniqueIdentifier();
-        Map<String, String> parameters = null;
+
+        RunMode runMode = parseRunMode();
         Map<String, String> replicationProperties = null;
+        // Map<String, String> resourceQuota = null;
+        Map<String, String> parameters = null;
+        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING) {
+            if (readIf("REPLICATION")) {
+                read("STRATEGY");
+                replicationProperties = parseParameters();
+                checkReplicationProperties(replicationProperties);
+            }
+        }
+        // if (readIf("RESOURCE")) {
+        // read("QUOTA");
+        // resourceQuota = parseParameters();
+        // }
         if (readIf("WITH"))
             parameters = parseParameters();
-        if (readIf("REPLICATION")) {
-            replicationProperties = parseParameters();
-            checkReplicationProperties(replicationProperties);
+        // return new CreateDatabase(session, dbName, ifNotExists, runMode, replicationProperties, resourceQuota,
+        // parameters);
+
+        return new CreateDatabase(session, dbName, ifNotExists, runMode, replicationProperties, parameters);
+    }
+
+    private RunMode parseRunMode() {
+        if (readIf("RUN")) {
+            read("MODE");
+            if (readIf("CLIENT_SERVER"))
+                return RunMode.CLIENT_SERVER;
+            else if (readIf("REPLICATION"))
+                return RunMode.REPLICATION;
+            else {
+                read("SHARDING");
+                return RunMode.SHARDING;
+            }
         }
-        return new CreateDatabase(session, dbName, ifNotExists, parameters, replicationProperties);
+        return null;
     }
 
     private CreateSchema parseCreateSchema() {
         CreateSchema command = new CreateSchema(session);
-        command.setIfNotExists(readIfNoExists());
+        command.setIfNotExists(readIfNotExists());
         command.setSchemaName(readUniqueIdentifier());
         if (readIf("AUTHORIZATION")) {
             command.setAuthorization(readUniqueIdentifier());
@@ -4243,7 +4277,7 @@ public class Parser implements SQLParser {
     }
 
     private CreateSequence parseCreateSequence() {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         String sequenceName = readIdentifierWithSchema();
         CreateSequence command = new CreateSequence(session, getSchema());
         command.setIfNotExists(ifNotExists);
@@ -4292,7 +4326,7 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private boolean readIfNoExists() {
+    private boolean readIfNotExists() {
         if (readIf("IF")) {
             read("NOT");
             read("EXISTS");
@@ -4302,7 +4336,7 @@ public class Parser implements SQLParser {
     }
 
     private CreateConstant parseCreateConstant() {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         String constantName = readIdentifierWithSchema();
         Schema schema = getSchema();
         if (isKeyword(constantName)) {
@@ -4318,7 +4352,7 @@ public class Parser implements SQLParser {
     }
 
     private CreateAggregate parseCreateAggregate(boolean force) {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         CreateAggregate command = new CreateAggregate(session);
         command.setForce(force);
         String name = readIdentifierWithSchema();
@@ -4334,7 +4368,7 @@ public class Parser implements SQLParser {
     }
 
     private CreateUserDataType parseCreateUserDataType() {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         CreateUserDataType command = new CreateUserDataType(session);
         command.setTypeName(readUniqueIdentifier());
         read("AS");
@@ -4350,7 +4384,7 @@ public class Parser implements SQLParser {
     }
 
     private CreateTrigger parseCreateTrigger(boolean force) {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         String triggerName = readIdentifierWithSchema(null);
         Schema schema = getSchema();
         boolean insteadOf, isBefore;
@@ -4417,7 +4451,7 @@ public class Parser implements SQLParser {
 
     private CreateUser parseCreateUser() {
         CreateUser command = new CreateUser(session);
-        command.setIfNotExists(readIfNoExists());
+        command.setIfNotExists(readIfNotExists());
         command.setUserName(readUniqueIdentifier());
         command.setComment(readCommentIf());
         if (readIf("PASSWORD")) {
@@ -4440,7 +4474,7 @@ public class Parser implements SQLParser {
     }
 
     private CreateFunctionAlias parseCreateFunctionAlias(boolean force) {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         String aliasName = readIdentifierWithSchema();
         if (isKeyword(aliasName) || Function.getFunction(database, aliasName) != null
                 || getAggregateType(aliasName) >= 0) {
@@ -4516,7 +4550,7 @@ public class Parser implements SQLParser {
     }
 
     private CreateView parseCreateView(boolean force, boolean orReplace) {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         String viewName = readIdentifierWithSchema();
         CreateView command = new CreateView(session, getSchema());
         this.createView = command;
@@ -4571,6 +4605,10 @@ public class Parser implements SQLParser {
             return parseAlterSequence();
         } else if (readIf("VIEW")) {
             return parseAlterView();
+        } else if (readIf("DATABASE")) {
+            return parseAlterDatabase();
+        } else if (readIf("TENANT")) {
+            return parseAlterDatabase();
         }
         throw getSyntaxError();
     }
@@ -4579,6 +4617,22 @@ public class Parser implements SQLParser {
         if (old != null && getSchema() != old) {
             throw DbException.get(ErrorCode.SCHEMA_NAME_MUST_MATCH);
         }
+    }
+
+    private AlterDatabase parseAlterDatabase() {
+        String dbName = readUniqueIdentifier();
+        Database db = LealoneDatabase.getInstance().getDatabase(dbName);
+        Map<String, String> parameters = null;
+        Map<String, String> replicationProperties = null;
+        if (readIf("WITH"))
+            parameters = parseParameters();
+        if (readIf("REPLICATION")) {
+            replicationProperties = parseParameters();
+            checkReplicationProperties(replicationProperties);
+        }
+
+        RunMode runMode = parseRunMode();
+        return new AlterDatabase(session, db, parameters, replicationProperties, runMode);
     }
 
     private AlterIndexRename parseAlterIndex() {
@@ -4691,7 +4745,7 @@ public class Parser implements SQLParser {
         if (readIf("SET")) {
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
-            command.setUser(Auth.getUser(userName));
+            command.setUser(database.getUser(userName));
             if (readIf("PASSWORD")) {
                 command.setPassword(readExpression());
             } else if (readIf("SALT")) {
@@ -4706,14 +4760,14 @@ public class Parser implements SQLParser {
             read("TO");
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_RENAME);
-            command.setUser(Auth.getUser(userName));
+            command.setUser(database.getUser(userName));
             String newName = readUniqueIdentifier();
             command.setNewName(newName);
             return command;
         } else if (readIf("ADMIN")) {
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_ADMIN);
-            User user = Auth.getUser(userName);
+            User user = database.getUser(userName);
             command.setUser(user);
             if (readIf("TRUE")) {
                 command.setAdmin(true);
@@ -5315,7 +5369,7 @@ public class Parser implements SQLParser {
             read(")");
             command.setNewColumns(columnsToAdd);
         } else {
-            boolean ifNotExists = readIfNoExists();
+            boolean ifNotExists = readIfNotExists();
             command.setIfNotExists(ifNotExists);
             String columnName = readColumnIdentifier(table);
             Column column = parseColumnForTable(columnName, true);
@@ -5362,7 +5416,7 @@ public class Parser implements SQLParser {
         boolean ifNotExists = false;
         boolean allowIndexDefinition = database.getMode().indexDefinitionInCreateTable;
         if (readIf("CONSTRAINT")) {
-            ifNotExists = readIfNoExists();
+            ifNotExists = readIfNotExists();
             constraintName = readIdentifierWithSchema(schema.getName());
             checkSchema(schema);
             comment = readCommentIf();
@@ -5493,11 +5547,9 @@ public class Parser implements SQLParser {
         }
     }
 
-    private Column parseColumn(Schema schema, CreateTable command, String tableName, String cfName) {
+    private Column parseColumn(Schema schema, CreateTable command, String tableName) {
         String columnName = readColumnIdentifier();
         Column column = parseColumnForTable(columnName, true);
-        if (cfName != null)
-            column.setColumnFamilyName(cfName);
         if (column.isAutoIncrement() && column.isPrimaryKey()) {
             column.setPrimaryKey(false);
             column.setRowKeyColumn(true);
@@ -5576,13 +5628,13 @@ public class Parser implements SQLParser {
             if (c != null) {
                 command.addConstraintCommand(c);
             } else {
-                parseColumn(schema, command, tableName, null);
+                parseColumn(schema, command, tableName);
             }
         } while (readIfMore());
     }
 
     private CreateTable parseCreateTable(boolean temp, boolean globalTemp, boolean persistIndexes) {
-        boolean ifNotExists = readIfNoExists();
+        boolean ifNotExists = readIfNotExists();
         String tableName = readIdentifierWithSchema();
         if (temp && globalTemp && equalsToken("SESSION", schemaName)) {
             // support weird syntax: declare global temporary table session.xy
@@ -5652,9 +5704,6 @@ public class Parser implements SQLParser {
             command.setHidden(true);
         }
         if (readIf("AS")) {
-            if (readIf("SORTED")) {
-                command.setSortedInsertMode(true);
-            }
             command.setQuery(parseSelect());
         }
         return command;

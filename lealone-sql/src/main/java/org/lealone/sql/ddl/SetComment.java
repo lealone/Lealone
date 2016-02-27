@@ -7,12 +7,12 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Comment;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -27,11 +27,16 @@ public class SetComment extends DefineStatement {
     private String objectName;
     private boolean column;
     private String columnName;
-    private int objectType;
+    private DbObjectType objectType;
     private Expression expr;
 
     public SetComment(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.COMMENT;
     }
 
     @Override
@@ -45,44 +50,44 @@ public class SetComment extends DefineStatement {
             schemaName = session.getCurrentSchemaName();
         }
         switch (objectType) {
-        case DbObject.CONSTANT:
+        case CONSTANT:
             object = db.getSchema(schemaName).getConstant(objectName);
             break;
-        case DbObject.CONSTRAINT:
+        case CONSTRAINT:
             object = db.getSchema(schemaName).getConstraint(objectName);
             break;
-        case DbObject.FUNCTION_ALIAS:
+        case FUNCTION_ALIAS:
             object = db.getSchema(schemaName).findFunction(objectName);
             errorCode = ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1;
             break;
-        case DbObject.INDEX:
+        case INDEX:
             object = db.getSchema(schemaName).getIndex(objectName);
             break;
-        case DbObject.ROLE:
+        case ROLE:
             schemaName = null;
-            object = Auth.findRole(objectName);
+            object = db.findRole(objectName);
             errorCode = ErrorCode.ROLE_NOT_FOUND_1;
             break;
-        case DbObject.SCHEMA:
+        case SCHEMA:
             schemaName = null;
             object = db.findSchema(objectName);
             errorCode = ErrorCode.SCHEMA_NOT_FOUND_1;
             break;
-        case DbObject.SEQUENCE:
+        case SEQUENCE:
             object = db.getSchema(schemaName).getSequence(objectName);
             break;
-        case DbObject.TABLE_OR_VIEW:
+        case TABLE_OR_VIEW:
             object = db.getSchema(schemaName).getTableOrView(session, objectName);
             break;
-        case DbObject.TRIGGER:
+        case TRIGGER:
             object = db.getSchema(schemaName).findTrigger(objectName);
             errorCode = ErrorCode.TRIGGER_NOT_FOUND_1;
             break;
-        case DbObject.USER:
+        case USER:
             schemaName = null;
-            object = Auth.getUser(objectName);
+            object = db.getUser(objectName);
             break;
-        case DbObject.USER_DATATYPE:
+        case USER_DATATYPE:
             schemaName = null;
             object = db.findUserDataType(objectName);
             errorCode = ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1;
@@ -99,8 +104,8 @@ public class SetComment extends DefineStatement {
         } else {
             object.setComment(text);
         }
-        if (column || objectType == DbObject.TABLE_OR_VIEW || objectType == DbObject.USER
-                || objectType == DbObject.INDEX || objectType == DbObject.CONSTRAINT) {
+        if (column || objectType == DbObjectType.TABLE_OR_VIEW || objectType == DbObjectType.USER
+                || objectType == DbObjectType.INDEX || objectType == DbObjectType.CONSTRAINT) {
             db.updateMeta(session, object);
         } else {
             Comment comment = db.findComment(object);
@@ -133,7 +138,7 @@ public class SetComment extends DefineStatement {
         this.objectName = objectName;
     }
 
-    public void setObjectType(int objectType) {
+    public void setObjectType(DbObjectType objectType) {
         this.objectType = objectType;
     }
 
@@ -147,11 +152,6 @@ public class SetComment extends DefineStatement {
 
     public void setColumn(boolean column) {
         this.column = column;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.COMMENT;
     }
 
 }

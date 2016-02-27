@@ -20,7 +20,7 @@ package org.lealone.client.result;
 import java.io.IOException;
 
 import org.lealone.client.ClientSession;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 
@@ -62,9 +62,6 @@ public class RowCountDeterminedClientResult extends ClientResult {
                 for (int r = 0; r < fetch; r++) {
                     boolean row = transfer.readBoolean();
                     if (!row) {
-                        if (transfer.available() > 0) {
-                            fetchRowsThrowException();
-                        }
                         break;
                     }
                     int len = columns.length;

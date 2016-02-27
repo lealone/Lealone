@@ -9,7 +9,7 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -37,6 +37,11 @@ public class CreateView extends SchemaStatement {
 
     public CreateView(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_VIEW;
     }
 
     public void setViewName(String name) {
@@ -118,11 +123,6 @@ public class CreateView extends SchemaStatement {
             db.updateMeta(session, view);
         }
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_VIEW;
     }
 
 }

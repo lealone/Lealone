@@ -25,7 +25,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.New;

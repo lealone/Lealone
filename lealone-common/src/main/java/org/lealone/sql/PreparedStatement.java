@@ -17,24 +17,13 @@
  */
 package org.lealone.sql;
 
-import java.util.ArrayList;
-
-import org.lealone.db.CommandParameter;
-import org.lealone.db.result.Result;
-
 public interface PreparedStatement extends SQLStatement {
-
-    void setLocal(boolean local);
 
     void setFetchSize(int fetchSize);
 
     int getFetchSize();
 
-    @Override
-    ArrayList<? extends CommandParameter> getParameters();
-
-    @Override
-    boolean isQuery();
+    void setLocal(boolean local);
 
     boolean isLocal();
 
@@ -44,12 +33,6 @@ public interface PreparedStatement extends SQLStatement {
 
     void setObjectId(int i);
 
-    int update();
-
-    Result query(int maxrows);
-
-    Result query(int maxrows, boolean scrollable);
-
     void checkCanceled();
 
     boolean canReuse();
@@ -57,20 +40,5 @@ public interface PreparedStatement extends SQLStatement {
     void reuse();
 
     boolean isCacheable();
-
-    @Override
-    void close();
-
-    @Override
-    void cancel();
-
-    @Override
-    Result executeQuery(int maxRows, boolean scrollable);
-
-    @Override
-    int executeUpdate();
-
-    @Override
-    Result getMetaData();
 
 }

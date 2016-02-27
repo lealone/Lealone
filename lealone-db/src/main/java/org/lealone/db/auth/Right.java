@@ -5,11 +5,12 @@
  */
 package org.lealone.db.auth;
 
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
@@ -72,13 +73,13 @@ public class Right extends DbObjectBase {
     private DbObject grantedObject;
 
     public Right(Database db, int id, RightOwner grantee, Role grantedRole) {
-        initDbObjectBase(db, id, "RIGHT_" + id, Trace.USER);
+        super(db, id, "RIGHT_" + id, Trace.USER);
         this.grantee = grantee;
         this.grantedRole = grantedRole;
     }
 
     public Right(Database db, int id, RightOwner grantee, int grantedRight, DbObject grantedObject) {
-        initDbObjectBase(db, id, "" + id, Trace.USER);
+        super(db, id, "" + id, Trace.USER);
         this.grantee = grantee;
         this.grantedRight = grantedRight;
         this.grantedObject = grantedObject;
@@ -87,6 +88,11 @@ public class Right extends DbObjectBase {
         // grantedObject有可能为null，如: GRANT ALTER ANY SCHEMA
         if (grantedObject != null && (grantedObject.isTemporary() || !grantedObject.getDatabase().isPersistent()))
             setTemporary(true);
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.RIGHT;
     }
 
     private static boolean appendRight(StringBuilder buff, int right, int mask, String name, boolean comma) {
@@ -128,11 +134,6 @@ public class Right extends DbObjectBase {
     }
 
     @Override
-    public String getDropSQL() {
-        return null;
-    }
-
-    @Override
     public String getCreateSQLForCopy(Table table, String quotedName) {
         return getCreateSQLForCopy(table);
     }
@@ -162,22 +163,16 @@ public class Right extends DbObjectBase {
     }
 
     @Override
-    public int getType() {
-        return DbObject.RIGHT;
-    }
-
-    @Override
     public void removeChildrenAndResources(ServerSession session) {
         if (grantedRole != null) {
             grantee.revokeRole(grantedRole);
         } else {
             grantee.revokeRight(grantedObject);
         }
-        database.removeMeta(session, getId());
         grantedRole = null;
         grantedObject = null;
         grantee = null;
-        invalidate();
+        super.removeChildrenAndResources(session);
     }
 
     @Override

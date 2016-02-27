@@ -11,7 +11,7 @@ import java.util.HashMap;
 
 import org.lealone.api.Aggregate;
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;

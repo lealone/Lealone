@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;

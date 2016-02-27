@@ -9,7 +9,7 @@ package org.lealone.db.table;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StatementBuilder;
@@ -515,15 +515,4 @@ public class TableView extends Table {
         return getName();
     }
 
-    @Override
-    public boolean supportsSharding() {
-        for (Table t : tables) {
-            if (t instanceof TableView) {
-                return ((TableView) t).supportsSharding();
-            } else {
-                return t.supportsSharding();
-            }
-        }
-        return super.supportsSharding();
-    }
 }

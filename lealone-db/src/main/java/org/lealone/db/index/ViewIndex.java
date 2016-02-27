@@ -9,7 +9,7 @@ package org.lealone.db.index;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.Utils;
@@ -52,7 +52,8 @@ public class ViewIndex extends IndexBase {
     private final ServerSession createSession;
 
     public ViewIndex(TableView view, String querySQL, ArrayList<CommandParameter> originalParameters, boolean recursive) {
-        initIndexBase(view, 0, null, null, IndexType.createNonUnique(false));
+        super(view, 0, null, IndexType.createNonUnique());
+        setIndexColumns(null);
         this.view = view;
         this.querySQL = querySQL;
         this.originalParameters = originalParameters;
@@ -63,7 +64,8 @@ public class ViewIndex extends IndexBase {
     }
 
     public ViewIndex(TableView view, ViewIndex index, ServerSession session, int[] masks) {
-        initIndexBase(view, 0, null, null, IndexType.createNonUnique(false));
+        super(view, 0, null, IndexType.createNonUnique());
+        setIndexColumns(null);
         this.view = view;
         this.querySQL = index.querySQL;
         this.originalParameters = index.originalParameters;
@@ -213,7 +215,7 @@ public class ViewIndex extends IndexBase {
             for (int i = 0, size = originalParameters.size(); i < size; i++) {
                 CommandParameter orig = originalParameters.get(i);
                 int idx = orig.getIndex();
-                Value value = orig.getParamValue(session);
+                Value value = orig.getValue();
                 setParameter(paramList, idx, value);
             }
         }

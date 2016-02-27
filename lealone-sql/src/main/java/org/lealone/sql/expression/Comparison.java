@@ -8,7 +8,7 @@ package org.lealone.sql.expression;
 
 import java.util.Arrays;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;

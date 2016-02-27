@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -27,7 +27,6 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Alias;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -37,7 +36,7 @@ import org.lealone.sql.expression.ValueExpression;
 /**
  * Represents a SELECT statement (simple, or union).
  */
-public abstract class Query extends StatementBase implements org.lealone.db.expression.Query {
+public abstract class Query extends ManipulateStatement implements org.lealone.db.expression.Query {
 
     /**
      * The limit expression as specified in the LIMIT or TOP clause.
@@ -196,6 +195,7 @@ public abstract class Query extends StatementBase implements org.lealone.db.expr
      * @param visitor the visitor
      * @return if the criteria can be fulfilled
      */
+    @Override
     public abstract boolean isEverything(ExpressionVisitor visitor);
 
     /**
@@ -234,11 +234,6 @@ public abstract class Query extends StatementBase implements org.lealone.db.expr
 
     @Override
     public boolean isQuery() {
-        return true;
-    }
-
-    @Override
-    public boolean isTransactional() {
         return true;
     }
 
@@ -284,15 +279,15 @@ public abstract class Query extends StatementBase implements org.lealone.db.expr
         int size = list.size();
         Value[] params = new Value[size];
         for (int i = 0; i < size; i++) {
-            Value v = list.get(i).getParamValue();
+            Value v = list.get(i).getValue();
             params[i] = v;
         }
         return params;
     }
 
     @Override
-    public Result query(int maxrows) {
-        return query(maxrows, null);
+    public Result query(int maxRows) {
+        return query(maxRows, null);
     }
 
     /**

@@ -8,11 +8,10 @@ package org.lealone.db.schema;
 import java.math.BigInteger;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.db.DbObject;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
-import org.lealone.db.table.Table;
 
 /**
  * A sequence is created using the statement
@@ -69,7 +68,7 @@ public class Sequence extends SchemaObjectBase {
      */
     public Sequence(Schema schema, int id, String name, Long startValue, Long increment, Long cacheSize, Long minValue,
             Long maxValue, boolean cycle, boolean belongsToTable) {
-        initSchemaObjectBase(schema, id, name, Trace.SEQUENCE);
+        super(schema, id, name, Trace.SEQUENCE);
         this.increment = increment != null ? increment : 1;
         this.minValue = minValue != null ? minValue : getDefaultMinValue(startValue, this.increment);
         this.maxValue = maxValue != null ? maxValue : getDefaultMaxValue(startValue, this.increment);
@@ -82,6 +81,11 @@ public class Sequence extends SchemaObjectBase {
             throw DbException.get(ErrorCode.SEQUENCE_ATTRIBUTES_INVALID, name, String.valueOf(this.value),
                     String.valueOf(this.minValue), String.valueOf(this.maxValue), String.valueOf(this.increment));
         }
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.SEQUENCE;
     }
 
     /**
@@ -188,19 +192,6 @@ public class Sequence extends SchemaObjectBase {
     }
 
     @Override
-    public String getDropSQL() {
-        if (getBelongsToTable()) {
-            return null;
-        }
-        return "DROP SEQUENCE IF EXISTS " + getSQL();
-    }
-
-    @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
     public synchronized String getCreateSQL() {
         StringBuilder buff = new StringBuilder("CREATE SEQUENCE ");
         buff.append(getSQL()).append(" START WITH ").append(value);
@@ -223,6 +214,14 @@ public class Sequence extends SchemaObjectBase {
             buff.append(" BELONGS_TO_TABLE");
         }
         return buff.toString();
+    }
+
+    @Override
+    public String getDropSQL() {
+        if (getBelongsToTable()) {
+            return null;
+        }
+        return "DROP SEQUENCE IF EXISTS " + getSQL();
     }
 
     /**
@@ -325,22 +324,6 @@ public class Sequence extends SchemaObjectBase {
      */
     public void close() {
         flushWithoutMargin();
-    }
-
-    @Override
-    public int getType() {
-        return DbObject.SEQUENCE;
-    }
-
-    @Override
-    public void removeChildrenAndResources(ServerSession session) {
-        database.removeMeta(session, getId());
-        invalidate();
-    }
-
-    @Override
-    public void checkRename() {
-        // nothing to do
     }
 
     public synchronized long getCurrentValue() {

@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.UserDataType;
@@ -28,6 +28,11 @@ public class CreateUserDataType extends DefineStatement {
 
     public CreateUserDataType(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_DOMAIN;
     }
 
     public void setTypeName(String name) {
@@ -70,11 +75,6 @@ public class CreateUserDataType extends DefineStatement {
         type.setColumn(column);
         db.addDatabaseObject(session, type);
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_DOMAIN;
     }
 
 }

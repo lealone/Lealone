@@ -11,14 +11,15 @@ import java.util.HashSet;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.auth.User;
@@ -49,7 +50,6 @@ public class Schema extends DbObjectBase {
     private final HashMap<String, Constant> constants;
     private final HashMap<String, FunctionAlias> functions;
 
-    private final String fullName;
     private Map<String, String> replicationProperties;
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
 
@@ -71,6 +71,7 @@ public class Schema extends DbObjectBase {
      *            dropped)
      */
     public Schema(Database database, int id, String schemaName, User owner, boolean system) {
+        super(database, id, schemaName, Trace.SCHEMA);
         tablesAndViews = database.newStringMap();
         indexes = database.newStringMap();
         sequences = database.newStringMap();
@@ -78,15 +79,13 @@ public class Schema extends DbObjectBase {
         constraints = database.newStringMap();
         constants = database.newStringMap();
         functions = database.newStringMap();
-        initDbObjectBase(database, id, schemaName, Trace.SCHEMA);
         this.owner = owner;
         this.system = system;
-
-        fullName = database.getShortName() + "." + schemaName;
     }
 
-    public String getFullName() {
-        return fullName;
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.SCHEMA;
     }
 
     public Map<String, String> getReplicationProperties() {
@@ -117,16 +116,6 @@ public class Schema extends DbObjectBase {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
-    }
-
-    @Override
     public String getCreateSQL() {
         if (system) {
             return null;
@@ -144,11 +133,6 @@ public class Schema extends DbObjectBase {
             sql.append(')');
         }
         return sql.toString();
-    }
-
-    @Override
-    public int getType() {
-        return DbObject.SCHEMA;
     }
 
     @Override
@@ -197,14 +181,8 @@ public class Schema extends DbObjectBase {
             FunctionAlias obj = (FunctionAlias) functions.values().toArray()[0];
             database.removeSchemaObject(session, obj);
         }
-        database.removeMeta(session, getId());
         owner = null;
-        invalidate();
-    }
-
-    @Override
-    public void checkRename() {
-        // ok
+        super.removeChildrenAndResources(session);
     }
 
     /**
@@ -217,28 +195,28 @@ public class Schema extends DbObjectBase {
     }
 
     @SuppressWarnings("unchecked")
-    private HashMap<String, SchemaObject> getMap(int type) {
+    private HashMap<String, SchemaObject> getMap(DbObjectType type) {
         HashMap<String, ? extends SchemaObject> result;
         switch (type) {
-        case DbObject.TABLE_OR_VIEW:
+        case TABLE_OR_VIEW:
             result = tablesAndViews;
             break;
-        case DbObject.SEQUENCE:
+        case SEQUENCE:
             result = sequences;
             break;
-        case DbObject.INDEX:
+        case INDEX:
             result = indexes;
             break;
-        case DbObject.TRIGGER:
+        case TRIGGER:
             result = triggers;
             break;
-        case DbObject.CONSTRAINT:
+        case CONSTRAINT:
             result = constraints;
             break;
-        case DbObject.CONSTANT:
+        case CONSTANT:
             result = constants;
             break;
-        case DbObject.FUNCTION_ALIAS:
+        case FUNCTION_ALIAS:
             result = functions;
             break;
         default:
@@ -274,7 +252,7 @@ public class Schema extends DbObjectBase {
      * @param newName the new name
      */
     public void rename(SchemaObject obj, String newName) {
-        int type = obj.getType();
+        DbObjectType type = obj.getType();
         HashMap<String, SchemaObject> map = getMap(type);
         if (SysProperties.CHECK) {
             if (!map.containsKey(obj.getName())) {
@@ -547,13 +525,13 @@ public class Schema extends DbObjectBase {
      */
     public ArrayList<SchemaObject> getAll() {
         ArrayList<SchemaObject> all = New.arrayList();
-        all.addAll(getMap(DbObject.TABLE_OR_VIEW).values());
-        all.addAll(getMap(DbObject.SEQUENCE).values());
-        all.addAll(getMap(DbObject.INDEX).values());
-        all.addAll(getMap(DbObject.TRIGGER).values());
-        all.addAll(getMap(DbObject.CONSTRAINT).values());
-        all.addAll(getMap(DbObject.CONSTANT).values());
-        all.addAll(getMap(DbObject.FUNCTION_ALIAS).values());
+        all.addAll(getMap(DbObjectType.TABLE_OR_VIEW).values());
+        all.addAll(getMap(DbObjectType.SEQUENCE).values());
+        all.addAll(getMap(DbObjectType.INDEX).values());
+        all.addAll(getMap(DbObjectType.TRIGGER).values());
+        all.addAll(getMap(DbObjectType.CONSTRAINT).values());
+        all.addAll(getMap(DbObjectType.CONSTANT).values());
+        all.addAll(getMap(DbObjectType.FUNCTION_ALIAS).values());
         return all;
     }
 
@@ -563,7 +541,7 @@ public class Schema extends DbObjectBase {
      * @param type the object type
      * @return a (possible empty) list of all objects
      */
-    public ArrayList<SchemaObject> getAll(int type) {
+    public ArrayList<SchemaObject> getAll(DbObjectType type) {
         HashMap<String, SchemaObject> map = getMap(type);
         return New.arrayList(map.values());
     }

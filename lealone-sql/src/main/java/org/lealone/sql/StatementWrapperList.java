@@ -47,8 +47,8 @@ class StatementWrapperList extends StatementWrapper {
     }
 
     @Override
-    public Result query(int maxrows) {
-        Result result = firstStatement.query(maxrows);
+    public Result query(int maxRows) {
+        Result result = firstStatement.query(maxRows);
         executeRemaining();
         return result;
     }
@@ -74,8 +74,8 @@ class StatementWrapperList extends StatementWrapper {
     }
 
     @Override
-    public Result queryMeta() {
-        return firstStatement.queryMeta();
+    public Result getMetaData() {
+        return firstStatement.getMetaData();
     }
 
 }

@@ -23,7 +23,7 @@ import java.util.Comparator;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
@@ -33,13 +33,13 @@ import org.lealone.db.Comment;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SetTypes;
 import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -93,6 +93,19 @@ public class Script extends ScriptBase {
     }
 
     @Override
+    public int getType() {
+        return SQLStatement.SCRIPT;
+    }
+
+    public void setSimple(boolean simple) {
+        this.simple = simple;
+    }
+
+    public void setCharset(Charset charset) {
+        this.charset = charset;
+    }
+
+    @Override
     public boolean isQuery() {
         return true;
     }
@@ -128,7 +141,7 @@ public class Script extends ScriptBase {
     }
 
     @Override
-    public Result queryMeta() {
+    public Result getMetaData() {
         LocalResult r = createResult();
         r.done();
         return r;
@@ -140,7 +153,7 @@ public class Script extends ScriptBase {
     }
 
     @Override
-    public Result query(int maxrows) {
+    public Result query(int maxRows) {
         session.getUser().checkAdmin();
         reset();
         Database db = session.getDatabase();
@@ -172,10 +185,10 @@ public class Script extends ScriptBase {
             if (out != null) {
                 add("", true);
             }
-            for (User user : Auth.getAllUsers()) {
+            for (User user : db.getAllUsers()) {
                 add(user.getCreateSQL(passwords), false);
             }
-            for (Role role : Auth.getAllRoles()) {
+            for (Role role : db.getAllRoles()) {
                 add(role.getCreateSQL(true), false);
             }
             for (Schema schema : db.getAllSchemas()) {
@@ -190,7 +203,7 @@ public class Script extends ScriptBase {
                 }
                 add(datatype.getCreateSQL(), false);
             }
-            for (SchemaObject obj : db.getAllSchemaObjects(DbObject.CONSTANT)) {
+            for (SchemaObject obj : db.getAllSchemaObjects(DbObjectType.CONSTANT)) {
                 if (excludeSchema(obj.getSchema())) {
                     continue;
                 }
@@ -229,7 +242,7 @@ public class Script extends ScriptBase {
                     add(table.getDropSQL(), false);
                 }
             }
-            for (SchemaObject obj : db.getAllSchemaObjects(DbObject.FUNCTION_ALIAS)) {
+            for (SchemaObject obj : db.getAllSchemaObjects(DbObjectType.FUNCTION_ALIAS)) {
                 if (excludeSchema(obj.getSchema())) {
                     continue;
                 }
@@ -244,7 +257,7 @@ public class Script extends ScriptBase {
                 }
                 add(agg.getCreateSQL(), false);
             }
-            for (SchemaObject obj : db.getAllSchemaObjects(DbObject.SEQUENCE)) {
+            for (SchemaObject obj : db.getAllSchemaObjects(DbObjectType.SEQUENCE)) {
                 if (excludeSchema(obj.getSchema())) {
                     continue;
                 }
@@ -309,7 +322,7 @@ public class Script extends ScriptBase {
                 tempLobTableCreated = false;
             }
             // Generate CREATE CONSTRAINT ...
-            final ArrayList<SchemaObject> constraints = db.getAllSchemaObjects(DbObject.CONSTRAINT);
+            final ArrayList<SchemaObject> constraints = db.getAllSchemaObjects(DbObjectType.CONSTRAINT);
             Collections.sort(constraints, new Comparator<SchemaObject>() {
                 @Override
                 public int compare(SchemaObject c1, SchemaObject c2) {
@@ -332,7 +345,7 @@ public class Script extends ScriptBase {
                 }
             }
             // Generate CREATE TRIGGER ...
-            for (SchemaObject obj : db.getAllSchemaObjects(DbObject.TRIGGER)) {
+            for (SchemaObject obj : db.getAllSchemaObjects(DbObjectType.TRIGGER)) {
                 if (excludeSchema(obj.getSchema())) {
                     continue;
                 }
@@ -343,7 +356,7 @@ public class Script extends ScriptBase {
                 add(trigger.getCreateSQL(), false);
             }
             // Generate GRANT ...
-            for (Right right : Auth.getAllRights()) {
+            for (Right right : db.getAllRights()) {
                 DbObject object = right.getGrantedObject();
                 if (object != null) {
                     if (object instanceof Schema) {
@@ -704,19 +717,6 @@ public class Script extends ScriptBase {
             Value[] row = { ValueString.get(s) };
             result.addRow(row);
         }
-    }
-
-    public void setSimple(boolean simple) {
-        this.simple = simple;
-    }
-
-    public void setCharset(Charset charset) {
-        this.charset = charset;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.SCRIPT;
     }
 
 }

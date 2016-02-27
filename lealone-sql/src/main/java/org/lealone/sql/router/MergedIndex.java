@@ -33,9 +33,9 @@ public class MergedIndex extends IndexBase {
     private final Result result;
 
     public MergedIndex(Result result, Table table, int id, IndexColumn[] columns, IndexType indexType) {
-        super();
+        super(table, id, table.getName() + "_DATA", indexType);
         this.result = result;
-        initIndexBase(table, id, table.getName() + "_DATA", columns, indexType);
+        setIndexColumns(columns);
     }
 
     @Override

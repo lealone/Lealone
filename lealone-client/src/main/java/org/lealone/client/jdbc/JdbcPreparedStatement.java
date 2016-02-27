@@ -26,12 +26,13 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.client.ClientBatchCommand;
 import org.lealone.client.ClientSession;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.TraceObject;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
@@ -54,9 +55,6 @@ import org.lealone.db.value.ValueShort;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
-//## Java 1.6 ##
-
-//*/
 
 /**
  * Represents a prepared statement.
@@ -64,7 +62,6 @@ import org.lealone.db.value.ValueTimestamp;
 public class JdbcPreparedStatement extends JdbcStatement implements PreparedStatement {
 
     protected Command command;
-    private final String sqlStatement;
     private ArrayList<Value[]> batchParameters;
     private HashMap<String, Integer> cachedColumnLabelMap;
 
@@ -72,7 +69,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             boolean closeWithResultSet) {
         super(conn, id, resultSetType, resultSetConcurrency, closeWithResultSet);
         setTrace(session.getTrace(), TraceObject.PREPARED_STATEMENT, id);
-        this.sqlStatement = sql;
         command = conn.prepareCommand(sql, fetchSize);
     }
 
@@ -109,7 +105,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                 try {
                     setExecutingStatement(command);
-                    result = command.executeQuery(maxRows, scrollable);
+                    result = command.query(maxRows, scrollable);
                 } finally {
                     setExecutingStatement(null);
                 }
@@ -142,12 +138,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public int executeUpdate() throws SQLException {
         try {
             debugCodeCall("executeUpdate");
-            checkClosedForWrite();
-            try {
-                return executeUpdateInternal();
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            return executeUpdateInternal();
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -158,7 +150,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         synchronized (session) {
             try {
                 setExecutingStatement(command);
-                updateCount = command.executeUpdate();
+                updateCount = command.update();
             } finally {
                 setExecutingStatement(null);
             }
@@ -182,32 +174,27 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCodeCall("execute");
             }
-            checkClosedForWrite();
-            try {
-                boolean returnsResultSet;
-                synchronized (conn.getSession()) {
-                    closeOldResultSet();
-                    try {
-                        setExecutingStatement(command);
-                        if (command.isQuery()) {
-                            returnsResultSet = true;
-                            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-                            boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                            Result result = command.executeQuery(maxRows, scrollable);
-                            resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable,
-                                    updatable);
-                        } else {
-                            returnsResultSet = false;
-                            updateCount = command.executeUpdate();
-                        }
-                    } finally {
-                        setExecutingStatement(null);
+            checkClosed();
+            boolean returnsResultSet;
+            synchronized (conn.getSession()) {
+                closeOldResultSet();
+                try {
+                    setExecutingStatement(command);
+                    if (command.isQuery()) {
+                        returnsResultSet = true;
+                        boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+                        boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+                        Result result = command.query(maxRows, scrollable);
+                        resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                    } else {
+                        returnsResultSet = false;
+                        updateCount = command.update();
                     }
+                } finally {
+                    setExecutingStatement(null);
                 }
-                return returnsResultSet;
-            } finally {
-                afterWriting();
             }
+            return returnsResultSet;
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -223,7 +210,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         try {
             debugCodeCall("clearParameters");
             checkClosed();
-            ArrayList<? extends CommandParameter> parameters = command.getParameters();
+            List<? extends CommandParameter> parameters = command.getParameters();
             for (int i = 0, size = parameters.size(); i < size; i++) {
                 CommandParameter param = parameters.get(i);
                 // can only delete old temp files if they are not in the batch
@@ -755,18 +742,14 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setBlob(" + parameterIndex + ", x);");
             }
-            checkClosedForWrite();
-            try {
-                Value v;
-                if (x == null) {
-                    v = ValueNull.INSTANCE;
-                } else {
-                    v = conn.createBlob(x.getBinaryStream(), -1);
-                }
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
+            checkClosed();
+            Value v;
+            if (x == null) {
+                v = ValueNull.INSTANCE;
+            } else {
+                v = conn.createBlob(x.getBinaryStream(), -1);
             }
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -787,13 +770,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setBlob(" + parameterIndex + ", x);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createBlob(x, -1);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createBlob(x, -1);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -812,18 +791,14 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setClob(" + parameterIndex + ", x);");
             }
-            checkClosedForWrite();
-            try {
-                Value v;
-                if (x == null) {
-                    v = ValueNull.INSTANCE;
-                } else {
-                    v = conn.createClob(x.getCharacterStream(), -1);
-                }
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
+            checkClosed();
+            Value v;
+            if (x == null) {
+                v = ValueNull.INSTANCE;
+            } else {
+                v = conn.createClob(x.getCharacterStream(), -1);
             }
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -844,18 +819,14 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setClob(" + parameterIndex + ", x);");
             }
-            checkClosedForWrite();
-            try {
-                Value v;
-                if (x == null) {
-                    v = ValueNull.INSTANCE;
-                } else {
-                    v = conn.createClob(x, -1);
-                }
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
+            checkClosed();
+            Value v;
+            if (x == null) {
+                v = ValueNull.INSTANCE;
+            } else {
+                v = conn.createClob(x, -1);
             }
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -905,13 +876,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setBinaryStream(" + parameterIndex + ", x, " + length + "L);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createBlob(x, length);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createBlob(x, length);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -977,13 +944,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setAsciiStream(" + parameterIndex + ", x, " + length + "L);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createClob(IOUtils.getAsciiReader(x), length);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createClob(IOUtils.getAsciiReader(x), length);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1048,13 +1011,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setCharacterStream(" + parameterIndex + ", x, " + length + "L);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createClob(x, length);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createClob(x, length);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1139,58 +1098,50 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public int[] executeBatch() throws SQLException {
         try {
             debugCodeCall("executeBatch");
-            checkClosedForWrite();
-            try {
-                if (batchParameters == null) {
-                    // TODO batch: check what other database do if no parameters are set
-                    batchParameters = New.arrayList();
-                }
-                if (batchParameters.isEmpty())
-                    return new int[0];
+            checkClosed();
+            if (batchParameters == null || batchParameters.isEmpty())
+                return new int[0];
 
-                if (session instanceof ClientSession) {
-                    ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(command, batchParameters);
-                    c.executeUpdate();
-                    int[] result = c.getResult();
-                    c.close();
-                    return result;
-                } else {
-                    int size = batchParameters.size();
-                    int[] result = new int[size];
-                    boolean error = false;
-                    SQLException next = null;
+            if (session instanceof ClientSession) {
+                ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(command, batchParameters);
+                c.update();
+                int[] result = c.getResult();
+                c.close();
+                return result;
+            } else {
+                int size = batchParameters.size();
+                int[] result = new int[size];
+                boolean error = false;
+                SQLException next = null;
 
-                    for (int i = 0; i < size; i++) {
-                        Value[] set = batchParameters.get(i);
-                        ArrayList<? extends CommandParameter> parameters = command.getParameters();
-                        for (int j = 0; j < set.length; j++) {
-                            Value value = set[j];
-                            CommandParameter param = parameters.get(j);
-                            param.setValue(value, false);
-                        }
-                        try {
-                            result[i] = executeUpdateInternal();
-                        } catch (Exception re) {
-                            SQLException e = logAndConvert(re);
-                            if (next == null) {
-                                next = e;
-                            } else {
-                                e.setNextException(next);
-                                next = e;
-                            }
-                            result[i] = Statement.EXECUTE_FAILED;
-                            error = true;
-                        }
+                for (int i = 0; i < size; i++) {
+                    Value[] set = batchParameters.get(i);
+                    List<? extends CommandParameter> parameters = command.getParameters();
+                    for (int j = 0; j < set.length; j++) {
+                        Value value = set[j];
+                        CommandParameter param = parameters.get(j);
+                        param.setValue(value, false);
                     }
-                    batchParameters = null;
-                    if (error) {
-                        JdbcBatchUpdateException e = new JdbcBatchUpdateException(next, result);
-                        throw e;
+                    try {
+                        result[i] = executeUpdateInternal();
+                    } catch (Exception re) {
+                        SQLException e = logAndConvert(re);
+                        if (next == null) {
+                            next = e;
+                        } else {
+                            e.setNextException(next);
+                            next = e;
+                        }
+                        result[i] = Statement.EXECUTE_FAILED;
+                        error = true;
                     }
-                    return result;
                 }
-            } finally {
-                afterWriting();
+                batchParameters = null;
+                if (error) {
+                    JdbcBatchUpdateException e = new JdbcBatchUpdateException(next, result);
+                    throw e;
+                }
+                return result;
             }
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -1204,23 +1155,19 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public void addBatch() throws SQLException {
         try {
             debugCodeCall("addBatch");
-            checkClosedForWrite();
-            try {
-                ArrayList<? extends CommandParameter> parameters = command.getParameters();
-                int size = parameters.size();
-                Value[] set = new Value[size];
-                for (int i = 0; i < size; i++) {
-                    CommandParameter param = parameters.get(i);
-                    Value value = param.getParamValue();
-                    set[i] = value;
-                }
-                if (batchParameters == null) {
-                    batchParameters = New.arrayList();
-                }
-                batchParameters.add(set);
-            } finally {
-                afterWriting();
+            checkClosed();
+            List<? extends CommandParameter> parameters = command.getParameters();
+            int size = parameters.size();
+            Value[] set = new Value[size];
+            for (int i = 0; i < size; i++) {
+                CommandParameter param = parameters.get(i);
+                Value value = param.getValue();
+                set[i] = value;
             }
+            if (batchParameters == null) {
+                batchParameters = New.arrayList();
+            }
+            batchParameters.add(set);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1353,7 +1300,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     private void setParameter(int parameterIndex, Value value) {
         checkClosed();
         parameterIndex--;
-        ArrayList<? extends CommandParameter> parameters = command.getParameters();
+        List<? extends CommandParameter> parameters = command.getParameters();
         if (parameterIndex < 0 || parameterIndex >= parameters.size()) {
             throw DbException.getInvalidValueException("parameterIndex", parameterIndex + 1);
         }
@@ -1370,8 +1317,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public void setRowId(int parameterIndex, RowId x) throws SQLException {
         throw unsupported("rowId");
     }
-
-    // */
 
     /**
      * Sets the value of a parameter.
@@ -1409,13 +1354,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setNCharacterStream(" + parameterIndex + ", x, " + length + "L);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createClob(x, length);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createClob(x, length);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1449,7 +1390,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setNClob(" + parameterIndex + ", x);");
             }
-            checkClosedForWrite();
+            checkClosed();
             Value v;
             if (x == null) {
                 v = ValueNull.INSTANCE;
@@ -1461,8 +1402,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             throw logAndConvert(e);
         }
     }
-
-    // */
 
     /**
      * Sets the value of a parameter as a Clob.
@@ -1479,13 +1418,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setNClob(" + parameterIndex + ", x);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createClob(x, -1);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createClob(x, -1);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1507,13 +1442,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setClob(" + parameterIndex + ", x, " + length + "L);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createClob(x, length);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createClob(x, length);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1535,13 +1466,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setBlob(" + parameterIndex + ", x, " + length + "L);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createBlob(x, length);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createBlob(x, length);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1563,13 +1490,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setNClob(" + parameterIndex + ", x, " + length + "L);");
             }
-            checkClosedForWrite();
-            try {
-                Value v = conn.createClob(x, length);
-                setParameter(parameterIndex, v);
-            } finally {
-                afterWriting();
-            }
+            checkClosed();
+            Value v = conn.createClob(x, length);
+            setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1584,34 +1507,12 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         throw unsupported("SQLXML");
     }
 
-    // */
-
     /**
      * INTERNAL
      */
     @Override
     public String toString() {
         return getTraceObjectName() + ": " + command;
-    }
-
-    @Override
-    protected boolean checkClosed(boolean write) {
-        if (super.checkClosed(write)) {
-            // if the session was re-connected, re-prepare the statement
-            ArrayList<? extends CommandParameter> oldParams = command.getParameters();
-            command = conn.prepareCommand(sqlStatement, fetchSize);
-            ArrayList<? extends CommandParameter> newParams = command.getParameters();
-            for (int i = 0, size = oldParams.size(); i < size; i++) {
-                CommandParameter old = oldParams.get(i);
-                Value value = old.getParamValue();
-                if (value != null) {
-                    CommandParameter n = newParams.get(i);
-                    n.setValue(value, false);
-                }
-            }
-            return true;
-        }
-        return false;
     }
 
 }

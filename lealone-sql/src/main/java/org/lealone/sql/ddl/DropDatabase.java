@@ -11,8 +11,8 @@ import java.util.ArrayList;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
@@ -24,13 +24,26 @@ import org.lealone.sql.SQLStatement;
  * This class represents the statement
  * DROP ALL OBJECTS
  */
-public class DropDatabase extends DefineStatement {
+public class DropDatabase extends DefineStatement implements DatabaseStatement {
 
     private boolean dropAllObjects;
     private boolean deleteFiles;
 
     public DropDatabase(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_ALL_OBJECTS;
+    }
+
+    public void setDropAllObjects(boolean b) {
+        this.dropAllObjects = b;
+    }
+
+    public void setDeleteFiles(boolean b) {
+        this.deleteFiles = b;
     }
 
     @Override
@@ -78,25 +91,25 @@ public class DropDatabase extends DefineStatement {
         }
         session.findLocalTempTable(null);
         ArrayList<SchemaObject> list = New.arrayList();
-        list.addAll(db.getAllSchemaObjects(DbObject.SEQUENCE));
+        list.addAll(db.getAllSchemaObjects(DbObjectType.SEQUENCE));
         // maybe constraints and triggers on system tables will be allowed in
         // the future
-        list.addAll(db.getAllSchemaObjects(DbObject.CONSTRAINT));
-        list.addAll(db.getAllSchemaObjects(DbObject.TRIGGER));
-        list.addAll(db.getAllSchemaObjects(DbObject.CONSTANT));
-        list.addAll(db.getAllSchemaObjects(DbObject.FUNCTION_ALIAS));
+        list.addAll(db.getAllSchemaObjects(DbObjectType.CONSTRAINT));
+        list.addAll(db.getAllSchemaObjects(DbObjectType.TRIGGER));
+        list.addAll(db.getAllSchemaObjects(DbObjectType.CONSTANT));
+        list.addAll(db.getAllSchemaObjects(DbObjectType.FUNCTION_ALIAS));
         for (SchemaObject obj : list) {
             if (obj.isHidden()) {
                 continue;
             }
             db.removeSchemaObject(session, obj);
         }
-        for (User user : Auth.getAllUsers()) {
+        for (User user : db.getAllUsers()) {
             if (user != session.getUser()) {
                 db.removeDatabaseObject(session, user);
             }
         }
-        for (Role role : Auth.getAllRoles()) {
+        for (Role role : db.getAllRoles()) {
             String sql = role.getCreateSQL();
             // the role PUBLIC must not be dropped
             if (sql != null) {
@@ -104,7 +117,7 @@ public class DropDatabase extends DefineStatement {
             }
         }
         ArrayList<DbObject> dbObjects = New.arrayList();
-        dbObjects.addAll(Auth.getAllRights());
+        dbObjects.addAll(db.getAllRights());
         dbObjects.addAll(db.getAllAggregates());
         dbObjects.addAll(db.getAllUserDataTypes());
         for (DbObject obj : dbObjects) {
@@ -114,19 +127,6 @@ public class DropDatabase extends DefineStatement {
                 db.removeDatabaseObject(session, obj);
             }
         }
-    }
-
-    public void setDropAllObjects(boolean b) {
-        this.dropAllObjects = b;
-    }
-
-    public void setDeleteFiles(boolean b) {
-        this.deleteFiles = b;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_ALL_OBJECTS;
     }
 
 }

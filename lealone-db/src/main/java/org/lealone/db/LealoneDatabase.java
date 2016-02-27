@@ -23,11 +23,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.db.auth.Auth;
+import org.lealone.api.ErrorCode;
+import org.lealone.common.exceptions.DbException;
 
 /**
- * 
- * 管理所有Database，并负责Auth的初始化
+ * 管理所有Database
  * 
  * @author zhh
  */
@@ -35,65 +35,64 @@ public class LealoneDatabase extends Database {
 
     public static final String NAME = Constants.PROJECT_NAME;
 
-    private static final LealoneDatabase INSTANCE = new LealoneDatabase();
+    private static LealoneDatabase INSTANCE = new LealoneDatabase();
 
     public static LealoneDatabase getInstance() {
-        if (!INSTANCE.isInitialized()) {
-            synchronized (INSTANCE) {
-                if (!INSTANCE.isInitialized())
-                    INSTANCE.init();
-            }
-        }
         return INSTANCE;
     }
 
-    private final ConcurrentHashMap<String, Database> databases = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Database> databases;;
 
     private LealoneDatabase() {
         super(0, NAME, null);
+        databases = new ConcurrentHashMap<>();
         databases.put(NAME, this);
-    }
 
-    private synchronized void init() {
+        INSTANCE = this; // init执行过程中会触发getInstance()，此时INSTANCE为null，会导致NPE
+
         String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
         ConnectionInfo ci = new ConnectionInfo(url, (Properties) null);
         ci.setBaseDir(SysProperties.getBaseDir());
         init(ci);
-
-        if (Auth.getAllUsers().isEmpty()) {
-            getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS lealone PASSWORD 'lealone' ADMIN")
-                    .executeUpdate();
-            getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS sa PASSWORD '' ADMIN").executeUpdate();
-        }
     }
 
-    @Override
-    protected void initTraceSystem(ConnectionInfo ci) {
-        super.initTraceSystem(ci);
-        // Auth里的User、Role用到TraceSystem，初始化TraceSystem后才能初始化Auth
-        Auth.init(this);
-    }
-
-    public Database findDatabase(String dbName) {
-        return databases.get(dbName);
-    }
-
-    synchronized Database createDatabase(String dbName, ConnectionInfo ci) {
+    Database createDatabase(String dbName, ConnectionInfo ci) {
         String sql = getSQL(quoteIdentifier(dbName), ci);
-        getSystemSession().prepareStatementLocal(sql).executeUpdate();
-        Database db = databases.get(dbName);
-        return db;
+        getSystemSession().prepareStatementLocal(sql).update();
+        // 执行完CREATE DATABASE后会加到databases字段中
+        // CreateDatabase.update -> Database.addDatabaseObject -> Database.getMap -> this.getDatabasesMap
+        return databases.get(dbName);
     }
 
     void closeDatabase(String dbName) {
         databases.remove(dbName);
     }
 
+    Map<String, Database> getDatabasesMap() {
+        return databases;
+    }
+
     List<Database> getDatabases() {
         return new ArrayList<>(databases.values());
     }
 
-    Map<String, Database> getDatabasesMap() {
-        return databases;
+    public Database findDatabase(String dbName) {
+        return databases.get(dbName);
+    }
+
+    /**
+     * Get database with the given name. This method throws an exception if the database
+     * does not exist.
+     *
+     * @param name the database name
+     * @return the database
+     * @throws DbException if the database does not exist
+     */
+    public Database getDatabase(String dbName) {
+        Database db = findDatabase(dbName);
+        if (db == null) {
+            throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
+        }
+        return db;
     }
 }

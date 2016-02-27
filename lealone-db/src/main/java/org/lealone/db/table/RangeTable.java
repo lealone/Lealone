@@ -9,7 +9,7 @@ package org.lealone.db.table;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Index;
@@ -60,11 +60,6 @@ public class RangeTable extends Table {
     }
 
     @Override
-    public String getDropSQL() {
-        return null;
-    }
-
-    @Override
     public String getCreateSQL() {
         return null;
     }
@@ -100,8 +95,8 @@ public class RangeTable extends Table {
     }
 
     @Override
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment) {
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
+            IndexType indexType, boolean create, String indexComment) {
         throw DbException.getUnsupportedException("SYSTEM_RANGE");
     }
 

@@ -9,7 +9,7 @@ package org.lealone.sql.expression;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Database;
@@ -128,7 +128,7 @@ public class TableFunction extends Function {
         return vr;
     }
 
-    private static SimpleResultSet getSimpleResultSet(Result rs, int maxrows) {
+    private static SimpleResultSet getSimpleResultSet(Result rs, int maxRows) {
         int columnCount = rs.getVisibleColumnCount();
         SimpleResultSet simple = new SimpleResultSet();
         for (int i = 0; i < columnCount; i++) {
@@ -139,7 +139,7 @@ public class TableFunction extends Function {
             simple.addColumn(name, sqlType, precision, scale);
         }
         rs.reset();
-        for (int i = 0; i < maxrows && rs.next(); i++) {
+        for (int i = 0; i < maxRows && rs.next(); i++) {
             Object[] list = new Object[columnCount];
             for (int j = 0; j < columnCount; j++) {
                 list[j] = rs.currentRow()[j].getObject();

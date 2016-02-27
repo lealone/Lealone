@@ -18,12 +18,13 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.IOUtils;
@@ -49,32 +50,31 @@ public class Transfer {
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
+    private ResettableBufferedOutputStream bufferedOutputStream;
 
     private boolean ssl;
     private byte[] lobMacSalt;
 
-    /**
-     * Create a new transfer object for the specified session.
-     *
-     * @param session the session
-     */
     public Transfer(Session session, Socket socket) {
         this.session = session;
         this.socket = socket;
     }
 
-    private static class InternalErrorAwareBufferedOutputStream extends BufferedOutputStream {
-
-        public InternalErrorAwareBufferedOutputStream(OutputStream out, int size) {
-            super(out, size);
-        }
-
-        void reset() {
-            super.count = 0;
-        }
+    public Transfer(Socket socket) {
+        this.socket = socket;
     }
 
-    private InternalErrorAwareBufferedOutputStream bufferedOutputStream;
+    /**
+     * Initialize the transfer object. 
+     * This method will try to open an input and output stream.
+     */
+    public synchronized void init() throws IOException {
+        if (socket != null) {
+            bufferedOutputStream = new ResettableBufferedOutputStream(socket.getOutputStream(), BUFFER_SIZE);
+            in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), BUFFER_SIZE));
+            out = new DataOutputStream(bufferedOutputStream);
+        }
+    }
 
     /**
      * 当输出流写到一半时碰到某种异常了(可能是内部代码实现bug)，比如产生了NPE，
@@ -86,24 +86,19 @@ public class Transfer {
         bufferedOutputStream.reset();
     }
 
-    /**
-     * Initialize the transfer object. This method will try to open an input and
-     * output stream.
-     */
-    public synchronized void init() throws IOException {
-        if (socket != null) {
-            bufferedOutputStream = new InternalErrorAwareBufferedOutputStream(socket.getOutputStream(),
-                    Transfer.BUFFER_SIZE);
-            in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), Transfer.BUFFER_SIZE));
-            out = new DataOutputStream(bufferedOutputStream);
-        }
+    public Socket getSocket() {
+        return socket;
     }
 
-    public int available() throws IOException {
-        if (in != null)
-            return in.available();
-        else
-            return 0;
+    public void setSession(Session session) {
+        this.session = session;
+    }
+
+    public void setSSL(boolean ssl) {
+        this.ssl = ssl;
+    }
+
+    public void setVersion(int version) { // TODO 以后协议修改了再使用版本号区分
     }
 
     /**
@@ -111,6 +106,30 @@ public class Transfer {
      */
     public void flush() throws IOException {
         out.flush();
+    }
+
+    /**
+     * Close the transfer object and the socket.
+     */
+    public synchronized void close() {
+        if (socket != null) {
+            try {
+                if (out != null) {
+                    out.flush();
+                }
+                if (socket != null) {
+                    socket.close();
+                }
+            } catch (IOException e) {
+                DbException.traceThrowable(e);
+            } finally {
+                socket = null;
+            }
+        }
+    }
+
+    public synchronized boolean isClosed() {
+        return socket == null || socket.isClosed();
     }
 
     /**
@@ -205,6 +224,15 @@ public class Transfer {
     }
 
     /**
+     * Read a double.
+     *
+     * @return the value
+     */
+    private double readDouble() throws IOException {
+        return in.readDouble();
+    }
+
+    /**
      * Write a float.
      *
      * @param i the value
@@ -213,15 +241,6 @@ public class Transfer {
     private Transfer writeFloat(float i) throws IOException {
         out.writeFloat(i);
         return this;
-    }
-
-    /**
-     * Read a double.
-     *
-     * @return the value
-     */
-    private double readDouble() throws IOException {
-        return in.readDouble();
     }
 
     /**
@@ -272,6 +291,27 @@ public class Transfer {
     }
 
     /**
+     * Write a byte buffer.
+     *
+     * @param data the value
+     * @return itself
+     */
+    public Transfer writeByteBuffer(ByteBuffer data) throws IOException {
+        if (data == null) {
+            writeInt(-1);
+        } else {
+            if (data.hasArray()) {
+                writeBytes(data.array(), data.arrayOffset(), data.limit());
+            } else {
+                byte[] bytes = new byte[data.limit()];
+                data.get(bytes);
+                writeBytes(bytes);
+            }
+        }
+        return this;
+    }
+
+    /**
      * Write a byte array.
      *
      * @param data the value
@@ -301,6 +341,19 @@ public class Transfer {
     }
 
     /**
+     * Read a byte buffer.
+     *
+     * @return the value
+     */
+    public ByteBuffer readByteBuffer() throws IOException {
+        byte[] b = readBytes();
+        if (b == null)
+            return null;
+        else
+            return ByteBuffer.wrap(b);
+    }
+
+    /**
      * Read a byte array.
      *
      * @return the value
@@ -324,26 +377,6 @@ public class Transfer {
      */
     public void readBytes(byte[] buff, int off, int len) throws IOException {
         in.readFully(buff, off, len);
-    }
-
-    /**
-     * Close the transfer object and the socket.
-     */
-    public synchronized void close() {
-        if (socket != null) {
-            try {
-                if (out != null) {
-                    out.flush();
-                }
-                if (socket != null) {
-                    socket.close();
-                }
-            } catch (IOException e) {
-                DbException.traceThrowable(e);
-            } finally {
-                socket = null;
-            }
-        }
     }
 
     /**
@@ -409,8 +442,8 @@ public class Transfer {
             writeString(v.getString());
             break;
         case Value.BLOB: {
-            if (v instanceof ValueLobDb) {
-                ValueLobDb lob = (ValueLobDb) v;
+            if (v instanceof ValueLob) {
+                ValueLob lob = (ValueLob) v;
                 if (lob.isStored()) {
                     writeLong(-1);
                     writeInt(lob.getTableId());
@@ -433,8 +466,8 @@ public class Transfer {
             break;
         }
         case Value.CLOB: {
-            if (v instanceof ValueLobDb) {
-                ValueLobDb lob = (ValueLobDb) v;
+            if (v instanceof ValueLob) {
+                ValueLob lob = (ValueLob) v;
                 if (lob.isStored()) {
                     writeLong(-1);
                     writeInt(lob.getTableId());
@@ -555,7 +588,7 @@ public class Transfer {
                 long id = readLong();
                 byte[] hmac = readBytes();
                 long precision = readLong();
-                return ValueLobDb.create(Value.BLOB, session.getDataHandler(), tableId, id, hmac, precision);
+                return ValueLob.create(Value.BLOB, session.getDataHandler(), tableId, id, hmac, precision);
             }
             int len = (int) length;
             byte[] small = new byte[len];
@@ -564,7 +597,7 @@ public class Transfer {
             if (magic != LOB_MAGIC) {
                 throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
             }
-            return ValueLobDb.createSmallLob(Value.BLOB, small, length);
+            return ValueLob.createSmallLob(Value.BLOB, small, length);
         }
         case Value.CLOB: {
             long length = readLong();
@@ -573,7 +606,7 @@ public class Transfer {
                 long id = readLong();
                 byte[] hmac = readBytes();
                 long precision = readLong();
-                return ValueLobDb.create(Value.CLOB, session.getDataHandler(), tableId, id, hmac, precision);
+                return ValueLob.create(Value.CLOB, session.getDataHandler(), tableId, id, hmac, precision);
             }
             DataReader reader = new DataReader(in);
             int len = (int) length;
@@ -584,7 +617,7 @@ public class Transfer {
                 throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
             }
             byte[] small = new String(buff).getBytes("UTF-8");
-            return ValueLobDb.createSmallLob(Value.CLOB, small, length);
+            return ValueLob.createSmallLob(Value.CLOB, small, length);
         }
         case Value.ARRAY: {
             int len = readInt();
@@ -623,51 +656,17 @@ public class Transfer {
     }
 
     /**
-     * Get the socket.
-     *
-     * @return the socket
-     */
-    public Socket getSocket() {
-        return socket;
-    }
-
-    /**
-     * Set the session.
-     *
-     * @param session the session
-     */
-    public void setSession(Session session) {
-        this.session = session;
-    }
-
-    /**
-     * Enable or disable SSL.
-     *
-     * @param ssl the new value
-     */
-    public void setSSL(boolean ssl) {
-        this.ssl = ssl;
-    }
-
-    /**
-     * Open a new new connection to the same address and port as this one.
+     * Open a new connection to the same address and port as this one.
      *
      * @return the new transfer object
      */
     public Transfer openNewConnection() throws IOException {
         InetAddress address = socket.getInetAddress();
         int port = socket.getPort();
-        Socket s2 = NetUtils.createSocket(address, port, ssl);
-        Transfer trans = new Transfer(null, s2);
+        Socket s = NetUtils.createSocket(address, port, ssl);
+        Transfer trans = new Transfer(s);
         trans.setSSL(ssl);
         return trans;
-    }
-
-    public void setVersion(int version) {
-    }
-
-    public synchronized boolean isClosed() {
-        return socket == null || socket.isClosed();
     }
 
     /**
@@ -773,4 +772,16 @@ public class Transfer {
             return null;
         }
     }
+
+    private static class ResettableBufferedOutputStream extends BufferedOutputStream {
+
+        public ResettableBufferedOutputStream(OutputStream out, int size) {
+            super(out, size);
+        }
+
+        void reset() {
+            super.count = 0;
+        }
+    }
+
 }

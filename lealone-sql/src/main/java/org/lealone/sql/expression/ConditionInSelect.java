@@ -7,7 +7,7 @@
 package org.lealone.sql.expression;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;

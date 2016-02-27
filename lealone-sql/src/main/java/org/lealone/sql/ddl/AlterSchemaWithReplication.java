@@ -33,8 +33,17 @@ public class AlterSchemaWithReplication extends DefineStatement {
         super(session);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.ALTER_SCHEMA_WTIH_REPLICATION;
+    }
+
     public void setSchema(Schema schema) {
         this.schema = schema;
+    }
+
+    public void setReplicationProperties(Map<String, String> replicationProperties) {
+        this.replicationProperties = replicationProperties;
     }
 
     @Override
@@ -45,15 +54,6 @@ public class AlterSchemaWithReplication extends DefineStatement {
         schema.setReplicationProperties(replicationProperties);
         db.updateMeta(session, schema);
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.ALTER_SCHEMA_WTIH_REPLICATION;
-    }
-
-    public void setReplicationProperties(Map<String, String> replicationProperties) {
-        this.replicationProperties = replicationProperties;
     }
 
 }

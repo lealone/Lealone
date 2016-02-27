@@ -6,8 +6,6 @@
  */
 package org.lealone.sql.ddl;
 
-import java.util.concurrent.Callable;
-
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.sql.StatementBase;
@@ -15,7 +13,7 @@ import org.lealone.sql.StatementBase;
 /**
  * This class represents a non-transaction statement, for example a CREATE or DROP.
  */
-public abstract class DefineStatement extends StatementBase implements Callable<Integer> {
+public abstract class DefineStatement extends StatementBase {
 
     /**
      * The transactional behavior. The default is disabled, meaning the command
@@ -38,7 +36,7 @@ public abstract class DefineStatement extends StatementBase implements Callable<
     }
 
     @Override
-    public Result queryMeta() {
+    public Result getMetaData() {
         return null;
     }
 
@@ -51,13 +49,4 @@ public abstract class DefineStatement extends StatementBase implements Callable<
         return transactional;
     }
 
-    @Override
-    public Integer call() {
-        return Integer.valueOf(update());
-    }
-
-    @Override
-    public boolean isDDL() {
-        return true;
-    }
 }

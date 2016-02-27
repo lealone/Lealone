@@ -7,32 +7,25 @@
 package org.lealone.sql.dml;
 
 import org.lealone.db.ServerSession;
-import org.lealone.db.result.Result;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.StatementBase;
 
 /**
  * Represents an empty statement or a statement that has no effect.
  */
-public class NoOperation extends StatementBase {
+public class NoOperation extends ManipulateStatement {
 
     public NoOperation(ServerSession session) {
         super(session);
     }
 
     @Override
-    public int update() {
-        return 0;
+    public int getType() {
+        return SQLStatement.NO_OPERATION;
     }
 
     @Override
     public boolean isQuery() {
         return false;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return true;
     }
 
     @Override
@@ -46,13 +39,8 @@ public class NoOperation extends StatementBase {
     }
 
     @Override
-    public Result queryMeta() {
-        return null;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.NO_OPERATION;
+    public int update() {
+        return 0;
     }
 
 }

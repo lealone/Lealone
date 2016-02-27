@@ -6,7 +6,7 @@
  */
 package org.lealone.db.index;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -26,7 +26,8 @@ public class RangeIndex extends IndexBase {
     private final RangeTable rangeTable;
 
     public RangeIndex(RangeTable table, IndexColumn[] columns) {
-        initIndexBase(table, 0, "RANGE_INDEX", columns, IndexType.createNonUnique(true));
+        super(table, 0, "RANGE_INDEX", IndexType.createNonUnique());
+        setIndexColumns(columns);
         this.rangeTable = table;
     }
 

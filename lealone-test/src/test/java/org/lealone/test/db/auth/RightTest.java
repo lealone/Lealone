@@ -20,7 +20,6 @@ package org.lealone.test.db.auth;
 import org.junit.Test;
 import org.lealone.api.ErrorCode;
 import org.lealone.db.Constants;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -82,7 +81,7 @@ public class RightTest extends DbObjectTestBase {
         right = role.getRightForObject(table);
         assertNotNull(right);
 
-        assertEquals(3, Auth.getAllRights().size());
+        assertEquals(3, db.getAllRights().size());
 
         try {
             executeUpdate("GRANT SELECT, RightTest_r1 ON RightTest_t1 TO RightTest_u1");

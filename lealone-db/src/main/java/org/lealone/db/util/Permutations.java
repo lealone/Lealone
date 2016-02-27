@@ -21,7 +21,7 @@
  */
 package org.lealone.db.util;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 
 /**
  * A class to iterate over all permutations of an array.

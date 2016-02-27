@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Arrays;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 
 /**

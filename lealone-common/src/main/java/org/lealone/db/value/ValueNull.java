@@ -15,7 +15,7 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 
 /**
  * Implementation of NULL. NULL is not a regular data type.

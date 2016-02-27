@@ -7,12 +7,10 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Role;
 import org.lealone.sql.SQLStatement;
 
@@ -20,13 +18,22 @@ import org.lealone.sql.SQLStatement;
  * This class represents the statement
  * DROP ROLE
  */
-public class DropRole extends DefineStatement {
+public class DropRole extends DefineStatement implements AuthStatement {
 
     private String roleName;
     private boolean ifExists;
 
     public DropRole(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_ROLE;
+    }
+
+    public void setIfExists(boolean ifExists) {
+        this.ifExists = ifExists;
     }
 
     public void setRoleName(String roleName) {
@@ -37,11 +44,11 @@ public class DropRole extends DefineStatement {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        Database db = LealoneDatabase.getInstance();
+        Database db = session.getDatabase();
         if (roleName.equals(Constants.PUBLIC_ROLE_NAME)) {
             throw DbException.get(ErrorCode.ROLE_CAN_NOT_BE_DROPPED_1, roleName);
         }
-        Role role = Auth.findRole(roleName);
+        Role role = db.findRole(roleName);
         if (role == null) {
             if (!ifExists) {
                 throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, roleName);
@@ -51,14 +58,4 @@ public class DropRole extends DefineStatement {
         }
         return 0;
     }
-
-    public void setIfExists(boolean ifExists) {
-        this.ifExists = ifExists;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_ROLE;
-    }
-
 }

@@ -18,12 +18,11 @@
 package org.lealone.db;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.sql.PreparedStatement;
 
 public class SessionPool {
@@ -51,11 +50,7 @@ public class SessionPool {
         return getSession(originalSession, url, true);
     }
 
-    public static Session getSeedEndpointSession(ServerSession originalSession, String url) {
-        return getSession(originalSession, url, false);
-    }
-
-    private static Session getSession(ServerSession originalSession, String url, boolean isLocal) {
+    public static Session getSession(ServerSession originalSession, String url, boolean usesClientSession) {
         Session session = getQueue(url).poll();
 
         if (session == null || session.isClosed()) {
@@ -65,13 +60,16 @@ public class SessionPool {
                 throw DbException.throwInternalError();
 
             ConnectionInfo ci = new ConnectionInfo(url, originalSession.getOriginalProperties());
-            ci.setProperty("IS_LOCAL", isLocal ? "true" : "false");
+            ci.setProperty("IS_LOCAL", "true");
             ci.setUserName(oldCi.getUserName());
             ci.setUserPasswordHash(oldCi.getUserPasswordHash());
             ci.setFilePasswordHash(oldCi.getFilePasswordHash());
             ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
+            if (usesClientSession)
+                ci.setClient(true);
             try {
                 session = ci.getSessionFactory().createSession(ci).connectEmbeddedOrServer();
+                session.setLocal(true);
             } catch (SQLException e) {
                 throw DbException.convert(e);
             }
@@ -108,22 +106,22 @@ public class SessionPool {
         if (isNew)
             originalSession.addSession(url, session);
 
-        return getCommand(session, sql, prepared.getParameters(), prepared.getFetchSize());
-    }
+        List<? extends CommandParameter> parameters = prepared.getParameters();
+        int fetchSize = prepared.getFetchSize();
+        if (parameters == null || parameters.isEmpty())
+            return session.createCommand(sql, fetchSize);
 
-    public static Command getCommand(Session session, String sql, //
-            List<? extends CommandParameter> parameters, int fetchSize) {
         Command command = session.prepareCommand(sql, fetchSize);
 
         // 传递最初的参数值到新的Command
         if (parameters != null) {
-            ArrayList<? extends CommandParameter> newParams = command.getParameters();
+            List<? extends CommandParameter> newParams = command.getParameters();
             // SQL重写后可能没有占位符了
             if (!newParams.isEmpty()) {
                 if (SysProperties.CHECK && newParams.size() != parameters.size())
                     throw DbException.throwInternalError();
                 for (int i = 0, size = parameters.size(); i < size; i++) {
-                    newParams.get(i).setValue(parameters.get(i).getParamValue(), true);
+                    newParams.get(i).setValue(parameters.get(i).getValue(), true);
                 }
             }
         }
@@ -131,9 +129,4 @@ public class SessionPool {
         return command;
     }
 
-    public static void check() {
-        for (ConcurrentLinkedQueue<Session> queue : pool.values())
-            for (Session session : queue)
-                session.checkTransfers();
-    }
 }

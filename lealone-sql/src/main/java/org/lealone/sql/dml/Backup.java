@@ -7,21 +7,29 @@
 package org.lealone.sql.dml;
 
 import org.lealone.db.ServerSession;
-import org.lealone.db.result.Result;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * BACKUP
  */
-public class Backup extends StatementBase {
+public class Backup extends ManipulateStatement {
 
     private Expression fileNameExpr;
 
     public Backup(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.BACKUP;
+    }
+
+    @Override
+    public boolean needRecompile() {
+        return false;
     }
 
     public void setFileName(Expression fileName) {
@@ -34,26 +42,6 @@ public class Backup extends StatementBase {
         session.getUser().checkAdmin();
         session.getDatabase().backupTo(fileName);
         return 0;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
-    public boolean needRecompile() {
-        return false;
-    }
-
-    @Override
-    public Result queryMeta() {
-        return null;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.BACKUP;
     }
 
 }

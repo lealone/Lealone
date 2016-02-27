@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SecureFileStorage;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.TempFileDeleter;

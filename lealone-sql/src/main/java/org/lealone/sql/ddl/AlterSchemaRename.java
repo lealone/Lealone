@@ -9,7 +9,7 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
@@ -27,6 +27,11 @@ public class AlterSchemaRename extends DefineStatement {
 
     public AlterSchemaRename(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.ALTER_SCHEMA_RENAME;
     }
 
     public void setOldSchema(Schema schema) {
@@ -55,10 +60,4 @@ public class AlterSchemaRename extends DefineStatement {
         }
         return 0;
     }
-
-    @Override
-    public int getType() {
-        return SQLStatement.ALTER_SCHEMA_RENAME;
-    }
-
 }

@@ -18,9 +18,9 @@ import java.util.Properties;
 import java.util.Random;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.common.message.TraceSystem;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.auth.User;
@@ -38,7 +38,10 @@ import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.LobStorage;
+import org.lealone.storage.StorageCommand;
+import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionEngine;
 
 /**
  * A session represents an embedded database connection. When using the server
@@ -355,12 +358,14 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     private boolean local;
 
+    @Override
     public void setLocal(boolean local) {
         this.local = local;
     }
 
+    @Override
     public boolean isLocal() {
-        return local || connectionInfo == null || connectionInfo.isEmbedded() || !ServerSession.isClusterMode();
+        return local || connectionInfo == null || connectionInfo.isEmbedded();
     }
 
     @Override
@@ -398,6 +403,16 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         PreparedStatement p = parser.parse(sql).prepare();
         p.setLocal(true);
         return p;
+    }
+
+    @Override
+    public synchronized Command createCommand(String sql, int fetchSize) {
+        return prepareStatement(sql, fetchSize);
+    }
+
+    @Override
+    public StorageCommand createStorageCommand() {
+        return new ServerCommand(this);
     }
 
     /**
@@ -1139,6 +1154,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         connectionInfo = ci;
     }
 
+    @Override
     public ConnectionInfo getConnectionInfo() {
         return connectionInfo;
     }
@@ -1170,20 +1186,31 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         this.isRoot = isRoot;
     }
 
-    public String getURL(InetAddress host) {
+    public String getURL(InetAddress... hosts) {
         if (connectionInfo == null)
             return null;
         StringBuilder buff = new StringBuilder();
         String url = connectionInfo.getURL();
         int pos1 = url.indexOf("//");
         buff.append(url.substring(0, pos1 + 2));
-        buff.append(host.getHostAddress());
+
+        String port = null;
         int pos2 = url.indexOf(':', pos1 + 2);
         int pos3 = url.indexOf('/', pos1 + 2);
         if (pos2 != -1)
-            buff.append(url.substring(pos2));
+            port = url.substring(pos2 + 1, pos3);
         else
-            buff.append(url.substring(pos3));
+            port = String.valueOf(Constants.DEFAULT_TCP_PORT);
+        boolean first = true;
+        for (InetAddress host : hosts) {
+            if (first) {
+                first = false;
+            } else {
+                buff.append(',');
+            }
+            buff.append(host.getHostAddress()).append(':').append(port);
+        }
+        buff.append(url.substring(pos3));
         return buff.toString();
     }
 
@@ -1203,44 +1230,29 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             autoCommit = false;
         }
 
-        transaction = database.getTransactionEngine().beginTransaction(autoCommit);
+        boolean isShardingMode = isShardingMode();
+        transaction = database.getTransactionEngine().beginTransaction(autoCommit, isShardingMode);
         transaction.setValidator(this);
+        transaction.setSession(this);
+        transaction.setGlobalTransactionName(replicationName);
 
         // TODO p != null && !p.isLocal()是否需要？
-        if (isRoot && !autoCommit && isClusterMode() && p != null && !p.isLocal())
+        if (isRoot && !autoCommit && isShardingMode && p != null && !p.isLocal())
             transaction.setLocal(false);
         return transaction;
-    }
-
-    // private static Router router = LocalRouter.getInstance();
-    //
-    // public static Router getRouter() {
-    // return router;
-    // }
-    //
-    // public static void setRouter(Router r) {
-    // if (r == null)
-    // throw new NullPointerException("router is null");
-    // router = r;
-    // }
-
-    private static boolean isClusterMode = false;
-
-    public static boolean isClusterMode() {
-        return isClusterMode;
-    }
-
-    public static void setClusterMode(boolean isClusterMode) {
-        ServerSession.isClusterMode = isClusterMode;
     }
 
     /**
      * 最初从Client端传递过来的配置参数
      */
-    private Properties originalProperties;
+    // private Properties originalProperties;
 
     // 参与本次事务的其他Session
     protected final Map<String, Session> sessionCache = New.hashMap();
+
+    public Map<String, Session> getSessionCache() {
+        return sessionCache;
+    }
 
     public void addSession(String url, Session s) {
         if (transaction != null)
@@ -1253,24 +1265,41 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     public Properties getOriginalProperties() {
-        return originalProperties;
+        return connectionInfo == null ? null : connectionInfo.getProperties();
+        // return originalProperties;
     }
 
-    public void setOriginalProperties(Properties originalProperties) {
-        this.originalProperties = originalProperties;
-    }
-
-    public Map<String, Session> getSessionCache() {
-        return sessionCache;
-    }
+    // public void setOriginalProperties(Properties originalProperties) {
+    // this.originalProperties = originalProperties;
+    // }
 
     @Override
     public boolean validateTransaction(String localTransactionName) {
+        return database.getTransactionEngine().validateTransaction(localTransactionName);
+    }
+
+    @Override
+    public boolean validate(String localTransactionName) {
         String[] a = localTransactionName.split(":");
         Session fs = null;
         try {
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, a[0], a[1]);
+            fs = SessionPool.getSession(this, url);
+            return fs.validateTransaction(localTransactionName);
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        } finally {
+            SessionPool.release(fs);
+        }
+    }
+
+    @Override
+    public boolean validate(String hostAndPort, String localTransactionName) {
+        Session fs = null;
+        try {
+            String dbName = getDatabase().getShortName();
+            String url = createURL(dbName, hostAndPort);
             fs = SessionPool.getSession(this, url);
             return fs.validateTransaction(localTransactionName);
         } catch (Exception e) {
@@ -1288,24 +1317,26 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return url.toString();
     }
 
-    protected SQLParser parser;
-
-    public void setParser(SQLParser parser) {
-        this.parser = parser;
+    private static String createURL(String dbName, String hostAndPort) {
+        StringBuilder url = new StringBuilder(100);
+        url.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//");
+        url.append(hostAndPort);
+        url.append("/").append(dbName);
+        return url.toString();
     }
 
     public SQLParser getParser() {
-        return parser;
+        return database.createParser(this);
     }
 
     @Override
     public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
-        return parser.getBatchStatement(ps, batchParameters);
+        return getParser().getBatchStatement(ps, batchParameters);
     }
 
     @Override
-    public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
-        return parser.getBatchStatement(batchCommands);
+    public BatchStatement getBatchStatement(ArrayList<String> batchStatements) {
+        return getParser().getBatchStatement(batchStatements);
     }
 
     @Override
@@ -1324,10 +1355,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public void checkTransfers() {
-    }
-
-    @Override
     public void commitTransaction(String localTransactionName) {
 
     }
@@ -1335,5 +1362,17 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     @Override
     public void rollbackTransaction() {
 
+    }
+
+    @Override
+    public boolean isShardingMode() {
+        return database.isShardingMode();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public StorageMap<Object, Object> getStorageMap(String mapName) {
+        TransactionEngine transactionEngine = database.getTransactionEngine();
+        return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName).getInstance(getTransaction());
     }
 }

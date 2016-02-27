@@ -25,9 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.common.message.TraceSystem;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
@@ -36,7 +36,8 @@ import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.common.util.Utils;
-import org.lealone.db.auth.Auth;
+import org.lealone.db.auth.Right;
+import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Cursor;
@@ -83,6 +84,7 @@ import org.lealone.transaction.TransactionEngineManager;
  * @author zhh
  */
 public class Database implements DataHandler, DbObject {
+
     /**
      * This log mode means the transaction log is not used.
      */
@@ -94,16 +96,25 @@ public class Database implements DataHandler, DbObject {
      */
     public static final int LOG_MODE_SYNC = 2;
 
+    /**
+     * The default name of the system user. This name is only used as long as
+     * there is no administrator user registered.
+     */
+    private static final String SYSTEM_USER_NAME = "DBA";
+
     private String databaseURL;
     private String cipher;
     private byte[] filePasswordHash;
     private byte[] fileEncryptionKey;
 
-    private final HashMap<String, Setting> settings = New.hashMap();
-    private final HashMap<String, Schema> schemas = New.hashMap();
+    private final HashMap<String, User> users = New.hashMap();
+    private final HashMap<String, Role> roles = New.hashMap();
+    private final HashMap<String, Right> rights = New.hashMap();
     private final HashMap<String, UserDataType> userDataTypes = New.hashMap();
     private final HashMap<String, UserAggregate> aggregates = New.hashMap();
+    private final HashMap<String, Setting> settings = New.hashMap();
     private final HashMap<String, Comment> comments = New.hashMap();
+    private final HashMap<String, Schema> schemas = New.hashMap();
 
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<ServerSession>());
     private ServerSession exclusiveSession;
@@ -114,12 +125,14 @@ public class Database implements DataHandler, DbObject {
     private Schema infoSchema;
     private int nextSessionId;
     private int nextTempTableId;
+    private User systemUser;
     private ServerSession systemSession;
     private Table meta;
     private Index metaIdIndex;
     private boolean starting;
     private TraceSystem traceSystem;
     private Trace trace;
+    private Role publicRole;
     private long modificationDataId;
     private long modificationMetaId;
     private CompareMode compareMode;
@@ -143,7 +156,7 @@ public class Database implements DataHandler, DbObject {
     private boolean referentialIntegrity = true;
     private boolean multiVersion;
     private DatabaseCloser closeOnExit;
-    private Mode mode = Mode.getInstance(Mode.REGULAR);
+    private Mode mode = Mode.getDefaultMode();
     private boolean multiThreaded = true; // 如果是false，整个数据库是串行的
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
     private SmallLRUCache<String, String[]> lobFileListCache;
@@ -177,9 +190,13 @@ public class Database implements DataHandler, DbObject {
     private Map<String, String> replicationProperties;
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
 
+    private RunMode runMode;
+    private final Map<String, String> parameters;
+
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
         this.name = name;
+        this.parameters = parameters;
         if (parameters != null)
             dbSettings = DbSettings.getInstance(parameters);
         else
@@ -198,7 +215,6 @@ public class Database implements DataHandler, DbObject {
                 throw DbException.convert(e);
             }
         }
-        SQLEngineHolder.setSQLEngine(sqlEngine);
         this.sqlEngine = sqlEngine;
 
         engineName = dbSettings.defaultTransactionEngine;
@@ -279,6 +295,24 @@ public class Database implements DataHandler, DbObject {
         void replicationPropertiesChanged(Database db);
     }
 
+    public void setRunMode(RunMode runMode) {
+        if (this.runMode != runMode) {
+            this.runMode = runMode;
+        }
+    }
+
+    public RunMode getRunMode() {
+        return runMode;
+    }
+
+    public Map<String, String> getParameters() {
+        return parameters;
+    }
+
+    public boolean isShardingMode() {
+        return runMode == RunMode.SHARDING;
+    }
+
     public boolean isInitialized() {
         return initialized;
     }
@@ -316,7 +350,7 @@ public class Database implements DataHandler, DbObject {
         addShutdownHook();
     }
 
-    protected void initTraceSystem(ConnectionInfo ci) {
+    private void initTraceSystem(ConnectionInfo ci) {
         if (persistent) {
             int traceLevelFile = ci.getIntProperty(SetTypes.TRACE_LEVEL_FILE, TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
             int traceLevelSystemOut = ci.getIntProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT,
@@ -349,11 +383,17 @@ public class Database implements DataHandler, DbObject {
     private void openDatabase() {
         try {
             // 初始化traceSystem后才能做下面这些
-            User systemUser = Auth.getSystemUser();
+            systemUser = new User(this, 0, SYSTEM_USER_NAME, true);
+            systemUser.setAdmin(true);
+
+            publicRole = new Role(this, 0, Constants.PUBLIC_ROLE_NAME, true);
+            roles.put(Constants.PUBLIC_ROLE_NAME, publicRole);
+
             mainSchema = new Schema(this, 0, Constants.SCHEMA_MAIN, systemUser, true);
             infoSchema = new Schema(this, -1, "INFORMATION_SCHEMA", systemUser, true);
             schemas.put(mainSchema.getName(), mainSchema);
             schemas.put(infoSchema.getName(), infoSchema);
+
             systemSession = new ServerSession(this, systemUser, ++nextSessionId);
 
             openMetaTable();
@@ -361,14 +401,13 @@ public class Database implements DataHandler, DbObject {
             if (!readOnly) {
                 // set CREATE_BUILD in a new database
                 String name = SetTypes.getTypeName(SetTypes.CREATE_BUILD);
-                if (settings.get(name) == null) {
+                if (!settings.containsKey(name)) {
                     Setting setting = new Setting(this, allocateObjectId(), name);
                     setting.setIntValue(Constants.BUILD_ID);
                     lockMeta(systemSession);
                     addDatabaseObject(systemSession, setting);
                 }
             }
-            // getLobStorage().init();
             systemSession.commit(true);
 
             trace.info("opened {0}", name);
@@ -681,11 +720,6 @@ public class Database implements DataHandler, DbObject {
         if (meta == null) {
             return true;
         }
-        // 从seed节点上转发命令到其他节点时会携带一个"TOKEN"参数，
-        // 如果在其他节点上又转发另一条命令过来，那么会构成一个循环，
-        // 此时就不用再调用meta.lcok，否则会超时。
-        if (session.getOriginalProperties() != null && session.getOriginalProperties().getProperty("TOKEN") != null)
-            return true;
 
         boolean wasLocked = meta.isLockedExclusivelyBy(session);
         meta.lock(session, true, true);
@@ -750,34 +784,34 @@ public class Database implements DataHandler, DbObject {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, DbObject> getMap(int type) {
+    private Map<String, DbObject> getMap(DbObjectType type) {
         Map<String, ? extends DbObject> result;
         switch (type) {
-        case DbObject.USER:
-            result = Auth.getUsersMap();
+        case USER:
+            result = users;
             break;
-        case DbObject.SETTING:
+        case SETTING:
             result = settings;
             break;
-        case DbObject.ROLE:
-            result = Auth.getRolesMap();
+        case ROLE:
+            result = roles;
             break;
-        case DbObject.RIGHT:
-            result = Auth.getRightsMap();
+        case RIGHT:
+            result = rights;
             break;
-        case DbObject.SCHEMA:
+        case SCHEMA:
             result = schemas;
             break;
-        case DbObject.USER_DATATYPE:
+        case USER_DATATYPE:
             result = userDataTypes;
             break;
-        case DbObject.COMMENT:
+        case COMMENT:
             result = comments;
             break;
-        case DbObject.AGGREGATE:
+        case AGGREGATE:
             result = aggregates;
             break;
-        case DbObject.DATABASE:
+        case DATABASE:
             result = LealoneDatabase.getInstance().getDatabasesMap();
             break;
         default:
@@ -814,6 +848,12 @@ public class Database implements DataHandler, DbObject {
             checkWritingAllowed();
         }
         Map<String, DbObject> map = getMap(obj.getType());
+        if (obj.getType() == DbObjectType.USER) {
+            User user = (User) obj;
+            if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
+                systemUser.rename(user.getName());
+            }
+        }
         String name = obj.getName();
         if (SysProperties.CHECK && map.get(name) != null) {
             DbException.throwInternalError("object already exists");
@@ -841,11 +881,21 @@ public class Database implements DataHandler, DbObject {
      * @return the comment or null
      */
     public Comment findComment(DbObject object) {
-        if (object.getType() == DbObject.COMMENT) {
+        if (object.getType() == DbObjectType.COMMENT) {
             return null;
         }
         String key = Comment.getKey(object);
         return comments.get(key);
+    }
+
+    /**
+     * Get the role if it exists, or null if not.
+     *
+     * @param roleName the name of the role
+     * @return the role or null
+     */
+    public Role findRole(String roleName) {
+        return roles.get(roleName);
     }
 
     /**
@@ -873,6 +923,16 @@ public class Database implements DataHandler, DbObject {
     }
 
     /**
+     * Get the user if it exists, or null if not.
+     *
+     * @param name the name of the user
+     * @return the user or null
+     */
+    public User findUser(String name) {
+        return users.get(name);
+    }
+
+    /**
      * Get the user defined data type if it exists, or null if not.
      *
      * @param name the name of the user defined data type
@@ -880,6 +940,22 @@ public class Database implements DataHandler, DbObject {
      */
     public UserDataType findUserDataType(String name) {
         return userDataTypes.get(name);
+    }
+
+    /**
+     * Get user with the given name. This method throws an exception if the user
+     * does not exist.
+     *
+     * @param name the user name
+     * @return the user
+     * @throws DbException if the user does not exist
+     */
+    public User getUser(String name) {
+        User user = findUser(name);
+        if (user == null) {
+            throw DbException.get(ErrorCode.USER_NOT_FOUND_1, name);
+        }
+        return user;
     }
 
     /**
@@ -918,6 +994,7 @@ public class Database implements DataHandler, DbObject {
                 trace.info("disconnecting session #{0}", session.getId());
             }
         }
+
         if (userSessions.isEmpty() && session != systemSession) {
             if (closeDelay == 0) {
                 close(false);
@@ -987,10 +1064,8 @@ public class Database implements DataHandler, DbObject {
         }
         // remove all session variables
         if (persistent) {
-            boolean lobStorageIsUsed = infoSchema.findTableOrView(systemSession, LobStorage.LOB_DATA_TABLE) != null;
-            if (lobStorageIsUsed) {
+            if (lobStorage != null) {
                 try {
-                    getLobStorage();
                     lobStorage.removeAllForTable(LobStorage.TABLE_ID_SESSION_VARIABLE);
                 } catch (DbException e) {
                     trace.error(e, "close");
@@ -1007,12 +1082,12 @@ public class Database implements DataHandler, DbObject {
                             table.close(systemSession);
                         }
                     }
-                    for (SchemaObject obj : getAllSchemaObjects(DbObject.SEQUENCE)) {
+                    for (SchemaObject obj : getAllSchemaObjects(DbObjectType.SEQUENCE)) {
                         Sequence sequence = (Sequence) obj;
                         sequence.close();
                     }
                 }
-                for (SchemaObject obj : getAllSchemaObjects(DbObject.TRIGGER)) {
+                for (SchemaObject obj : getAllSchemaObjects(DbObjectType.TRIGGER)) {
                     TriggerObject trigger = (TriggerObject) obj;
                     try {
                         trigger.close();
@@ -1096,6 +1171,14 @@ public class Database implements DataHandler, DbObject {
         return allowLiterals;
     }
 
+    public ArrayList<Right> getAllRights() {
+        return New.arrayList(rights.values());
+    }
+
+    public ArrayList<Role> getAllRoles() {
+        return New.arrayList(roles.values());
+    }
+
     /**
      * Get all schema objects.
      *
@@ -1116,8 +1199,8 @@ public class Database implements DataHandler, DbObject {
      * @param type the object type
      * @return all objects of that type
      */
-    public ArrayList<SchemaObject> getAllSchemaObjects(int type) {
-        if (type == DbObject.TABLE_OR_VIEW) {
+    public ArrayList<SchemaObject> getAllSchemaObjects(DbObjectType type) {
+        if (type == DbObjectType.TABLE_OR_VIEW) {
             initMetaTables();
         }
         ArrayList<SchemaObject> list = New.arrayList();
@@ -1157,6 +1240,10 @@ public class Database implements DataHandler, DbObject {
 
     public ArrayList<UserDataType> getAllUserDataTypes() {
         return New.arrayList(userDataTypes.values());
+    }
+
+    public ArrayList<User> getAllUsers() {
+        return New.arrayList(users.values());
     }
 
     public CompareMode getCompareMode() {
@@ -1222,7 +1309,7 @@ public class Database implements DataHandler, DbObject {
     }
 
     private synchronized void updateMetaAndFirstLevelChildren(ServerSession session, DbObject obj) {
-        ArrayList<DbObject> list = obj.getChildren();
+        List<DbObject> list = obj.getChildren();
         Comment comment = findComment(obj);
         if (comment != null) {
             DbException.throwInternalError();
@@ -1247,7 +1334,7 @@ public class Database implements DataHandler, DbObject {
      */
     public synchronized void renameDatabaseObject(ServerSession session, DbObject obj, String newName) {
         checkWritingAllowed();
-        int type = obj.getType();
+        DbObjectType type = obj.getType();
         Map<String, DbObject> map = getMap(type);
         if (SysProperties.CHECK) {
             if (!map.containsKey(obj.getName())) {
@@ -1319,7 +1406,7 @@ public class Database implements DataHandler, DbObject {
     public synchronized void removeDatabaseObject(ServerSession session, DbObject obj) {
         checkWritingAllowed();
         String objName = obj.getName();
-        int type = obj.getType();
+        DbObjectType type = obj.getType();
         Map<String, DbObject> map = getMap(type);
         if (SysProperties.CHECK && !map.containsKey(objName)) {
             DbException.throwInternalError("not found: " + objName);
@@ -1344,12 +1431,12 @@ public class Database implements DataHandler, DbObject {
      */
     public Table getDependentTable(SchemaObject obj, Table except) {
         switch (obj.getType()) {
-        case DbObject.COMMENT:
-        case DbObject.CONSTRAINT:
-        case DbObject.INDEX:
-        case DbObject.RIGHT:
-        case DbObject.TRIGGER:
-        case DbObject.USER:
+        case COMMENT:
+        case CONSTRAINT:
+        case INDEX:
+        case RIGHT:
+        case TRIGGER:
+        case USER:
             return null;
         default:
         }
@@ -1374,21 +1461,21 @@ public class Database implements DataHandler, DbObject {
      * @param obj the object to be removed
      */
     public synchronized void removeSchemaObject(ServerSession session, SchemaObject obj) {
-        int type = obj.getType();
-        if (type == DbObject.TABLE_OR_VIEW) {
+        DbObjectType type = obj.getType();
+        if (type == DbObjectType.TABLE_OR_VIEW) {
             Table table = (Table) obj;
             if (table.isTemporary() && !table.isGlobalTemporary()) {
                 session.removeLocalTempTable(table);
                 return;
             }
-        } else if (type == DbObject.INDEX) {
+        } else if (type == DbObjectType.INDEX) {
             Index index = (Index) obj;
             Table table = index.getTable();
             if (table.isTemporary() && !table.isGlobalTemporary()) {
                 session.removeLocalTempTableIndex(index);
                 return;
             }
-        } else if (type == DbObject.CONSTRAINT) {
+        } else if (type == DbObjectType.CONSTRAINT) {
             Constraint constraint = (Constraint) obj;
             Table table = constraint.getTable();
             if (table.isTemporary() && !table.isGlobalTemporary()) {
@@ -1458,6 +1545,10 @@ public class Database implements DataHandler, DbObject {
         lockMeta(systemSession);
         addDatabaseObject(systemSession, user);
         systemSession.commit(true);
+    }
+
+    public Role getPublicRole() {
+        return publicRole;
     }
 
     /**
@@ -1969,15 +2060,17 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public Connection getLobConnection() {
-        String url = Constants.CONN_URL_INTERNAL;
-        // JdbcConnection conn = new JdbcConnection(systemSession, systemUser.getName(), url);
-        // conn.setTraceLevel(TraceSystem.OFF);
-        // return conn;
+        return getInternalConnection();
+    }
 
+    public Connection getInternalConnection() {
+        ConnectionInfo.setInternalSession(systemSession);
         try {
-            return DriverManager.getConnection(url, Auth.getSystemUser().getName(), "");
+            return DriverManager.getConnection(Constants.CONN_URL_INTERNAL, systemUser.getName(), "");
         } catch (SQLException e) {
             throw DbException.convert(e);
+        } finally {
+            ConnectionInfo.removeInternalSession();
         }
     }
 
@@ -2061,7 +2154,13 @@ public class Database implements DataHandler, DbObject {
 
         storage = getStorageBuilder(storageEngine).openStorage();
         storages.put(storageEngine.getName(), storage);
+        if (persistent && lobStorage == null)
+            setLobStorage(storageEngine.getLobStorage(this, storage));
         return storage;
+    }
+
+    public Storage getStorage(String storageEngineName) {
+        return storages.get(storageEngineName);
     }
 
     private String getStorageName() {
@@ -2095,7 +2194,7 @@ public class Database implements DataHandler, DbObject {
         if (!persistent) {
             builder.inMemory();
         } else {
-            String storageName = getStorageName();// getDatabasePath();
+            String storageName = getStorageName();
             byte[] key = getFileEncryptionKey();
             builder.pageSplitSize(getPageSize());
             builder.storageName(storageName);
@@ -2121,6 +2220,7 @@ public class Database implements DataHandler, DbObject {
                     setBackgroundException(DbException.convert(e));
                 }
             });
+            builder.db(this);
         }
 
         storageBuilder = builder;
@@ -2159,7 +2259,7 @@ public class Database implements DataHandler, DbObject {
     }
 
     @Override
-    public ArrayList<DbObject> getChildren() {
+    public List<DbObject> getChildren() {
         return null;
     }
 
@@ -2184,8 +2284,8 @@ public class Database implements DataHandler, DbObject {
     }
 
     @Override
-    public int getType() {
-        return DbObject.DATABASE;
+    public DbObjectType getType() {
+        return DbObjectType.DATABASE;
     }
 
     @Override
@@ -2216,5 +2316,18 @@ public class Database implements DataHandler, DbObject {
     @Override
     public String getComment() {
         return null;
+    }
+
+    private int[] hostIds;
+
+    public int[] getHostIds() {
+        if (hostIds == null) {
+            if (parameters != null && parameters.containsKey("hostIds")) {
+                hostIds = StringUtils.arraySplitAsInt(parameters.get("hostIds"), ',');
+            }
+        }
+        if (hostIds == null)
+            hostIds = new int[0];
+        return hostIds;
     }
 }

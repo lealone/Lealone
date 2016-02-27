@@ -21,13 +21,18 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * EXECUTE
  */
-public class ExecuteProcedure extends StatementBase {
+public class ExecuteProcedure extends ManipulateStatement {
 
     private final ArrayList<Expression> expressions = New.arrayList();
     private Procedure procedure;
 
     public ExecuteProcedure(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.EXECUTE;
     }
 
     public void setProcedure(Procedure procedure) {
@@ -75,19 +80,9 @@ public class ExecuteProcedure extends StatementBase {
     }
 
     @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
-    public Result queryMeta() {
+    public Result getMetaData() {
         StatementBase prepared = (StatementBase) procedure.getPrepared();
-        return prepared.queryMeta();
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.EXECUTE;
+        return prepared.getMetaData();
     }
 
 }

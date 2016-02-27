@@ -9,7 +9,7 @@ package org.lealone.sql.expression;
 import java.util.HashMap;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
@@ -33,7 +33,6 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
     private final Database database;
     private String schemaName;
     private String tableAlias;
-    private String columnFamilyName;
     private String columnName;
     private ColumnResolver columnResolver;
     private int queryLevel;
@@ -51,15 +50,6 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
         this.database = database;
         this.schemaName = schemaName;
         this.tableAlias = tableAlias;
-        this.columnName = columnName;
-    }
-
-    public ExpressionColumn(Database database, String schemaName, String tableAlias, String columnFamilyName,
-            String columnName) {
-        this.database = database;
-        this.schemaName = schemaName;
-        this.tableAlias = tableAlias;
-        this.columnFamilyName = columnFamilyName;
         this.columnName = columnName;
     }
 
@@ -92,77 +82,6 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
     public void mapColumns(ColumnResolver resolver, int level) {
         if (select == null)
             select = (Select) resolver.getSelect();
-
-        if (resolver instanceof TableFilter && resolver.getTableFilter().getTable().supportsColumnFamily()) {
-            Table t = resolver.getTableFilter().getTable();
-
-            // if (!t.isStatic() && t.getRowKeyName().equalsIgnoreCase(columnName)) {
-            // if (columnFamilyName != null) {
-            // schemaName = tableAlias;
-            // tableAlias = columnFamilyName;
-            // columnFamilyName = null;
-            // }
-            // if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
-            // return;
-            // }
-            // if (schemaName != null && !database.equalsIdentifiers(schemaName, resolver.getSchemaName())) {
-            // return;
-            // }
-            // mapColumn(resolver, t.getRowKeyColumn(), level);
-            // return;
-            // }
-
-            if (database.equalsIdentifiers(Column.ROWKEY, columnName)) {
-                Column col = t.getRowKeyColumn();
-                if (col != null) {
-                    mapColumn(resolver, col, level);
-                    return;
-                }
-            }
-            if (resolver.getSelect() == null) {
-                Column c = t.getColumn(columnName);
-                mapColumn(resolver, c, level);
-                return;
-            }
-
-            String tableAlias = this.tableAlias;
-            boolean useAlias = false;
-            // 当columnFamilyName不存在时，有可能是想使用简化的tableAlias.columnName语法
-            if (columnFamilyName != null && !t.doesColumnFamilyExist(columnFamilyName)) {
-                // 不替换原有的tableAlias，因为有可能在另一个table中存在这样的columnFamilyName
-                tableAlias = columnFamilyName;
-
-                if (!t.doesColumnExist(columnName))
-                    return;
-
-                useAlias = true;
-            }
-
-            if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
-                return;
-            }
-            if (schemaName != null && !database.equalsIdentifiers(schemaName, resolver.getSchemaName())) {
-                return;
-            }
-
-            String fullColumnName;
-            if (useAlias || columnFamilyName == null)
-                fullColumnName = columnName;
-            else
-                fullColumnName = t.getFullColumnName(columnFamilyName, columnName);
-
-            if (t.doesColumnExist(fullColumnName)) {
-                Column c = t.getColumn(fullColumnName);
-                mapColumn(resolver, c, level);
-                return;
-            }
-        } else {
-            if (columnFamilyName != null) {
-                schemaName = tableAlias;
-                tableAlias = columnFamilyName;
-                columnFamilyName = null;
-            }
-        }
 
         if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
             return;
@@ -212,7 +131,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
             if (schema != null) {
                 Constant constant = schema.findConstant(columnName);
                 if (constant != null) {
-                    return (Expression) constant.getValue();
+                    return ValueExpression.get(constant.getValue());
                 }
             }
 

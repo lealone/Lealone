@@ -5,11 +5,11 @@
  */
 package org.lealone.db.constraint;
 
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
@@ -449,7 +449,7 @@ public class ConstraintReferential extends Constraint {
             } else {
                 PreparedStatement updateCommand = getUpdate(session);
                 if (updateAction == CASCADE) {
-                    ArrayList<? extends CommandParameter> params = updateCommand.getParameters();
+                    List<? extends CommandParameter> params = updateCommand.getParameters();
                     for (int i = 0, len = columns.length; i < len; i++) {
                         CommandParameter param = params.get(i);
                         Column refCol = refColumns[i].column;
@@ -479,7 +479,7 @@ public class ConstraintReferential extends Constraint {
         for (int i = 0, len = refColumns.length; i < len; i++) {
             int idx = refColumns[i].column.getColumnId();
             Value v = row.getValue(idx);
-            ArrayList<? extends CommandParameter> params = command.getParameters();
+            List<? extends CommandParameter> params = command.getParameters();
             CommandParameter param = params.get(pos + i);
             param.setValue(v, false);
         }
@@ -566,7 +566,7 @@ public class ConstraintReferential extends Constraint {
     private PreparedStatement prepare(ServerSession session, String sql, int action) {
         PreparedStatement command = session.prepareStatement(sql);
         if (action != CASCADE) {
-            ArrayList<? extends CommandParameter> params = command.getParameters();
+            List<? extends CommandParameter> params = command.getParameters();
             for (int i = 0, len = columns.length; i < len; i++) {
                 Column column = columns[i].column;
                 CommandParameter param = params.get(i);

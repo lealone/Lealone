@@ -20,7 +20,6 @@ package org.lealone.test.db;
 import org.junit.Test;
 import org.lealone.db.Comment;
 import org.lealone.db.Constants;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Role;
 import org.lealone.db.table.Table;
 
@@ -44,7 +43,7 @@ public class CommentTest extends DbObjectTestBase {
         Comment comment = db.findComment(table);
         assertNull(comment); // 表的Comment并没有存到Database类的comments字段中
 
-        Role role = Auth.findRole("myrole");
+        Role role = db.findRole("myrole");
         comment = db.findComment(role);
         assertNotNull(comment);
         assertNull(comment.getComment()); // Comment的comment是null

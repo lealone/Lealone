@@ -6,17 +6,15 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
-import org.lealone.db.result.Result;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.StatementBase;
 
 /**
  * Represents a transactional statement.
  */
-public class TransactionStatement extends StatementBase {
+public class TransactionStatement extends ManipulateStatement {
     public static final String INTERNAL_SAVEPOINT = "_INTERNAL_SAVEPOINT_";
 
     private final int type;
@@ -28,10 +26,29 @@ public class TransactionStatement extends StatementBase {
         this.type = type;
     }
 
+    @Override
+    public int getType() {
+        return type;
+    }
+
+    @Override
+    public boolean isCacheable() {
+        return true;
+    }
+
+    @Override
+    public boolean needRecompile() {
+        return false;
+    }
+
     public void setSavepointName(String name) {
         if (INTERNAL_SAVEPOINT.equals(name))
             throw DbException.getUnsupportedException("Savepoint name cannot use " + INTERNAL_SAVEPOINT);
         this.savepointName = name;
+    }
+
+    public void setTransactionName(String string) {
+        this.transactionName = string;
     }
 
     @Override
@@ -118,35 +135,6 @@ public class TransactionStatement extends StatementBase {
             DbException.throwInternalError("type=" + type);
         }
         return 0;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
-    public boolean needRecompile() {
-        return false;
-    }
-
-    public void setTransactionName(String string) {
-        this.transactionName = string;
-    }
-
-    @Override
-    public Result queryMeta() {
-        return null;
-    }
-
-    @Override
-    public int getType() {
-        return type;
-    }
-
-    @Override
-    public boolean isCacheable() {
-        return true;
     }
 
 }

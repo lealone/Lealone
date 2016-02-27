@@ -11,6 +11,9 @@ import java.sql.ResultSet;
 
 /**
  * Constants are fixed values that are used in the whole database code.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Constants {
     /**
@@ -29,37 +32,29 @@ public class Constants {
 
     public static final String DEFAULT_TRANSACTION_ENGINE_NAME = "MVCC";
 
-    public static final String TCP_SERVER_NAME = "tcp_server";
+    public static final String DEFAULT_CONTAINER_ENGINE_NAME = "CGROUP";
 
     public static final char NAME_SEPARATOR = '_';
 
     /**
-     * The build date is updated for each public release.
+     * The major version of this database.
      */
-    public static final String BUILD_DATE = "2015-09-15";
+    public static final int VERSION_MAJOR = 3;
+
+    /**
+     * The minor version of this database.
+     */
+    public static final int VERSION_MINOR = 0;
 
     /**
      * The build date is updated for each public release.
      */
-    public static final String BUILD_DATE_STABLE = "2015-05-15";
+    public static final String BUILD_DATE = "2016-04-15";
 
     /**
      * The build id is incremented for each public release.
      */
     public static final int BUILD_ID = 0;
-
-    /**
-     * The build id of the last stable release.
-     */
-    public static final int BUILD_ID_STABLE = 0;
-
-    /**
-     * If H2 is compiled to be included in a product, this should be set to
-     * a unique vendor id (to distinguish from official releases).
-     * Additionally, a version number should be set to distinguish releases.
-     * Example: ACME_SVN1651_BUILD3
-     */
-    public static final String BUILD_VENDOR_AND_VERSION = null;
 
     /**
      * The TCP protocol version number 1.
@@ -82,26 +77,9 @@ public class Constants {
     public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_1;
 
     /**
-     * The major version of this database.
-     */
-    public static final int VERSION_MAJOR = 1;
-
-    /**
-     * The minor version of this database.
-     */
-    public static final int VERSION_MINOR = 0;
-    // Build.getLuceneVersion() uses an ugly hack to read this value
-
-    /**
      * The lock mode that means no locking is used at all.
      */
     public static final int LOCK_MODE_OFF = 0;
-
-    /**
-     * The lock mode that means read locks are acquired, but they are released
-     * immediately after the statement is executed.
-     */
-    public static final int LOCK_MODE_READ_COMMITTED = 3;
 
     /**
      * The lock mode that means table level locking is used for reads and
@@ -117,6 +95,23 @@ public class Constants {
     public static final int LOCK_MODE_TABLE_GC = 2;
 
     /**
+     * The lock mode that means read locks are acquired, but they are released
+     * immediately after the statement is executed.
+     */
+    public static final int LOCK_MODE_READ_COMMITTED = 3;
+
+    /**
+     * The default value for the LOCK_MODE setting.
+     */
+    public static final int DEFAULT_LOCK_MODE = LOCK_MODE_READ_COMMITTED;
+
+    /**
+     * The number of milliseconds after which to check for a deadlock if locking
+     * is not successful.
+     */
+    public static final int DEADLOCK_CHECK = 100;
+
+    /**
      * Constant meaning both numbers and text is allowed in SQL statements.
      */
     public static final int ALLOW_LITERALS_ALL = 2;
@@ -127,8 +122,7 @@ public class Constants {
     public static final int ALLOW_LITERALS_NONE = 0;
 
     /**
-     * Constant meaning only numbers are allowed in SQL statements (but no
-     * texts).
+     * Constant meaning only numbers are allowed in SQL statements (but no texts).
      */
     public static final int ALLOW_LITERALS_NUMBERS = 1;
 
@@ -155,23 +149,6 @@ public class Constants {
     public static final int COST_ROW_OFFSET = 1000;
 
     /**
-     * The number of milliseconds after which to check for a deadlock if locking
-     * is not successful.
-     */
-    public static final int DEADLOCK_CHECK = 100;
-
-    /**
-     * The default port number of the HTTP server (for the H2 Console).
-     * This value is also in the documentation and in the Server javadoc.
-     */
-    public static final int DEFAULT_HTTP_PORT = 8082;
-
-    /**
-     * The default value for the LOCK_MODE setting.
-     */
-    public static final int DEFAULT_LOCK_MODE = LOCK_MODE_READ_COMMITTED;
-
-    /**
      * The default maximum length of an LOB that is stored in the database file.
      */
     public static final int DEFAULT_MAX_LENGTH_INPLACE_LOB = 4096;
@@ -182,11 +159,6 @@ public class Constants {
      * Only used if lealone.lobInDatabase is enabled.
      */
     public static final int DEFAULT_MAX_LENGTH_INPLACE_LOB2 = 128;
-
-    /**
-     * The default value for the maximum transaction log size.
-     */
-    public static final long DEFAULT_MAX_LOG_SIZE = 16 * 1024 * 1024;
 
     /**
      * The default maximum number of rows to be kept in memory in a result set.
@@ -216,7 +188,6 @@ public class Constants {
 
     /**
      * The default port of the TCP server.
-     * This port is also used in the documentation and in the Server javadoc.
      */
     public static final int DEFAULT_TCP_PORT = 5210;
 
@@ -255,25 +226,9 @@ public class Constants {
     public static final int IO_BUFFER_SIZE_COMPRESS = 128 * 1024;
 
     /**
-     * The number of milliseconds to wait between checking the .lock.db file
-     * still exists once a database is locked.
-     */
-    public static final int LOCK_SLEEP = 1000;
-
-    /**
      * The highest possible parameter index.
      */
     public static final int MAX_PARAMETER_INDEX = 100000;
-
-    /**
-     * The memory needed by a object of class Data
-     */
-    public static final int MEMORY_DATA = 24;
-
-    /**
-     * This value is used to calculate the average memory usage.
-     */
-    public static final int MEMORY_FACTOR = 64;
 
     /**
      * The memory needed by a regular object with at least one field.
@@ -281,21 +236,6 @@ public class Constants {
     // Java 6, 64 bit: 24
     // Java 6, 32 bit: 12
     public static final int MEMORY_OBJECT = 24;
-
-    /**
-     * The memory needed by an object of class PageBtree.
-     */
-    public static final int MEMORY_PAGE_BTREE = 112 + MEMORY_DATA + 2 * MEMORY_OBJECT;
-
-    /**
-     * The memory needed by an object of class PageData.
-     */
-    public static final int MEMORY_PAGE_DATA = 144 + MEMORY_DATA + 3 * MEMORY_OBJECT;
-
-    /**
-     * The memory needed by an object of class PageDataOverflow.
-     */
-    public static final int MEMORY_PAGE_DATA_OVERFLOW = 96 + MEMORY_DATA;
 
     /**
      * The memory needed by a pointer.
@@ -308,11 +248,6 @@ public class Constants {
      * The memory needed by a Row.
      */
     public static final int MEMORY_ROW = 40;
-
-    /**
-     * The minimum write delay that causes commits to be delayed.
-     */
-    public static final int MIN_WRITE_DELAY = 5;
 
     /**
      * The name prefix used for indexes that are not explicitly named.
@@ -356,16 +291,6 @@ public class Constants {
     public static final int SELECTIVITY_DISTINCT_COUNT = 10000;
 
     /**
-     * The default directory name of the server properties file for the H2 Console.
-     */
-    public static final String SERVER_PROPERTIES_DIR = "~";
-
-    /**
-     * The name of the server properties file for the H2 Console.
-     */
-    public static final String SERVER_PROPERTIES_NAME = ".lealone.server.properties";
-
-    /**
      * Queries that take longer than this number of milliseconds are written to
      * the trace file with the level info.
      */
@@ -379,6 +304,7 @@ public class Constants {
     public static final String URL_TCP = "tcp:";
     public static final String URL_SSL = "ssl:";
     public static final String URL_EMBED = "embed:";
+    public static final String URL_RS = "rs:";
 
     /**
      * The database URL used when calling a function if only the column list
@@ -393,42 +319,9 @@ public class Constants {
     public static final String CONN_URL_INTERNAL = URL_PREFIX + "default:connection";
 
     /**
-     * The file name suffix of all database files.
+     * The file name suffix of a database file.
      */
     public static final String SUFFIX_DB_FILE = ".db";
-
-    /**
-     * The file name suffix of large object files.
-     */
-    public static final String SUFFIX_LOB_FILE = ".lob.db";
-
-    /**
-     * The suffix of the directory name used if LOB objects are stored in a
-     * directory.
-     */
-    public static final String SUFFIX_LOBS_DIRECTORY = ".lobs.db";
-
-    /**
-     * The file name suffix of file lock files that are used to make sure a
-     * database is open by only one process at any time.
-     */
-    public static final String SUFFIX_LOCK_FILE = ".lock.db";
-
-    /**
-     * The file name suffix of a MVStore file.
-     */
-    public static final String SUFFIX_MV_FILE = ".mv.db";
-
-    /**
-     * The file name suffix of a new MVStore file, used when compacting a store.
-     */
-    public static final String SUFFIX_MV_STORE_NEW_FILE = ".newFile";
-
-    /**
-     * The file name suffix of a temporary MVStore file, used when compacting a
-     * store.
-     */
-    public static final String SUFFIX_MV_STORE_TEMP_FILE = ".tempFile";
 
     /**
      * The file name suffix of temporary files.
@@ -446,15 +339,11 @@ public class Constants {
     public static final int THROTTLE_DELAY = 50;
 
     /**
-     * The maximum size of an undo log block.
-     */
-    public static final int UNDO_BLOCK_SIZE = 1024 * 1024;
-
-    /**
      * The database URL format in simplified Backus-Naur form.
      */
     public static final String URL_FORMAT = URL_PREFIX
-            + "[{mem:}] { {embed:}name | {tcp|ssl}:[//] {server[:port][,server2[:port2]...]}/name } {[;key=value...] | [?key=value][&key2=value2...]}";
+            + "[{mem:}] { {embed:}name | {tcp|ssl|rs}:[//] {server[:port][,server2[:port2]...]}/name }"
+            + " {[;key=value...] | [?key=value][&key2=value2...]}";
 
     /**
      * The package name of user defined classes.
@@ -473,10 +362,11 @@ public class Constants {
     public static final int VIEW_COST_CACHE_MAX_AGE = 10000;
 
     /**
-     * The name of the index cache that is used for temporary view (subqueries
-     * used as tables).
+     * The name of the index cache that is used for temporary view (subqueries used as tables).
      */
     public static final int VIEW_INDEX_CACHE_SIZE = 64;
+
+    public static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
     private Constants() {
         // utility class
@@ -490,19 +380,7 @@ public class Constants {
      */
     public static String getVersion() {
         String version = VERSION_MAJOR + "." + VERSION_MINOR + "." + BUILD_ID;
-        if (BUILD_VENDOR_AND_VERSION != null) {
-            version += "_" + BUILD_VENDOR_AND_VERSION;
-        }
         return version;
-    }
-
-    /**
-     * Get the last stable version name.
-     *
-     * @return the version number
-     */
-    public static Object getVersionStable() {
-        return "1.3." + BUILD_ID_STABLE;
     }
 
     /**

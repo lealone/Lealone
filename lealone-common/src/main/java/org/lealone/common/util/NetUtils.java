@@ -16,7 +16,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.CipherFactory;
 import org.lealone.db.SysProperties;
 
@@ -25,10 +25,7 @@ import org.lealone.db.SysProperties;
  */
 public class NetUtils {
 
-    private static final int CACHE_MILLIS = 1000;
     private static InetAddress cachedBindAddress;
-    private static String cachedLocalAddress;
-    private static long cachedLocalAddressTime;
 
     private NetUtils() {
         // utility class
@@ -57,6 +54,25 @@ public class NetUtils {
                 throw e;
             }
         }
+    }
+
+    /**
+     * Get the bind address if the system property lealone.bindAddress is set, or
+     * null if not.
+     *
+     * @return the bind address
+     */
+    private static InetAddress getBindAddress() throws UnknownHostException {
+        String host = SysProperties.BIND_ADDRESS;
+        if (host == null || host.length() == 0) {
+            return null;
+        }
+        synchronized (NetUtils.class) {
+            if (cachedBindAddress == null) {
+                cachedBindAddress = InetAddress.getByName(host);
+            }
+        }
+        return cachedBindAddress;
     }
 
     /**
@@ -157,25 +173,6 @@ public class NetUtils {
         }
     }
 
-    /**
-     * Get the bind address if the system property lealone.bindAddress is set, or
-     * null if not.
-     *
-     * @return the bind address
-     */
-    private static InetAddress getBindAddress() throws UnknownHostException {
-        String host = SysProperties.BIND_ADDRESS;
-        if (host == null || host.length() == 0) {
-            return null;
-        }
-        synchronized (NetUtils.class) {
-            if (cachedBindAddress == null) {
-                cachedBindAddress = InetAddress.getByName(host);
-            }
-        }
-        return cachedBindAddress;
-    }
-
     private static ServerSocket createServerSocketTry(String listenAddress, int port, boolean ssl) {
         try {
             if (ssl) {
@@ -230,44 +227,4 @@ public class NetUtils {
         }
         return null;
     }
-
-    /**
-     * Get the local host address as a string.
-     * For performance, the result is cached for one second.
-     *
-     * @return the local host address
-     */
-    public static synchronized String getLocalAddress() {
-        long now = System.currentTimeMillis();
-        if (cachedLocalAddress != null) {
-            if (cachedLocalAddressTime + CACHE_MILLIS > now) {
-                return cachedLocalAddress;
-            }
-        }
-        InetAddress bind = null;
-        boolean useLocalhost = false;
-        try {
-            bind = getBindAddress();
-            if (bind == null) {
-                useLocalhost = true;
-            }
-        } catch (UnknownHostException e) {
-            // ignore
-        }
-        if (useLocalhost) {
-            try {
-                bind = InetAddress.getLocalHost();
-            } catch (UnknownHostException e) {
-                throw DbException.convert(e);
-            }
-        }
-        String address = bind == null ? "localhost" : getHostAddress(bind);
-        if (address.equals("127.0.0.1")) {
-            address = "localhost";
-        }
-        cachedLocalAddress = address;
-        cachedLocalAddressTime = now;
-        return address;
-    }
-
 }

@@ -11,13 +11,13 @@ import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
-import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.table.Table;
@@ -50,9 +50,14 @@ public class TriggerObject extends SchemaObjectBase {
     private Trigger triggerCallback;
 
     public TriggerObject(Schema schema, int id, String name, Table table) {
-        initSchemaObjectBase(schema, id, name, Trace.TRIGGER);
+        super(schema, id, name, Trace.TRIGGER);
         this.table = table;
         setTemporary(table.isTemporary());
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.TRIGGER;
     }
 
     public void setBefore(boolean before) {
@@ -300,11 +305,6 @@ public class TriggerObject extends SchemaObjectBase {
     }
 
     @Override
-    public String getDropSQL() {
-        return null;
-    }
-
-    @Override
     public String getCreateSQLForCopy(Table targetTable, String quotedName) {
         StringBuilder buff = new StringBuilder("CREATE FORCE TRIGGER ");
         buff.append(quotedName);
@@ -364,11 +364,6 @@ public class TriggerObject extends SchemaObjectBase {
     }
 
     @Override
-    public int getType() {
-        return DbObject.TRIGGER;
-    }
-
-    @Override
     public void removeChildrenAndResources(ServerSession session) {
         table.removeTrigger(this);
         database.removeMeta(session, getId());
@@ -384,11 +379,6 @@ public class TriggerObject extends SchemaObjectBase {
         triggerSource = null;
         triggerCallback = null;
         invalidate();
-    }
-
-    @Override
-    public void checkRename() {
-        // nothing to do
     }
 
     /**

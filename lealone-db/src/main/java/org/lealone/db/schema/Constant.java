@@ -5,13 +5,9 @@
  */
 package org.lealone.db.schema;
 
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.db.DbObject;
-import org.lealone.db.ServerSession;
-import org.lealone.db.table.Table;
+import org.lealone.common.trace.Trace;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.value.Value;
-import org.lealone.sql.Expression;
 
 /**
  * A user-defined constant as created by the SQL statement
@@ -19,21 +15,16 @@ import org.lealone.sql.Expression;
  */
 public class Constant extends SchemaObjectBase {
 
-    private Value value;
-    private Expression expression;
+    private final Value value;
 
-    public Constant(Schema schema, int id, String name) {
-        initSchemaObjectBase(schema, id, name, Trace.SCHEMA);
+    public Constant(Schema schema, int id, String name, Value value) {
+        super(schema, id, name, Trace.SCHEMA);
+        this.value = value;
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
+    public DbObjectType getType() {
+        return DbObjectType.CONSTANT;
     }
 
     @Override
@@ -41,29 +32,8 @@ public class Constant extends SchemaObjectBase {
         return "CREATE CONSTANT " + getSQL() + " VALUE " + value.getSQL();
     }
 
-    @Override
-    public int getType() {
-        return DbObject.CONSTANT;
-    }
-
-    @Override
-    public void removeChildrenAndResources(ServerSession session) {
-        database.removeMeta(session, getId());
-        invalidate();
-    }
-
-    @Override
-    public void checkRename() {
-        // ok
-    }
-
-    public void setValue(Value value) {
-        this.value = value;
-        expression = database.getSQLEngine().createValueExpression(value);
-    }
-
-    public Expression getValue() {
-        return expression;
+    public Value getValue() {
+        return value;
     }
 
 }

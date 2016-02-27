@@ -10,10 +10,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
@@ -62,6 +63,11 @@ public class AlterTableAlterColumn extends SchemaStatement {
 
     public AlterTableAlterColumn(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return type;
     }
 
     public void setTable(Table table) {
@@ -364,7 +370,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             }
             if (child instanceof TableView) {
                 continue;
-            } else if (child.getType() == DbObject.TABLE_OR_VIEW) {
+            } else if (child.getType() == DbObjectType.TABLE_OR_VIEW) {
                 DbException.throwInternalError();
             }
             String quotedName = Parser.quoteIdentifier(tempName + "_" + child.getName());
@@ -489,11 +495,6 @@ public class AlterTableAlterColumn extends SchemaStatement {
 
     public void setNewColumn(Column newColumn) {
         this.newColumn = newColumn;
-    }
-
-    @Override
-    public int getType() {
-        return type;
     }
 
     public void setIfNotExists(boolean ifNotExists) {

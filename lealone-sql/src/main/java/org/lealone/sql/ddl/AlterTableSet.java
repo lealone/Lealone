@@ -6,7 +6,7 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
@@ -29,6 +29,11 @@ public class AlterTableSet extends SchemaStatement {
         super(session, schema);
         this.type = type;
         this.value = value;
+    }
+
+    @Override
+    public int getType() {
+        return type;
     }
 
     public void setCheckExisting(boolean b) {
@@ -57,11 +62,6 @@ public class AlterTableSet extends SchemaStatement {
             DbException.throwInternalError("type=" + type);
         }
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return type;
     }
 
 }

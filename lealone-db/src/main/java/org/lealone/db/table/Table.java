@@ -13,13 +13,13 @@ import java.util.List;
 import java.util.Set;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.expression.Expression;
@@ -41,7 +41,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageMap;
-import org.lealone.transaction.TransactionMap;
 
 /**
  * This is the base class for most tables.
@@ -100,9 +99,6 @@ public abstract class Table extends SchemaObjectBase {
      */
     protected boolean isHidden;
 
-    /**
-     * The table engine used (null for regular tables).
-     */
     protected String storageEngineName;
 
     private final HashMap<String, Column> columnMap;
@@ -117,11 +113,16 @@ public abstract class Table extends SchemaObjectBase {
     private Row nullRow;
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
-        columnMap = schema.getDatabase().newStringMap();
-        initSchemaObjectBase(schema, id, name, Trace.TABLE);
+        super(schema, id, name, Trace.TABLE);
+        columnMap = database.newStringMap();
         this.persistIndexes = persistIndexes;
         this.persistData = persistData;
-        compareMode = schema.getDatabase().getCompareMode();
+        compareMode = database.getCompareMode();
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.TABLE_OR_VIEW;
     }
 
     @Override
@@ -309,11 +310,6 @@ public abstract class Table extends SchemaObjectBase {
         return null;
     }
 
-    @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
     /**
      * Add all objects that this table depends on to the hash set.
      *
@@ -343,7 +339,7 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     @Override
-    public ArrayList<DbObject> getChildren() {
+    public List<DbObject> getChildren() {
         ArrayList<DbObject> children = New.arrayList();
         ArrayList<Index> indexes = getIndexes();
         if (indexes != null) {
@@ -361,7 +357,7 @@ public abstract class Table extends SchemaObjectBase {
         if (views != null) {
             children.addAll(views);
         }
-        ArrayList<Right> rights = Auth.getAllRights();
+        ArrayList<Right> rights = database.getAllRights();
         for (Right right : rights) {
             if (right.getGrantedObject() == this) {
                 children.add(right);
@@ -390,7 +386,7 @@ public abstract class Table extends SchemaObjectBase {
                 throw DbException.get(ErrorCode.UNKNOWN_DATA_TYPE_1, col.getSQL());
             }
             col.setTable(this, i);
-            String columnName = col.getFullName();
+            String columnName = col.getName();
             if (columnMap.get(columnName) != null) {
                 throw DbException.get(ErrorCode.DUPLICATE_COLUMN_NAME_1, columnName);
             }
@@ -437,17 +433,6 @@ public abstract class Table extends SchemaObjectBase {
      *            new row,...
      */
     public void updateRows(PreparedStatement prepared, ServerSession session, RowList rows) {
-        // List<Long> rowVersionList = null;
-        // TransactionMap<Long, Long> rowVersionMap = getRowVersionMap();
-        // if (rowVersionMap != null) {
-        // rowVersionList = New.arrayList();
-        // for (rows.reset(); rows.hasNext();) {
-        // Row o = rows.next();
-        // rows.next();
-        // rowVersionList.add(rowVersionMap.get(o.getKey()));
-        // }
-        // }
-
         // in case we need to undo the update
         int savepointId = session.getTransaction().getSavepointId();
         // remove the old rows
@@ -476,15 +461,6 @@ public abstract class Table extends SchemaObjectBase {
                 throw e;
             }
         }
-
-        // if (rowVersionMap != null) {
-        // int i = 0;
-        // for (rows.reset(); rows.hasNext();) {
-        // Row o = rows.next();
-        // rows.next();
-        // rowVersionMap.put(o.getKey(), rowVersionList.get(i++) + 1);
-        // }
-        // }
     }
 
     public ArrayList<TableView> getViews() {
@@ -508,7 +484,7 @@ public abstract class Table extends SchemaObjectBase {
             constraints.remove(0);
             database.removeSchemaObject(session, constraint);
         }
-        for (Right right : Auth.getAllRights()) {
+        for (Right right : database.getAllRights()) {
             if (right.getGrantedObject() == this) {
                 database.removeDatabaseObject(session, right);
             }
@@ -613,11 +589,6 @@ public abstract class Table extends SchemaObjectBase {
 
     public Column[] getColumns() {
         return columns;
-    }
-
-    @Override
-    public int getType() {
-        return DbObject.TABLE_OR_VIEW;
     }
 
     /**
@@ -1125,80 +1096,16 @@ public abstract class Table extends SchemaObjectBase {
         this.isHidden = hidden;
     }
 
-    public boolean isMVStore() {
-        return false;
-    }
-
-    public boolean supportsColumnFamily() {
-        return false;
-    }
-
     public boolean supportsAlterColumnWithCopyData() { // TODO
         return true;
-    }
-
-    public boolean supportsSharding() {
-        return false;
-    }
-
-    public boolean supportsLocalSecondaryIndex() {
-        return true;
-    }
-
-    public String getRowKeyName() {
-        return null;
-    }
-
-    public boolean isStatic() {
-        return true;
-    }
-
-    public Column getRowKeyColumn() {
-        return null;
-    }
-
-    public String getFullColumnName(String columnFamilyName, String columnName) {
-        return null;
-    }
-
-    public Column getColumn(String columnFamilyName, String columnName, boolean isInsert) {
-        return getColumn(columnName);
     }
 
     public String getStorageEngineName() {
         return storageEngineName;
     }
 
-    public void addColumn(Column column) {
-    }
-
-    public void dropColumn(Column column) {
-    }
-
-    public boolean doesColumnFamilyExist(String columnFamilyName) {
-        return false;
-    }
-
-    private boolean isColumnsModified;
-
-    public boolean isColumnsModified() {
-        return isColumnsModified;
-    }
-
-    public void setColumnsModified(boolean modified) {
-        this.isColumnsModified = modified;
-    }
-
     public boolean containsGlobalUniqueIndex() {
         return false;
-    }
-
-    public long getRowVersion(long rowKey) {
-        return -1;
-    }
-
-    public TransactionMap<Long, Long> getRowVersionMap() {
-        return null;
     }
 
     public List<StorageMap<? extends Object, ? extends Object>> getAllStorageMaps() {

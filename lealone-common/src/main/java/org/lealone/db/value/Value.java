@@ -21,7 +21,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
@@ -756,7 +756,7 @@ public abstract class Value implements Comparable<Value> {
             case BLOB: {
                 switch (getType()) {
                 case BYTES:
-                    return ValueLobDb.createSmallLob(Value.BLOB, getBytesNoCopy());
+                    return ValueLob.createSmallLob(Value.BLOB, getBytesNoCopy());
                 }
                 break;
             }
@@ -815,9 +815,9 @@ public abstract class Value implements Comparable<Value> {
             case FLOAT:
                 return ValueFloat.get(Float.parseFloat(s.trim()));
             case CLOB:
-                return ValueLobDb.createSmallLob(CLOB, s.getBytes(Constants.UTF8));
+                return ValueLob.createSmallLob(CLOB, s.getBytes(Constants.UTF8));
             case BLOB:
-                return ValueLobDb.createSmallLob(BLOB, StringUtils.convertHexToBytes(s.trim()));
+                return ValueLob.createSmallLob(BLOB, StringUtils.convertHexToBytes(s.trim()));
             case ARRAY:
                 return ValueArray.get(new Value[] { ValueString.get(s) });
             case RESULT_SET: {

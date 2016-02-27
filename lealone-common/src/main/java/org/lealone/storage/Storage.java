@@ -26,6 +26,8 @@ public interface Storage {
     <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
             Map<String, String> parameters);
 
+    StorageMap<?, ?> getStorageMap(String name);
+
     boolean hasMap(String name);
 
     String nextTemporaryMapName();

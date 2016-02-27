@@ -6,7 +6,7 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.Mode;
 import org.lealone.db.ServerSession;

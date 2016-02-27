@@ -17,6 +17,7 @@
  */
 package org.lealone.transaction;
 
+import org.lealone.db.Session;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.DataType;
 
@@ -58,7 +59,13 @@ public interface Transaction {
 
     String getLocalTransactionNames();
 
+    String getGlobalTransactionName();
+
+    void setGlobalTransactionName(String globalTransactionName);
+
     void setValidator(Validator validator);
+
+    void setSession(Session session);
 
     void addParticipant(Participant participant);
 
@@ -85,7 +92,7 @@ public interface Transaction {
     <K, V> TransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType, Storage storage);
 
     <K, V> TransactionMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
-            Storage storage);
+            Storage storage, boolean isShardingMode);
 
     void addSavepoint(String name);
 
@@ -112,6 +119,8 @@ public interface Transaction {
     }
 
     interface Validator {
-        boolean validateTransaction(String localTransactionName);
+        boolean validate(String localTransactionName);
+
+        boolean validate(String hostAndPort, String localTransactionName);
     }
 }

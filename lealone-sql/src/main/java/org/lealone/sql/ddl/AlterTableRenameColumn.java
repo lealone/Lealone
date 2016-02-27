@@ -29,6 +29,11 @@ public class AlterTableRenameColumn extends DefineStatement {
         super(session);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.ALTER_TABLE_ALTER_COLUMN_RENAME;
+    }
+
     public void setTable(Table table) {
         this.table = table;
     }
@@ -61,11 +66,6 @@ public class AlterTableRenameColumn extends DefineStatement {
             }
         }
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.ALTER_TABLE_ALTER_COLUMN_RENAME;
     }
 
 }

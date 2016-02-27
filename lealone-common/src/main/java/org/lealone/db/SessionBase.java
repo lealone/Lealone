@@ -8,10 +8,12 @@ package org.lealone.db;
 
 import java.util.ArrayList;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.storage.StorageMap;
 
 /**
  * The base class for both client and server sessions.
@@ -21,6 +23,9 @@ public abstract class SessionBase implements Session {
     protected ArrayList<String> sessionState;
     protected boolean sessionStateChanged;
     private boolean sessionStateUpdating;
+
+    protected String replicationName;
+    protected boolean local;
 
     /**
      * Re-create the session state using the stored sessionState list.
@@ -49,12 +54,41 @@ public abstract class SessionBase implements Session {
         }
         sessionStateChanged = false;
         sessionState = New.arrayList();
-        PreparedStatement ps = prepareStatement("SELECT * FROM INFORMATION_SCHEMA.SESSION_STATE", Integer.MAX_VALUE);
-        Result result = ps.query(0, false);
+        Command c = prepareCommand("SELECT * FROM INFORMATION_SCHEMA.SESSION_STATE", Integer.MAX_VALUE);
+        Result result = c.query(0, false);
         while (result.next()) {
             Value[] row = result.currentRow();
             sessionState.add(row[1].getString());
         }
     }
 
+    @Override
+    public String getReplicationName() {
+        return replicationName;
+    }
+
+    @Override
+    public void setReplicationName(String replicationName) {
+        this.replicationName = replicationName;
+    }
+
+    @Override
+    public void setLocal(boolean local) {
+        this.local = local;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return local;
+    }
+
+    @Override
+    public boolean isShardingMode() {
+        return false;
+    }
+
+    @Override
+    public StorageMap<Object, Object> getStorageMap(String mapName) {
+        throw DbException.getUnsupportedException("getStorageMap");
+    }
 }

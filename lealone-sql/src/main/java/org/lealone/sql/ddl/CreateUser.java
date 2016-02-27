@@ -7,13 +7,11 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -22,7 +20,7 @@ import org.lealone.sql.expression.Expression;
  * This class represents the statement
  * CREATE USER
  */
-public class CreateUser extends DefineStatement {
+public class CreateUser extends DefineStatement implements AuthStatement {
 
     private String userName;
     private boolean admin;
@@ -36,6 +34,11 @@ public class CreateUser extends DefineStatement {
         super(session);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_USER;
+    }
+
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
     }
@@ -46,6 +49,51 @@ public class CreateUser extends DefineStatement {
 
     public void setPassword(Expression password) {
         this.password = password;
+    }
+
+    public void setSalt(Expression e) {
+        salt = e;
+    }
+
+    public void setHash(Expression e) {
+        hash = e;
+    }
+
+    public void setAdmin(boolean b) {
+        admin = b;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    @Override
+    public int update() {
+        session.getUser().checkAdmin();
+        session.commit(true);
+        Database db = session.getDatabase();
+        if (db.findRole(userName) != null) {
+            throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, userName);
+        }
+        if (db.findUser(userName) != null) {
+            if (ifNotExists) {
+                return 0;
+            }
+            throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, userName);
+        }
+        int id = getObjectId();
+        User user = new User(db, id, userName, false);
+        user.setAdmin(admin);
+        user.setComment(comment);
+        if (hash != null && salt != null) {
+            setSaltAndHash(user, session, salt, hash);
+        } else if (password != null) {
+            setPassword(user, session, password);
+        } else {
+            throw DbException.throwInternalError();
+        }
+        db.addDatabaseObject(session, user);
+        return 0;
     }
 
     /**
@@ -83,56 +131,6 @@ public class CreateUser extends DefineStatement {
             userPasswordHash = SHA256.getKeyPasswordHash(userName, passwordChars);
         }
         user.setUserPasswordHash(userPasswordHash);
-    }
-
-    @Override
-    public int update() {
-        session.getUser().checkAdmin();
-        session.commit(true);
-        if (Auth.findRole(userName) != null) {
-            throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, userName);
-        }
-        if (Auth.findUser(userName) != null) {
-            if (ifNotExists) {
-                return 0;
-            }
-            throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, userName);
-        }
-        Database db = LealoneDatabase.getInstance();
-        int id = getObjectId(db);
-        User user = new User(db, id, userName, false);
-        user.setAdmin(admin);
-        user.setComment(comment);
-        if (hash != null && salt != null) {
-            setSaltAndHash(user, session, salt, hash);
-        } else if (password != null) {
-            setPassword(user, session, password);
-        } else {
-            throw DbException.throwInternalError();
-        }
-        db.addDatabaseObject(session, user);
-        return 0;
-    }
-
-    public void setSalt(Expression e) {
-        salt = e;
-    }
-
-    public void setHash(Expression e) {
-        hash = e;
-    }
-
-    public void setAdmin(boolean b) {
-        admin = b;
-    }
-
-    public void setComment(String comment) {
-        this.comment = comment;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_USER;
     }
 
 }

@@ -6,7 +6,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -30,6 +30,11 @@ public class CreateFunctionAlias extends SchemaStatement {
 
     public CreateFunctionAlias(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_ALIAS;
     }
 
     @Override
@@ -93,11 +98,6 @@ public class CreateFunctionAlias extends SchemaStatement {
 
     public void setSource(String source) {
         this.source = source;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_ALIAS;
     }
 
 }

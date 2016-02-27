@@ -8,15 +8,13 @@ package org.lealone.db.index;
 
 import java.util.ArrayList;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.ServerSession;
-import org.lealone.db.index.Cursor;
-import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.table.IndexColumn;
-import org.lealone.db.table.TableBase;
+import org.lealone.db.table.StandardTable;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 
@@ -28,12 +26,12 @@ import org.lealone.db.value.Value;
 public class NonUniqueHashIndex extends HashIndex {
 
     private ValueHashMap<ArrayList<Long>> rows;
-    private final TableBase tableData;
+    private final StandardTable table;
     private long rowCount;
 
-    public NonUniqueHashIndex(TableBase table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+    public NonUniqueHashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
         super(table, id, indexName, columns, indexType);
-        this.tableData = table;
+        this.table = table;
         reset();
     }
 
@@ -88,7 +86,7 @@ public class NonUniqueHashIndex extends HashIndex {
             }
         }
         ArrayList<Long> positions = rows.get(first.getValue(indexColumn));
-        return new NonUniqueHashCursor(session, tableData, positions);
+        return new NonUniqueHashCursor(session, table, positions);
     }
 
     @Override
@@ -110,13 +108,13 @@ public class NonUniqueHashIndex extends HashIndex {
 
         private final ServerSession session;
         private final ArrayList<Long> positions;
-        private final TableBase tableData;
+        private final StandardTable table;
 
         private int index = -1;
 
-        public NonUniqueHashCursor(ServerSession session, TableBase tableData, ArrayList<Long> positions) {
+        public NonUniqueHashCursor(ServerSession session, StandardTable table, ArrayList<Long> positions) {
             this.session = session;
-            this.tableData = tableData;
+            this.table = table;
             this.positions = positions;
         }
 
@@ -125,7 +123,7 @@ public class NonUniqueHashIndex extends HashIndex {
             if (index < 0 || index >= positions.size()) {
                 return null;
             }
-            return tableData.getRow(session, positions.get(index));
+            return table.getRow(session, positions.get(index));
         }
 
         @Override

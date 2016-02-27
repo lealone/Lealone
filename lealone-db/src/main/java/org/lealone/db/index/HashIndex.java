@@ -6,18 +6,14 @@
  */
 package org.lealone.db.index;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
-import org.lealone.db.index.Cursor;
-import org.lealone.db.index.IndexBase;
-import org.lealone.db.index.IndexCondition;
-import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
-import org.lealone.db.table.TableBase;
+import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
@@ -32,11 +28,12 @@ public class HashIndex extends IndexBase {
      */
     protected final int indexColumn;
 
-    private final TableBase tableData;
+    private final StandardTable tableData;
     private ValueHashMap<Long> rows;
 
-    public HashIndex(TableBase table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
-        initIndexBase(table, id, indexName, columns, indexType);
+    public HashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+        super(table, id, indexName, indexType);
+        setIndexColumns(columns);
         this.indexColumn = columns[0].column.getColumnId();
         this.tableData = table;
         reset();

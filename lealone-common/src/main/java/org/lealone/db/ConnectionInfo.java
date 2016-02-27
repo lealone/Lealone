@@ -13,7 +13,7 @@ import java.util.HashSet;
 import java.util.Properties;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SortedProperties;
@@ -49,14 +49,22 @@ public class ConnectionInfo implements Cloneable {
         INTERNAL_SESSION.remove();
     }
 
+    /**
+     * INTERNAL
+     */
+    public static Session getAndRemoveInternalSession() {
+        Session s = getInternalSession();
+        INTERNAL_SESSION.remove();
+        return s;
+    }
+
     private static final HashSet<String> KNOWN_SETTINGS = New.hashSet();
 
     static {
         KNOWN_SETTINGS.addAll(SetTypes.getTypes());
 
         String[] connectionSettings = { "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS",
-                "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "PAGE_SIZE", "PASSWORD_HASH", "IS_LOCAL",
-                "TOKEN", "DISABLE_AUTHENTICATION" };
+                "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "PAGE_SIZE", "PASSWORD_HASH", "IS_LOCAL" };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
@@ -91,7 +99,12 @@ public class ConnectionInfo implements Cloneable {
     private SessionFactory sessionFactory;
     private DbSettings dbSettings;
 
-    private boolean authenticationEnabled = true;
+    private boolean isClient;
+
+    private boolean isReplicaSetMode;
+
+    public ConnectionInfo() {
+    }
 
     /**
      * Create a server connection info object.
@@ -139,9 +152,6 @@ public class ConnectionInfo implements Cloneable {
 
         setUserName(removeProperty("USER", ""));
         convertPasswords();
-
-        if (removeProperty("DISABLE_AUTHENTICATION", false) && embedded && !remote)
-            disableAuthentication();
     }
 
     private void checkURL() {
@@ -247,6 +257,9 @@ public class ConnectionInfo implements Cloneable {
             dbName = dbName.substring(Constants.URL_EMBED.length());
             if (!mem)
                 persistent = true;
+        } else if (dbName.startsWith(Constants.URL_RS)) {
+            dbName = dbName.substring(Constants.URL_RS.length());
+            isReplicaSetMode = true;
         } else {
             throw getFormatException();
         }
@@ -444,7 +457,7 @@ public class ConnectionInfo implements Cloneable {
                         throw DbException.get(ErrorCode.URL_RELATIVE_TO_CWD, url);
                     }
                 }
-                String suffix = Constants.SUFFIX_MV_FILE;
+                String suffix = Constants.SUFFIX_DB_FILE;
                 String n = FileUtils.toRealPath(name + suffix);
                 String fileName = FileUtils.getName(n);
                 if (fileName.length() < suffix.length() + 1) { // 例如: 没有设置baseDir且dbName="./"时
@@ -664,8 +677,13 @@ public class ConnectionInfo implements Cloneable {
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
             try {
-                sessionFactory = (SessionFactory) Class.forName("org.lealone.db.DatabaseEngine")
-                        .getMethod("getSessionFactory").invoke(null);
+                // 要使用反射，避免编译期依赖
+                if (isClient)
+                    sessionFactory = (SessionFactory) Class.forName("org.lealone.client.ClientSessionFactory")
+                            .getMethod("getInstance").invoke(null);
+                else
+                    sessionFactory = (SessionFactory) Class.forName("org.lealone.db.DatabaseEngine")
+                            .getMethod("getSessionFactory").invoke(null);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -696,12 +714,39 @@ public class ConnectionInfo implements Cloneable {
         return url;
     }
 
-    public void disableAuthentication() {
-        authenticationEnabled = false;
+    public Properties getProperties() {
+        return prop;
     }
 
-    public boolean isAuthenticationEnabled() {
-        return authenticationEnabled;
+    public void setClient(boolean b) {
+        isClient = b;
     }
 
+    public boolean isReplicaSetMode() {
+        return isReplicaSetMode;
+    }
+
+    public ConnectionInfo copyForReplicaSet(String newServer) {
+        ConnectionInfo ci = new ConnectionInfo();
+        ci.prop.putAll(prop);
+        StringBuilder buff = new StringBuilder(Constants.URL_PREFIX);
+        buff.append(Constants.URL_TCP).append("//").append(newServer).append('/').append(dbName);
+        ci.url = buff.toString();
+        ci.user = user;
+        ci.filePasswordHash = filePasswordHash;
+        ci.fileEncryptionKey = fileEncryptionKey;
+        ci.userPasswordHash = userPasswordHash;
+        ci.dbName = dbName;
+        ci.nameNormalized = nameNormalized;
+        ci.remote = remote;
+        ci.ssl = ssl;
+        ci.persistent = persistent;
+        ci.embedded = embedded;
+        ci.servers = newServer;
+        ci.sessionFactory = sessionFactory;
+        ci.dbSettings = dbSettings;
+        ci.isClient = isClient;
+        ci.isReplicaSetMode = false;
+        return ci;
+    }
 }

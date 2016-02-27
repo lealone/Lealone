@@ -9,17 +9,15 @@ package org.lealone.sql.dml;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.Trigger;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
-import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.RowList;
 import org.lealone.db.table.Column;
@@ -30,7 +28,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
@@ -39,20 +36,39 @@ import org.lealone.sql.expression.ValueExpression;
  * This class represents the statement
  * UPDATE
  */
-public class Update extends StatementBase implements Callable<Integer> {
+public class Update extends ManipulateStatement {
 
-    protected Expression condition;
-    protected TableFilter tableFilter;
+    private Expression condition;
+    private TableFilter tableFilter;
 
     /** The limit expression as specified in the LIMIT clause. */
     private Expression limitExpr;
 
-    protected final ArrayList<Column> columns = New.arrayList();
-    protected final HashMap<Column, Expression> expressionMap = New.hashMap();
+    private final ArrayList<Column> columns = New.arrayList();
+    private final HashMap<Column, Expression> expressionMap = New.hashMap();
     private final List<Row> rows = New.arrayList();
 
     public Update(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.UPDATE;
+    }
+
+    @Override
+    public boolean isCacheable() {
+        return true;
+    }
+
+    public void setLimit(Expression limit) {
+        this.limitExpr = limit;
+    }
+
+    @Override
+    public boolean isBatch() {
+        return !containsEqualPartitionKeyComparisonType(tableFilter);
     }
 
     public void setTableFilter(TableFilter tableFilter) {
@@ -86,21 +102,27 @@ public class Update extends StatementBase implements Callable<Integer> {
     }
 
     @Override
+    public PreparedStatement prepare() {
+        if (condition != null) {
+            condition.mapColumns(tableFilter, 0);
+            condition = condition.optimize(session);
+            condition.createIndexConditions(session, tableFilter);
+        }
+        for (int i = 0, size = columns.size(); i < size; i++) {
+            Column c = columns.get(i);
+            Expression e = expressionMap.get(c);
+            e.mapColumns(tableFilter, 0);
+            expressionMap.put(c, e.optimize(session));
+        }
+        PlanItem item = tableFilter.getBestPlanItem(session, 1);
+        tableFilter.setPlanItem(item);
+        tableFilter.prepare();
+
+        return this;
+    }
+
+    @Override
     public int update() {
-        return org.lealone.sql.RouterHolder.getRouter().executeUpdate(this);
-    }
-
-    @Override
-    public int updateLocal() {
-        return updateRows();
-    }
-
-    @Override
-    public Integer call() {
-        return Integer.valueOf(updateRows());
-    }
-
-    private int updateRows() {
         tableFilter.startQuery(session);
         tableFilter.reset();
         RowList rows = new RowList(session);
@@ -201,65 +223,4 @@ public class Update extends StatementBase implements Callable<Integer> {
         return buff.toString();
     }
 
-    @Override
-    public PreparedStatement prepare() {
-        if (condition != null) {
-            condition.mapColumns(tableFilter, 0);
-            condition = condition.optimize(session);
-            condition.createIndexConditions(session, tableFilter);
-        }
-        for (int i = 0, size = columns.size(); i < size; i++) {
-            Column c = columns.get(i);
-            Expression e = expressionMap.get(c);
-            e.mapColumns(tableFilter, 0);
-            expressionMap.put(c, e.optimize(session));
-        }
-        PlanItem item = tableFilter.getBestPlanItem(session, 1);
-        tableFilter.setPlanItem(item);
-        tableFilter.prepare();
-
-        return this;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
-    public Result queryMeta() {
-        return null;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.UPDATE;
-    }
-
-    public void setLimit(Expression limit) {
-        this.limitExpr = limit;
-    }
-
-    @Override
-    public boolean isCacheable() {
-        return true;
-    }
-
-    public Table getTable() {
-        return tableFilter.getTable();
-    }
-
-    @Override
-    public boolean isBatch() {
-        return !containsEqualPartitionKeyComparisonType(tableFilter);
-    }
-
-    @Override
-    public List<Long> getRowVersions() {
-        ArrayList<Long> list = new ArrayList<>(rows.size());
-        Table table = getTable();
-        for (Row row : rows)
-            list.add(table.getRowVersion(row.getKey()));
-        return list;
-    }
 }

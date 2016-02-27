@@ -9,7 +9,11 @@ import org.lealone.db.Command;
 
 /**
  * Represents a SQL statement.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
+// 此接口只定义了所有子类对应的类型常量值
 public interface SQLStatement extends Command {
 
     /**
@@ -451,66 +455,8 @@ public interface SQLStatement extends Command {
 
     int CREATE_DATABASE = 86;
 
-    /**
-     * Get command type.
-     *
-     * @return one of the constants above
-     */
-    // int getCommandType();
-    //
-    // /**
-    // * Check if this is a query.
-    // *
-    // * @return true if it is a query
-    // */
-    // boolean isQuery();
-    //
-    // /**
-    // * Get the parameters (if any).
-    // *
-    // * @return the parameters
-    // */
-    // ArrayList<? extends CommandParameter> getParameters();
-    //
-    // /**
-    // * Execute the query.
-    // *
-    // * @param maxRows the maximum number of rows returned
-    // * @param scrollable if the result set must be scrollable
-    // * @return the result
-    // */
-    // Result query(int maxRows, boolean scrollable);
+    int ALTER_DATABASE = 87;
 
-    //
-    // /**
-    // * Execute the statement
-    // *
-    // * @return the update count
-    // */
-    // int update();
-    //
-    // /**
-    // * Close the statement.
-    // */
-    // void close();
-    //
-    // /**
-    // * Cancel the statement if it is still processing.
-    // */
-    // void cancel();
-    //
-    // /**
-    // * Get an empty result set containing the meta data of the result.
-    // *
-    // * @return the empty result
-    // */
-    // Result getMetaData();
-    //
-    // boolean canReuse();
-    //
-    // void reuse();
-    //
-    // boolean isCacheable();
+    int ADMIN = 88;
 
-    // PreparedStatement getPreparedStatement();
 }

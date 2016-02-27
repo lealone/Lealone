@@ -5,7 +5,7 @@
  */
 package org.lealone.sql.expression;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.DataType;

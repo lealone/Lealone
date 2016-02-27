@@ -10,14 +10,11 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-//## Java 1.6 ##
 import java.sql.RowIdLifetime;
-//*/
 import java.sql.SQLException;
 
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.common.message.TraceObject;
+import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
@@ -41,6 +38,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the major version number
      */
+    @Override
     public int getDriverMajorVersion() {
         debugCodeCall("getDriverMajorVersion");
         return Constants.VERSION_MAJOR;
@@ -51,6 +49,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the minor version number
      */
+    @Override
     public int getDriverMinorVersion() {
         debugCodeCall("getDriverMinorVersion");
         return Constants.VERSION_MINOR;
@@ -61,6 +60,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the product name ("H2")
      */
+    @Override
     public String getDatabaseProductName() {
         debugCodeCall("getDatabaseProductName");
         // This value must stay like that, see
@@ -73,6 +73,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the product version
      */
+    @Override
     public String getDatabaseProductVersion() {
         debugCodeCall("getDatabaseProductVersion");
         return Constants.getFullVersion();
@@ -83,6 +84,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the driver name ("H2 JDBC Driver")
      */
+    @Override
     public String getDriverName() {
         debugCodeCall("getDriverName");
         return "H2 JDBC Driver";
@@ -94,6 +96,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the version number
      */
+    @Override
     public String getDriverVersion() {
         debugCodeCall("getDriverVersion");
         return Constants.getFullVersion();
@@ -127,6 +130,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the list of columns
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getTables(String catalogPattern, String schemaPattern, String tableNamePattern, String[] types)
             throws SQLException {
         try {
@@ -211,6 +215,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the list of columns
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getColumns(String catalogPattern, String schemaPattern, String tableNamePattern,
             String columnNamePattern) throws SQLException {
         try {
@@ -297,6 +302,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the list of indexes and columns
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getIndexInfo(String catalogPattern, String schemaPattern, String tableName, boolean unique,
             boolean approximate) throws SQLException {
         try {
@@ -353,6 +359,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the list of primary key columns
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getPrimaryKeys(String catalogPattern, String schemaPattern, String tableName) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -381,6 +388,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean allProceduresAreCallable() {
         debugCodeCall("allProceduresAreCallable");
         return true;
@@ -391,6 +399,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean allTablesAreSelectable() {
         debugCodeCall("allTablesAreSelectable");
         return true;
@@ -401,6 +410,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the url
      */
+    @Override
     public String getURL() throws SQLException {
         try {
             debugCodeCall("getURL");
@@ -416,6 +426,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the user name
      */
+    @Override
     public String getUserName() throws SQLException {
         try {
             debugCodeCall("getUserName");
@@ -430,6 +441,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return if read only optimization is switched on
      */
+    @Override
     public boolean isReadOnly() throws SQLException {
         try {
             debugCodeCall("isReadOnly");
@@ -445,6 +457,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return false by default; true if the system property lealone.sortNullsHigh is
      *         set to true
      */
+    @Override
     public boolean nullsAreSortedHigh() {
         debugCodeCall("nullsAreSortedHigh");
         return SysProperties.SORT_NULLS_HIGH;
@@ -456,6 +469,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return true by default; false if the system property lealone.sortNullsHigh is
      *         set to true
      */
+    @Override
     public boolean nullsAreSortedLow() {
         debugCodeCall("nullsAreSortedLow");
         return !SysProperties.SORT_NULLS_HIGH;
@@ -467,6 +481,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean nullsAreSortedAtStart() {
         debugCodeCall("nullsAreSortedAtStart");
         return false;
@@ -477,6 +492,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean nullsAreSortedAtEnd() {
         debugCodeCall("nullsAreSortedAtEnd");
         return false;
@@ -487,6 +503,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the connection
      */
+    @Override
     public Connection getConnection() {
         debugCodeCall("getConnection");
         return conn;
@@ -518,6 +535,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the procedures
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getProcedures(String catalogPattern, String schemaPattern, String procedureNamePattern)
             throws SQLException {
         try {
@@ -586,6 +604,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the procedure columns
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getProcedureColumns(String catalogPattern, String schemaPattern, String procedureNamePattern,
             String columnNamePattern) throws SQLException {
         try {
@@ -633,6 +652,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the schema list
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getSchemas() throws SQLException {
         try {
             debugCodeCall("getSchemas");
@@ -657,6 +677,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the catalog list
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getCatalogs() throws SQLException {
         try {
             debugCodeCall("getCatalogs");
@@ -681,6 +702,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the table types
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getTableTypes() throws SQLException {
         try {
             debugCodeCall("getTableTypes");
@@ -719,6 +741,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the list of privileges
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getColumnPrivileges(String catalogPattern, String schemaPattern, String table,
             String columnNamePattern) throws SQLException {
         try {
@@ -769,6 +792,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the list of privileges
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getTablePrivileges(String catalogPattern, String schemaPattern, String tableNamePattern)
             throws SQLException {
         try {
@@ -819,6 +843,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the primary key index
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getBestRowIdentifier(String catalogPattern, String schemaPattern, String tableName, int scope,
             boolean nullable) throws SQLException {
         try {
@@ -872,6 +897,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return an empty result set
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getVersionColumns(String catalog, String schema, String tableName) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -919,6 +945,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the result set
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getImportedKeys(String catalogPattern, String schemaPattern, String tableName) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -975,6 +1002,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the result set
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getExportedKeys(String catalogPattern, String schemaPattern, String tableName) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1037,6 +1065,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the result set
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getCrossReference(String primaryCatalogPattern, String primarySchemaPattern, String primaryTable,
             String foreignCatalogPattern, String foreignSchemaPattern, String foreignTable) throws SQLException {
         try {
@@ -1092,6 +1121,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return an empty result set
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types)
             throws SQLException {
         try {
@@ -1142,6 +1172,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the list of data types
      * @throws SQLException if the connection is closed
      */
+    @Override
     public ResultSet getTypeInfo() throws SQLException {
         try {
             debugCodeCall("getTypeInfo");
@@ -1164,6 +1195,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean usesLocalFiles() {
         debugCodeCall("usesLocalFiles");
         return true;
@@ -1174,6 +1206,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean usesLocalFilePerTable() {
         debugCodeCall("usesLocalFilePerTable");
         return false;
@@ -1184,6 +1217,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return a double quote
      */
+    @Override
     public String getIdentifierQuoteString() {
         debugCodeCall("getIdentifierQuoteString");
         return "\"";
@@ -1207,6 +1241,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return a list of additional the keywords
      */
+    @Override
     public String getSQLKeywords() {
         debugCodeCall("getSQLKeywords");
         return "LIMIT,MINUS,ROWNUM,SYSDATE,SYSTIME,SYSTIMESTAMP,TODAY";
@@ -1217,6 +1252,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the list
      */
+    @Override
     public String getNumericFunctions() throws SQLException {
         debugCodeCall("getNumericFunctions");
         return getFunctions("Functions (Numeric)");
@@ -1227,6 +1263,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the list
      */
+    @Override
     public String getStringFunctions() throws SQLException {
         debugCodeCall("getStringFunctions");
         return getFunctions("Functions (String)");
@@ -1237,6 +1274,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the list
      */
+    @Override
     public String getSystemFunctions() throws SQLException {
         debugCodeCall("getSystemFunctions");
         return getFunctions("Functions (System)");
@@ -1247,6 +1285,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the list
      */
+    @Override
     public String getTimeDateFunctions() throws SQLException {
         debugCodeCall("getTimeDateFunctions");
         return getFunctions("Functions (Time and Date)");
@@ -1288,6 +1327,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the default escape character (always '\', independent on the
      *         mode)
      */
+    @Override
     public String getSearchStringEscape() {
         debugCodeCall("getSearchStringEscape");
         return "\\";
@@ -1299,6 +1339,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return an empty String ("")
      */
+    @Override
     public String getExtraNameCharacters() {
         debugCodeCall("getExtraNameCharacters");
         return "";
@@ -1308,6 +1349,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * Returns whether alter table with add column is supported.
      * @return true
      */
+    @Override
     public boolean supportsAlterTableWithAddColumn() {
         debugCodeCall("supportsAlterTableWithAddColumn");
         return true;
@@ -1318,6 +1360,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsAlterTableWithDropColumn() {
         debugCodeCall("supportsAlterTableWithDropColumn");
         return true;
@@ -1328,6 +1371,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsColumnAliasing() {
         debugCodeCall("supportsColumnAliasing");
         return true;
@@ -1338,6 +1382,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean nullPlusNonNullIsNull() {
         debugCodeCall("nullPlusNonNullIsNull");
         return true;
@@ -1348,6 +1393,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsConvert() {
         debugCodeCall("supportsConvert");
         return true;
@@ -1360,6 +1406,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param toType the target SQL type
      * @return true
      */
+    @Override
     public boolean supportsConvert(int fromType, int toType) {
         if (isDebugEnabled()) {
             debugCode("supportsConvert(" + fromType + ", " + fromType + ");");
@@ -1372,6 +1419,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsTableCorrelationNames() {
         debugCodeCall("supportsTableCorrelationNames");
         return true;
@@ -1383,6 +1431,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsDifferentTableCorrelationNames() {
         debugCodeCall("supportsDifferentTableCorrelationNames");
         return false;
@@ -1393,6 +1442,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsExpressionsInOrderBy() {
         debugCodeCall("supportsExpressionsInOrderBy");
         return true;
@@ -1404,6 +1454,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsOrderByUnrelated() {
         debugCodeCall("supportsOrderByUnrelated");
         return true;
@@ -1414,6 +1465,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsGroupBy() {
         debugCodeCall("supportsGroupBy");
         return true;
@@ -1425,6 +1477,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsGroupByUnrelated() {
         debugCodeCall("supportsGroupByUnrelated");
         return true;
@@ -1437,6 +1490,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsGroupByBeyondSelect() {
         debugCodeCall("supportsGroupByBeyondSelect");
         return true;
@@ -1447,6 +1501,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsLikeEscapeClause() {
         debugCodeCall("supportsLikeEscapeClause");
         return true;
@@ -1457,6 +1512,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsMultipleResultSets() {
         debugCodeCall("supportsMultipleResultSets");
         return false;
@@ -1468,6 +1524,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsMultipleTransactions() {
         debugCodeCall("supportsMultipleTransactions");
         return true;
@@ -1478,6 +1535,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsNonNullableColumns() {
         debugCodeCall("supportsNonNullableColumns");
         return true;
@@ -1488,6 +1546,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsMinimumSQLGrammar() {
         debugCodeCall("supportsMinimumSQLGrammar");
         return true;
@@ -1498,6 +1557,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsCoreSQLGrammar() {
         debugCodeCall("supportsCoreSQLGrammar");
         return true;
@@ -1508,6 +1568,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsExtendedSQLGrammar() {
         debugCodeCall("supportsExtendedSQLGrammar");
         return false;
@@ -1518,6 +1579,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsANSI92EntryLevelSQL() {
         debugCodeCall("supportsANSI92EntryLevelSQL");
         return true;
@@ -1528,6 +1590,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsANSI92IntermediateSQL() {
         debugCodeCall("supportsANSI92IntermediateSQL");
         return false;
@@ -1538,6 +1601,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsANSI92FullSQL() {
         debugCodeCall("supportsANSI92FullSQL");
         return false;
@@ -1548,6 +1612,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsIntegrityEnhancementFacility() {
         debugCodeCall("supportsIntegrityEnhancementFacility");
         return true;
@@ -1558,6 +1623,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsOuterJoins() {
         debugCodeCall("supportsOuterJoins");
         return true;
@@ -1568,6 +1634,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsFullOuterJoins() {
         debugCodeCall("supportsFullOuterJoins");
         return false;
@@ -1578,6 +1645,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsLimitedOuterJoins() {
         debugCodeCall("supportsLimitedOuterJoins");
         return true;
@@ -1588,6 +1656,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return "schema"
      */
+    @Override
     public String getSchemaTerm() {
         debugCodeCall("getSchemaTerm");
         return "schema";
@@ -1598,6 +1667,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return "procedure"
      */
+    @Override
     public String getProcedureTerm() {
         debugCodeCall("getProcedureTerm");
         return "procedure";
@@ -1608,6 +1678,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return "catalog"
      */
+    @Override
     public String getCatalogTerm() {
         debugCodeCall("getCatalogTerm");
         return "catalog";
@@ -1618,6 +1689,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean isCatalogAtStart() {
         debugCodeCall("isCatalogAtStart");
         return true;
@@ -1628,6 +1700,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return "."
      */
+    @Override
     public String getCatalogSeparator() {
         debugCodeCall("getCatalogSeparator");
         return ".";
@@ -1638,6 +1711,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSchemasInDataManipulation() {
         debugCodeCall("supportsSchemasInDataManipulation");
         return true;
@@ -1648,6 +1722,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSchemasInProcedureCalls() {
         debugCodeCall("supportsSchemasInProcedureCalls");
         return true;
@@ -1658,6 +1733,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSchemasInTableDefinitions() {
         debugCodeCall("supportsSchemasInTableDefinitions");
         return true;
@@ -1668,6 +1744,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSchemasInIndexDefinitions() {
         debugCodeCall("supportsSchemasInIndexDefinitions");
         return true;
@@ -1678,6 +1755,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSchemasInPrivilegeDefinitions() {
         debugCodeCall("supportsSchemasInPrivilegeDefinitions");
         return true;
@@ -1688,6 +1766,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsCatalogsInDataManipulation() {
         debugCodeCall("supportsCatalogsInDataManipulation");
         return true;
@@ -1698,6 +1777,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsCatalogsInProcedureCalls() {
         debugCodeCall("supportsCatalogsInProcedureCalls");
         return false;
@@ -1708,6 +1788,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsCatalogsInTableDefinitions() {
         debugCodeCall("supportsCatalogsInTableDefinitions");
         return true;
@@ -1718,6 +1799,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsCatalogsInIndexDefinitions() {
         debugCodeCall("supportsCatalogsInIndexDefinitions");
         return true;
@@ -1728,6 +1810,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsCatalogsInPrivilegeDefinitions() {
         debugCodeCall("supportsCatalogsInPrivilegeDefinitions");
         return true;
@@ -1738,6 +1821,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsPositionedDelete() {
         debugCodeCall("supportsPositionedDelete");
         return true;
@@ -1748,6 +1832,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsPositionedUpdate() {
         debugCodeCall("supportsPositionedUpdate");
         return true;
@@ -1758,6 +1843,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSelectForUpdate() {
         debugCodeCall("supportsSelectForUpdate");
         return true;
@@ -1768,6 +1854,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsStoredProcedures() {
         debugCodeCall("supportsStoredProcedures");
         return false;
@@ -1778,6 +1865,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSubqueriesInComparisons() {
         debugCodeCall("supportsSubqueriesInComparisons");
         return true;
@@ -1788,6 +1876,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSubqueriesInExists() {
         debugCodeCall("supportsSubqueriesInExists");
         return true;
@@ -1798,6 +1887,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSubqueriesInIns() {
         debugCodeCall("supportsSubqueriesInIns");
         return true;
@@ -1808,6 +1898,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSubqueriesInQuantifieds() {
         debugCodeCall("supportsSubqueriesInQuantifieds");
         return true;
@@ -1818,6 +1909,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsCorrelatedSubqueries() {
         debugCodeCall("supportsCorrelatedSubqueries");
         return true;
@@ -1828,6 +1920,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsUnion() {
         debugCodeCall("supportsUnion");
         return true;
@@ -1838,6 +1931,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsUnionAll() {
         debugCodeCall("supportsUnionAll");
         return true;
@@ -1848,6 +1942,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsOpenCursorsAcrossCommit() {
         debugCodeCall("supportsOpenCursorsAcrossCommit");
         return false;
@@ -1858,6 +1953,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsOpenCursorsAcrossRollback() {
         debugCodeCall("supportsOpenCursorsAcrossRollback");
         return false;
@@ -1868,6 +1964,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsOpenStatementsAcrossCommit() {
         debugCodeCall("supportsOpenStatementsAcrossCommit");
         return true;
@@ -1878,6 +1975,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsOpenStatementsAcrossRollback() {
         debugCodeCall("supportsOpenStatementsAcrossRollback");
         return true;
@@ -1888,6 +1986,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsTransactions() {
         debugCodeCall("supportsTransactions");
         return true;
@@ -1899,6 +1998,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param level the transaction isolation level (Connection.TRANSACTION_*)
      * @return true
      */
+    @Override
     public boolean supportsTransactionIsolationLevel(int level) {
         debugCodeCall("supportsTransactionIsolationLevel");
         return true;
@@ -1910,6 +2010,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsDataDefinitionAndDataManipulationTransactions() {
         debugCodeCall("supportsDataDefinitionAndDataManipulationTransactions");
         return false;
@@ -1920,6 +2021,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsDataManipulationTransactionsOnly() {
         debugCodeCall("supportsDataManipulationTransactionsOnly");
         return true;
@@ -1930,6 +2032,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean dataDefinitionCausesTransactionCommit() {
         debugCodeCall("dataDefinitionCausesTransactionCommit");
         return true;
@@ -1940,6 +2043,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean dataDefinitionIgnoredInTransactions() {
         debugCodeCall("dataDefinitionIgnoredInTransactions");
         return false;
@@ -1952,6 +2056,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return true for all types except ResultSet.TYPE_FORWARD_ONLY
      */
+    @Override
     public boolean supportsResultSetType(int type) {
         debugCodeCall("supportsResultSetType", type);
         return type != ResultSet.TYPE_SCROLL_SENSITIVE;
@@ -1965,6 +2070,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param concurrency the result set concurrency
      * @return true if the type is not ResultSet.TYPE_SCROLL_SENSITIVE
      */
+    @Override
     public boolean supportsResultSetConcurrency(int type, int concurrency) {
         if (isDebugEnabled()) {
             debugCode("supportsResultSetConcurrency(" + type + ", " + concurrency + ");");
@@ -1978,6 +2084,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return true
      */
+    @Override
     public boolean ownUpdatesAreVisible(int type) {
         debugCodeCall("ownUpdatesAreVisible", type);
         return true;
@@ -1989,6 +2096,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return false
      */
+    @Override
     public boolean ownDeletesAreVisible(int type) {
         debugCodeCall("ownDeletesAreVisible", type);
         return false;
@@ -2000,6 +2108,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return false
      */
+    @Override
     public boolean ownInsertsAreVisible(int type) {
         debugCodeCall("ownInsertsAreVisible", type);
         return false;
@@ -2011,6 +2120,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return false
      */
+    @Override
     public boolean othersUpdatesAreVisible(int type) {
         debugCodeCall("othersUpdatesAreVisible", type);
         return false;
@@ -2022,6 +2132,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return false
      */
+    @Override
     public boolean othersDeletesAreVisible(int type) {
         debugCodeCall("othersDeletesAreVisible", type);
         return false;
@@ -2033,6 +2144,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return false
      */
+    @Override
     public boolean othersInsertsAreVisible(int type) {
         debugCodeCall("othersInsertsAreVisible", type);
         return false;
@@ -2044,6 +2156,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return false
      */
+    @Override
     public boolean updatesAreDetected(int type) {
         debugCodeCall("updatesAreDetected", type);
         return false;
@@ -2055,6 +2168,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return false
      */
+    @Override
     public boolean deletesAreDetected(int type) {
         debugCodeCall("deletesAreDetected", type);
         return false;
@@ -2066,6 +2180,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param type the result set type
      * @return false
      */
+    @Override
     public boolean insertsAreDetected(int type) {
         debugCodeCall("insertsAreDetected", type);
         return false;
@@ -2076,6 +2191,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsBatchUpdates() {
         debugCodeCall("supportsBatchUpdates");
         return true;
@@ -2086,6 +2202,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean doesMaxRowSizeIncludeBlobs() {
         debugCodeCall("doesMaxRowSizeIncludeBlobs");
         return false;
@@ -2096,6 +2213,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return Connection.TRANSACTION_READ_COMMITTED
      */
+    @Override
     public int getDefaultTransactionIsolation() {
         debugCodeCall("getDefaultTransactionIsolation");
         return Connection.TRANSACTION_READ_COMMITTED;
@@ -2107,6 +2225,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsMixedCaseIdentifiers() {
         debugCodeCall("supportsMixedCaseIdentifiers");
         return false;
@@ -2118,6 +2237,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true usually, and false in MySQL mode
      */
+    @Override
     public boolean supportsMixedCaseQuotedIdentifiers() throws SQLException {
         debugCodeCall("supportsMixedCaseQuotedIdentifiers");
         String m = getMode();
@@ -2133,6 +2253,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true usually, and false in MySQL mode
      */
+    @Override
     public boolean storesUpperCaseIdentifiers() throws SQLException {
         debugCodeCall("storesUpperCaseIdentifiers");
         String m = getMode();
@@ -2148,6 +2269,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false usually, and true in MySQL mode
      */
+    @Override
     public boolean storesLowerCaseIdentifiers() throws SQLException {
         debugCodeCall("storesLowerCaseIdentifiers");
         String m = getMode();
@@ -2163,6 +2285,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean storesMixedCaseIdentifiers() {
         debugCodeCall("storesMixedCaseIdentifiers");
         return false;
@@ -2174,6 +2297,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false usually, and true in MySQL mode
      */
+    @Override
     public boolean storesUpperCaseQuotedIdentifiers() throws SQLException {
         debugCodeCall("storesUpperCaseQuotedIdentifiers");
         String m = getMode();
@@ -2189,6 +2313,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false usually, and true in MySQL mode
      */
+    @Override
     public boolean storesLowerCaseQuotedIdentifiers() throws SQLException {
         debugCodeCall("storesLowerCaseQuotedIdentifiers");
         String m = getMode();
@@ -2204,6 +2329,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true usually, and false in MySQL mode
      */
+    @Override
     public boolean storesMixedCaseQuotedIdentifiers() throws SQLException {
         debugCodeCall("storesMixedCaseQuotedIdentifiers");
         String m = getMode();
@@ -2218,6 +2344,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxBinaryLiteralLength() {
         debugCodeCall("getMaxBinaryLiteralLength");
         return 0;
@@ -2228,6 +2355,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxCharLiteralLength() {
         debugCodeCall("getMaxCharLiteralLength");
         return 0;
@@ -2238,6 +2366,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxColumnNameLength() {
         debugCodeCall("getMaxColumnNameLength");
         return 0;
@@ -2248,6 +2377,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxColumnsInGroupBy() {
         debugCodeCall("getMaxColumnsInGroupBy");
         return 0;
@@ -2258,6 +2388,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxColumnsInIndex() {
         debugCodeCall("getMaxColumnsInIndex");
         return 0;
@@ -2268,6 +2399,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxColumnsInOrderBy() {
         debugCodeCall("getMaxColumnsInOrderBy");
         return 0;
@@ -2278,6 +2410,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxColumnsInSelect() {
         debugCodeCall("getMaxColumnsInSelect");
         return 0;
@@ -2288,6 +2421,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxColumnsInTable() {
         debugCodeCall("getMaxColumnsInTable");
         return 0;
@@ -2298,6 +2432,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxConnections() {
         debugCodeCall("getMaxConnections");
         return 0;
@@ -2308,6 +2443,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxCursorNameLength() {
         debugCodeCall("getMaxCursorNameLength");
         return 0;
@@ -2318,6 +2454,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxIndexLength() {
         debugCodeCall("getMaxIndexLength");
         return 0;
@@ -2328,6 +2465,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxSchemaNameLength() {
         debugCodeCall("getMaxSchemaNameLength");
         return 0;
@@ -2338,6 +2476,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxProcedureNameLength() {
         debugCodeCall("getMaxProcedureNameLength");
         return 0;
@@ -2348,6 +2487,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxCatalogNameLength() {
         debugCodeCall("getMaxCatalogNameLength");
         return 0;
@@ -2358,6 +2498,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxRowSize() {
         debugCodeCall("getMaxRowSize");
         return 0;
@@ -2368,6 +2509,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxStatementLength() {
         debugCodeCall("getMaxStatementLength");
         return 0;
@@ -2378,6 +2520,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxStatements() {
         debugCodeCall("getMaxStatements");
         return 0;
@@ -2388,6 +2531,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxTableNameLength() {
         debugCodeCall("getMaxTableNameLength");
         return 0;
@@ -2398,6 +2542,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxTablesInSelect() {
         debugCodeCall("getMaxTablesInSelect");
         return 0;
@@ -2408,6 +2553,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return 0 for limit is unknown
      */
+    @Override
     public int getMaxUserNameLength() {
         debugCodeCall("getMaxUserNameLength");
         return 0;
@@ -2418,6 +2564,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsSavepoints() {
         debugCodeCall("supportsSavepoints");
         return true;
@@ -2428,6 +2575,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsNamedParameters() {
         debugCodeCall("supportsNamedParameters");
         return false;
@@ -2438,6 +2586,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsMultipleOpenResults() {
         debugCodeCall("supportsMultipleOpenResults");
         return true;
@@ -2448,6 +2597,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return true
      */
+    @Override
     public boolean supportsGetGeneratedKeys() {
         debugCodeCall("supportsGetGeneratedKeys");
         return true;
@@ -2456,6 +2606,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
     /**
      * [Not supported]
      */
+    @Override
     public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern) throws SQLException {
         throw unsupported("superTypes");
     }
@@ -2477,6 +2628,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *            (uppercase for unquoted names)
      * @return an empty result set
      */
+    @Override
     public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2496,6 +2648,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
     /**
      * [Not supported]
      */
+    @Override
     public ResultSet getAttributes(String catalog, String schemaPattern, String typeNamePattern,
             String attributeNamePattern) throws SQLException {
         throw unsupported("attributes");
@@ -2508,6 +2661,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *            CLOSE_CURSORS_AT_COMMIT
      * @return true if the holdability is ResultSet.CLOSE_CURSORS_AT_COMMIT
      */
+    @Override
     public boolean supportsResultSetHoldability(int holdability) {
         debugCodeCall("supportsResultSetHoldability", holdability);
         return holdability == ResultSet.CLOSE_CURSORS_AT_COMMIT;
@@ -2518,6 +2672,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return ResultSet.CLOSE_CURSORS_AT_COMMIT
      */
+    @Override
     public int getResultSetHoldability() {
         debugCodeCall("getResultSetHoldability");
         return ResultSet.CLOSE_CURSORS_AT_COMMIT;
@@ -2528,6 +2683,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the major version
      */
+    @Override
     public int getDatabaseMajorVersion() {
         debugCodeCall("getDatabaseMajorVersion");
         return Constants.VERSION_MAJOR;
@@ -2538,6 +2694,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the minor version
      */
+    @Override
     public int getDatabaseMinorVersion() {
         debugCodeCall("getDatabaseMinorVersion");
         return Constants.VERSION_MINOR;
@@ -2550,12 +2707,13 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the major version (4 or 3)
      */
+    @Override
     public int getJDBCMajorVersion() {
         debugCodeCall("getJDBCMajorVersion");
         int majorVersion = 3;
-        //## Java 1.6 ##
+        // ## Java 1.6 ##
         majorVersion = 4;
-        //*/
+
         return majorVersion;
     }
 
@@ -2564,6 +2722,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return the minor version (0)
      */
+    @Override
     public int getJDBCMinorVersion() {
         debugCodeCall("getJDBCMinorVersion");
         return 0;
@@ -2574,6 +2733,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return DatabaseMetaData.sqlStateSQL99
      */
+    @Override
     public int getSQLStateType() {
         debugCodeCall("getSQLStateType");
         return DatabaseMetaData.sqlStateSQL99;
@@ -2584,6 +2744,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean locatorsUpdateCopy() {
         debugCodeCall("locatorsUpdateCopy");
         return false;
@@ -2594,6 +2755,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean supportsStatementPooling() {
         debugCodeCall("supportsStatementPooling");
         return false;
@@ -2623,13 +2785,12 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return ROWID_UNSUPPORTED
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public RowIdLifetime getRowIdLifetime() {
         debugCodeCall("getRowIdLifetime");
         return RowIdLifetime.ROWID_UNSUPPORTED;
     }
-
-    //*/
 
     /**
      * Gets the list of schemas in the database.
@@ -2647,7 +2808,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @return the schema list
      * @throws SQLException if the connection is closed
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public ResultSet getSchemas(String catalogPattern, String schemaPattern) throws SQLException {
         try {
             debugCodeCall("getSchemas(String,String)");
@@ -2666,13 +2828,12 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
         }
     }
 
-    //*/
-
     /**
      * Returns whether the database supports calling functions using the call syntax.
      *
      * @return true
      */
+    @Override
     public boolean supportsStoredFunctionsUsingCallSyntax() {
         debugCodeCall("supportsStoredFunctionsUsingCallSyntax");
         return true;
@@ -2683,6 +2844,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      *
      * @return false
      */
+    @Override
     public boolean autoCommitFailureClosesAllResultSets() {
         debugCodeCall("autoCommitFailureClosesAllResultSets");
         return false;
@@ -2691,6 +2853,7 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
     /**
      * [Not supported] Returns the client info properties.
      */
+    @Override
     public ResultSet getClientInfoProperties() throws SQLException {
         throw unsupported("clientInfoProperties");
     }
@@ -2698,52 +2861,48 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
     /**
      * [Not supported] Return an object of this class if possible.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
         throw unsupported("unwrap");
     }
 
-    //*/
-
     /**
      * [Not supported] Checks if unwrap can return an object of this class.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         throw unsupported("isWrapperFor");
     }
 
-    //*/
-
     /**
      * [Not supported] Gets the list of function columns.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public ResultSet getFunctionColumns(String catalog, String schemaPattern, String functionNamePattern,
             String columnNamePattern) throws SQLException {
         throw unsupported("getFunctionColumns");
     }
 
-    //*/
-
     /**
      * [Not supported] Gets the list of functions.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern) throws SQLException {
         throw unsupported("getFunctions");
     }
 
-    //*/
-
     /**
      * [Not supported]
      */
-    /*## Java 1.7 ##
+    // ## Java 1.7 ##
+    @Override
     public boolean generatedKeyAlwaysReturned() {
         return true;
     }
-    //*/
 
     /**
      * [Not supported]
@@ -2756,16 +2915,17 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @param columnNamePattern null (to get all objects) or a column name
      *            (uppercase for unquoted names)
      */
-    /*## Java 1.7 ##
-    public ResultSet getPseudoColumns(String catalog, String schemaPattern,
-            String tableNamePattern, String columnNamePattern) {
+    // ## Java 1.7 ##
+    @Override
+    public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern,
+            String columnNamePattern) {
         return null;
     }
-    //*/
 
     /**
      * INTERNAL
      */
+    @Override
     public String toString() {
         return getTraceObjectName() + ": " + conn;
     }
@@ -2781,16 +2941,5 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
             prep.close();
         }
         return mode;
-    }
-
-    //jdk1.7
-    public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern,
-            String columnNamePattern) throws SQLException {
-        throw DbException.getUnsupportedException("getPseudoColumns(String, String, String, String)");
-    }
-
-    //jdk1.7
-    public boolean generatedKeyAlwaysReturned() throws SQLException {
-        throw DbException.getUnsupportedException("generatedKeyAlwaysReturned()");
     }
 }

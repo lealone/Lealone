@@ -19,7 +19,7 @@ package org.lealone.test.db;
 
 import org.junit.Test;
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DatabaseEngine;
 import org.lealone.db.LealoneDatabase;
@@ -28,37 +28,17 @@ import org.lealone.test.UnitTestBase;
 public class DatabaseEngineTest extends UnitTestBase {
     @Test
     public void run() {
-
         setInMemory(true);
-        setEmbedded(true);
+        // setEmbedded(true);
 
         ConnectionInfo ci;
         try {
+            // 只有嵌入式模式时才允许访问lealone数据库
             ci = new ConnectionInfo(getURL(LealoneDatabase.NAME));
             DatabaseEngine.createSession(ci);
             fail();
         } catch (DbException e) {
             assertEquals(ErrorCode.DATABASE_NOT_FOUND_1, e.getErrorCode());
         }
-
-        try {
-            ci = new ConnectionInfo(getURL("wrong_user", ""));
-            DatabaseEngine.createSession(ci);
-            fail();
-        } catch (DbException e) {
-            assertEquals(ErrorCode.WRONG_USER_OR_PASSWORD, e.getErrorCode());
-        }
-
-        try {
-            ci = new ConnectionInfo(getURL("sa", "wrong_password"));
-            DatabaseEngine.createSession(ci);
-            fail();
-        } catch (DbException e) {
-            assertEquals(ErrorCode.WRONG_USER_OR_PASSWORD, e.getErrorCode());
-        }
-
-        ci = new ConnectionInfo(getURL("wrong_user", ""));
-        ci.disableAuthentication();
-        DatabaseEngine.createSession(ci);
     }
 }

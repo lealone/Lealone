@@ -7,9 +7,9 @@ package org.lealone.db.constraint;
 
 import java.util.HashSet;
 
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.db.DbObject;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
@@ -50,9 +50,14 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
     protected Table table;
 
     Constraint(Schema schema, int id, String name, Table table) {
-        initSchemaObjectBase(schema, id, name, Trace.CONSTRAINT);
+        super(schema, id, name, Trace.CONSTRAINT);
         this.table = table;
         this.setTemporary(table.isTemporary());
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.CONSTRAINT;
     }
 
     /**
@@ -132,27 +137,12 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
      */
     public abstract Index getUniqueIndex();
 
-    @Override
-    public void checkRename() {
-        // ok
-    }
-
-    @Override
-    public int getType() {
-        return DbObject.CONSTRAINT;
-    }
-
     public Table getTable() {
         return table;
     }
 
     public Table getRefTable() {
         return table;
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
     }
 
     private int getConstraintTypeOrder() {

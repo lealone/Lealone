@@ -9,7 +9,7 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
@@ -34,6 +34,11 @@ public class DropIndex extends SchemaStatement {
 
     public void setIfExists(boolean b) {
         ifExists = b;
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_INDEX;
     }
 
     public void setIndexName(String indexName) {
@@ -73,11 +78,6 @@ public class DropIndex extends SchemaStatement {
             }
         }
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_INDEX;
     }
 
 }

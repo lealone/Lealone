@@ -14,11 +14,14 @@ import java.sql.Array;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.Date;
+import java.sql.NClob;
 import java.sql.Ref;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.RowId;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
+import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -26,16 +29,10 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
-//## Java 1.6 ##
-import java.sql.NClob;
-import java.sql.RowId;
-import java.sql.SQLXML;
-//*/
-
 import org.lealone.api.ErrorCode;
 import org.lealone.client.result.UpdatableRow;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.TraceObject;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
@@ -82,9 +79,9 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     private final boolean closeStatement;
     private final boolean scrollable;
     private final boolean updatable;
-    private Result result;
     private JdbcConnection conn;
     private JdbcStatement stat;
+    private Result result;
     private int columnCount;
     private boolean wasNull;
     private Value[] insertRow;
@@ -118,6 +115,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return true if successful, false if there are no more rows
      */
+    @Override
     public boolean next() throws SQLException {
         try {
             debugCodeCall("next");
@@ -133,6 +131,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return the meta data
      */
+    @Override
     public ResultSetMetaData getMetaData() throws SQLException {
         try {
             int id = getNextId(TraceObject.RESULT_SET_META_DATA);
@@ -154,6 +153,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return true if the last column accessed was null
      */
+    @Override
     public boolean wasNull() throws SQLException {
         try {
             debugCodeCall("wasNull");
@@ -173,6 +173,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public int findColumn(String columnLabel) throws SQLException {
         try {
             debugCodeCall("findColumn", columnLabel);
@@ -185,6 +186,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * Closes the result set.
      */
+    @Override
     public void close() throws SQLException {
         try {
             debugCodeCall("close");
@@ -224,6 +226,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the statement or prepared statement, or null if created by a
      *         DatabaseMetaData call.
      */
+    @Override
     public Statement getStatement() throws SQLException {
         try {
             debugCodeCall("getStatement");
@@ -243,6 +246,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return null
      */
+    @Override
     public SQLWarning getWarnings() throws SQLException {
         try {
             debugCodeCall("getWarnings");
@@ -256,6 +260,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * Clears all warnings.
      */
+    @Override
     public void clearWarnings() throws SQLException {
         try {
             debugCodeCall("clearWarnings");
@@ -274,6 +279,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public String getString(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getString", columnIndex);
@@ -290,6 +296,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public String getString(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getString", columnLabel);
@@ -306,6 +313,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public int getInt(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getInt", columnIndex);
@@ -322,6 +330,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public int getInt(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getInt", columnLabel);
@@ -338,6 +347,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getBigDecimal", columnIndex);
@@ -354,6 +364,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public Date getDate(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getDate", columnIndex);
@@ -370,6 +381,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public Time getTime(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getTime", columnIndex);
@@ -386,6 +398,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public Timestamp getTimestamp(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getTimestamp", columnIndex);
@@ -403,6 +416,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public BigDecimal getBigDecimal(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getBigDecimal", columnLabel);
@@ -419,6 +433,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
+    @Override
     public Date getDate(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getDate", columnLabel);
@@ -436,6 +451,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Time getTime(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getTime", columnLabel);
@@ -453,6 +469,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Timestamp getTimestamp(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getTimestamp", columnLabel);
@@ -471,6 +488,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Object getObject(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getObject", columnIndex);
@@ -490,6 +508,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Object getObject(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getObject", columnLabel);
@@ -508,6 +527,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public boolean getBoolean(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getBoolean", columnIndex);
@@ -526,6 +546,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public boolean getBoolean(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getBoolean", columnLabel);
@@ -544,6 +565,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public byte getByte(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getByte", columnIndex);
@@ -561,6 +583,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public byte getByte(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getByte", columnLabel);
@@ -578,6 +601,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public short getShort(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getShort", columnIndex);
@@ -595,6 +619,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public short getShort(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getShort", columnLabel);
@@ -612,6 +637,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public long getLong(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getLong", columnIndex);
@@ -629,6 +655,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public long getLong(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getLong", columnLabel);
@@ -646,6 +673,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public float getFloat(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getFloat", columnIndex);
@@ -663,6 +691,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public float getFloat(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getFloat", columnLabel);
@@ -680,6 +709,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public double getDouble(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getDouble", columnIndex);
@@ -697,6 +727,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public double getDouble(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getDouble", columnLabel);
@@ -717,6 +748,8 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Deprecated
+    @Override
     public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -743,6 +776,8 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Deprecated
+    @Override
     public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -762,6 +797,8 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * [Not supported]
      * @deprecated since JDBC 2.0, use getCharacterStream
      */
+    @Deprecated
+    @Override
     public InputStream getUnicodeStream(int columnIndex) throws SQLException {
         throw unsupported("unicodeStream");
     }
@@ -770,6 +807,8 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * [Not supported]
      * @deprecated since JDBC 2.0, use setCharacterStream
      */
+    @Deprecated
+    @Override
     public InputStream getUnicodeStream(String columnLabel) throws SQLException {
         throw unsupported("unicodeStream");
     }
@@ -778,6 +817,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * [Not supported] Gets a column as a object using the specified type
      * mapping.
      */
+    @Override
     public Object getObject(int columnIndex, Map<String, Class<?>> map) throws SQLException {
         throw unsupported("map");
     }
@@ -786,6 +826,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * [Not supported] Gets a column as a object using the specified type
      * mapping.
      */
+    @Override
     public Object getObject(String columnLabel, Map<String, Class<?>> map) throws SQLException {
         throw unsupported("map");
     }
@@ -793,6 +834,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported] Gets a column as a reference.
      */
+    @Override
     public Ref getRef(int columnIndex) throws SQLException {
         throw unsupported("ref");
     }
@@ -800,6 +842,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported] Gets a column as a reference.
      */
+    @Override
     public Ref getRef(String columnLabel) throws SQLException {
         throw unsupported("ref");
     }
@@ -814,6 +857,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Date getDate(int columnIndex, Calendar calendar) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -835,6 +879,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Date getDate(String columnLabel, Calendar calendar) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -856,6 +901,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Time getTime(int columnIndex, Calendar calendar) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -877,6 +923,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Time getTime(String columnLabel, Calendar calendar) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -898,6 +945,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Timestamp getTimestamp(int columnIndex, Calendar calendar) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -919,6 +967,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Timestamp getTimestamp(String columnLabel, Calendar calendar) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -939,6 +988,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Blob getBlob(int columnIndex) throws SQLException {
         try {
             int id = getNextId(TraceObject.BLOB);
@@ -958,6 +1008,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Blob getBlob(String columnLabel) throws SQLException {
         try {
             int id = getNextId(TraceObject.BLOB);
@@ -977,6 +1028,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public byte[] getBytes(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getBytes", columnIndex);
@@ -994,6 +1046,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public byte[] getBytes(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getBytes", columnLabel);
@@ -1011,6 +1064,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public InputStream getBinaryStream(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getBinaryStream", columnIndex);
@@ -1028,6 +1082,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public InputStream getBinaryStream(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getBinaryStream", columnLabel);
@@ -1045,6 +1100,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Clob getClob(int columnIndex) throws SQLException {
         try {
             int id = getNextId(TraceObject.CLOB);
@@ -1064,6 +1120,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Clob getClob(String columnLabel) throws SQLException {
         try {
             int id = getNextId(TraceObject.CLOB);
@@ -1083,6 +1140,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Array getArray(int columnIndex) throws SQLException {
         try {
             int id = getNextId(TraceObject.ARRAY);
@@ -1102,6 +1160,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Array getArray(String columnLabel) throws SQLException {
         try {
             int id = getNextId(TraceObject.ARRAY);
@@ -1121,6 +1180,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public InputStream getAsciiStream(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getAsciiStream", columnIndex);
@@ -1139,6 +1199,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public InputStream getAsciiStream(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getAsciiStream", columnLabel);
@@ -1157,6 +1218,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Reader getCharacterStream(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getCharacterStream", columnIndex);
@@ -1174,6 +1236,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Reader getCharacterStream(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getCharacterStream", columnLabel);
@@ -1186,6 +1249,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported]
      */
+    @Override
     public URL getURL(int columnIndex) throws SQLException {
         throw unsupported("url");
     }
@@ -1193,6 +1257,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported]
      */
+    @Override
     public URL getURL(String columnLabel) throws SQLException {
         throw unsupported("url");
     }
@@ -1205,6 +1270,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param columnIndex (1,2,...)
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNull(int columnIndex) throws SQLException {
         try {
             debugCodeCall("updateNull", columnIndex);
@@ -1220,6 +1286,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param columnLabel the column label
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNull(String columnLabel) throws SQLException {
         try {
             debugCodeCall("updateNull", columnLabel);
@@ -1236,6 +1303,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBoolean(int columnIndex, boolean x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1254,6 +1322,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if result set is closed or not updatable
      */
+    @Override
     public void updateBoolean(String columnLabel, boolean x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1272,6 +1341,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateByte(int columnIndex, byte x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1290,6 +1360,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateByte(String columnLabel, byte x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1308,6 +1379,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBytes(int columnIndex, byte[] x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1326,6 +1398,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBytes(String columnLabel, byte[] x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1344,6 +1417,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateShort(int columnIndex, short x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1362,6 +1436,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateShort(String columnLabel, short x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1380,6 +1455,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateInt(int columnIndex, int x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1398,6 +1474,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateInt(String columnLabel, int x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1416,6 +1493,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateLong(int columnIndex, long x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1434,6 +1512,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateLong(String columnLabel, long x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1452,6 +1531,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateFloat(int columnIndex, float x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1470,6 +1550,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateFloat(String columnLabel, float x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1488,6 +1569,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateDouble(int columnIndex, double x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1506,6 +1588,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateDouble(String columnLabel, double x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1524,6 +1607,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBigDecimal(int columnIndex, BigDecimal x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1542,6 +1626,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBigDecimal(String columnLabel, BigDecimal x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1560,6 +1645,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateString(int columnIndex, String x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1578,6 +1664,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateString(String columnLabel, String x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1596,6 +1683,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateDate(int columnIndex, Date x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1614,6 +1702,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateDate(String columnLabel, Date x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1632,6 +1721,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateTime(int columnIndex, Time x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1650,6 +1740,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateTime(String columnLabel, Time x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1668,6 +1759,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateTimestamp(int columnIndex, Timestamp x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1686,6 +1778,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateTimestamp(String columnLabel, Timestamp x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1705,6 +1798,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateAsciiStream(int columnIndex, InputStream x, int length) throws SQLException {
         updateAsciiStream(columnIndex, x, (long) length);
     }
@@ -1716,6 +1810,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateAsciiStream(int columnIndex, InputStream x) throws SQLException {
         updateAsciiStream(columnIndex, x, -1);
     }
@@ -1728,6 +1823,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateAsciiStream(int columnIndex, InputStream x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1749,6 +1845,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateAsciiStream(String columnLabel, InputStream x, int length) throws SQLException {
         updateAsciiStream(columnLabel, x, (long) length);
     }
@@ -1760,6 +1857,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed
      */
+    @Override
     public void updateAsciiStream(String columnLabel, InputStream x) throws SQLException {
         updateAsciiStream(columnLabel, x, -1);
     }
@@ -1772,6 +1870,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateAsciiStream(String columnLabel, InputStream x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1793,6 +1892,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBinaryStream(int columnIndex, InputStream x, int length) throws SQLException {
         updateBinaryStream(columnIndex, x, (long) length);
     }
@@ -1804,6 +1904,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBinaryStream(int columnIndex, InputStream x) throws SQLException {
         updateBinaryStream(columnIndex, x, -1);
     }
@@ -1816,6 +1917,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBinaryStream(int columnIndex, InputStream x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1836,6 +1938,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBinaryStream(String columnLabel, InputStream x) throws SQLException {
         updateBinaryStream(columnLabel, x, -1);
     }
@@ -1848,6 +1951,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBinaryStream(String columnLabel, InputStream x, int length) throws SQLException {
         updateBinaryStream(columnLabel, x, (long) length);
     }
@@ -1860,6 +1964,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBinaryStream(String columnLabel, InputStream x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1881,6 +1986,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateCharacterStream(int columnIndex, Reader x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1902,6 +2008,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateCharacterStream(int columnIndex, Reader x, int length) throws SQLException {
         updateCharacterStream(columnIndex, x, (long) length);
     }
@@ -1913,6 +2020,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateCharacterStream(int columnIndex, Reader x) throws SQLException {
         updateCharacterStream(columnIndex, x, -1);
     }
@@ -1925,6 +2033,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateCharacterStream(String columnLabel, Reader x, int length) throws SQLException {
         updateCharacterStream(columnLabel, x, (long) length);
     }
@@ -1936,6 +2045,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateCharacterStream(String columnLabel, Reader x) throws SQLException {
         updateCharacterStream(columnLabel, x, -1);
     }
@@ -1948,6 +2058,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateCharacterStream(String columnLabel, Reader x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1969,6 +2080,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param scale is ignored
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateObject(int columnIndex, Object x, int scale) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -1988,6 +2100,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param scale is ignored
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateObject(String columnLabel, Object x, int scale) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2006,6 +2119,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateObject(int columnIndex, Object x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2024,6 +2138,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateObject(String columnLabel, Object x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2038,6 +2153,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported]
      */
+    @Override
     public void updateRef(int columnIndex, Ref x) throws SQLException {
         throw unsupported("ref");
     }
@@ -2045,6 +2161,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported]
      */
+    @Override
     public void updateRef(String columnLabel, Ref x) throws SQLException {
         throw unsupported("ref");
     }
@@ -2056,6 +2173,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBlob(int columnIndex, InputStream x) throws SQLException {
         updateBlob(columnIndex, x, -1);
     }
@@ -2068,6 +2186,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the length
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBlob(int columnIndex, InputStream x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2088,6 +2207,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBlob(int columnIndex, Blob x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2113,6 +2233,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBlob(String columnLabel, Blob x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2138,6 +2259,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBlob(String columnLabel, InputStream x) throws SQLException {
         updateBlob(columnLabel, x, -1);
     }
@@ -2150,6 +2272,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the length
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateBlob(String columnLabel, InputStream x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2170,6 +2293,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateClob(int columnIndex, Clob x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2195,6 +2319,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateClob(int columnIndex, Reader x) throws SQLException {
         updateClob(columnIndex, x, -1);
     }
@@ -2207,6 +2332,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the length
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateClob(int columnIndex, Reader x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2227,6 +2353,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateClob(String columnLabel, Clob x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2252,6 +2379,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateClob(String columnLabel, Reader x) throws SQLException {
         updateClob(columnLabel, x, -1);
     }
@@ -2264,6 +2392,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the length
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateClob(String columnLabel, Reader x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -2280,6 +2409,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported]
      */
+    @Override
     public void updateArray(int columnIndex, Array x) throws SQLException {
         throw unsupported("setArray");
     }
@@ -2287,6 +2417,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported]
      */
+    @Override
     public void updateArray(String columnLabel, Array x) throws SQLException {
         throw unsupported("setArray");
     }
@@ -2296,6 +2427,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * superseded by updateX methods. This method throws a SQLException because
      * cursor names are not supported.
      */
+    @Override
     public String getCursorName() throws SQLException {
         throw unsupported("cursorName");
     }
@@ -2306,6 +2438,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return the row number
      */
+    @Override
     public int getRow() throws SQLException {
         try {
             debugCodeCall("getRow");
@@ -2328,6 +2461,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return ResultSet.CONCUR_UPDATABLE if the result set is updatable, or
      *         ResultSet.CONCUR_READ_ONLY otherwise
      */
+    @Override
     public int getConcurrency() throws SQLException {
         try {
             debugCodeCall("getConcurrency");
@@ -2347,6 +2481,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return the direction: FETCH_FORWARD
      */
+    @Override
     public int getFetchDirection() throws SQLException {
         try {
             debugCodeCall("getFetchDirection");
@@ -2362,6 +2497,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return the current fetch size
      */
+    @Override
     public int getFetchSize() throws SQLException {
         try {
             debugCodeCall("getFetchSize");
@@ -2381,6 +2517,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @param rows the number of rows
      */
+    @Override
     public void setFetchSize(int rows) throws SQLException {
         try {
             debugCodeCall("setFetchSize", rows);
@@ -2413,6 +2550,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException Unsupported Feature if the method is called for a
      *             forward-only result set
      */
+    @Override
     public void setFetchDirection(int direction) throws SQLException {
         throw unsupported("setFetchDirection");
     }
@@ -2425,6 +2563,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public int getType() throws SQLException {
         try {
             debugCodeCall("getType");
@@ -2442,6 +2581,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return if there are results and the current position is before the first row
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean isBeforeFirst() throws SQLException {
         try {
             debugCodeCall("isBeforeFirst");
@@ -2461,6 +2601,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return if there are results and the current position is after the last row
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean isAfterLast() throws SQLException {
         try {
             debugCodeCall("isAfterLast");
@@ -2480,6 +2621,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return if the current position is the first row
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean isFirst() throws SQLException {
         try {
             debugCodeCall("isFirst");
@@ -2498,6 +2640,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return if the current position is the last row
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean isLast() throws SQLException {
         try {
             debugCodeCall("isLast");
@@ -2515,6 +2658,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @throws SQLException if the result set is closed
      */
+    @Override
     public void beforeFirst() throws SQLException {
         try {
             debugCodeCall("beforeFirst");
@@ -2532,6 +2676,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @throws SQLException if the result set is closed
      */
+    @Override
     public void afterLast() throws SQLException {
         try {
             debugCodeCall("afterLast");
@@ -2551,6 +2696,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return true if there is a row available, false if not
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean first() throws SQLException {
         try {
             debugCodeCall("first");
@@ -2571,6 +2717,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return true if there is a row available, false if not
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean last() throws SQLException {
         try {
             debugCodeCall("last");
@@ -2592,6 +2739,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return true if there is a row available, false if not
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean absolute(int rowNumber) throws SQLException {
         try {
             debugCodeCall("absolute", rowNumber);
@@ -2624,6 +2772,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return true if there is a row available, false if not
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean relative(int rowCount) throws SQLException {
         try {
             debugCodeCall("relative", rowCount);
@@ -2647,6 +2796,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return true if there is a row available, false if not
      * @throws SQLException if the result set is closed
      */
+    @Override
     public boolean previous() throws SQLException {
         try {
             debugCodeCall("previous");
@@ -2662,6 +2812,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @throws SQLException if the result set is closed or is not updatable
      */
+    @Override
     public void moveToInsertRow() throws SQLException {
         try {
             debugCodeCall("moveToInsertRow");
@@ -2677,6 +2828,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @throws SQLException if the result set is closed or is not updatable
      */
+    @Override
     public void moveToCurrentRow() throws SQLException {
         try {
             debugCodeCall("moveToCurrentRow");
@@ -2692,6 +2844,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return false because this driver does not detect this
      */
+    @Override
     public boolean rowUpdated() throws SQLException {
         try {
             debugCodeCall("rowUpdated");
@@ -2706,6 +2859,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return false because this driver does not detect this
      */
+    @Override
     public boolean rowInserted() throws SQLException {
         try {
             debugCodeCall("rowInserted");
@@ -2720,6 +2874,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return false because this driver does not detect this
      */
+    @Override
     public boolean rowDeleted() throws SQLException {
         try {
             debugCodeCall("rowDeleted");
@@ -2735,6 +2890,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the result set is closed or if not on the insert
      *             row, or if the result set it not updatable
      */
+    @Override
     public void insertRow() throws SQLException {
         try {
             debugCodeCall("insertRow");
@@ -2756,6 +2912,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *             the insert row or if not on a valid row, or if the result set
      *             it not updatable
      */
+    @Override
     public void updateRow() throws SQLException {
         try {
             debugCodeCall("updateRow");
@@ -2792,6 +2949,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *             the insert row or if not on a valid row, or if the result set
      *             it not updatable
      */
+    @Override
     public void deleteRow() throws SQLException {
         try {
             debugCodeCall("deleteRow");
@@ -2814,6 +2972,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *             the insert row or if the row has been deleted or if not on a
      *             valid row
      */
+    @Override
     public void refreshRow() throws SQLException {
         try {
             debugCodeCall("refreshRow");
@@ -2835,6 +2994,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the result set is closed or if the current row is
      *             the insert row
      */
+    @Override
     public void cancelRowUpdates() throws SQLException {
         try {
             debugCodeCall("cancelRowUpdates");
@@ -3020,24 +3180,22 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @param columnIndex (1,2,...)
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public RowId getRowId(int columnIndex) throws SQLException {
         throw unsupported("rowId");
     }
-
-    //*/
 
     /**
      * [Not supported] Returns the value of the specified column as a row id.
      *
      * @param columnLabel the column label
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public RowId getRowId(String columnLabel) throws SQLException {
         throw unsupported("rowId");
     }
-
-    //*/
 
     /**
      * [Not supported] Updates a column in the current or insert row.
@@ -3045,12 +3203,11 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param columnIndex (1,2,...)
      * @param x the value
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public void updateRowId(int columnIndex, RowId x) throws SQLException {
         throw unsupported("rowId");
     }
-
-    //*/
 
     /**
      * [Not supported] Updates a column in the current or insert row.
@@ -3058,12 +3215,11 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param columnLabel the column label
      * @param x the value
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public void updateRowId(String columnLabel, RowId x) throws SQLException {
         throw unsupported("rowId");
     }
-
-    //*/
 
     /**
      * Returns the current result set holdability.
@@ -3071,6 +3227,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the holdability
      * @throws SQLException if the connection is closed
      */
+    @Override
     public int getHoldability() throws SQLException {
         try {
             debugCodeCall("getHoldability");
@@ -3086,6 +3243,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      *
      * @return true if the result set is closed
      */
+    @Override
     public boolean isClosed() throws SQLException {
         try {
             debugCodeCall("isClosed");
@@ -3102,6 +3260,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNString(int columnIndex, String x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -3120,6 +3279,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNString(String columnLabel, String x) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -3134,12 +3294,11 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported]
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public void updateNClob(int columnIndex, NClob x) throws SQLException {
         throw unsupported("NClob");
     }
-
-    //*/
 
     /**
      * Updates a column in the current or insert row.
@@ -3148,6 +3307,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNClob(int columnIndex, Reader x) throws SQLException {
         updateClob(columnIndex, x, -1);
     }
@@ -3160,6 +3320,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the length
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNClob(int columnIndex, Reader x, long length) throws SQLException {
         updateClob(columnIndex, x, length);
     }
@@ -3171,6 +3332,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNClob(String columnLabel, Reader x) throws SQLException {
         updateClob(columnLabel, x, -1);
     }
@@ -3183,6 +3345,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the length
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNClob(String columnLabel, Reader x, long length) throws SQLException {
         updateClob(columnLabel, x, length);
     }
@@ -3190,12 +3353,11 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported]
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public void updateNClob(String columnLabel, NClob x) throws SQLException {
         throw unsupported("NClob");
     }
-
-    //*/
 
     /**
      * Returns the value of the specified column as a Clob.
@@ -3204,7 +3366,8 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public NClob getNClob(int columnIndex) throws SQLException {
         try {
             int id = getNextId(TraceObject.CLOB);
@@ -3216,8 +3379,6 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
         }
     }
 
-    //*/
-
     /**
      * Returns the value of the specified column as a Clob.
      *
@@ -3225,7 +3386,8 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @return the value
      * @throws SQLException if the column is not found or if the result set is closed
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public NClob getNClob(String columnLabel) throws SQLException {
         try {
             int id = getNextId(TraceObject.CLOB);
@@ -3237,47 +3399,41 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
         }
     }
 
-    //*/
-
     /**
      * [Not supported] Returns the value of the specified column as a SQLXML object.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public SQLXML getSQLXML(int columnIndex) throws SQLException {
         throw unsupported("SQLXML");
     }
 
-    //*/
-
     /**
      * [Not supported] Returns the value of the specified column as a SQLXML object.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public SQLXML getSQLXML(String columnLabel) throws SQLException {
         throw unsupported("SQLXML");
     }
 
-    //*/
-
     /**
      * [Not supported] Updates a column in the current or insert row.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public void updateSQLXML(int columnIndex, SQLXML xmlObject) throws SQLException {
         throw unsupported("SQLXML");
     }
 
-    //*/
-
     /**
      * [Not supported] Updates a column in the current or insert row.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public void updateSQLXML(String columnLabel, SQLXML xmlObject) throws SQLException {
         throw unsupported("SQLXML");
     }
-
-    //*/
 
     /**
      * Returns the value of the specified column as a String.
@@ -3287,6 +3443,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public String getNString(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getNString", columnIndex);
@@ -3304,6 +3461,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public String getNString(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getNString", columnLabel);
@@ -3321,6 +3479,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Reader getNCharacterStream(int columnIndex) throws SQLException {
         try {
             debugCodeCall("getNCharacterStream", columnIndex);
@@ -3338,6 +3497,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @throws SQLException if the column is not found or if the result set is
      *             closed
      */
+    @Override
     public Reader getNCharacterStream(String columnLabel) throws SQLException {
         try {
             debugCodeCall("getNCharacterStream", columnLabel);
@@ -3354,6 +3514,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNCharacterStream(int columnIndex, Reader x) throws SQLException {
         updateNCharacterStream(columnIndex, x, -1);
     }
@@ -3366,6 +3527,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNCharacterStream(int columnIndex, Reader x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -3386,6 +3548,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param x the value
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNCharacterStream(String columnLabel, Reader x) throws SQLException {
         updateNCharacterStream(columnLabel, x, -1);
     }
@@ -3398,6 +3561,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param length the number of characters
      * @throws SQLException if the result set is closed or not updatable
      */
+    @Override
     public void updateNCharacterStream(String columnLabel, Reader x, long length) throws SQLException {
         try {
             if (isDebugEnabled()) {
@@ -3414,22 +3578,20 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     /**
      * [Not supported] Return an object of this class if possible.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
         throw unsupported("unwrap");
     }
 
-    //*/
-
     /**
      * [Not supported] Checks if unwrap can return an object of this class.
      */
-    //## Java 1.6 ##
+    // ## Java 1.6 ##
+    @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         throw unsupported("isWrapperFor");
     }
-
-    //*/
 
     /**
      * [Not supported]
@@ -3437,11 +3599,11 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param columnIndex the column index (1, 2, ...)
      * @param type the class of the returned value
      */
-    /*## Java 1.7 ##
-        public <T> T getObject(int columnIndex, Class<T> type) {
-            return null;
-        }
-    //*/
+    // ## Java 1.7 ##
+    @Override
+    public <T> T getObject(int columnIndex, Class<T> type) {
+        return null;
+    }
 
     /**
      * [Not supported]
@@ -3449,15 +3611,16 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
      * @param columnName the column name
      * @param type the class of the returned value
      */
-    /*## Java 1.7 ##
-        public <T> T getObject(String columnName, Class<T> type) {
-            return null;
-        }
-    //*/
+    // ## Java 1.7 ##
+    @Override
+    public <T> T getObject(String columnName, Class<T> type) {
+        return null;
+    }
 
     /**
      * INTERNAL
      */
+    @Override
     public String toString() {
         return getTraceObjectName() + ": " + result;
     }
@@ -3497,20 +3660,6 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
 
     public void setCommand(Command command) {
         this.command = command;
-    }
-
-    public Command getCommand() {
-        return command;
-    }
-
-    //jdk1.7
-    public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
-        throw DbException.getUnsupportedException("getObject(int, Class<T>)");
-    }
-
-    //jdk1.7
-    public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
-        throw DbException.getUnsupportedException("getObject(String, Class<T>)");
     }
 
 }

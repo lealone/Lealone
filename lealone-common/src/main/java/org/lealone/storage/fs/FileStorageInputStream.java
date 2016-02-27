@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.lealone.common.compress.CompressTool;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.Data;

@@ -16,8 +16,8 @@ import java.util.ArrayList;
 import org.lealone.api.ErrorCode;
 import org.lealone.client.ClientBatchCommand;
 import org.lealone.client.ClientSession;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.TraceObject;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.New;
 import org.lealone.db.Command;
 import org.lealone.db.Session;
@@ -26,11 +26,14 @@ import org.lealone.db.result.Result;
 
 /**
  * Represents a statement.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcStatement extends TraceObject implements Statement {
 
     protected JdbcConnection conn;
-    protected Session session;
+    protected final Session session;
     protected JdbcResultSet resultSet;
     protected int maxRows;
     protected int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
@@ -71,13 +74,13 @@ public class JdbcStatement extends TraceObject implements Statement {
                 checkClosed();
                 closeOldResultSet();
                 sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-                Command command = conn.prepareCommand(sql, fetchSize);
+                Command command = conn.createCommand(sql, fetchSize);
                 Result result;
                 boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                 setExecutingStatement(command);
                 try {
-                    result = command.executeQuery(maxRows, scrollable);
+                    result = command.query(maxRows, scrollable);
                 } finally {
                     setExecutingStatement(null);
                 }
@@ -120,24 +123,20 @@ public class JdbcStatement extends TraceObject implements Statement {
     }
 
     private int executeUpdateInternal(String sql) throws SQLException {
-        checkClosedForWrite();
-        try {
-            closeOldResultSet();
-            sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            Command command = conn.prepareCommand(sql, fetchSize);
-            synchronized (session) {
-                setExecutingStatement(command);
-                try {
-                    updateCount = command.executeUpdate();
-                } finally {
-                    setExecutingStatement(null);
-                }
+        checkClosed();
+        closeOldResultSet();
+        sql = JdbcConnection.translateSQL(sql, escapeProcessing);
+        Command command = conn.createCommand(sql, fetchSize);
+        synchronized (session) {
+            setExecutingStatement(command);
+            try {
+                updateCount = command.update();
+            } finally {
+                setExecutingStatement(null);
             }
-            command.close();
-            return updateCount;
-        } finally {
-            afterWriting();
         }
+        command.close();
+        return updateCount;
     }
 
     /**
@@ -163,38 +162,55 @@ public class JdbcStatement extends TraceObject implements Statement {
     }
 
     private boolean executeInternal(String sql) throws SQLException {
-        int id = getNextId(TraceObject.RESULT_SET);
-        checkClosedForWrite();
-        try {
-            closeOldResultSet();
-            sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            Command command = conn.prepareCommand(sql, fetchSize);
-            boolean returnsResultSet;
-            synchronized (session) {
-                setExecutingStatement(command);
-                try {
-                    if (command.isQuery()) {
-                        returnsResultSet = true;
-                        boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-                        boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                        Result result = command.executeQuery(maxRows, scrollable);
-                        resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                    } else {
-                        returnsResultSet = false;
-                        updateCount = command.executeUpdate();
-                    }
-                } finally {
-                    setExecutingStatement(null);
+        if (sql != null) {
+            sql = sql.trim();
+            if (!sql.isEmpty()) {
+                char c = Character.toUpperCase(sql.charAt(0));
+                switch (c) {
+                case 'S': // select or show
+                    executeQuery(sql);
+                    return true;
+                case 'I': // insert
+                case 'U': // update
+                case 'D': // delete or drop
+                case 'C': // create
+                case 'A': // alter
+                case 'M': // merge
+                    executeUpdate(sql);
+                    return false;
+                default:
+                    break;
                 }
             }
-            if (returnsResultSet)
-                resultSet.setCommand(command);
-            else
-                command.close();
-            return returnsResultSet;
-        } finally {
-            afterWriting();
         }
+        int id = getNextId(TraceObject.RESULT_SET);
+        checkClosed();
+        closeOldResultSet();
+        sql = JdbcConnection.translateSQL(sql, escapeProcessing);
+        Command command = conn.prepareCommand(sql, fetchSize);
+        boolean returnsResultSet;
+        synchronized (session) {
+            setExecutingStatement(command);
+            try {
+                if (command.isQuery()) {
+                    returnsResultSet = true;
+                    boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+                    boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+                    Result result = command.query(maxRows, scrollable);
+                    resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                } else {
+                    returnsResultSet = false;
+                    updateCount = command.update();
+                }
+            } finally {
+                setExecutingStatement(null);
+            }
+        }
+        if (returnsResultSet)
+            resultSet.setCommand(command);
+        else
+            command.close();
+        return returnsResultSet;
     }
 
     /**
@@ -252,6 +268,21 @@ public class JdbcStatement extends TraceObject implements Statement {
                     conn = null;
                 }
             }
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Returns whether this statement is closed.
+     *
+     * @return true if the statement is closed
+     */
+    @Override
+    public boolean isClosed() throws SQLException {
+        try {
+            debugCodeCall("isClosed");
+            return conn == null;
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -367,7 +398,7 @@ public class JdbcStatement extends TraceObject implements Statement {
     }
 
     /**
-     * Gets the maximum number of rows for a ResultSet.
+     * Sets the maximum number of rows for a ResultSet.
      *
      * @param maxRows the number of rows where 0 means no limit
      * @throws SQLException if this object is closed
@@ -637,50 +668,42 @@ public class JdbcStatement extends TraceObject implements Statement {
     public int[] executeBatch() throws SQLException {
         try {
             debugCodeCall("executeBatch");
-            checkClosedForWrite();
-            try {
-                if (batchCommands == null) {
-                    // TODO batch: check what other database do if no commands are set
-                    batchCommands = New.arrayList();
-                }
-                if (batchCommands.isEmpty())
-                    return new int[0];
+            checkClosed();
+            if (batchCommands == null || batchCommands.isEmpty())
+                return new int[0];
 
-                if (session instanceof ClientSession) {
-                    ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(batchCommands);
-                    c.executeUpdate();
-                    int[] result = c.getResult();
-                    c.close();
-                    return result;
-                } else {
-                    int size = batchCommands.size();
-                    int[] result = new int[size];
-                    boolean error = false;
-                    SQLException next = null;
-                    for (int i = 0; i < size; i++) {
-                        String sql = batchCommands.get(i);
-                        try {
-                            result[i] = executeUpdateInternal(sql);
-                        } catch (Exception re) {
-                            SQLException e = logAndConvert(re);
-                            if (next == null) {
-                                next = e;
-                            } else {
-                                e.setNextException(next);
-                                next = e;
-                            }
-                            result[i] = Statement.EXECUTE_FAILED;
-                            error = true;
+            if (session instanceof ClientSession) {
+                ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(batchCommands);
+                c.update();
+                int[] result = c.getResult();
+                c.close();
+                return result;
+            } else {
+                int size = batchCommands.size();
+                int[] result = new int[size];
+                boolean error = false;
+                SQLException next = null;
+                for (int i = 0; i < size; i++) {
+                    String sql = batchCommands.get(i);
+                    try {
+                        result[i] = executeUpdateInternal(sql);
+                    } catch (Exception re) {
+                        SQLException e = logAndConvert(re);
+                        if (next == null) {
+                            next = e;
+                        } else {
+                            e.setNextException(next);
+                            next = e;
                         }
+                        result[i] = Statement.EXECUTE_FAILED;
+                        error = true;
                     }
-                    batchCommands = null;
-                    if (error) {
-                        throw new JdbcBatchUpdateException(next, result);
-                    }
-                    return result;
                 }
-            } finally {
-                afterWriting();
+                batchCommands = null;
+                if (error) {
+                    throw new JdbcBatchUpdateException(next, result);
+                }
+                return result;
             }
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -928,79 +951,25 @@ public class JdbcStatement extends TraceObject implements Statement {
         }
     }
 
-    /**
-     * [Not supported]
-     */
-    /*## Java 1.7 ##
-        public void closeOnCompletion() {
-            // not supported
-        }
-    //*/
-
-    /**
-     * [Not supported]
-     */
-    /*## Java 1.7 ##
-        public boolean isCloseOnCompletion() {
-            return true;
-        }
-    //*/
-
     // =============================================================
-
-    /**
-     * Check if this connection is closed.
-     * The next operation is a read request.
-     *
-     * @return true if the session was re-connected
-     * @throws DbException if the connection or session is closed
-     */
-    boolean checkClosed() {
-        return checkClosed(false);
-    }
-
-    /**
-     * Check if this connection is closed.
-     * The next operation may be a write request.
-     *
-     * @return true if the session was re-connected
-     * @throws DbException if the connection or session is closed
-     */
-    boolean checkClosedForWrite() {
-        return checkClosed(true);
-    }
 
     /**
      * INTERNAL.
      * Check if the statement is closed.
      *
-     * @param write if the next operation is possibly writing
-     * @return true if a reconnect was required
+     * @param write if the next operation is possibly writing 
      * @throws DbException if it is closed
      */
-    protected boolean checkClosed(boolean write) {
+    protected void checkClosed() {
         if (conn == null) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED);
         }
-        conn.checkClosed(write);
-        Session s = conn.getSession();
-        if (s != session) {
-            session = s;
-            trace = session.getTrace();
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Called after each write operation.
-     */
-    void afterWriting() {
+        conn.checkClosed();
     }
 
     /**
      * INTERNAL.
-     * Close and old result set if there is still one open.
+     * Close an old result set if there is still one open.
      */
     protected void closeOldResultSet() throws SQLException {
         try {
@@ -1040,21 +1009,6 @@ public class JdbcStatement extends TraceObject implements Statement {
     }
 
     /**
-     * Returns whether this statement is closed.
-     *
-     * @return true if the statement is closed
-     */
-    @Override
-    public boolean isClosed() throws SQLException {
-        try {
-            debugCodeCall("isClosed");
-            return conn == null;
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
      * [Not supported] Return an object of this class if possible.
      */
     // ## Java 1.6 ##
@@ -1062,8 +1016,6 @@ public class JdbcStatement extends TraceObject implements Statement {
     public <T> T unwrap(Class<T> iface) throws SQLException {
         throw unsupported("unwrap");
     }
-
-    // */
 
     /**
      * [Not supported] Checks if unwrap can return an object of this class.
@@ -1074,12 +1026,11 @@ public class JdbcStatement extends TraceObject implements Statement {
         throw unsupported("isWrapperFor");
     }
 
-    // */
-
     /**
      * Returns whether this object is poolable.
      * @return false
      */
+    // ## Java 1.6 ##
     @Override
     public boolean isPoolable() {
         debugCodeCall("isPoolable");
@@ -1092,11 +1043,24 @@ public class JdbcStatement extends TraceObject implements Statement {
      *
      * @param poolable the requested value
      */
+    // ## Java 1.6 ##
     @Override
     public void setPoolable(boolean poolable) {
         if (isDebugEnabled()) {
             debugCode("setPoolable(" + poolable + ");");
         }
+    }
+
+    // ## Java 1.7 ##
+    @Override
+    public void closeOnCompletion() throws SQLException {
+        throw unsupported("closeOnCompletion");
+    }
+
+    // ## Java 1.7 ##
+    @Override
+    public boolean isCloseOnCompletion() throws SQLException {
+        throw unsupported("isCloseOnCompletion");
     }
 
     /**
@@ -1106,17 +1070,4 @@ public class JdbcStatement extends TraceObject implements Statement {
     public String toString() {
         return getTraceObjectName();
     }
-
-    // jdk1.7
-    @Override
-    public void closeOnCompletion() throws SQLException {
-        throw DbException.getUnsupportedException("closeOnCompletion()");
-    }
-
-    // jdk1.7
-    @Override
-    public boolean isCloseOnCompletion() throws SQLException {
-        throw DbException.getUnsupportedException("isCloseOnCompletion()");
-    }
-
 }

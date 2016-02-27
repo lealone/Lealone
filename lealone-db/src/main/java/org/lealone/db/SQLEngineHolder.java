@@ -18,11 +18,11 @@
 package org.lealone.db;
 
 import org.lealone.sql.SQLEngine;
+import org.lealone.sql.SQLEngineManager;
 
-//TODO 只有在org.lealone.db.table.Column中使用，也许这个类是不需要的
 public class SQLEngineHolder {
 
-    private static SQLEngine sqlEngine;
+    private static SQLEngine sqlEngine = SQLEngineManager.getInstance().getEngine(Constants.DEFAULT_SQL_ENGINE_NAME);
 
     static void setSQLEngine(SQLEngine sqlEngine) {
         SQLEngineHolder.sqlEngine = sqlEngine;

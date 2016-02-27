@@ -15,14 +15,13 @@ import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 
 /**
  * This class represents the statement
  * CALL.
  */
-public class Call extends StatementBase {
+public class Call extends ManipulateStatement {
 
     private boolean isResultSet;
     private Expression expression;
@@ -33,7 +32,32 @@ public class Call extends StatementBase {
     }
 
     @Override
-    public Result queryMeta() {
+    public int getType() {
+        return SQLStatement.CALL;
+    }
+
+    @Override
+    public boolean isCacheable() {
+        return !isResultSet;
+    }
+
+    public void setExpression(Expression expression) {
+        this.expression = expression;
+    }
+
+    @Override
+    public boolean isQuery() {
+        return true;
+    }
+
+    @Override
+    public boolean isReadOnly() {
+        return expression.isEverything(ExpressionVisitor.READONLY_VISITOR);
+
+    }
+
+    @Override
+    public Result getMetaData() {
         LocalResult result;
         if (isResultSet) {
             Expression[] expr = expression.getExpressionColumns(session);
@@ -43,6 +67,17 @@ public class Call extends StatementBase {
         }
         result.done();
         return result;
+    }
+
+    @Override
+    public PreparedStatement prepare() {
+        expression = expression.optimize(session);
+        expressions = new Expression[] { expression };
+        isResultSet = expression.getType() == Value.RESULT_SET;
+        if (isResultSet) {
+            prepareAlways = true;
+        }
+        return this;
     }
 
     @Override
@@ -63,60 +98,19 @@ public class Call extends StatementBase {
     }
 
     @Override
-    public Result query(int maxrows) {
+    public Result query(int maxRows) {
         setCurrentRowNumber(1);
         Value v = expression.getValue(session);
         if (isResultSet) {
             v = v.convertTo(Value.RESULT_SET);
             ResultSet rs = v.getResultSet();
-            return LocalResult.read(session, rs, maxrows);
+            return LocalResult.read(session, rs, maxRows);
         }
         LocalResult result = new LocalResult(session, expressions, 1);
         Value[] row = { v };
         result.addRow(row);
         result.done();
         return result;
-    }
-
-    @Override
-    public PreparedStatement prepare() {
-        expression = expression.optimize(session);
-        expressions = new Expression[] { expression };
-        isResultSet = expression.getType() == Value.RESULT_SET;
-        if (isResultSet) {
-            prepareAlways = true;
-        }
-        return this;
-    }
-
-    public void setExpression(Expression expression) {
-        this.expression = expression;
-    }
-
-    @Override
-    public boolean isQuery() {
-        return true;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
-    public boolean isReadOnly() {
-        return expression.isEverything(ExpressionVisitor.READONLY_VISITOR);
-
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CALL;
-    }
-
-    @Override
-    public boolean isCacheable() {
-        return !isResultSet;
     }
 
 }

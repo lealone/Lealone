@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map.Entry;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.ServerSession;
@@ -44,11 +44,6 @@ public class StandardPrimaryIndex extends IndexBase {
      */
     static final ValueLong MAX = ValueLong.get(Long.MAX_VALUE);
 
-    /**
-     * The zero long value.
-     */
-    static final ValueLong ZERO = ValueLong.get(0);
-
     private final StandardTable table;
     private final String mapName;
     private final TransactionMap<Value, Value> dataMap;
@@ -56,26 +51,38 @@ public class StandardPrimaryIndex extends IndexBase {
     private int mainIndexColumn = -1;
 
     public StandardPrimaryIndex(ServerSession session, StandardTable table) {
-        IndexColumn[] columns = IndexColumn.wrap(table.getColumns());
-        initIndexBase(table, table.getId(), table.getName() + "_DATA", columns, IndexType.createScan(true));
-
+        super(table, table.getId(), table.getName() + "_DATA", IndexType.createScan());
         this.table = table;
+        IndexColumn[] columns = IndexColumn.wrap(table.getColumns());
+        setIndexColumns(columns);
         int[] sortTypes = new int[columns.length];
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = SortOrder.ASCENDING;
         }
         ValueDataType keyType = new ValueDataType(null, null, null);
-        ValueDataType valueType = new ValueDataType(database.getCompareMode(), database, sortTypes);
+        ValueDataType valueType = new ValueDataType(database, database.getCompareMode(), sortTypes);
         mapName = table.getMapNameForTable(getId());
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
+        boolean isShardingMode = session.isShardingMode();
         // TODO处理内存表的情况!table.isPersistData()
-        dataMap = transactionEngine.beginTransaction(false).openMap(mapName, table.getMapType(), keyType, valueType,
-                storage);
+        dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
+                keyType, valueType, storage, isShardingMode);
+
+        transactionEngine.addTransactionMap(dataMap);
 
         Value k = dataMap.lastKey();
         lastKey = k == null ? 0 : k.getLong();
+    }
+
+    @Override
+    public StandardTable getTable() {
+        return table;
+    }
+
+    public String getMapName() {
+        return mapName;
     }
 
     @Override
@@ -198,11 +205,6 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public StandardTable getTable() {
-        return table;
-    }
-
-    @Override
     public Row getRow(ServerSession session, long key) {
         TransactionMap<Value, Value> map = getMap(session);
         Value v = map.get(ValueLong.get(key));
@@ -298,15 +300,6 @@ public class StandardPrimaryIndex extends IndexBase {
     public long getDiskSpaceUsed() {
         // TODO estimate disk space usage
         return 0;
-    }
-
-    public String getMapName() {
-        return mapName;
-    }
-
-    @Override
-    public void checkRename() {
-        // ok
     }
 
     /**

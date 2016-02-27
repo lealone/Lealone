@@ -10,10 +10,9 @@ import java.sql.SQLException;
 
 import org.lealone.api.Aggregate;
 import org.lealone.api.AggregateFunction;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
-import org.lealone.db.table.Table;
 import org.lealone.db.value.DataType;
 
 /**
@@ -25,11 +24,16 @@ public class UserAggregate extends DbObjectBase {
     private Class<?> javaClass;
 
     public UserAggregate(Database db, int id, String name, String className, boolean force) {
-        initDbObjectBase(db, id, name, Trace.FUNCTION);
+        super(db, id, name, Trace.FUNCTION);
         this.className = className;
         if (!force) {
             getInstance();
         }
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.AGGREGATE;
     }
 
     public Aggregate getInstance() {
@@ -52,8 +56,8 @@ public class UserAggregate extends DbObjectBase {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
+    public String getCreateSQL() {
+        return "CREATE FORCE AGGREGATE " + getSQL() + " FOR " + database.quoteIdentifier(className);
     }
 
     @Override
@@ -62,21 +66,10 @@ public class UserAggregate extends DbObjectBase {
     }
 
     @Override
-    public String getCreateSQL() {
-        return "CREATE FORCE AGGREGATE " + getSQL() + " FOR " + database.quoteIdentifier(className);
-    }
-
-    @Override
-    public int getType() {
-        return DbObject.AGGREGATE;
-    }
-
-    @Override
     public synchronized void removeChildrenAndResources(ServerSession session) {
-        database.removeMeta(session, getId());
+        super.removeChildrenAndResources(session);
         className = null;
         javaClass = null;
-        invalidate();
     }
 
     @Override
@@ -85,7 +78,7 @@ public class UserAggregate extends DbObjectBase {
     }
 
     public String getJavaClassName() {
-        return this.className;
+        return className;
     }
 
     /**

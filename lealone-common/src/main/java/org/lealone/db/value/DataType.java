@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.UUID;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
@@ -465,7 +465,7 @@ public class DataType {
             }
             case Value.CLOB: {
                 if (session == null) {
-                    v = ValueLobDb.createSmallLob(Value.CLOB, rs.getString(columnIndex).getBytes(Constants.UTF8));
+                    v = ValueLob.createSmallLob(Value.CLOB, rs.getString(columnIndex).getBytes(Constants.UTF8));
                 } else {
                     Reader in = rs.getCharacterStream(columnIndex);
                     if (in == null) {
@@ -478,7 +478,7 @@ public class DataType {
             }
             case Value.BLOB: {
                 if (session == null) {
-                    v = ValueLobDb.createSmallLob(Value.BLOB, rs.getBytes(columnIndex));
+                    v = ValueLob.createSmallLob(Value.BLOB, rs.getBytes(columnIndex));
                 } else {
                     InputStream in = rs.getBinaryStream(columnIndex);
                     v = (in == null) ? (Value) ValueNull.INSTANCE : session.getDataHandler().getLobStorage()

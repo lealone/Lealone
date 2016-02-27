@@ -6,13 +6,23 @@
  */
 package org.lealone.db;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.Value;
 
 /**
  * The interface for client side and server side parameters.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface CommandParameter {
+
+    /**
+     * Get the parameter index.
+     *
+     * @return the parameter index.
+     */
+    int getIndex();
 
     /**
      * Set the value of the parameter.
@@ -29,7 +39,7 @@ public interface CommandParameter {
      *
      * @return the value or null
      */
-    Value getParamValue();
+    Value getValue();
 
     /**
      * Check if the value is set.
@@ -73,9 +83,5 @@ public interface CommandParameter {
      * @return Column.NULLABLE_*
      */
     int getNullable();
-
-    int getIndex();
-
-    Value getParamValue(Session session);
 
 }

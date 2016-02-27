@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.table.Table;
@@ -25,6 +25,11 @@ public class TruncateTable extends DefineStatement {
         super(session);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.TRUNCATE_TABLE;
+    }
+
     public void setTable(Table table) {
         this.table = table;
     }
@@ -39,11 +44,6 @@ public class TruncateTable extends DefineStatement {
         table.lock(session, true, true);
         table.truncate(session);
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.TRUNCATE_TABLE;
     }
 
 }

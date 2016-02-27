@@ -7,10 +7,9 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.db.LealoneDatabase;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.sql.SQLStatement;
 
@@ -18,13 +17,23 @@ import org.lealone.sql.SQLStatement;
  * This class represents the statement
  * DROP USER
  */
-public class DropUser extends DefineStatement {
+public class DropUser extends DefineStatement implements AuthStatement {
 
     private boolean ifExists;
     private String userName;
 
     public DropUser(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_USER;
+    }
+
+    @Override
+    public boolean isTransactional() {
+        return false;
     }
 
     public void setIfExists(boolean b) {
@@ -39,7 +48,8 @@ public class DropUser extends DefineStatement {
     public int update() {
         session.getUser().checkAdmin();
         session.commit(true);
-        User user = Auth.findUser(userName);
+        Database db = session.getDatabase();
+        User user = db.findUser(userName);
         if (user == null) {
             if (!ifExists) {
                 throw DbException.get(ErrorCode.USER_NOT_FOUND_1, userName);
@@ -47,7 +57,7 @@ public class DropUser extends DefineStatement {
         } else {
             if (user == session.getUser()) {
                 int adminUserCount = 0;
-                for (User u : Auth.getAllUsers()) {
+                for (User u : db.getAllUsers()) {
                     if (u.isAdmin()) {
                         adminUserCount++;
                     }
@@ -59,19 +69,9 @@ public class DropUser extends DefineStatement {
                 }
             }
             user.checkOwnsNoSchemas(session); // 删除用户前需要删除它拥有的所有Schema，否则不允许删
-            LealoneDatabase.getInstance().removeDatabaseObject(session, user);
+            db.removeDatabaseObject(session, user);
         }
         return 0;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return false;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_USER;
     }
 
 }

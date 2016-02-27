@@ -9,7 +9,7 @@ package org.lealone.db.index;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Comparison;
 import org.lealone.db.result.Result;

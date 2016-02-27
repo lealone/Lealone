@@ -1,7 +1,6 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
 package org.lealone.client.result;
@@ -14,7 +13,7 @@ import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.client.jdbc.JdbcConnection;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
@@ -186,17 +185,17 @@ public class UpdatableRow {
         }
     }
 
-    //    public boolean isRowDeleted(Value[] row) throws SQLException {
-    //        StringBuilder buff = new StringBuilder();
-    //        buff.append("SELECT COUNT(*) FROM ").
-    //               append(StringUtils.quoteIdentifier(tableName));
-    //        appendKeyCondition(buff);
-    //        PreparedStatement prep = conn.prepareStatement(buff.toString());
-    //        setKey(prep, 1, row);
-    //        ResultSet rs = prep.executeQuery();
-    //        rs.next();
-    //        return rs.getInt(1) == 0;
-    //    }
+    // public boolean isRowDeleted(Value[] row) throws SQLException {
+    // StringBuilder buff = new StringBuilder();
+    // buff.append("SELECT COUNT(*) FROM ").
+    // append(StringUtils.quoteIdentifier(tableName));
+    // appendKeyCondition(buff);
+    // PreparedStatement prep = conn.prepareStatement(buff.toString());
+    // setKey(prep, 1, row);
+    // ResultSet rs = prep.executeQuery();
+    // rs.next();
+    // return rs.getInt(1) == 0;
+    // }
 
     private void appendTableName(StatementBuilder buff) {
         if (schemaName != null && schemaName.length() > 0) {

@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;
@@ -24,6 +24,11 @@ public class DropAggregate extends DefineStatement {
 
     public DropAggregate(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_AGGREGATE;
     }
 
     @Override
@@ -48,11 +53,6 @@ public class DropAggregate extends DefineStatement {
 
     public void setIfExists(boolean ifExists) {
         this.ifExists = ifExists;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_AGGREGATE;
     }
 
 }

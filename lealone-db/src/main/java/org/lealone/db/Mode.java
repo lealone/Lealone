@@ -19,7 +19,7 @@ public class Mode {
     /**
      * The name of the default mode.
      */
-    static final String REGULAR = "REGULAR";
+    private static final String REGULAR = "REGULAR";
 
     private static final HashMap<String, Mode> MODES = New.hashMap();
 
@@ -150,51 +150,11 @@ public class Mode {
         mode.nullConcatIsNull = true;
         add(mode);
 
-        mode = new Mode("DB2");
-        mode.aliasColumnName = true;
-        mode.supportOffsetFetch = true;
-        mode.sysDummy1 = true;
-        mode.isolationLevelInSelectOrInsertStatement = true;
-        add(mode);
-
-        mode = new Mode("Derby");
-        mode.aliasColumnName = true;
-        mode.uniqueIndexSingleNull = true;
-        mode.supportOffsetFetch = true;
-        mode.sysDummy1 = true;
-        mode.isolationLevelInSelectOrInsertStatement = true;
-        add(mode);
-
-        mode = new Mode("HSQLDB");
-        mode.aliasColumnName = true;
-        mode.convertOnlyToSmallerScale = true;
-        mode.nullConcatIsNull = true;
-        mode.uniqueIndexSingleNull = true;
-        mode.allowPlusForStringConcat = true;
-        add(mode);
-
-        mode = new Mode("MSSQLServer");
-        mode.aliasColumnName = true;
-        mode.squareBracketQuotedNames = true;
-        mode.uniqueIndexSingleNull = true;
-        mode.allowPlusForStringConcat = true;
-        mode.swapConvertFunctionParameters = true;
-        mode.supportPoundSymbolForColumnNames = true;
-        add(mode);
-
         mode = new Mode("MySQL");
         mode.convertInsertNullToZero = true;
         mode.indexDefinitionInCreateTable = true;
         mode.lowerCaseIdentifiers = true;
         mode.onDuplicateKeyUpdate = true;
-        add(mode);
-
-        mode = new Mode("Oracle");
-        mode.aliasColumnName = true;
-        mode.convertOnlyToSmallerScale = true;
-        mode.uniqueIndexSingleNullExceptAllColumnsAreNull = true;
-        mode.treatEmptyStringsAsNull = true;
-        mode.supportPoundSymbolForColumnNames = true;
         add(mode);
 
         mode = new Mode("PostgreSQL");
@@ -211,6 +171,10 @@ public class Mode {
         this.name = name;
     }
 
+    public String getName() {
+        return name;
+    }
+
     private static void add(Mode mode) {
         MODES.put(StringUtils.toUpperEnglish(mode.name), mode);
     }
@@ -225,8 +189,8 @@ public class Mode {
         return MODES.get(StringUtils.toUpperEnglish(name));
     }
 
-    public String getName() {
-        return name;
+    public static Mode getDefaultMode() {
+        return MODES.get(REGULAR);
     }
 
 }

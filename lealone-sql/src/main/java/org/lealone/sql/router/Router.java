@@ -17,25 +17,15 @@
  */
 package org.lealone.sql.router;
 
+import org.lealone.db.Database;
 import org.lealone.db.result.Result;
-import org.lealone.sql.ddl.DefineStatement;
-import org.lealone.sql.dml.Delete;
-import org.lealone.sql.dml.Insert;
-import org.lealone.sql.dml.Merge;
-import org.lealone.sql.dml.Select;
-import org.lealone.sql.dml.Update;
+import org.lealone.sql.StatementBase;
 
 public interface Router {
 
-    int executeDefineCommand(DefineStatement defineCommand);
+    int executeUpdate(StatementBase statement);
 
-    int executeInsert(Insert insert);
+    Result executeQuery(StatementBase statement, int maxRows);
 
-    int executeMerge(Merge merge);
-
-    int executeDelete(Delete delete);
-
-    int executeUpdate(Update update);
-
-    Result executeSelect(Select select, int maxRows, boolean scrollable);
+    public int[] getHostIds(Database db);
 }

@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 
 /**
@@ -320,6 +320,14 @@ public class DbSettings extends SettingsBase {
             Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
 
     /**
+     * Database setting <code>DEFAULT_CONTAINER_ENGINE</code>
+     * (default: CGROUP).<br />
+     * The default container engine.
+     */
+    public final String defaultContainerEngine = get("DEFAULT_CONTAINER_ENGINE",
+            Constants.DEFAULT_CONTAINER_ENGINE_NAME);
+
+    /**
      * Database setting <code>COMPRESS</code>
      * (default: false).<br />
      * Compress data when storing.
@@ -332,6 +340,16 @@ public class DbSettings extends SettingsBase {
      * Persistent data.
      */
     public final boolean persistent = get("PERSISTENT", true);
+
+    public final int cpu = get("CPU", 0);
+
+    public final int memory = get("MEMORY", 0);
+
+    public final int net = get("NET", 0);
+
+    public final int block_io = get("BLOCK_IO", 0);
+
+    public final int service_level = get("SERVICE_LEVEL", 0);
 
     /**
      * Get the setting for the given key.

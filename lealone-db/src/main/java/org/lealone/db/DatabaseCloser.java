@@ -7,7 +7,7 @@ package org.lealone.db;
 
 import java.lang.ref.WeakReference;
 
-import org.lealone.common.message.Trace;
+import org.lealone.common.trace.Trace;
 
 /**
  * This class is responsible to close a database if the application did not

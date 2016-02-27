@@ -5,12 +5,10 @@
  */
 package org.lealone.db.auth;
 
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.trace.Trace;
 import org.lealone.db.Database;
-import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
-import org.lealone.db.table.Table;
 
 /**
  * Represents a role. Roles can be granted to users, and to other roles.
@@ -25,13 +23,8 @@ public class Role extends RightOwner {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
+    public DbObjectType getType() {
+        return DbObjectType.ROLE;
     }
 
     /**
@@ -58,36 +51,25 @@ public class Role extends RightOwner {
     }
 
     @Override
-    public int getType() {
-        return DbObject.ROLE;
-    }
-
-    @Override
     public void removeChildrenAndResources(ServerSession session) {
-        for (User user : Auth.getAllUsers()) {
+        for (User user : database.getAllUsers()) {
             Right right = user.getRightForRole(this);
             if (right != null) {
                 database.removeDatabaseObject(session, right);
             }
         }
-        for (Role r2 : Auth.getAllRoles()) {
+        for (Role r2 : database.getAllRoles()) {
             Right right = r2.getRightForRole(this);
             if (right != null) {
                 database.removeDatabaseObject(session, right);
             }
         }
-        for (Right right : Auth.getAllRights()) {
+        for (Right right : database.getAllRights()) {
             if (right.getGrantee() == this) {
                 database.removeDatabaseObject(session, right);
             }
         }
-        database.removeMeta(session, getId());
-        invalidate();
-    }
-
-    @Override
-    public void checkRename() {
-        // ok
+        super.removeChildrenAndResources(session);
     }
 
 }

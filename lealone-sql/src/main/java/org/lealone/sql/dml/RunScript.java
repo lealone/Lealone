@@ -11,10 +11,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.ServerSession;
-import org.lealone.db.result.Result;
 import org.lealone.db.util.ScriptReader;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
@@ -36,6 +35,15 @@ public class RunScript extends ScriptBase {
 
     public RunScript(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.RUNSCRIPT;
+    }
+
+    public void setCharset(Charset charset) {
+        this.charset = charset;
     }
 
     @Override
@@ -85,20 +93,6 @@ public class RunScript extends ScriptBase {
         } catch (DbException e) {
             throw e.addSQL(sql);
         }
-    }
-
-    public void setCharset(Charset charset) {
-        this.charset = charset;
-    }
-
-    @Override
-    public Result queryMeta() {
-        return null;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.RUNSCRIPT;
     }
 
 }

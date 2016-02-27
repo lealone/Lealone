@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
@@ -31,7 +31,8 @@ public class FunctionIndex extends IndexBase {
     private final FunctionTable functionTable;
 
     public FunctionIndex(FunctionTable functionTable, IndexColumn[] columns) {
-        initIndexBase(functionTable, 0, null, columns, IndexType.createNonUnique(true));
+        super(functionTable, 0, null, IndexType.createNonUnique());
+        setIndexColumns(columns);
         this.functionTable = functionTable;
     }
 

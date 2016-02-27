@@ -8,7 +8,7 @@ package org.lealone.db.table;
 
 import java.util.ArrayList;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;

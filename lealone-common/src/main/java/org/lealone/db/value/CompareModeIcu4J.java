@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.Locale;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 

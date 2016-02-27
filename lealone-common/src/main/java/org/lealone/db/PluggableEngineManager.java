@@ -19,23 +19,23 @@ package org.lealone.db;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 
 public abstract class PluggableEngineManager<T extends PluggableEngine> {
 
     private final Class<T> pluggableEngineClass;
+    private final Map<String, T> pluggableEngines = new ConcurrentHashMap<>();
+    private boolean loaded = false;
 
     protected PluggableEngineManager(Class<T> pluggableEngineClass) {
         this.pluggableEngineClass = pluggableEngineClass;
     }
-
-    private final Map<String, T> pluggableEngines = new ConcurrentHashMap<>();
-    private boolean loaded = false;
 
     public T getEngine(String name) {
         if (name == null)
@@ -43,6 +43,10 @@ public abstract class PluggableEngineManager<T extends PluggableEngine> {
         if (!loaded)
             loadPluggableEngines();
         return pluggableEngines.get(name.toUpperCase());
+    }
+
+    public Collection<T> getEngines() {
+        return pluggableEngines.values();
     }
 
     public void registerEngine(T pluggableEngine, String... alias) {

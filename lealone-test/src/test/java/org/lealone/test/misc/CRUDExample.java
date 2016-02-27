@@ -24,13 +24,17 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Assert;
+import org.lealone.common.trace.TraceSystem;
 import org.lealone.test.TestBase;
 
 public class CRUDExample {
     public static void main(String[] args) throws Exception {
-        crud(new TestBase().getConnection());
-        //crud();
-        //benchmark();
+        crud(new TestBase().enableTrace(TraceSystem.DEBUG).getConnection());
+        // crud0();
+        // benchmark();
+
+        // for (int i = 2; i < 500; i++)
+        // System.out.println("INSERT INTO test(f1, f2) VALUES(" + i + ", 1);");
     }
 
     public static void crud(Connection conn) throws Exception {
@@ -65,7 +69,7 @@ public class CRUDExample {
 
         stmt.executeUpdate("CREATE INDEX IF NOT EXISTS test_f2 ON test(f2)");
 
-        //stmt.executeUpdate("DELETE FROM test");
+        // stmt.executeUpdate("DELETE FROM test");
 
         for (int i = 1; i <= 10; i++) {
             stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")");
@@ -73,9 +77,9 @@ public class CRUDExample {
 
         stmt.executeUpdate("UPDATE test SET f2 = 1 where f1 = 1");
 
-        //stmt.executeUpdate("UPDATE test SET f2 = 1 where f1 >= 2");
+        // stmt.executeUpdate("UPDATE test SET f2 = 1 where f1 >= 2");
 
-        //rs = stmt.executeQuery("SELECT * FROM test where f1 <= 3");
+        // rs = stmt.executeQuery("SELECT * FROM test where f1 <= 3");
         rs = stmt.executeQuery("SELECT * FROM test where f1 = 3");
         while (rs.next()) {
             System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
@@ -191,10 +195,10 @@ public class CRUDExample {
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
         stmt.executeUpdate("set MULTI_THREADED 1");
 
-        //        stmt.close();
-        //        conn.close();
+        // stmt.close();
+        // conn.close();
 
-        int threadsCount = Runtime.getRuntime().availableProcessors();//10;
+        int threadsCount = Runtime.getRuntime().availableProcessors();// 10;
         int loop = 10000;
         latch = new CountDownLatch(threadsCount);
 

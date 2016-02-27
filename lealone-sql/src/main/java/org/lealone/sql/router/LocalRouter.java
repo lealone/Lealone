@@ -17,15 +17,12 @@
  */
 package org.lealone.sql.router;
 
+import org.lealone.db.Database;
 import org.lealone.db.result.Result;
-import org.lealone.sql.ddl.DefineStatement;
-import org.lealone.sql.dml.Delete;
-import org.lealone.sql.dml.Insert;
-import org.lealone.sql.dml.Merge;
-import org.lealone.sql.dml.Select;
-import org.lealone.sql.dml.Update;
+import org.lealone.sql.StatementBase;
 
 public class LocalRouter implements Router {
+
     private static final LocalRouter INSTANCE = new LocalRouter();
 
     public static LocalRouter getInstance() {
@@ -36,33 +33,18 @@ public class LocalRouter implements Router {
     }
 
     @Override
-    public int executeDefineCommand(DefineStatement defineCommand) {
-        return defineCommand.updateLocal();
+    public int executeUpdate(StatementBase statement) {
+        return statement.update();
     }
 
     @Override
-    public int executeInsert(Insert insert) {
-        return insert.updateLocal();
+    public Result executeQuery(StatementBase statement, int maxRows) {
+        return statement.query(maxRows);
     }
 
     @Override
-    public int executeMerge(Merge merge) {
-        return merge.updateLocal();
-    }
-
-    @Override
-    public int executeDelete(Delete delete) {
-        return delete.updateLocal();
-    }
-
-    @Override
-    public int executeUpdate(Update update) {
-        return update.updateLocal();
-    }
-
-    @Override
-    public Result executeSelect(Select select, int maxRows, boolean scrollable) {
-        return select.queryLocal(maxRows);
+    public int[] getHostIds(Database db) {
+        return new int[0];
     }
 
 }

@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
@@ -33,6 +33,11 @@ public class CreateSequence extends SchemaStatement {
 
     public CreateSequence(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_SEQUENCE;
     }
 
     public void setSequenceName(String sequenceName) {
@@ -98,11 +103,6 @@ public class CreateSequence extends SchemaStatement {
 
     public void setCacheSize(Expression cacheSize) {
         this.cacheSize = cacheSize;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_SEQUENCE;
     }
 
 }

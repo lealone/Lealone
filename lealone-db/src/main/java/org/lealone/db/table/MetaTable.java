@@ -18,7 +18,7 @@ import java.util.Collections;
 import java.util.Locale;
 import java.util.Map;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
@@ -29,12 +29,12 @@ import org.lealone.db.Constants;
 import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.InDoubtTransaction;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Setting;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -60,7 +60,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueStringIgnoreCase;
-import org.lealone.sql.Expression;
 
 /**
  * This class is responsible to build the database meta data pseudo tables.
@@ -311,11 +310,6 @@ public class MetaTable extends Table {
             cols[i] = new Column(name, dataType);
         }
         return cols;
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
     }
 
     @Override
@@ -716,7 +710,7 @@ public class MetaTable extends Table {
             break;
         }
         case SEQUENCES: {
-            for (SchemaObject obj : database.getAllSchemaObjects(DbObject.SEQUENCE)) {
+            for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.SEQUENCE)) {
                 Sequence s = (Sequence) obj;
                 add(rows,
                 // SEQUENCE_CATALOG
@@ -741,7 +735,7 @@ public class MetaTable extends Table {
             break;
         }
         case USERS: {
-            for (User u : Auth.getAllUsers()) {
+            for (User u : database.getAllUsers()) {
                 if (admin || session.getUser() == u) {
                     add(rows,
                     // NAME
@@ -757,7 +751,7 @@ public class MetaTable extends Table {
             break;
         }
         case ROLES: {
-            for (Role r : Auth.getAllRoles()) {
+            for (Role r : database.getAllRoles()) {
                 if (admin || session.getUser().isRoleGranted(r)) {
                     add(rows,
                     // NAME
@@ -772,10 +766,10 @@ public class MetaTable extends Table {
         }
         case RIGHTS: {
             if (admin) {
-                for (Right r : Auth.getAllRights()) {
+                for (Right r : database.getAllRights()) {
                     Role role = r.getGrantedRole();
                     DbObject grantee = r.getGrantee();
-                    String rightType = grantee.getType() == DbObject.USER ? "USER" : "ROLE";
+                    String rightType = grantee.getType() == DbObjectType.USER ? "USER" : "ROLE";
                     if (role == null) {
                         DbObject object = r.getGrantedObject();
                         Schema schema = null;
@@ -830,7 +824,7 @@ public class MetaTable extends Table {
             break;
         }
         case FUNCTION_ALIASES: {
-            for (SchemaObject aliasAsSchemaObject : database.getAllSchemaObjects(DbObject.FUNCTION_ALIAS)) {
+            for (SchemaObject aliasAsSchemaObject : database.getAllSchemaObjects(DbObjectType.FUNCTION_ALIAS)) {
                 FunctionAlias alias = (FunctionAlias) aliasAsSchemaObject;
                 for (FunctionAlias.JavaMethod method : alias.getJavaMethods()) {
                     int returnsResult = method.getDataType() == Value.NULL ? DatabaseMetaData.procedureNoResult
@@ -897,7 +891,7 @@ public class MetaTable extends Table {
             break;
         }
         case FUNCTION_COLUMNS: {
-            for (SchemaObject aliasAsSchemaObject : database.getAllSchemaObjects(DbObject.FUNCTION_ALIAS)) {
+            for (SchemaObject aliasAsSchemaObject : database.getAllSchemaObjects(DbObjectType.FUNCTION_ALIAS)) {
                 FunctionAlias alias = (FunctionAlias) aliasAsSchemaObject;
                 for (FunctionAlias.JavaMethod method : alias.getJavaMethods()) {
                     Class<?>[] columnList = method.getColumnClasses();
@@ -974,7 +968,7 @@ public class MetaTable extends Table {
             break;
         }
         case TABLE_PRIVILEGES: {
-            for (Right r : Auth.getAllRights()) {
+            for (Right r : database.getAllRights()) {
                 DbObject object = r.getGrantedObject();
                 if (!(object instanceof Table)) {
                     continue;
@@ -992,7 +986,7 @@ public class MetaTable extends Table {
             break;
         }
         case COLUMN_PRIVILEGES: {
-            for (Right r : Auth.getAllRights()) {
+            for (Right r : database.getAllRights()) {
                 DbObject object = r.getGrantedObject();
                 if (!(object instanceof Table)) {
                     continue;
@@ -1069,7 +1063,7 @@ public class MetaTable extends Table {
             break;
         }
         case CROSS_REFERENCES: {
-            for (SchemaObject obj : database.getAllSchemaObjects(DbObject.CONSTRAINT)) {
+            for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.CONSTRAINT)) {
                 Constraint constraint = (Constraint) obj;
                 if (!(constraint.getConstraintType().equals(Constraint.REFERENTIAL))) {
                     continue;
@@ -1120,7 +1114,7 @@ public class MetaTable extends Table {
             break;
         }
         case CONSTRAINTS: {
-            for (SchemaObject obj : database.getAllSchemaObjects(DbObject.CONSTRAINT)) {
+            for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.CONSTRAINT)) {
                 Constraint constraint = (Constraint) obj;
                 String constraintType = constraint.getConstraintType();
                 String checkExpression = null;
@@ -1185,9 +1179,9 @@ public class MetaTable extends Table {
             break;
         }
         case CONSTANTS: {
-            for (SchemaObject obj : database.getAllSchemaObjects(DbObject.CONSTANT)) {
+            for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.CONSTANT)) {
                 Constant constant = (Constant) obj;
-                Expression expr = constant.getValue();
+                Value value = constant.getValue();
                 add(rows,
                 // CONSTANT_CATALOG
                         catalog,
@@ -1196,11 +1190,11 @@ public class MetaTable extends Table {
                         // CONSTANT_NAME
                         identifier(constant.getName()),
                         // CONSTANT_TYPE
-                        "" + DataType.convertTypeToSQLType(expr.getType()),
+                        "" + DataType.convertTypeToSQLType(value.getType()),
                         // REMARKS
                         replaceNullWithEmpty(constant.getComment()),
                         // SQL
-                        expr.getSQL(),
+                        value.getSQL(),
                         // ID
                         "" + constant.getId());
             }
@@ -1242,7 +1236,7 @@ public class MetaTable extends Table {
             break;
         }
         case TRIGGERS: {
-            for (SchemaObject obj : database.getAllSchemaObjects(DbObject.TRIGGER)) {
+            for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.TRIGGER)) {
                 TriggerObject trigger = (TriggerObject) obj;
                 Table table = trigger.getTable();
                 add(rows,
@@ -1423,7 +1417,7 @@ public class MetaTable extends Table {
     private void addPrivilege(ArrayList<Row> rows, DbObject grantee, String catalog, Table table, String column,
             String right) {
         String isGrantable = "NO";
-        if (grantee.getType() == DbObject.USER) {
+        if (grantee.getType() == DbObjectType.USER) {
             User user = (User) grantee;
             if (user.isAdmin()) {
                 // the right is grantable if the grantee is an admin

@@ -9,10 +9,9 @@ package org.lealone.sql.ddl;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
-import org.lealone.db.auth.Auth;
 import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
 import org.lealone.sql.SQLStatement;
@@ -33,6 +32,11 @@ public class CreateSchema extends DefineStatement {
         super(session);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_SCHEMA;
+    }
+
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
     }
@@ -42,9 +46,11 @@ public class CreateSchema extends DefineStatement {
         session.getUser().checkSchemaAdmin();
         session.commit(true);
         Database db = session.getDatabase();
-        User user = Auth.getUser(authorization);
-        user.checkSchemaAdmin();
-
+        User user = db.getUser(authorization);
+        // during DB startup, the Right/Role records have not yet been loaded
+        if (!db.isStarting()) {
+            user.checkSchemaAdmin();
+        }
         if (db.findSchema(schemaName) != null) {
             if (ifNotExists) {
                 return 0;
@@ -64,11 +70,6 @@ public class CreateSchema extends DefineStatement {
 
     public void setAuthorization(String userName) {
         this.authorization = userName;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_SCHEMA;
     }
 
     public void setReplicationProperties(Map<String, String> replicationProperties) {

@@ -9,7 +9,7 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -36,6 +36,11 @@ public class DropTable extends SchemaStatement {
         super(session, schema);
         dropAction = session.getDatabase().getSettings().dropRestrict ? ConstraintReferential.RESTRICT
                 : ConstraintReferential.CASCADE;
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_TABLE;
     }
 
     /**
@@ -120,11 +125,6 @@ public class DropTable extends SchemaStatement {
         if (next != null) {
             next.setDropAction(dropAction);
         }
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_TABLE;
     }
 
 }

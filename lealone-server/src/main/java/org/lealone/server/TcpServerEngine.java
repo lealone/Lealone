@@ -19,13 +19,12 @@ package org.lealone.server;
 
 import java.util.Map;
 
-public class TcpServerEngine implements ProtocolServerEngine {
+public class TcpServerEngine extends ProtocolServerEngineBase {
 
     private final TcpServer tcpServer = new TcpServer();
 
-    @Override
-    public String getName() {
-        return "TcpServer";
+    public TcpServerEngine() {
+        super("TcpServer");
     }
 
     @Override
@@ -41,6 +40,11 @@ public class TcpServerEngine implements ProtocolServerEngine {
     @Override
     public void close() {
         tcpServer.stop();
+    }
+
+    @Override
+    protected ProtocolServer getProtocolServer(int port) {
+        return tcpServer;
     }
 
 }

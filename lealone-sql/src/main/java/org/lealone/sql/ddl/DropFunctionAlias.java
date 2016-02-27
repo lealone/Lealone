@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.FunctionAlias;
@@ -25,6 +25,11 @@ public class DropFunctionAlias extends SchemaStatement {
 
     public DropFunctionAlias(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_ALIAS;
     }
 
     @Override
@@ -49,11 +54,6 @@ public class DropFunctionAlias extends SchemaStatement {
 
     public void setIfExists(boolean ifExists) {
         this.ifExists = ifExists;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_ALIAS;
     }
 
 }

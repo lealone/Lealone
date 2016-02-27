@@ -35,9 +35,9 @@ public class SubqueryResult extends DelegatedResult {
     public SubqueryResult() {
     }
 
-    public SubqueryResult(Query query, int maxrows) {
+    public SubqueryResult(Query query, int maxRows) {
         query.setLocal(false);
-        result = query.query(maxrows);
+        result = query.query(maxRows);
     }
 
     public boolean containsDistinct(Value[] values) {

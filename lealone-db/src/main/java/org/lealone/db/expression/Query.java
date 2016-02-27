@@ -25,7 +25,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.table.Table;
 
 public interface Query {
-    Result query(int maxrows);
+    Result query(int maxRows);
 
     String getPlanSQL();
 

@@ -5,9 +5,11 @@
  */
 package org.lealone.db;
 
-import java.util.ArrayList;
+import java.util.List;
 
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
+import org.lealone.db.table.Table;
 
 /**
  * The base class for all database objects.
@@ -18,92 +20,35 @@ public abstract class DbObjectBase implements DbObject {
      * The database.
      */
     protected Database database;
+    protected int id;
+    protected String name;
 
     /**
      * The trace module.
      */
     protected Trace trace;
+    protected long modificationId;
+    protected boolean temporary;
 
     /**
      * The comment (if set).
      */
     protected String comment;
 
-    private int id;
-    private String objectName;
-    private long modificationId;
-    private boolean temporary;
-
     /**
      * Initialize some attributes of this object.
      *
      * @param db the database
-     * @param objectId the object id
-     * @param name the name
+     * @param id the object id
+     * @param name the object name
      * @param traceModuleId the trace module id
      */
-    protected void initDbObjectBase(Database db, int objectId, String name, int traceModuleId) {
-        this.database = db;
-        this.trace = db.getTrace(traceModuleId);
-        this.id = objectId;
-        this.objectName = name;
-        this.modificationId = db.getModificationMetaId();
-    }
-
-    /**
-     * Build a SQL statement to re-create this object.
-     *
-     * @return the SQL statement
-     */
-    @Override
-    public abstract String getCreateSQL();
-
-    /**
-     * Build a SQL statement to drop this object.
-     *
-     * @return the SQL statement
-     */
-    @Override
-    public abstract String getDropSQL();
-
-    /**
-     * Remove all dependent objects and free all resources (files, blocks in
-     * files) of this object.
-     *
-     * @param session the session
-     */
-    @Override
-    public abstract void removeChildrenAndResources(ServerSession session);
-
-    /**
-     * Check if this object can be renamed. System objects may not be renamed.
-     */
-    @Override
-    public abstract void checkRename();
-
-    /**
-     * Tell the object that is was modified.
-     */
-    public void setModified() {
-        this.modificationId = database == null ? -1 : database.getNextModificationMetaId();
-    }
-
-    public long getModificationId() {
-        return modificationId;
-    }
-
-    protected void setObjectName(String name) {
-        objectName = name;
-    }
-
-    @Override
-    public String getSQL() {
-        return database.quoteIdentifier(objectName);
-    }
-
-    @Override
-    public ArrayList<DbObject> getChildren() {
-        return null;
+    protected DbObjectBase(Database database, int id, String name, int traceModuleId) {
+        this.database = database;
+        this.id = id;
+        this.name = name;
+        this.trace = database.getTrace(traceModuleId);
+        this.modificationId = database.getModificationMetaId();
     }
 
     @Override
@@ -118,25 +63,44 @@ public abstract class DbObjectBase implements DbObject {
 
     @Override
     public String getName() {
-        return objectName;
+        return name;
     }
 
-    /**
-     * Set the main attributes to null to make sure the object is no longer
-     * used.
-     */
-    protected void invalidate() {
-        setModified();
-        id = -1;
-        database = null;
-        trace = null;
-        objectName = null;
+    @Override
+    public String getSQL() {
+        return database.quoteIdentifier(name);
+    }
+
+    @Override
+    public String getCreateSQLForCopy(Table table, String quotedName) {
+        throw DbException.throwInternalError();
+    }
+
+    @Override
+    public String getDropSQL() {
+        return null;
+    }
+
+    @Override
+    public List<DbObject> getChildren() {
+        return null;
+    }
+
+    @Override
+    public void removeChildrenAndResources(ServerSession session) {
+        database.removeMeta(session, getId());
+        invalidate();
+    }
+
+    @Override
+    public void checkRename() {
+        // ok
     }
 
     @Override
     public void rename(String newName) {
         checkRename();
-        objectName = newName;
+        name = newName;
         setModified();
     }
 
@@ -160,9 +124,36 @@ public abstract class DbObjectBase implements DbObject {
         return comment;
     }
 
+    /**
+     * Tell the object that is was modified.
+     */
+    public void setModified() {
+        this.modificationId = database == null ? -1 : database.getNextModificationMetaId();
+    }
+
+    public long getModificationId() {
+        return modificationId;
+    }
+
+    protected void setObjectName(String name) {
+        this.name = name;
+    }
+
+    /**
+     * Set the main attributes to null to make sure the object is no longer
+     * used.
+     */
+    protected void invalidate() {
+        setModified();
+        id = -1;
+        database = null;
+        trace = null;
+        name = null;
+    }
+
     @Override
     public String toString() {
-        return objectName + ":" + id + ":" + super.toString();
+        return name + ":" + id + ":" + super.toString();
     }
 
 }

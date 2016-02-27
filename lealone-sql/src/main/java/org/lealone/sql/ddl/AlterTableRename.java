@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
@@ -27,6 +27,11 @@ public class AlterTableRename extends SchemaStatement {
 
     public AlterTableRename(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.ALTER_TABLE_RENAME;
     }
 
     public void setOldTable(Table table) {
@@ -59,11 +64,6 @@ public class AlterTableRename extends SchemaStatement {
         }
         db.renameSchemaObject(session, oldTable, newTableName);
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.ALTER_TABLE_RENAME;
     }
 
     public void setHidden(boolean hidden) {

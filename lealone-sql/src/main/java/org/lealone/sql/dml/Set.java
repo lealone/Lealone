@@ -11,19 +11,17 @@ import java.text.Collator;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.compress.CompressTool;
 import org.lealone.common.compress.Compressor;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.Mode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SetTypes;
 import org.lealone.db.Setting;
-import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.ValueInt;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ValueExpression;
 
@@ -31,7 +29,7 @@ import org.lealone.sql.expression.ValueExpression;
  * This class represents the statement
  * SET
  */
-public class Set extends StatementBase {
+public class Set extends ManipulateStatement {
 
     private final int type;
     private Expression expression;
@@ -41,6 +39,20 @@ public class Set extends StatementBase {
     public Set(ServerSession session, int type) {
         super(session);
         this.type = type;
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.SET;
+    }
+
+    @Override
+    public boolean needRecompile() {
+        return false;
+    }
+
+    public void setStringArray(String[] list) {
+        this.stringValueList = list;
     }
 
     public void setString(String v) {
@@ -439,25 +451,6 @@ public class Set extends StatementBase {
         } else {
             database.updateMeta(session, setting);
         }
-    }
-
-    @Override
-    public boolean needRecompile() {
-        return false;
-    }
-
-    @Override
-    public Result queryMeta() {
-        return null;
-    }
-
-    public void setStringArray(String[] list) {
-        this.stringValueList = list;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.SET;
     }
 
 }

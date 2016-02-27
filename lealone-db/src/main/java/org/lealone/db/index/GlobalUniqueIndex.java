@@ -32,9 +32,10 @@ import org.lealone.sql.PreparedStatement;
 
 public class GlobalUniqueIndex extends IndexBase {
 
-    public GlobalUniqueIndex(ServerSession session, StandardTable table, int id, String indexName, IndexColumn[] columns,
-            IndexType indexType) {
-        initIndexBase(table, id, indexName, columns, indexType);
+    public GlobalUniqueIndex(ServerSession session, StandardTable table, int id, String indexName,
+            IndexColumn[] columns, IndexType indexType) {
+        super(table, id, indexName, indexType);
+        setIndexColumns(columns);
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }

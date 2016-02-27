@@ -11,7 +11,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
@@ -23,7 +23,6 @@ import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
-import org.lealone.db.util.Bytes;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueDate;
@@ -46,11 +45,6 @@ public class Column {
     public static final String ROWID = "_ROWID_";
 
     /**
-     * The name of the rowkey pseudo column.
-     */
-    public static final String ROWKEY = "_ROWKEY_";
-
-    /**
      * This column is not nullable.
      */
     public static final int NOT_NULLABLE = ResultSetMetaData.columnNoNulls;
@@ -65,7 +59,7 @@ public class Column {
      */
     public static final int NULLABLE_UNKNOWN = ResultSetMetaData.columnNullableUnknown;
 
-    private int type;
+    private final int type;
     private long precision;
     private int scale;
     private int displaySize;
@@ -89,9 +83,6 @@ public class Column {
     private String comment;
     private boolean primaryKey;
 
-    private String columnFamilyName;
-    private byte[] nameAsBytes;
-    private byte[] columnFamilyNameeAsBytes;
     private boolean isRowKeyColumn;
 
     public void setRowKeyColumn(boolean isRowKeyColumn) {
@@ -102,70 +93,12 @@ public class Column {
         return isRowKeyColumn;
     }
 
-    public boolean isTypeUnknown() {
-        return this.type == Value.UNKNOWN;
-    }
-
-    public String getColumnFamilyName() {
-        return columnFamilyName;
-    }
-
-    public void setColumnFamilyName(String columnFamilyName) {
-        this.columnFamilyName = columnFamilyName;
-    }
-
-    public byte[] getNameAsBytes() {
-        if (nameAsBytes == null)
-            nameAsBytes = Bytes.toBytes(name);
-        return nameAsBytes;
-    }
-
-    public byte[] getColumnFamilyNameAsBytes() {
-        if (columnFamilyNameeAsBytes == null)
-            columnFamilyNameeAsBytes = Bytes.toBytes(columnFamilyName);
-        return columnFamilyNameeAsBytes;
-    }
-
-    public void setType(int type) {
-        this.type = type;
-        DataType dt = DataType.getDataType(type);
-        precision = dt.defaultPrecision;
-        scale = dt.defaultScale;
-        displaySize = dt.defaultDisplaySize;
-    }
-
     public Column(String name, int type) {
         this(name, type, -1, -1, -1);
     }
 
-    public Column(String name) {
-        int pos = name.indexOf('.');
-        if (pos != -1) {
-            columnFamilyName = name.substring(0, pos);
-            if (columnFamilyName != null && columnFamilyName.length() == 0)
-                columnFamilyName = null;
-            this.name = name.substring(pos + 1);
-        } else
-            this.name = name;
-        this.type = Value.UNKNOWN; // 先设为Value.UNKNOWN，根据表达式的类型动态确定
-    }
-
-    public Column(String name, boolean isRowKeyColumn) {
-        this(name);
-        this.isRowKeyColumn = isRowKeyColumn;
-    }
-
     public Column(String name, int type, long precision, int scale, int displaySize) {
-        if (name != null) {
-            int pos = name.indexOf('.');
-            if (pos != -1) {
-                columnFamilyName = name.substring(0, pos);
-                if (columnFamilyName != null && columnFamilyName.length() == 0)
-                    columnFamilyName = null;
-                this.name = name.substring(pos + 1);
-            } else
-                this.name = name;
-        }
+        this.name = name;
         this.type = type;
         if (precision == -1 && scale == -1 && displaySize == -1) {
             DataType dt = DataType.getDataType(type);
@@ -190,15 +123,10 @@ public class Column {
             return false;
         }
 
-        if (columnFamilyName != other.columnFamilyName)
-            return false;
-        if (columnFamilyName == null || other.columnFamilyName == null)
-            return false;
-
         if (table != other.table) {
             return false;
         }
-        return name.equals(other.name) && columnFamilyName.equals(other.columnFamilyName);
+        return name.equals(other.name);
     }
 
     @Override
@@ -206,10 +134,7 @@ public class Column {
         if (table == null || name == null) {
             return 0;
         }
-        if (columnFamilyName != null)
-            return table.getId() ^ columnFamilyName.hashCode() ^ name.hashCode();
-        else
-            return table.getId() ^ name.hashCode();
+        return table.getId() ^ name.hashCode();
     }
 
     public Column getClone() {
@@ -302,21 +227,11 @@ public class Column {
     }
 
     public String getSQL() {
-        if (table != null && !table.isStatic() && columnFamilyName != null)
-            return columnFamilyName + "." + SQLEngineHolder.quoteIdentifier(name);
-        else
-            return SQLEngineHolder.quoteIdentifier(name);
+        return SQLEngineHolder.quoteIdentifier(name);
     }
 
     public String getName() {
         return name;
-    }
-
-    public String getFullName() {
-        if (columnFamilyName != null)
-            return columnFamilyName + "." + name;
-        else
-            return name;
     }
 
     public int getType() {
@@ -496,11 +411,7 @@ public class Column {
     public String getCreateSQL(boolean isAlter) {
         StringBuilder buff = new StringBuilder();
         if (name != null) {
-            if (isAlter && table != null && !table.isStatic() && columnFamilyName != null)
-                buff.append(SQLEngineHolder.quoteIdentifier(columnFamilyName)).append('.')
-                        .append(SQLEngineHolder.quoteIdentifier(name)).append(' ');
-            else
-                buff.append(SQLEngineHolder.quoteIdentifier(name)).append(' ');
+            buff.append(SQLEngineHolder.quoteIdentifier(name)).append(' ');
         }
         if (originalSQL != null) {
             buff.append(originalSQL);
@@ -765,7 +676,7 @@ public class Column {
 
     @Override
     public String toString() {
-        return getFullName(); // return name;
+        return name;
     }
 
     /**
@@ -837,9 +748,6 @@ public class Column {
         isComputed = source.isComputed;
         selectivity = source.selectivity;
         primaryKey = source.primaryKey;
-
-        columnFamilyName = source.columnFamilyName;
-        columnFamilyNameeAsBytes = source.columnFamilyNameeAsBytes;
     }
 
 }

@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
@@ -26,6 +26,11 @@ public class AlterIndexRename extends DefineStatement {
 
     public AlterIndexRename(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.ALTER_INDEX_RENAME;
     }
 
     public void setOldIndex(Index index) {
@@ -47,11 +52,6 @@ public class AlterIndexRename extends DefineStatement {
         session.getUser().checkRight(oldIndex.getTable(), Right.ALL);
         db.renameSchemaObject(session, oldIndex, newIndexName);
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.ALTER_INDEX_RENAME;
     }
 
 }

@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Constant;
@@ -25,6 +25,11 @@ public class DropConstant extends SchemaStatement {
 
     public DropConstant(ServerSession session, Schema schema) {
         super(session, schema);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.DROP_CONSTANT;
     }
 
     public void setIfExists(boolean b) {
@@ -49,11 +54,6 @@ public class DropConstant extends SchemaStatement {
             db.removeSchemaObject(session, constant);
         }
         return 0;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.DROP_CONSTANT;
     }
 
 }

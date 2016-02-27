@@ -9,7 +9,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;

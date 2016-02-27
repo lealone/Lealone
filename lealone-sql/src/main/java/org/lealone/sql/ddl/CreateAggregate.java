@@ -7,7 +7,7 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;
@@ -28,6 +28,11 @@ public class CreateAggregate extends DefineStatement {
 
     public CreateAggregate(ServerSession session) {
         super(session);
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_AGGREGATE;
     }
 
     @Override
@@ -65,11 +70,6 @@ public class CreateAggregate extends DefineStatement {
 
     public void setForce(boolean force) {
         this.force = force;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_AGGREGATE;
     }
 
 }

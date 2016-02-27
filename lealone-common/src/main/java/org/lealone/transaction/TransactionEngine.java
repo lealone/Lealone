@@ -21,10 +21,14 @@ import org.lealone.db.PluggableEngine;
 
 public interface TransactionEngine extends PluggableEngine {
 
-    Transaction beginTransaction(boolean autoCommit);
+    Transaction beginTransaction(boolean autoCommit, boolean isShardingMode);
 
     boolean validateTransaction(String localTransactionName);
 
     boolean supportsMVCC();
+
+    void addTransactionMap(TransactionMap<?, ?> map);
+
+    TransactionMap<?, ?> getTransactionMap(String name);
 
 }

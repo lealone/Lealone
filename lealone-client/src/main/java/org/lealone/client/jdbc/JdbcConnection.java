@@ -32,8 +32,8 @@ import java.util.concurrent.Executor;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.client.ClientSession;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.TraceObject;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.CloseWatcher;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
@@ -48,12 +48,6 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 
-//*/
-
-/*## Java 1.7 ##
-import java.util.concurrent.Executor;
-//*/
-
 /**
  * <p>
  * Represents a connection (session) to a database.
@@ -63,7 +57,11 @@ import java.util.concurrent.Executor;
  * is synchronized. However, for compatibility with other databases, a
  * connection should only be used in one thread at any time.
  * </p>
+ * 
+ * @author H2 Group
+ * @author zhh
  */
+// 只支持Java 1.7中的JDBC API
 public class JdbcConnection extends TraceObject implements Connection {
 
     private static boolean keepOpenStackTrace;
@@ -112,8 +110,9 @@ public class JdbcConnection extends TraceObject implements Connection {
             setTrace(trace, TraceObject.CONNECTION, id);
             this.user = ci.getUserName();
             if (isInfoEnabled()) {
-                trace.infoCode("Connection " + getTraceObjectName() + " = DriverManager.getConnection("
-                        + quote(ci.getURL()) + ", " + quote(user) + ", \"\");");
+                String code = String.format("Connection %s = DriverManager.getConnection(%s, %s, \"\");",
+                        getTraceObjectName(), quote(ci.getURL()), quote(user));
+                trace.infoCode(code);
             }
             this.url = ci.getURL();
             closeOld();
@@ -434,9 +433,9 @@ public class JdbcConnection extends TraceObject implements Connection {
     public synchronized void commit() throws SQLException {
         try {
             debugCodeCall("commit");
-            checkClosedForWrite();
+            checkClosed();
             commit = prepareCommand("COMMIT", commit);
-            commit.executeUpdate();
+            commit.update();
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -452,7 +451,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     public synchronized void rollback() throws SQLException {
         try {
             debugCodeCall("rollback");
-            checkClosedForWrite();
+            checkClosed();
             rollbackInternal();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -523,7 +522,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("isReadOnly");
             checkClosed();
             getReadOnly = prepareCommand("CALL READONLY()", getReadOnly);
-            Result result = getReadOnly.executeQuery(0, false);
+            Result result = getReadOnly.query(0, false);
             result.next();
             boolean readOnly = result.currentRow()[0].getBoolean().booleanValue();
             return readOnly;
@@ -561,7 +560,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             checkClosed();
             if (catalog == null) {
                 Command cat = prepareCommand("CALL DATABASE()", Integer.MAX_VALUE);
-                Result result = cat.executeQuery(0, false);
+                Result result = cat.query(0, false);
                 result.next();
                 catalog = result.currentRow()[0].getString();
                 cat.close();
@@ -678,7 +677,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             commit();
             setLockMode = prepareCommand("SET LOCK_MODE ?", setLockMode);
             setLockMode.getParameters().get(0).setValue(ValueInt.get(lockMode), false);
-            setLockMode.executeUpdate();
+            setLockMode.update();
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -693,7 +692,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             checkClosed();
             setQueryTimeout = prepareCommand("SET QUERY_TIMEOUT ?", setQueryTimeout);
             setQueryTimeout.getParameters().get(0).setValue(ValueInt.get(seconds * 1000), false);
-            setQueryTimeout.executeUpdate();
+            setQueryTimeout.update();
             queryTimeoutCache = seconds;
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -711,7 +710,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 getQueryTimeout = prepareCommand("SELECT VALUE FROM INFORMATION_SCHEMA.SETTINGS WHERE NAME=?",
                         getQueryTimeout);
                 getQueryTimeout.getParameters().get(0).setValue(ValueString.get("QUERY_TIMEOUT"), false);
-                Result result = getQueryTimeout.executeQuery(0, false);
+                Result result = getQueryTimeout.query(0, false);
                 result.next();
                 int queryTimeout = result.currentRow()[0].getInt();
                 result.close();
@@ -739,7 +738,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("getTransactionIsolation");
             checkClosed();
             getLockMode = prepareCommand("CALL LOCK_MODE()", getLockMode);
-            Result result = getLockMode.executeQuery(0, false);
+            Result result = getLockMode.query(0, false);
             result.next();
             int lockMode = result.currentRow()[0].getInt();
             result.close();
@@ -934,7 +933,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             }
             checkClosed();
             Command set = prepareCommand("SAVEPOINT " + JdbcSavepoint.getName(null, savepointId), Integer.MAX_VALUE);
-            set.executeUpdate();
+            set.update();
             JdbcSavepoint savepoint = new JdbcSavepoint(this, savepointId, null, trace, id);
             savepointId++;
             return savepoint;
@@ -958,7 +957,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             }
             checkClosed();
             Command set = prepareCommand("SAVEPOINT " + JdbcSavepoint.getName(name, 0), Integer.MAX_VALUE);
-            set.executeUpdate();
+            set.update();
             JdbcSavepoint savepoint = new JdbcSavepoint(this, 0, name, trace, id);
             return savepoint;
         } catch (Exception e) {
@@ -976,7 +975,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             JdbcSavepoint sp = convertSavepoint(savepoint);
             debugCode("rollback(" + sp.getTraceObjectName() + ");");
-            checkClosedForWrite();
+            checkClosed();
             sp.rollback();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -1108,6 +1107,10 @@ public class JdbcConnection extends TraceObject implements Connection {
     }
 
     // =============================================================
+
+    Command createCommand(String sql, int fetchSize) {
+        return session.createCommand(sql, fetchSize);
+    }
 
     /**
      * Prepare an command. This will parse the SQL statement.
@@ -1366,32 +1369,10 @@ public class JdbcConnection extends TraceObject implements Connection {
     /**
      * INTERNAL.
      * Check if this connection is closed.
-     * The next operation is a read request.
-     *
+     * 
      * @throws DbException if the connection or session is closed
      */
     protected void checkClosed() {
-        checkClosed(false);
-    }
-
-    /**
-     * Check if this connection is closed.
-     * The next operation may be a write request.
-     *
-     * @throws DbException if the connection or session is closed
-     */
-    private void checkClosedForWrite() {
-        checkClosed(true);
-    }
-
-    /**
-     * INTERNAL.
-     * Check if this connection is closed.
-     *
-     * @param write if the next operation is possibly writing
-     * @throws DbException if the connection or session is closed
-     */
-    protected void checkClosed(boolean write) {
         if (session == null) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED);
         }
@@ -1412,7 +1393,7 @@ public class JdbcConnection extends TraceObject implements Connection {
 
     private void rollbackInternal() {
         rollback = prepareCommand("ROLLBACK", rollback);
-        rollback.executeUpdate();
+        rollback.update();
     }
 
     /**
@@ -1428,7 +1409,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     ResultSet getGeneratedKeys(JdbcStatement stat, int id) {
         getGeneratedKeys = prepareCommand("SELECT SCOPE_IDENTITY() WHERE SCOPE_IDENTITY() IS NOT NULL",
                 getGeneratedKeys);
-        Result result = getGeneratedKeys.executeQuery(0, false);
+        Result result = getGeneratedKeys.query(0, false);
         ResultSet rs = new JdbcResultSet(this, stat, result, id, false, true, false);
         return rs;
     }
@@ -1443,7 +1424,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             int id = getNextId(TraceObject.CLOB);
             debugCodeAssign("Clob", TraceObject.CLOB, id, "createClob()");
-            checkClosedForWrite();
+            checkClosed();
             Value v = session.getDataHandler().getLobStorage()
                     .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
             return new JdbcClob(this, v, id);
@@ -1462,7 +1443,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             int id = getNextId(TraceObject.BLOB);
             debugCodeAssign("Blob", TraceObject.BLOB, id, "createClob()");
-            checkClosedForWrite();
+            checkClosed();
             Value v = session.getDataHandler().getLobStorage()
                     .createBlob(new ByteArrayInputStream(Utils.EMPTY_BYTES), 0);
             return new JdbcBlob(this, v, id);
@@ -1482,7 +1463,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             int id = getNextId(TraceObject.CLOB);
             debugCodeAssign("NClob", TraceObject.CLOB, id, "createNClob()");
-            checkClosedForWrite();
+            checkClosed();
             Value v = session.getDataHandler().getLobStorage()
                     .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
             return new JdbcClob(this, v, id);
@@ -1490,8 +1471,6 @@ public class JdbcConnection extends TraceObject implements Connection {
             throw logAndConvert(e);
         }
     }
-
-    // */
 
     /**
      * [Not supported] Create a new empty SQLXML object.
@@ -1502,8 +1481,6 @@ public class JdbcConnection extends TraceObject implements Connection {
         throw unsupported("SQLXML");
     }
 
-    // */
-
     /**
      * [Not supported] Create a new empty Array object.
      */
@@ -1513,8 +1490,6 @@ public class JdbcConnection extends TraceObject implements Connection {
         throw unsupported("createArray");
     }
 
-    // */
-
     /**
      * [Not supported] Create a new empty Struct object.
      */
@@ -1523,8 +1498,6 @@ public class JdbcConnection extends TraceObject implements Connection {
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
         throw unsupported("Struct");
     }
-
-    // */
 
     /**
      * Returns true if this connection is still valid.
@@ -1559,8 +1532,6 @@ public class JdbcConnection extends TraceObject implements Connection {
         throw new SQLClientInfoException();
     }
 
-    // */
-
     /**
      * [Not supported] Set the client properties.
      */
@@ -1569,8 +1540,6 @@ public class JdbcConnection extends TraceObject implements Connection {
     public void setClientInfo(Properties properties) throws SQLClientInfoException {
         throw new SQLClientInfoException();
     }
-
-    // */
 
     /**
      * [Not supported] Get the client properties.
@@ -1581,8 +1550,6 @@ public class JdbcConnection extends TraceObject implements Connection {
         throw new SQLClientInfoException();
     }
 
-    // */
-
     /**
      * [Not supported] Set a client property.
      */
@@ -1591,8 +1558,6 @@ public class JdbcConnection extends TraceObject implements Connection {
     public String getClientInfo(String name) throws SQLException {
         throw unsupported("clientInfo");
     }
-
-    // */
 
     /**
      * [Not supported] Return an object of this class if possible.
@@ -1605,8 +1570,6 @@ public class JdbcConnection extends TraceObject implements Connection {
         throw unsupported("unwrap");
     }
 
-    // */
-
     /**
      * [Not supported] Checks if unwrap can return an object of this class.
      *
@@ -1617,8 +1580,6 @@ public class JdbcConnection extends TraceObject implements Connection {
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         throw unsupported("isWrapperFor");
     }
-
-    // */
 
     /**
      * Create a Clob value from this reader.
@@ -1657,58 +1618,6 @@ public class JdbcConnection extends TraceObject implements Connection {
         Value v = session.getDataHandler().getLobStorage().createBlob(x, length);
         return v;
     }
-
-    /**
-     * [Not supported]
-     *
-     * @param schema the schema
-     */
-    /*## Java 1.7 ##
-        public void setSchema(String schema) {
-            // not supported
-        }
-    //*/
-
-    /**
-     * [Not supported]
-     */
-    /*## Java 1.7 ##
-        public String getSchema() {
-            return null;
-        }
-    //*/
-
-    /**
-     * [Not supported]
-     *
-     * @param executor the executor used by this method
-     */
-    /*## Java 1.7 ##
-        public void abort(Executor executor) {
-            // not supported
-        }
-    //*/
-
-    /**
-     * [Not supported]
-     *
-     * @param executor the executor used by this method
-     * @param milliseconds the TCP connection timeout
-     */
-    /*## Java 1.7 ##
-        public void setNetworkTimeout(Executor executor, int milliseconds) {
-            // not supported
-        }
-    //*/
-
-    /**
-     * [Not supported]
-     */
-    /*## Java 1.7 ##
-        public int getNetworkTimeout() {
-            return 0;
-        }
-    //*/
 
     private static void checkMap(Map<String, Class<?>> map) {
         if (map != null && map.size() > 0) {
@@ -1766,34 +1675,34 @@ public class JdbcConnection extends TraceObject implements Connection {
         trace.setLevel(level);
     }
 
-    // jdk1.7
+    // ## Java 1.7 ##
     @Override
     public void setSchema(String schema) throws SQLException {
-        throw DbException.getUnsupportedException("setSchema(String)");
+        throw unsupported("setSchema(String)");
     }
 
-    // jdk1.7
+    // ## Java 1.7 ##
     @Override
     public String getSchema() throws SQLException {
-        throw DbException.getUnsupportedException("getSchema()");
+        throw unsupported("getSchema()");
     }
 
-    // jdk1.7
+    // ## Java 1.7 ##
     @Override
     public void abort(Executor executor) throws SQLException {
-        throw DbException.getUnsupportedException("abort(Executor)");
+        throw unsupported("abort(Executor)");
     }
 
-    // jdk1.7
+    // ## Java 1.7 ##
     @Override
     public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
-        throw DbException.getUnsupportedException("setNetworkTimeout(Executor, int)");
+        throw unsupported("setNetworkTimeout(Executor, int)");
     }
 
-    // jdk1.7
+    // ## Java 1.7 ##
     @Override
     public int getNetworkTimeout() throws SQLException {
-        throw DbException.getUnsupportedException("getNetworkTimeout()");
+        throw unsupported("getNetworkTimeout()");
     }
 
 }

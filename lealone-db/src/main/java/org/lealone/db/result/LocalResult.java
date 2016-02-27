@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
@@ -76,15 +76,15 @@ public class LocalResult implements Result, ResultTarget {
      *
      * @param session the session
      * @param rs the result set
-     * @param maxrows the maximum number of rows to read (0 for no limit)
+     * @param maxRows the maximum number of rows to read (0 for no limit)
      * @return the local result set
      */
-    public static LocalResult read(ServerSession session, ResultSet rs, int maxrows) {
+    public static LocalResult read(ServerSession session, ResultSet rs, int maxRows) {
         Expression[] cols = getExpressionColumns(session, rs);
         int columnCount = cols.length;
         LocalResult result = new LocalResult(session, cols, columnCount);
         try {
-            for (int i = 0; (maxrows == 0 || i < maxrows) && rs.next(); i++) {
+            for (int i = 0; (maxRows == 0 || i < maxRows) && rs.next(); i++) {
                 Value[] list = new Value[columnCount];
                 for (int j = 0; j < columnCount; j++) {
                     int type = result.getColumnType(j);

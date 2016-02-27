@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 
 /**
  * A simple hash table with an optimization for the last recently used object.

@@ -7,7 +7,7 @@ package org.lealone.db.index;
 
 import java.util.List;
 
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -27,8 +27,9 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
 
     public StandardDelegateIndex(StandardTable table, int id, String name, StandardPrimaryIndex mainIndex,
             IndexType indexType) {
+        super(table, id, name, indexType);
         IndexColumn[] cols = IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) });
-        this.initIndexBase(table, id, name, cols, indexType);
+        setIndexColumns(cols);
         this.mainIndex = mainIndex;
         if (id < 0) {
             throw DbException.throwInternalError("" + name);

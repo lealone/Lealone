@@ -19,7 +19,7 @@ package org.lealone.test.db;
 
 import org.junit.Test;
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.result.SearchRow;
@@ -34,11 +34,10 @@ public class DatabaseTest extends DbObjectTestBase {
         assertNotNull(db);
         id = db.getId();
         assertTrue(id > 0);
-        SearchRow row = findMeta(LealoneDatabase.getInstance(), id);
-        if (db.isPersistent()) {// 只有非内存数据库才会在meta表中保存一条记录用来代表它
+        SearchRow row = LealoneDatabase.getInstance().findMeta(session, id);
+        if (db.isPersistent()) // 只有非内存数据库才会在meta表中保存一条记录用来代表它
             assertNotNull(row);
-            assertEquals(id, row.getValue(0).getInt());
-        } else
+        else
             assertNull(row);
     }
 

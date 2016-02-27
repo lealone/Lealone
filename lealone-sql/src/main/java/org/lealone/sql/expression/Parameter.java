@@ -7,10 +7,9 @@
 package org.lealone.sql.expression;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ServerSession;
-import org.lealone.db.Session;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
@@ -38,6 +37,11 @@ public class Parameter extends Expression implements CommandParameter {
     }
 
     @Override
+    public int getIndex() {
+        return index;
+    }
+
+    @Override
     public void setValue(Value v, boolean closeOld) {
         // don't need to close the old value as temporary files are anyway removed
         this.value = v;
@@ -49,7 +53,7 @@ public class Parameter extends Expression implements CommandParameter {
     }
 
     @Override
-    public Value getParamValue() {
+    public Value getValue() {
         if (value == null) {
             // to allow parameters in function tables
             return ValueNull.INSTANCE;
@@ -59,7 +63,7 @@ public class Parameter extends Expression implements CommandParameter {
 
     @Override
     public Value getValue(ServerSession session) {
-        return getParamValue();
+        return getValue();
     }
 
     @Override
@@ -86,6 +90,11 @@ public class Parameter extends Expression implements CommandParameter {
     }
 
     @Override
+    public boolean isValueSet() {
+        return value != null;
+    }
+
+    @Override
     public Expression optimize(ServerSession session) {
         return this;
     }
@@ -93,11 +102,6 @@ public class Parameter extends Expression implements CommandParameter {
     @Override
     public boolean isConstant() {
         return false;
-    }
-
-    @Override
-    public boolean isValueSet() {
-        return value != null;
     }
 
     @Override
@@ -177,16 +181,6 @@ public class Parameter extends Expression implements CommandParameter {
 
     public void setColumn(Column column) {
         this.column = column;
-    }
-
-    @Override
-    public int getIndex() {
-        return index;
-    }
-
-    @Override
-    public Value getParamValue(Session session) {
-        return getParamValue();
     }
 
 }

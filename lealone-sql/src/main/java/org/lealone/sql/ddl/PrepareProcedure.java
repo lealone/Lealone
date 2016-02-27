@@ -29,6 +29,11 @@ public class PrepareProcedure extends DefineStatement {
     }
 
     @Override
+    public int getType() {
+        return SQLStatement.PREPARE;
+    }
+
+    @Override
     public void checkParameters() {
         // no not check parameters
     }
@@ -54,11 +59,6 @@ public class PrepareProcedure extends DefineStatement {
     @Override
     public ArrayList<Parameter> getParameters() {
         return New.arrayList();
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.PREPARE;
     }
 
 }

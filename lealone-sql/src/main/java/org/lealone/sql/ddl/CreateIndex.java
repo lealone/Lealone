@@ -7,9 +7,8 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
-import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.IndexType;
@@ -35,6 +34,11 @@ public class CreateIndex extends SchemaStatement {
         super(session, schema);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.CREATE_INDEX;
+    }
+
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
     }
@@ -56,8 +60,6 @@ public class CreateIndex extends SchemaStatement {
         if (!transactional) {
             session.commit(true);
         }
-        Database db = session.getDatabase();
-        boolean persistent = db.isPersistent();
         Table table = getSchema().getTableOrView(session, tableName);
         if (getSchema().findIndex(session, indexName) != null) {
             if (ifNotExists) {
@@ -67,9 +69,6 @@ public class CreateIndex extends SchemaStatement {
         }
         session.getUser().checkRight(table, Right.ALL);
         table.lock(session, true, true);
-        if (!table.isPersistIndexes()) {
-            persistent = false;
-        }
         int id = getObjectId();
         if (indexName == null) {
             if (primaryKey) {
@@ -83,11 +82,11 @@ public class CreateIndex extends SchemaStatement {
             if (table.findPrimaryKey() != null) {
                 throw DbException.get(ErrorCode.SECOND_PRIMARY_KEY);
             }
-            indexType = IndexType.createPrimaryKey(persistent, hash);
+            indexType = IndexType.createPrimaryKey(hash);
         } else if (unique) {
-            indexType = IndexType.createUnique(persistent, hash);
+            indexType = IndexType.createUnique(hash);
         } else {
-            indexType = IndexType.createNonUnique(persistent, hash);
+            indexType = IndexType.createNonUnique(hash);
         }
         IndexColumn.mapColumns(indexColumns, table);
         table.addIndex(session, indexName, id, indexColumns, indexType, create, comment);
@@ -108,11 +107,6 @@ public class CreateIndex extends SchemaStatement {
 
     public void setComment(String comment) {
         this.comment = comment;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.CREATE_INDEX;
     }
 
 }

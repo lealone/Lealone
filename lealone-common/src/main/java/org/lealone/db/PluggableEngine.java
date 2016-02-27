@@ -26,4 +26,5 @@ public interface PluggableEngine {
     void init(Map<String, String> config);
 
     void close();
+
 }

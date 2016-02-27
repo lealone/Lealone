@@ -11,21 +11,22 @@ package org.lealone.db.index;
  */
 public class IndexType {
 
-    private boolean primaryKey, persistent, unique, hash, scan;
-    private boolean belongsToConstraint;
+    private boolean primaryKey;
+    private boolean unique;
+    private boolean hash;
+    private boolean scan;
     private boolean delegate;
+    private boolean belongsToConstraint;
 
     /**
      * Create a primary key index.
      *
-     * @param persistent if the index is persistent
      * @param hash if a hash index should be used
      * @return the index type
      */
-    public static IndexType createPrimaryKey(boolean persistent, boolean hash) {
+    public static IndexType createPrimaryKey(boolean hash) {
         IndexType type = new IndexType();
         type.primaryKey = true;
-        type.persistent = persistent;
         type.hash = hash;
         type.unique = true;
         return type;
@@ -41,14 +42,12 @@ public class IndexType {
     /**
      * Create a unique index.
      *
-     * @param persistent if the index is persistent
      * @param hash if a hash index should be used
      * @return the index type
      */
-    public static IndexType createUnique(boolean persistent, boolean hash) {
+    public static IndexType createUnique(boolean hash) {
         IndexType type = new IndexType();
         type.unique = true;
-        type.persistent = persistent;
         type.hash = hash;
         return type;
     }
@@ -56,23 +55,20 @@ public class IndexType {
     /**
      * Create a non-unique index.
      *
-     * @param persistent if the index is persistent
      * @return the index type
      */
-    public static IndexType createNonUnique(boolean persistent) {
-        return createNonUnique(persistent, false);
+    public static IndexType createNonUnique() {
+        return createNonUnique(false);
     }
 
     /**
      * Create a non-unique index.
      *
-     * @param persistent if the index is persistent
      * @param hash if a hash index should be used
      * @return the index type
      */
-    public static IndexType createNonUnique(boolean persistent, boolean hash) {
+    public static IndexType createNonUnique(boolean hash) {
         IndexType type = new IndexType();
-        type.persistent = persistent;
         type.hash = hash;
         return type;
     }
@@ -80,14 +76,52 @@ public class IndexType {
     /**
      * Create a scan pseudo-index.
      *
-     * @param persistent if the index is persistent
      * @return the index type
      */
-    public static IndexType createScan(boolean persistent) {
+    public static IndexType createScan() {
         IndexType type = new IndexType();
-        type.persistent = persistent;
         type.scan = true;
         return type;
+    }
+
+    /**
+     * Does this index belong to a primary key constraint?
+     *
+     * @return true if it references a primary key constraint
+     */
+    public boolean isPrimaryKey() {
+        return primaryKey;
+    }
+
+    /**
+     * Is this a unique index?
+     *
+     * @return true if it is
+     */
+    public boolean isUnique() {
+        return unique;
+    }
+
+    /**
+     * Is this a hash index?
+     *
+     * @return true if it is a hash index
+     */
+    public boolean isHash() {
+        return hash;
+    }
+
+    /**
+     * Is this a table scan pseudo-index?
+     *
+     * @return true if it is
+     */
+    public boolean isScan() {
+        return scan;
+    }
+
+    public boolean isDelegate() {
+        return delegate;
     }
 
     /**
@@ -107,42 +141,6 @@ public class IndexType {
      */
     public boolean getBelongsToConstraint() {
         return belongsToConstraint;
-    }
-
-    /**
-     * Is this a hash index?
-     *
-     * @return true if it is a hash index
-     */
-    public boolean isHash() {
-        return hash;
-    }
-
-    /**
-     * Is this index persistent?
-     *
-     * @return true if it is persistent
-     */
-    public boolean isPersistent() {
-        return persistent;
-    }
-
-    /**
-     * Does this index belong to a primary key constraint?
-     *
-     * @return true if it references a primary key constraint
-     */
-    public boolean isPrimaryKey() {
-        return primaryKey;
-    }
-
-    /**
-     * Is this a unique index?
-     *
-     * @return true if it is
-     */
-    public boolean isUnique() {
-        return unique;
     }
 
     /**
@@ -167,19 +165,6 @@ public class IndexType {
             buff.append("INDEX");
         }
         return buff.toString();
-    }
-
-    /**
-     * Is this a table scan pseudo-index?
-     *
-     * @return true if it is
-     */
-    public boolean isScan() {
-        return scan;
-    }
-
-    public boolean isDelegate() {
-        return delegate;
     }
 
 }

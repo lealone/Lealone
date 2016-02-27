@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
@@ -56,6 +56,11 @@ public class AlterTableAddConstraint extends SchemaStatement {
     public AlterTableAddConstraint(ServerSession session, Schema schema, boolean ifNotExists) {
         super(session, schema);
         this.ifNotExists = ifNotExists;
+    }
+
+    @Override
+    public int getType() {
+        return type;
     }
 
     private String generateConstraintName(Table table) {
@@ -125,7 +130,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
                 }
             }
             if (index == null) {
-                IndexType indexType = IndexType.createPrimaryKey(table.isPersistIndexes(), primaryKeyHash);
+                IndexType indexType = IndexType.createPrimaryKey(primaryKeyHash);
                 String indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_PRIMARY_KEY);
                 int id = getObjectId();
                 try {
@@ -257,10 +262,10 @@ public class AlterTableAddConstraint extends SchemaStatement {
         IndexType indexType;
         if (unique) {
             // for unique constraints
-            indexType = IndexType.createUnique(t.isPersistIndexes(), false);
+            indexType = IndexType.createUnique(false);
         } else {
             // constraints
-            indexType = IndexType.createNonUnique(t.isPersistIndexes());
+            indexType = IndexType.createNonUnique();
         }
         indexType.setBelongsToConstraint(true);
         String prefix = constraintName == null ? "CONSTRAINT" : constraintName;
@@ -364,11 +369,6 @@ public class AlterTableAddConstraint extends SchemaStatement {
 
     public void setType(int type) {
         this.type = type;
-    }
-
-    @Override
-    public int getType() {
-        return type;
     }
 
     public void setCheckExpression(Expression expression) {

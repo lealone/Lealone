@@ -20,7 +20,7 @@ import java.util.TreeMap;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.compress.CompressLZF;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 

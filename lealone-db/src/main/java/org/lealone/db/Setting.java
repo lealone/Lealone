@@ -5,9 +5,8 @@
  */
 package org.lealone.db;
 
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
-import org.lealone.db.table.Table;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 
 /**
  * A persistent database setting.
@@ -18,7 +17,12 @@ public class Setting extends DbObjectBase {
     private String stringValue;
 
     public Setting(Database database, int id, String settingName) {
-        initDbObjectBase(database, id, settingName, Trace.SETTING);
+        super(database, id, settingName, Trace.SETTING);
+    }
+
+    @Override
+    public DbObjectType getType() {
+        return DbObjectType.SETTING;
     }
 
     public void setIntValue(int value) {
@@ -38,16 +42,6 @@ public class Setting extends DbObjectBase {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public String getDropSQL() {
-        return null;
-    }
-
-    @Override
     public String getCreateSQL() {
         StringBuilder buff = new StringBuilder("SET ");
         buff.append(getSQL()).append(' ');
@@ -57,17 +51,6 @@ public class Setting extends DbObjectBase {
             buff.append(intValue);
         }
         return buff.toString();
-    }
-
-    @Override
-    public int getType() {
-        return DbObject.SETTING;
-    }
-
-    @Override
-    public void removeChildrenAndResources(ServerSession session) {
-        database.removeMeta(session, getId());
-        invalidate();
     }
 
     @Override

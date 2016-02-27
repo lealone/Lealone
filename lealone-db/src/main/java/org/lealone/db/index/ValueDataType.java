@@ -14,7 +14,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataHandler;
 import org.lealone.db.result.SimpleResultSet;
@@ -31,7 +31,7 @@ import org.lealone.db.value.ValueDouble;
 import org.lealone.db.value.ValueFloat;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueJavaObject;
-import org.lealone.db.value.ValueLobDb;
+import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
@@ -68,9 +68,9 @@ public class ValueDataType implements DataType {
     final CompareMode compareMode;
     final int[] sortTypes;
 
-    public ValueDataType(CompareMode compareMode, DataHandler handler, int[] sortTypes) {
-        this.compareMode = compareMode;
+    public ValueDataType(DataHandler handler, CompareMode compareMode, int[] sortTypes) {
         this.handler = handler;
+        this.compareMode = compareMode;
         this.sortTypes = sortTypes;
     }
 
@@ -318,7 +318,7 @@ public class ValueDataType implements DataType {
         case Value.BLOB:
         case Value.CLOB: {
             buff.put((byte) type);
-            ValueLobDb lob = (ValueLobDb) v;
+            ValueLob lob = (ValueLob) v;
             byte[] small = lob.getSmall();
             if (small == null) {
                 buff.putVarInt(-3).putVarInt(lob.getTableId()).putVarLong(lob.getLobId())
@@ -364,12 +364,12 @@ public class ValueDataType implements DataType {
             }
             break;
         }
-        //        case Value.GEOMETRY: {
-        //            byte[] b = v.getBytes();
-        //            int len = b.length;
-        //            buff.put((byte) type).putVarInt(len).put(b);
-        //            break;
-        //        }
+        // case Value.GEOMETRY: {
+        // byte[] b = v.getBytes();
+        // int len = b.length;
+        // buff.put((byte) type).putVarInt(len).put(b);
+        // break;
+        // }
         default:
             DbException.throwInternalError("type=" + v.getType());
         }
@@ -446,7 +446,7 @@ public class ValueDataType implements DataType {
             int len = readVarInt(buff);
             byte[] b = DataUtils.newBytes(len);
             buff.get(b, 0, len);
-            //return ValueJavaObject.getNoCopy(null, b, handler);
+            // return ValueJavaObject.getNoCopy(null, b, handler);
             return ValueJavaObject.getNoCopy(null, b);
         }
         case Value.UUID:
@@ -475,13 +475,13 @@ public class ValueDataType implements DataType {
             if (smallLen >= 0) {
                 byte[] small = DataUtils.newBytes(smallLen);
                 buff.get(small, 0, smallLen);
-                return ValueLobDb.createSmallLob(type, small);
+                return ValueLob.createSmallLob(type, small);
             } else if (smallLen == -3) {
                 int tableId = readVarInt(buff);
                 long lobId = readVarLong(buff);
                 long precision = readVarLong(buff);
-                //ValueLobDb lob = ValueLobDb.create(type, handler, tableId, lobId, null, precision);
-                ValueLobDb lob = ValueLobDb.create(type, null, tableId, lobId, null, precision);
+                // ValueLobDb lob = ValueLobDb.create(type, handler, tableId, lobId, null, precision);
+                ValueLob lob = ValueLob.create(type, null, tableId, lobId, null, precision);
                 return lob;
             } else {
                 throw DbException.get(ErrorCode.FILE_CORRUPTED_1, "lob type: " + smallLen);

@@ -23,7 +23,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.lealone.test.TestBase;
 
 public class SqlTestBase extends TestBase {
@@ -31,15 +30,44 @@ public class SqlTestBase extends TestBase {
     protected static Connection conn;
     protected static Statement stmt;
 
+    // protected String user, password;
+
     protected ResultSet rs;
     protected String sql;
 
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
-        conn = new TestBase().getConnection();
-        stmt = conn.createStatement();
+    protected SqlTestBase() {
+        try {
+            conn = getConnection();
+            stmt = conn.createStatement();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
+    protected SqlTestBase(String user, String password) {
+        try {
+            conn = getConnection(user, password);
+            stmt = conn.createStatement();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    protected SqlTestBase(String dbName) {
+        try {
+            conn = getConnection(dbName);
+            stmt = conn.createStatement();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // @BeforeClass
+    // public static void setUpBeforeClass() throws Exception {
+    // conn = new TestBase().getConnection();
+    // stmt = conn.createStatement();
+    // }
+    //
     @AfterClass
     public static void tearDownAfterClass() throws Exception {
         if (stmt != null)

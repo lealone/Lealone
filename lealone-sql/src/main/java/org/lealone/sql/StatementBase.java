@@ -6,12 +6,11 @@
 package org.lealone.sql;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
-import org.lealone.common.message.DbException;
-import org.lealone.common.message.Trace;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Database;
@@ -26,6 +25,9 @@ import org.lealone.sql.expression.Parameter;
 
 /**
  * A parsed and prepared statement.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public abstract class StatementBase implements PreparedStatement, ParsedStatement {
 
@@ -60,8 +62,9 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     private int objectId;
     private int currentRowNumber;
     private int rowScanCount;
-
     private boolean canReuse;
+    private boolean local = true;
+    private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
 
     /**
      * Create a new object.
@@ -73,23 +76,45 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         modificationMetaId = session.getDatabase().getModificationMetaId();
     }
 
+    @Override
+    public boolean isLocal() {
+        return local;
+    }
+
+    @Override
+    public void setLocal(boolean local) {
+        this.local = local;
+    }
+
+    @Override
+    public int getFetchSize() {
+        return fetchSize;
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        if (fetchSize < 0) {
+            throw DbException.getInvalidValueException("fetchSize", fetchSize);
+        }
+        if (fetchSize == 0) {
+            fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
+        }
+        this.fetchSize = fetchSize;
+    }
+
     /**
-     * Check if this command is transactional.
+     * Check if this statement is transactional.
      * If it is not, then it forces the current transaction to commit.
      *
      * @return true if it is
      */
     public abstract boolean isTransactional();
 
-    /**
-     * Get an empty result set containing the meta data.
-     *
-     * @return the result set
-     */
-    public abstract Result queryMeta();
+    @Override
+    public abstract Result getMetaData();
 
     /**
-     * Get the command type as defined in CommandInterface
+     * Get the statement type as defined in SQLStatement
      *
      * @return the statement type
      */
@@ -97,7 +122,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     public abstract int getType();
 
     /**
-     * Check if this command is read only.
+     * Check if this statement is read only.
      *
      * @return true if it is
      */
@@ -174,6 +199,15 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     }
 
     /**
+     * Prepare this statement.
+     */
+    @Override
+    public PreparedStatement prepare() {
+        // nothing to do
+        return this;
+    }
+
+    /**
      * Check if this object is a query.
      *
      * @return true if it is
@@ -184,12 +218,20 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     }
 
     /**
-     * Prepare this statement.
+     * Execute the query.
+     *
+     * @param maxRows the maximum number of rows to return
+     * @return the result set
+     * @throws DbException if it is not a query
      */
     @Override
-    public PreparedStatement prepare() {
-        // nothing to do
-        return this;
+    public Result query(int maxRows) {
+        throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
+    }
+
+    @Override
+    public Result query(int maxRows, boolean scrollable) {
+        return query(maxRows);
     }
 
     /**
@@ -203,29 +245,10 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_QUERY);
     }
 
-    public int updateLocal() {
+    @Override
+    public int update(String replicationName) {
+        session.setReplicationName(replicationName);
         return update();
-    }
-
-    /**
-     * Execute the query.
-     *
-     * @param maxrows the maximum number of rows to return
-     * @return the result set
-     * @throws DbException if it is not a query
-     */
-    @Override
-    public Result query(int maxrows) {
-        throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
-    }
-
-    @Override
-    public Result query(int maxRows, boolean scrollable) {
-        return query(maxRows);
-    }
-
-    public Result queryLocal(int maxrows) {
-        return query(maxrows);
     }
 
     /**
@@ -326,8 +349,8 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     void trace(long startTime, int rowCount) {
         if (session.getTrace().isInfoEnabled() && startTime > 0) {
             long deltaTime = System.currentTimeMillis() - startTime;
-            String params = Trace.formatParams(parameters);
-            session.getTrace().infoSQL(sql, params, rowCount, deltaTime);
+            String params = Trace.formatParams(getParameters());
+            session.getTrace().infoSQL(getSQL(), params, rowCount, deltaTime);
         }
         if (session.getDatabase().getQueryStatistics()) {
             long deltaTime = System.currentTimeMillis() - startTime;
@@ -372,8 +395,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      */
     private void setProgress() {
         if ((currentRowNumber & 127) == 0) {
-            session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql,
-                    currentRowNumber, 0);
+            session.getDatabase().setProgress(DatabaseEventListener.STATE_STATEMENT_PROGRESS, sql, currentRowNumber, 0);
         }
     }
 
@@ -385,6 +407,77 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     @Override
     public String toString() {
         return sql;
+    }
+
+    /**
+     * Set the SQL statement of the exception to the given row.
+     *
+     * @param e the exception
+     * @param rowId the row number
+     * @param values the values of the row
+     * @return the exception
+     */
+    protected DbException setRow(DbException e, int rowId, String values) {
+        StringBuilder buff = new StringBuilder();
+        if (sql != null) {
+            buff.append(sql);
+        }
+        buff.append(" -- ");
+        if (rowId > 0) {
+            buff.append("row #").append(rowId + 1).append(' ');
+        }
+        buff.append('(').append(values).append(')');
+        return e.addSQL(buff.toString());
+    }
+
+    @Override
+    public boolean isCacheable() {
+        return false;
+    }
+
+    public ServerSession getSession() {
+        return session;
+    }
+
+    // 多值insert、不带等号PartitionKey条件的delete/update都是一种批量操作，
+    // 这类批量操作会当成一个分布式事务处理
+    @Override
+    public boolean isBatch() {
+        return false;
+    }
+
+    /**
+     * Whether the statement is already closed (in which case it can be re-used).
+     *
+     * @return true if it can be re-used
+     */
+
+    @Override
+    public boolean canReuse() {
+        return canReuse;
+    }
+
+    /**
+     * The statement is now re-used, therefore reset the canReuse flag, and the
+     * parameter values.
+     */
+    @Override
+    public void reuse() {
+        canReuse = false;
+        ArrayList<? extends CommandParameter> parameters = getParameters();
+        for (int i = 0, size = parameters.size(); i < size; i++) {
+            CommandParameter param = parameters.get(i);
+            param.setValue(null, true);
+        }
+    }
+
+    @Override
+    public void close() {
+        canReuse = true;
+    }
+
+    @Override
+    public void cancel() {
     }
 
     /**
@@ -421,77 +514,6 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         return buff.toString();
     }
 
-    /**
-     * Set the SQL statement of the exception to the given row.
-     *
-     * @param e the exception
-     * @param rowId the row number
-     * @param values the values of the row
-     * @return the exception
-     */
-    protected DbException setRow(DbException e, int rowId, String values) {
-        StringBuilder buff = new StringBuilder();
-        if (sql != null) {
-            buff.append(sql);
-        }
-        buff.append(" -- ");
-        if (rowId > 0) {
-            buff.append("row #").append(rowId + 1).append(' ');
-        }
-        buff.append('(').append(values).append(')');
-        return e.addSQL(buff.toString());
-    }
-
-    @Override
-    public boolean isCacheable() {
-        return false;
-    }
-
-    private boolean local = true;
-
-    @Override
-    public boolean isLocal() {
-        return local;
-    }
-
-    @Override
-    public void setLocal(boolean local) {
-        this.local = local;
-    }
-
-    private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
-
-    @Override
-    public int getFetchSize() {
-        return fetchSize;
-    }
-
-    @Override
-    public void setFetchSize(int fetchSize) {
-        if (fetchSize < 0) {
-            throw DbException.getInvalidValueException("fetchSize", fetchSize);
-        }
-        if (fetchSize == 0) {
-            fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
-        }
-        this.fetchSize = fetchSize;
-    }
-
-    public ServerSession getSession() {
-        return session;
-    }
-
-    public boolean isDDL() {
-        return false;
-    }
-
-    // 多值insert、不带等号PartitionKey条件的delete/update都是一种批量操作，
-    // 这类批量操作会当成一个分布式事务处理
-    @Override
-    public boolean isBatch() {
-        return false;
-    }
-
     public static boolean containsEqualPartitionKeyComparisonType(TableFilter tableFilter) {
         return getPartitionKey(tableFilter) != null;
     }
@@ -512,59 +534,5 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         if (row == null)
             return null;
         return row.getRowKey();
-    }
-
-    public List<Long> getRowVersions() {
-        return null;
-    }
-
-    /**
-     * Whether the command is already closed (in which case it can be re-used).
-     *
-     * @return true if it can be re-used
-     */
-
-    @Override
-    public boolean canReuse() {
-        return canReuse;
-    }
-
-    /**
-     * The command is now re-used, therefore reset the canReuse flag, and the
-     * parameter values.
-     */
-
-    @Override
-    public void reuse() {
-        canReuse = false;
-        ArrayList<? extends CommandParameter> parameters = getParameters();
-        for (int i = 0, size = parameters.size(); i < size; i++) {
-            CommandParameter param = parameters.get(i);
-            param.setValue(null, true);
-        }
-    }
-
-    @Override
-    public void close() {
-        canReuse = true;
-    }
-
-    @Override
-    public void cancel() {
-    }
-
-    @Override
-    public Result executeQuery(int maxRows, boolean scrollable) {
-        return query(maxRows);
-    }
-
-    @Override
-    public int executeUpdate() {
-        return update();
-    }
-
-    @Override
-    public Result getMetaData() {
-        return queryMeta();
     }
 }
