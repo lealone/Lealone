@@ -21,13 +21,11 @@ pushd %~dp0..
 if NOT DEFINED LEALONE_HOME set LEALONE_HOME=%CD%
 popd
 
-if NOT DEFINED LEALONE_MAIN set LEALONE_MAIN=org.lealone.main.Lealone
+if NOT DEFINED LEALONE_MAIN set LEALONE_MAIN=org.lealone.main.Shell
 if NOT DEFINED JAVA_HOME goto :err
 
 REM ***** JAVA options *****
 set JAVA_OPTS=-ea^
- -Xms512M^
- -Xmx1G^
  -XX:+HeapDumpOnOutOfMemoryError^
  -XX:+UseParNewGC^
  -XX:+UseConcMarkSweepGC^
@@ -58,7 +56,6 @@ REM set LEALONE_PARAMS=%LEALONE_PARAMS% -agentlib:jdwp=transport=dt_socket,addre
 goto runDaemon
 
 :runDaemon
-REM echo Starting Lealone Server
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% %LEALONE_PARAMS% -cp %LEALONE_CLASSPATH% "%LEALONE_MAIN%"
 goto finally
 

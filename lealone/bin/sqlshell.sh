@@ -23,11 +23,9 @@ if [ "x$JAVA_HOME" = "x" ]; then
     exit 1;
 fi
 
-LEALONE_MAIN=org.lealone.main.Lealone
+LEALONE_MAIN=org.lealone.main.Shell
 
 JAVA_OPTS=-ea
-JAVA_OPTS="$JAVA_OPTS -Xms512M"
-JAVA_OPTS="$JAVA_OPTS -Xmx1G"
 JAVA_OPTS="$JAVA_OPTS -XX:+HeapDumpOnOutOfMemoryError"
 JAVA_OPTS="$JAVA_OPTS -XX:+UseParNewGC"
 JAVA_OPTS="$JAVA_OPTS -XX:+UseConcMarkSweepGC"
