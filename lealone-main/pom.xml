@@ -48,7 +48,7 @@
             <groupId>org.lealone</groupId>
             <artifactId>lealone-mvstore</artifactId>
             <version>${project.version}</version>
-        </dependency> 
+        </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
