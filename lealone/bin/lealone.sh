@@ -26,7 +26,7 @@ fi
 LEALONE_MAIN=org.lealone.main.Lealone
 
 JAVA_OPTS=-ea
-JAVA_OPTS="$JAVA_OPTS -Xms512M"
+JAVA_OPTS="$JAVA_OPTS -Xms10M"
 JAVA_OPTS="$JAVA_OPTS -Xmx1G"
 JAVA_OPTS="$JAVA_OPTS -XX:+HeapDumpOnOutOfMemoryError"
 JAVA_OPTS="$JAVA_OPTS -XX:+UseParNewGC"

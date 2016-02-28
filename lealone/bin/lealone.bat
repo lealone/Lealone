@@ -26,7 +26,7 @@ if NOT DEFINED JAVA_HOME goto :err
 
 REM ***** JAVA options *****
 set JAVA_OPTS=-ea^
- -Xms512M^
+ -Xms10M^
  -Xmx1G^
  -XX:+HeapDumpOnOutOfMemoryError^
  -XX:+UseParNewGC^
