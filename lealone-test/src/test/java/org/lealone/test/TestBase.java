@@ -31,7 +31,7 @@ import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
 public class TestBase extends Assert {
-    public static final String DEFAULT_STORAGE_ENGINE_NAME = Constants.DEFAULT_STORAGE_ENGINE_NAME;
+    public static final String DEFAULT_STORAGE_ENGINE_NAME = getDefaultStorageEngineName();
     public static final String TEST_DIR = "." + File.separatorChar + "lealone-test-data" + File.separatorChar + "test";
     public static final String DB_NAME = "test";
 
@@ -41,6 +41,10 @@ public class TestBase extends Assert {
         System.setProperty("java.io.tmpdir", TEST_DIR + File.separatorChar + "tmp");
         System.setProperty("lealone.lob.client.max.size.memory", "2048");
         SysProperties.setBaseDir(TEST_DIR);
+    }
+
+    public static String getDefaultStorageEngineName() {
+        return "MVStore";
     }
 
     public static synchronized void initTransactionEngine() {
@@ -56,7 +60,7 @@ public class TestBase extends Assert {
     }
 
     private final Map<String, String> connectionParameters = new HashMap<>();
-    private String storageEngineName = Constants.DEFAULT_STORAGE_ENGINE_NAME;
+    private String storageEngineName = getDefaultStorageEngineName();
     private boolean embedded = false;
     private boolean inMemory = false;
     private boolean mysqlUrlStyle = false;

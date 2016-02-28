@@ -112,6 +112,10 @@ public class Lealone {
                             throw new ConfigurationException("StorageEngine '" + def.name + "' can not found");
                         }
                     }
+
+                    if (Config.getProperty("default.storage.engine") == null)
+                        Config.setProperty("default.storage.engine", se.getName());
+
                     initPluggableEngine(se, def);
                 }
             }
@@ -131,6 +135,10 @@ public class Lealone {
                         }
                     }
                     def.getParameters().put("host_and_port", config.listen_address + ":" + config.listen_port);
+
+                    if (Config.getProperty("default.transaction.engine") == null)
+                        Config.setProperty("default.transaction.engine", te.getName());
+
                     initPluggableEngine(te, def);
                 }
             }
@@ -149,6 +157,10 @@ public class Lealone {
                             throw new ConfigurationException("SQLEngine '" + def.name + "' can not found");
                         }
                     }
+
+                    if (Config.getProperty("default.sql.engine") == null)
+                        Config.setProperty("default.sql.engine", se.getName());
+
                     initPluggableEngine(se, def);
                 }
             }

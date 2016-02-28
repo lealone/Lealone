@@ -47,4 +47,8 @@ public class Config {
         return System.getProperty("lealone." + key, def);
     }
 
+    public static void setProperty(String key, String value) {
+        System.setProperty("lealone." + key, value);
+    }
+
 }

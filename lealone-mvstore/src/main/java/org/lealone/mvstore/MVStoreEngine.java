@@ -17,6 +17,9 @@
  */
 package org.lealone.mvstore;
 
+import org.lealone.db.DataHandler;
+import org.lealone.storage.LobStorage;
+import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngineBase;
 
@@ -30,5 +33,10 @@ public class MVStoreEngine extends StorageEngineBase {
     @Override
     public StorageBuilder getStorageBuilder() {
         return new MVStoreBuilder();
+    }
+
+    @Override
+    public LobStorage getLobStorage(DataHandler dataHandler, Storage storage) {
+        return new LobStorageMap(dataHandler, storage);
     }
 }
