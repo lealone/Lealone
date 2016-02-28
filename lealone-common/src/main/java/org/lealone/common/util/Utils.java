@@ -26,6 +26,7 @@ import java.util.zip.ZipInputStream;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.api.JavaObjectSerializer;
+import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.SysProperties;
 
@@ -869,6 +870,51 @@ public class Utils {
             }
         }
         return defaultValue;
+    }
+
+    /**
+     * @return The Class for the given name.
+     * @param classname Fully qualified classname.
+     * @param readable Descriptive noun for the role the class plays.
+     * @throws ConfigurationException If the class cannot be found.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> Class<T> classForName(String classname, String readable) throws ConfigurationException {
+        try {
+            return (Class<T>) Class.forName(classname);
+        } catch (ClassNotFoundException | NoClassDefFoundError e) {
+            throw new ConfigurationException(String.format("Unable to find %s class '%s'", readable, classname), e);
+        }
+    }
+
+    /**
+     * Constructs an instance of the given class, which must have a no-arg or default constructor.
+     * @param classname Fully qualified classname.
+     * @param readable Descriptive noun for the role the class plays.
+     * @throws ConfigurationException If the class cannot be found.
+     */
+    public static <T> T construct(String classname, String readable) throws ConfigurationException {
+        Class<T> cls = Utils.classForName(classname, readable);
+        return construct(cls, classname, readable);
+    }
+
+    public static <T> T construct(Class<T> cls, String classname, String readable) throws ConfigurationException {
+        try {
+            return cls.newInstance();
+        } catch (IllegalAccessException e) {
+            throw new ConfigurationException(String.format("Default constructor for %s class '%s' is inaccessible.",
+                    readable, classname));
+        } catch (InstantiationException e) {
+            throw new ConfigurationException(
+                    String.format("Cannot use abstract class '%s' as %s.", classname, readable));
+        } catch (Exception e) {
+            // Catch-all because Class.newInstance()
+            // "propagates any exception thrown by the nullary constructor, including a checked exception".
+            if (e.getCause() instanceof ConfigurationException)
+                throw (ConfigurationException) e.getCause();
+            throw new ConfigurationException(String.format("Error instantiating %s class '%s'.", readable, classname),
+                    e);
+        }
     }
 
 }

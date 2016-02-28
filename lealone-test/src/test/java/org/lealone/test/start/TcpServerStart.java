@@ -17,30 +17,38 @@
  */
 package org.lealone.test.start;
 
-import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.Map;
+import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.main.Lealone;
+import org.lealone.main.config.Config;
 
-import org.lealone.server.TcpServer;
-import org.lealone.test.TestBase;
+public class TcpServerStart extends org.lealone.main.config.YamlConfigurationLoader {
 
-public class TcpServerStart {
-    public static void main(String[] args) throws SQLException {
-        setProperty();
-        TestBase.initTransactionEngine();
-        Map<String, String> config = new HashMap<>();
-        config.put("base_dir", TestBase.TEST_DIR);
-        TcpServer server = new TcpServer();
-        server.init(config);
-        server.start();
-        System.out.println("TcpServer started, port: " + server.getPort());
+    // YamlConfigurationLoader的子类必须有一个无参数的构造函数
+    public TcpServerStart() {
     }
 
-    private static void setProperty() {
+    @Override
+    public Config loadConfig() throws ConfigurationException {
+        Config config = super.loadConfig();
+
+        System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
+        // System.setProperty("lealone.base.dir", "./" + config.base_dir);
+
+        return config;
+    }
+
+    public static void init(Class<?> loader) {
+        System.setProperty("lealone.config.loader", loader.getName());
+        System.setProperty("lealone.config", "lealone-test.yaml");
         // System.setProperty("DATABASE_TO_UPPER", "false");
         System.setProperty("lealone.lobInDatabase", "false");
         System.setProperty("lealone.lobClientMaxSizeMemory", "1024");
-        System.setProperty("java.io.tmpdir", TestBase.TEST_DIR + "/tmp");
         // System.setProperty("lealone.check2", "true");
     }
+
+    public static void main(String[] args) {
+        init(TcpServerStart.class);
+        Lealone.main(args);
+    }
+
 }

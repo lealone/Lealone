@@ -5,6 +5,7 @@
  */
 package org.lealone.storage.fs;
 
+import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -366,6 +367,14 @@ public class FileUtils {
         do {
             channel.write(src);
         } while (src.remaining() > 0);
+    }
+
+    public static void closeQuietly(Closeable c) {
+        try {
+            if (c != null)
+                c.close();
+        } catch (Exception e) {
+        }
     }
 
 }

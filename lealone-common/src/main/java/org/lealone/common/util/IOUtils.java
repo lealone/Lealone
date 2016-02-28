@@ -460,4 +460,9 @@ public class IOUtils {
         copyAndClose(in, out);
     }
 
+    public static byte[] toByteArray(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        copy(in, out);
+        return out.toByteArray();
+    }
 }

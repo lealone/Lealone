@@ -34,10 +34,7 @@
     <moduleSets>
         <moduleSet>
             <includes>
-                <include>org.lealone:lealone-client</include>
-                <include>org.lealone:lealone-server</include>
-                <include>org.lealone:lealone-sql</include>
-                <include>org.lealone:lealone-mvstore</include>
+                <include>org.lealone:lealone-main</include>
             </includes>
             <binaries>
                 <unpack>false</unpack>

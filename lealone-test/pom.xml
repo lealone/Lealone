@@ -31,17 +31,7 @@
     <dependencies>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-client</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-server</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-sql</artifactId>
+            <artifactId>lealone-main</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
