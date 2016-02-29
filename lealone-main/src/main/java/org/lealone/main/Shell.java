@@ -330,20 +330,17 @@ public class Shell implements Runnable {
         buff.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//").append("127.0.0.1").append(':')
                 .append(Constants.DEFAULT_TCP_PORT).append('/').append("test");
         String url = buff.toString();
-        String user = "lealone";
-
         println("[Enter]   " + url);
         print("URL       ");
         url = readLine(url).trim();
+
+        String user = "lealone";
         println("[Enter]   " + user);
         print("User      ");
         user = readLine(user);
+
         println("[Enter]   Hide");
-        print("Password  ");
-        String password = readLine(user);
-        if (password.length() == 0) {
-            password = readPassword();
-        }
+        String password = readPassword();
         conn = DriverManager.getConnection(url, user, password);
         stat = conn.createStatement();
         println("Connected");
@@ -365,27 +362,14 @@ public class Shell implements Runnable {
     }
 
     private String readPassword() throws IOException {
-        try {
-            Object console = Utils.callStaticMethod("java.lang.System.console");
-            print("Password  ");
-            char[] password = (char[]) Utils.callMethod(console, "readPassword");
+        java.io.Console console = System.console();
+        if (console != null) {
+            char[] password = console.readPassword("Password  ");
             return password == null ? null : new String(password);
-        } catch (Exception e) {
-            // ignore, use the default solution
+        } else { // In Eclipse, use the default solution
+            print("Password  ");
+            return readLine();
         }
-        Thread passwordHider = new Thread(this, "Password hider");
-        stopHide = false;
-        passwordHider.start();
-        print("Password  > ");
-        String p = readLine();
-        stopHide = true;
-        try {
-            passwordHider.join();
-        } catch (InterruptedException e) {
-            // ignore
-        }
-        print("\b\b");
-        return p;
     }
 
     /**
