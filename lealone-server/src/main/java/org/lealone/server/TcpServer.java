@@ -108,12 +108,15 @@ public class TcpServer implements ProtocolServer {
             return;
 
         stop = true;
-        try {
-            Socket s = NetUtils.createLoopbackSocket(port, false);
-            s.close();
-        } catch (Exception e) {
-            serverSocket = NetUtils.closeSilently(serverSocket);
-        }
+        // 这种方式关闭起来较慢
+        // try {
+        // Socket s = NetUtils.createLoopbackSocket(port, false);
+        // s.close();
+        // } catch (Exception e) {
+        // serverSocket = NetUtils.closeSilently(serverSocket);
+        // }
+
+        serverSocket = NetUtils.closeSilently(serverSocket);
 
         if (listenerThread != null) {
             try {
