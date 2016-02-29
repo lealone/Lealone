@@ -487,8 +487,12 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public void remove() {
-        map.remove();
-        transaction.transactionEngine.removeMap(getName());
+        // 提前获取map名，一些存储引擎调用完 map.remove()后，再调用map.getName()会返回null
+        String mapName = map.getName();
+        if (mapName != null) {
+            map.remove();
+            transaction.transactionEngine.removeMap(mapName);
+        }
     }
 
     @Override

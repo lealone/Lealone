@@ -547,7 +547,12 @@ public class MVStore implements Storage {
 
     @Override
     public StorageMap<?, ?> getStorageMap(String name) {
-        return maps.get(name);
+        String x = meta.get("name." + name);
+        if (x != null) {
+            int id = DataUtils.parseHexInt(x);
+            return maps.get(id);
+        }
+        return null;
     }
 
     /**
