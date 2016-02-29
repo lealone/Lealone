@@ -6,7 +6,6 @@
 package org.lealone.main;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -19,135 +18,66 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Properties;
 
-import org.lealone.api.ErrorCode;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
-import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.util.ScriptReader;
 
 /**
  * Interactive command line tool to access a database using JDBC.
- * @h2.resource
  * 
  * @author H2 Group
  * @author zhh
  */
-public class Shell implements Runnable {
+public class Shell {
 
     private static final int MAX_ROW_BUFFER = 5000;
     private static final int HISTORY_COUNT = 20;
     // Windows: '\u00b3';
     private static final char BOX_VERTICAL = '|';
 
-    private PrintStream err = System.err;
-    private InputStream in = System.in;
+    private final PrintStream err = System.err;
+    private final InputStream in = System.in;
+    private final PrintStream out = System.out;
     private BufferedReader reader;
     private Connection conn;
     private Statement stat;
     private boolean listMode;
     private int maxColumnSize = 100;
     private final ArrayList<String> history = New.arrayList();
-    private boolean stopHide;
 
-    private Properties resources;
-
-    /**
-    * The output stream where this tool writes to.
-    */
-    protected PrintStream out = System.out;
-
-    // private String serverPropertiesDir = Constants.SERVER_PROPERTIES_DIR;
-
-    /**
-     * Options are case sensitive. Supported options are:
-     * <table>
-     * <tr><td>[-help] or [-?]</td>
-     * <td>Print the list of options</td></tr>
-     * <tr><td>[-url "&lt;url&gt;"]</td>
-     * <td>The database URL (jdbc:lealone:...)</td></tr>
-     * <tr><td>[-user &lt;user&gt;]</td>
-     * <td>The user name</td></tr>
-     * <tr><td>[-password &lt;pwd&gt;]</td>
-     * <td>The password</td></tr>
-     * <tr><td>[-sql "&lt;statements&gt;"]</td>
-     * <td>Execute the SQL statements and exit</td></tr>
-     * <tr><td>[-properties "&lt;dir&gt;"]</td>
-     * <td>Load the server properties from this directory</td></tr>
-     * </table>
-     * If special characters don't work as expected, you may need to use
-     * -Dfile.encoding=UTF-8 (Mac OS X) or CP850 (Windows).
-     * @h2.resource
-     *
-     * @param args the command line arguments
-     */
     public static void main(String... args) throws SQLException {
-        new Shell().runTool(args);
+        new Shell().run(args);
     }
 
-    /**
-     * Sets the standard error stream.
-     *
-     * @param err the new standard error stream
-     */
-    public void setErr(PrintStream err) {
-        this.err = err;
-    }
-
-    /**
-     * Redirects the standard input. By default, System.in is used.
-     *
-     * @param in the input stream to use
-     */
-    public void setIn(InputStream in) {
-        this.in = in;
-    }
-
-    /**
-     * Redirects the standard input. By default, System.in is used.
-     *
-     * @param reader the input stream reader to use
-     */
-    public void setInReader(BufferedReader reader) {
-        this.reader = reader;
-    }
-
-    /**
-     * Run the shell tool with the given command line settings.
-     *
-     * @param args the command line settings
-     */
-    public void runTool(String... args) throws SQLException {
+    private void run(String... args) throws SQLException {
         String url = null;
         String user = "";
         String password = "";
         String sql = null;
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i];
+            arg = arg.trim();
+            if (arg.isEmpty())
+                continue;
             if (arg.equals("-url")) {
                 url = args[++i];
             } else if (arg.equals("-user")) {
                 user = args[++i];
             } else if (arg.equals("-password")) {
                 password = args[++i];
-                // } else if (arg.equals("-driver")) {
-                // String driver = args[++i];
-                // Utils.loadUserClass(driver);
             } else if (arg.equals("-sql")) {
                 sql = args[++i];
-            } else if (arg.equals("-properties")) {
-                // serverPropertiesDir = args[++i];
             } else if (arg.equals("-help") || arg.equals("-?")) {
                 showUsage();
                 return;
             } else if (arg.equals("-list")) {
                 listMode = true;
             } else {
-                showUsageAndThrowUnsupportedOption(arg);
+                showUsage();
+                return;
             }
         }
         if (url != null) {
@@ -171,22 +101,17 @@ public class Shell implements Runnable {
         }
     }
 
-    /**
-     * Run the shell tool with the given connection and command line settings.
-     * The connection will be closed when the shell exits.
-     * This is primary used to integrate the Shell into another application.
-     * <p>
-     * Note: using the "-url" option in {@code args} doesn't make much sense
-     * since it will override the {@code conn} parameter.
-     * </p>
-     *
-     * @param conn the connection
-     * @param args the command line settings
-     */
-    public void runTool(Connection conn, String... args) throws SQLException {
-        this.conn = conn;
-        this.stat = conn.createStatement();
-        runTool(args);
+    private void showUsage() {
+        println("Options are case sensitive. Supported options are:");
+        println("[-help] or [-?]         Print the list of options");
+        println("[-url \"<url>\"]          The database URL (jdbc:lealone:...)");
+        println("[-user <user>]          The user name");
+        println("[-password <pwd>]       The password");
+        println("[-sql \"<statements>\"]   Execute the SQL statements and exit");
+        println("");
+        println("If special characters don't work as expected, ");
+        println("you may need to use -Dfile.encoding=UTF-8 (Mac OS X) or CP850 (Windows).");
+        println("");
     }
 
     private void showHelp() {
@@ -202,7 +127,7 @@ public class Shell implements Runnable {
 
     private void promptLoop() {
         println("");
-        println("Welcome to Lealone Shell " + Constants.getFullVersion());
+        println("Welcome to Lealone Shell " + Constants.getVersion());
         println("Exit with Ctrl+C");
         if (conn != null) {
             showHelp();
@@ -227,7 +152,7 @@ public class Shell implements Runnable {
                     break;
                 }
                 String trimmed = line.trim();
-                if (trimmed.length() == 0) {
+                if (trimmed.isEmpty()) {
                     continue;
                 }
                 boolean end = trimmed.endsWith(";");
@@ -346,12 +271,7 @@ public class Shell implements Runnable {
         println("Connected");
     }
 
-    /**
-     * Print the string without newline, and flush.
-     *
-     * @param s the string to print
-     */
-    protected void print(String s) {
+    private void print(String s) {
         out.print(s);
         out.flush();
     }
@@ -369,23 +289,6 @@ public class Shell implements Runnable {
         } else { // In Eclipse, use the default solution
             print("Password  ");
             return readLine();
-        }
-    }
-
-    /**
-     * INTERNAL.
-     * Hides the password by repeatedly printing
-     * backspace, backspace, &gt;, &lt;.
-     */
-    @Override
-    public void run() {
-        while (!stopHide) {
-            print("\b\b><");
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                // ignore
-            }
         }
     }
 
@@ -563,47 +466,4 @@ public class Shell implements Runnable {
         return rowCount;
     }
 
-    /**
-     * Print the usage of the tool. This method reads the description from the
-     * resource file.
-     */
-    protected void showUsage() {
-        if (resources == null) {
-            resources = new Properties();
-            String resourceName = "/org/lealone/res/javadoc.properties";
-            try {
-                byte[] buff = Utils.getResource(resourceName);
-                if (buff != null) {
-                    resources.load(new ByteArrayInputStream(buff));
-                }
-            } catch (IOException e) {
-                out.println("Cannot load " + resourceName);
-            }
-        }
-        String className = getClass().getName();
-        out.println(resources.get(className));
-        out.println("Usage: java " + getClass().getName() + " <options>");
-        out.println(resources.get(className + ".main"));
-    }
-
-    /**
-    * Throw a SQLException saying this command line option is not supported.
-    *
-    * @param option the unsupported option
-    * @return this method never returns normally
-    */
-    protected SQLException showUsageAndThrowUnsupportedOption(String option) throws SQLException {
-        showUsage();
-        throw throwUnsupportedOption(option);
-    }
-
-    /**
-     * Throw a SQLException saying this command line option is not supported.
-     *
-     * @param option the unsupported option
-     * @return this method never returns normally
-     */
-    protected SQLException throwUnsupportedOption(String option) throws SQLException {
-        throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, option).getSQLException();
-    }
 }

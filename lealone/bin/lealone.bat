@@ -17,12 +17,14 @@
 @echo off
 if "%OS%" == "Windows_NT" setlocal
 
+if NOT DEFINED JAVA_HOME goto :err
+
 pushd %~dp0..
 if NOT DEFINED LEALONE_HOME set LEALONE_HOME=%CD%
 popd
 
 if NOT DEFINED LEALONE_MAIN set LEALONE_MAIN=org.lealone.main.Lealone
-if NOT DEFINED JAVA_HOME goto :err
+
 
 REM ***** JAVA options *****
 REM set JAVA_OPTS=-ea^

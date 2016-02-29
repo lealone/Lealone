@@ -14,6 +14,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 if [ "x$LEALONE_HOME" = "x" ]; then
     LEALONE_HOME="`dirname "$0"`/.."
 fi
@@ -25,8 +26,6 @@ fi
 
 LEALONE_MAIN=org.lealone.main.Shell
 
-JAVA_OPTS=-Dlogback.configurationFile=logback.xml
-
 CLASSPATH=$LEALONE_HOME/conf
 
 for jar in "$LEALONE_HOME"/lib/*.jar; do
@@ -34,8 +33,12 @@ for jar in "$LEALONE_HOME"/lib/*.jar; do
 done
 
 LEALONE_CLASSPATH="$CLASSPATH"
-LEALONE_PARAMS="-Dlealone.logdir=$LEALONE_HOME/logs"
+if [ "x$1" = "x" ]; then
+    LEALONE_PARAMS="$1"
+fi
+if [ "x$2" = "x" ]; then
+    LEALONE_PARAMS="$LEALONE_PARAMS $2"
+fi
 # LEALONE_PARAMS="$LEALONE_PARAMS -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y"
 
-
-"$JAVA_HOME/bin/java" $JAVA_OPTS $LEALONE_PARAMS -cp $LEALONE_CLASSPATH $LEALONE_MAIN
+"$JAVA_HOME/bin/java" -cp $LEALONE_CLASSPATH $LEALONE_MAIN $LEALONE_PARAMS

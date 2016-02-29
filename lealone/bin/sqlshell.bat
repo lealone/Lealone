@@ -17,15 +17,13 @@
 @echo off
 if "%OS%" == "Windows_NT" setlocal
 
+if NOT DEFINED JAVA_HOME goto :err
+
 pushd %~dp0..
 if NOT DEFINED LEALONE_HOME set LEALONE_HOME=%CD%
 popd
 
 if NOT DEFINED LEALONE_MAIN set LEALONE_MAIN=org.lealone.main.Shell
-if NOT DEFINED JAVA_HOME goto :err
-
-REM ***** JAVA options *****
-set JAVA_OPTS=-Dlogback.configurationFile=logback.xml
 
 REM ***** CLASSPATH library setting *****
 
@@ -42,12 +40,12 @@ goto :eof
 
 :okClasspath
 set LEALONE_CLASSPATH=%CLASSPATH%;
-set LEALONE_PARAMS=-Dlealone.logdir="%LEALONE_HOME%\logs"
+set LEALONE_PARAMS="%1 %2"
 REM set LEALONE_PARAMS=%LEALONE_PARAMS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
-goto runDaemon
+goto runShell
 
-:runDaemon
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %LEALONE_PARAMS% -cp %LEALONE_CLASSPATH% "%LEALONE_MAIN%"
+:runShell
+"%JAVA_HOME%\bin\java" -cp %LEALONE_CLASSPATH% "%LEALONE_MAIN%" %LEALONE_PARAMS%
 goto finally
 
 :err
