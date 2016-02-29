@@ -25,16 +25,7 @@ if NOT DEFINED LEALONE_MAIN set LEALONE_MAIN=org.lealone.main.Shell
 if NOT DEFINED JAVA_HOME goto :err
 
 REM ***** JAVA options *****
-set JAVA_OPTS=-ea^
- -XX:+HeapDumpOnOutOfMemoryError^
- -XX:+UseParNewGC^
- -XX:+UseConcMarkSweepGC^
- -XX:+CMSParallelRemarkEnabled^
- -XX:SurvivorRatio=8^
- -XX:MaxTenuringThreshold=1^
- -XX:CMSInitiatingOccupancyFraction=75^
- -XX:+UseCMSInitiatingOccupancyOnly^
- -Dlogback.configurationFile=logback.xml
+set JAVA_OPTS=-Dlogback.configurationFile=logback.xml
 
 REM ***** CLASSPATH library setting *****
 
@@ -51,7 +42,7 @@ goto :eof
 
 :okClasspath
 set LEALONE_CLASSPATH=%CLASSPATH%;
-set LEALONE_PARAMS=-Dlealone-foreground=yes -Dlealone.logdir="%LEALONE_HOME%\logs"
+set LEALONE_PARAMS=-Dlealone.logdir="%LEALONE_HOME%\logs"
 REM set LEALONE_PARAMS=%LEALONE_PARAMS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
 goto runDaemon
 
