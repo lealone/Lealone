@@ -327,13 +327,16 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      */
     @Override
     public K higherKey(K key) {
-        while (true) {
-            K k = map.higherKey(key);
-            if (k == null || get(k) != null) {
-                return k;
-            }
-            key = k;
-        }
+        // TODO 处理事务
+        // while (true) {
+        // K k = map.higherKey(key);
+        // if (k == null || get(k) != null) {
+        // return k;
+        // }
+        // key = k;
+        // }
+
+        return map.higherKey(key);
     }
 
     @Override

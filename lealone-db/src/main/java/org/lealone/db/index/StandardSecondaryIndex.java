@@ -521,10 +521,19 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
         @Override
         public boolean next() {
-            current = map.higherKey(current);
-            searchRow = null;
+            Value oldKey = null;
             if (current != null) {
-                ((ValueArray) current).getList()[keyColumns - 1] = ValueLong.get(Long.MAX_VALUE);
+                // 不改变底层的ValueArray
+                Value[] oldValues = ((ValueArray) current).getList();
+                Value[] newValues = new Value[keyColumns];
+                System.arraycopy(oldValues, 0, newValues, 0, keyColumns - 1);
+                newValues[keyColumns - 1] = ValueLong.get(Long.MAX_VALUE);
+                oldKey = ValueArray.get(newValues);
+            }
+            Value newKey = map.higherKey(oldKey);
+            current = newKey;
+            searchRow = null;
+            if (newKey != null) {
                 if (last != null && compareRows(getSearchRow(), last) > 0) {
                     searchRow = null;
                     current = null;
