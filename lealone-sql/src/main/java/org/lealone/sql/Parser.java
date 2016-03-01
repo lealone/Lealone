@@ -155,6 +155,9 @@ import org.lealone.sql.expression.Wildcard;
 
 /**
  * The parser is used to convert a SQL statement string to an command object.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Parser implements SQLParser {
 

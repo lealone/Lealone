@@ -24,6 +24,9 @@ import org.lealone.sql.router.RouterHolder;
 
 /**
  * Represents a SQL statement wrapper.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class StatementWrapper extends StatementBase {
 
@@ -56,209 +59,16 @@ class StatementWrapper extends StatementBase {
     }
 
     /**
-     * Start the stopwatch.
-     */
-    void start() {
-        if (trace.isInfoEnabled()) {
-            startTime = System.currentTimeMillis();
-        }
-    }
-
-    void setProgress(int state) {
-        session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
-    }
-
-    /**
      * Check if this command has been canceled, and throw an exception if yes.
      *
      * @throws DbException if the statement has been canceled
      */
-
     @Override
     public void checkCanceled() {
         if (cancel) {
             cancel = false;
             throw DbException.get(ErrorCode.STATEMENT_WAS_CANCELED);
         }
-    }
-
-    private void stop() {
-        session.closeTemporaryResults();
-        session.setCurrentCommand(null);
-        if (!isTransactional()) {
-            session.commit(true);
-        } else if (session.isAutoCommit()) {
-            session.commit(false);
-        } else if (session.getDatabase().isMultiThreaded()) {
-            Database db = session.getDatabase();
-            if (db != null) {
-                if (db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {
-                    session.unlockReadLocks();
-                }
-            }
-        }
-        if (trace.isInfoEnabled() && startTime > 0) {
-            long time = System.currentTimeMillis() - startTime;
-            if (time > Constants.SLOW_QUERY_LIMIT_MS) {
-                trace.info("slow query: {0} ms", time);
-            }
-        }
-    }
-
-    /**
-     * Execute a query and return the result.
-     * This method prepares everything and calls {@link #query(int)} finally.
-     *
-     * @param maxRows the maximum number of rows to return
-     * @param scrollable if the result set must be scrollable (ignored)
-     * @return the result set
-     */
-    @Override
-    public Result query(int maxRows, boolean scrollable) {
-        startTime = 0;
-        long start = 0;
-        Database database = session.getDatabase();
-        Object sync = database.isMultiThreaded() ? session : database;
-        session.waitIfExclusiveModeEnabled();
-        boolean callStop = true;
-        synchronized (sync) {
-            session.setCurrentCommand(this);
-            try {
-                while (true) {
-                    database.checkPowerOff();
-                    try {
-                        return queryInternal(maxRows);
-                    } catch (DbException e) {
-                        start = filterConcurrentUpdate(e, start);
-                    } catch (OutOfMemoryError e) {
-                        callStop = false;
-                        // there is a serious problem:
-                        // the transaction may be applied partially
-                        // in this case we need to panic:
-                        // close the database
-                        database.shutdownImmediately();
-                        throw DbException.convert(e);
-                    } catch (Throwable e) {
-                        throw DbException.convert(e);
-                    }
-                }
-            } catch (DbException e) {
-                e = e.addSQL(statement.getSQL());
-                SQLException s = e.getSQLException();
-                database.exceptionThrown(s, statement.getSQL());
-                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-                    callStop = false;
-                    database.shutdownImmediately();
-                    throw e;
-                }
-                database.checkPowerOff();
-                throw e;
-            } finally {
-                if (callStop) {
-                    stop();
-                }
-            }
-        }
-    }
-
-    private Result queryInternal(int maxRows) {
-        recompileIfRequired();
-        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-        start();
-        statement.checkParameters();
-        Result result = RouterHolder.getRouter().executeQuery(statement, maxRows);
-        statement.trace(startTime, result.getRowCount());
-        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
-        return result;
-    }
-
-    @Override
-    public int update() {
-        long start = 0;
-        Database database = session.getDatabase();
-        Object sync = database.isMultiThreaded() ? session : database;
-        session.waitIfExclusiveModeEnabled();
-        boolean callStop = true;
-        synchronized (sync) {
-            int savepointId = session.getTransaction(statement).getSavepointId();
-            session.setCurrentCommand(this);
-            try {
-                while (true) {
-                    database.checkPowerOff();
-                    try {
-                        return updateInternal();
-                    } catch (DbException e) {
-                        start = filterConcurrentUpdate(e, start);
-                    } catch (OutOfMemoryError e) {
-                        callStop = false;
-                        database.shutdownImmediately();
-                        throw DbException.convert(e);
-                    } catch (Throwable e) {
-                        throw DbException.convert(e);
-                    }
-                }
-            } catch (DbException e) {
-                e = e.addSQL(statement.getSQL());
-                SQLException s = e.getSQLException();
-                database.exceptionThrown(s, statement.getSQL());
-                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-                    callStop = false;
-                    database.shutdownImmediately();
-                    throw e;
-                }
-                database.checkPowerOff();
-                if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
-                    session.rollback();
-                } else {
-                    session.rollbackTo(savepointId);
-                }
-                throw e;
-            } finally {
-                if (callStop) {
-                    stop();
-                }
-            }
-        }
-    }
-
-    private int updateInternal() {
-        recompileIfRequired();
-        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-        start();
-        session.setLastScopeIdentity(ValueNull.INSTANCE);
-        statement.checkParameters();
-        int updateCount = RouterHolder.getRouter().executeUpdate(statement);
-        statement.trace(startTime, updateCount);
-        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
-        return updateCount;
-    }
-
-    private long filterConcurrentUpdate(DbException e, long start) {
-        if (e.getErrorCode() != ErrorCode.CONCURRENT_UPDATE_1) {
-            throw e;
-        }
-        long now = System.nanoTime() / 1000000;
-        if (start != 0 && now - start > session.getLockTimeout()) {
-            throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, e.getCause(), "");
-        }
-        Database database = session.getDatabase();
-        int sleep = 1 + MathUtils.randomInt(10);
-        while (true) {
-            try {
-                if (database.isMultiThreaded()) {
-                    Thread.sleep(sleep);
-                } else {
-                    database.wait(sleep);
-                }
-            } catch (InterruptedException e1) {
-                // ignore
-            }
-            long slept = System.nanoTime() / 1000000 - now;
-            if (slept >= sleep) {
-                break;
-            }
-        }
-        return start == 0 ? now : start;
     }
 
     @Override
@@ -294,30 +104,6 @@ class StatementWrapper extends StatementBase {
     @Override
     public void reuse() {
         statement.reuse();
-    }
-
-    private void recompileIfRequired() {
-        if (statement.needRecompile()) {
-            // TODO test with 'always recompile'
-            statement.setModificationMetaId(0);
-            String sql = statement.getSQL();
-            ArrayList<Parameter> oldParams = statement.getParameters();
-            Parser parser = new Parser(session);
-            statement = (StatementBase) parser.parse(sql).prepare();
-            long mod = statement.getModificationMetaId();
-            statement.setModificationMetaId(0);
-            ArrayList<Parameter> newParams = statement.getParameters();
-            for (int i = 0, size = newParams.size(); i < size; i++) {
-                Parameter old = oldParams.get(i);
-                if (old.isValueSet()) {
-                    Value v = old.getValue(session);
-                    Parameter p = newParams.get(i);
-                    p.setValue(v);
-                }
-            }
-            statement.prepare();
-            statement.setModificationMetaId(mod);
-        }
     }
 
     private boolean readOnlyKnown;
@@ -452,4 +238,221 @@ class StatementWrapper extends StatementBase {
     public PreparedStatement getWrappedStatement() {
         return statement;
     }
+
+    /**
+     * Execute a query and return the result.
+     * This method prepares everything and calls {@link #query(int)} finally.
+     *
+     * @param maxRows the maximum number of rows to return
+     * @param scrollable if the result set must be scrollable (ignored)
+     * @return the result set
+     */
+    @Override
+    public Result query(int maxRows, boolean scrollable) {
+        startTime = 0;
+        long start = 0;
+        Database database = session.getDatabase();
+        Object sync = database.isMultiThreaded() ? session : database;
+        session.waitIfExclusiveModeEnabled();
+        boolean callStop = true;
+        synchronized (sync) {
+            session.setCurrentCommand(this);
+            try {
+                while (true) {
+                    database.checkPowerOff();
+                    try {
+                        return queryInternal(maxRows);
+                    } catch (DbException e) {
+                        start = filterConcurrentUpdate(e, start);
+                    } catch (OutOfMemoryError e) {
+                        callStop = false;
+                        // there is a serious problem:
+                        // the transaction may be applied partially
+                        // in this case we need to panic:
+                        // close the database
+                        database.shutdownImmediately();
+                        throw DbException.convert(e);
+                    } catch (Throwable e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            } catch (DbException e) {
+                e = e.addSQL(statement.getSQL());
+                SQLException s = e.getSQLException();
+                database.exceptionThrown(s, statement.getSQL());
+                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
+                    callStop = false;
+                    database.shutdownImmediately();
+                    throw e;
+                }
+                database.checkPowerOff();
+                throw e;
+            } finally {
+                if (callStop) {
+                    stop();
+                }
+            }
+        }
+    }
+
+    /**
+     * Start the stopwatch.
+     */
+    private void start() {
+        if (trace.isInfoEnabled()) {
+            startTime = System.currentTimeMillis();
+        }
+    }
+
+    private void setProgress(int state) {
+        session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
+    }
+
+    private void recompileIfRequired() {
+        if (statement.needRecompile()) {
+            // TODO test with 'always recompile'
+            statement.setModificationMetaId(0);
+            String sql = statement.getSQL();
+            ArrayList<Parameter> oldParams = statement.getParameters();
+            Parser parser = new Parser(session);
+            statement = (StatementBase) parser.parse(sql).prepare();
+            long mod = statement.getModificationMetaId();
+            statement.setModificationMetaId(0);
+            ArrayList<Parameter> newParams = statement.getParameters();
+            for (int i = 0, size = newParams.size(); i < size; i++) {
+                Parameter old = oldParams.get(i);
+                if (old.isValueSet()) {
+                    Value v = old.getValue(session);
+                    Parameter p = newParams.get(i);
+                    p.setValue(v);
+                }
+            }
+            statement.prepare();
+            statement.setModificationMetaId(mod);
+        }
+    }
+
+    private Result queryInternal(int maxRows) {
+        recompileIfRequired();
+        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+        start();
+        statement.checkParameters();
+        Result result = RouterHolder.getRouter().executeQuery(statement, maxRows);
+        statement.trace(startTime, result.getRowCount());
+        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+        return result;
+    }
+
+    private long filterConcurrentUpdate(DbException e, long start) {
+        if (e.getErrorCode() != ErrorCode.CONCURRENT_UPDATE_1) {
+            throw e;
+        }
+        long now = System.nanoTime() / 1000000;
+        if (start != 0 && now - start > session.getLockTimeout()) {
+            throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, e.getCause(), "");
+        }
+        Database database = session.getDatabase();
+        int sleep = 1 + MathUtils.randomInt(10);
+        while (true) {
+            try {
+                if (database.isMultiThreaded()) {
+                    Thread.sleep(sleep);
+                } else {
+                    database.wait(sleep);
+                }
+            } catch (InterruptedException e1) {
+                // ignore
+            }
+            long slept = System.nanoTime() / 1000000 - now;
+            if (slept >= sleep) {
+                break;
+            }
+        }
+        return start == 0 ? now : start;
+    }
+
+    private void stop() {
+        session.closeTemporaryResults();
+        session.setCurrentCommand(null);
+        if (!isTransactional()) {
+            session.commit(true);
+        } else if (session.isAutoCommit()) {
+            session.commit(false);
+        } else if (session.getDatabase().isMultiThreaded()) {
+            Database db = session.getDatabase();
+            if (db != null) {
+                if (db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {
+                    session.unlockReadLocks();
+                }
+            }
+        }
+        if (trace.isInfoEnabled() && startTime > 0) {
+            long time = System.currentTimeMillis() - startTime;
+            if (time > Constants.SLOW_QUERY_LIMIT_MS) {
+                trace.info("slow query: {0} ms", time);
+            }
+        }
+    }
+
+    @Override
+    public int update() {
+        long start = 0;
+        Database database = session.getDatabase();
+        Object sync = database.isMultiThreaded() ? session : database;
+        session.waitIfExclusiveModeEnabled();
+        boolean callStop = true;
+        synchronized (sync) {
+            int savepointId = session.getTransaction(statement).getSavepointId();
+            session.setCurrentCommand(this);
+            try {
+                while (true) {
+                    database.checkPowerOff();
+                    try {
+                        return updateInternal();
+                    } catch (DbException e) {
+                        start = filterConcurrentUpdate(e, start);
+                    } catch (OutOfMemoryError e) {
+                        callStop = false;
+                        database.shutdownImmediately();
+                        throw DbException.convert(e);
+                    } catch (Throwable e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            } catch (DbException e) {
+                e = e.addSQL(statement.getSQL());
+                SQLException s = e.getSQLException();
+                database.exceptionThrown(s, statement.getSQL());
+                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
+                    callStop = false;
+                    database.shutdownImmediately();
+                    throw e;
+                }
+                database.checkPowerOff();
+                if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
+                    session.rollback();
+                } else {
+                    session.rollbackTo(savepointId);
+                }
+                throw e;
+            } finally {
+                if (callStop) {
+                    stop();
+                }
+            }
+        }
+    }
+
+    private int updateInternal() {
+        recompileIfRequired();
+        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+        start();
+        session.setLastScopeIdentity(ValueNull.INSTANCE);
+        statement.checkParameters();
+        int updateCount = RouterHolder.getRouter().executeUpdate(statement);
+        statement.trace(startTime, updateCount);
+        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+        return updateCount;
+    }
+
 }

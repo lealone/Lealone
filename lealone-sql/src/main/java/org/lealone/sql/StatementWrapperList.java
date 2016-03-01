@@ -13,6 +13,9 @@ import org.lealone.sql.expression.Parameter;
 
 /**
  * Represents a list of SQL statements.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 class StatementWrapperList extends StatementWrapper {
 
