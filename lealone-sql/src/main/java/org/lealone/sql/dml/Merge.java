@@ -21,6 +21,7 @@ import org.lealone.db.result.Row;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
@@ -203,6 +204,8 @@ public class Merge extends ManipulateStatement {
         for (int i = 0; i < columns.length; i++) {
             Column col = columns[i];
             Value v = row.getValue(col.getColumnId());
+            if (v == null)
+                v = ValueNull.INSTANCE;
             Parameter p = k.get(i);
             p.setValue(v);
         }
