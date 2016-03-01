@@ -27,6 +27,7 @@ import org.junit.Assert;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
+import org.lealone.main.config.Config;
 import org.lealone.mvstore.mvcc.log.LogStorage;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
@@ -42,6 +43,9 @@ public class TestBase extends Assert {
         System.setProperty("java.io.tmpdir", TEST_DIR + File.separatorChar + "tmp");
         System.setProperty("lealone.lob.client.max.size.memory", "2048");
         SysProperties.setBaseDir(TEST_DIR);
+
+        if (Config.getProperty("default.storage.engine") == null)
+            Config.setProperty("default.storage.engine", getDefaultStorageEngineName());
     }
 
     public static String getDefaultStorageEngineName() {

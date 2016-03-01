@@ -73,7 +73,7 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
         Database newDb = new Database(id, dbName, parameters);
         newDb.setReplicationProperties(replicationProperties);
         newDb.setRunMode(runMode);
-        if (!parameters.containsKey("hostIds")) {
+        if (parameters != null && !parameters.containsKey("hostIds")) {
             int[] hostIds = RouterHolder.getRouter().getHostIds(newDb);
             if (hostIds != null && hostIds.length > 0)
                 newDb.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
