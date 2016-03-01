@@ -2837,7 +2837,7 @@ public class MVStore implements Storage {
 
     @Override
     public void flush() {
-        if (fileStore.isReadOnly()) {
+        if (fileStore == null || fileStore.isReadOnly()) {
             return;
         }
         if (!compact(50, 4 * 1024 * 1024)) {
