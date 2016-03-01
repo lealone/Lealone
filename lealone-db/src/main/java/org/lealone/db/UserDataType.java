@@ -34,6 +34,11 @@ public class UserDataType extends DbObjectBase {
         return "DROP DOMAIN IF EXISTS " + getSQL();
     }
 
+    @Override
+    public void removeChildrenAndResources(ServerSession session) {
+        database.removeMeta(session, getId());
+    }
+
     public Column getColumn() {
         return column;
     }
