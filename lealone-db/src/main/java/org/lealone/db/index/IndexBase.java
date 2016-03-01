@@ -450,7 +450,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
 
     @Override
     public void checkRename() {
-        throw DbException.getUnsupportedException("checkRename");
+        // throw DbException.getUnsupportedException("checkRename");
     }
 
     @Override
