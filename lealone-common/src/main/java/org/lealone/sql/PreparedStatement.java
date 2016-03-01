@@ -41,4 +41,6 @@ public interface PreparedStatement extends SQLStatement {
 
     boolean isCacheable();
 
+    PreparedStatement getWrappedStatement();
+
 }

@@ -480,6 +480,11 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     public void cancel() {
     }
 
+    @Override
+    public PreparedStatement getWrappedStatement() {
+        return this;
+    }
+
     /**
      * Get the SQL snippet of the value list.
      *

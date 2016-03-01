@@ -447,4 +447,9 @@ class StatementWrapper extends StatementBase {
     public ServerSession getSession() {
         return statement.getSession();
     }
+
+    @Override
+    public PreparedStatement getWrappedStatement() {
+        return statement;
+    }
 }
