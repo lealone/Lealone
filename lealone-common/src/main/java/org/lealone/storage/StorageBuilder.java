@@ -22,7 +22,7 @@ public abstract class StorageBuilder {
 
     public abstract Storage openStorage();
 
-    private StorageBuilder set(String key, Object value) {
+    public StorageBuilder set(String key, Object value) {
         config.put(key, value);
         return this;
     }

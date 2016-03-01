@@ -31,4 +31,11 @@ public class MVStoreBuilder extends StorageBuilder {
         return new MVStore(config);
     }
 
+    @Override
+    public StorageBuilder storageName(String storageName) {
+        if (storageName != null)
+            set("fileName", storageName + Constants.SUFFIX_MV_FILE);
+        return super.storageName(storageName);
+    }
+
 }

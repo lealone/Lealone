@@ -34,8 +34,8 @@ public class BackupCommandTest extends SqlTestBase {
         executeUpdate("insert into BackupCommandTest(id, name, b) values(3, 'a3', false)");
         executeUpdate("insert into BackupCommandTest(id, name, b) values(3, 'b3', true)");
 
-        sql = "BACKUP TO " + TEST_DIR + "/myBackup.zip"; // 文件名要加单引号
-        sql = "BACKUP TO '" + TEST_DIR + "/myBackup.zip'";
+        sql = "BACKUP TO " + joinDirs("myBackup.zip"); // 文件名要加单引号
+        sql = "BACKUP TO '" + joinDirs("myBackup.zip") + "'";
         executeUpdate(sql);
 
         sql = "select * from BackupCommandTest";
