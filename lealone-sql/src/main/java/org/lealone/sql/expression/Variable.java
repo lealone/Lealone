@@ -71,7 +71,6 @@ public class Variable extends Expression {
         case ExpressionVisitor.SET_MAX_DATA_MODIFICATION_ID:
             // it is checked independently if the value is the same as the last time
         case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
-        case ExpressionVisitor.READONLY:
         case ExpressionVisitor.INDEPENDENT:
         case ExpressionVisitor.NOT_FROM_RESOLVER:
         case ExpressionVisitor.QUERY_COMPARABLE:

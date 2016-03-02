@@ -1409,11 +1409,6 @@ public class Select extends Query implements org.lealone.db.expression.Select {
     }
 
     @Override
-    public boolean isReadOnly() {
-        return isEverything(ExpressionVisitor.READONLY_VISITOR);
-    }
-
-    @Override
     public boolean allowGlobalConditions() {
         if (offsetExpr == null && (limitExpr == null || sort == null)) {
             return true;

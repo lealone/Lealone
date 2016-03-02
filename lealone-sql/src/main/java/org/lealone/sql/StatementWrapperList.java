@@ -67,11 +67,6 @@ class StatementWrapperList extends StatementWrapper {
     }
 
     @Override
-    public boolean isReadOnly() {
-        return false;
-    }
-
-    @Override
     public int getType() {
         return firstStatement.getType();
     }

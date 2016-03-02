@@ -29,8 +29,6 @@ public interface PreparedStatement extends SQLStatement {
 
     boolean isBatch();
 
-    boolean isReadOnly();
-
     void setObjectId(int i);
 
     void checkCanceled();

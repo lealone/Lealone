@@ -64,25 +64,15 @@ public class ExpressionVisitor {
     public static final int SET_MAX_DATA_MODIFICATION_ID = 4;
 
     /**
-     * Does the expression have no side effects (change the data)?
-     */
-    public static final int READONLY = 5;
-
-    /**
-     * The visitor singleton for the type EVALUATABLE.
-     */
-    public static final ExpressionVisitor READONLY_VISITOR = new ExpressionVisitor(READONLY);
-
-    /**
      * Does an expression have no relation to the given table filter
      * (getResolver)?
      */
-    public static final int NOT_FROM_RESOLVER = 6;
+    public static final int NOT_FROM_RESOLVER = 5;
 
     /**
      * Request to get the set of dependencies (addDependency).
      */
-    public static final int GET_DEPENDENCIES = 7;
+    public static final int GET_DEPENDENCIES = 6;
 
     /**
      * Can the expression be added to a condition of an outer query.
@@ -90,12 +80,12 @@ public class ExpressionVisitor {
      * select id from (select t.*, rownum as r from test t) where r between 2 and 3;
      * Also a sequence expression must not be used.
      */
-    public static final int QUERY_COMPARABLE = 8;
+    public static final int QUERY_COMPARABLE = 7;
 
     /**
      * Get all referenced columns.
      */
-    public static final int GET_COLUMNS = 9;
+    public static final int GET_COLUMNS = 8;
 
     /**
      * The visitor singleton for the type QUERY_COMPARABLE.

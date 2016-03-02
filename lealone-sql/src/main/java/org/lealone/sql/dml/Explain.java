@@ -47,11 +47,6 @@ public class Explain extends ManipulateStatement {
         return true;
     }
 
-    @Override
-    public boolean isReadOnly() {
-        return command.isReadOnly();
-    }
-
     public void setCommand(StatementBase command) {
         this.command = command;
     }

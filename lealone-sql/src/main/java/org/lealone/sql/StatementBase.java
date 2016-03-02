@@ -122,16 +122,6 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     public abstract int getType();
 
     /**
-     * Check if this statement is read only.
-     *
-     * @return true if it is
-     */
-    @Override
-    public boolean isReadOnly() {
-        return false;
-    }
-
-    /**
      * Check if the statement needs to be re-compiled.
      *
      * @return true if it must

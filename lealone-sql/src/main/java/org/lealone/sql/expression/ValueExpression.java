@@ -153,7 +153,6 @@ public class ValueExpression extends Expression {
         switch (visitor.getType()) {
         case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
         case ExpressionVisitor.DETERMINISTIC:
-        case ExpressionVisitor.READONLY:
         case ExpressionVisitor.INDEPENDENT:
         case ExpressionVisitor.EVALUATABLE:
         case ExpressionVisitor.SET_MAX_DATA_MODIFICATION_ID:

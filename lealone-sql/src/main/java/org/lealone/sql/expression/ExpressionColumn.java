@@ -278,7 +278,6 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
         switch (visitor.getType()) {
         case ExpressionVisitor.OPTIMIZABLE_MIN_MAX_COUNT_ALL:
             return false;
-        case ExpressionVisitor.READONLY:
         case ExpressionVisitor.DETERMINISTIC:
         case ExpressionVisitor.QUERY_COMPARABLE:
             return true;

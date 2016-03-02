@@ -9,7 +9,6 @@ package org.lealone.sql.dml;
 import java.sql.ResultSet;
 
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
@@ -48,12 +47,6 @@ public class Call extends ManipulateStatement {
     @Override
     public boolean isQuery() {
         return true;
-    }
-
-    @Override
-    public boolean isReadOnly() {
-        return expression.isEverything(ExpressionVisitor.READONLY_VISITOR);
-
     }
 
     @Override

@@ -88,7 +88,6 @@ public class SequenceValue extends Expression {
         case ExpressionVisitor.GET_COLUMNS:
             return true;
         case ExpressionVisitor.DETERMINISTIC:
-        case ExpressionVisitor.READONLY:
         case ExpressionVisitor.INDEPENDENT:
         case ExpressionVisitor.QUERY_COMPARABLE:
             return false;

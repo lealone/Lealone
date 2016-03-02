@@ -34,11 +34,6 @@ public abstract class AdminStatement extends StatementBase {
     }
 
     @Override
-    public boolean isReadOnly() {
-        return false;
-    }
-
-    @Override
     public Result getMetaData() {
         return null;
     }

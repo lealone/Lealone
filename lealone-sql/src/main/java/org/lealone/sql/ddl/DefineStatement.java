@@ -31,11 +31,6 @@ public abstract class DefineStatement extends StatementBase {
     }
 
     @Override
-    public boolean isReadOnly() {
-        return false;
-    }
-
-    @Override
     public Result getMetaData() {
         return null;
     }

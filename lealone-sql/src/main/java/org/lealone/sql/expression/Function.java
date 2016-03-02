@@ -947,7 +947,7 @@ public class Function extends Expression implements FunctionCall {
         ServerSession[] sessions = session.getDatabase().getSessions(false);
         for (ServerSession s : sessions) {
             if (s.getId() == targetSessionId) {
-                Command c = (Command) s.getCurrentCommand();
+                Command c = s.getCurrentCommand();
                 if (c == null) {
                     return false;
                 }
@@ -2207,7 +2207,6 @@ public class Function extends Expression implements FunctionCall {
         switch (visitor.getType()) {
         case ExpressionVisitor.DETERMINISTIC:
         case ExpressionVisitor.QUERY_COMPARABLE:
-        case ExpressionVisitor.READONLY:
             return info.deterministic;
         case ExpressionVisitor.EVALUATABLE:
         case ExpressionVisitor.GET_DEPENDENCIES:

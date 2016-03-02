@@ -106,18 +106,6 @@ class StatementWrapper extends StatementBase {
         statement.reuse();
     }
 
-    private boolean readOnlyKnown;
-    private boolean readOnly;
-
-    @Override
-    public boolean isReadOnly() {
-        if (!readOnlyKnown) {
-            readOnly = statement.isReadOnly();
-            readOnlyKnown = true;
-        }
-        return readOnly;
-    }
-
     @Override
     public boolean isCacheable() {
         return statement.isCacheable();

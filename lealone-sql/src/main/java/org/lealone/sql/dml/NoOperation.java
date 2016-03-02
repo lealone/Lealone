@@ -34,11 +34,6 @@ public class NoOperation extends ManipulateStatement {
     }
 
     @Override
-    public boolean isReadOnly() {
-        return true;
-    }
-
-    @Override
     public int update() {
         return 0;
     }
