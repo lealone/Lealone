@@ -15,14 +15,13 @@ import java.io.StringWriter;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
-import java.util.ArrayList;
+import java.sql.Statement;
 import java.util.List;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.JdbcSQLException;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.SmallMap;
 import org.lealone.common.util.StringUtils;
@@ -36,7 +35,6 @@ import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.replication.Replication;
-import org.lealone.sql.BatchStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageMap;
@@ -346,23 +344,17 @@ public class TcpServerThread extends Thread implements Comparable<TcpServerThrea
         return Session.STATUS_OK_STATE_CHANGED;
     }
 
-    private void executeBatch(int size, BatchStatement command) throws IOException {
-        int old = session.getModificationId();
-        synchronized (session) {
-            command.update();
-        }
-
+    private void writeBatchResult(int[] result, int oldModificationId) throws IOException {
         int status;
         if (session.isClosed()) {
             status = Session.STATUS_CLOSED;
         } else {
-            status = getState(old);
+            status = getState(oldModificationId);
         }
         transfer.writeInt(status);
-        int[] result = command.getResult();
-        command.close();
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < result.length; i++)
             transfer.writeInt(result[i]);
+
         transfer.flush();
     }
 
@@ -694,30 +686,44 @@ public class TcpServerThread extends Thread implements Comparable<TcpServerThrea
         }
         case Session.COMMAND_BATCH_STATEMENT_UPDATE: {
             int size = transfer.readInt();
-            ArrayList<String> batchCommands = New.arrayList(size);
-            for (int i = 0; i < size; i++)
-                batchCommands.add(transfer.readString());
-
-            BatchStatement command = session.getBatchStatement(batchCommands);
-            executeBatch(size, command);
+            int[] result = new int[size];
+            int old = session.getModificationId();
+            for (int i = 0; i < size; i++) {
+                String sql = transfer.readString();
+                PreparedStatement command = session.prepareStatement(sql, -1);
+                synchronized (session) {
+                    try {
+                        result[i] = command.update();
+                    } catch (Exception e) {
+                        result[i] = Statement.EXECUTE_FAILED;
+                    }
+                }
+            }
+            writeBatchResult(result, old);
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
             int id = transfer.readInt();
             int size = transfer.readInt();
-            PreparedStatement preparedCommand = (PreparedStatement) cache.getObject(id, false);
-            ArrayList<Value[]> batchParameters = New.arrayList(size);
-            int paramsSize = preparedCommand.getParameters().size();
-            Value[] values;
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            List<? extends CommandParameter> params = command.getParameters();
+            int paramsSize = params.size();
+            int[] result = new int[size];
+            int old = session.getModificationId();
             for (int i = 0; i < size; i++) {
-                values = new Value[paramsSize];
                 for (int j = 0; j < paramsSize; j++) {
-                    values[j] = transfer.readValue();
+                    CommandParameter p = params.get(j);
+                    p.setValue(transfer.readValue());
                 }
-                batchParameters.add(values);
+                synchronized (session) {
+                    try {
+                        result[i] = command.update();
+                    } catch (Exception e) {
+                        result[i] = Statement.EXECUTE_FAILED;
+                    }
+                }
             }
-            BatchStatement command = session.getBatchStatement(preparedCommand, batchParameters);
-            executeBatch(size, command);
+            writeBatchResult(result, old);
             break;
         }
         case Session.COMMAND_CLOSE: {

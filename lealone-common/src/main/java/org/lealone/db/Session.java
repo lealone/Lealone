@@ -7,11 +7,8 @@
 package org.lealone.db;
 
 import java.io.Closeable;
-import java.util.ArrayList;
 
 import org.lealone.common.trace.Trace;
-import org.lealone.db.value.Value;
-import org.lealone.sql.BatchStatement;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageCommand;
@@ -98,10 +95,6 @@ public interface Session extends Closeable, Transaction.Participant {
     ParsedStatement parseStatement(String sql);
 
     PreparedStatement prepareStatement(String sql, int fetchSize);
-
-    BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters);
-
-    BatchStatement getBatchStatement(ArrayList<String> batchStatements);
 
     /**
      * Check if this session is in auto-commit mode.

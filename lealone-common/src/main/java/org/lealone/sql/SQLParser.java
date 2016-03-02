@@ -17,10 +17,6 @@
  */
 package org.lealone.sql;
 
-import java.util.ArrayList;
-
-import org.lealone.db.value.Value;
-
 public interface SQLParser {
 
     void setRightsChecked(boolean rightsChecked);
@@ -28,9 +24,5 @@ public interface SQLParser {
     Expression parseExpression(String sql);
 
     ParsedStatement parse(String sql);
-
-    BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters);
-
-    BatchStatement getBatchStatement(ArrayList<String> batchCommands);
 
 }

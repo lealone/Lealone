@@ -19,7 +19,6 @@ package org.lealone.replication;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.trace.Trace;
@@ -28,8 +27,6 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
-import org.lealone.db.value.Value;
-import org.lealone.sql.BatchStatement;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageCommand;
@@ -134,19 +131,9 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
-        return sessions[0].getBatchStatement(ps, batchParameters);
-    }
-
-    @Override
     public void rollbackTransaction() {
         for (int i = 0; i < n; i++)
             sessions[i].rollbackTransaction();
-    }
-
-    @Override
-    public BatchStatement getBatchStatement(ArrayList<String> batchStatements) {
-        return sessions[0].getBatchStatement(batchStatements);
     }
 
     @Override

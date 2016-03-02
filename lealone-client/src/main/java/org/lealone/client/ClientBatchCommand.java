@@ -27,9 +27,8 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
-import org.lealone.sql.BatchStatement;
 
-public class ClientBatchCommand implements BatchStatement {
+public class ClientBatchCommand implements Command {
     private ClientSession session;
     private Transfer transfer;
     private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
@@ -157,7 +156,6 @@ public class ClientBatchCommand implements BatchStatement {
         throw DbException.throwInternalError();
     }
 
-    @Override
     public int[] getResult() {
         return result;
     }

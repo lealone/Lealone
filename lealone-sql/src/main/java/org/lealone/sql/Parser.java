@@ -218,16 +218,6 @@ public class Parser implements SQLParser {
         this.rightsChecked = rightsChecked;
     }
 
-    @Override
-    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
-        return new ServerBatchStatement(session, (StatementBase) ps, batchParameters);
-    }
-
-    @Override
-    public BatchStatement getBatchStatement(ArrayList<String> batchCommands) {
-        return new ServerBatchStatement(session, batchCommands);
-    }
-
     /**
      * Parse a SQL code snippet that represents an expression.
      *

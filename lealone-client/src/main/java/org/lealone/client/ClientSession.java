@@ -33,7 +33,6 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
 import org.lealone.replication.ReplicationSession;
-import org.lealone.sql.BatchStatement;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
@@ -588,16 +587,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public PreparedStatement prepareStatement(String sql, int fetchSize) {
-        return null;
-    }
-
-    @Override
-    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
-        return null;
-    }
-
-    @Override
-    public BatchStatement getBatchStatement(ArrayList<String> batchStatements) {
         return null;
     }
 

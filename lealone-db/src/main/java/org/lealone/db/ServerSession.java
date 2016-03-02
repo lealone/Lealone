@@ -33,7 +33,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.BatchStatement;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLParser;
@@ -1327,16 +1326,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public SQLParser getParser() {
         return database.createParser(this);
-    }
-
-    @Override
-    public BatchStatement getBatchStatement(PreparedStatement ps, ArrayList<Value[]> batchParameters) {
-        return getParser().getBatchStatement(ps, batchParameters);
-    }
-
-    @Override
-    public BatchStatement getBatchStatement(ArrayList<String> batchStatements) {
-        return getParser().getBatchStatement(batchStatements);
     }
 
     @Override

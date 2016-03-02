@@ -19,9 +19,7 @@ public interface Command {
 
     int CLIENT_COMMAND = -1;
     int CLIENT_BATCH_COMMAND = -2;
-
     int SERVER_COMMAND = -3;
-    int SERVER_BATCH_COMMAND = -4;
 
     /**
      * Get command type.
