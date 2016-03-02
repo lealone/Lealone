@@ -143,6 +143,14 @@ public class Parameter extends Expression implements CommandParameter {
     }
 
     @Override
+    public int getNullable() {
+        if (column != null) {
+            return column.isNullable() ? Column.NULLABLE : Column.NOT_NULLABLE;
+        }
+        return super.getNullable();
+    }
+
+    @Override
     public void updateAggregate(ServerSession session) {
         // nothing to do
     }
