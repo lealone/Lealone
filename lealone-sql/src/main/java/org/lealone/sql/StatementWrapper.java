@@ -237,6 +237,15 @@ class StatementWrapper extends StatementBase {
      */
     @Override
     public Result query(int maxRows, boolean scrollable) {
+        return (Result) execute(maxRows, false);
+    }
+
+    @Override
+    public int update() {
+        return ((Integer) execute(0, true)).intValue();
+    }
+
+    private Object execute(int maxRows, boolean isUpdate) {
         startTime = 0;
         long start = 0;
         Database database = session.getDatabase();
@@ -244,12 +253,33 @@ class StatementWrapper extends StatementBase {
         session.waitIfExclusiveModeEnabled();
         boolean callStop = true;
         synchronized (sync) {
+            int savepointId = 0;
+            if (isUpdate)
+                savepointId = session.getTransaction(statement).getSavepointId();
             session.setCurrentCommand(this);
             try {
                 while (true) {
                     database.checkPowerOff();
                     try {
-                        return queryInternal(maxRows);
+                        recompileIfRequired();
+                        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+                        start();
+                        statement.checkParameters();
+                        Object result;
+                        int rowCount;
+                        if (isUpdate) {
+                            session.setLastScopeIdentity(ValueNull.INSTANCE);
+                            int updateCount = RouterHolder.getRouter().executeUpdate(statement);
+                            rowCount = updateCount;
+                            result = Integer.valueOf(updateCount);
+                        } else {
+                            Result r = RouterHolder.getRouter().executeQuery(statement, maxRows);
+                            rowCount = r.getRowCount();
+                            result = r;
+                        }
+                        statement.trace(startTime, rowCount);
+                        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+                        return result;
                     } catch (DbException e) {
                         start = filterConcurrentUpdate(e, start);
                     } catch (OutOfMemoryError e) {
@@ -274,6 +304,13 @@ class StatementWrapper extends StatementBase {
                     throw e;
                 }
                 database.checkPowerOff();
+                if (isUpdate) {
+                    if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
+                        session.rollback();
+                    } else {
+                        session.rollbackTo(savepointId);
+                    }
+                }
                 throw e;
             } finally {
                 if (callStop) {
@@ -318,17 +355,6 @@ class StatementWrapper extends StatementBase {
             statement.prepare();
             statement.setModificationMetaId(mod);
         }
-    }
-
-    private Result queryInternal(int maxRows) {
-        recompileIfRequired();
-        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-        start();
-        statement.checkParameters();
-        Result result = RouterHolder.getRouter().executeQuery(statement, maxRows);
-        statement.trace(startTime, result.getRowCount());
-        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
-        return result;
     }
 
     private long filterConcurrentUpdate(DbException e, long start) {
@@ -380,67 +406,6 @@ class StatementWrapper extends StatementBase {
                 trace.info("slow query: {0} ms", time);
             }
         }
-    }
-
-    @Override
-    public int update() {
-        long start = 0;
-        Database database = session.getDatabase();
-        Object sync = database.isMultiThreaded() ? session : database;
-        session.waitIfExclusiveModeEnabled();
-        boolean callStop = true;
-        synchronized (sync) {
-            int savepointId = session.getTransaction(statement).getSavepointId();
-            session.setCurrentCommand(this);
-            try {
-                while (true) {
-                    database.checkPowerOff();
-                    try {
-                        return updateInternal();
-                    } catch (DbException e) {
-                        start = filterConcurrentUpdate(e, start);
-                    } catch (OutOfMemoryError e) {
-                        callStop = false;
-                        database.shutdownImmediately();
-                        throw DbException.convert(e);
-                    } catch (Throwable e) {
-                        throw DbException.convert(e);
-                    }
-                }
-            } catch (DbException e) {
-                e = e.addSQL(statement.getSQL());
-                SQLException s = e.getSQLException();
-                database.exceptionThrown(s, statement.getSQL());
-                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-                    callStop = false;
-                    database.shutdownImmediately();
-                    throw e;
-                }
-                database.checkPowerOff();
-                if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
-                    session.rollback();
-                } else {
-                    session.rollbackTo(savepointId);
-                }
-                throw e;
-            } finally {
-                if (callStop) {
-                    stop();
-                }
-            }
-        }
-    }
-
-    private int updateInternal() {
-        recompileIfRequired();
-        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-        start();
-        session.setLastScopeIdentity(ValueNull.INSTANCE);
-        statement.checkParameters();
-        int updateCount = RouterHolder.getRouter().executeUpdate(statement);
-        statement.trace(startTime, updateCount);
-        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
-        return updateCount;
     }
 
 }
