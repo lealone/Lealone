@@ -315,7 +315,7 @@ class StatementWrapper extends StatementBase {
             String sql = statement.getSQL();
             ArrayList<Parameter> oldParams = statement.getParameters();
             Parser parser = new Parser(session);
-            statement = (StatementBase) parser.parse(sql).prepare();
+            statement = parser.parse(sql);
             long mod = statement.getModificationMetaId();
             statement.setModificationMetaId(0);
             ArrayList<Parameter> newParams = statement.getParameters();
