@@ -36,7 +36,7 @@ import org.lealone.storage.StorageMapCursor;
  * @author H2 Group
  * @author zhh
  */
-public class LobStorageMap implements LobStorage {
+public class MVLobStorage implements LobStorage {
 
     private static final boolean TRACE = false;
 
@@ -76,7 +76,7 @@ public class LobStorageMap implements LobStorage {
      */
     private MVMap<Long, byte[]> dataMap;
 
-    public LobStorageMap(DataHandler dataHandler, Storage storage) {
+    public MVLobStorage(DataHandler dataHandler, Storage storage) {
         this.dataHandler = dataHandler;
         this.storage = (MVStore) storage;
     }

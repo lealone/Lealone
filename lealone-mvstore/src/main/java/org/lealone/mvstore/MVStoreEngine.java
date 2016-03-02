@@ -37,6 +37,6 @@ public class MVStoreEngine extends StorageEngineBase {
 
     @Override
     public LobStorage getLobStorage(DataHandler dataHandler, Storage storage) {
-        return new LobStorageMap(dataHandler, storage);
+        return new MVLobStorage(dataHandler, storage);
     }
 }
