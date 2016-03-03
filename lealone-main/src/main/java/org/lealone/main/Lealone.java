@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
@@ -44,8 +46,6 @@ import org.lealone.storage.StorageEngineManager;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Lealone {
     private static final Logger logger = LoggerFactory.getLogger(Lealone.class);
