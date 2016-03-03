@@ -32,7 +32,7 @@ public class MVStoreEngine extends StorageEngineBase {
 
     @Override
     public StorageBuilder getStorageBuilder() {
-        return new MVStoreBuilder();
+        return new MVStoreBuilder().set("autoCommitDelay", 0);
     }
 
     @Override
