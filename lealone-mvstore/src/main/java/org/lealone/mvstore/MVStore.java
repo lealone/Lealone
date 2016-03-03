@@ -2443,8 +2443,8 @@ public class MVStore implements Storage {
         if (millis > 0) {
             int sleep = Math.max(1, millis / 10);
             BackgroundWriterThread t = new BackgroundWriterThread(this, sleep, fileStore.toString());
-            t.start();
             backgroundWriterThread = t;
+            t.start();
         }
     }
 
