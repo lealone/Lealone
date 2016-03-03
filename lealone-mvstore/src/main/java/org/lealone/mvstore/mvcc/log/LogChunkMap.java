@@ -76,27 +76,29 @@ public class LogChunkMap<K, V> extends MemoryMap<K, V> implements Comparable<Log
 
     @Override
     public synchronized void save() {
-        WriteBuffer buff = WriteBufferPool.poll();
-        try {
-            K lastKey = this.lastSyncKey;
-            Set<Entry<K, V>> entrySet = lastKey == null ? skipListMap.entrySet() : skipListMap.tailMap(lastKey, false)
-                    .entrySet();
-            for (Entry<K, V> e : entrySet) {
-                lastKey = e.getKey();
-                keyType.write(buff, lastKey);
-                valueType.write(buff, e.getValue());
+        K lastKey = this.lastSyncKey;
+        Set<Entry<K, V>> entrySet = lastKey == null ? skipListMap.entrySet() : skipListMap.tailMap(lastKey, false)
+                .entrySet();
+        if (!entrySet.isEmpty()) {
+            WriteBuffer buff = WriteBufferPool.poll();
+            try {
+                for (Entry<K, V> e : entrySet) {
+                    lastKey = e.getKey();
+                    keyType.write(buff, lastKey);
+                    valueType.write(buff, e.getValue());
+                }
+                int chunkLength = buff.position();
+                if (chunkLength > 0) {
+                    buff.limit(chunkLength);
+                    buff.position(0);
+                    fileStorage.writeFully(pos, buff.getBuffer());
+                    pos += chunkLength;
+                    fileStorage.sync();
+                }
+                this.lastSyncKey = lastKey;
+            } finally {
+                WriteBufferPool.offer(buff);
             }
-            int chunkLength = buff.position();
-            if (chunkLength > 0) {
-                buff.limit(chunkLength);
-                buff.position(0);
-                fileStorage.writeFully(pos, buff.getBuffer());
-                pos += chunkLength;
-                fileStorage.sync();
-            }
-            this.lastSyncKey = lastKey;
-        } finally {
-            WriteBufferPool.offer(buff);
         }
     }
 
