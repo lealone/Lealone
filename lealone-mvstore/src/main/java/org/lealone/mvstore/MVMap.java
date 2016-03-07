@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
 import org.lealone.storage.StorageMap;
@@ -1353,17 +1354,16 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
 
     @Override
     public void save() {
+        store.commit();
     }
 
     @Override
     public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
-        // TODO Auto-generated method stub
-
+        throw DbException.getUnsupportedException("transferTo");
     }
 
     @Override
     public void transferFrom(ReadableByteChannel src) throws IOException {
-        // TODO Auto-generated method stub
-
+        throw DbException.getUnsupportedException("transferFrom");
     }
 }
