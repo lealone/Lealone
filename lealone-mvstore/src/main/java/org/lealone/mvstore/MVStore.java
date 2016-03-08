@@ -909,7 +909,8 @@ public class MVStore implements Storage {
         for (MVMap<?, ?> map : maps.values()) {
             map.setWriteVersion(version);
         }
-        meta.setWriteVersion(version);
+        if (meta != null)
+            meta.setWriteVersion(version);
     }
 
     /**

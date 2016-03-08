@@ -142,12 +142,12 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
                 boolean writeCheckpoint = false;
                 for (Entry<String, Integer> e : estimatedMemory.entrySet()) {
-                    if (isClosed || e.getValue() > mapCacheSize || lastSavedAt + mapCacheSize > now) {
+                    if (isClosed || e.getValue() > mapCacheSize || lastSavedAt + mapSavePeriod > now) {
                         maps.get(e.getKey()).save();
                         writeCheckpoint = true;
                     }
                 }
-                if (lastSavedAt + mapCacheSize > now)
+                if (lastSavedAt + mapSavePeriod > now)
                     lastSavedAt = now;
 
                 if (writeCheckpoint && checkpoint != null) {
@@ -299,10 +299,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     void commit(MVCCTransaction t, RedoLogValue v) {
-        // 先写redoLog
-        redoLog.put(t.transactionId, v);
-        logStorage.logSyncService.maybeWaitForSync(redoLog, t.transactionId);
-
+        if (v != null) { // 事务没有进行任何操作时不用同步日志
+            // 先写redoLog
+            redoLog.put(t.transactionId, v);
+            logStorage.logSyncService.maybeWaitForSync(redoLog, t.transactionId);
+        }
         commitFinal(t.transactionId);
     }
 
@@ -334,6 +335,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     RedoLogValue getRedoLog(MVCCTransaction t) {
+        if (t.logRecords.isEmpty())
+            return null;
         WriteBuffer writeBuffer = WriteBufferPool.poll();
 
         String mapName;
