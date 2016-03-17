@@ -301,4 +301,8 @@ public class Merge extends ManipulateStatement {
         return buff.toString();
     }
 
+    @Override
+    public double getCost() {
+        return query != null ? query.getCost() : list.size();
+    }
 }

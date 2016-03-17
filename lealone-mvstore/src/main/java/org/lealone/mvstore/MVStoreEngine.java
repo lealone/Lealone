@@ -17,6 +17,8 @@
  */
 package org.lealone.mvstore;
 
+import java.util.Map;
+
 import org.lealone.db.DataHandler;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
@@ -38,5 +40,14 @@ public class MVStoreEngine extends StorageEngineBase {
     @Override
     public LobStorage getLobStorage(DataHandler dataHandler, Storage storage) {
         return new MVLobStorage(dataHandler, storage);
+    }
+
+    PageReader pageReader;
+
+    @Override
+    public void init(Map<String, String> config) {
+        super.init(config);
+        pageReader = new PageReader();
+        pageReader.start();
     }
 }

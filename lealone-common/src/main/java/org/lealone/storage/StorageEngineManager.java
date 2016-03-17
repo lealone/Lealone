@@ -30,4 +30,5 @@ public class StorageEngineManager extends PluggableEngineManager<StorageEngine> 
     private StorageEngineManager() {
         super(StorageEngine.class);
     }
+
 }

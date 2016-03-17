@@ -47,4 +47,7 @@ public class PlanItem {
         this.nestedJoinPlan = nestedJoinPlan;
     }
 
+    public double getCost() {
+        return cost;
+    }
 }

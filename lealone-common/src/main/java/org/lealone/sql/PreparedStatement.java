@@ -41,4 +41,8 @@ public interface PreparedStatement extends SQLStatement {
 
     PreparedStatement getWrappedStatement();
 
+    double getCost();
+
+    int getConnectionId();
+
 }

@@ -331,4 +331,13 @@ public class ReplicationCommand implements StorageCommand {
             ThreadPool.executor.submit(commands.get(i));
         }
     }
+
+    @Override
+    public Command prepare() {
+        return this;
+    }
+
+    @Override
+    public void setConnectionId(int connectionId) {
+    }
 }

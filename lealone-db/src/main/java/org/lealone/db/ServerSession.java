@@ -726,7 +726,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
         String traceModuleName = "jdbc[" + id + "]";
         if (closed) {
-            return new TraceSystem(null).getTrace(traceModuleName);
+            return new TraceSystem().getTrace(traceModuleName);
         }
         trace = database.getTraceSystem().getTrace(traceModuleName);
         return trace;
@@ -1363,5 +1363,10 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         TransactionEngine transactionEngine = database.getTransactionEngine();
         return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName).getInstance(getTransaction());
+    }
+
+    @Override
+    public boolean containsTransaction() {
+        return transaction != null;
     }
 }

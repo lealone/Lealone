@@ -17,12 +17,16 @@ import org.lealone.client.result.RowCountUndeterminedClientResult;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.New;
+import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
-import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
+import org.lealone.net.AsyncCallback;
+import org.lealone.net.IntAsyncCallback;
+import org.lealone.net.Transfer;
+import org.lealone.net.VoidAsyncCallback;
 import org.lealone.storage.StorageCommand;
 
 /**
@@ -39,27 +43,40 @@ public class ClientCommand implements StorageCommand {
     private final Trace trace;
     private final String sql;
     private final int fetchSize;
-    private final boolean prepared;
+    private boolean prepared;
     private ClientSession session;
     private int id;
     private boolean isQuery;
+    private int connectionId;
 
-    public ClientCommand(ClientSession session, Transfer transfer, String sql, int fetchSize, boolean prepare) {
+    public ClientCommand(ClientSession session, Transfer transfer, String sql, int fetchSize) {
         this.transfer = transfer;
         parameters = New.arrayList();
         trace = session.getTrace();
         this.sql = sql;
         this.fetchSize = fetchSize;
-        if (prepare) {
-            prepared = true;
-            prepare(session, true);
-        } else {
-            prepared = false;
-            id = session.getNextId();
-        }
+        // if (prepare) {
+        // prepared = true;
+        // prepare(session, true);
+        // } else {
+        // prepared = false;
+        // id = session.getNextId();
+        // }
         // set session late because prepare might fail - in this case we don't
         // need to close the object
         this.session = session;
+    }
+
+    @Override
+    public void setConnectionId(int connectionId) {
+        this.connectionId = connectionId;
+    }
+
+    @Override
+    public Command prepare() {
+        prepare(session, true);
+        prepared = true;
+        return this;
     }
 
     private void prepare(ClientSession s, boolean createParams) {
@@ -67,23 +84,34 @@ public class ClientCommand implements StorageCommand {
         try {
             if (createParams) {
                 s.traceOperation("COMMAND_PREPARE_READ_PARAMS", id);
-                transfer.writeInt(Session.COMMAND_PREPARE_READ_PARAMS);
+                transfer.writeRequestHeader(Session.COMMAND_PREPARE_READ_PARAMS);
             } else {
                 s.traceOperation("COMMAND_PREPARE", id);
-                transfer.writeInt(Session.COMMAND_PREPARE);
+                transfer.writeRequestHeader(Session.COMMAND_PREPARE);
             }
-            transfer.writeInt(id).writeString(sql);
-            s.done(transfer);
-            isQuery = transfer.readBoolean();
-            if (createParams) {
-                parameters.clear();
-                int paramCount = transfer.readInt();
-                for (int j = 0; j < paramCount; j++) {
-                    ClientCommandParameter p = new ClientCommandParameter(j);
-                    p.readMetaData(transfer);
-                    parameters.add(p);
+            transfer.writeInt(id).writeInt(connectionId).writeString(sql);
+            VoidAsyncCallback ac = new VoidAsyncCallback() {
+                @Override
+                public void runInternal() {
+                    try {
+                        isQuery = transfer.readBoolean();
+                        if (createParams) {
+                            parameters.clear();
+                            int paramCount = transfer.readInt();
+                            for (int j = 0; j < paramCount; j++) {
+                                ClientCommandParameter p = new ClientCommandParameter(j);
+                                p.readMetaData(transfer);
+                                parameters.add(p);
+                            }
+                        }
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
                 }
-            }
+            };
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
+            ac.await();
         } catch (IOException e) {
             s.handleException(e);
         }
@@ -109,26 +137,38 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public Result getMetaData() {
-        synchronized (session) {
-            if (!isQuery) {
-                return null;
-            }
-            int objectId = session.getNextId();
-            ClientResult result = null;
-            prepareIfRequired();
-            try {
-                session.traceOperation("COMMAND_GET_META_DATA", id);
-                transfer.writeInt(Session.COMMAND_GET_META_DATA).writeInt(id).writeInt(objectId);
-                session.done(transfer);
-                int columnCount = transfer.readInt();
-                int rowCount = transfer.readInt();
-                result = new RowCountDeterminedClientResult(session, transfer, objectId, columnCount, rowCount,
-                        Integer.MAX_VALUE);
-            } catch (IOException e) {
-                session.handleException(e);
-            }
-            return result;
+        if (!isQuery) {
+            return null;
         }
+        int objectId = session.getNextId();
+        ClientResult result = null;
+        prepareIfRequired();
+        try {
+            session.traceOperation("COMMAND_GET_META_DATA", id);
+            transfer.writeRequestHeader(Session.COMMAND_GET_META_DATA).writeInt(id).writeInt(connectionId)
+                    .writeInt(objectId);
+            AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        int columnCount = transfer.readInt();
+                        int rowCount = transfer.readInt();
+                        ClientResult result = new RowCountDeterminedClientResult(session, transfer, objectId,
+                                columnCount, rowCount, Integer.MAX_VALUE);
+
+                        setResult(result);
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
+            result = ac.getResult();
+        } catch (IOException e) {
+            session.handleException(e);
+        }
+        return result;
     }
 
     @Override
@@ -138,27 +178,26 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public Result query(int maxRows, boolean scrollable) {
-        synchronized (session) {
-            if (prepared)
-                return executePreparedQuery(maxRows, scrollable);
-            else
-                return executeQueryDirectly(maxRows, scrollable);
-        }
+        if (prepared)
+            return executePreparedQuery(maxRows, scrollable);
+        else
+            return executeQueryDirectly(maxRows, scrollable);
     }
 
     private Result executeQueryDirectly(int maxRows, boolean scrollable) {
+        id = session.getNextId();
         int objectId = session.getNextId();
         ClientResult result = null;
         try {
             boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedQuery) {
                 session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_QUERY", id);
-                transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY);
+                transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY);
             } else {
                 session.traceOperation("COMMAND_QUERY", id);
-                transfer.writeInt(Session.COMMAND_QUERY);
+                transfer.writeRequestHeader(Session.COMMAND_QUERY);
             }
-            transfer.writeInt(id).writeString(sql).writeInt(objectId).writeInt(maxRows);
+            transfer.writeInt(id).writeInt(connectionId).writeString(sql).writeInt(objectId).writeInt(maxRows);
             int fetch;
             if (scrollable) {
                 fetch = Integer.MAX_VALUE;
@@ -166,18 +205,31 @@ public class ClientCommand implements StorageCommand {
                 fetch = fetchSize;
             }
             transfer.writeInt(fetch);
-            session.done(transfer);
+            AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        if (isDistributedQuery)
+                            session.getTransaction().addLocalTransactionNames(transfer.readString());
 
-            if (isDistributedQuery)
-                session.getTransaction().addLocalTransactionNames(transfer.readString());
-
-            int columnCount = transfer.readInt();
-            int rowCount = transfer.readInt();
-
-            if (rowCount < 0)
-                result = new RowCountUndeterminedClientResult(session, transfer, objectId, columnCount, fetch);
-            else
-                result = new RowCountDeterminedClientResult(session, transfer, objectId, columnCount, rowCount, fetch);
+                        int columnCount = transfer.readInt();
+                        int rowCount = transfer.readInt();
+                        ClientResult result;
+                        if (rowCount < 0)
+                            result = new RowCountUndeterminedClientResult(session, transfer, objectId, columnCount,
+                                    fetch);
+                        else
+                            result = new RowCountDeterminedClientResult(session, transfer, objectId, columnCount,
+                                    rowCount, fetch);
+                        setResult(result);
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
+            result = ac.getResult();
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -195,12 +247,12 @@ public class ClientCommand implements StorageCommand {
             boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedQuery) {
                 session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY", id);
-                transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY);
+                transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY);
             } else {
                 session.traceOperation("COMMAND_PREPARED_QUERY", id);
-                transfer.writeInt(Session.COMMAND_PREPARED_QUERY);
+                transfer.writeRequestHeader(Session.COMMAND_PREPARED_QUERY);
             }
-            transfer.writeInt(id).writeInt(objectId).writeInt(maxRows);
+            transfer.writeInt(id).writeInt(connectionId).writeInt(objectId).writeInt(maxRows);
             int fetch;
             if (scrollable) {
                 fetch = Integer.MAX_VALUE;
@@ -209,18 +261,31 @@ public class ClientCommand implements StorageCommand {
             }
             transfer.writeInt(fetch);
             sendParameters(transfer);
-            session.done(transfer);
+            AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        if (isDistributedQuery)
+                            session.getTransaction().addLocalTransactionNames(transfer.readString());
 
-            if (isDistributedQuery)
-                session.getTransaction().addLocalTransactionNames(transfer.readString());
-
-            int columnCount = transfer.readInt();
-            int rowCount = transfer.readInt();
-
-            if (rowCount < 0)
-                result = new RowCountUndeterminedClientResult(session, transfer, objectId, columnCount, fetch);
-            else
-                result = new RowCountDeterminedClientResult(session, transfer, objectId, columnCount, rowCount, fetch);
+                        int columnCount = transfer.readInt();
+                        int rowCount = transfer.readInt();
+                        ClientResult result;
+                        if (rowCount < 0)
+                            result = new RowCountUndeterminedClientResult(session, transfer, objectId, columnCount,
+                                    fetch);
+                        else
+                            result = new RowCountDeterminedClientResult(session, transfer, objectId, columnCount,
+                                    rowCount, fetch);
+                        setResult(result);
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
+            result = ac.getResult();
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -230,47 +295,45 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public int update() {
-        synchronized (session) {
-            if (prepared)
-                return executePreparedUpdate(null);
-            else
-                return update(null);
-        }
+        return update(null);
     }
 
     @Override
     public int update(String replicationName) {
-        synchronized (session) {
-            if (prepared)
-                return executePreparedUpdate(replicationName);
-            else
-                return executeUpdateDirectly(replicationName);
-        }
+        if (prepared)
+            return executePreparedUpdate(replicationName);
+        else
+            return executeUpdateDirectly(replicationName);
     }
 
     private int executeUpdateDirectly(String replicationName) {
+        id = session.getNextId();
         int updateCount = 0;
         try {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
                 session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_UPDATE", id);
-                transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE);
+                transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE);
             } else if (replicationName != null) {
                 session.traceOperation("COMMAND_REPLICATION_UPDATE", id);
-                transfer.writeInt(Session.COMMAND_REPLICATION_UPDATE);
+                transfer.writeRequestHeader(Session.COMMAND_REPLICATION_UPDATE);
             } else {
                 session.traceOperation("COMMAND_UPDATE", id);
-                transfer.writeInt(Session.COMMAND_UPDATE);
+                transfer.writeRequestHeader(Session.COMMAND_UPDATE);
             }
-            transfer.writeInt(id).writeString(sql);
+            transfer.writeInt(id).writeInt(connectionId).writeString(sql);
             if (replicationName != null)
                 transfer.writeString(replicationName);
-            session.done(transfer);
+            IntAsyncCallback ac = new IntAsyncCallback();
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
 
-            if (isDistributedUpdate)
-                session.getTransaction().addLocalTransactionNames(transfer.readString());
+            // if (isDistributedUpdate)
+            // session.getTransaction().addLocalTransactionNames(transfer.readString());
+            //
+            // updateCount = transfer.readInt();
 
-            updateCount = transfer.readInt();
+            updateCount = ac.getResult();
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -286,24 +349,28 @@ public class ClientCommand implements StorageCommand {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
                 session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE", id);
-                transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE);
+                transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE);
             } else if (replicationName != null) {
                 session.traceOperation("COMMAND_REPLICATION_PREPARED_UPDATE", id);
-                transfer.writeInt(Session.COMMAND_REPLICATION_PREPARED_UPDATE);
+                transfer.writeRequestHeader(Session.COMMAND_REPLICATION_PREPARED_UPDATE);
             } else {
                 session.traceOperation("COMMAND_PREPARED_UPDATE", id);
-                transfer.writeInt(Session.COMMAND_PREPARED_UPDATE);
+                transfer.writeRequestHeader(Session.COMMAND_PREPARED_UPDATE);
             }
-            transfer.writeInt(id);
+            transfer.writeInt(id).writeInt(connectionId);
             if (replicationName != null)
                 transfer.writeString(replicationName);
             sendParameters(transfer);
-            session.done(transfer);
+            IntAsyncCallback ac = new IntAsyncCallback();
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
 
-            if (isDistributedUpdate)
-                session.getTransaction().addLocalTransactionNames(transfer.readString());
+            // if (isDistributedUpdate)
+            // session.getTransaction().addLocalTransactionNames(transfer.readString());
+            //
+            // updateCount = transfer.readInt();
 
-            updateCount = transfer.readInt();
+            updateCount = ac.getResult();
 
         } catch (Exception e) {
             session.handleException(e);
@@ -331,13 +398,11 @@ public class ClientCommand implements StorageCommand {
         if (session == null || session.isClosed()) {
             return;
         }
-        synchronized (session) {
-            session.traceOperation("COMMAND_CLOSE", id);
-            try {
-                transfer.writeInt(Session.COMMAND_CLOSE).writeInt(id);
-            } catch (IOException e) {
-                trace.error(e, "close");
-            }
+        session.traceOperation("COMMAND_CLOSE", id);
+        try {
+            transfer.writeRequestHeader(Session.COMMAND_CLOSE).writeInt(id).flush();
+        } catch (IOException e) {
+            trace.error(e, "close");
         }
         session = null;
         try {
@@ -386,18 +451,18 @@ public class ClientCommand implements StorageCommand {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
                 session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_PUT", id);
-                transfer.writeInt(Session.COMMAND_STORAGE_DISTRIBUTED_PUT);
+                transfer.writeRequestHeader(Session.COMMAND_STORAGE_DISTRIBUTED_PUT);
             } else if (replicationName != null) {
                 session.traceOperation("COMMAND_STORAGE_REPLICATION_PUT", id);
-                transfer.writeInt(Session.COMMAND_STORAGE_REPLICATION_PUT);
+                transfer.writeRequestHeader(Session.COMMAND_STORAGE_REPLICATION_PUT);
             } else {
                 session.traceOperation("COMMAND_STORAGE_PUT", id);
-                transfer.writeInt(Session.COMMAND_STORAGE_PUT);
+                transfer.writeRequestHeader(Session.COMMAND_STORAGE_PUT);
             }
             transfer.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
             if (replicationName != null)
                 transfer.writeString(replicationName);
-            session.done(transfer);
+            transfer.flush();
 
             if (isDistributedUpdate)
                 session.getTransaction().addLocalTransactionNames(transfer.readString());
@@ -417,13 +482,13 @@ public class ClientCommand implements StorageCommand {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
                 session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_GET", id);
-                transfer.writeInt(Session.COMMAND_STORAGE_DISTRIBUTED_GET);
+                transfer.writeRequestHeader(Session.COMMAND_STORAGE_DISTRIBUTED_GET);
             } else {
                 session.traceOperation("COMMAND_STORAGE_GET", id);
-                transfer.writeInt(Session.COMMAND_STORAGE_GET);
+                transfer.writeRequestHeader(Session.COMMAND_STORAGE_GET);
             }
             transfer.writeString(mapName).writeByteBuffer(key);
-            session.done(transfer);
+            transfer.flush();
 
             if (isDistributedUpdate)
                 session.getTransaction().addLocalTransactionNames(transfer.readString());
@@ -440,9 +505,9 @@ public class ClientCommand implements StorageCommand {
     public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page) {
         try {
             session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", id);
-            transfer.writeInt(Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
+            transfer.writeRequestHeader(Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
             transfer.writeString(mapName).writeByteBuffer(splitKey).writeByteBuffer(page);
-            session.done(transfer);
+            transfer.flush();
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -453,9 +518,9 @@ public class ClientCommand implements StorageCommand {
     public void removeLeafPage(String mapName, ByteBuffer key) {
         try {
             session.traceOperation("COMMAND_STORAGE_REMOVE_LEAF_PAGE", id);
-            transfer.writeInt(Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
+            transfer.writeRequestHeader(Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
             transfer.writeString(mapName).writeByteBuffer(key);
-            session.done(transfer);
+            transfer.flush();
         } catch (Exception e) {
             session.handleException(e);
         }

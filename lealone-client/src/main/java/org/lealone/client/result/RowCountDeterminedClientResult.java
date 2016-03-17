@@ -21,8 +21,8 @@ import java.io.IOException;
 
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
+import org.lealone.net.Transfer;
 
 public class RowCountDeterminedClientResult extends ClientResult {
 
@@ -50,34 +50,32 @@ public class RowCountDeterminedClientResult extends ClientResult {
 
     @Override
     protected void fetchRows(boolean sendFetch) {
-        synchronized (session) {
-            session.checkClosed();
-            try {
-                rowOffset += result.size();
-                result.clear();
-                int fetch = Math.min(fetchSize, rowCount - rowOffset);
-                if (sendFetch) {
-                    sendFetch(fetch);
-                }
-                for (int r = 0; r < fetch; r++) {
-                    boolean row = transfer.readBoolean();
-                    if (!row) {
-                        break;
-                    }
-                    int len = columns.length;
-                    Value[] values = new Value[len];
-                    for (int i = 0; i < len; i++) {
-                        Value v = transfer.readValue();
-                        values[i] = v;
-                    }
-                    result.add(values);
-                }
-                if (rowOffset + result.size() >= rowCount) {
-                    sendClose();
-                }
-            } catch (IOException e) {
-                throw DbException.convertIOException(e, null);
+        session.checkClosed();
+        try {
+            rowOffset += result.size();
+            result.clear();
+            int fetch = Math.min(fetchSize, rowCount - rowOffset);
+            if (sendFetch) {
+                sendFetch(fetch);
             }
+            for (int r = 0; r < fetch; r++) {
+                boolean row = transfer.readBoolean();
+                if (!row) {
+                    break;
+                }
+                int len = columns.length;
+                Value[] values = new Value[len];
+                for (int i = 0; i < len; i++) {
+                    Value v = transfer.readValue();
+                    values[i] = v;
+                }
+                result.add(values);
+            }
+            if (rowOffset + result.size() >= rowCount) {
+                sendClose();
+            }
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, null);
         }
     }
 }

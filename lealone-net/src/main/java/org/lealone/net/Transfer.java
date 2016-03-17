@@ -4,10 +4,15 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.value;
+package org.lealone.net;
+
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.net.NetSocket;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -16,8 +21,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
-import java.net.InetAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -29,12 +32,34 @@ import org.lealone.common.security.SHA256;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.NetUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Data;
 import org.lealone.db.Session;
 import org.lealone.db.result.SimpleResultSet;
+import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueBoolean;
+import org.lealone.db.value.ValueByte;
+import org.lealone.db.value.ValueBytes;
+import org.lealone.db.value.ValueDate;
+import org.lealone.db.value.ValueDecimal;
+import org.lealone.db.value.ValueDouble;
+import org.lealone.db.value.ValueFloat;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueJavaObject;
+import org.lealone.db.value.ValueLob;
+import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueResultSet;
+import org.lealone.db.value.ValueShort;
+import org.lealone.db.value.ValueString;
+import org.lealone.db.value.ValueStringFixed;
+import org.lealone.db.value.ValueStringIgnoreCase;
+import org.lealone.db.value.ValueTime;
+import org.lealone.db.value.ValueTimestamp;
+import org.lealone.db.value.ValueUuid;
 
 /**
  * The transfer class is used to send and receive Value objects.
@@ -46,33 +71,88 @@ public class Transfer {
     private static final int LOB_MAGIC = 0x1234;
     private static final int LOB_MAC_SALT_LENGTH = 16;
 
+    private AsyncConnection conn;
     private Session session;
-    private Socket socket;
+    private NetSocket socket;
     private DataInputStream in;
     private DataOutputStream out;
     private ResettableBufferedOutputStream bufferedOutputStream;
-
-    private boolean ssl;
+    private ByteArrayOutputStream byteArrayOutputStream;
     private byte[] lobMacSalt;
 
-    public Transfer(Session session, Socket socket) {
+    public Transfer(Session session, NetSocket socket) {
         this.session = session;
         this.socket = socket;
     }
 
-    public Transfer(Socket socket) {
+    public Transfer(AsyncConnection conn, NetSocket socket) {
         this.socket = socket;
+        this.conn = conn;
+    }
+
+    public Transfer copy() {
+        Transfer t = new Transfer(session, socket);
+        t.conn = conn;
+        t.init();
+        return t;
+    }
+
+    public AsyncConnection getAsyncConnection() {
+        return conn;
+    }
+
+    public void addAsyncCallback(int id, AsyncCallback<?> ac) {
+        ac.setTransfer(this);
+        conn.addAsyncCallback(id, ac);
+    }
+
+    public Transfer writeResponseHeader(int packetType) throws IOException {
+        writeInt((packetType << 1) | 1);
+        return this;
+    }
+
+    public Transfer writeRequestHeader(int packetType) throws IOException {
+        writeInt(packetType << 1);
+        return this;
     }
 
     /**
      * Initialize the transfer object. 
      * This method will try to open an input and output stream.
      */
-    public synchronized void init() throws IOException {
-        if (socket != null) {
-            bufferedOutputStream = new ResettableBufferedOutputStream(socket.getOutputStream(), BUFFER_SIZE);
-            in = new DataInputStream(new BufferedInputStream(socket.getInputStream(), BUFFER_SIZE));
-            out = new DataOutputStream(bufferedOutputStream);
+    public synchronized void init() {
+        setBuffer(null);
+    }
+
+    public void setBuffer(Buffer buffer) {
+        byteArrayOutputStream = new ByteArrayOutputStream(BUFFER_SIZE);
+
+        bufferedOutputStream = new ResettableBufferedOutputStream(byteArrayOutputStream, BUFFER_SIZE);
+        out = new DataOutputStream(bufferedOutputStream);
+
+        try {
+            out.writeInt(0);
+        } catch (IOException e) {
+            throw new AssertionError();
+        }
+
+        if (buffer != null)
+            in = new DataInputStream(new BufferedInputStream(new ByteArrayInputStream(buffer.getBytes()), BUFFER_SIZE));
+    }
+
+    public void setDataInputStream(DataInputStream in) {
+        this.in = in;
+    }
+
+    public DataInputStream getDataInputStream() {
+        return in;
+    }
+
+    public int available() {
+        try {
+            return in.available();
+        } catch (IOException e) {
+            throw new AssertionError();
         }
     }
 
@@ -86,7 +166,7 @@ public class Transfer {
         bufferedOutputStream.reset();
     }
 
-    public Socket getSocket() {
+    public NetSocket getSocket() {
         return socket;
     }
 
@@ -95,7 +175,7 @@ public class Transfer {
     }
 
     public void setSSL(boolean ssl) {
-        this.ssl = ssl;
+        // this.ssl = ssl;
     }
 
     public void setVersion(int version) { // TODO 以后协议修改了再使用版本号区分
@@ -105,7 +185,12 @@ public class Transfer {
      * Write pending changes.
      */
     public void flush() throws IOException {
+        bufferedOutputStream.writePacketLength();
         out.flush();
+
+        socket.write(Buffer.buffer(byteArrayOutputStream.toByteArray()));
+        byteArrayOutputStream.reset();
+        out.writeInt(0); // write packet header for next
     }
 
     /**
@@ -129,7 +214,7 @@ public class Transfer {
     }
 
     public synchronized boolean isClosed() {
-        return socket == null || socket.isClosed();
+        return socket == null; // || socket.isClosed();
     }
 
     /**
@@ -656,20 +741,6 @@ public class Transfer {
     }
 
     /**
-     * Open a new connection to the same address and port as this one.
-     *
-     * @return the new transfer object
-     */
-    public Transfer openNewConnection() throws IOException {
-        InetAddress address = socket.getInetAddress();
-        int port = socket.getPort();
-        Socket s = NetUtils.createSocket(address, port, ssl);
-        Transfer trans = new Transfer(s);
-        trans.setSSL(ssl);
-        return trans;
-    }
-
-    /**
      * Verify the HMAC.
      *
      * @param hmac the message authentication code
@@ -781,6 +852,14 @@ public class Transfer {
 
         void reset() {
             super.count = 0;
+        }
+
+        void writePacketLength() {
+            int v = count - 4;
+            buf[0] = (byte) ((v >>> 24) & 0xFF);
+            buf[1] = (byte) ((v >>> 16) & 0xFF);
+            buf[2] = (byte) ((v >>> 8) & 0xFF);
+            buf[3] = (byte) ((v >>> 0) & 0xFF);
         }
     }
 

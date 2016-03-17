@@ -70,24 +70,22 @@ public class JdbcStatement extends TraceObject implements Statement {
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "executeQuery(" + quote(sql) + ")");
             }
-            synchronized (session) {
-                checkClosed();
-                closeOldResultSet();
-                sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-                Command command = conn.createCommand(sql, fetchSize);
-                Result result;
-                boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-                boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                setExecutingStatement(command);
-                try {
-                    result = command.query(maxRows, scrollable);
-                } finally {
-                    setExecutingStatement(null);
-                }
-                // command.close(); //关闭结果集时再关闭
-                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                resultSet.setCommand(command);
+            checkClosed();
+            closeOldResultSet();
+            sql = JdbcConnection.translateSQL(sql, escapeProcessing);
+            Command command = conn.createCommand(sql, fetchSize);
+            Result result;
+            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+            boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+            setExecutingStatement(command);
+            try {
+                result = command.query(maxRows, scrollable);
+            } finally {
+                setExecutingStatement(null);
             }
+            // command.close(); //关闭结果集时再关闭
+            resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+            resultSet.setCommand(command);
             return resultSet;
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -127,13 +125,11 @@ public class JdbcStatement extends TraceObject implements Statement {
         closeOldResultSet();
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
         Command command = conn.createCommand(sql, fetchSize);
-        synchronized (session) {
-            setExecutingStatement(command);
-            try {
-                updateCount = command.update();
-            } finally {
-                setExecutingStatement(null);
-            }
+        setExecutingStatement(command);
+        try {
+            updateCount = command.update();
+        } finally {
+            setExecutingStatement(null);
         }
         command.close();
         return updateCount;
@@ -189,22 +185,20 @@ public class JdbcStatement extends TraceObject implements Statement {
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
         Command command = conn.prepareCommand(sql, fetchSize);
         boolean returnsResultSet;
-        synchronized (session) {
-            setExecutingStatement(command);
-            try {
-                if (command.isQuery()) {
-                    returnsResultSet = true;
-                    boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-                    boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                    Result result = command.query(maxRows, scrollable);
-                    resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                } else {
-                    returnsResultSet = false;
-                    updateCount = command.update();
-                }
-            } finally {
-                setExecutingStatement(null);
+        setExecutingStatement(command);
+        try {
+            if (command.isQuery()) {
+                returnsResultSet = true;
+                boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+                boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+                Result result = command.query(maxRows, scrollable);
+                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+            } else {
+                returnsResultSet = false;
+                updateCount = command.update();
             }
+        } finally {
+            setExecutingStatement(null);
         }
         if (returnsResultSet)
             resultSet.setCommand(command);
@@ -262,11 +256,9 @@ public class JdbcStatement extends TraceObject implements Statement {
     public void close() throws SQLException {
         try {
             debugCodeCall("close");
-            synchronized (session) {
-                closeOldResultSet();
-                if (conn != null) {
-                    conn = null;
-                }
+            closeOldResultSet();
+            if (conn != null) {
+                conn = null;
             }
         } catch (Exception e) {
             throw logAndConvert(e);

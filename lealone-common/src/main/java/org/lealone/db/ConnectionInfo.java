@@ -23,6 +23,9 @@ import org.lealone.storage.fs.FileUtils;
 
 /**
  * Encapsulates the connection settings, including user name and password.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class ConnectionInfo implements Cloneable {
 

@@ -6,16 +6,23 @@
  */
 package org.lealone.server;
 
-import java.net.ServerSocket;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.net.NetServer;
+import io.vertx.core.net.NetSocket;
+
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.CountDownLatch;
 
+import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.NetUtils;
 import org.lealone.db.Constants;
+import org.lealone.net.AsyncConnection;
+import org.lealone.net.CommandHandler;
 
 /**
  * The TCP server implements the native database server protocol.
@@ -27,22 +34,20 @@ import org.lealone.db.Constants;
  */
 public class TcpServer implements ProtocolServer {
 
-    private final Set<TcpServerThread> running = new ConcurrentSkipListSet<>();
+    private static Vertx vertx;
 
-    private ServerSocket serverSocket;
-    private Thread listenerThread;
-
+    private final CommandHandler commandHandler = new CommandHandler();
     private String listenAddress = Constants.DEFAULT_HOST;
     private int port = Constants.DEFAULT_TCP_PORT;
 
     private String baseDir;
 
-    private boolean trace;
     private boolean ssl;
     private boolean allowOthers;
     private boolean isDaemon;
     private boolean ifExists;
-
+    private Integer blockedThreadCheckInterval;
+    private NetServer server;
     private boolean stop;
 
     @Override
@@ -52,9 +57,11 @@ public class TcpServer implements ProtocolServer {
         if (config.containsKey("listen_port"))
             port = Integer.parseInt(config.get("listen_port"));
 
+        if (config.containsKey("blocked_thread_check_interval"))
+            blockedThreadCheckInterval = Integer.parseInt(config.get("blocked_thread_check_interval"));
+
         baseDir = config.get("base_dir");
 
-        trace = Boolean.parseBoolean(config.get("trace"));
         ssl = Boolean.parseBoolean(config.get("ssl"));
         allowOthers = Boolean.parseBoolean(config.get("allow_others"));
         isDaemon = Boolean.parseBoolean(config.get("daemon"));
@@ -62,43 +69,58 @@ public class TcpServer implements ProtocolServer {
     }
 
     @Override
-    public synchronized void start() {
-        serverSocket = NetUtils.createServerSocket(listenAddress, port, ssl);
-
-        String name = getName() + " (" + getURL() + ")";
-        Thread t = new Thread(this, name);
-        t.setDaemon(isDaemon());
-        t.start();
+    public void start() {
+        run();
     }
 
     @Override
-    public void run() {
-        try {
-            listen();
-        } catch (Exception e) {
-            DbException.traceThrowable(e);
-        }
-    }
+    public synchronized void run() {
+        synchronized (TcpServer.class) {
+            if (vertx == null) {
+                VertxOptions opt = new VertxOptions();
+                if (blockedThreadCheckInterval != null) {
+                    if (blockedThreadCheckInterval <= 0)
+                        blockedThreadCheckInterval = Integer.MAX_VALUE;
 
-    private void listen() {
-        listenerThread = Thread.currentThread();
-        String threadName = listenerThread.getName();
+                    opt.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
+                }
+                vertx = Vertx.vertx(opt);
+            }
+        }
+        server = vertx.createNetServer();
+        server.connectHandler(socket -> {
+            if (TcpServer.this.allow(socket)) {
+                AsyncConnection ac = new AsyncConnection(socket);
+                ac.setBaseDir(TcpServer.this.baseDir);
+                ac.setIfExists(TcpServer.this.ifExists);
+                CommandHandler.addConnection(ac);
+                socket.handler(ac);
+                socket.closeHandler(v -> {
+                    CommandHandler.removeConnection(ac);
+                });
+            } else {
+                // TODO
+                // should support a list of allowed databases
+                // and a list of allowed clients
+                socket.close();
+                throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
+            }
+        });
+
+        CountDownLatch latch = new CountDownLatch(1);
+        server.listen(port, listenAddress, res -> {
+            if (res.succeeded()) {
+                latch.countDown();
+            } else {
+                throw DbException.convert(res.cause());
+            }
+        });
+
+        commandHandler.start();
         try {
-            while (!stop) {
-                Socket s = serverSocket.accept();
-                if (stop)
-                    break;
-                TcpServerThread t = new TcpServerThread(s, this);
-                t.setName(threadName + " thread-" + s.getPort());
-                t.setDaemon(isDaemon);
-                t.start();
-                running.add(t);
-            }
-            serverSocket = NetUtils.closeSilently(serverSocket);
-        } catch (Exception e) {
-            if (!stop) {
-                DbException.traceThrowable(e);
-            }
+            latch.await();
+        } catch (InterruptedException e) {
+            throw DbException.convert(e);
         }
     }
 
@@ -108,38 +130,22 @@ public class TcpServer implements ProtocolServer {
             return;
 
         stop = true;
-        // 这种方式关闭起来较慢
-        // try {
-        // Socket s = NetUtils.createLoopbackSocket(port, false);
-        // s.close();
-        // } catch (Exception e) {
-        // serverSocket = NetUtils.closeSilently(serverSocket);
-        // }
+        CountDownLatch latch = new CountDownLatch(1);
+        server.close(v -> {
+            latch.countDown();
+        });
 
-        serverSocket = NetUtils.closeSilently(serverSocket);
-
-        if (listenerThread != null) {
-            try {
-                listenerThread.join(1000);
-            } catch (InterruptedException e) {
-                DbException.traceThrowable(e);
-            }
+        commandHandler.end();
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw DbException.convert(e);
         }
-        // TODO server: using a boolean 'now' argument? a timeout?
-        for (TcpServerThread c : running) {
-            c.close();
-            try {
-                c.join(100);
-            } catch (Exception e) {
-                DbException.traceThrowable(e);
-            }
-        }
-        running.clear();
     }
 
     @Override
     public synchronized boolean isRunning(boolean traceError) {
-        if (serverSocket == null) {
+        if (stop) {
             return false;
         }
         try {
@@ -147,9 +153,6 @@ public class TcpServer implements ProtocolServer {
             s.close();
             return true;
         } catch (Exception e) {
-            if (traceError) {
-                traceError(e);
-            }
             return false;
         }
     }
@@ -196,25 +199,28 @@ public class TcpServer implements ProtocolServer {
      * @param socket the socket
      * @return true if this client may connect
      */
-    boolean allow(Socket socket) {
+    private boolean allow(NetSocket socket) {
         if (allowOthers) {
             return true;
         }
         try {
-            return NetUtils.isLocalAddress(socket);
+            String test = socket.remoteAddress().host();
+            InetAddress localhost = InetAddress.getLocalHost();
+            // localhost.getCanonicalHostName() is very very slow
+            String host = localhost.getHostAddress();
+            if (test.equals(host)) {
+                return true;
+            }
+
+            for (InetAddress addr : InetAddress.getAllByName(host)) {
+                if (test.equals(addr)) {
+                    return true;
+                }
+            }
+            return false;
         } catch (UnknownHostException e) {
-            traceError(e);
             return false;
         }
-    }
-
-    /**
-     * Remove a thread from the list.
-     *
-     * @param t the thread to remove
-     */
-    void remove(TcpServerThread t) {
-        running.remove(t);
     }
 
     /**
@@ -228,44 +234,6 @@ public class TcpServer implements ProtocolServer {
 
     boolean getIfExists() {
         return ifExists;
-    }
-
-    boolean isTraceEnabled() {
-        return trace;
-    }
-
-    /**
-     * Print a message if the trace flag is enabled.
-     *
-     * @param s the message
-     */
-    void trace(String s) {
-        if (trace) {
-            System.out.println(s);
-        }
-    }
-
-    /**
-     * Print a stack trace if the trace flag is enabled.
-     *
-     * @param e the exception
-     */
-    void traceError(Throwable e) {
-        if (trace) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Cancel a running statement.
-     *
-     * @param sessionId the session id
-     * @param statementId the statement id
-     */
-    void cancelStatement(String sessionId, int statementId) {
-        for (TcpServerThread c : running) {
-            c.cancelStatement(sessionId, statementId);
-        }
     }
 
 }

@@ -1115,16 +1115,16 @@ public class MVMap<K, V> extends AbstractMap<K, V> implements ConcurrentMap<K, V
      */
     public MVMap<K, V> openVersion(long version) {
         if (readOnly) {
-            throw DataUtils.newUnsupportedOperationException("This map is read-only; need to call "
-                    + "the method on the writable map");
+            throw DataUtils.newUnsupportedOperationException(
+                    "This map is read-only; need to call " + "the method on the writable map");
         }
-        DataUtils.checkArgument(version >= createVersion,
-                "Unknown version {0}; this map was created in version is {1}", version, createVersion);
+        DataUtils.checkArgument(version >= createVersion, "Unknown version {0}; this map was created in version is {1}",
+                version, createVersion);
         Page newest = null;
         // need to copy because it can change
         Page r = root;
-        if (version >= r.getVersion()
-                && (version == writeVersion || r.getVersion() >= 0 || version <= createVersion || store.getFileStore() == null)) {
+        if (version >= r.getVersion() && (version == writeVersion || r.getVersion() >= 0 || version <= createVersion
+                || store.getFileStore() == null)) {
             newest = r;
         } else {
             Page last = oldRoots.peekFirst();

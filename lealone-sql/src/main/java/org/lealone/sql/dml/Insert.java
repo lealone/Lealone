@@ -246,4 +246,8 @@ public class Insert extends ManipulateStatement implements ResultTarget {
         return buff.toString();
     }
 
+    @Override
+    public double getCost() {
+        return query != null ? query.getCost() : list.size();
+    }
 }

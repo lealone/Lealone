@@ -33,6 +33,7 @@ import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
 public class TestBase extends Assert {
+    public static String url;
     public static final String DEFAULT_STORAGE_ENGINE_NAME = getDefaultStorageEngineName();
     public static final String TEST_DIR = "." + File.separatorChar + "lealone-test-data" + File.separatorChar + "test";
     public static final String DB_NAME = "test";
@@ -42,6 +43,10 @@ public class TestBase extends Assert {
     static {
         System.setProperty("java.io.tmpdir", TEST_DIR + File.separatorChar + "tmp");
         System.setProperty("lealone.lob.client.max.size.memory", "2048");
+
+        System.setProperty("vertx.cacheDirBase", "./" + TEST_DIR + "/.vertx");
+
+        Config.setProperty("client.trace.directory", joinDirs("client_trace"));
         SysProperties.setBaseDir(TEST_DIR);
 
         if (Config.getProperty("default.storage.engine") == null)
@@ -164,6 +169,8 @@ public class TestBase extends Assert {
     }
 
     public synchronized String getURL(String dbName) {
+        if (url != null)
+            return url;
         addConnectionParameter("DATABASE_TO_UPPER", "false");
         // addConnectionParameter("ALIAS_COLUMN_NAME", "true");
         // addConnectionParameter("IGNORE_UNKNOWN_SETTINGS", "true");

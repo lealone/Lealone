@@ -7,12 +7,12 @@ package org.lealone.client.result;
 
 import java.io.IOException;
 
-import org.lealone.db.value.Transfer;
+import org.lealone.net.Transfer;
 
 /**
  * A column of the client result.
  */
-public class ClientResultColumn {
+class ClientResultColumn {
 
     /**
      * The column alias.

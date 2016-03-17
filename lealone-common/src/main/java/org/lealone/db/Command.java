@@ -90,4 +90,9 @@ public interface Command {
      * Close the command.
      */
     void close();
+
+    Command prepare();
+
+    void setConnectionId(int connectionId);
+
 }

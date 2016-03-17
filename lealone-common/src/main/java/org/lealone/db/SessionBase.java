@@ -7,6 +7,7 @@
 package org.lealone.db;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
@@ -26,6 +27,7 @@ public abstract class SessionBase implements Session {
 
     protected String replicationName;
     protected boolean local;
+    protected AtomicInteger nextId = new AtomicInteger(0);
 
     /**
      * Re-create the session state using the stored sessionState list.
@@ -90,5 +92,19 @@ public abstract class SessionBase implements Session {
     @Override
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         throw DbException.getUnsupportedException("getStorageMap");
+    }
+
+    @Override
+    public boolean containsTransaction() {
+        return false;
+    }
+
+    @Override
+    public int getNextId() {
+        return nextId.incrementAndGet();
+    }
+
+    public int getCurrentId() {
+        return nextId.get();
     }
 }

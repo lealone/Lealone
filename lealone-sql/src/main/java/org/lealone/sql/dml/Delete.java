@@ -76,7 +76,7 @@ public class Delete extends ManipulateStatement {
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
         tableFilter.prepare();
-
+        cost = item.getCost();
         return this;
     }
 

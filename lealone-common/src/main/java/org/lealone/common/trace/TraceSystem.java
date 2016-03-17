@@ -83,7 +83,7 @@ public class TraceSystem implements TraceWriter {
     private int levelMax;
     private int maxFileSize = DEFAULT_MAX_FILE_SIZE;
     private String fileName;
-    private final AtomicReferenceArray<Trace> traces = new AtomicReferenceArray<Trace>(Trace.MODULE_NAMES.length);
+    private final AtomicReferenceArray<Trace> traces = new AtomicReferenceArray<>(Trace.MODULE_NAMES.length);
     private SimpleDateFormat dateFormat;
     private Writer fileWriter;
     private PrintWriter printWriter;
@@ -92,6 +92,10 @@ public class TraceSystem implements TraceWriter {
     private boolean writingErrorLogged;
     private TraceWriter writer = this;
     private PrintStream sysOut = System.out;
+
+    public TraceSystem() {
+        this(null);
+    }
 
     /**
      * Create a new trace system object.
@@ -185,14 +189,7 @@ public class TraceSystem implements TraceWriter {
      */
     public void setLevelFile(int level) {
         if (level == ADAPTER) {
-            String adapterClass = "org.lealone.common.message.TraceWriterAdapter";
-            try {
-                writer = (TraceWriter) Class.forName(adapterClass).newInstance();
-            } catch (Throwable e) {
-                e = DbException.get(ErrorCode.CLASS_NOT_FOUND_1, e, adapterClass);
-                write(ERROR, Trace.DATABASE, adapterClass, e);
-                return;
-            }
+            writer = new TraceWriterAdapter();
             String name = fileName;
             if (name != null) {
                 if (name.endsWith(Constants.SUFFIX_TRACE_FILE)) {

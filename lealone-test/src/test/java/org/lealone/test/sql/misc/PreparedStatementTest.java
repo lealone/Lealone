@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
 public class PreparedStatementTest extends SqlTestBase {
+
     @Test
     public void run() throws Exception {
         init();

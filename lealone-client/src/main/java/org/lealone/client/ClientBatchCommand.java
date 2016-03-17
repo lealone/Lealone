@@ -25,8 +25,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
-import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
+import org.lealone.net.Transfer;
 
 public class ClientBatchCommand implements Command {
     private ClientSession session;
@@ -96,7 +96,7 @@ public class ClientBatchCommand implements Command {
                 transfer.writeInt(size);
                 for (int i = 0; i < size; i++)
                     transfer.writeString(batchCommands.get(i));
-                session.done(transfer);
+                transfer.flush();
 
                 for (int i = 0; i < size; i++)
                     result[i] = transfer.readInt();
@@ -114,7 +114,7 @@ public class ClientBatchCommand implements Command {
                     for (int m = 0; m < len; m++)
                         transfer.writeValue(values[m]);
                 }
-                session.done(transfer);
+                transfer.flush();
 
                 for (int i = 0; i < size; i++)
                     result[i] = transfer.readInt();
@@ -158,5 +158,14 @@ public class ClientBatchCommand implements Command {
 
     public int[] getResult() {
         return result;
+    }
+
+    @Override
+    public Command prepare() {
+        return this;
+    }
+
+    @Override
+    public void setConnectionId(int connectionId) {
     }
 }

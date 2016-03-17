@@ -46,10 +46,10 @@ protocol_server_engines:
       enabled: true
       parameters: {
           port: 5210,
-          trace: false,
           allow_others: true,
           daemon: false,
           if_exists: false,
+          blocked_thread_check_interval: -1,
           ssl: false
       }
 

@@ -21,6 +21,7 @@ import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.main.Lealone;
 import org.lealone.main.config.Config;
 
+//-javaagent:E:\continuations\target\continuations-1.0-SNAPSHOT.jar
 public class TcpServerStart extends org.lealone.main.config.YamlConfigurationLoader {
 
     // YamlConfigurationLoader的子类必须有一个无参数的构造函数
@@ -33,6 +34,8 @@ public class TcpServerStart extends org.lealone.main.config.YamlConfigurationLoa
 
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         // System.setProperty("lealone.base.dir", "./" + config.base_dir);
+
+        System.setProperty("vertx.cacheDirBase", "./" + config.base_dir + "/.vertx");
 
         return config;
     }

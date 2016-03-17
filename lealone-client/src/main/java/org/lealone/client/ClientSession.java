@@ -5,11 +5,19 @@
  */
 package org.lealone.client;
 
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.net.NetClient;
+import io.vertx.core.net.NetClientOptions;
+import io.vertx.core.net.NetSocket;
+
+import java.io.File;
 import java.io.IOException;
-import java.net.Socket;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -18,7 +26,6 @@ import org.lealone.common.exceptions.LealoneException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.NetUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.TempFileDeleter;
@@ -30,8 +37,9 @@ import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
-import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
+import org.lealone.net.AsyncConnection;
+import org.lealone.net.Transfer;
 import org.lealone.replication.ReplicationSession;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
@@ -50,24 +58,39 @@ import org.lealone.transaction.Transaction;
  */
 public class ClientSession extends SessionBase implements DataHandler, Transaction.Participant {
 
-    private static final Random random = new Random(System.currentTimeMillis());
+    private static final ConcurrentHashMap<String, ClientSession> clientSessions = new ConcurrentHashMap<>();
 
     private TraceSystem traceSystem;
     private Trace trace;
     private Transfer transfer;
-    private int nextId;
     private boolean autoCommit = true;
-    private final ConnectionInfo connectionInfo;
+    private final ConnectionInfo ci;
     private String cipher;
     private byte[] fileEncryptionKey;
     private final Object lobSyncObject = new Object();
     private String sessionId;
-    private int clientVersion;
     private LobStorage lobStorage;
     private Transaction transaction;
 
+    private final Vertx vertx;
+    private final NetClient client;
+    private NetSocket socket;
+
+    private AsyncConnection asyncConnection;
+
+    public static ClientSession getClientSession(String url) {
+        return clientSessions.get(url);
+    }
+
     public ClientSession(ConnectionInfo ci) {
-        this.connectionInfo = ci;
+        this.ci = ci;
+
+        VertxOptions opt = new VertxOptions();
+        opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
+        vertx = Vertx.vertx(opt);
+
+        NetClientOptions options = new NetClientOptions().setConnectTimeout(10000);
+        client = vertx.createNetClient(options);
     }
 
     /**
@@ -77,20 +100,21 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
      */
     @Override
     public Session connectEmbeddedOrServer() {
-        ConnectionInfo ci = connectionInfo;
-        if (ci.isReplicaSetMode()) {
+        if (ci.isRemote()) {
+            connectServer();
+            clientSessions.put(ci.getURL(), this);
+            return this;
+        } else if (ci.isReplicaSetMode()) {
+            ConnectionInfo ci = this.ci;
             String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
             int size = servers.length;
             Session[] sessions = new ClientSession[size];
             for (int i = 0; i < size; i++) {
-                ci = connectionInfo.copyForReplicaSet(servers[i]);
+                ci = this.ci.copyForReplicaSet(servers[i]);
                 sessions[i] = new ClientSession(ci);
                 sessions[i] = sessions[i].connectEmbeddedOrServer();
             }
             return new ReplicationSession(sessions);
-        } else if (ci.isRemote()) {
-            connectServer(ci);
-            return this;
         }
         try {
             return ci.getSessionFactory().createSession(ci);
@@ -99,8 +123,47 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         }
     }
 
-    private void connectServer(ConnectionInfo ci) {
-        traceSystem = new TraceSystem(null);
+    private void connectServer() {
+        initTraceSystem();
+
+        cipher = ci.getProperty("CIPHER");
+        if (cipher != null) {
+            fileEncryptionKey = MathUtils.secureRandomBytes(32);
+        }
+
+        transfer = null;
+        sessionId = StringUtils.convertBytesToHex(MathUtils.secureRandomBytes(32));
+        String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
+        Random random = new Random(System.currentTimeMillis());
+        try {
+            for (int i = 0, len = servers.length; i < len; i++) {
+                String s = servers[random.nextInt(len)];
+                try {
+                    transfer = initTransfer(ci, s);
+                    break;
+                } catch (Exception e) {
+                    if (i == len - 1) {
+                        throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, e + ": " + s);
+                    }
+                    int index = 0;
+                    String[] newServers = new String[len - 1];
+                    for (int j = 0; j < len; j++) {
+                        if (j != i)
+                            newServers[index++] = servers[j];
+                    }
+                    servers = newServers;
+                    len--;
+                    i = -1;
+                }
+            }
+        } catch (DbException e) {
+            traceSystem.close();
+            throw e;
+        }
+    }
+
+    private void initTraceSystem() {
+        traceSystem = new TraceSystem();
         String traceLevelFile = ci.getProperty(SetTypes.TRACE_LEVEL_FILE, null);
         if (traceLevelFile != null) {
             int level = Integer.parseInt(traceLevelFile);
@@ -121,76 +184,59 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             traceSystem.setLevelSystemOut(level);
         }
         trace = traceSystem.getTrace(Trace.JDBC);
-        cipher = ci.getProperty("CIPHER");
-        if (cipher != null) {
-            fileEncryptionKey = MathUtils.secureRandomBytes(32);
-        }
-
-        String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
-        int len = servers.length;
-        transfer = null;
-        sessionId = StringUtils.convertBytesToHex(MathUtils.secureRandomBytes(32));
-
-        try {
-            for (int i = 0; i < len; i++) {
-                String s = servers[random.nextInt(len)];
-                try {
-                    transfer = initTransfer(ci, s);
-                    break;
-                } catch (IOException e) {
-                    if (i == len - 1) {
-                        throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, e + ": " + s);
-                    }
-                    int index = 0;
-                    String[] newServers = new String[len - 1];
-                    for (int j = 0; j < len; j++) {
-                        if (j != i)
-                            newServers[index++] = servers[j];
-                    }
-                    servers = newServers;
-                    len--;
-                    i = -1;
-                }
-            }
-            checkClosed();
-        } catch (DbException e) {
-            traceSystem.close();
-            throw e;
-        }
-
     }
 
-    private Transfer initTransfer(ConnectionInfo ci, String server) throws IOException {
-        Socket socket = NetUtils.createSocket(server, Constants.DEFAULT_TCP_PORT, ci.isSSL());
-        Transfer trans = new Transfer(this, socket);
-        trans.setSSL(ci.isSSL());
-        trans.init();
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
-        trans.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
-        trans.writeString(ci.getDatabaseName());
-        trans.writeString(ci.getURL()); // 不带参数的URL
-        trans.writeString(ci.getUserName());
-        trans.writeBytes(ci.getUserPasswordHash());
-        trans.writeBytes(ci.getFilePasswordHash());
-        trans.writeBytes(ci.getFileEncryptionKey());
-        String[] keys = ci.getKeys();
-        trans.writeInt(keys.length);
-        for (String key : keys) {
-            trans.writeString(key).writeString(ci.getProperty(key));
+    private Transfer initTransfer(ConnectionInfo ci, String server) throws Exception {
+        int port = Constants.DEFAULT_TCP_PORT;
+        // IPv6: RFC 2732 format is '[a:b:c:d:e:f:g:h]' or
+        // '[a:b:c:d:e:f:g:h]:port'
+        // RFC 2396 format is 'a.b.c.d' or 'a.b.c.d:port' or 'hostname' or
+        // 'hostname:port'
+        int startIndex = server.startsWith("[") ? server.indexOf(']') : 0;
+        int idx = server.indexOf(':', startIndex);
+        if (idx >= 0) {
+            port = Integer.decode(server.substring(idx + 1));
+            server = server.substring(0, idx);
         }
-        try {
-            done(trans);
-            clientVersion = trans.readInt();
-            trans.setVersion(clientVersion);
-            trans.writeInt(Session.SESSION_SET_ID);
-            trans.writeString(sessionId);
-            done(trans);
-            autoCommit = trans.readBoolean();
-        } catch (DbException e) {
-            trans.close();
-            throw e;
+
+        CountDownLatch latch = new CountDownLatch(1);
+        client.connect(port, server, res -> {
+            if (res.succeeded()) {
+                socket = res.result();
+                asyncConnection = new AsyncConnection(socket, new CountDownLatch(1));
+                socket.handler(asyncConnection);
+                transfer = asyncConnection.getTransfer();
+                try {
+                    asyncConnection.writeInitPacket(ci);
+                } catch (Exception e) {
+                    throw DbException.convert(e);
+                }
+                latch.countDown();
+            } else {
+                throw DbException.convert(res.cause());
+            }
+        });
+
+        latch.await();
+        if (asyncConnection.getReadyLatch() != null)
+            asyncConnection.getReadyLatch().await();
+        autoCommit = asyncConnection.isAutoCommit();
+        return transfer;
+    }
+
+    private static String getFilePrefix(String dir, String dbName) {
+        StringBuilder buff = new StringBuilder(dir);
+        if (!(dir.charAt(dir.length() - 1) == File.separatorChar))
+            buff.append(File.separatorChar);
+        for (int i = 0, length = dbName.length(); i < length; i++) {
+            char ch = dbName.charAt(i);
+            if (Character.isLetterOrDigit(ch)) {
+                buff.append(ch);
+            } else {
+                buff.append('_');
+            }
         }
-        return trans;
+        return buff.toString();
     }
 
     @Override
@@ -207,16 +253,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
      */
     public void cancelStatement(int id) {
         try {
-            Transfer trans = transfer.openNewConnection();
-            trans.init();
-            trans.writeInt(clientVersion);
-            trans.writeInt(clientVersion);
-            trans.writeString(null);
-            trans.writeString(null);
-            trans.writeString(sessionId);
-            trans.writeInt(Session.SESSION_CANCEL_STATEMENT);
-            trans.writeInt(id);
-            trans.close();
+            transfer.writeRequestHeader(Session.SESSION_CANCEL_STATEMENT);
+            transfer.writeString(sessionId);
+            transfer.writeInt(id).flush();
         } catch (IOException e) {
             trace.debug(e, "could not cancel statement");
         }
@@ -233,32 +272,14 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         this.autoCommit = autoCommit;
     }
 
-    public void setAutoCommitFromServer(boolean autoCommit) {
-        this.autoCommit = autoCommit;
-    }
-
     private void setAutoCommitSend(boolean autoCommit) {
         try {
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
             transfer.writeInt(Session.SESSION_SET_AUTO_COMMIT).writeBoolean(autoCommit);
-            done(transfer);
+            transfer.flush();
         } catch (IOException e) {
             handleException(e);
         }
-    }
-
-    private String getFilePrefix(String dir, String dbName) {
-        StringBuilder buff = new StringBuilder(dir);
-        buff.append('/');
-        for (int i = 0; i < dbName.length(); i++) {
-            char ch = dbName.charAt(i);
-            if (Character.isLetterOrDigit(ch)) {
-                buff.append(ch);
-            } else {
-                buff.append('_');
-            }
-        }
-        return buff.toString();
     }
 
     public void handleException(Exception e) {
@@ -268,24 +289,21 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public Command createCommand(String sql, int fetchSize) {
-        return createCommand(sql, fetchSize, false);
+        checkClosed();
+        return new ClientCommand(this, transfer.copy(), sql, fetchSize);
     }
 
     @Override
     public StorageCommand createStorageCommand() {
         checkClosed();
-        return new ClientCommand(this, transfer, null, -1, false);
+        return new ClientCommand(this, transfer.copy(), null, -1);
     }
 
     @Override
-    public synchronized Command prepareCommand(String sql, int fetchSize) {
-        return createCommand(sql, fetchSize, true);
-    }
-
-    private synchronized Command createCommand(String sql, int fetchSize, boolean prepare) {
-        checkClosed();
-        return new ClientCommand(this, transfer, sql, fetchSize, prepare);
-
+    public Command prepareCommand(String sql, int fetchSize) {
+        Command c = createCommand(sql, fetchSize);
+        c.prepare();
+        return c;
     }
 
     /**
@@ -300,13 +318,18 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
+    public boolean isClosed() {
+        return transfer == null;
+    }
+
+    @Override
     public void close() {
         RuntimeException closeError = null;
         synchronized (this) {
             try {
                 traceOperation("SESSION_CLOSE", 0);
                 transfer.writeInt(Session.SESSION_CLOSE);
-                done(transfer);
+                transfer.flush();
                 transfer.close();
             } catch (RuntimeException e) {
                 trace.error(e, "close");
@@ -328,40 +351,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         return traceSystem.getTrace(Trace.JDBC);
     }
 
-    public int getNextId() {
-        return nextId++;
-    }
-
-    public int getCurrentId() {
-        return nextId;
-    }
-
-    /**
-     * Called to flush the output after data has been sent to the server and
-     * just before receiving data. This method also reads the status code from
-     * the server and throws any exception the server sent.
-     *
-     * @param transfer the transfer object
-     * @throws DbException if the server sent an exception
-     * @throws IOException if there is a communication problem between client
-     *             and server
-     */
-    public void done(Transfer transfer) throws IOException {
-        transfer.flush();
-        int status = transfer.readInt();
-        if (status == STATUS_ERROR) {
-            parseError(transfer);
-        } else if (status == STATUS_CLOSED) {
-            transfer = null;
-        } else if (status == STATUS_OK_STATE_CHANGED) {
-            sessionStateChanged = true;
-        } else if (status == STATUS_OK) {
-            // ok
-        } else {
-            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
-        }
-    }
-
     public void parseError(Transfer transfer) throws IOException {
         String sqlstate = transfer.readString();
         String message = transfer.readString();
@@ -376,11 +365,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             throw e;
         }
         throw DbException.convert(s);
-    }
-
-    @Override
-    public boolean isClosed() {
-        return transfer == null;
     }
 
     /**
@@ -483,7 +467,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             transfer.writeBytes(hmac);
             transfer.writeLong(offset);
             transfer.writeInt(length);
-            done(transfer);
+            transfer.flush();
             length = transfer.readInt();
             if (length <= 0) {
                 return length;
@@ -501,7 +485,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         checkClosed();
         try {
             transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT).writeString(allLocalTransactionNames);
-            done(transfer);
+            transfer.flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -512,7 +496,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         checkClosed();
         try {
             transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK);
-            done(transfer);
+            transfer.flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -523,7 +507,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         checkClosed();
         try {
             transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT).writeString(name);
-            done(transfer);
+            transfer.flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -534,7 +518,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         checkClosed();
         try {
             transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT).writeString(name);
-            done(transfer);
+            transfer.flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -545,7 +529,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         checkClosed();
         try {
             transfer.writeInt(Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE).writeString(localTransactionName);
-            done(transfer);
+            transfer.flush();
             return transfer.readBoolean();
         } catch (Exception e) {
             handleException(e);
@@ -566,18 +550,18 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     public synchronized ClientBatchCommand getClientBatchCommand(ArrayList<String> batchCommands) {
         checkClosed();
-        return new ClientBatchCommand(this, transfer, batchCommands);
+        return new ClientBatchCommand(this, transfer.copy(), batchCommands);
     }
 
     public synchronized ClientBatchCommand getClientBatchCommand(Command preparedCommand,
             ArrayList<Value[]> batchParameters) {
         checkClosed();
-        return new ClientBatchCommand(this, transfer, preparedCommand, batchParameters);
+        return new ClientBatchCommand(this, transfer.copy(), preparedCommand, batchParameters);
     }
 
     @Override
     public String getURL() {
-        return connectionInfo.getURL();
+        return ci.getURL();
     }
 
     @Override
@@ -609,6 +593,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public ConnectionInfo getConnectionInfo() {
-        return connectionInfo;
+        return ci;
     }
+
 }

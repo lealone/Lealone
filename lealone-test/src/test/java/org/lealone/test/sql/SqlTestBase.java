@@ -23,10 +23,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.junit.AfterClass;
+import org.lealone.common.trace.TraceSystem;
 import org.lealone.test.TestBase;
 
 public class SqlTestBase extends TestBase {
-
     protected static Connection conn;
     protected static Statement stmt;
 
@@ -37,6 +37,7 @@ public class SqlTestBase extends TestBase {
 
     protected SqlTestBase() {
         try {
+            addConnectionParameter("TRACE_LEVEL_FILE", TraceSystem.ADAPTER + "");
             conn = getConnection();
             stmt = conn.createStatement();
         } catch (Exception e) {
@@ -87,8 +88,8 @@ public class SqlTestBase extends TestBase {
 
     public void createTable(String tableName) {
         executeUpdate("DROP TABLE IF EXISTS " + tableName);
-        executeUpdate("CREATE TABLE " + tableName + " (pk varchar NOT NULL PRIMARY KEY, " + //
-                "f1 varchar, f2 varchar, f3 int)");
+        executeUpdate("CREATE TABLE " + tableName + " (pk varchar(100) NOT NULL PRIMARY KEY, " + //
+                "f1 varchar(100), f2 varchar(100), f3 int)");
     }
 
     private void check() throws Exception {

@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -36,6 +37,8 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.mvstore.Page.PageChildren;
+import org.lealone.sql.SQLEngineManager;
+import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
@@ -1822,20 +1825,51 @@ public class MVStore implements Storage {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         }
-        Page p = cache == null ? null : cache.get(pos);
-        if (p == null) {
-            Chunk c = getChunk(pos);
-            long filePos = c.block * BLOCK_SIZE;
-            filePos += DataUtils.getPageOffset(pos);
-            if (filePos < 0) {
-                throw DataUtils
-                        .newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}", filePos);
+
+        Callable<Page> task = null;
+        boolean taskInQueue = false;
+        final SQLStatementExecutor sqlStatementExecutor = SQLEngineManager.getInstance().getSQLStatementExecutor();
+        while (true) {
+            Page p = cache == null ? null : cache.get(pos);
+            if (p != null)
+                return p;
+
+            if (task == null) {
+                task = new Callable<Page>() {
+                    @Override
+                    public Page call() throws Exception {
+                        Chunk c = getChunk(pos);
+                        long filePos = c.block * BLOCK_SIZE;
+                        filePos += DataUtils.getPageOffset(pos);
+                        if (filePos < 0) {
+                            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                                    "Negative position {0}", filePos);
+                        }
+                        long maxPos = (c.block + c.len) * BLOCK_SIZE;
+                        Page p = Page.read(fileStore, pos, map, filePos, maxPos);
+                        cachePage(pos, p, p.getMemory());
+                        if (sqlStatementExecutor != null)
+                            sqlStatementExecutor.ready();
+                        return p;
+                    }
+                };
             }
-            long maxPos = (c.block + c.len) * BLOCK_SIZE;
-            p = Page.read(fileStore, pos, map, filePos, maxPos);
-            cachePage(pos, p, p.getMemory());
+
+            if (sqlStatementExecutor != null && (Thread.currentThread() == sqlStatementExecutor)) {
+                if (!taskInQueue) {
+                    PageReader.readPageTaskQueue.add(task);
+                    taskInQueue = true;
+                }
+                sqlStatementExecutor.executeNextStatement();
+                continue;
+            } else {
+                try {
+                    return task.call();
+                } catch (Exception e) {
+                    throw DbException.convert(e);
+                }
+            }
         }
-        return p;
     }
 
     /**

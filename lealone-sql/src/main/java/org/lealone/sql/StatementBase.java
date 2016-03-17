@@ -367,6 +367,14 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         if ((++rowScanCount & 127) == 0) {
             checkCanceled();
         }
+        if (isQuery()) {
+            if ((rowScanCount % 8) == 0) {
+                this.currentRowNumber = rowNumber;
+                // Coroutine.yield();
+                this.currentRowNumber = rowNumber;
+                this.currentRowNumber = rowNumber;
+            }
+        }
         this.currentRowNumber = rowNumber;
         setProgress();
     }
@@ -530,4 +538,24 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
             return null;
         return row.getRowKey();
     }
+
+    protected double cost;
+
+    @Override
+    public double getCost() {
+        return cost;
+    }
+
+    protected int connectionId;
+
+    @Override
+    public void setConnectionId(int connectionId) {
+        this.connectionId = connectionId;
+    }
+
+    @Override
+    public int getConnectionId() {
+        return connectionId;
+    }
+
 }

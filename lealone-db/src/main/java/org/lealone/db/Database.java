@@ -362,7 +362,7 @@ public class Database implements DataHandler, DbObject {
             trace = traceSystem.getTrace(Trace.DATABASE);
             trace.info("opening {0} (build {1})", name, Constants.BUILD_ID);
         } else {
-            traceSystem = new TraceSystem(null);
+            traceSystem = new TraceSystem();
             trace = traceSystem.getTrace(Trace.DATABASE);
         }
     }

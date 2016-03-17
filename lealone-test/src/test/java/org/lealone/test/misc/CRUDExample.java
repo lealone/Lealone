@@ -24,14 +24,13 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Assert;
-import org.lealone.common.trace.TraceSystem;
 import org.lealone.test.TestBase;
 
 public class CRUDExample {
     public static void main(String[] args) throws Exception {
-        crud(new TestBase().enableTrace(TraceSystem.DEBUG).getConnection());
+        // crud(new TestBase().enableTrace(TraceSystem.DEBUG).getConnection());
         // crud0();
-        // benchmark();
+        benchmark();
 
         // for (int i = 2; i < 500; i++)
         // System.out.println("INSERT INTO test(f1, f2) VALUES(" + i + ", 1);");
@@ -193,13 +192,13 @@ public class CRUDExample {
         Statement stmt = conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
-        stmt.executeUpdate("set MULTI_THREADED 1");
+        // // stmt.executeUpdate("set MULTI_THREADED 1");
+        //
+        // // stmt.close();
+        // // conn.close();
 
-        // stmt.close();
-        // conn.close();
-
-        int threadsCount = Runtime.getRuntime().availableProcessors();// 10;
-        int loop = 10000;
+        int threadsCount = 1;// Runtime.getRuntime().availableProcessors() * 4;// 10;
+        int loop = 100;
         latch = new CountDownLatch(threadsCount);
 
         MyThread[] threads = new MyThread[threadsCount];

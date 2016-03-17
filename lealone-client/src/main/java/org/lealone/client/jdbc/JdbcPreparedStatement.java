@@ -97,21 +97,19 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "executeQuery()");
             }
-            synchronized (session) {
-                checkClosed();
-                closeOldResultSet();
-                Result result;
-                boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-                boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                try {
-                    setExecutingStatement(command);
-                    result = command.query(maxRows, scrollable);
-                } finally {
-                    setExecutingStatement(null);
-                }
-                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable,
-                        cachedColumnLabelMap);
+            checkClosed();
+            closeOldResultSet();
+            Result result;
+            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+            boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+            try {
+                setExecutingStatement(command);
+                result = command.query(maxRows, scrollable);
+            } finally {
+                setExecutingStatement(null);
             }
+            resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable,
+                    cachedColumnLabelMap);
             return resultSet;
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -147,13 +145,11 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
 
     private int executeUpdateInternal() throws SQLException {
         closeOldResultSet();
-        synchronized (session) {
-            try {
-                setExecutingStatement(command);
-                updateCount = command.update();
-            } finally {
-                setExecutingStatement(null);
-            }
+        try {
+            setExecutingStatement(command);
+            updateCount = command.update();
+        } finally {
+            setExecutingStatement(null);
         }
         return updateCount;
     }
@@ -176,23 +172,21 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             }
             checkClosed();
             boolean returnsResultSet;
-            synchronized (conn.getSession()) {
-                closeOldResultSet();
-                try {
-                    setExecutingStatement(command);
-                    if (command.isQuery()) {
-                        returnsResultSet = true;
-                        boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-                        boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                        Result result = command.query(maxRows, scrollable);
-                        resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                    } else {
-                        returnsResultSet = false;
-                        updateCount = command.update();
-                    }
-                } finally {
-                    setExecutingStatement(null);
+            closeOldResultSet();
+            try {
+                setExecutingStatement(command);
+                if (command.isQuery()) {
+                    returnsResultSet = true;
+                    boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+                    boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+                    Result result = command.query(maxRows, scrollable);
+                    resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                } else {
+                    returnsResultSet = false;
+                    updateCount = command.update();
                 }
+            } finally {
+                setExecutingStatement(null);
             }
             return returnsResultSet;
         } catch (Exception e) {

@@ -45,12 +45,14 @@ public class ConsoleLogDelegate implements LogDelegate {
 
     private void log(Object message, Throwable t) {
         log(message);
-        t.printStackTrace(System.err);
+        if (t != null)
+            t.printStackTrace(System.err);
     }
 
     private void log(Object message, Throwable t, Object... params) {
         log(message, params);
-        t.printStackTrace(System.err);
+        if (t != null)
+            t.printStackTrace(System.err);
     }
 
     @Override

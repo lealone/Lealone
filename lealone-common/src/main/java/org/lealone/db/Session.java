@@ -29,6 +29,7 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int SESSION_CANCEL_STATEMENT = 1;
     public static final int SESSION_SET_AUTO_COMMIT = 2;
     public static final int SESSION_CLOSE = 3;
+    public static final int SESSION_INIT = 4;
 
     public static final int RESULT_FETCH_ROWS = 30;
     public static final int RESULT_CHANGE_ID = 31;
@@ -147,6 +148,8 @@ public interface Session extends Closeable, Transaction.Participant {
 
     Transaction getTransaction();
 
+    boolean containsTransaction();
+
     void setTransaction(Transaction transaction);
 
     void rollback();
@@ -174,4 +177,7 @@ public interface Session extends Closeable, Transaction.Participant {
     boolean isShardingMode();
 
     StorageMap<Object, Object> getStorageMap(String mapName);
+
+    int getNextId();
+
 }

@@ -304,6 +304,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             redoLog.put(t.transactionId, v);
             logStorage.logSyncService.maybeWaitForSync(redoLog, t.transactionId);
         }
+
         commitFinal(t.transactionId);
     }
 

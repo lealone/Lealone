@@ -227,6 +227,16 @@ class StatementWrapper extends StatementBase {
         return statement;
     }
 
+    @Override
+    public void setConnectionId(int connectionId) {
+        statement.setConnectionId(connectionId);
+    }
+
+    @Override
+    public int getConnectionId() {
+        return statement.getConnectionId();
+    }
+
     /**
      * Execute a query and return the result.
      * This method prepares everything and calls {@link #query(int)} finally.
@@ -249,73 +259,70 @@ class StatementWrapper extends StatementBase {
         startTime = 0;
         long start = 0;
         Database database = session.getDatabase();
-        Object sync = database.isMultiThreaded() ? session : database;
         session.waitIfExclusiveModeEnabled();
         boolean callStop = true;
-        synchronized (sync) {
-            int savepointId = 0;
-            if (isUpdate)
-                savepointId = session.getTransaction(statement).getSavepointId();
-            session.setCurrentCommand(this);
-            try {
-                while (true) {
-                    database.checkPowerOff();
-                    try {
-                        recompileIfRequired();
-                        setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-                        start();
-                        statement.checkParameters();
-                        Object result;
-                        int rowCount;
-                        if (isUpdate) {
-                            session.setLastScopeIdentity(ValueNull.INSTANCE);
-                            int updateCount = RouterHolder.getRouter().executeUpdate(statement);
-                            rowCount = updateCount;
-                            result = Integer.valueOf(updateCount);
-                        } else {
-                            Result r = RouterHolder.getRouter().executeQuery(statement, maxRows);
-                            rowCount = r.getRowCount();
-                            result = r;
-                        }
-                        statement.trace(startTime, rowCount);
-                        setProgress(DatabaseEventListener.STATE_STATEMENT_END);
-                        return result;
-                    } catch (DbException e) {
-                        start = filterConcurrentUpdate(e, start);
-                    } catch (OutOfMemoryError e) {
-                        callStop = false;
-                        // there is a serious problem:
-                        // the transaction may be applied partially
-                        // in this case we need to panic:
-                        // close the database
-                        database.shutdownImmediately();
-                        throw DbException.convert(e);
-                    } catch (Throwable e) {
-                        throw DbException.convert(e);
-                    }
-                }
-            } catch (DbException e) {
-                e = e.addSQL(statement.getSQL());
-                SQLException s = e.getSQLException();
-                database.exceptionThrown(s, statement.getSQL());
-                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-                    callStop = false;
-                    database.shutdownImmediately();
-                    throw e;
-                }
+        int savepointId = 0;
+        if (isUpdate)
+            savepointId = session.getTransaction(statement).getSavepointId();
+        session.setCurrentCommand(this);
+        try {
+            while (true) {
                 database.checkPowerOff();
-                if (isUpdate) {
-                    if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
-                        session.rollback();
+                try {
+                    recompileIfRequired();
+                    setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+                    start();
+                    statement.checkParameters();
+                    Object result;
+                    int rowCount;
+                    if (isUpdate) {
+                        session.setLastScopeIdentity(ValueNull.INSTANCE);
+                        int updateCount = RouterHolder.getRouter().executeUpdate(statement);
+                        rowCount = updateCount;
+                        result = Integer.valueOf(updateCount);
                     } else {
-                        session.rollbackTo(savepointId);
+                        Result r = RouterHolder.getRouter().executeQuery(statement, maxRows);
+                        rowCount = r.getRowCount();
+                        result = r;
                     }
+                    statement.trace(startTime, rowCount);
+                    setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+                    return result;
+                } catch (DbException e) {
+                    start = filterConcurrentUpdate(e, start);
+                } catch (OutOfMemoryError e) {
+                    callStop = false;
+                    // there is a serious problem:
+                    // the transaction may be applied partially
+                    // in this case we need to panic:
+                    // close the database
+                    database.shutdownImmediately();
+                    throw DbException.convert(e);
+                } catch (Throwable e) {
+                    throw DbException.convert(e);
                 }
+            }
+        } catch (DbException e) {
+            e = e.addSQL(statement.getSQL());
+            SQLException s = e.getSQLException();
+            database.exceptionThrown(s, statement.getSQL());
+            if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
+                callStop = false;
+                database.shutdownImmediately();
                 throw e;
-            } finally {
-                if (callStop) {
-                    stop();
+            }
+            database.checkPowerOff();
+            if (isUpdate) {
+                if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
+                    session.rollback();
+                } else {
+                    session.rollbackTo(savepointId);
                 }
+            }
+            throw e;
+        } finally {
+            if (callStop) {
+                stop();
             }
         }
     }

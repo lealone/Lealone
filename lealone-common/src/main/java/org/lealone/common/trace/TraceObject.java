@@ -14,95 +14,88 @@ import org.lealone.common.util.StringUtils;
 
 /**
  * The base class for objects that can print trace information about themselves.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class TraceObject {
 
     /**
-     * The trace type id  for callable statements.
+     * The trace type id for connections.
      */
-    protected static final int CALLABLE_STATEMENT = 0;
+    protected static final int CONNECTION = 0;
 
     /**
-     * The trace type id  for connections.
+     * The trace type id for statements.
      */
-    protected static final int CONNECTION = 1;
+    protected static final int STATEMENT = 1;
 
     /**
-     * The trace type id  for database meta data objects.
+     * The trace type id for prepared statements.
      */
-    protected static final int DATABASE_META_DATA = 2;
+    protected static final int PREPARED_STATEMENT = 2;
 
     /**
-     * The trace type id  for prepared statements.
+     * The trace type id for callable statements.
      */
-    protected static final int PREPARED_STATEMENT = 3;
+    protected static final int CALLABLE_STATEMENT = 3;
 
     /**
-     * The trace type id  for result sets.
+     * The trace type id for result sets.
      */
     protected static final int RESULT_SET = 4;
 
     /**
-     * The trace type id  for result set meta data objects.
+     * The trace type id for result set meta data objects.
      */
     protected static final int RESULT_SET_META_DATA = 5;
 
     /**
-     * The trace type id  for savepoint objects.
+     * The trace type id for parameter meta data objects.
      */
-    protected static final int SAVEPOINT = 6;
+    protected static final int PARAMETER_META_DATA = 6;
 
     /**
-     * The trace type id  for statements.
+     * The trace type id for database meta data objects.
      */
-    protected static final int STATEMENT = 8;
+    protected static final int DATABASE_META_DATA = 7;
 
     /**
-     * The trace type id  for blobs.
+     * The trace type id for savepoint objects.
+     */
+    protected static final int SAVEPOINT = 8;
+
+    /**
+     * The trace type id for blobs.
      */
     protected static final int BLOB = 9;
 
     /**
-     * The trace type id  for clobs.
+     * The trace type id for clobs.
      */
     protected static final int CLOB = 10;
 
     /**
-     * The trace type id  for parameter meta data objects.
+     * The trace type id for array objects.
      */
-    protected static final int PARAMETER_META_DATA = 11;
+    protected static final int ARRAY = 11;
 
     /**
-     * The trace type id  for data sources.
+     * The trace type id for data sources.
      */
     protected static final int DATA_SOURCE = 12;
 
-    /**
-     * The trace type id  for XA data sources.
-     */
-    protected static final int XA_DATA_SOURCE = 13;
-
-    /**
-     * The trace type id  for transaction ids.
-     */
-    protected static final int XID = 15;
-
-    /**
-     * The trace type id  for array objects.
-     */
-    protected static final int ARRAY = 16;
-
-    private static final int LAST = ARRAY + 1;
+    private static final int LAST = DATA_SOURCE + 1;
     private static final int[] ID = new int[LAST];
-    private static final String[] PREFIX = { "call", "conn", "dbMeta", "prep", "rs", "rsMeta", "sp", "ex", "stat",
-            "blob", "clob", "pMeta", "ds", "xads", "xares", "xid", "ar" };
+    private static final String[] PREFIX = { "conn", "stat", "prep", "call", "rs", "rsMeta", "pMeta", "dbMeta", "sp",
+            "blob", "clob", "ar", "ds" };
 
     /**
      * The trace module used by this object.
      */
     protected Trace trace;
 
-    private int traceType;
+    private int type;
     private int id;
 
     /**
@@ -114,7 +107,7 @@ public class TraceObject {
      */
     protected void setTrace(Trace trace, int type, int id) {
         this.trace = trace;
-        this.traceType = type;
+        this.type = type;
         this.id = id;
     }
 
@@ -129,7 +122,7 @@ public class TraceObject {
      * INTERNAL
      */
     public String getTraceObjectName() {
-        return PREFIX[traceType] + id;
+        return PREFIX[type] + id;
     }
 
     /**

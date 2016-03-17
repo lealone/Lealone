@@ -12,10 +12,11 @@ import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.New;
+import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
-import org.lealone.db.value.Transfer;
 import org.lealone.db.value.Value;
+import org.lealone.net.Transfer;
 
 /**
  * The client side part of a result set that is kept on the server.
@@ -117,14 +118,12 @@ public abstract class ClientResult implements Result {
         if (session == null) {
             return;
         }
-        synchronized (session) {
-            session.checkClosed();
-            try {
-                session.traceOperation("RESULT_RESET", id);
-                transfer.writeInt(ClientSession.RESULT_RESET).writeInt(id).flush();
-            } catch (IOException e) {
-                throw DbException.convertIOException(e, null);
-            }
+        session.checkClosed();
+        try {
+            session.traceOperation("RESULT_RESET", id);
+            transfer.writeRequestHeader(Session.RESULT_RESET).writeInt(id).flush();
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, null);
         }
     }
 
@@ -154,10 +153,8 @@ public abstract class ClientResult implements Result {
         }
         // TODO result sets: no reset possible for larger remote result sets
         try {
-            synchronized (session) {
-                session.traceOperation("RESULT_CLOSE", id);
-                transfer.writeInt(ClientSession.RESULT_CLOSE).writeInt(id);
-            }
+            session.traceOperation("RESULT_CLOSE", id);
+            transfer.writeRequestHeader(Session.RESULT_CLOSE).writeInt(id).flush();
         } catch (IOException e) {
             trace.error(e, "close");
         } finally {
@@ -168,8 +165,7 @@ public abstract class ClientResult implements Result {
 
     protected void sendFetch(int fetchSize) throws IOException {
         session.traceOperation("RESULT_FETCH_ROWS", id);
-        transfer.writeInt(ClientSession.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize);
-        session.done(transfer);
+        transfer.writeRequestHeader(Session.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize).flush();
     }
 
     @Override
@@ -187,7 +183,7 @@ public abstract class ClientResult implements Result {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
                 session.traceOperation("CHANGE_ID", id);
-                transfer.writeInt(ClientSession.RESULT_CHANGE_ID).writeInt(id).writeInt(newId);
+                transfer.writeRequestHeader(Session.RESULT_CHANGE_ID).writeInt(id).writeInt(newId).flush();
                 id = newId;
                 // TODO remote result set: very old result sets may be
                 // already removed on the server (theoretically) - how to
