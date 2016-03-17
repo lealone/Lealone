@@ -391,10 +391,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         PreparedCommand pc = new PreparedCommand(command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-                Result result;
-                synchronized (session) {
-                    result = command.query(maxRows, false);
-                }
+                final Result result = command.query(maxRows, false);
                 cache.addObject(objectId, result);
 
                 Response response = new Response(new Callable<Object>() {
@@ -436,10 +433,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         PreparedCommand pc = new PreparedCommand(command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-                int updateCount;
-                synchronized (session) {
-                    updateCount = command.update();
-                }
+                int updateCount = command.update();
                 int status;
                 if (session.isClosed()) {
                     status = Session.STATUS_CLOSED;
@@ -710,10 +704,9 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
 
             DataType valueType = map.getValueType();
-            // synchronized (session) {
-            Object result = map
-                    .put(map.getKeyType().read(ByteBuffer.wrap(key)), valueType.read(ByteBuffer.wrap(value)));
-            // }
+            Object k = map.getKeyType().read(ByteBuffer.wrap(key));
+            Object v = valueType.read(ByteBuffer.wrap(value));
+            Object result = map.put(k, v);
             int status;
             if (session.isClosed()) {
                 status = Session.STATUS_CLOSED;
@@ -745,9 +738,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
 
             DataType valueType = map.getValueType();
-            // synchronized (session) {
             Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
-            // }
 
             int status;
             if (session.isClosed()) {
@@ -832,9 +823,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
             int old = session.getModificationId();
-            synchronized (session) {
-                session.commit(false, transfer.readString());
-            }
+            session.commit(false, transfer.readString());
             int status;
             if (session.isClosed()) {
                 status = Session.STATUS_CLOSED;
@@ -847,9 +836,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
             int old = session.getModificationId();
-            synchronized (session) {
-                session.rollback();
-            }
+            session.rollback();
             int status;
             if (session.isClosed()) {
                 status = Session.STATUS_CLOSED;
@@ -864,12 +851,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT: {
             int old = session.getModificationId();
             String name = transfer.readString();
-            synchronized (session) {
-                if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT)
-                    session.addSavepoint(name);
-                else
-                    session.rollbackToSavepoint(name);
-            }
+            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT)
+                session.addSavepoint(name);
+            else
+                session.rollbackToSavepoint(name);
             int status;
             if (session.isClosed()) {
                 status = Session.STATUS_CLOSED;
@@ -901,12 +886,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             for (int i = 0; i < size; i++) {
                 String sql = transfer.readString();
                 PreparedStatement command = session.prepareStatement(sql, -1);
-                synchronized (session) {
-                    try {
-                        result[i] = command.update();
-                    } catch (Exception e) {
-                        result[i] = Statement.EXECUTE_FAILED;
-                    }
+                try {
+                    result[i] = command.update();
+                } catch (Exception e) {
+                    result[i] = Statement.EXECUTE_FAILED;
                 }
             }
             writeBatchResult(result, old);
@@ -927,12 +910,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     CommandParameter p = params.get(j);
                     p.setValue(transfer.readValue());
                 }
-                synchronized (session) {
-                    try {
-                        result[i] = command.update();
-                    } catch (Exception e) {
-                        result[i] = Statement.EXECUTE_FAILED;
-                    }
+                try {
+                    result[i] = command.update();
+                } catch (Exception e) {
+                    result[i] = Statement.EXECUTE_FAILED;
                 }
             }
             writeBatchResult(result, old);
