@@ -159,7 +159,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             transfer.writeInt(clientVersion);
             transfer.flush();
         } catch (Throwable e) {
-            sendError(e);
+            sendError(-1, e);
             stop = true;
         }
     }
@@ -203,6 +203,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             Session session = ci.getSessionFactory().createSession(ci);
             if (ci.getProperty("IS_LOCAL") != null)
                 session.setLocal(Boolean.parseBoolean(ci.getProperty("IS_LOCAL")));
+            else
+                session.setLocal(true);
             return session;
         } catch (SQLException e) {
             throw DbException.convert(e);
@@ -273,7 +275,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
     }
 
-    private void sendError(Throwable t) {
+    private void sendError(int id, Throwable t) {
         try {
             SQLException e = DbException.convert(t).getSQLException();
             StringWriter writer = new StringWriter();
@@ -292,8 +294,9 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
 
             transfer.reset(); // 为什么要reset? 见reset中的注释
 
-            transfer.writeInt(Session.STATUS_ERROR).writeString(e.getSQLState()).writeString(message).writeString(sql)
-                    .writeInt(e.getErrorCode()).writeString(trace).flush();
+            transfer.writeResponseHeader(Session.COMMAND_ERROR).writeInt(Session.STATUS_ERROR).writeInt(id);
+            transfer.writeString(e.getSQLState()).writeString(message).writeString(sql).writeInt(e.getErrorCode())
+                    .writeString(trace).flush();
         } catch (Exception e2) {
             // if writing the error does not work, close the connection
             stop = true;
@@ -388,7 +391,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
 
     private void executeQuery(Session session, int id, PreparedStatement command, int operation, int objectId,
             int maxRows, int fetchSize, int oldModificationId) throws IOException {
-        PreparedCommand pc = new PreparedCommand(command, session, new Callable<Object>() {
+        PreparedCommand pc = new PreparedCommand(id, command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 final Result result = command.query(maxRows, false);
@@ -439,7 +442,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
 
     private void executeUpdate(Session session, int id, PreparedStatement command, int operation, int oldModificationId)
             throws IOException {
-        PreparedCommand pc = new PreparedCommand(command, session, new Callable<Object>() {
+        PreparedCommand pc = new PreparedCommand(id, command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 int updateCount = command.update();
@@ -477,7 +480,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
     private void readStatus() throws IOException {
         int status = transfer.readInt();
         if (status == Session.STATUS_ERROR) {
-            parseError();
+            // parseError();
         } else if (status == Session.STATUS_CLOSED) {
             transfer = null;
         } else if (status == Session.STATUS_OK_STATE_CHANGED) {
@@ -489,20 +492,25 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
     }
 
-    public void parseError() throws IOException {
-        String sqlstate = transfer.readString();
-        String message = transfer.readString();
-        String sql = transfer.readString();
-        int errorCode = transfer.readInt();
-        String stackTrace = transfer.readString();
-        JdbcSQLException s = new JdbcSQLException(message, sql, sqlstate, errorCode, null, stackTrace);
-        if (errorCode == ErrorCode.CONNECTION_BROKEN_1) {
-            // allow re-connect
-            IOException e = new IOException(s.toString());
-            e.initCause(s);
-            throw e;
+    private DbException parseError() {
+        Throwable t;
+        try {
+            String sqlstate = transfer.readString();
+            String message = transfer.readString();
+            String sql = transfer.readString();
+            int errorCode = transfer.readInt();
+            String stackTrace = transfer.readString();
+            JdbcSQLException s = new JdbcSQLException(message, sql, sqlstate, errorCode, null, stackTrace);
+            t = s;
+            if (errorCode == ErrorCode.CONNECTION_BROKEN_1) {
+                IOException e = new IOException(s.toString());
+                e.initCause(s);
+                t = e;
+            }
+        } catch (Exception e) {
+            t = e;
         }
-        throw DbException.convert(s);
+        return DbException.convert(t);
     }
 
     private int clientVersion;
@@ -990,6 +998,17 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             close();
             break;
         }
+        case Session.COMMAND_ERROR: {
+            int id = transfer.readInt();
+            DbException e = parseError();
+            if (id >= 0) {
+                AsyncCallback<?> ac = getAsyncCallback(id);
+                ac.setDbException(e);
+            } else {
+                throw e;
+            }
+            break;
+        }
         case Session.SESSION_CANCEL_STATEMENT: {
             transfer.readString();
             int id = transfer.readInt();
@@ -1145,7 +1164,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 transfer.readInt(); // packetLength
                 process();
             } catch (Throwable e) {
-                sendError(e);
+                sendError(-1, e);
             }
         }
     }
@@ -1157,7 +1176,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         try {
             c.run();
         } catch (Throwable e) {
-            sendError(e);
+            sendError(c.id, e);
         }
     }
 }

@@ -160,10 +160,11 @@ public class Transfer {
      * 当输出流写到一半时碰到某种异常了(可能是内部代码实现bug)，比如产生了NPE，
      * 就会转到错误处理，生成一个新的错误协议包，但是前面产生的不完整的内容没有正常结束，
      * 这会导致客户端无法正常解析数据，所以这里允许在生成错误协议包之前清除之前的内容，
-     * 如果之前的协议包不完整，但是已经发出去一半了，这里的方案也无能为力。
+     * 如果之前的协议包不完整，但是已经发出去一半了，这里的方案也无能为力。 
      */
-    public void reset() {
+    public void reset() throws IOException {
         bufferedOutputStream.reset();
+        out.writeInt(0);
     }
 
     public NetSocket getSocket() {

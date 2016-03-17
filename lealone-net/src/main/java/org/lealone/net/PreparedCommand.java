@@ -23,11 +23,14 @@ import org.lealone.db.Session;
 import org.lealone.sql.PreparedStatement;
 
 public class PreparedCommand {
+
+    int id;
     PreparedStatement stmt;
     Session session;
     Callable<?> call;
 
-    PreparedCommand(PreparedStatement stmt, Session session, Callable<?> call) {
+    PreparedCommand(int id, PreparedStatement stmt, Session session, Callable<?> call) {
+        this.id = id;
         this.stmt = stmt;
         this.session = session;
         this.call = call;

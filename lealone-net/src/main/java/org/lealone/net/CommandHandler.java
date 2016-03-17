@@ -26,7 +26,7 @@ import org.lealone.sql.SQLStatementExecutor;
 public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     private static final LinkedList<AsyncConnection> connections = new LinkedList<>();
-    private static final PreparedCommand dummyCommand = new PreparedCommand(null, null, null);
+    private static final PreparedCommand dummyCommand = new PreparedCommand(0, null, null, null);
     static final LinkedBlockingQueue<PreparedCommand> preparedCommandQueue = new LinkedBlockingQueue<>();
 
     private boolean stop;

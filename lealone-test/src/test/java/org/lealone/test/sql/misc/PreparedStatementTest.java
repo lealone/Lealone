@@ -50,6 +50,14 @@ public class PreparedStatementTest extends SqlTestBase {
         ps.setInt(3, 30);
         ps.executeUpdate();
 
+        try {
+            ps.setString(1, "03");
+            ps.setString(2, "a3");
+            ps.setInt(3, 30);
+            ps.executeUpdate();
+        } catch (Exception e) {
+        }
+
         ps.close();
     }
 
@@ -61,5 +69,15 @@ public class PreparedStatementTest extends SqlTestBase {
         rs.next();
         assertEquals(2, getIntValue(1, true));
         ps.close();
+
+        sql = "UPDATE PreparedStatementTest SET f2 = ? WHERE pk = ?";
+        ps = conn.prepareStatement(sql);
+        ps.setInt(1, 300);
+        ps.setString(2, "03");
+        ps.executeUpdate();
+        ps.close();
+
+        sql = "UPDATE PreparedStatementTest SET f2 = 30 WHERE pk = '03'";
+        stmt.executeUpdate(sql);
     }
 }

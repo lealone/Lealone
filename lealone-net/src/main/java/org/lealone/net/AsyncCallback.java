@@ -24,13 +24,15 @@ import org.lealone.common.exceptions.DbException;
 public class AsyncCallback<T> {
 
     Transfer transfer;
-
     T result;
+    DbException e;
     CountDownLatch latch = new CountDownLatch(1);
 
     public T getResult() {
         try {
             latch.await();
+            if (e != null)
+                throw e;
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }
@@ -39,6 +41,11 @@ public class AsyncCallback<T> {
 
     public void setTransfer(Transfer transfer) {
         this.transfer = transfer;
+    }
+
+    public void setDbException(DbException e) {
+        this.e = e;
+        latch.countDown();
     }
 
     public void setResult(T result) {
@@ -62,6 +69,8 @@ public class AsyncCallback<T> {
     public void await() {
         try {
             latch.await();
+            if (e != null)
+                throw e;
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }
