@@ -55,9 +55,22 @@ public class Lealone {
         logger.info("Lealone version: {}", getReleaseVersionString());
 
         try {
+            long t = System.currentTimeMillis();
+
             loadConfig();
+
+            long t1 = (System.currentTimeMillis() - t);
+            t = System.currentTimeMillis();
+
             init();
+
+            long t2 = (System.currentTimeMillis() - t);
+            t = System.currentTimeMillis();
+
             start();
+
+            long t3 = (System.currentTimeMillis() - t);
+            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", (t1 + t2 + t3), t1, t2, t3);
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
