@@ -97,6 +97,9 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                 return data;
             }
 
+            if (!transaction.transactionEngine.currentTransactions.containsKey(tid)) // TODO
+                return null;
+
             // get the value before the uncommitted transaction
             LinkedList<LogRecord> d = transaction.transactionEngine.currentTransactions.get(tid).logRecords;
 

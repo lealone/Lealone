@@ -64,6 +64,9 @@ import org.lealone.db.value.ValueUuid;
 /**
  * The transfer class is used to send and receive Value objects.
  * It is used on both the client side, and on the server side.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Transfer {
 
@@ -203,9 +206,9 @@ public class Transfer {
                 if (out != null) {
                     out.flush();
                 }
-                if (socket != null) {
-                    socket.close();
-                }
+                // if (socket != null) {
+                // socket.close();
+                // }
             } catch (IOException e) {
                 DbException.traceThrowable(e);
             } finally {

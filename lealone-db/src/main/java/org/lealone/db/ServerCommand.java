@@ -140,8 +140,4 @@ public class ServerCommand implements StorageCommand {
         return this;
     }
 
-    @Override
-    public void setConnectionId(int connectionId) {
-    }
-
 }

@@ -65,8 +65,6 @@ import org.lealone.db.value.ValueString;
 public class JdbcConnection extends TraceObject implements Connection {
 
     private static boolean keepOpenStackTrace;
-
-    private final int connectionId;
     private final String url;
     private final String user;
 
@@ -99,22 +97,13 @@ public class JdbcConnection extends TraceObject implements Connection {
                 }
             }
 
-            url = ci.getURL();
-            session = ClientSession.getClientSession(url);
-            if (session == null) {
-                synchronized (ClientSession.class) {
-                    session = ClientSession.getClientSession(url);
-                    if (session == null) {
-                        // this will return an embedded or server connection
-                        session = new ClientSession(ci).connectEmbeddedOrServer();
-                    }
-                }
-            }
-            connectionId = session.getNextId();
+            // this will return an embedded or server connection
+            session = new ClientSession(ci).connectEmbeddedOrServer();
             trace = session.getTrace();
             int id = getNextId(TraceObject.CONNECTION);
             setTrace(trace, TraceObject.CONNECTION, id);
             user = ci.getUserName();
+            url = ci.getURL(); // 不含参数
             this.url = url;
             if (isInfoEnabled()) {
                 String code = String.format("Connection %s = DriverManager.getConnection(%s, %s, \"\");",
@@ -133,17 +122,12 @@ public class JdbcConnection extends TraceObject implements Connection {
      */
     public JdbcConnection(Session session, String user, String url) {
         this.session = session;
-        connectionId = session.getNextId();
         trace = session.getTrace();
         int id = getNextId(TraceObject.CONNECTION);
         setTrace(trace, TraceObject.CONNECTION, id);
         this.user = user;
         this.url = url;
         this.watcher = null;
-    }
-
-    int getConnectionId() {
-        return connectionId;
     }
 
     private void closeOld() {
@@ -1100,9 +1084,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     // =============================================================
 
     Command createCommand(String sql, int fetchSize) {
-        Command c = session.createCommand(sql, fetchSize);
-        c.setConnectionId(connectionId);
-        return c;
+        return session.createCommand(sql, fetchSize);
     }
 
     /**

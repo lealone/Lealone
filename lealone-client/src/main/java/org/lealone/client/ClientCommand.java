@@ -47,7 +47,6 @@ public class ClientCommand implements StorageCommand {
     private ClientSession session;
     private int id;
     private boolean isQuery;
-    private int connectionId;
 
     public ClientCommand(ClientSession session, Transfer transfer, String sql, int fetchSize) {
         this.transfer = transfer;
@@ -55,21 +54,7 @@ public class ClientCommand implements StorageCommand {
         trace = session.getTrace();
         this.sql = sql;
         this.fetchSize = fetchSize;
-        // if (prepare) {
-        // prepared = true;
-        // prepare(session, true);
-        // } else {
-        // prepared = false;
-        // id = session.getNextId();
-        // }
-        // set session late because prepare might fail - in this case we don't
-        // need to close the object
         this.session = session;
-    }
-
-    @Override
-    public void setConnectionId(int connectionId) {
-        this.connectionId = connectionId;
     }
 
     @Override
@@ -89,7 +74,7 @@ public class ClientCommand implements StorageCommand {
                 s.traceOperation("COMMAND_PREPARE", id);
                 transfer.writeRequestHeader(Session.COMMAND_PREPARE);
             }
-            transfer.writeInt(id).writeInt(connectionId).writeString(sql);
+            transfer.writeInt(id).writeInt(session.getSessionId()).writeString(sql);
             VoidAsyncCallback ac = new VoidAsyncCallback() {
                 @Override
                 public void runInternal() {
@@ -145,8 +130,8 @@ public class ClientCommand implements StorageCommand {
         prepareIfRequired();
         try {
             session.traceOperation("COMMAND_GET_META_DATA", id);
-            transfer.writeRequestHeader(Session.COMMAND_GET_META_DATA).writeInt(id).writeInt(connectionId)
-                    .writeInt(objectId);
+            transfer.writeRequestHeader(Session.COMMAND_GET_META_DATA).writeInt(id);
+            transfer.writeInt(session.getSessionId()).writeInt(objectId);
             AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
                 @Override
                 public void runInternal() {
@@ -197,7 +182,8 @@ public class ClientCommand implements StorageCommand {
                 session.traceOperation("COMMAND_QUERY", id);
                 transfer.writeRequestHeader(Session.COMMAND_QUERY);
             }
-            transfer.writeInt(id).writeInt(connectionId).writeString(sql).writeInt(objectId).writeInt(maxRows);
+            transfer.writeInt(id).writeInt(session.getSessionId()).writeString(sql).writeInt(objectId)
+                    .writeInt(maxRows);
             int fetch;
             if (scrollable) {
                 fetch = Integer.MAX_VALUE;
@@ -252,7 +238,7 @@ public class ClientCommand implements StorageCommand {
                 session.traceOperation("COMMAND_PREPARED_QUERY", id);
                 transfer.writeRequestHeader(Session.COMMAND_PREPARED_QUERY);
             }
-            transfer.writeInt(id).writeInt(connectionId).writeInt(objectId).writeInt(maxRows);
+            transfer.writeInt(id).writeInt(session.getSessionId()).writeInt(objectId).writeInt(maxRows);
             int fetch;
             if (scrollable) {
                 fetch = Integer.MAX_VALUE;
@@ -321,7 +307,7 @@ public class ClientCommand implements StorageCommand {
                 session.traceOperation("COMMAND_UPDATE", id);
                 transfer.writeRequestHeader(Session.COMMAND_UPDATE);
             }
-            transfer.writeInt(id).writeInt(connectionId).writeString(sql);
+            transfer.writeInt(id).writeInt(session.getSessionId()).writeString(sql);
             if (replicationName != null)
                 transfer.writeString(replicationName);
             IntAsyncCallback ac = new IntAsyncCallback();
@@ -357,7 +343,7 @@ public class ClientCommand implements StorageCommand {
                 session.traceOperation("COMMAND_PREPARED_UPDATE", id);
                 transfer.writeRequestHeader(Session.COMMAND_PREPARED_UPDATE);
             }
-            transfer.writeInt(id).writeInt(connectionId);
+            transfer.writeInt(id).writeInt(session.getSessionId());
             if (replicationName != null)
                 transfer.writeString(replicationName);
             sendParameters(transfer);

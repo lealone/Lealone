@@ -337,7 +337,4 @@ public class ReplicationCommand implements StorageCommand {
         return this;
     }
 
-    @Override
-    public void setConnectionId(int connectionId) {
-    }
 }

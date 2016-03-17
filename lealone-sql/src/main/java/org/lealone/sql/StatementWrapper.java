@@ -227,16 +227,6 @@ class StatementWrapper extends StatementBase {
         return statement;
     }
 
-    @Override
-    public void setConnectionId(int connectionId) {
-        statement.setConnectionId(connectionId);
-    }
-
-    @Override
-    public int getConnectionId() {
-        return statement.getConnectionId();
-    }
-
     /**
      * Execute a query and return the result.
      * This method prepares everything and calls {@link #query(int)} finally.

@@ -17,7 +17,9 @@
  */
 package org.lealone.test.sql.misc;
 
+import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.Statement;
 
 import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
@@ -50,13 +52,13 @@ public class PreparedStatementTest extends SqlTestBase {
         ps.setInt(3, 30);
         ps.executeUpdate();
 
-        try {
-            ps.setString(1, "03");
-            ps.setString(2, "a3");
-            ps.setInt(3, 30);
-            ps.executeUpdate();
-        } catch (Exception e) {
-        }
+        // try {
+        // ps.setString(1, "03");
+        // ps.setString(2, "a3");
+        // ps.setInt(3, 30);
+        // ps.executeUpdate();
+        // } catch (Exception e) {
+        // }
 
         ps.close();
     }
@@ -79,5 +81,11 @@ public class PreparedStatementTest extends SqlTestBase {
 
         sql = "UPDATE PreparedStatementTest SET f2 = 30 WHERE pk = '03'";
         stmt.executeUpdate(sql);
+
+        Connection c = getConnection();
+        Statement s = c.createStatement();
+        s.executeUpdate(sql);
+        s.close();
+        c.close();
     }
 }

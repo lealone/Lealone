@@ -93,6 +93,4 @@ public interface Command {
 
     Command prepare();
 
-    void setConnectionId(int connectionId);
-
 }

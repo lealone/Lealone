@@ -165,7 +165,4 @@ public class ClientBatchCommand implements Command {
         return this;
     }
 
-    @Override
-    public void setConnectionId(int connectionId) {
-    }
 }

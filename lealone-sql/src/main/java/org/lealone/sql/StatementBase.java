@@ -547,16 +547,4 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         return cost;
     }
 
-    protected int connectionId;
-
-    @Override
-    public void setConnectionId(int connectionId) {
-        this.connectionId = connectionId;
-    }
-
-    @Override
-    public int getConnectionId() {
-        return connectionId;
-    }
-
 }
