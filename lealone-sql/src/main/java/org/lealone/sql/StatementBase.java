@@ -108,6 +108,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      *
      * @return true if it is
      */
+    @Override
     public abstract boolean isTransactional();
 
     @Override

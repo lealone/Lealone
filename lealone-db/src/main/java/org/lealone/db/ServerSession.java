@@ -467,8 +467,33 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return database;
     }
 
+    private boolean ddl;
+    private boolean prepared;
+    private String allLocalTransactionNames;
+
+    @Override
+    public void prepareCommit(boolean ddl) {
+        this.ddl = ddl;
+        prepared = true;
+        if (transaction != null) {
+            transaction.prepareCommit();
+        }
+    }
+
+    public void prepareCommit(boolean ddl, String allLocalTransactionNames) {
+        this.ddl = ddl;
+        prepared = true;
+        this.allLocalTransactionNames = allLocalTransactionNames;
+        if (transaction != null) {
+            transaction.prepareCommit(allLocalTransactionNames);
+        }
+    }
+
     public void commit(boolean ddl) {
         commit(ddl, null);
+        if (ddl) {
+            getTransaction(); // DDL语句重新启动一个新事务
+        }
     }
 
     /**
@@ -480,6 +505,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      */
     @Override
     public void commit(boolean ddl, String allLocalTransactionNames) {
+        if (prepared) {
+            prepared = false;
+            ddl = this.ddl;
+            allLocalTransactionNames = this.allLocalTransactionNames;
+        }
         checkCommitRollback();
         currentTransactionName = null;
         transactionStart = 0;

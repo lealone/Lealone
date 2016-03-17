@@ -165,6 +165,21 @@ public class MVCCTransaction implements Transaction {
         return logId;
     }
 
+    private boolean prepared;
+
+    @Override
+    public void prepareCommit() {
+        checkNotClosed();
+        prepared = true;
+        RedoLogValue v = transactionEngine.getRedoLog(this);
+        transactionEngine.prepareCommit(this, v);
+    }
+
+    @Override
+    public void prepareCommit(String allLocalTransactionNames) {
+        prepareCommit();
+    }
+
     @Override
     public void commit() {
         commitLocal();
@@ -185,8 +200,12 @@ public class MVCCTransaction implements Transaction {
 
     private void commitLocal() {
         checkNotClosed();
-        RedoLogValue v = transactionEngine.getRedoLog(this);
-        transactionEngine.commit(this, v);
+        if (prepared) {
+            transactionEngine.commit(this);
+        } else {
+            RedoLogValue v = transactionEngine.getRedoLog(this);
+            transactionEngine.commit(this, v);
+        }
     }
 
     @Override
@@ -289,7 +308,14 @@ public class MVCCTransaction implements Transaction {
     public void setGlobalTransactionName(String globalTransactionName) {
     }
 
+    private Session session;
+
     @Override
     public void setSession(Session session) {
+        this.session = session;
+    }
+
+    public Session getSession() {
+        return session;
     }
 }

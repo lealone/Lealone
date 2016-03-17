@@ -17,15 +17,20 @@
  */
 package org.lealone.mvstore.mvcc.log;
 
+import java.util.ArrayList;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
+import org.lealone.mvstore.mvcc.MVCCTransaction;
 
 public abstract class LogSyncService extends Thread {
 
     protected final Semaphore haveWork = new Semaphore(1);
     protected final WaitQueue syncComplete = new WaitQueue();
+
+    protected final LinkedBlockingQueue<MVCCTransaction> transactions = new LinkedBlockingQueue<>();
 
     protected long syncIntervalMillis;
     protected volatile long lastSyncedAt = System.currentTimeMillis();
@@ -37,6 +42,12 @@ public abstract class LogSyncService extends Thread {
     }
 
     public abstract void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId);
+
+    public void prepareCommit(MVCCTransaction t) {
+        haveWork.release();
+        if (t != null)
+            transactions.add(t);
+    }
 
     void close() {
         running = false;
@@ -64,12 +75,23 @@ public abstract class LogSyncService extends Thread {
         }
     }
 
-    private void sync() {
+    protected void sync() {
         if (LogStorage.redoLog != null)
             LogStorage.redoLog.save();
         // TODO 是否要保存其他map?
         // for (LogMap<?, ?> map : LogStorage.logMaps) {
         // map.save();
         // }
+    }
+
+    protected void commitTransactions() {
+        if (transactions.isEmpty())
+            return;
+        ArrayList<MVCCTransaction> oldTransactions = new ArrayList<>(transactions.size());
+        transactions.drainTo(oldTransactions);
+        for (MVCCTransaction t : oldTransactions) {
+            if (t.getSession() != null)
+                t.getSession().commit(false, null);
+        }
     }
 }

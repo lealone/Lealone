@@ -45,4 +45,6 @@ public interface PreparedStatement extends SQLStatement {
 
     int getConnectionId();
 
+    boolean isTransactional();
+
 }

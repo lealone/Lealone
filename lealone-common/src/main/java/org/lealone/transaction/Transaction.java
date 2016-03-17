@@ -98,6 +98,10 @@ public interface Transaction {
 
     int getSavepointId();
 
+    void prepareCommit();
+
+    void prepareCommit(String allLocalTransactionNames);
+
     void commit();
 
     void commit(String allLocalTransactionNames);

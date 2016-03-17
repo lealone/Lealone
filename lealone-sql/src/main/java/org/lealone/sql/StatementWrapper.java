@@ -395,11 +395,19 @@ class StatementWrapper extends StatementBase {
     private void stop() {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
-        if (!isTransactional()) {
-            session.commit(true);
-        } else if (session.isAutoCommit()) {
-            session.commit(false);
-        } else if (session.getDatabase().isMultiThreaded()) {
+        // if (!isTransactional()) {
+        // session.prepareCommit(true);
+        // } else if (session.isAutoCommit()) {
+        // session.prepareCommit(false);
+        // } else if (session.getDatabase().isMultiThreaded()) {
+        // Database db = session.getDatabase();
+        // if (db != null) {
+        // if (db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {
+        // session.unlockReadLocks();
+        // }
+        // }
+        // }
+        if (session.getDatabase().isMultiThreaded()) {
             Database db = session.getDatabase();
             if (db != null) {
                 if (db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {

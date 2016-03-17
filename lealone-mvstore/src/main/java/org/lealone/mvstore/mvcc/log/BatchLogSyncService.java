@@ -50,4 +50,10 @@ public class BatchLogSyncService extends LogSyncService {
             }
         }
     }
+
+    @Override
+    protected void sync() {
+        super.sync();
+        commitTransactions();
+    }
 }

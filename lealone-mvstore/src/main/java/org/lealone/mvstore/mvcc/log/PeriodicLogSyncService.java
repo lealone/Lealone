@@ -72,4 +72,16 @@ public class PeriodicLogSyncService extends LogSyncService {
         // 如果当前时间是第16毫秒，超过了同步周期，需要阻塞
         return started > lastSyncedAt + blockWhenSyncLagsMillis;
     }
+
+    @Override
+    protected void sync() {
+        if (waitForSyncToCatchUp(Long.MAX_VALUE)) {
+            // wait until periodic sync() catches up with its schedule
+            long started = System.currentTimeMillis();
+            if (waitForSyncToCatchUp(started)) {
+                super.sync();
+            }
+        }
+        commitTransactions();
+    }
 }

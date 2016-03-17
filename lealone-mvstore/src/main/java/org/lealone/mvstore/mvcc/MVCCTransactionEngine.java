@@ -29,6 +29,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.mvstore.mvcc.MVCCTransaction.LogRecord;
@@ -296,6 +297,29 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             last += delta;
         } while (!lastTransactionId.compareAndSet(oldLast, last));
         return last;
+    }
+
+    void prepareCommit(MVCCTransaction t, RedoLogValue v) {
+        if (v != null) { // 事务没有进行任何操作时不用同步日志
+            // 先写redoLog
+            redoLog.put(t.transactionId, v);
+        } else {
+            // t.getSession().commit(false, null);
+            // commit(t);
+        }
+
+        logStorage.logSyncService.prepareCommit(t);
+    }
+
+    void commit(MVCCTransaction t) {
+        commitFinal(t.transactionId);
+        if (t.getSession() != null && t.getSession().getCallable() != null) {
+            try {
+                t.getSession().getCallable().call();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
     }
 
     void commit(MVCCTransaction t, RedoLogValue v) {

@@ -7,6 +7,7 @@
 package org.lealone.db;
 
 import java.util.ArrayList;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
@@ -28,6 +29,8 @@ public abstract class SessionBase implements Session {
     protected String replicationName;
     protected boolean local;
     protected AtomicInteger nextId = new AtomicInteger(0);
+
+    protected Callable<?> callable;
 
     /**
      * Re-create the session state using the stored sessionState list.
@@ -107,4 +110,19 @@ public abstract class SessionBase implements Session {
     public int getCurrentId() {
         return nextId.get();
     }
+
+    @Override
+    public void setCallable(Callable<?> callable) {
+        this.callable = callable;
+    }
+
+    @Override
+    public Callable<?> getCallable() {
+        return callable;
+    }
+
+    @Override
+    public void prepareCommit(boolean ddl) {
+    }
+
 }

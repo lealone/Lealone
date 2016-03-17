@@ -394,7 +394,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 final Result result = command.query(maxRows, false);
                 cache.addObject(objectId, result);
 
-                Response response = new Response(new Callable<Object>() {
+                Callable<Object> callable = new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
                         writeResponseHeader(operation);
@@ -418,8 +418,9 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                         transfer.flush();
                         return null;
                     }
-                });
-                response.run();
+                };
+                session.setCallable(callable);
+                prepareCommit(session, command);
                 return null;
             }
         });
@@ -428,27 +429,43 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         CommandHandler.preparedCommandQueue.add(pc);
     }
 
+    private void prepareCommit(Session session, PreparedStatement command) {
+        if (!command.isTransactional()) {
+            session.prepareCommit(true);
+        } else if (session.isAutoCommit()) {
+            session.prepareCommit(false);
+        }
+    }
+
     private void executeUpdate(Session session, int id, PreparedStatement command, int operation, int oldModificationId)
             throws IOException {
         PreparedCommand pc = new PreparedCommand(command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 int updateCount = command.update();
-                int status;
-                if (session.isClosed()) {
-                    status = Session.STATUS_CLOSED;
-                } else {
-                    status = getState(oldModificationId);
-                }
-                writeResponseHeader(operation);
-                transfer.writeInt(status);
-                transfer.writeInt(id);
-                if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
-                        || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
-                    transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                Callable<Object> callable = new Callable<Object>() {
+                    @Override
+                    public Object call() throws Exception {
+                        int status;
+                        if (session.isClosed()) {
+                            status = Session.STATUS_CLOSED;
+                        } else {
+                            status = getState(oldModificationId);
+                        }
+                        writeResponseHeader(operation);
+                        transfer.writeInt(status);
+                        transfer.writeInt(id);
+                        if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
+                                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
+                            transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
-                transfer.writeInt(updateCount);
-                transfer.flush();
+                        transfer.writeInt(updateCount);
+                        transfer.flush();
+                        return null;
+                    }
+                };
+                session.setCallable(callable);
+                prepareCommit(session, command);
                 return null;
             }
         });
