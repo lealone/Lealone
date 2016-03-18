@@ -17,10 +17,8 @@
  */
 package org.lealone.main;
 
-import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.logging.Logger;
@@ -43,7 +41,6 @@ import org.lealone.sql.router.RouterHolder;
 import org.lealone.sql.router.TransactionalRouter;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageEngineManager;
-import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
@@ -52,7 +49,7 @@ public class Lealone {
     private static Config config;
 
     public static void main(String[] args) {
-        logger.info("Lealone version: {}", getReleaseVersionString());
+        logger.info("Lealone version: {}", Utils.getReleaseVersionString());
 
         try {
             long t = System.currentTimeMillis();
@@ -249,29 +246,5 @@ public class Lealone {
         Runtime.getRuntime().addShutdownHook(t);
 
         logger.info(name + " started, listen address: {}, port: {}", server.getListenAddress(), server.getPort());
-    }
-
-    private static volatile String releaseVersion;
-
-    public static String getReleaseVersionString() {
-        if (releaseVersion != null)
-            return releaseVersion;
-        InputStream in = null;
-        try {
-            in = Utils.class.getClassLoader().getResourceAsStream("org/lealone/res/version.properties");
-            if (in == null) {
-                releaseVersion = Config.getProperty("release.version", "Unknown");
-            } else {
-                Properties props = new Properties();
-                props.load(in);
-                releaseVersion = props.getProperty("lealoneVersion");
-            }
-        } catch (Exception e) {
-            logger.warn("Unable to load version.properties", e);
-            releaseVersion = "debug version";
-        } finally {
-            FileUtils.closeQuietly(in);
-        }
-        return releaseVersion;
     }
 }

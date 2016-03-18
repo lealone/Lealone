@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -28,7 +29,9 @@ import org.lealone.api.ErrorCode;
 import org.lealone.api.JavaObjectSerializer;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
+import org.lealone.storage.fs.FileUtils;
 
 /**
  * This utility class contains miscellaneous functions.
@@ -64,6 +67,7 @@ public class Utils {
     private static boolean allowAllClasses;
     private static HashSet<String> allowedClassNames;
     private static String[] allowedClassNamePrefixes;
+    private static volatile String releaseVersion;
 
     static {
         String clazz = SysProperties.JAVA_OBJECT_SERIALIZER;
@@ -917,4 +921,24 @@ public class Utils {
         }
     }
 
+    public static String getReleaseVersionString() {
+        if (releaseVersion != null)
+            return releaseVersion;
+        InputStream in = null;
+        try {
+            in = Utils.class.getClassLoader().getResourceAsStream("org/lealone/res/version.properties");
+            if (in == null) {
+                releaseVersion = System.getProperty(Constants.PROJECT_NAME_PREFIX + "release.version", "Unknown");
+            } else {
+                Properties props = new Properties();
+                props.load(in);
+                releaseVersion = props.getProperty("lealoneVersion");
+            }
+        } catch (Exception e) {
+            releaseVersion = "debug version";
+        } finally {
+            FileUtils.closeQuietly(in);
+        }
+        return releaseVersion;
+    }
 }
