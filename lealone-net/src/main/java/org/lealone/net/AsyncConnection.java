@@ -756,6 +756,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_UPDATE: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
             int size = transfer.readInt();
             int[] result = new int[size];
             int old = session.getModificationId();

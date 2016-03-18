@@ -22,15 +22,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
+import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.net.Transfer;
+import org.lealone.net.VoidAsyncCallback;
 
 public class ClientBatchCommand implements Command {
     private ClientSession session;
     private Transfer transfer;
+    private final Trace trace;
     private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
     private ArrayList<Value[]> batchParameters; // 对应JdbcPreparedStatement.executeBatch()
     private int id = -1;
@@ -40,6 +44,7 @@ public class ClientBatchCommand implements Command {
         this.session = session;
         this.transfer = transfer;
         this.batchCommands = batchCommands;
+        trace = session.getTrace();
     }
 
     public ClientBatchCommand(ClientSession session, Transfer transfer, Command preparedCommand,
@@ -47,6 +52,7 @@ public class ClientBatchCommand implements Command {
         this.session = session;
         this.transfer = transfer;
         this.batchParameters = batchParameters;
+        trace = session.getTrace();
 
         if (preparedCommand instanceof ClientCommand)
             id = ((ClientCommand) preparedCommand).getId();
@@ -90,19 +96,19 @@ public class ClientBatchCommand implements Command {
         try {
             if (batchCommands != null) {
                 session.traceOperation("COMMAND_BATCH_STATEMENT_UPDATE", id);
-                transfer.writeInt(ClientSession.COMMAND_BATCH_STATEMENT_UPDATE);
+                transfer.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_UPDATE);
+                transfer.writeInt(session.getSessionId());
                 int size = batchCommands.size();
                 result = new int[size];
                 transfer.writeInt(size);
-                for (int i = 0; i < size; i++)
+                for (int i = 0; i < size; i++) {
                     transfer.writeString(batchCommands.get(i));
-                transfer.flush();
-
-                for (int i = 0; i < size; i++)
-                    result[i] = transfer.readInt();
+                }
+                getResultAsync();
             } else {
                 session.traceOperation("COMMAND_BATCH_STATEMENT_PREPARED_UPDATE", id);
-                transfer.writeInt(ClientSession.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE).writeInt(id);
+                transfer.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE);
+                transfer.writeInt(session.getSessionId());
                 int size = batchParameters.size();
                 result = new int[size];
                 transfer.writeInt(size);
@@ -114,10 +120,7 @@ public class ClientBatchCommand implements Command {
                     for (int m = 0; m < len; m++)
                         transfer.writeValue(values[m]);
                 }
-                transfer.flush();
-
-                for (int i = 0; i < size; i++)
-                    result[i] = transfer.readInt();
+                getResultAsync();
             }
         } catch (IOException e) {
             session.handleException(e);
@@ -126,10 +129,33 @@ public class ClientBatchCommand implements Command {
         return 0;
     }
 
+    private void getResultAsync() throws IOException {
+        VoidAsyncCallback ac = new VoidAsyncCallback() {
+            @Override
+            public void runInternal() {
+                try {
+                    for (int i = 0, size = ClientBatchCommand.this.result.length; i < size; i++)
+                        ClientBatchCommand.this.result[i] = transfer.readInt();
+                } catch (IOException e) {
+                    throw DbException.convert(e);
+                }
+            }
+        };
+        transfer.addAsyncCallback(id, ac);
+        transfer.flush();
+        ac.await();
+    }
+
     @Override
     public void close() {
         if (session == null || session.isClosed()) {
             return;
+        }
+        session.traceOperation("COMMAND_CLOSE", id);
+        try {
+            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
+        } catch (IOException e) {
+            trace.error(e, "close");
         }
         session = null;
         transfer = null;
