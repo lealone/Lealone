@@ -37,7 +37,7 @@ public class TcpServer implements ProtocolServer {
     private static Vertx vertx;
 
     private final CommandHandler commandHandler = new CommandHandler();
-    private String listenAddress = Constants.DEFAULT_HOST;
+    private String host = Constants.DEFAULT_HOST;
     private int port = Constants.DEFAULT_TCP_PORT;
 
     private String baseDir;
@@ -52,10 +52,10 @@ public class TcpServer implements ProtocolServer {
 
     @Override
     public void init(Map<String, String> config) { // TODO 对于不支持的参数直接报错
-        if (config.containsKey("listen_address"))
-            listenAddress = config.get("listen_address");
-        if (config.containsKey("listen_port"))
-            port = Integer.parseInt(config.get("listen_port"));
+        if (config.containsKey("host"))
+            host = config.get("host");
+        if (config.containsKey("port"))
+            port = Integer.parseInt(config.get("port"));
 
         if (config.containsKey("blocked_thread_check_interval"))
             blockedThreadCheckInterval = Integer.parseInt(config.get("blocked_thread_check_interval"));
@@ -108,7 +108,7 @@ public class TcpServer implements ProtocolServer {
         });
 
         CountDownLatch latch = new CountDownLatch(1);
-        server.listen(port, listenAddress, res -> {
+        server.listen(port, host, res -> {
             if (res.succeeded()) {
                 latch.countDown();
             } else {
@@ -159,7 +159,7 @@ public class TcpServer implements ProtocolServer {
 
     @Override
     public String getURL() {
-        return (ssl ? "ssl" : "tcp") + "://" + getListenAddress() + ":" + port;
+        return (ssl ? "ssl" : "tcp") + "://" + getHost() + ":" + port;
     }
 
     @Override
@@ -168,8 +168,8 @@ public class TcpServer implements ProtocolServer {
     }
 
     @Override
-    public String getListenAddress() {
-        return listenAddress;
+    public String getHost() {
+        return host;
     }
 
     @Override

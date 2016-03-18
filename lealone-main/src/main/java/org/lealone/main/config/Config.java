@@ -24,11 +24,6 @@ import org.lealone.main.config.EncryptionOptions.ServerEncryptionOptions;
 
 public class Config {
 
-    public Integer listen_port;
-    public String listen_address;
-    public String listen_interface;
-    public Boolean listen_interface_prefer_ipv6 = false;
-
     public String base_dir;
 
     public List<PluggableEngineDef> storage_engines;

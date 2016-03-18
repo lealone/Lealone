@@ -24,13 +24,13 @@ import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.Utils;
-import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.SysProperties;
 import org.lealone.main.config.Config;
-import org.lealone.main.config.DatabaseDescriptor;
+import org.lealone.main.config.ConfigurationLoader;
 import org.lealone.main.config.PluggableEngineDef;
+import org.lealone.main.config.YamlConfigurationLoader;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.ProtocolServerEngineManager;
@@ -75,14 +75,14 @@ public class Lealone {
     }
 
     private static void loadConfig() {
-        config = DatabaseDescriptor.loadConfig();
-        // if (!DatabaseDescriptor.hasLargeAddressSpace())
-        // logger.warn("32bit JVM detected. It is recommended to run lealone on a 64bit JVM for better performance.");
+        String loaderClass = Config.getProperty("config.loader");
+        ConfigurationLoader loader = loaderClass == null ? new YamlConfigurationLoader() : Utils
+                .<ConfigurationLoader> construct(loaderClass, "configuration loading");
+        config = loader.loadConfig();
     }
 
     private static void init() {
         initBaseDir();
-        initHostAndPort();
         initPluggableEngines();
         LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
         initRouter();
@@ -94,16 +94,6 @@ public class Lealone {
         SysProperties.setBaseDir(config.base_dir);
 
         logger.info("Base dir: {}", config.base_dir);
-    }
-
-    private static void initHostAndPort() {
-        String host = config.listen_address;
-        Integer port = config.listen_port;
-
-        if (host == null)
-            config.listen_address = Constants.DEFAULT_HOST;
-        if (port == null)
-            config.listen_port = Constants.DEFAULT_TCP_PORT;
     }
 
     // 初始化顺序storage -> transaction -> sql -> protocol
@@ -144,7 +134,6 @@ public class Lealone {
                             throw new ConfigurationException("TransactionEngine '" + def.name + "' can not found");
                         }
                     }
-                    def.getParameters().put("host_and_port", config.listen_address + ":" + config.listen_port);
 
                     if (Config.getProperty("default.transaction.engine") == null)
                         Config.setProperty("default.transaction.engine", te.getName());
@@ -227,11 +216,6 @@ public class Lealone {
 
     private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters)
             throws Exception {
-        if (!parameters.containsKey("listen_address"))
-            parameters.put("listen_address", config.listen_address);
-        if (!parameters.containsKey("port"))
-            parameters.put("port", config.listen_port.toString());
-
         final String name = server.getName();
         server.init(parameters);
         server.start();
@@ -245,6 +229,6 @@ public class Lealone {
         }, name + "ShutdownHook");
         Runtime.getRuntime().addShutdownHook(t);
 
-        logger.info(name + " started, listen address: {}, port: {}", server.getListenAddress(), server.getPort());
+        logger.info(name + " started, host: {}, port: {}", server.getHost(), server.getPort());
     }
 }

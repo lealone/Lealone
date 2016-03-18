@@ -63,7 +63,7 @@ public interface ProtocolServer extends Runnable {
      *
      * @return the address
      */
-    String getListenAddress();
+    String getHost();
 
     /**
      * Get the human readable name of the server.

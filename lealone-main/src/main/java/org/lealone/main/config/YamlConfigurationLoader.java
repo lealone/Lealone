@@ -56,7 +56,7 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
             url = new URL(configUrl);
             url.openStream().close(); // catches well-formed but bogus URLs
         } catch (Exception e) {
-            ClassLoader loader = DatabaseDescriptor.class.getClassLoader();
+            ClassLoader loader = YamlConfigurationLoader.class.getClassLoader();
             url = loader.getResource(configUrl);
             if (url == null) {
                 String required = "file:" + File.separator + File.separator;
