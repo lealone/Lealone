@@ -17,6 +17,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.net.Transfer;
+import org.lealone.net.VoidAsyncCallback;
 
 /**
  * The client side part of a result set that is kept on the server.
@@ -165,7 +166,12 @@ public abstract class ClientResult implements Result {
 
     protected void sendFetch(int fetchSize) throws IOException {
         session.traceOperation("RESULT_FETCH_ROWS", id);
-        transfer.writeRequestHeader(id, Session.RESULT_FETCH_ROWS).writeInt(fetchSize).flush();
+        transfer.writeRequestHeader(id, Session.RESULT_FETCH_ROWS).writeInt(fetchSize);
+
+        VoidAsyncCallback ac = new VoidAsyncCallback();
+        transfer.addAsyncCallback(id, ac);
+        transfer.flush();
+        ac.await();
     }
 
     @Override
