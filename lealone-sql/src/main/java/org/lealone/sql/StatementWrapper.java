@@ -237,15 +237,15 @@ class StatementWrapper extends StatementBase {
      */
     @Override
     public Result query(int maxRows, boolean scrollable) {
-        return (Result) execute(maxRows, false);
+        return (Result) execute(maxRows, false, false);
     }
 
     @Override
     public int update() {
-        return ((Integer) execute(0, true)).intValue();
+        return ((Integer) execute(0, false, true)).intValue();
     }
 
-    private Object execute(int maxRows, boolean isUpdate) {
+    private Object execute(int maxRows, boolean async, boolean isUpdate) {
         startTime = 0;
         long start = 0;
         Database database = session.getDatabase();
@@ -312,7 +312,7 @@ class StatementWrapper extends StatementBase {
             throw e;
         } finally {
             if (callStop) {
-                stop();
+                stop(async);
             }
         }
     }
@@ -382,21 +382,23 @@ class StatementWrapper extends StatementBase {
         return start == 0 ? now : start;
     }
 
-    private void stop() {
+    private void stop(boolean async) {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
-        // if (!isTransactional()) {
-        // session.prepareCommit(true);
-        // } else if (session.isAutoCommit()) {
-        // session.prepareCommit(false);
-        // } else if (session.getDatabase().isMultiThreaded()) {
-        // Database db = session.getDatabase();
-        // if (db != null) {
-        // if (db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {
-        // session.unlockReadLocks();
-        // }
-        // }
-        // }
+        if (!async) {
+            if (!isTransactional()) {
+                session.commit(true);
+            } else if (session.isAutoCommit()) {
+                session.commit(false);
+            } else if (session.getDatabase().isMultiThreaded()) {
+                Database db = session.getDatabase();
+                if (db != null) {
+                    if (db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {
+                        session.unlockReadLocks();
+                    }
+                }
+            }
+        }
         if (session.getDatabase().isMultiThreaded()) {
             Database db = session.getDatabase();
             if (db != null) {
@@ -411,6 +413,16 @@ class StatementWrapper extends StatementBase {
                 trace.info("slow query: {0} ms", time);
             }
         }
+    }
+
+    @Override
+    public Result asyncQuery(int maxRows) {
+        return (Result) execute(maxRows, true, false);
+    }
+
+    @Override
+    public int asyncUpdate() {
+        return ((Integer) execute(0, true, true)).intValue();
     }
 
 }

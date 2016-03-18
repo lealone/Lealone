@@ -17,6 +17,8 @@
  */
 package org.lealone.sql;
 
+import org.lealone.db.result.Result;
+
 public interface PreparedStatement extends SQLStatement {
 
     void setFetchSize(int fetchSize);
@@ -44,5 +46,9 @@ public interface PreparedStatement extends SQLStatement {
     double getCost();
 
     boolean isTransactional();
+
+    Result asyncQuery(int maxRows);
+
+    int asyncUpdate();
 
 }

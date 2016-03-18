@@ -547,4 +547,14 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         return cost;
     }
 
+    @Override
+    public Result asyncQuery(int maxRows) {
+        return query(maxRows);
+    }
+
+    @Override
+    public int asyncUpdate() {
+        return update();
+    }
+
 }

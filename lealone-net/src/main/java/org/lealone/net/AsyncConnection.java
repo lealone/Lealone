@@ -387,7 +387,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         PreparedCommand pc = new PreparedCommand(id, command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-                final Result result = command.query(maxRows, false);
+                final Result result = command.asyncQuery(maxRows);
                 cache.addObject(objectId, result);
 
                 Callable<Object> callable = new Callable<Object>() {
@@ -438,7 +438,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         PreparedCommand pc = new PreparedCommand(id, command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-                int updateCount = command.update();
+                int updateCount = command.asyncUpdate();
                 Callable<Object> callable = new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
