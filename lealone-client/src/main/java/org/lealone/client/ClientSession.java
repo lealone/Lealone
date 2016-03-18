@@ -38,6 +38,7 @@ import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.value.Value;
 import org.lealone.net.AsyncConnection;
+import org.lealone.net.OkAsyncCallback;
 import org.lealone.net.Transfer;
 import org.lealone.replication.ReplicationSession;
 import org.lealone.sql.ParsedStatement;
@@ -292,9 +293,14 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     private void setAutoCommitSend(boolean autoCommit) {
         try {
+            int id = getNextId();
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            transfer.writeRequestHeader(Session.SESSION_SET_AUTO_COMMIT).writeBoolean(autoCommit);
+            transfer.writeRequestHeader(Session.SESSION_SET_AUTO_COMMIT);
+            transfer.writeInt(id).writeInt(sessionId).writeBoolean(autoCommit);
+            OkAsyncCallback ac = new OkAsyncCallback();
+            transfer.addAsyncCallback(id, ac);
             transfer.flush();
+            ac.await();
         } catch (IOException e) {
             handleException(e);
         }

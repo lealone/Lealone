@@ -425,11 +425,14 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         CommandHandler.preparedCommandQueue.add(pc);
     }
 
-    private void prepareCommit(Session session, PreparedStatement command) {
+    private void prepareCommit(Session session, PreparedStatement command) throws Exception {
         if (!command.isTransactional()) {
             session.prepareCommit(true);
         } else if (session.isAutoCommit()) {
             session.prepareCommit(false);
+        } else {
+            // 当前语句是在一个手动提交的事务中进行，提前返回语句的执行结果
+            session.getCallable().call();
         }
     }
 
@@ -962,9 +965,19 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.SESSION_SET_AUTO_COMMIT: {
-            boolean autoCommit = transfer.readBoolean();
-            session.setAutoCommit(autoCommit);
-            transfer.writeInt(Session.STATUS_OK).flush();
+            if (isRequest) {
+                int id = transfer.readInt();
+                int sessionId = transfer.readInt();
+                boolean autoCommit = transfer.readBoolean();
+                Session session = getOrCreateSession(sessionId);
+                session.setAutoCommit(autoCommit);
+                transfer.writeResponseHeader(Session.SESSION_SET_AUTO_COMMIT);
+                transfer.writeInt(Session.STATUS_OK).writeInt(id).flush();
+            } else {
+                int id = transfer.readInt();
+                AsyncCallback<?> ac = getAsyncCallback(id);
+                ac.run();
+            }
             break;
         }
         case Session.SESSION_CLOSE: {
