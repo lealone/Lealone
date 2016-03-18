@@ -65,7 +65,6 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
     private Transfer transfer;
     private final NetSocket socket;
 
-    private Session session;
     private boolean stop;
 
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
@@ -173,8 +172,6 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             String userName = transfer.readString();
             userName = StringUtils.toUpperEnglish(userName);
             Session session = createSession(originalURL, dbName, userName);
-            if (this.session == null)
-                this.session = session;
             sessions.put(sessionId, session);
             transfer.setSession(session);
             transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
@@ -332,15 +329,15 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
     }
 
-    private int getState(int oldModificationId) {
+    private int getState(Session session, int oldModificationId) {
         if (session.getModificationId() == oldModificationId) {
             return Session.STATUS_OK;
         }
         return Session.STATUS_OK_STATE_CHANGED;
     }
 
-    private void writeBatchResult(int id, int[] result, int oldModificationId) throws IOException {
-        writeResponseHeader(id, oldModificationId);
+    private void writeBatchResult(Session session, int id, int[] result, int oldModificationId) throws IOException {
+        writeResponseHeader(session, id, oldModificationId);
         for (int i = 0; i < result.length; i++)
             transfer.writeInt(result[i]);
 
@@ -360,7 +357,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 Callable<Object> callable = new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
-                        transfer.writeResponseHeader(id, getState(oldModificationId));
+                        transfer.writeResponseHeader(id, getState(session, oldModificationId));
 
                         if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
                                 || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY)
@@ -415,7 +412,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                         if (session.isClosed()) {
                             status = Session.STATUS_CLOSED;
                         } else {
-                            status = getState(oldModificationId);
+                            status = getState(session, oldModificationId);
                         }
                         transfer.writeResponseHeader(id, status);
                         if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
@@ -512,13 +509,9 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         if (session != null && session.isClosed()) {
             status = Session.STATUS_CLOSED;
         } else {
-            status = getState(oldModificationId);
+            status = getState(session, oldModificationId);
         }
         transfer.writeResponseHeader(id, status);
-    }
-
-    private void writeResponseHeader(int id, int oldModificationId) throws IOException {
-        writeResponseHeader(null, id, oldModificationId);
     }
 
     private void processRequest(int id) throws IOException {
@@ -549,10 +542,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             transfer.flush();
             break;
         }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY: {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY:
         case Session.COMMAND_QUERY: {
             int sessionId = transfer.readInt();
             String sql = transfer.readString();
@@ -560,17 +550,17 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             int maxRows = transfer.readInt();
             int fetchSize = transfer.readInt();
             Session session = getSession(sessionId);
+            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
             int old = session.getModificationId();
             PreparedStatement command = session.prepareStatement(sql, fetchSize);
             cache.addObject(id, command);
             executeQuery(session, id, command, operation, objectId, maxRows, fetchSize, old);
-
             break;
         }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY: {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
         case Session.COMMAND_PREPARED_QUERY: {
             int sessionId = transfer.readInt();
             int objectId = transfer.readInt();
@@ -580,15 +570,15 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             command.setFetchSize(fetchSize);
             setParameters(command);
             Session session = getSession(sessionId);
+            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
             int old = session.getModificationId();
             executeQuery(session, id, command, operation, objectId, maxRows, fetchSize, old);
-
             break;
         }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE: {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
         case Session.COMMAND_UPDATE:
         case Session.COMMAND_REPLICATION_UPDATE: {
             int sessionId = transfer.readInt();
@@ -597,37 +587,44 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             int old = session.getModificationId();
             if (operation == Session.COMMAND_REPLICATION_UPDATE)
                 session.setReplicationName(transfer.readString());
-
+            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
             PreparedStatement command = session.prepareStatement(sql, -1);
             cache.addObject(id, command);
             executeUpdate(session, id, command, operation, old);
             break;
         }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE: {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
             int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
             if (operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE)
                 session.setReplicationName(transfer.readString());
             PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
             setParameters(command);
-            Session session = getSession(sessionId);
+            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
             int old = session.getModificationId();
             executeUpdate(session, id, command, operation, old);
             break;
         }
-        case Session.COMMAND_STORAGE_DISTRIBUTED_PUT: {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
+        case Session.COMMAND_STORAGE_DISTRIBUTED_PUT:
         case Session.COMMAND_STORAGE_PUT:
         case Session.COMMAND_STORAGE_REPLICATION_PUT: {
+            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             byte[] key = transfer.readBytes();
             byte[] value = transfer.readBytes();
+            Session session = getSession(sessionId);
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
             int old = session.getModificationId();
             if (operation == Session.COMMAND_STORAGE_REPLICATION_PUT)
                 session.setReplicationName(transfer.readString());
@@ -651,13 +648,16 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             transfer.flush();
             break;
         }
-        case Session.COMMAND_STORAGE_DISTRIBUTED_GET: {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
+        case Session.COMMAND_STORAGE_DISTRIBUTED_GET:
         case Session.COMMAND_STORAGE_GET: {
+            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             byte[] key = transfer.readBytes();
+            Session session = getSession(sessionId);
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_GET) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
             int old = session.getModificationId();
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
@@ -679,9 +679,11 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.COMMAND_STORAGE_MOVE_LEAF_PAGE: {
+            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             ByteBuffer splitKey = transfer.readByteBuffer();
             ByteBuffer page = transfer.readByteBuffer();
+            Session session = getSession(sessionId);
             int old = session.getModificationId();
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
 
@@ -694,8 +696,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE: {
+            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             ByteBuffer key = transfer.readByteBuffer();
+            Session session = getSession(sessionId);
             int old = session.getModificationId();
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
 
@@ -722,6 +726,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
             int old = session.getModificationId();
             session.commit(false, transfer.readString());
             writeResponseHeader(session, id, old);
@@ -729,6 +735,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
             int old = session.getModificationId();
             session.rollback();
             writeResponseHeader(session, id, old);
@@ -737,6 +745,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT:
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
             int old = session.getModificationId();
             String name = transfer.readString();
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT)
@@ -748,6 +758,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
             int old = session.getModificationId();
             boolean isValid = session.validateTransaction(transfer.readString());
             writeResponseHeader(session, id, old);
@@ -770,7 +782,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(id, result, old);
+            writeBatchResult(session, id, result, old);
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
@@ -793,7 +805,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(id, result, old);
+            writeBatchResult(session, id, result, old);
             break;
         }
         case Session.COMMAND_CLOSE: {
@@ -856,6 +868,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.COMMAND_READ_LOB: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
             if (lobs == null) {
                 lobs = SmallLRUCache.newInstance(Math.max(SysProperties.SERVER_CACHED_OBJECTS,
                         SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));

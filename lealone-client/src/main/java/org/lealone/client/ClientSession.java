@@ -464,6 +464,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             int id = getNextId();
             traceOperation("LOB_READ", (int) lobId);
             transfer.writeRequestHeader(id, Session.COMMAND_READ_LOB);
+            transfer.writeInt(sessionId);
             transfer.writeLong(lobId);
             transfer.writeBytes(hmac);
             transfer.writeLong(offset);
@@ -487,7 +488,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             int id = getNextId();
             transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT);
-            transfer.writeString(allLocalTransactionNames).flush();
+            transfer.writeInt(sessionId).writeString(allLocalTransactionNames).flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -499,7 +500,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             int id = getNextId();
             transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK);
-            transfer.flush();
+            transfer.writeInt(sessionId).flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -511,7 +512,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             int id = getNextId();
             transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT);
-            transfer.writeString(name);
+            transfer.writeInt(sessionId).writeString(name);
             transfer.flush();
         } catch (IOException e) {
             handleException(e);
@@ -524,7 +525,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             int id = getNextId();
             transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT);
-            transfer.writeString(name);
+            transfer.writeInt(sessionId).writeString(name);
             transfer.flush();
         } catch (IOException e) {
             handleException(e);
@@ -537,7 +538,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             int id = getNextId();
             transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE);
-            transfer.writeString(localTransactionName).flush();
+            transfer.writeInt(sessionId).writeString(localTransactionName).flush();
             return transfer.readBoolean();
         } catch (Exception e) {
             handleException(e);

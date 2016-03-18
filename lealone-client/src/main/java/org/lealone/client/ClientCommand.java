@@ -447,7 +447,7 @@ public class ClientCommand implements StorageCommand {
                 session.traceOperation("COMMAND_STORAGE_PUT", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_PUT);
             }
-            transfer.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
+            transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
             if (replicationName != null)
                 transfer.writeString(replicationName);
             transfer.flush();
@@ -476,7 +476,7 @@ public class ClientCommand implements StorageCommand {
                 session.traceOperation("COMMAND_STORAGE_GET", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_GET);
             }
-            transfer.writeString(mapName).writeByteBuffer(key);
+            transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key);
             transfer.flush();
 
             if (isDistributedUpdate)
@@ -496,6 +496,7 @@ public class ClientCommand implements StorageCommand {
         try {
             session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
+            transfer.writeInt(session.getSessionId());
             transfer.writeString(mapName).writeByteBuffer(splitKey).writeByteBuffer(page);
             transfer.flush();
         } catch (Exception e) {
@@ -510,7 +511,7 @@ public class ClientCommand implements StorageCommand {
         try {
             session.traceOperation("COMMAND_STORAGE_REMOVE_LEAF_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
-            transfer.writeString(mapName).writeByteBuffer(key);
+            transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key);
             transfer.flush();
         } catch (Exception e) {
             session.handleException(e);
