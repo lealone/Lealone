@@ -51,11 +51,11 @@ public class DbObjectTestBase extends UnitTestBase {
     }
 
     public int executeUpdate(String sql) {
-        return session.prepareStatementLocal(sql).update();
+        return session.prepareStatementLocal(sql).executeUpdate();
     }
 
     public Result executeQuery(String sql) {
-        return session.prepareStatementLocal(sql).query(0, false);
+        return session.prepareStatementLocal(sql).executeQuery(0, false);
     }
 
     // index从1开始

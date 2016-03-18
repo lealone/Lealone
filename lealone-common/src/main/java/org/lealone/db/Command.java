@@ -55,7 +55,7 @@ public interface Command {
      * @param maxRows the maximum number of rows returned
      * @return the result
      */
-    Result query(int maxRows);
+    Result executeQuery(int maxRows);
 
     /**
      * Execute the query.
@@ -64,14 +64,14 @@ public interface Command {
      * @param scrollable if the result set must be scrollable
      * @return the result
      */
-    Result query(int maxRows, boolean scrollable);
+    Result executeQuery(int maxRows, boolean scrollable);
 
     /**
      * Execute the update command
      *
      * @return the update count
      */
-    int update();
+    int executeUpdate();
 
     /**
      * Execute the update command
@@ -79,7 +79,7 @@ public interface Command {
      * @param replicationName the replication name
      * @return the update count
      */
-    int update(String replicationName);
+    int executeUpdate(String replicationName);
 
     /**
      * Cancel the command if it is still processing.

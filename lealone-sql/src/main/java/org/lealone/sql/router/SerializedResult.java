@@ -65,7 +65,7 @@ public class SerializedResult extends DelegatedResult {
         if (results != null)
             result = results.get(index++);
         else
-            result = commands.get(index++).query(maxRows, scrollable);
+            result = commands.get(index++).executeQuery(maxRows, scrollable);
         return true;
     }
 

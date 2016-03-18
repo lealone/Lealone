@@ -68,22 +68,22 @@ public class ClientBatchCommand implements Command {
     }
 
     @Override
-    public Result query(int maxRows) {
-        return query(maxRows, false);
+    public Result executeQuery(int maxRows) {
+        return executeQuery(maxRows, false);
     }
 
     @Override
-    public Result query(int maxRows, boolean scrollable) {
+    public Result executeQuery(int maxRows, boolean scrollable) {
         throw DbException.throwInternalError();
     }
 
     @Override
-    public int update(String replicationName) {
-        return update();
+    public int executeUpdate(String replicationName) {
+        return executeUpdate();
     }
 
     @Override
-    public int update() {
+    public int executeUpdate() {
         if (id == -1)
             id = session.getNextId();
 

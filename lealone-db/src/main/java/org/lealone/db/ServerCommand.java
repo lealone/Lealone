@@ -52,24 +52,24 @@ public class ServerCommand implements StorageCommand {
     }
 
     @Override
-    public Result query(int maxRows) {
-        return query(maxRows, false);
+    public Result executeQuery(int maxRows) {
+        return executeQuery(maxRows, false);
     }
 
     @Override
-    public Result query(int maxRows, boolean scrollable) {
+    public Result executeQuery(int maxRows, boolean scrollable) {
         // TODO Auto-generated method stub
         return null;
     }
 
     @Override
-    public int update() {
+    public int executeUpdate() {
         // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
-    public int update(String replicationName) {
+    public int executeUpdate(String replicationName) {
         // TODO Auto-generated method stub
         return 0;
     }

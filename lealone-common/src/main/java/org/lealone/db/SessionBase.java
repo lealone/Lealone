@@ -41,7 +41,7 @@ public abstract class SessionBase implements Session {
             try {
                 for (String sql : sessionState) {
                     PreparedStatement ps = prepareStatement(sql, Integer.MAX_VALUE);
-                    ps.update();
+                    ps.executeUpdate();
                 }
             } finally {
                 sessionStateUpdating = false;
@@ -60,7 +60,7 @@ public abstract class SessionBase implements Session {
         sessionStateChanged = false;
         sessionState = New.arrayList();
         Command c = prepareCommand("SELECT * FROM INFORMATION_SCHEMA.SESSION_STATE", Integer.MAX_VALUE);
-        Result result = c.query(0, false);
+        Result result = c.executeQuery(0, false);
         while (result.next()) {
             Value[] row = result.currentRow();
             sessionState.add(row[1].getString());

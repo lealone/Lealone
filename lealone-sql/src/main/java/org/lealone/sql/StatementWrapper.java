@@ -237,12 +237,12 @@ class StatementWrapper extends StatementBase {
      */
     @Override
     public Result query(int maxRows, boolean scrollable) {
-        return (Result) execute(maxRows, false, false);
+        return statement.query(maxRows, scrollable);
     }
 
     @Override
     public int update() {
-        return ((Integer) execute(0, false, true)).intValue();
+        return statement.update();
     }
 
     private Object execute(int maxRows, boolean async, boolean isUpdate) {
@@ -416,12 +416,22 @@ class StatementWrapper extends StatementBase {
     }
 
     @Override
-    public Result asyncQuery(int maxRows) {
+    public Result executeQuery(int maxRows) {
+        return (Result) execute(maxRows, false, false);
+    }
+
+    @Override
+    public Result executeQueryAsync(int maxRows) {
         return (Result) execute(maxRows, true, false);
     }
 
     @Override
-    public int asyncUpdate() {
+    public int executeUpdate() {
+        return ((Integer) execute(0, false, true)).intValue();
+    }
+
+    @Override
+    public int executeUpdateAsync() {
         return ((Integer) execute(0, true, true)).intValue();
     }
 

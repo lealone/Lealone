@@ -74,12 +74,12 @@ public class ReplicationCommand implements StorageCommand {
     }
 
     @Override
-    public Result query(int maxRows) {
-        return query(maxRows, false);
+    public Result executeQuery(int maxRows) {
+        return executeQuery(maxRows, false);
     }
 
     @Override
-    public Result query(final int maxRows, final boolean scrollable) {
+    public Result executeQuery(final int maxRows, final boolean scrollable) {
         int n = session.n;
         int r = session.r;
         r = 1; // 使用Write all read one模式
@@ -96,14 +96,14 @@ public class ReplicationCommand implements StorageCommand {
                 public void run() {
                     Result result = null;
                     try {
-                        result = c.query(maxRows, scrollable);
+                        result = c.executeQuery(maxRows, scrollable);
                         readResponseHandler.response(result);
                     } catch (Exception e) {
                         if (readResponseHandler != null) {
                             readResponseHandler.onFailure();
                             Command c = getRandomNode(seen);
                             if (c != null) {
-                                result = c.query(maxRows, scrollable);
+                                result = c.executeQuery(maxRows, scrollable);
                                 readResponseHandler.response(result);
                                 return;
                             }
@@ -129,13 +129,13 @@ public class ReplicationCommand implements StorageCommand {
     }
 
     @Override
-    public int update() {
+    public int executeUpdate() {
         return executeUpdate(1);
     }
 
     @Override
-    public int update(String replicationName) {
-        return update();
+    public int executeUpdate(String replicationName) {
+        return executeUpdate();
     }
 
     private int executeUpdate(int tries) {
@@ -151,7 +151,7 @@ public class ReplicationCommand implements StorageCommand {
                 @Override
                 public void run() {
                     try {
-                        writeResponseHandler.response(c.update(rn));
+                        writeResponseHandler.response(c.executeUpdate(rn));
                     } catch (Exception e) {
                         if (writeResponseHandler != null)
                             writeResponseHandler.onFailure();

@@ -20,6 +20,7 @@ package org.lealone.mvstore.mvcc.log;
 import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
+import org.lealone.mvstore.mvcc.MVCCTransaction;
 
 public class PeriodicLogSyncService extends LogSyncService {
 
@@ -83,5 +84,19 @@ public class PeriodicLogSyncService extends LogSyncService {
             }
         }
         commitTransactions();
+    }
+
+    @Override
+    public void prepareCommit(MVCCTransaction t) {
+        if (t != null)
+            transactions.add(t);
+        if (!waitForSyncToCatchUp(Long.MAX_VALUE)) {
+            // wait until periodic sync() catches up with its schedule
+            long started = System.currentTimeMillis();
+            if (!waitForSyncToCatchUp(started)) {
+                commitTransactions();
+            }
+        }
+        haveWork.release();
     }
 }

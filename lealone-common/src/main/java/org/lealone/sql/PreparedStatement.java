@@ -47,8 +47,16 @@ public interface PreparedStatement extends SQLStatement {
 
     boolean isTransactional();
 
-    Result asyncQuery(int maxRows);
+    Result query(int maxRows);
 
-    int asyncUpdate();
+    Result query(int maxRows, boolean scrollable);
+
+    int update();
+
+    int update(String replicationName);
+
+    Result executeQueryAsync(int maxRows);
+
+    int executeUpdateAsync();
 
 }

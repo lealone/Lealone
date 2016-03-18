@@ -104,7 +104,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
             try {
                 setExecutingStatement(command);
-                result = command.query(maxRows, scrollable);
+                result = command.executeQuery(maxRows, scrollable);
             } finally {
                 setExecutingStatement(null);
             }
@@ -147,7 +147,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         closeOldResultSet();
         try {
             setExecutingStatement(command);
-            updateCount = command.update();
+            updateCount = command.executeUpdate();
         } finally {
             setExecutingStatement(null);
         }
@@ -179,11 +179,11 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     returnsResultSet = true;
                     boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                     boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                    Result result = command.query(maxRows, scrollable);
+                    Result result = command.executeQuery(maxRows, scrollable);
                     resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
                 } else {
                     returnsResultSet = false;
-                    updateCount = command.update();
+                    updateCount = command.executeUpdate();
                 }
             } finally {
                 setExecutingStatement(null);
@@ -1098,7 +1098,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
 
             if (session instanceof ClientSession) {
                 ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(command, batchParameters);
-                c.update();
+                c.executeUpdate();
                 int[] result = c.getResult();
                 c.close();
                 return result;

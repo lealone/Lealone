@@ -245,7 +245,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
     private void closeSession(Session session) {
         if (session != null) {
             try {
-                session.prepareStatement("ROLLBACK", -1).update();
+                session.prepareStatement("ROLLBACK", -1).executeUpdate();
                 session.close();
             } catch (Exception e) {
                 logger.error("Failed to close session", e);
@@ -354,7 +354,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         PreparedCommand pc = new PreparedCommand(id, command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-                final Result result = command.asyncQuery(maxRows);
+                final Result result = command.executeQueryAsync(maxRows);
                 cache.addObject(objectId, result);
 
                 Callable<Object> callable = new Callable<Object>() {
@@ -407,7 +407,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         PreparedCommand pc = new PreparedCommand(id, command, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
-                int updateCount = command.asyncUpdate();
+                int updateCount = command.executeUpdateAsync();
                 Callable<Object> callable = new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
@@ -763,7 +763,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 String sql = transfer.readString();
                 PreparedStatement command = session.prepareStatement(sql, -1);
                 try {
-                    result[i] = command.update();
+                    result[i] = command.executeUpdate();
                 } catch (Exception e) {
                     result[i] = Statement.EXECUTE_FAILED;
                 }
@@ -786,7 +786,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     p.setValue(transfer.readValue());
                 }
                 try {
-                    result[i] = command.update();
+                    result[i] = command.executeUpdate();
                 } catch (Exception e) {
                     result[i] = Statement.EXECUTE_FAILED;
                 }
@@ -1003,7 +1003,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     try {
                         processRequest(id);
                     } catch (Throwable e) {
-                        logger.error("Process request", e);
+                        // logger.error("Process request", e);
                         sendError(id, e);
                     }
                 } else {

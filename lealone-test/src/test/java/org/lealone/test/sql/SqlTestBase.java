@@ -23,7 +23,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.junit.AfterClass;
-import org.lealone.common.trace.TraceSystem;
 import org.lealone.test.TestBase;
 
 public class SqlTestBase extends TestBase {
@@ -37,7 +36,7 @@ public class SqlTestBase extends TestBase {
 
     protected SqlTestBase() {
         try {
-            addConnectionParameter("TRACE_LEVEL_FILE", TraceSystem.ADAPTER + "");
+            // addConnectionParameter("TRACE_LEVEL_FILE", TraceSystem.ADAPTER + "");
             conn = getConnection();
             stmt = conn.createStatement();
         } catch (Exception e) {

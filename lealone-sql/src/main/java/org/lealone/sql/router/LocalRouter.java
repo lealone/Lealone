@@ -34,12 +34,12 @@ public class LocalRouter implements Router {
 
     @Override
     public int executeUpdate(StatementBase statement) {
-        return statement.update();
+        return statement.executeUpdate();
     }
 
     @Override
     public Result executeQuery(StatementBase statement, int maxRows) {
-        return statement.query(maxRows);
+        return statement.executeQuery(maxRows);
     }
 
     @Override

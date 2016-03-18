@@ -79,7 +79,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
             setExecutingStatement(command);
             try {
-                result = command.query(maxRows, scrollable);
+                result = command.executeQuery(maxRows, scrollable);
             } finally {
                 setExecutingStatement(null);
             }
@@ -127,7 +127,7 @@ public class JdbcStatement extends TraceObject implements Statement {
         Command command = conn.createCommand(sql, fetchSize);
         setExecutingStatement(command);
         try {
-            updateCount = command.update();
+            updateCount = command.executeUpdate();
         } finally {
             setExecutingStatement(null);
         }
@@ -191,11 +191,11 @@ public class JdbcStatement extends TraceObject implements Statement {
                 returnsResultSet = true;
                 boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                Result result = command.query(maxRows, scrollable);
+                Result result = command.executeQuery(maxRows, scrollable);
                 resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
             } else {
                 returnsResultSet = false;
-                updateCount = command.update();
+                updateCount = command.executeUpdate();
             }
         } finally {
             setExecutingStatement(null);
@@ -666,7 +666,7 @@ public class JdbcStatement extends TraceObject implements Statement {
 
             if (session instanceof ClientSession) {
                 ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(batchCommands);
-                c.update();
+                c.executeUpdate();
                 int[] result = c.getResult();
                 c.close();
                 return result;

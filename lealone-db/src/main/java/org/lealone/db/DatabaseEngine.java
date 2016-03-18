@@ -170,7 +170,7 @@ public class DatabaseEngine {
                     String value = ci.getProperty(setting);
                     try {
                         String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " " + value;
-                        session.prepareStatementLocal(sql).update();
+                        session.prepareStatementLocal(sql).executeUpdate();
                     } catch (DbException e) {
                         if (!ignoreUnknownSetting) {
                             session.close();
@@ -181,7 +181,7 @@ public class DatabaseEngine {
             }
             if (init != null) {
                 try {
-                    session.prepareStatement(init, Integer.MAX_VALUE).update();
+                    session.prepareStatement(init, Integer.MAX_VALUE).executeUpdate();
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {
                         session.close();

@@ -548,13 +548,33 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     }
 
     @Override
-    public Result asyncQuery(int maxRows) {
+    public Result executeQuery(int maxRows) {
         return query(maxRows);
     }
 
     @Override
-    public int asyncUpdate() {
+    public Result executeQuery(int maxRows, boolean scrollable) {
+        return executeQuery(maxRows);
+    }
+
+    @Override
+    public Result executeQueryAsync(int maxRows) {
+        return executeQuery(maxRows);
+    }
+
+    @Override
+    public int executeUpdate() {
         return update();
+    }
+
+    @Override
+    public int executeUpdate(String replicationName) {
+        return executeUpdate();
+    }
+
+    @Override
+    public int executeUpdateAsync() {
+        return executeUpdate();
     }
 
 }

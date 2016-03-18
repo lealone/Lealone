@@ -157,12 +157,12 @@ public class ClientCommand implements StorageCommand {
     }
 
     @Override
-    public Result query(int maxRows) {
-        return query(maxRows, false);
+    public Result executeQuery(int maxRows) {
+        return executeQuery(maxRows, false);
     }
 
     @Override
-    public Result query(int maxRows, boolean scrollable) {
+    public Result executeQuery(int maxRows, boolean scrollable) {
         if (prepared)
             return executePreparedQuery(maxRows, scrollable);
         else
@@ -279,12 +279,12 @@ public class ClientCommand implements StorageCommand {
     }
 
     @Override
-    public int update() {
-        return update(null);
+    public int executeUpdate() {
+        return executeUpdate(null);
     }
 
     @Override
-    public int update(String replicationName) {
+    public int executeUpdate(String replicationName) {
         if (prepared)
             return executePreparedUpdate(replicationName);
         else
