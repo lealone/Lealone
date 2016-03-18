@@ -69,12 +69,12 @@ public class ClientCommand implements StorageCommand {
         try {
             if (createParams) {
                 s.traceOperation("COMMAND_PREPARE_READ_PARAMS", id);
-                transfer.writeRequestHeader(Session.COMMAND_PREPARE_READ_PARAMS);
+                transfer.writeRequestHeader(id, Session.COMMAND_PREPARE_READ_PARAMS);
             } else {
                 s.traceOperation("COMMAND_PREPARE", id);
-                transfer.writeRequestHeader(Session.COMMAND_PREPARE);
+                transfer.writeRequestHeader(id, Session.COMMAND_PREPARE);
             }
-            transfer.writeInt(id).writeInt(session.getSessionId()).writeString(sql);
+            transfer.writeInt(session.getSessionId()).writeString(sql);
             VoidAsyncCallback ac = new VoidAsyncCallback() {
                 @Override
                 public void runInternal() {
@@ -130,7 +130,7 @@ public class ClientCommand implements StorageCommand {
         prepareIfRequired();
         try {
             session.traceOperation("COMMAND_GET_META_DATA", id);
-            transfer.writeRequestHeader(Session.COMMAND_GET_META_DATA).writeInt(id);
+            transfer.writeRequestHeader(id, Session.COMMAND_GET_META_DATA);
             transfer.writeInt(session.getSessionId()).writeInt(objectId);
             AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
                 @Override
@@ -177,13 +177,12 @@ public class ClientCommand implements StorageCommand {
             boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedQuery) {
                 session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_QUERY", id);
-                transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY);
+                transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY);
             } else {
                 session.traceOperation("COMMAND_QUERY", id);
-                transfer.writeRequestHeader(Session.COMMAND_QUERY);
+                transfer.writeRequestHeader(id, Session.COMMAND_QUERY);
             }
-            transfer.writeInt(id).writeInt(session.getSessionId()).writeString(sql).writeInt(objectId)
-                    .writeInt(maxRows);
+            transfer.writeInt(session.getSessionId()).writeString(sql).writeInt(objectId).writeInt(maxRows);
             int fetch;
             if (scrollable) {
                 fetch = Integer.MAX_VALUE;
@@ -233,12 +232,12 @@ public class ClientCommand implements StorageCommand {
             boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedQuery) {
                 session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY", id);
-                transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY);
+                transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY);
             } else {
                 session.traceOperation("COMMAND_PREPARED_QUERY", id);
-                transfer.writeRequestHeader(Session.COMMAND_PREPARED_QUERY);
+                transfer.writeRequestHeader(id, Session.COMMAND_PREPARED_QUERY);
             }
-            transfer.writeInt(id).writeInt(session.getSessionId()).writeInt(objectId).writeInt(maxRows);
+            transfer.writeInt(session.getSessionId()).writeInt(objectId).writeInt(maxRows);
             int fetch;
             if (scrollable) {
                 fetch = Integer.MAX_VALUE;
@@ -299,32 +298,43 @@ public class ClientCommand implements StorageCommand {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
                 session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_UPDATE", id);
-                transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE);
+                transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE);
             } else if (replicationName != null) {
                 session.traceOperation("COMMAND_REPLICATION_UPDATE", id);
-                transfer.writeRequestHeader(Session.COMMAND_REPLICATION_UPDATE);
+                transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_UPDATE);
             } else {
                 session.traceOperation("COMMAND_UPDATE", id);
-                transfer.writeRequestHeader(Session.COMMAND_UPDATE);
+                transfer.writeRequestHeader(id, Session.COMMAND_UPDATE);
             }
-            transfer.writeInt(id).writeInt(session.getSessionId()).writeString(sql);
+            transfer.writeInt(session.getSessionId()).writeString(sql);
             if (replicationName != null)
                 transfer.writeString(replicationName);
-            IntAsyncCallback ac = new IntAsyncCallback();
-            transfer.addAsyncCallback(id, ac);
-            transfer.flush();
 
-            // if (isDistributedUpdate)
-            // session.getTransaction().addLocalTransactionNames(transfer.readString());
-            //
-            // updateCount = transfer.readInt();
-
-            updateCount = ac.getResult();
+            updateCount = getUpdateCount(isDistributedUpdate, id);
         } catch (Exception e) {
             session.handleException(e);
         }
         session.readSessionState();
         return updateCount;
+    }
+
+    private int getUpdateCount(boolean isDistributedUpdate, int id) throws IOException {
+        IntAsyncCallback ac = new IntAsyncCallback() {
+            @Override
+            public void runInternal() {
+                try {
+                    if (isDistributedUpdate)
+                        session.getTransaction().addLocalTransactionNames(transfer.readString());
+
+                    setResult(transfer.readInt());
+                } catch (IOException e) {
+                    throw DbException.convert(e);
+                }
+            }
+        };
+        transfer.addAsyncCallback(id, ac);
+        transfer.flush();
+        return ac.getResult();
     }
 
     private int executePreparedUpdate(String replicationName) {
@@ -335,29 +345,20 @@ public class ClientCommand implements StorageCommand {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
                 session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE", id);
-                transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE);
+                transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE);
             } else if (replicationName != null) {
                 session.traceOperation("COMMAND_REPLICATION_PREPARED_UPDATE", id);
-                transfer.writeRequestHeader(Session.COMMAND_REPLICATION_PREPARED_UPDATE);
+                transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_PREPARED_UPDATE);
             } else {
                 session.traceOperation("COMMAND_PREPARED_UPDATE", id);
-                transfer.writeRequestHeader(Session.COMMAND_PREPARED_UPDATE);
+                transfer.writeRequestHeader(id, Session.COMMAND_PREPARED_UPDATE);
             }
-            transfer.writeInt(id).writeInt(session.getSessionId());
+            transfer.writeInt(session.getSessionId());
             if (replicationName != null)
                 transfer.writeString(replicationName);
             sendParameters(transfer);
-            IntAsyncCallback ac = new IntAsyncCallback();
-            transfer.addAsyncCallback(id, ac);
-            transfer.flush();
 
-            // if (isDistributedUpdate)
-            // session.getTransaction().addLocalTransactionNames(transfer.readString());
-            //
-            // updateCount = transfer.readInt();
-
-            updateCount = ac.getResult();
-
+            updateCount = getUpdateCount(isDistributedUpdate, id);
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -386,7 +387,7 @@ public class ClientCommand implements StorageCommand {
         }
         session.traceOperation("COMMAND_CLOSE", id);
         try {
-            transfer.writeRequestHeader(Session.COMMAND_CLOSE).writeInt(id).flush();
+            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
         } catch (IOException e) {
             trace.error(e, "close");
         }
@@ -433,17 +434,18 @@ public class ClientCommand implements StorageCommand {
     @Override
     public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value) {
         byte[] bytes = null;
+        int id = session.getNextId();
         try {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
                 session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_PUT", id);
-                transfer.writeRequestHeader(Session.COMMAND_STORAGE_DISTRIBUTED_PUT);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_PUT);
             } else if (replicationName != null) {
                 session.traceOperation("COMMAND_STORAGE_REPLICATION_PUT", id);
-                transfer.writeRequestHeader(Session.COMMAND_STORAGE_REPLICATION_PUT);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_REPLICATION_PUT);
             } else {
                 session.traceOperation("COMMAND_STORAGE_PUT", id);
-                transfer.writeRequestHeader(Session.COMMAND_STORAGE_PUT);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_PUT);
             }
             transfer.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
             if (replicationName != null)
@@ -464,14 +466,15 @@ public class ClientCommand implements StorageCommand {
     @Override
     public Object executeGet(String mapName, ByteBuffer key) {
         byte[] bytes = null;
+        int id = session.getNextId();
         try {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
                 session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_GET", id);
-                transfer.writeRequestHeader(Session.COMMAND_STORAGE_DISTRIBUTED_GET);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_GET);
             } else {
                 session.traceOperation("COMMAND_STORAGE_GET", id);
-                transfer.writeRequestHeader(Session.COMMAND_STORAGE_GET);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_GET);
             }
             transfer.writeString(mapName).writeByteBuffer(key);
             transfer.flush();
@@ -489,9 +492,10 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page) {
+        int id = session.getNextId();
         try {
             session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", id);
-            transfer.writeRequestHeader(Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
+            transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
             transfer.writeString(mapName).writeByteBuffer(splitKey).writeByteBuffer(page);
             transfer.flush();
         } catch (Exception e) {
@@ -502,9 +506,10 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public void removeLeafPage(String mapName, ByteBuffer key) {
+        int id = session.getNextId();
         try {
             session.traceOperation("COMMAND_STORAGE_REMOVE_LEAF_PAGE", id);
-            transfer.writeRequestHeader(Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
+            transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
             transfer.writeString(mapName).writeByteBuffer(key);
             transfer.flush();
         } catch (Exception e) {

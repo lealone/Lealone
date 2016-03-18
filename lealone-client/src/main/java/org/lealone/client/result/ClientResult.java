@@ -121,7 +121,7 @@ public abstract class ClientResult implements Result {
         session.checkClosed();
         try {
             session.traceOperation("RESULT_RESET", id);
-            transfer.writeRequestHeader(Session.RESULT_RESET).writeInt(id).flush();
+            transfer.writeRequestHeader(id, Session.RESULT_RESET).flush();
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
         }
@@ -154,7 +154,7 @@ public abstract class ClientResult implements Result {
         // TODO result sets: no reset possible for larger remote result sets
         try {
             session.traceOperation("RESULT_CLOSE", id);
-            transfer.writeRequestHeader(Session.RESULT_CLOSE).writeInt(id).flush();
+            transfer.writeRequestHeader(id, Session.RESULT_CLOSE).flush();
         } catch (IOException e) {
             trace.error(e, "close");
         } finally {
@@ -165,7 +165,7 @@ public abstract class ClientResult implements Result {
 
     protected void sendFetch(int fetchSize) throws IOException {
         session.traceOperation("RESULT_FETCH_ROWS", id);
-        transfer.writeRequestHeader(Session.RESULT_FETCH_ROWS).writeInt(id).writeInt(fetchSize).flush();
+        transfer.writeRequestHeader(id, Session.RESULT_FETCH_ROWS).writeInt(fetchSize).flush();
     }
 
     @Override
@@ -183,7 +183,7 @@ public abstract class ClientResult implements Result {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
                 session.traceOperation("CHANGE_ID", id);
-                transfer.writeRequestHeader(Session.RESULT_CHANGE_ID).writeInt(id).writeInt(newId).flush();
+                transfer.writeRequestHeader(id, Session.RESULT_CHANGE_ID).writeInt(newId).flush();
                 id = newId;
                 // TODO remote result set: very old result sets may be
                 // already removed on the server (theoretically) - how to

@@ -118,8 +118,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
     public void writeInitPacket(Session session, int sessionId, Transfer transfer, ConnectionInfo ci) throws Exception {
         transfer.setSSL(ci.isSSL());
         transfer.init();
-        transfer.writeRequestHeader(Session.SESSION_INIT);
-        transfer.writeInt(sessionId);
+        transfer.writeRequestHeader(sessionId, Session.SESSION_INIT);
         transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
         transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
         transfer.writeString(ci.getDatabaseName());
@@ -151,9 +150,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         ac.await();
     }
 
-    private void readInitPacket() {
+    private void readInitPacket(int sessionId) {
         try {
-            int sessionId = transfer.readInt();
             int minClientVersion = transfer.readInt();
             if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_MIN) {
                 throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion, ""
@@ -179,13 +177,12 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 this.session = session;
             sessions.put(sessionId, session);
             transfer.setSession(session);
-            transfer.writeResponseHeader(Session.SESSION_INIT);
-            transfer.writeInt(Session.STATUS_OK).writeInt(sessionId);
+            transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
             transfer.writeInt(clientVersion);
             transfer.writeBoolean(session.isAutoCommit());
             transfer.flush();
         } catch (Throwable e) {
-            sendError(-1, e);
+            sendError(sessionId, e);
             stop = true;
         }
     }
@@ -272,34 +269,6 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
     }
 
-    private void sendError(int id, Throwable t) {
-        try {
-            SQLException e = DbException.convert(t).getSQLException();
-            StringWriter writer = new StringWriter();
-            e.printStackTrace(new PrintWriter(writer));
-            String trace = writer.toString();
-            String message;
-            String sql;
-            if (e instanceof JdbcSQLException) {
-                JdbcSQLException j = (JdbcSQLException) e;
-                message = j.getOriginalMessage();
-                sql = j.getSQL();
-            } else {
-                message = e.getMessage();
-                sql = null;
-            }
-
-            transfer.reset(); // 为什么要reset? 见reset中的注释
-
-            transfer.writeResponseHeader(Session.COMMAND_ERROR).writeInt(Session.STATUS_ERROR).writeInt(id);
-            transfer.writeString(e.getSQLState()).writeString(message).writeString(sql).writeInt(e.getErrorCode())
-                    .writeString(trace).flush();
-        } catch (Exception e2) {
-            // if writing the error does not work, close the connection
-            stop = true;
-        }
-    }
-
     private void setParameters(PreparedStatement command) throws IOException {
         int len = transfer.readInt();
         List<? extends CommandParameter> params = command.getParameters();
@@ -370,14 +339,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         return Session.STATUS_OK_STATE_CHANGED;
     }
 
-    private void writeBatchResult(int[] result, int oldModificationId) throws IOException {
-        int status;
-        if (session.isClosed()) {
-            status = Session.STATUS_CLOSED;
-        } else {
-            status = getState(oldModificationId);
-        }
-        transfer.writeInt(status);
+    private void writeBatchResult(int id, int[] result, int oldModificationId) throws IOException {
+        writeResponseHeader(id, oldModificationId);
         for (int i = 0; i < result.length; i++)
             transfer.writeInt(result[i]);
 
@@ -397,8 +360,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 Callable<Object> callable = new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
-                        transfer.writeResponseHeader(operation);
-                        transfer.writeInt(getState(oldModificationId)).writeInt(id);
+                        transfer.writeResponseHeader(id, getState(oldModificationId));
 
                         if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
                                 || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY)
@@ -455,9 +417,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                         } else {
                             status = getState(oldModificationId);
                         }
-                        transfer.writeResponseHeader(operation);
-                        transfer.writeInt(status);
-                        transfer.writeInt(id);
+                        transfer.writeResponseHeader(id, status);
                         if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
                                 || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
                             transfer.writeString(session.getTransaction().getLocalTransactionNames());
@@ -477,18 +437,31 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         CommandHandler.preparedCommandQueue.add(pc);
     }
 
-    private void readStatus() throws IOException {
-        int status = transfer.readInt();
-        if (status == Session.STATUS_ERROR) {
-            // parseError();
-        } else if (status == Session.STATUS_CLOSED) {
-            transfer = null;
-        } else if (status == Session.STATUS_OK_STATE_CHANGED) {
-            // sessionStateChanged = true;
-        } else if (status == Session.STATUS_OK) {
-            // ok
-        } else {
-            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
+    private void sendError(int id, Throwable t) {
+        try {
+            SQLException e = DbException.convert(t).getSQLException();
+            StringWriter writer = new StringWriter();
+            e.printStackTrace(new PrintWriter(writer));
+            String trace = writer.toString();
+            String message;
+            String sql;
+            if (e instanceof JdbcSQLException) {
+                JdbcSQLException j = (JdbcSQLException) e;
+                message = j.getOriginalMessage();
+                sql = j.getSQL();
+            } else {
+                message = e.getMessage();
+                sql = null;
+            }
+
+            transfer.reset(); // 为什么要reset? 见reset中的注释
+
+            transfer.writeResponseHeader(id, Session.STATUS_ERROR);
+            transfer.writeString(e.getSQLState()).writeString(message).writeString(sql).writeInt(e.getErrorCode())
+                    .writeString(trace).flush();
+        } catch (Exception e2) {
+            // if writing the error does not work, close the connection
+            stop = true;
         }
     }
 
@@ -513,163 +486,137 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         return DbException.convert(t);
     }
 
-    private void process() throws IOException {
+    private void processResponse(int id) throws IOException {
+        int status = transfer.readInt();
+        DbException e = null;
+        if (status == Session.STATUS_ERROR) {
+            e = parseError();
+        } else if (status == Session.STATUS_CLOSED) {
+            transfer = null;
+        } else if (status == Session.STATUS_OK_STATE_CHANGED) {
+            // sessionStateChanged = true;
+        } else if (status == Session.STATUS_OK) {
+            // ok
+        } else {
+            e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
+        }
+        AsyncCallback<?> ac = getAsyncCallback(id);
+        if (e != null)
+            ac.setDbException(e);
+        else
+            ac.run(transfer);
+    }
+
+    private void writeResponseHeader(Session session, int id, int oldModificationId) throws IOException {
+        int status;
+        if (session != null && session.isClosed()) {
+            status = Session.STATUS_CLOSED;
+        } else {
+            status = getState(oldModificationId);
+        }
+        transfer.writeResponseHeader(id, status);
+    }
+
+    private void writeResponseHeader(int id, int oldModificationId) throws IOException {
+        writeResponseHeader(null, id, oldModificationId);
+    }
+
+    private void processRequest(int id) throws IOException {
         int operation = transfer.readInt();
-        boolean isRequest = (operation & 1) == 0;
-        if (!isRequest)
-            readStatus();
-        operation = operation >> 1;
         switch (operation) {
         case Session.SESSION_INIT: {
-            if (isRequest) {
-                readInitPacket();
-            } else {
-                int sessionId = transfer.readInt();
-                AsyncCallback<?> ac = getAsyncCallback(sessionId);
-                ac.run(transfer);
-            }
+            readInitPacket(id);
             break;
         }
         case Session.COMMAND_PREPARE_READ_PARAMS:
         case Session.COMMAND_PREPARE: {
-            if (isRequest) {
-                int id = transfer.readInt();
-                int sessionId = transfer.readInt();
-                String sql = transfer.readString();
-                Session session = getSession(sessionId);
-                int old = session.getModificationId();
-                PreparedStatement command = session.prepareStatement(sql, -1);
-                cache.addObject(id, command);
-                boolean isQuery = command.isQuery();
-                transfer.writeResponseHeader(operation);
-                transfer.writeInt(getState(old)).writeInt(id).writeBoolean(isQuery);
-                if (operation == Session.COMMAND_PREPARE_READ_PARAMS) {
-                    List<? extends CommandParameter> params = command.getParameters();
-                    transfer.writeInt(params.size());
-                    for (CommandParameter p : params) {
-                        writeParameterMetaData(p);
-                    }
+            int sessionId = transfer.readInt();
+            String sql = transfer.readString();
+            Session session = getSession(sessionId);
+            int old = session.getModificationId();
+            PreparedStatement command = session.prepareStatement(sql, -1);
+            cache.addObject(id, command);
+            boolean isQuery = command.isQuery();
+            writeResponseHeader(session, id, old);
+            transfer.writeBoolean(isQuery);
+            if (operation == Session.COMMAND_PREPARE_READ_PARAMS) {
+                List<? extends CommandParameter> params = command.getParameters();
+                transfer.writeInt(params.size());
+                for (CommandParameter p : params) {
+                    writeParameterMetaData(p);
                 }
-                transfer.flush();
-            } else {
-                int id = transfer.readInt();
-                AsyncCallback<?> ac = getAsyncCallback(id);
-                ac.run(transfer);
             }
+            transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY: {
-            if (isRequest) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
+            session.setAutoCommit(false);
+            session.setRoot(false);
         }
         case Session.COMMAND_QUERY: {
-            if (isRequest) {
-                int id = transfer.readInt();
-                int sessionId = transfer.readInt();
-                String sql = transfer.readString();
-                int objectId = transfer.readInt();
-                int maxRows = transfer.readInt();
-                int fetchSize = transfer.readInt();
-                Session session = getSession(sessionId);
-                int old = session.getModificationId();
-                PreparedStatement command = session.prepareStatement(sql, fetchSize);
-                cache.addObject(id, command);
-                executeQuery(session, id, command, operation, objectId, maxRows, fetchSize, old);
-            } else {
-                int id = transfer.readInt();
-                AsyncCallback<?> ac = getAsyncCallback(id);
-                ac.run(transfer);
-            }
+            int sessionId = transfer.readInt();
+            String sql = transfer.readString();
+            int objectId = transfer.readInt();
+            int maxRows = transfer.readInt();
+            int fetchSize = transfer.readInt();
+            Session session = getSession(sessionId);
+            int old = session.getModificationId();
+            PreparedStatement command = session.prepareStatement(sql, fetchSize);
+            cache.addObject(id, command);
+            executeQuery(session, id, command, operation, objectId, maxRows, fetchSize, old);
+
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY: {
-            if (isRequest) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
+            session.setAutoCommit(false);
+            session.setRoot(false);
         }
         case Session.COMMAND_PREPARED_QUERY: {
-            if (isRequest) {
-                int id = transfer.readInt();
-                int sessionId = transfer.readInt();
-                int objectId = transfer.readInt();
-                int maxRows = transfer.readInt();
-                int fetchSize = transfer.readInt();
-                PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-                command.setFetchSize(fetchSize);
-                setParameters(command);
-                Session session = getSession(sessionId);
-                int old = session.getModificationId();
-                executeQuery(session, id, command, operation, objectId, maxRows, fetchSize, old);
-            } else {
-                int id = transfer.readInt();
-                AsyncCallback<?> ac = getAsyncCallback(id);
-                ac.run(transfer);
-            }
+            int sessionId = transfer.readInt();
+            int objectId = transfer.readInt();
+            int maxRows = transfer.readInt();
+            int fetchSize = transfer.readInt();
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            command.setFetchSize(fetchSize);
+            setParameters(command);
+            Session session = getSession(sessionId);
+            int old = session.getModificationId();
+            executeQuery(session, id, command, operation, objectId, maxRows, fetchSize, old);
+
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE: {
-            if (isRequest) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
+            session.setAutoCommit(false);
+            session.setRoot(false);
         }
         case Session.COMMAND_UPDATE:
         case Session.COMMAND_REPLICATION_UPDATE: {
-            if (isRequest) {
-                int id = transfer.readInt();
-                int sessionId = transfer.readInt();
-                String sql = transfer.readString();
-                Session session = getSession(sessionId);
-                int old = session.getModificationId();
-                if (operation == Session.COMMAND_REPLICATION_UPDATE)
-                    session.setReplicationName(transfer.readString());
+            int sessionId = transfer.readInt();
+            String sql = transfer.readString();
+            Session session = getSession(sessionId);
+            int old = session.getModificationId();
+            if (operation == Session.COMMAND_REPLICATION_UPDATE)
+                session.setReplicationName(transfer.readString());
 
-                PreparedStatement command = session.prepareStatement(sql, -1);
-                cache.addObject(id, command);
-                executeUpdate(session, id, command, operation, old);
-            } else {
-                int id = transfer.readInt();
-                if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE)
-                    session.getTransaction().addLocalTransactionNames(transfer.readString());
-
-                int updateCount = transfer.readInt();
-
-                IntAsyncCallback ac = (IntAsyncCallback) getAsyncCallback(id);
-                ac.setResult(updateCount);
-            }
+            PreparedStatement command = session.prepareStatement(sql, -1);
+            cache.addObject(id, command);
+            executeUpdate(session, id, command, operation, old);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE: {
-            if (isRequest) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
+            session.setAutoCommit(false);
+            session.setRoot(false);
         }
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
-            if (isRequest) {
-                int id = transfer.readInt();
-                int sessionId = transfer.readInt();
-                if (operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE)
-                    session.setReplicationName(transfer.readString());
-                PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-                setParameters(command);
-                Session session = getSession(sessionId);
-                int old = session.getModificationId();
-                executeUpdate(session, id, command, operation, old);
-            } else {
-                int id = transfer.readInt();
-                if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
-                    session.getTransaction().addLocalTransactionNames(transfer.readString());
-
-                int updateCount = transfer.readInt();
-
-                IntAsyncCallback ac = (IntAsyncCallback) getAsyncCallback(id);
-                ac.setResult(updateCount);
-            }
+            int sessionId = transfer.readInt();
+            if (operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE)
+                session.setReplicationName(transfer.readString());
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            setParameters(command);
+            Session session = getSession(sessionId);
+            int old = session.getModificationId();
+            executeUpdate(session, id, command, operation, old);
             break;
         }
         case Session.COMMAND_STORAGE_DISTRIBUTED_PUT: {
@@ -691,13 +638,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             Object k = map.getKeyType().read(ByteBuffer.wrap(key));
             Object v = valueType.read(ByteBuffer.wrap(value));
             Object result = map.put(k, v);
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
+            writeResponseHeader(session, id, old);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
@@ -724,13 +665,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             DataType valueType = map.getValueType();
             Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
 
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
+            writeResponseHeader(session, id, old);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
@@ -754,13 +689,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 ((Replication) map).addLeafPage(splitKey, page);
             }
 
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
+            writeResponseHeader(session, id, old);
             transfer.flush();
             break;
         }
@@ -774,60 +703,35 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 ((Replication) map).removeLeafPage(key);
             }
 
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
+            writeResponseHeader(session, id, old);
             transfer.flush();
             break;
         }
         case Session.COMMAND_GET_META_DATA: {
-            if (isRequest) {
-                int id = transfer.readInt();
-                int objectId = transfer.readInt();
-                PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-                Result result = command.getMetaData();
-                cache.addObject(objectId, result);
-                int columnCount = result.getVisibleColumnCount();
-                transfer.writeResponseHeader(operation);
-                transfer.writeInt(Session.STATUS_OK).writeInt(id).writeInt(columnCount).writeInt(0);
-                for (int i = 0; i < columnCount; i++) {
-                    writeColumn(result, i);
-                }
-                transfer.flush();
-            } else {
-                int id = transfer.readInt();
-                AsyncCallback<?> ac = getAsyncCallback(id);
-                ac.run(transfer);
+            int objectId = transfer.readInt();
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            Result result = command.getMetaData();
+            cache.addObject(objectId, result);
+            int columnCount = result.getVisibleColumnCount();
+            transfer.writeResponseHeader(id, Session.STATUS_OK);
+            transfer.writeInt(columnCount).writeInt(0);
+            for (int i = 0; i < columnCount; i++) {
+                writeColumn(result, i);
             }
+            transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
             int old = session.getModificationId();
             session.commit(false, transfer.readString());
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
+            writeResponseHeader(session, id, old);
             transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
             int old = session.getModificationId();
             session.rollback();
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
+            writeResponseHeader(session, id, old);
             transfer.flush();
             break;
         }
@@ -839,26 +743,14 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 session.addSavepoint(name);
             else
                 session.rollbackToSavepoint(name);
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
+            writeResponseHeader(session, id, old);
             transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE: {
             int old = session.getModificationId();
             boolean isValid = session.validateTransaction(transfer.readString());
-            int status;
-            if (session.isClosed()) {
-                status = Session.STATUS_CLOSED;
-            } else {
-                status = getState(old);
-            }
-            transfer.writeInt(status);
+            writeResponseHeader(session, id, old);
             transfer.writeBoolean(isValid);
             transfer.flush();
             break;
@@ -876,11 +768,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(result, old);
+            writeBatchResult(id, result, old);
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
-            int id = transfer.readInt();
             int sessionId = transfer.readInt();
             int size = transfer.readInt();
             PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
@@ -900,11 +791,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(result, old);
+            writeBatchResult(id, result, old);
             break;
         }
         case Session.COMMAND_CLOSE: {
-            int id = transfer.readInt();
             PreparedStatement command = (PreparedStatement) cache.getObject(id, true);
             if (command != null) {
                 command.close();
@@ -913,22 +803,20 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.RESULT_FETCH_ROWS: {
-            int id = transfer.readInt();
             int count = transfer.readInt();
             Result result = (Result) cache.getObject(id, false);
-            transfer.writeInt(Session.STATUS_OK);
+            transfer.writeResponseHeader(id, Session.STATUS_OK);
             writeRow(result, count);
             transfer.flush();
             break;
         }
         case Session.RESULT_RESET: {
-            int id = transfer.readInt();
             Result result = (Result) cache.getObject(id, false);
             result.reset();
             break;
         }
         case Session.RESULT_CHANGE_ID: {
-            int oldId = transfer.readInt();
+            int oldId = id;
             int newId = transfer.readInt();
             Object obj = cache.getObject(oldId, false);
             cache.freeObject(oldId);
@@ -936,7 +824,6 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.RESULT_CLOSE: {
-            int id = transfer.readInt();
             Result result = (Result) cache.getObject(id, true);
             if (result != null) {
                 result.close();
@@ -945,40 +832,19 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             break;
         }
         case Session.SESSION_SET_AUTO_COMMIT: {
-            if (isRequest) {
-                int id = transfer.readInt();
-                int sessionId = transfer.readInt();
-                boolean autoCommit = transfer.readBoolean();
-                Session session = getSession(sessionId);
-                session.setAutoCommit(autoCommit);
-                transfer.writeResponseHeader(Session.SESSION_SET_AUTO_COMMIT);
-                transfer.writeInt(Session.STATUS_OK).writeInt(id).flush();
-            } else {
-                int id = transfer.readInt();
-                AsyncCallback<?> ac = getAsyncCallback(id);
-                ac.run();
-            }
+            int sessionId = transfer.readInt();
+            boolean autoCommit = transfer.readBoolean();
+            Session session = getSession(sessionId);
+            session.setAutoCommit(autoCommit);
+            transfer.writeResponseHeader(id, Session.STATUS_OK).flush();
             break;
         }
         case Session.SESSION_CLOSE: {
-            int sessionId = transfer.readInt();
-            Session session = sessions.remove(sessionId);
+            Session session = sessions.remove(id);
             closeSession(session);
             break;
         }
-        case Session.COMMAND_ERROR: {
-            int id = transfer.readInt();
-            DbException e = parseError();
-            if (id >= 0) {
-                AsyncCallback<?> ac = getAsyncCallback(id);
-                ac.setDbException(e);
-            } else {
-                throw e;
-            }
-            break;
-        }
         case Session.SESSION_CANCEL_STATEMENT: {
-            int id = transfer.readInt();
             PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
             if (command != null) {
                 command.cancel();
@@ -1015,7 +881,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             length = Math.min(16 * Constants.IO_BUFFER_SIZE, length);
             byte[] buff = new byte[length];
             length = IOUtils.readFully(in, buff, length);
-            transfer.writeInt(Session.STATUS_OK);
+            transfer.writeResponseHeader(id, Session.STATUS_OK);
             transfer.writeInt(length);
             transfer.writeBytes(buff, 0, length);
             transfer.flush();
@@ -1125,14 +991,26 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             Buffer buffer = bufferQueue.poll();
             if (buffer == null)
                 return;
-
+            int id = -1;
             try {
                 transfer.setBuffer(buffer);
                 transfer.readInt(); // packetLength
-                process();
+
+                id = transfer.readInt();
+                boolean isRequest = (id & 1) == 0;
+                id = id >> 1;
+                if (isRequest) {
+                    try {
+                        processRequest(id);
+                    } catch (Throwable e) {
+                        logger.error("Process request", e);
+                        sendError(id, e);
+                    }
+                } else {
+                    processResponse(id);
+                }
             } catch (Throwable e) {
                 logger.error("Parse packets", e);
-                // sendError(-1, e);
             }
         }
     }

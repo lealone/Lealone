@@ -230,7 +230,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             }
         }
         sessionId = getNextId();
-        transfer = asyncConnection.getTransfer().copy();
+        transfer = asyncConnection.getTransfer().copy(this);
         asyncConnection.writeInitPacket(this, sessionId, transfer, ci);
         asyncConnection.addSession(sessionId, this);
         return transfer;
@@ -265,7 +265,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
      */
     public void cancelStatement(int id) {
         try {
-            transfer.writeRequestHeader(Session.SESSION_CANCEL_STATEMENT).writeInt(id).flush();
+            transfer.writeRequestHeader(id, Session.SESSION_CANCEL_STATEMENT).flush();
         } catch (IOException e) {
             trace.debug(e, "could not cancel statement");
         }
@@ -288,8 +288,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             int id = getNextId();
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            transfer.writeRequestHeader(Session.SESSION_SET_AUTO_COMMIT);
-            transfer.writeInt(id).writeInt(sessionId).writeBoolean(autoCommit);
+            transfer.writeRequestHeader(id, Session.SESSION_SET_AUTO_COMMIT);
+            transfer.writeInt(sessionId).writeBoolean(autoCommit);
             OkAsyncCallback ac = new OkAsyncCallback();
             transfer.addAsyncCallback(id, ac);
             transfer.flush();
@@ -307,13 +307,13 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public Command createCommand(String sql, int fetchSize) {
         checkClosed();
-        return new ClientCommand(this, transfer.copy(), sql, fetchSize);
+        return new ClientCommand(this, transfer.copy(this), sql, fetchSize);
     }
 
     @Override
     public StorageCommand createStorageCommand() {
         checkClosed();
-        return new ClientCommand(this, transfer.copy(), null, -1);
+        return new ClientCommand(this, transfer.copy(this), null, -1);
     }
 
     @Override
@@ -345,7 +345,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         synchronized (this) {
             try {
                 traceOperation("SESSION_CLOSE", 0);
-                transfer.writeRequestHeader(Session.SESSION_CLOSE).writeInt(sessionId).flush();
+                transfer.writeRequestHeader(sessionId, Session.SESSION_CLOSE).flush();
                 asyncConnection.remove(sessionId);
             } catch (RuntimeException e) {
                 trace.error(e, "close");
@@ -461,8 +461,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
         try {
+            int id = getNextId();
             traceOperation("LOB_READ", (int) lobId);
-            transfer.writeRequestHeader(Session.COMMAND_READ_LOB);
+            transfer.writeRequestHeader(id, Session.COMMAND_READ_LOB);
             transfer.writeLong(lobId);
             transfer.writeBytes(hmac);
             transfer.writeLong(offset);
@@ -484,7 +485,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT);
+            int id = getNextId();
+            transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT);
             transfer.writeString(allLocalTransactionNames).flush();
         } catch (IOException e) {
             handleException(e);
@@ -495,7 +497,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void rollbackTransaction() {
         checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK);
+            int id = getNextId();
+            transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK);
             transfer.flush();
         } catch (IOException e) {
             handleException(e);
@@ -506,7 +509,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void addSavepoint(String name) {
         checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT).writeString(name);
+            int id = getNextId();
+            transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT);
+            transfer.writeString(name);
             transfer.flush();
         } catch (IOException e) {
             handleException(e);
@@ -517,7 +522,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void rollbackToSavepoint(String name) {
         checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT).writeString(name);
+            int id = getNextId();
+            transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT);
+            transfer.writeString(name);
             transfer.flush();
         } catch (IOException e) {
             handleException(e);
@@ -528,7 +535,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized boolean validateTransaction(String localTransactionName) {
         checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE);
+            int id = getNextId();
+            transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE);
             transfer.writeString(localTransactionName).flush();
             return transfer.readBoolean();
         } catch (Exception e) {
@@ -550,13 +558,13 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     public synchronized ClientBatchCommand getClientBatchCommand(ArrayList<String> batchCommands) {
         checkClosed();
-        return new ClientBatchCommand(this, transfer.copy(), batchCommands);
+        return new ClientBatchCommand(this, transfer.copy(this), batchCommands);
     }
 
     public synchronized ClientBatchCommand getClientBatchCommand(Command preparedCommand,
             ArrayList<Value[]> batchParameters) {
         checkClosed();
-        return new ClientBatchCommand(this, transfer.copy(), preparedCommand, batchParameters);
+        return new ClientBatchCommand(this, transfer.copy(this), preparedCommand, batchParameters);
     }
 
     @Override

@@ -93,7 +93,7 @@ public class Transfer {
         this.conn = conn;
     }
 
-    public Transfer copy() {
+    public Transfer copy(Session session) {
         Transfer t = new Transfer(session, socket);
         t.conn = conn;
         t.init();
@@ -109,13 +109,18 @@ public class Transfer {
         conn.addAsyncCallback(id, ac);
     }
 
-    public Transfer writeResponseHeader(int packetType) throws IOException {
-        writeInt((packetType << 1) | 1);
+    public Transfer writeResponseHeader(int id, int status) throws IOException {
+        writeInt((id << 1) | 1).writeInt(status);
         return this;
     }
 
     public Transfer writeRequestHeader(int packetType) throws IOException {
-        writeInt(packetType << 1);
+        writeRequestHeader(conn.getNextId(), packetType);
+        return this;
+    }
+
+    public Transfer writeRequestHeader(int id, int packetType) throws IOException {
+        writeInt(id << 1).writeInt(packetType);
         return this;
     }
 
