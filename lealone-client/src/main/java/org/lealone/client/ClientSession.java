@@ -160,8 +160,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             traceSystem.close();
             throw e;
         }
-        sessionId = getNextId();
-        asyncConnection.addSession(sessionId, this);
     }
 
     @Override
@@ -219,29 +217,22 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     client.connect(port, server, res -> {
                         if (res.succeeded()) {
                             NetSocket socket = res.result();
-                            asyncConnection = new AsyncConnection(socket, new CountDownLatch(1));
+                            asyncConnection = new AsyncConnection(socket);
                             asyncConnections.put(hostAndPort, asyncConnection);
                             socket.handler(asyncConnection);
-                            transfer = asyncConnection.getTransfer();
-                            try {
-                                asyncConnection.writeInitPacket(ci);
-                            } catch (Exception e) {
-                                throw DbException.convert(e);
-                            }
                             latch.countDown();
                         } else {
                             throw DbException.convert(res.cause());
                         }
                     });
-
                     latch.await();
-                    if (asyncConnection.getReadyLatch() != null)
-                        asyncConnection.getReadyLatch().await();
                 }
             }
         }
-        transfer = asyncConnection.getTransfer();
-        autoCommit = asyncConnection.isAutoCommit();
+        sessionId = getNextId();
+        transfer = asyncConnection.getTransfer().copy();
+        asyncConnection.writeInitPacket(this, sessionId, transfer, ci);
+        asyncConnection.addSession(sessionId, this);
         return transfer;
     }
 
@@ -287,6 +278,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public void setAutoCommit(boolean autoCommit) {
+        if (this.autoCommit == autoCommit)
+            return;
         setAutoCommitSend(autoCommit);
         this.autoCommit = autoCommit;
     }

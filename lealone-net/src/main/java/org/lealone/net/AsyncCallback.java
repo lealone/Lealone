@@ -23,10 +23,10 @@ import org.lealone.common.exceptions.DbException;
 
 public class AsyncCallback<T> {
 
-    Transfer transfer;
-    T result;
-    DbException e;
-    CountDownLatch latch = new CountDownLatch(1);
+    protected Transfer transfer;
+    protected T result;
+    protected DbException e;
+    protected CountDownLatch latch = new CountDownLatch(1);
 
     public T getResult() {
         try {
