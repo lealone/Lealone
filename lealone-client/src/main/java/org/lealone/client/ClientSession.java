@@ -230,7 +230,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             }
         }
         sessionId = getNextId();
-        transfer = asyncConnection.getTransfer().copy(this);
+        transfer = asyncConnection.createTransfer(this);
         asyncConnection.writeInitPacket(this, sessionId, transfer, ci);
         asyncConnection.addSession(sessionId, this);
         return transfer;
@@ -347,6 +347,16 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 traceOperation("SESSION_CLOSE", 0);
                 transfer.writeRequestHeader(sessionId, Session.SESSION_CLOSE).flush();
                 asyncConnection.remove(sessionId);
+
+                synchronized (ClientSession.class) {
+                    if (asyncConnection.isEmpty()) {
+                        client.close();
+                        vertx.close();
+                        client = null;
+                        vertx = null;
+                        asyncConnections.clear();
+                    }
+                }
             } catch (RuntimeException e) {
                 trace.error(e, "close");
                 closeError = e;

@@ -95,13 +95,18 @@ public class Transfer {
         conn.addAsyncCallback(id, ac);
     }
 
-    public Transfer writeResponseHeader(int id, int status) throws IOException {
-        writeInt((id << 1) | 1).writeInt(status);
+    static final byte REQUEST = 1;
+    static final byte RESPONSE = 2;
+
+    public Transfer writeRequestHeader(int id, int packetType) throws IOException {
+        // writeInt(id << 1).writeInt(packetType);
+        writeByte(REQUEST).writeInt(id).writeInt(packetType);
         return this;
     }
 
-    public Transfer writeRequestHeader(int id, int packetType) throws IOException {
-        writeInt(id << 1).writeInt(packetType);
+    public Transfer writeResponseHeader(int id, int status) throws IOException {
+        // writeInt((id << 1) | 1).writeInt(status);
+        writeByte(RESPONSE).writeInt(id).writeInt(status);
         return this;
     }
 
@@ -182,7 +187,8 @@ public class Transfer {
     public void close() {
         if (socket != null) {
             try {
-                flush();
+                if (out.size() > 4)
+                    flush();
             } catch (IOException e) {
                 DbException.traceThrowable(e);
             } finally {
@@ -233,7 +239,7 @@ public class Transfer {
      *
      * @return the value
      */
-    private byte readByte() throws IOException {
+    public byte readByte() throws IOException {
         return in.readByte();
     }
 
@@ -865,7 +871,6 @@ public class Transfer {
 
         void writePacketLength() {
             int v = buffer.length() - 4;
-
             buffer.setByte(0, (byte) ((v >>> 24) & 0xFF));
             buffer.setByte(1, (byte) ((v >>> 16) & 0xFF));
             buffer.setByte(2, (byte) ((v >>> 8) & 0xFF));

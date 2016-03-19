@@ -26,12 +26,14 @@ public class PreparedCommand {
 
     int id;
     PreparedStatement stmt;
+    Transfer transfer;
     Session session;
     Callable<?> call;
 
-    PreparedCommand(int id, PreparedStatement stmt, Session session, Callable<?> call) {
+    PreparedCommand(int id, PreparedStatement stmt, Transfer transfer, Session session, Callable<?> call) {
         this.id = id;
         this.stmt = stmt;
+        this.transfer = transfer;
         this.session = session;
         this.call = call;
     }

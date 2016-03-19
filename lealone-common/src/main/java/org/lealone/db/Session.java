@@ -75,10 +75,10 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_STORAGE_MOVE_LEAF_PAGE = 180;
     public static final int COMMAND_STORAGE_REMOVE_LEAF_PAGE = 181;
 
-    public static final int STATUS_ERROR = 0;
-    public static final int STATUS_OK = 1;
-    public static final int STATUS_OK_STATE_CHANGED = 2;
-    public static final int STATUS_CLOSED = 3;
+    public static final int STATUS_ERROR = 1000;
+    public static final int STATUS_OK = 1001;
+    public static final int STATUS_OK_STATE_CHANGED = 1002;
+    public static final int STATUS_CLOSED = 1003;
 
     Command createCommand(String sql, int fetchSize);
 

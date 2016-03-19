@@ -62,7 +62,6 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
 
-    private Transfer transfer;
     private final NetSocket socket;
 
     private boolean stop;
@@ -89,6 +88,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         sessions.remove(sessionId);
     }
 
+    public boolean isEmpty() {
+        return sessions.isEmpty();
+    }
+
     public void setBaseDir(String baseDir) {
         this.baseDir = baseDir;
     }
@@ -107,11 +110,13 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
 
     public AsyncConnection(NetSocket socket) {
         this.socket = socket;
-        this.transfer = new Transfer(this, socket);
     }
 
-    public Transfer getTransfer() {
-        return transfer;
+    public Transfer createTransfer(Session session) {
+        Transfer t = new Transfer(this, socket);
+        t.setSession(session);
+        t.init();
+        return t;
     }
 
     public void writeInitPacket(Session session, int sessionId, Transfer transfer, ConnectionInfo ci) throws Exception {
@@ -149,7 +154,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         ac.await();
     }
 
-    private void readInitPacket(int sessionId) {
+    private void readInitPacket(Transfer transfer, int sessionId) {
         try {
             int minClientVersion = transfer.readInt();
             if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_MIN) {
@@ -171,7 +176,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             String originalURL = transfer.readString();
             String userName = transfer.readString();
             userName = StringUtils.toUpperEnglish(userName);
-            Session session = createSession(originalURL, dbName, userName);
+            Session session = createSession(transfer, originalURL, dbName, userName);
             sessions.put(sessionId, session);
             transfer.setSession(session);
             transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
@@ -179,7 +184,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             transfer.writeBoolean(session.isAutoCommit());
             transfer.flush();
         } catch (Throwable e) {
-            sendError(sessionId, e);
+            sendError(transfer, sessionId, e);
             stop = true;
         }
     }
@@ -189,7 +194,8 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         return socket.remoteAddress().host().compareTo(o.socket.remoteAddress().host());
     }
 
-    private Session createSession(String originalURL, String dbName, String userName) throws IOException {
+    private Session createSession(Transfer transfer, String originalURL, String dbName, String userName)
+            throws IOException {
         ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
         ci.setUserName(userName);
         ci.setUserPasswordHash(transfer.readBytes());
@@ -261,12 +267,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             sessions.clear();
         } catch (Exception e) {
             logger.error("Failed to close connection", e);
-        } finally {
-            transfer.close();
         }
     }
 
-    private void setParameters(PreparedStatement command) throws IOException {
+    private void setParameters(Transfer transfer, PreparedStatement command) throws IOException {
         int len = transfer.readInt();
         List<? extends CommandParameter> params = command.getParameters();
         for (int i = 0; i < len; i++) {
@@ -280,7 +284,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
      *
      * @param p the parameter
      */
-    private void writeParameterMetaData(CommandParameter p) throws IOException {
+    private void writeParameterMetaData(Transfer transfer, CommandParameter p) throws IOException {
         transfer.writeInt(p.getType());
         transfer.writeLong(p.getPrecision());
         transfer.writeInt(p.getScale());
@@ -293,7 +297,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
      * @param result the result
      * @param i the column index
      */
-    private void writeColumn(Result result, int i) throws IOException {
+    private void writeColumn(Transfer transfer, Result result, int i) throws IOException {
         transfer.writeString(result.getAlias(i));
         transfer.writeString(result.getSchemaName(i));
         transfer.writeString(result.getTableName(i));
@@ -306,7 +310,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         transfer.writeInt(result.getNullable(i));
     }
 
-    private void writeRow(Result result, int count) throws IOException {
+    private void writeRow(Transfer transfer, Result result, int count) throws IOException {
         try {
             int visibleColumnCount = result.getVisibleColumnCount();
             for (int i = 0; i < count; i++) {
@@ -336,8 +340,9 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         return Session.STATUS_OK_STATE_CHANGED;
     }
 
-    private void writeBatchResult(Session session, int id, int[] result, int oldModificationId) throws IOException {
-        writeResponseHeader(session, id, oldModificationId);
+    private void writeBatchResult(Transfer transfer, Session session, int id, int[] result, int oldModificationId)
+            throws IOException {
+        writeResponseHeader(transfer, session, id, oldModificationId);
         for (int i = 0; i < result.length; i++)
             transfer.writeInt(result[i]);
 
@@ -346,9 +351,9 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
 
     final ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = new ConcurrentLinkedQueue<>();
 
-    private void executeQuery(Session session, int id, PreparedStatement command, int operation, int objectId,
-            int maxRows, int fetchSize, int oldModificationId) throws IOException {
-        PreparedCommand pc = new PreparedCommand(id, command, session, new Callable<Object>() {
+    private void executeQuery(Transfer transfer, Session session, int id, PreparedStatement command, int operation,
+            int objectId, int maxRows, int fetchSize, int oldModificationId) throws IOException {
+        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 final Result result = command.executeQueryAsync(maxRows);
@@ -368,12 +373,12 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                         int rowCount = result.getRowCount();
                         transfer.writeInt(rowCount);
                         for (int i = 0; i < columnCount; i++) {
-                            writeColumn(result, i);
+                            writeColumn(transfer, result, i);
                         }
                         int fetch = fetchSize;
                         if (rowCount != -1)
                             fetch = Math.min(rowCount, fetchSize);
-                        writeRow(result, fetch);
+                        writeRow(transfer, result, fetch);
                         transfer.flush();
                         return null;
                     }
@@ -399,9 +404,9 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
     }
 
-    private void executeUpdate(Session session, int id, PreparedStatement command, int operation, int oldModificationId)
-            throws IOException {
-        PreparedCommand pc = new PreparedCommand(id, command, session, new Callable<Object>() {
+    private void executeUpdate(Transfer transfer, Session session, int id, PreparedStatement command, int operation,
+            int oldModificationId) throws IOException {
+        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
                 int updateCount = command.executeUpdateAsync();
@@ -434,7 +439,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         CommandHandler.preparedCommandQueue.add(pc);
     }
 
-    private void sendError(int id, Throwable t) {
+    private void sendError(Transfer transfer, int id, Throwable t) {
         try {
             SQLException e = DbException.convert(t).getSQLException();
             StringWriter writer = new StringWriter();
@@ -462,7 +467,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
     }
 
-    private DbException parseError() {
+    private DbException parseError(Transfer transfer) {
         Throwable t;
         try {
             String sqlstate = transfer.readString();
@@ -483,11 +488,11 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         return DbException.convert(t);
     }
 
-    private void processResponse(int id) throws IOException {
+    private void processResponse(Transfer transfer, int id) throws IOException {
         int status = transfer.readInt();
         DbException e = null;
         if (status == Session.STATUS_ERROR) {
-            e = parseError();
+            e = parseError(transfer);
         } else if (status == Session.STATUS_CLOSED) {
             transfer = null;
         } else if (status == Session.STATUS_OK_STATE_CHANGED) {
@@ -497,14 +502,18 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
-        AsyncCallback<?> ac = getAsyncCallback(id);
+
+        AsyncCallback<?> ac = callbackMap.remove(id);
+        if (ac == null)
+            return;
         if (e != null)
             ac.setDbException(e);
         else
             ac.run(transfer);
     }
 
-    private void writeResponseHeader(Session session, int id, int oldModificationId) throws IOException {
+    private void writeResponseHeader(Transfer transfer, Session session, int id, int oldModificationId)
+            throws IOException {
         int status;
         if (session != null && session.isClosed()) {
             status = Session.STATUS_CLOSED;
@@ -514,11 +523,11 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         transfer.writeResponseHeader(id, status);
     }
 
-    private void processRequest(int id) throws IOException {
+    private void processRequest(Transfer transfer, int id) throws IOException {
         int operation = transfer.readInt();
         switch (operation) {
         case Session.SESSION_INIT: {
-            readInitPacket(id);
+            readInitPacket(transfer, id);
             break;
         }
         case Session.COMMAND_PREPARE_READ_PARAMS:
@@ -530,13 +539,13 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             PreparedStatement command = session.prepareStatement(sql, -1);
             cache.addObject(id, command);
             boolean isQuery = command.isQuery();
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             transfer.writeBoolean(isQuery);
             if (operation == Session.COMMAND_PREPARE_READ_PARAMS) {
                 List<? extends CommandParameter> params = command.getParameters();
                 transfer.writeInt(params.size());
                 for (CommandParameter p : params) {
-                    writeParameterMetaData(p);
+                    writeParameterMetaData(transfer, p);
                 }
             }
             transfer.flush();
@@ -557,7 +566,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             int old = session.getModificationId();
             PreparedStatement command = session.prepareStatement(sql, fetchSize);
             cache.addObject(id, command);
-            executeQuery(session, id, command, operation, objectId, maxRows, fetchSize, old);
+            executeQuery(transfer, session, id, command, operation, objectId, maxRows, fetchSize, old);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
@@ -568,14 +577,14 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             int fetchSize = transfer.readInt();
             PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
             command.setFetchSize(fetchSize);
-            setParameters(command);
+            setParameters(transfer, command);
             Session session = getSession(sessionId);
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
             int old = session.getModificationId();
-            executeQuery(session, id, command, operation, objectId, maxRows, fetchSize, old);
+            executeQuery(transfer, session, id, command, operation, objectId, maxRows, fetchSize, old);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
@@ -593,7 +602,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             }
             PreparedStatement command = session.prepareStatement(sql, -1);
             cache.addObject(id, command);
-            executeUpdate(session, id, command, operation, old);
+            executeUpdate(transfer, session, id, command, operation, old);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
@@ -604,13 +613,13 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             if (operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE)
                 session.setReplicationName(transfer.readString());
             PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-            setParameters(command);
+            setParameters(transfer, command);
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
             int old = session.getModificationId();
-            executeUpdate(session, id, command, operation, old);
+            executeUpdate(transfer, session, id, command, operation, old);
             break;
         }
         case Session.COMMAND_STORAGE_DISTRIBUTED_PUT:
@@ -635,7 +644,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             Object k = map.getKeyType().read(ByteBuffer.wrap(key));
             Object v = valueType.read(ByteBuffer.wrap(value));
             Object result = map.put(k, v);
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
@@ -665,7 +674,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             DataType valueType = map.getValueType();
             Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
 
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
@@ -691,7 +700,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 ((Replication) map).addLeafPage(splitKey, page);
             }
 
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             transfer.flush();
             break;
         }
@@ -707,7 +716,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 ((Replication) map).removeLeafPage(key);
             }
 
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             transfer.flush();
             break;
         }
@@ -720,7 +729,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             transfer.writeResponseHeader(id, Session.STATUS_OK);
             transfer.writeInt(columnCount).writeInt(0);
             for (int i = 0; i < columnCount; i++) {
-                writeColumn(result, i);
+                writeColumn(transfer, result, i);
             }
             transfer.flush();
             break;
@@ -730,7 +739,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             Session session = getSession(sessionId);
             int old = session.getModificationId();
             session.commit(false, transfer.readString());
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             transfer.flush();
             break;
         }
@@ -739,7 +748,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             Session session = getSession(sessionId);
             int old = session.getModificationId();
             session.rollback();
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             transfer.flush();
             break;
         }
@@ -753,7 +762,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                 session.addSavepoint(name);
             else
                 session.rollbackToSavepoint(name);
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             transfer.flush();
             break;
         }
@@ -762,7 +771,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             Session session = getSession(sessionId);
             int old = session.getModificationId();
             boolean isValid = session.validateTransaction(transfer.readString());
-            writeResponseHeader(session, id, old);
+            writeResponseHeader(transfer, session, id, old);
             transfer.writeBoolean(isValid);
             transfer.flush();
             break;
@@ -782,7 +791,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(session, id, result, old);
+            writeBatchResult(transfer, session, id, result, old);
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
@@ -805,7 +814,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(session, id, result, old);
+            writeBatchResult(transfer, session, id, result, old);
             break;
         }
         case Session.COMMAND_CLOSE: {
@@ -820,7 +829,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             int count = transfer.readInt();
             Result result = (Result) cache.getObject(id, false);
             transfer.writeResponseHeader(id, Session.STATUS_OK);
-            writeRow(result, count);
+            writeRow(transfer, result, count);
             transfer.flush();
             break;
         }
@@ -974,6 +983,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
         int pos = 0;
         while (true) {
+            if (length < 4) {
+                tmpBuffer = buffer;
+                break;
+            }
             int packetLength = buffer.getInt(pos);
             if (length - 4 == packetLength) {
                 if (pos == 0) {
@@ -1007,23 +1020,24 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
             Buffer buffer = bufferQueue.poll();
             if (buffer == null)
                 return;
-            int id = -1;
             try {
+                Transfer transfer = new Transfer(this, socket);
                 transfer.setBuffer(buffer);
                 transfer.readInt(); // packetLength
 
-                id = transfer.readInt();
-                boolean isRequest = (id & 1) == 0;
-                id = id >> 1;
+                boolean isRequest = transfer.readByte() == Transfer.REQUEST;
+                int id = transfer.readInt();
+                // boolean isRequest = (id & 1) == 0;
+                // id = id >>> 1;
                 if (isRequest) {
                     try {
-                        processRequest(id);
+                        processRequest(transfer, id);
                     } catch (Throwable e) {
                         // logger.error("Process request", e);
-                        sendError(id, e);
+                        sendError(transfer, id, e);
                     }
                 } else {
-                    processResponse(id);
+                    processResponse(transfer, id);
                 }
             } catch (Throwable e) {
                 logger.error("Parse packets", e);
@@ -1038,7 +1052,7 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         try {
             c.run();
         } catch (Throwable e) {
-            sendError(c.id, e);
+            sendError(c.transfer, c.id, e);
         }
     }
 }
