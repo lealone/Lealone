@@ -504,8 +504,10 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
 
         AsyncCallback<?> ac = callbackMap.remove(id);
-        if (ac == null)
+        if (ac == null) {
+            logger.warn("Async callback is null, may be a bug! id = " + id);
             return;
+        }
         if (e != null)
             ac.setDbException(e);
         else
@@ -983,10 +985,6 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
         }
         int pos = 0;
         while (true) {
-            if (length < 4) {
-                tmpBuffer = buffer;
-                break;
-            }
             int packetLength = buffer.getInt(pos);
             if (length - 4 == packetLength) {
                 if (pos == 0) {
@@ -1004,7 +1002,15 @@ public class AsyncConnection implements Comparable<AsyncConnection>, Handler<Buf
 
                 pos = pos + packetLength + 4;
                 length = length - (packetLength + 4);
-                continue;
+
+                // 有可能剩下的不够4个字节了
+                if (length < 4) {
+                    tmpBuffer = Buffer.buffer();
+                    tmpBuffer.appendBuffer(buffer, pos, length);
+                    break;
+                } else {
+                    continue;
+                }
             } else {
                 tmpBuffer = Buffer.buffer();
                 tmpBuffer.appendBuffer(buffer, pos, length);

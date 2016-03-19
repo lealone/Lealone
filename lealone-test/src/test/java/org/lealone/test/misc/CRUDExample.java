@@ -192,13 +192,10 @@ public class CRUDExample {
         Statement stmt = conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
-        // // stmt.executeUpdate("set MULTI_THREADED 1");
-        //
-        // // stmt.close();
-        // // conn.close();
+        stmt.close();
 
-        int threadsCount = 1;// Runtime.getRuntime().availableProcessors() * 4;// 10;
-        int loop = 100;
+        int threadsCount = 10;// Runtime.getRuntime().availableProcessors() * 4;// 10;
+        int loop = 500;
         latch = new CountDownLatch(threadsCount);
 
         MyThread[] threads = new MyThread[threadsCount];
@@ -211,6 +208,7 @@ public class CRUDExample {
         }
 
         latch.await();
+        conn.close();
 
         long write_sum = 0;
         for (int i = 0; i < threadsCount; i++) {
