@@ -131,7 +131,7 @@ public class TraceObject {
      * @param type the object type
      * @return the new trace object id
      */
-    protected static int getNextId(int type) {
+    protected static int getNextTraceId(int type) {
         return ID[type]++;
     }
 

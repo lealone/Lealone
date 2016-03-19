@@ -77,7 +77,7 @@ public class JdbcDataSource extends TraceObject implements DataSource, Serializa
      */
     public JdbcDataSource() {
         initFactory();
-        int id = getNextId(TraceObject.DATA_SOURCE);
+        int id = getNextTraceId(TraceObject.DATA_SOURCE);
         setTrace(factory.getTrace(), TraceObject.DATA_SOURCE, id);
     }
 

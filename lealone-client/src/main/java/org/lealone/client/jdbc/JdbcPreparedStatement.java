@@ -93,7 +93,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public ResultSet executeQuery() throws SQLException {
         try {
-            int id = getNextId(TraceObject.RESULT_SET);
+            int id = getNextTraceId(TraceObject.RESULT_SET);
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "executeQuery()");
             }
@@ -166,7 +166,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public boolean execute() throws SQLException {
         try {
-            int id = getNextId(TraceObject.RESULT_SET);
+            int id = getNextTraceId(TraceObject.RESULT_SET);
             if (isDebugEnabled()) {
                 debugCodeCall("execute");
             }
@@ -1037,7 +1037,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (result == null) {
                 return null;
             }
-            int id = getNextId(TraceObject.RESULT_SET_META_DATA);
+            int id = getNextTraceId(TraceObject.RESULT_SET_META_DATA);
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSetMetaData", TraceObject.RESULT_SET_META_DATA, id, "getMetaData()");
             }
@@ -1277,7 +1277,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public ParameterMetaData getParameterMetaData() throws SQLException {
         try {
-            int id = getNextId(TraceObject.PARAMETER_META_DATA);
+            int id = getNextTraceId(TraceObject.PARAMETER_META_DATA);
             if (isDebugEnabled()) {
                 debugCodeAssign("ParameterMetaData", TraceObject.PARAMETER_META_DATA, id, "getParameterMetaData()");
             }

@@ -66,7 +66,7 @@ public class JdbcStatement extends TraceObject implements Statement {
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
         try {
-            int id = getNextId(TraceObject.RESULT_SET);
+            int id = getNextTraceId(TraceObject.RESULT_SET);
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "executeQuery(" + quote(sql) + ")");
             }
@@ -179,7 +179,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                 }
             }
         }
-        int id = getNextId(TraceObject.RESULT_SET);
+        int id = getNextTraceId(TraceObject.RESULT_SET);
         checkClosed();
         closeOldResultSet();
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
@@ -714,7 +714,7 @@ public class JdbcStatement extends TraceObject implements Statement {
     @Override
     public ResultSet getGeneratedKeys() throws SQLException {
         try {
-            int id = getNextId(TraceObject.RESULT_SET);
+            int id = getNextTraceId(TraceObject.RESULT_SET);
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "getGeneratedKeys()");
             }

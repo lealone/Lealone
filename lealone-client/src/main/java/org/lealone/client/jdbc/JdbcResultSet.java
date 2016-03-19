@@ -134,7 +134,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
         try {
-            int id = getNextId(TraceObject.RESULT_SET_META_DATA);
+            int id = getNextTraceId(TraceObject.RESULT_SET_META_DATA);
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSetMetaData", TraceObject.RESULT_SET_META_DATA, id, "getMetaData()");
             }
@@ -991,7 +991,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public Blob getBlob(int columnIndex) throws SQLException {
         try {
-            int id = getNextId(TraceObject.BLOB);
+            int id = getNextTraceId(TraceObject.BLOB);
             debugCodeAssign("Blob", TraceObject.BLOB, id, "getBlob(" + columnIndex + ")");
             Value v = get(columnIndex);
             return v == ValueNull.INSTANCE ? null : new JdbcBlob(conn, v, id);
@@ -1011,7 +1011,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public Blob getBlob(String columnLabel) throws SQLException {
         try {
-            int id = getNextId(TraceObject.BLOB);
+            int id = getNextTraceId(TraceObject.BLOB);
             debugCodeAssign("Blob", TraceObject.BLOB, id, "getBlob(" + quote(columnLabel) + ")");
             Value v = get(columnLabel);
             return v == ValueNull.INSTANCE ? null : new JdbcBlob(conn, v, id);
@@ -1103,7 +1103,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public Clob getClob(int columnIndex) throws SQLException {
         try {
-            int id = getNextId(TraceObject.CLOB);
+            int id = getNextTraceId(TraceObject.CLOB);
             debugCodeAssign("Clob", TraceObject.CLOB, id, "getClob(" + columnIndex + ")");
             Value v = get(columnIndex);
             return v == ValueNull.INSTANCE ? null : new JdbcClob(conn, v, id);
@@ -1123,7 +1123,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public Clob getClob(String columnLabel) throws SQLException {
         try {
-            int id = getNextId(TraceObject.CLOB);
+            int id = getNextTraceId(TraceObject.CLOB);
             debugCodeAssign("Clob", TraceObject.CLOB, id, "getClob(" + quote(columnLabel) + ")");
             Value v = get(columnLabel);
             return v == ValueNull.INSTANCE ? null : new JdbcClob(conn, v, id);
@@ -1143,7 +1143,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public Array getArray(int columnIndex) throws SQLException {
         try {
-            int id = getNextId(TraceObject.ARRAY);
+            int id = getNextTraceId(TraceObject.ARRAY);
             debugCodeAssign("Clob", TraceObject.ARRAY, id, "getArray(" + columnIndex + ")");
             Value v = get(columnIndex);
             return v == ValueNull.INSTANCE ? null : new JdbcArray(conn, v, id);
@@ -1163,7 +1163,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public Array getArray(String columnLabel) throws SQLException {
         try {
-            int id = getNextId(TraceObject.ARRAY);
+            int id = getNextTraceId(TraceObject.ARRAY);
             debugCodeAssign("Clob", TraceObject.ARRAY, id, "getArray(" + quote(columnLabel) + ")");
             Value v = get(columnLabel);
             return v == ValueNull.INSTANCE ? null : new JdbcArray(conn, v, id);
@@ -3370,7 +3370,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public NClob getNClob(int columnIndex) throws SQLException {
         try {
-            int id = getNextId(TraceObject.CLOB);
+            int id = getNextTraceId(TraceObject.CLOB);
             debugCodeAssign("NClob", TraceObject.CLOB, id, "getNClob(" + columnIndex + ")");
             Value v = get(columnIndex);
             return v == ValueNull.INSTANCE ? null : new JdbcClob(conn, v, id);
@@ -3390,7 +3390,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     @Override
     public NClob getNClob(String columnLabel) throws SQLException {
         try {
-            int id = getNextId(TraceObject.CLOB);
+            int id = getNextTraceId(TraceObject.CLOB);
             debugCodeAssign("NClob", TraceObject.CLOB, id, "getNClob(" + columnLabel + ")");
             Value v = get(columnLabel);
             return v == ValueNull.INSTANCE ? null : new JdbcClob(conn, v, id);
