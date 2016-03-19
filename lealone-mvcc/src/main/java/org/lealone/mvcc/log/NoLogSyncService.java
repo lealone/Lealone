@@ -15,31 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvstore.mvcc.log;
+package org.lealone.mvcc.log;
 
-import java.nio.ByteBuffer;
+public class NoLogSyncService extends LogSyncService {
 
-//RedoLog文件中会有三种类型的日志条目
-public class RedoLogValue {
-    // 1. 本地事务只包含这个字段
-    public ByteBuffer values;
-
-    // 2. 分布式事务多加这三个字段
-    public String transactionName;
-    public String allLocalTransactionNames;
-    public long commitTimestamp;
-
-    // 3. 检查点只有这个字段
-    public Long checkpoint;
-
-    public RedoLogValue() {
+    public NoLogSyncService() {
+        super("NoLogSyncService");
     }
 
-    public RedoLogValue(ByteBuffer values) {
-        this.values = values;
+    @Override
+    public void start() {
     }
 
-    public RedoLogValue(Long checkpoint) {
-        this.checkpoint = checkpoint;
+    @Override
+    public void run() {
     }
+
+    @Override
+    public void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId) {
+    }
+
 }

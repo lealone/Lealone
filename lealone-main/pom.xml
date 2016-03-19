@@ -46,6 +46,11 @@
         </dependency>
         <dependency>
             <groupId>org.lealone</groupId>
+            <artifactId>lealone-mvcc</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lealone</groupId>
             <artifactId>lealone-mvstore</artifactId>
             <version>${project.version}</version>
         </dependency>

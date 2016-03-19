@@ -15,24 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvstore.mvcc.log;
+package org.lealone.mvcc;
 
-public class NoLogSyncService extends LogSyncService {
+class VersionedValue {
 
-    public NoLogSyncService() {
-        super("NoLogSyncService");
+    public final long tid;
+    public final int logId;
+    public final Object value;
+
+    public VersionedValue(Object value) {
+        this(0, 0, value);
+    }
+
+    public VersionedValue(long tid, int logId, Object value) {
+        this.tid = tid;
+        this.logId = logId;
+        this.value = value;
     }
 
     @Override
-    public void start() {
-    }
-
-    @Override
-    public void run() {
-    }
-
-    @Override
-    public void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId) {
+    public String toString() {
+        StringBuilder buff = new StringBuilder("VersionedValue[ ");
+        buff.append("tid = ").append(tid);
+        buff.append(", logId = ").append(logId);
+        buff.append(", value = ").append(value).append(" ]");
+        return buff.toString();
     }
 
 }

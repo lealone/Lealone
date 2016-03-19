@@ -32,6 +32,7 @@
         <module>lealone-server</module>
         <module>lealone-sql</module>
         <module>lealone-db</module>
+        <module>lealone-mvcc</module>
         <module>lealone-mvstore</module>
         <module>lealone-main</module>
         <module>lealone-test</module>

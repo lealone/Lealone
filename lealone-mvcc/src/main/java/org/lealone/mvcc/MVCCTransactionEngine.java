@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvstore.mvcc;
+package org.lealone.mvcc;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -32,12 +32,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
-import org.lealone.mvstore.mvcc.MVCCTransaction.LogRecord;
-import org.lealone.mvstore.mvcc.log.LogMap;
-import org.lealone.mvstore.mvcc.log.LogStorage;
-import org.lealone.mvstore.mvcc.log.RedoLogKeyType;
-import org.lealone.mvstore.mvcc.log.RedoLogValue;
-import org.lealone.mvstore.mvcc.log.RedoLogValueType;
+import org.lealone.mvcc.MVCCTransaction.LogRecord;
+import org.lealone.mvcc.log.LogMap;
+import org.lealone.mvcc.log.LogStorage;
+import org.lealone.mvcc.log.RedoLogKeyType;
+import org.lealone.mvcc.log.RedoLogValue;
+import org.lealone.mvcc.log.RedoLogValueType;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;

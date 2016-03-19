@@ -15,12 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvstore.mvcc.log;
+package org.lealone.mvcc.log;
 
 import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
-import org.lealone.mvstore.mvcc.MVCCTransaction;
+import org.lealone.mvcc.MVCCTransaction;
 
 public class PeriodicLogSyncService extends LogSyncService {
 

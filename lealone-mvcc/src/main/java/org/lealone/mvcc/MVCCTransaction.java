@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvstore.mvcc;
+package org.lealone.mvcc;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -24,7 +24,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
-import org.lealone.mvstore.mvcc.log.RedoLogValue;
+import org.lealone.mvcc.log.RedoLogValue;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;

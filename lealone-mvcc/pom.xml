@@ -1,4 +1,4 @@
-/*
+<!--
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -14,32 +14,26 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-package org.lealone.mvstore.mvcc;
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.lealone</groupId>
+        <artifactId>lealone</artifactId>
+        <version>3.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
 
-class VersionedValue {
+    <artifactId>lealone-mvcc</artifactId>
+    <packaging>jar</packaging>
+    <version>3.0.0-SNAPSHOT</version>
 
-    public final long tid;
-    public final int logId;
-    public final Object value;
-
-    public VersionedValue(Object value) {
-        this(0, 0, value);
-    }
-
-    public VersionedValue(long tid, int logId, Object value) {
-        this.tid = tid;
-        this.logId = logId;
-        this.value = value;
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder buff = new StringBuilder("VersionedValue[ ");
-        buff.append("tid = ").append(tid);
-        buff.append(", logId = ").append(logId);
-        buff.append(", value = ").append(value).append(" ]");
-        return buff.toString();
-    }
-
-}
+    <dependencies>
+        <dependency>
+            <groupId>org.lealone</groupId>
+            <artifactId>lealone-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+</project>

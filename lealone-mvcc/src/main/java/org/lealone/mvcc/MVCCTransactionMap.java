@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.mvstore.mvcc;
+package org.lealone.mvcc;
 
 import java.io.IOException;
 import java.nio.channels.ReadableByteChannel;
@@ -13,7 +13,7 @@ import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.mvstore.mvcc.MVCCTransaction.LogRecord;
+import org.lealone.mvcc.MVCCTransaction.LogRecord;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
