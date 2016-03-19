@@ -9,10 +9,6 @@ package org.lealone.net;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.net.NetSocket;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -70,23 +66,17 @@ import org.lealone.db.value.ValueUuid;
  */
 public class Transfer {
 
-    private static final int BUFFER_SIZE = 16 * 1024;
+    private static final int BUFFER_SIZE = 4 * 1024;
     private static final int LOB_MAGIC = 0x1234;
     private static final int LOB_MAC_SALT_LENGTH = 16;
 
     private AsyncConnection conn;
-    private Session session;
     private NetSocket socket;
+    private Session session;
     private DataInputStream in;
     private DataOutputStream out;
-    private ResettableBufferedOutputStream bufferedOutputStream;
-    private ByteArrayOutputStream byteArrayOutputStream;
+    private ResettableBufferOutputStream resettableOutputStream;
     private byte[] lobMacSalt;
-
-    public Transfer(Session session, NetSocket socket) {
-        this.session = session;
-        this.socket = socket;
-    }
 
     public Transfer(AsyncConnection conn, NetSocket socket) {
         this.socket = socket;
@@ -94,14 +84,10 @@ public class Transfer {
     }
 
     public Transfer copy(Session session) {
-        Transfer t = new Transfer(session, socket);
-        t.conn = conn;
+        Transfer t = new Transfer(conn, socket);
+        t.session = session;
         t.init();
         return t;
-    }
-
-    public AsyncConnection getAsyncConnection() {
-        return conn;
     }
 
     public void addAsyncCallback(int id, AsyncCallback<?> ac) {
@@ -114,11 +100,6 @@ public class Transfer {
         return this;
     }
 
-    public Transfer writeRequestHeader(int packetType) throws IOException {
-        writeRequestHeader(conn.getNextId(), packetType);
-        return this;
-    }
-
     public Transfer writeRequestHeader(int id, int packetType) throws IOException {
         writeInt(id << 1).writeInt(packetType);
         return this;
@@ -128,24 +109,22 @@ public class Transfer {
      * Initialize the transfer object. 
      * This method will try to open an input and output stream.
      */
-    public synchronized void init() {
+    public void init() {
         setBuffer(null);
     }
 
     public void setBuffer(Buffer buffer) {
-        byteArrayOutputStream = new ByteArrayOutputStream(BUFFER_SIZE);
-
-        bufferedOutputStream = new ResettableBufferedOutputStream(byteArrayOutputStream, BUFFER_SIZE);
-        out = new DataOutputStream(bufferedOutputStream);
+        resettableOutputStream = new ResettableBufferOutputStream(BUFFER_SIZE);
+        out = new DataOutputStream(resettableOutputStream);
 
         try {
             out.writeInt(0);
         } catch (IOException e) {
             throw new AssertionError();
         }
-
-        if (buffer != null)
-            in = new DataInputStream(new BufferedInputStream(new ByteArrayInputStream(buffer.getBytes()), BUFFER_SIZE));
+        if (buffer != null) {
+            in = new DataInputStream(new BufferInputStream(buffer));
+        }
     }
 
     public void setDataInputStream(DataInputStream in) {
@@ -171,12 +150,8 @@ public class Transfer {
      * 如果之前的协议包不完整，但是已经发出去一半了，这里的方案也无能为力。 
      */
     public void reset() throws IOException {
-        bufferedOutputStream.reset();
+        resettableOutputStream.reset();
         out.writeInt(0);
-    }
-
-    public NetSocket getSocket() {
-        return socket;
     }
 
     public void setSession(Session session) {
@@ -194,36 +169,32 @@ public class Transfer {
      * Write pending changes.
      */
     public void flush() throws IOException {
-        bufferedOutputStream.writePacketLength();
+        resettableOutputStream.writePacketLength();
         out.flush();
-
-        socket.write(Buffer.buffer(byteArrayOutputStream.toByteArray()));
-        byteArrayOutputStream.reset();
+        socket.write(resettableOutputStream.buffer);
+        resettableOutputStream.reset();
         out.writeInt(0); // write packet header for next
     }
 
     /**
-     * Close the transfer object and the socket.
+     * Close the transfer object.
      */
-    public synchronized void close() {
+    public void close() {
         if (socket != null) {
             try {
-                if (out != null) {
-                    out.flush();
-                }
-                // if (socket != null) {
-                // socket.close();
-                // }
+                flush();
             } catch (IOException e) {
                 DbException.traceThrowable(e);
             } finally {
+                conn = null;
+                session = null;
                 socket = null;
             }
         }
     }
 
-    public synchronized boolean isClosed() {
-        return socket == null; // || socket.isClosed();
+    public boolean isClosed() {
+        return socket == null;
     }
 
     /**
@@ -853,22 +824,52 @@ public class Transfer {
         }
     }
 
-    private static class ResettableBufferedOutputStream extends BufferedOutputStream {
+    private static class BufferInputStream extends InputStream {
+        final Buffer buffer;
+        final int size;
+        int pos;
 
-        public ResettableBufferedOutputStream(OutputStream out, int size) {
-            super(out, size);
+        BufferInputStream(Buffer buffer) {
+            this.buffer = buffer;
+            size = buffer.length();
+        }
+
+        @Override
+        public int available() throws IOException {
+            return size - pos;
+        }
+
+        @Override
+        public int read() throws IOException {
+            return buffer.getUnsignedByte(pos++);
+        }
+    }
+
+    private static class ResettableBufferOutputStream extends OutputStream {
+        Buffer buffer;
+        final int initialSizeHint;
+
+        ResettableBufferOutputStream(int initialSizeHint) {
+            this.initialSizeHint = initialSizeHint;
+            reset();
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            buffer.appendByte((byte) b);
         }
 
         void reset() {
-            super.count = 0;
+            buffer = Buffer.buffer(initialSizeHint);
         }
 
         void writePacketLength() {
-            int v = count - 4;
-            buf[0] = (byte) ((v >>> 24) & 0xFF);
-            buf[1] = (byte) ((v >>> 16) & 0xFF);
-            buf[2] = (byte) ((v >>> 8) & 0xFF);
-            buf[3] = (byte) ((v >>> 0) & 0xFF);
+            int v = buffer.length() - 4;
+
+            buffer.setByte(0, (byte) ((v >>> 24) & 0xFF));
+            buffer.setByte(1, (byte) ((v >>> 16) & 0xFF));
+            buffer.setByte(2, (byte) ((v >>> 8) & 0xFF));
+            buffer.setByte(3, (byte) (v & 0xFF));
         }
     }
 
