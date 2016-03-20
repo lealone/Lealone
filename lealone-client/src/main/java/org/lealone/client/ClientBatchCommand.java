@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.lealone.async.AsyncHandler;
+import org.lealone.async.AsyncResult;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.db.Command;
@@ -189,6 +191,18 @@ public class ClientBatchCommand implements Command {
     @Override
     public Command prepare() {
         return this;
+    }
+
+    @Override
+    public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
+        // TODO Auto-generated method stub
+
     }
 
 }

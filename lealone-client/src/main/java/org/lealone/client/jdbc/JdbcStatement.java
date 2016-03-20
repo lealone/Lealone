@@ -14,6 +14,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.async.AsyncHandler;
+import org.lealone.async.AsyncResult;
 import org.lealone.client.ClientBatchCommand;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
@@ -65,28 +67,59 @@ public class JdbcStatement extends TraceObject implements Statement {
      */
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
+        return executeQuery(sql, null, false);
+    }
+
+    public void executeQueryAsync(String sql, AsyncHandler<AsyncResult<ResultSet>> handler) throws SQLException {
+        executeQuery(sql, handler, true);
+    }
+
+    private ResultSet executeQuery(String sql, AsyncHandler<AsyncResult<ResultSet>> handler, boolean async)
+            throws SQLException {
         try {
             int id = getNextTraceId(TraceObject.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "executeQuery(" + quote(sql) + ")");
+                debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "executeQuery" + (async ? "Async" : "") + "("
+                        + quote(sql) + ")");
             }
             checkClosed();
             closeOldResultSet();
             sql = JdbcConnection.translateSQL(sql, escapeProcessing);
             Command command = conn.createCommand(sql, fetchSize);
-            Result result;
             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
             setExecutingStatement(command);
-            try {
-                result = command.executeQuery(maxRows, scrollable);
-            } finally {
-                setExecutingStatement(null);
+            if (async) {
+                AsyncHandler<AsyncResult<Result>> h = new AsyncHandler<AsyncResult<Result>>() {
+                    @Override
+                    public void handle(AsyncResult<Result> ar) {
+                        Result r = ar.getResult();
+                        resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet, scrollable,
+                                updatable);
+                        resultSet.setCommand(command);
+                        setExecutingStatement(null);
+
+                        if (handler != null) {
+                            AsyncResult<ResultSet> r2 = new AsyncResult<>();
+                            r2.setResult(resultSet);
+                            handler.handle(r2);
+                        }
+                    }
+                };
+                command.executeQueryAsync(maxRows, scrollable, h);
+                return null;
+            } else {
+                Result result;
+                try {
+                    result = command.executeQuery(maxRows, scrollable);
+                } finally {
+                    setExecutingStatement(null);
+                }
+                // command.close(); //关闭结果集时再关闭
+                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                resultSet.setCommand(command);
+                return resultSet;
             }
-            // command.close(); //关闭结果集时再关闭
-            resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-            resultSet.setCommand(command);
-            return resultSet;
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -114,25 +147,49 @@ public class JdbcStatement extends TraceObject implements Statement {
     public int executeUpdate(String sql) throws SQLException {
         try {
             debugCodeCall("executeUpdate", sql);
-            return executeUpdateInternal(sql);
+            return executeUpdateInternal(sql, null, false);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
     }
 
-    private int executeUpdateInternal(String sql) throws SQLException {
+    public void executeUpdateAsync(String sql, AsyncHandler<AsyncResult<Integer>> handler) throws SQLException {
+        try {
+            debugCodeCall("executeUpdateAsync", sql);
+            executeUpdateInternal(sql, handler, true);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    private int executeUpdateInternal(String sql, AsyncHandler<AsyncResult<Integer>> handler, boolean async)
+            throws SQLException {
         checkClosed();
         closeOldResultSet();
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
         Command command = conn.createCommand(sql, fetchSize);
         setExecutingStatement(command);
-        try {
-            updateCount = command.executeUpdate();
-        } finally {
-            setExecutingStatement(null);
+        if (async) {
+            AsyncHandler<AsyncResult<Integer>> h = new AsyncHandler<AsyncResult<Integer>>() {
+                @Override
+                public void handle(AsyncResult<Integer> ar) {
+                    updateCount = ar.getResult();
+                    handler.handle(ar);
+                    setExecutingStatement(null);
+                    command.close();
+                }
+            };
+            command.executeUpdateAsync(h);
+            return -1;
+        } else {
+            try {
+                updateCount = command.executeUpdate();
+            } finally {
+                setExecutingStatement(null);
+            }
+            command.close();
+            return updateCount;
         }
-        command.close();
-        return updateCount;
     }
 
     /**
@@ -678,7 +735,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                 for (int i = 0; i < size; i++) {
                     String sql = batchCommands.get(i);
                     try {
-                        result[i] = executeUpdateInternal(sql);
+                        result[i] = executeUpdateInternal(sql, null, false);
                     } catch (Exception re) {
                         SQLException e = logAndConvert(re);
                         if (next == null) {
@@ -796,7 +853,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             if (isDebugEnabled()) {
                 debugCode("executeUpdate(" + quote(sql) + ", " + autoGeneratedKeys + ");");
             }
-            return executeUpdateInternal(sql);
+            return executeUpdateInternal(sql, null, false);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -821,7 +878,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             if (isDebugEnabled()) {
                 debugCode("executeUpdate(" + quote(sql) + ", " + quoteIntArray(columnIndexes) + ");");
             }
-            return executeUpdateInternal(sql);
+            return executeUpdateInternal(sql, null, false);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -846,7 +903,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             if (isDebugEnabled()) {
                 debugCode("executeUpdate(" + quote(sql) + ", " + quoteArray(columnNames) + ");");
             }
-            return executeUpdateInternal(sql);
+            return executeUpdateInternal(sql, null, false);
         } catch (Exception e) {
             throw logAndConvert(e);
         }

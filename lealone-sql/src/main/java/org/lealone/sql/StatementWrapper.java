@@ -10,6 +10,8 @@ import java.util.ArrayList;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
+import org.lealone.async.AsyncHandler;
+import org.lealone.async.AsyncResult;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.MathUtils;
@@ -433,6 +435,16 @@ class StatementWrapper extends StatementBase {
     @Override
     public int executeUpdateAsync() {
         return ((Integer) execute(0, true, true)).intValue();
+    }
+
+    @Override
+    public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
+        statement.executeQueryAsync(maxRows, scrollable, handler);
+    }
+
+    @Override
+    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
+        statement.executeUpdateAsync(handler);
     }
 
 }

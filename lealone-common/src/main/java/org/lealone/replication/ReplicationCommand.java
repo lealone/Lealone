@@ -23,6 +23,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
+import org.lealone.async.AsyncHandler;
+import org.lealone.async.AsyncResult;
 import org.lealone.common.util.New;
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
@@ -335,6 +337,18 @@ public class ReplicationCommand implements StorageCommand {
     @Override
     public Command prepare() {
         return this;
+    }
+
+    @Override
+    public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
+        // TODO Auto-generated method stub
+
     }
 
 }

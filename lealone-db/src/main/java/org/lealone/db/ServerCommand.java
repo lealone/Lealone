@@ -20,6 +20,8 @@ package org.lealone.db;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
+import org.lealone.async.AsyncHandler;
+import org.lealone.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.replication.Replication;
 import org.lealone.storage.StorageCommand;
@@ -138,6 +140,18 @@ public class ServerCommand implements StorageCommand {
     @Override
     public Command prepare() {
         return this;
+    }
+
+    @Override
+    public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
+        // TODO Auto-generated method stub
+
     }
 
 }

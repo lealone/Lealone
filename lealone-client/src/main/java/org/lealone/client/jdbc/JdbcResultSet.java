@@ -91,7 +91,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     private JdbcPreparedStatement preparedStatement;
     private Command command;
 
-    JdbcResultSet(JdbcConnection conn, JdbcStatement stat, Result result, int id, boolean closeStatement,
+    public JdbcResultSet(JdbcConnection conn, JdbcStatement stat, Result result, int id, boolean closeStatement,
             boolean scrollable, boolean updatable) {
         setTrace(conn.getSession().getTrace(), TraceObject.RESULT_SET, id);
         this.conn = conn;

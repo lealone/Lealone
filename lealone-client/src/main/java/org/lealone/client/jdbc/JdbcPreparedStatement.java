@@ -29,6 +29,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.async.AsyncHandler;
+import org.lealone.async.AsyncResult;
 import org.lealone.client.ClientBatchCommand;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
@@ -92,6 +94,14 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      */
     @Override
     public ResultSet executeQuery() throws SQLException {
+        return executeQuery(null, false);
+    }
+
+    public void executeQueryAsync(AsyncHandler<AsyncResult<ResultSet>> handler) throws SQLException {
+        executeQuery(handler, true);
+    }
+
+    private ResultSet executeQuery(AsyncHandler<AsyncResult<ResultSet>> handler, boolean async) throws SQLException {
         try {
             int id = getNextTraceId(TraceObject.RESULT_SET);
             if (isDebugEnabled()) {
@@ -99,18 +109,39 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             }
             checkClosed();
             closeOldResultSet();
-            Result result;
             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-            try {
-                setExecutingStatement(command);
-                result = command.executeQuery(maxRows, scrollable);
-            } finally {
-                setExecutingStatement(null);
+            setExecutingStatement(command);
+            if (async) {
+                AsyncHandler<AsyncResult<Result>> h = new AsyncHandler<AsyncResult<Result>>() {
+                    @Override
+                    public void handle(AsyncResult<Result> ar) {
+                        Result r = ar.getResult();
+                        resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id, closedByResultSet,
+                                scrollable, updatable, cachedColumnLabelMap);
+                        setExecutingStatement(null);
+                        resultSet.setCommand(command);
+
+                        if (handler != null) {
+                            AsyncResult<ResultSet> r2 = new AsyncResult<>();
+                            r2.setResult(resultSet);
+                            handler.handle(r2);
+                        }
+                    }
+                };
+                command.executeQueryAsync(maxRows, scrollable, h);
+                return null;
+            } else {
+                Result result;
+                try {
+                    result = command.executeQuery(maxRows, scrollable);
+                } finally {
+                    setExecutingStatement(null);
+                }
+                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable,
+                        cachedColumnLabelMap);
+                return resultSet;
             }
-            resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable,
-                    cachedColumnLabelMap);
-            return resultSet;
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -137,21 +168,43 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         try {
             debugCodeCall("executeUpdate");
             checkClosed();
-            return executeUpdateInternal();
+            return executeUpdateInternal(null, false);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
     }
 
-    private int executeUpdateInternal() throws SQLException {
-        closeOldResultSet();
+    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) throws SQLException {
         try {
-            setExecutingStatement(command);
-            updateCount = command.executeUpdate();
-        } finally {
-            setExecutingStatement(null);
+            debugCodeCall("executeUpdateAsync");
+            executeUpdateInternal(handler, true);
+        } catch (Exception e) {
+            throw logAndConvert(e);
         }
-        return updateCount;
+    }
+
+    private int executeUpdateInternal(AsyncHandler<AsyncResult<Integer>> handler, boolean async) throws SQLException {
+        closeOldResultSet();
+        setExecutingStatement(command);
+        if (async) {
+            AsyncHandler<AsyncResult<Integer>> h = new AsyncHandler<AsyncResult<Integer>>() {
+                @Override
+                public void handle(AsyncResult<Integer> ar) {
+                    updateCount = ar.getResult();
+                    handler.handle(ar);
+                    setExecutingStatement(null);
+                }
+            };
+            command.executeUpdateAsync(h);
+            return -1;
+        } else {
+            try {
+                updateCount = command.executeUpdate();
+            } finally {
+                setExecutingStatement(null);
+            }
+            return updateCount;
+        }
     }
 
     /**
@@ -1117,7 +1170,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                         param.setValue(value, false);
                     }
                     try {
-                        result[i] = executeUpdateInternal();
+                        result[i] = executeUpdateInternal(null, false);
                     } catch (Exception re) {
                         SQLException e = logAndConvert(re);
                         if (next == null) {

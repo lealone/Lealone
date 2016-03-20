@@ -7,6 +7,8 @@ package org.lealone.db;
 
 import java.util.List;
 
+import org.lealone.async.AsyncHandler;
+import org.lealone.async.AsyncResult;
 import org.lealone.db.result.Result;
 
 /**
@@ -66,12 +68,16 @@ public interface Command {
      */
     Result executeQuery(int maxRows, boolean scrollable);
 
+    void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler);
+
     /**
      * Execute the update command
      *
      * @return the update count
      */
     int executeUpdate();
+
+    void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler);
 
     /**
      * Execute the update command
