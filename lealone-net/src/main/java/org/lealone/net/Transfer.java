@@ -163,6 +163,10 @@ public class Transfer {
         this.session = session;
     }
 
+    public Session getSession() {
+        return session;
+    }
+
     public void setSSL(boolean ssl) {
         // this.ssl = ssl;
     }

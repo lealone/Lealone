@@ -18,8 +18,10 @@
 package org.lealone.net;
 
 import java.util.LinkedList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.lealone.db.SessionStatus;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 
@@ -62,43 +64,52 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         preparedCommandQueue.clear();
 
         while (true) {
-            AsyncConnection ac = getNextBestAsyncConnection();
-            if (ac == null)
+            PreparedCommand c = getNextBestCommand();
+            if (c == null)
                 break;
-            ac.executeOneCommand();
+            try {
+                c.run();
+            } catch (Throwable e) {
+                AsyncConnection.sendError(c.transfer, c.id, e);
+            }
         }
     }
 
-    private AsyncConnection getNextBestAsyncConnection() {
+    private PreparedCommand getNextBestCommand() {
         if (connections.isEmpty())
             return null;
 
-        double cost = 0.0;
-        AsyncConnection ac = null;
-        AsyncConnection lastAc = null;
-
+        AsyncConnection ac;
         PreparedCommand pc;
+        ConcurrentLinkedQueue<PreparedCommand> bestPreparedCommandQueue = null;
+        double cost = 0.0;
 
-        for (int i = 0, size = connections.size(); i < size; i++) {
+        outer: for (int i = 0, size = connections.size(); i < size; i++) {
             ac = connections.get(i);
-            pc = ac.preparedCommandQueue.peek();
-            if (pc == null)
-                continue;
+            for (ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue : ac.preparedCommands.values()) {
+                pc = preparedCommandQueue.peek();
+                if (pc == null)
+                    continue;
 
-            if (pc.session.containsTransaction()) {
-                return ac;
-            }
+                SessionStatus sessionStatus = pc.session.getStatus();
+                if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
+                    bestPreparedCommandQueue = preparedCommandQueue;
+                    break outer;
+                } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
+                    continue;
+                }
 
-            if (lastAc == null || pc.stmt.getCost() < cost) {
-                lastAc = ac;
-                cost = pc.stmt.getCost();
+                if (bestPreparedCommandQueue == null || pc.stmt.getCost() < cost) {
+                    bestPreparedCommandQueue = preparedCommandQueue;
+                    cost = pc.stmt.getCost();
+                }
             }
         }
 
-        if (lastAc == null)
+        if (bestPreparedCommandQueue == null)
             return null;
 
-        return lastAc;
+        return bestPreparedCommandQueue.poll();
     }
 
     public static void addConnection(AsyncConnection c) {
@@ -107,6 +118,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     public static void removeConnection(AsyncConnection c) {
         connections.remove(c);
+        c.close();
     }
 
 }

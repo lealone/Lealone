@@ -186,4 +186,6 @@ public interface Session extends Closeable, Transaction.Participant {
 
     void prepareCommit(boolean ddl);
 
+    SessionStatus getStatus();
+
 }

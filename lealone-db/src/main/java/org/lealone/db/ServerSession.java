@@ -35,7 +35,9 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
+import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
@@ -476,6 +478,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         this.ddl = ddl;
         prepared = true;
         if (transaction != null) {
+            transaction.setStatus(Transaction.STATUS_COMMITTING);
+            sessionStatus = SessionStatus.COMMITTING_TRANSACTION;
             transaction.prepareCommit();
         }
     }
@@ -485,6 +489,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         prepared = true;
         this.allLocalTransactionNames = allLocalTransactionNames;
         if (transaction != null) {
+            transaction.setStatus(Transaction.STATUS_COMMITTING);
+            sessionStatus = SessionStatus.COMMITTING_TRANSACTION;
             transaction.prepareCommit(allLocalTransactionNames);
         }
     }
@@ -513,6 +519,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         checkCommitRollback();
         currentTransactionName = null;
         transactionStart = 0;
+
         if (transaction != null) {
             // 避免重复commit
             Transaction transaction = this.transaction;
@@ -544,6 +551,12 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             unlinkLobMap = null;
         }
         unlockAll();
+
+        sessionStatus = SessionStatus.NO_TRANSACTION;
+
+        SQLStatementExecutor sqlStatementExecutor = SQLEngineManager.getInstance().getSQLStatementExecutor();
+        if (sqlStatementExecutor != null)
+            sqlStatementExecutor.ready();
     }
 
     private void endTransaction() {
@@ -1260,7 +1273,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
 
         boolean isShardingMode = isShardingMode();
-        transaction = database.getTransactionEngine().beginTransaction(autoCommit, isShardingMode);
+        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, isShardingMode);
         transaction.setValidator(this);
         transaction.setSession(this);
         transaction.setGlobalTransactionName(replicationName);
@@ -1268,6 +1281,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         // TODO p != null && !p.isLocal()是否需要？
         if (isRoot && !autoCommit && isShardingMode && p != null && !p.isLocal())
             transaction.setLocal(false);
+
+        sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
+        this.transaction = transaction;
         return transaction;
     }
 
@@ -1398,5 +1414,12 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     @Override
     public boolean containsTransaction() {
         return transaction != null;
+    }
+
+    private SessionStatus sessionStatus = SessionStatus.NO_TRANSACTION;
+
+    @Override
+    public SessionStatus getStatus() {
+        return sessionStatus;
     }
 }

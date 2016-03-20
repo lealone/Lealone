@@ -346,7 +346,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             try {
                 traceOperation("SESSION_CLOSE", 0);
                 transfer.writeRequestHeader(sessionId, Session.SESSION_CLOSE).flush();
-                asyncConnection.remove(sessionId);
+                asyncConnection.removeSession(sessionId);
 
                 synchronized (ClientSession.class) {
                     if (asyncConnection.isEmpty()) {

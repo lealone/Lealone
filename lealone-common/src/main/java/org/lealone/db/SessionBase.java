@@ -125,4 +125,8 @@ public abstract class SessionBase implements Session {
     public void prepareCommit(boolean ddl) {
     }
 
+    @Override
+    public SessionStatus getStatus() {
+        return SessionStatus.NO_TRANSACTION;
+    }
 }
