@@ -17,6 +17,8 @@
  */
 package org.lealone.test.start;
 
+import io.vertx.core.impl.FileResolver;
+
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.main.Lealone;
 import org.lealone.main.config.Config;
@@ -35,6 +37,7 @@ public class TcpServerStart extends org.lealone.main.config.YamlConfigurationLoa
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         // System.setProperty("lealone.base.dir", "./" + config.base_dir);
 
+        System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
         System.setProperty("vertx.cacheDirBase", "./" + config.base_dir + "/.vertx");
 
         return config;

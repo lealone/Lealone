@@ -17,6 +17,8 @@
  */
 package org.lealone.test;
 
+import io.vertx.core.impl.FileResolver;
+
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -44,6 +46,7 @@ public class TestBase extends Assert {
         System.setProperty("java.io.tmpdir", TEST_DIR + File.separatorChar + "tmp");
         System.setProperty("lealone.lob.client.max.size.memory", "2048");
 
+        System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
         System.setProperty("vertx.cacheDirBase", "./" + TEST_DIR + "/.vertx");
 
         Config.setProperty("client.trace.directory", joinDirs("client_trace"));
