@@ -24,7 +24,7 @@ import org.lealone.net.AsyncConnection;
 public class AsyncConnectionTest {
 
     public static void main(String[] args) {
-        AsyncConnection c = new AsyncConnection(null);
+        AsyncConnection c = new AsyncConnection(null, false);
         Buffer b = Buffer.buffer();
         b.appendInt(8); // packetLength
         b.appendInt(1);

@@ -58,6 +58,18 @@ import org.lealone.storage.type.WriteBufferPool;
  */
 public class AsyncConnection implements Handler<Buffer> {
 
+    static class SessionInfo {
+        Session session;
+        CommandHandler commandHandler;
+        ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue;
+
+        SessionInfo(Session session, CommandHandler commandHandler) {
+            this.session = session;
+            this.commandHandler = commandHandler;
+            preparedCommandQueue = new ConcurrentLinkedQueue<>();
+        }
+    }
+
     private static final Logger logger = LoggerFactory.getLogger(AsyncConnection.class);
 
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
@@ -66,9 +78,11 @@ public class AsyncConnection implements Handler<Buffer> {
     private boolean ifExists;
 
     private final NetSocket socket;
+    private final boolean isServer;
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
+    final ConcurrentHashMap<Integer, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
 
     public int getNextId() {
         return nextId.incrementAndGet();
@@ -102,8 +116,9 @@ public class AsyncConnection implements Handler<Buffer> {
         return callbackMap.get(id);
     }
 
-    public AsyncConnection(NetSocket socket) {
+    public AsyncConnection(NetSocket socket, boolean isServer) {
         this.socket = socket;
+        this.isServer = isServer;
     }
 
     public Transfer createTransfer(Session session) {
@@ -171,7 +186,10 @@ public class AsyncConnection implements Handler<Buffer> {
             String userName = transfer.readString();
             userName = StringUtils.toUpperEnglish(userName);
             Session session = createSession(transfer, originalURL, dbName, userName);
+            CommandHandler commandHandler = CommandHandler.getNextCommandHandler();
+            commandHandler.addSessionId(sessionId);
             sessions.put(sessionId, session);
+            sessionInfoMap.put(sessionId, new SessionInfo(session, commandHandler));
             transfer.setSession(session);
             transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
             transfer.writeInt(clientVersion);
@@ -248,7 +266,10 @@ public class AsyncConnection implements Handler<Buffer> {
             for (Session s : sessions.values())
                 closeSession(s);
             sessions.clear();
-            preparedCommands.clear();
+            for (Integer id : sessionInfoMap.keySet()) {
+                sessionInfoMap.get(id).commandHandler.removeSessionId(id);
+            }
+            sessionInfoMap.clear();
         } catch (Exception e) {
             logger.error("Failed to close connection", e);
         }
@@ -333,8 +354,6 @@ public class AsyncConnection implements Handler<Buffer> {
         transfer.flush();
     }
 
-    final ConcurrentHashMap<Integer, ConcurrentLinkedQueue<PreparedCommand>> preparedCommands = new ConcurrentHashMap<>();
-
     private void executeQuery(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
             int operation, int objectId, int maxRows, int fetchSize, int oldModificationId) throws IOException {
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
@@ -373,14 +392,7 @@ public class AsyncConnection implements Handler<Buffer> {
             }
         });
 
-        ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = preparedCommands.get(sessionId);
-        if (preparedCommandQueue == null) {
-            preparedCommandQueue = new ConcurrentLinkedQueue<>();
-            preparedCommands.put(sessionId, preparedCommandQueue);
-        }
-
-        preparedCommandQueue.add(pc);
-        CommandHandler.preparedCommandQueue.add(pc);
+        addPreparedCommandToQueue(pc, sessionId);
     }
 
     private void prepareCommit(Session session, PreparedStatement command) throws Exception {
@@ -425,17 +437,30 @@ public class AsyncConnection implements Handler<Buffer> {
             }
         });
 
-        ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = preparedCommands.get(sessionId);
-        if (preparedCommandQueue == null) {
-            preparedCommandQueue = new ConcurrentLinkedQueue<>();
-            preparedCommands.put(sessionId, preparedCommandQueue);
-        }
-
-        preparedCommandQueue.add(pc);
-        CommandHandler.preparedCommandQueue.add(pc);
+        addPreparedCommandToQueue(pc, sessionId);
     }
 
-    static void sendError(Transfer transfer, int id, Throwable t) {
+    void addPreparedCommandToQueue(PreparedCommand pc, int sessionId) {
+
+        SessionInfo sessionInfo = sessionInfoMap.get(sessionId);
+        if (sessionInfo == null) {
+            throw DbException.throwInternalError("sessionInfo is null");
+        }
+
+        sessionInfo.preparedCommandQueue.add(pc);
+        sessionInfo.commandHandler.ready();
+    }
+
+    ConcurrentLinkedQueue<PreparedCommand> getPreparedCommandQueue(int sessionId) {
+        SessionInfo sessionInfo = sessionInfoMap.get(sessionId);
+        if (sessionInfo == null) {
+            // throw DbException.throwInternalError("sessionInfo is null");
+            return null;
+        }
+        return sessionInfo.preparedCommandQueue;
+    }
+
+    void sendError(Transfer transfer, int id, Throwable t) {
         try {
             SQLException e = DbException.convert(t).getSQLException();
             StringWriter writer = new StringWriter();
@@ -450,6 +475,10 @@ public class AsyncConnection implements Handler<Buffer> {
             } else {
                 message = e.getMessage();
                 sql = null;
+            }
+
+            if (isServer) {
+                message = "[Server]" + message;
             }
 
             transfer.reset(); // 为什么要reset? 见reset中的注释
@@ -861,7 +890,8 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.SESSION_CLOSE: {
-            preparedCommands.remove(id);
+            SessionInfo si = sessionInfoMap.remove(id);
+            si.commandHandler.removeSessionId(id);
             Session session = sessions.remove(id);
             closeSession(session);
             break;
@@ -1025,5 +1055,4 @@ public class AsyncConnection implements Handler<Buffer> {
             processResponse(transfer, id);
         }
     }
-
 }

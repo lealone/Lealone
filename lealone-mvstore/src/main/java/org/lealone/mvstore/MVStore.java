@@ -37,7 +37,6 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
 import org.lealone.mvstore.Page.PageChildren;
-import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
@@ -1828,11 +1827,18 @@ public class MVStore implements Storage {
 
         Callable<Page> task = null;
         boolean taskInQueue = false;
-        final SQLStatementExecutor sqlStatementExecutor = SQLEngineManager.getInstance().getSQLStatementExecutor();
         while (true) {
             Page p = cache == null ? null : cache.get(pos);
             if (p != null)
                 return p;
+
+            final SQLStatementExecutor sqlStatementExecutor;
+            Thread t = Thread.currentThread();
+            if (t instanceof SQLStatementExecutor) {
+                sqlStatementExecutor = (SQLStatementExecutor) t;
+            } else {
+                sqlStatementExecutor = null;
+            }
 
             if (task == null) {
                 task = new Callable<Page>() {
@@ -1854,8 +1860,7 @@ public class MVStore implements Storage {
                     }
                 };
             }
-
-            if (sqlStatementExecutor != null && (Thread.currentThread() == sqlStatementExecutor)) {
+            if (sqlStatementExecutor != null) {
                 if (!taskInQueue) {
                     PageReader.readPageTaskQueue.add(task);
                     taskInQueue = true;

@@ -19,7 +19,9 @@ package org.lealone.net;
 
 import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.SessionStatus;
 import org.lealone.sql.SQLEngineManager;
@@ -28,18 +30,70 @@ import org.lealone.sql.SQLStatementExecutor;
 public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     private static final LinkedList<AsyncConnection> connections = new LinkedList<>();
-    private static final PreparedCommand dummyCommand = new PreparedCommand(0, null, null, null, null);
-    static final LinkedBlockingQueue<PreparedCommand> preparedCommandQueue = new LinkedBlockingQueue<>();
+    private static final int commandHandlersCount = 1; // Runtime.getRuntime().availableProcessors();
+    private static final CommandHandler[] commandHandlers = new CommandHandler[commandHandlersCount];
+    private static final AtomicInteger index = new AtomicInteger(0);
 
+    public static void startCommandHandlers() {
+        for (int i = 0; i < commandHandlersCount; i++) {
+            commandHandlers[i] = new CommandHandler(i);
+        }
+
+        SQLEngineManager.getInstance().setSQLStatementExecutors(commandHandlers);
+        for (int i = 0; i < commandHandlersCount; i++) {
+            commandHandlers[i].start();
+        }
+    }
+
+    public static void stopCommandHandlers() {
+        for (int i = 0; i < commandHandlersCount; i++) {
+            commandHandlers[i].end();
+        }
+
+        for (int i = 0; i < commandHandlersCount; i++) {
+            try {
+                commandHandlers[i].join();
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+
+    static CommandHandler getNextCommandHandler() {
+        return commandHandlers[index.getAndIncrement() % commandHandlers.length];
+    }
+
+    public static void addConnection(AsyncConnection c) {
+        connections.add(c);
+    }
+
+    public static void removeConnection(AsyncConnection c) {
+        connections.remove(c);
+        c.close();
+    }
+
+    private final LinkedList<Integer> sessions = new LinkedList<>();
+    private final Semaphore haveWork = new Semaphore(1);
     private boolean stop;
 
-    public CommandHandler() {
-        super("CommandHandler");
+    void addSessionId(Integer sessionId) {
+        synchronized (sessions) {
+            sessions.add(sessionId);
+        }
+    }
+
+    void removeSessionId(Integer sessionId) {
+        synchronized (sessions) {
+            sessions.remove(sessionId);
+        }
+    }
+
+    public CommandHandler(int id) {
+        super("CommandHandler-" + id);
     }
 
     @Override
     public void run() {
-        SQLEngineManager.getInstance().setSQLStatementExecutor(this);
+        // SQLEngineManager.getInstance().setSQLStatementExecutor(this);
         while (!stop) {
             executeNextStatement();
         }
@@ -52,16 +106,17 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     @Override
     public void ready() {
-        preparedCommandQueue.add(dummyCommand);
+        haveWork.release(1);
     }
 
     @Override
     public void executeNextStatement() {
         try {
-            preparedCommandQueue.take();
+            haveWork.tryAcquire(100, TimeUnit.MILLISECONDS);
+            haveWork.drainPermits();
         } catch (InterruptedException e) {
+            throw new AssertionError();
         }
-        preparedCommandQueue.clear();
 
         while (true) {
             PreparedCommand c = getNextBestCommand();
@@ -70,7 +125,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
             try {
                 c.run();
             } catch (Throwable e) {
-                AsyncConnection.sendError(c.transfer, c.id, e);
+                c.transfer.getAsyncConnection().sendError(c.transfer, c.id, e);
             }
         }
     }
@@ -86,7 +141,12 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
 
         outer: for (int i = 0, size = connections.size(); i < size; i++) {
             ac = connections.get(i);
-            for (ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue : ac.preparedCommands.values()) {
+            for (Integer sessionId : sessions) {
+                ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = ac.getPreparedCommandQueue(sessionId);
+                if (preparedCommandQueue == null) {
+                    removeSessionId(sessionId);
+                    continue;
+                }
                 pc = preparedCommandQueue.peek();
                 if (pc == null)
                     continue;
@@ -110,15 +170,6 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
             return null;
 
         return bestPreparedCommandQueue.poll();
-    }
-
-    public static void addConnection(AsyncConnection c) {
-        connections.add(c);
-    }
-
-    public static void removeConnection(AsyncConnection c) {
-        connections.remove(c);
-        c.close();
     }
 
 }

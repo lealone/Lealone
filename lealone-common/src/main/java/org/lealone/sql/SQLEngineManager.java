@@ -29,6 +29,8 @@ public class SQLEngineManager extends PluggableEngineManager<SQLEngine> {
 
     private SQLStatementExecutor executor;
 
+    private SQLStatementExecutor[] executors;
+
     private SQLEngineManager() {
         super(SQLEngine.class);
     }
@@ -39,6 +41,14 @@ public class SQLEngineManager extends PluggableEngineManager<SQLEngine> {
 
     public SQLStatementExecutor getSQLStatementExecutor() {
         return executor;
+    }
+
+    public void setSQLStatementExecutors(SQLStatementExecutor[] executors) {
+        this.executors = executors;
+    }
+
+    public SQLStatementExecutor[] getSQLStatementExecutors() {
+        return executors;
     }
 
 }

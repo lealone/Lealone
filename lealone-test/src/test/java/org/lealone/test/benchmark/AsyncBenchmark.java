@@ -59,14 +59,15 @@ public class AsyncBenchmark {
             for (int i = start; i < end; i++) {
                 String sql = "INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")";
                 stmt.executeUpdateAsync(sql, res -> {
-                    latch.countDown();
-                });
+                    // System.out.println(latch.getCount());
+                        latch.countDown();
+                    });
             }
             latch.await();
 
             long t2 = System.currentTimeMillis();
             write_time = t2 - t1;
-            System.out.println(getName() + " write end, time=" + write_time + " ms");
+            // System.out.println(getName() + " write end, time=" + write_time + " ms");
         }
 
         void read(boolean random) throws Exception {
@@ -121,12 +122,21 @@ public class AsyncBenchmark {
     static void run() throws Exception {
         Connection conn = new TestBase().getConnection();
         Statement stmt = conn.createStatement();
-        stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
-        stmt.close();
 
-        int threadsCount = 4; // Runtime.getRuntime().availableProcessors() * 4;
-        int loop = 1000;
+        int loop = 5;
+        for (int i = 0; i < loop; i++) {
+            stmt.executeUpdate("DROP TABLE IF EXISTS test");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+            benchmark();
+        }
+
+        stmt.close();
+        conn.close();
+    }
+
+    static void benchmark() throws Exception {
+        int threadsCount = 50; // Runtime.getRuntime().availableProcessors() * 4;
+        int loop = 100;
 
         MyThread[] threads = new MyThread[threadsCount];
         for (int i = 0; i < threadsCount; i++) {
@@ -139,7 +149,6 @@ public class AsyncBenchmark {
         for (int i = 0; i < threadsCount; i++) {
             threads[i].join();
         }
-        conn.close();
 
         long write_sum = 0;
         for (int i = 0; i < threadsCount; i++) {

@@ -217,7 +217,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     client.connect(port, server, res -> {
                         if (res.succeeded()) {
                             NetSocket socket = res.result();
-                            asyncConnection = new AsyncConnection(socket);
+                            asyncConnection = new AsyncConnection(socket, false);
                             asyncConnections.put(hostAndPort, asyncConnection);
                             socket.handler(asyncConnection);
                             latch.countDown();

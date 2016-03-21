@@ -74,6 +74,7 @@ public class Transfer {
     private NetSocket socket;
     private Session session;
     private DataInputStream in;
+    private BufferInputStream bufferInputStream;
     private DataOutputStream out;
     private ResettableBufferOutputStream resettableOutputStream;
     private byte[] lobMacSalt;
@@ -88,6 +89,10 @@ public class Transfer {
         t.session = session;
         t.init();
         return t;
+    }
+
+    public AsyncConnection getAsyncConnection() {
+        return conn;
     }
 
     public void addAsyncCallback(int id, AsyncCallback<?> ac) {
@@ -128,7 +133,8 @@ public class Transfer {
             throw new AssertionError();
         }
         if (buffer != null) {
-            in = new DataInputStream(new BufferInputStream(buffer));
+            bufferInputStream = new BufferInputStream(buffer);
+            in = new DataInputStream(bufferInputStream);
         }
     }
 
@@ -836,7 +842,7 @@ public class Transfer {
 
     private static class BufferInputStream extends InputStream {
         final Buffer buffer;
-        final int size;
+        int size;
         int pos;
 
         BufferInputStream(Buffer buffer) {
@@ -853,6 +859,14 @@ public class Transfer {
         public int read() throws IOException {
             return buffer.getUnsignedByte(pos++);
         }
+    }
+
+    public void setPos(int pos) {
+        bufferInputStream.pos = pos;
+    }
+
+    public void setSize(int size) {
+        bufferInputStream.size = size;
     }
 
     private static class ResettableBufferOutputStream extends OutputStream {

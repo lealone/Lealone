@@ -554,9 +554,13 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
         sessionStatus = SessionStatus.NO_TRANSACTION;
 
-        SQLStatementExecutor sqlStatementExecutor = SQLEngineManager.getInstance().getSQLStatementExecutor();
-        if (sqlStatementExecutor != null)
-            sqlStatementExecutor.ready();
+        SQLStatementExecutor[] sqlStatementExecutors = SQLEngineManager.getInstance().getSQLStatementExecutors();
+        if (sqlStatementExecutors != null) {
+            Thread t = Thread.currentThread();
+            if (t instanceof SQLStatementExecutor) {
+                ((SQLStatementExecutor) t).ready();
+            }
+        }
     }
 
     private void endTransaction() {

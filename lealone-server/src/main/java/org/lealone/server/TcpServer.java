@@ -36,7 +36,6 @@ public class TcpServer implements ProtocolServer {
 
     private static Vertx vertx;
 
-    private final CommandHandler commandHandler = new CommandHandler();
     private String host = Constants.DEFAULT_HOST;
     private int port = Constants.DEFAULT_TCP_PORT;
 
@@ -90,7 +89,7 @@ public class TcpServer implements ProtocolServer {
         server = vertx.createNetServer();
         server.connectHandler(socket -> {
             if (TcpServer.this.allow(socket)) {
-                AsyncConnection ac = new AsyncConnection(socket);
+                AsyncConnection ac = new AsyncConnection(socket, true);
                 ac.setBaseDir(TcpServer.this.baseDir);
                 ac.setIfExists(TcpServer.this.ifExists);
                 CommandHandler.addConnection(ac);
@@ -116,7 +115,7 @@ public class TcpServer implements ProtocolServer {
             }
         });
 
-        commandHandler.start();
+        CommandHandler.startCommandHandlers();
         try {
             latch.await();
         } catch (InterruptedException e) {
@@ -135,7 +134,7 @@ public class TcpServer implements ProtocolServer {
             latch.countDown();
         });
 
-        commandHandler.end();
+        CommandHandler.stopCommandHandlers();
         try {
             latch.await();
         } catch (InterruptedException e) {
