@@ -75,27 +75,13 @@ public class PeriodicLogSyncService extends LogSyncService {
     }
 
     @Override
-    protected void sync() {
-        if (waitForSyncToCatchUp(Long.MAX_VALUE)) {
-            // wait until periodic sync() catches up with its schedule
-            long started = System.currentTimeMillis();
-            if (waitForSyncToCatchUp(started)) {
-                super.sync();
-            }
-        }
-        commitTransactions();
-    }
-
-    @Override
     public void prepareCommit(MVCCTransaction t) {
         if (t != null)
             transactions.add(t);
-        if (!waitForSyncToCatchUp(Long.MAX_VALUE)) {
-            // wait until periodic sync() catches up with its schedule
-            long started = System.currentTimeMillis();
-            if (!waitForSyncToCatchUp(started)) {
-                commitTransactions();
-            }
+        // 如果在同步周期内，可以提前提交事务
+        long started = System.currentTimeMillis();
+        if (!waitForSyncToCatchUp(started)) {
+            commitTransactions();
         }
         haveWork.release();
     }

@@ -18,7 +18,7 @@
 package org.lealone.mvcc.log;
 
 import java.util.ArrayList;
-import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -30,7 +30,7 @@ public abstract class LogSyncService extends Thread {
     protected final Semaphore haveWork = new Semaphore(1);
     protected final WaitQueue syncComplete = new WaitQueue();
 
-    protected final LinkedTransferQueue<MVCCTransaction> transactions = new LinkedTransferQueue<>();
+    protected final LinkedBlockingQueue<MVCCTransaction> transactions = new LinkedBlockingQueue<>();
 
     protected long syncIntervalMillis;
     protected volatile long lastSyncedAt = System.currentTimeMillis();
@@ -78,6 +78,7 @@ public abstract class LogSyncService extends Thread {
     protected void sync() {
         if (LogStorage.redoLog != null)
             LogStorage.redoLog.save();
+        commitTransactions();
         // TODO 是否要保存其他map?
         // for (LogMap<?, ?> map : LogStorage.logMaps) {
         // map.save();
