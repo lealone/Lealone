@@ -979,55 +979,50 @@ public class AsyncConnection implements Handler<Buffer> {
             lastBuffer = buffer;
             return;
         }
+
         int pos = 0;
-        while (true) {
-            int packetLength = buffer.getInt(pos);
-            if (length - 4 == packetLength) {
-                if (pos == 0) {
-                    parsePacket(buffer);
+        Transfer transfer = new Transfer(this, socket);
+        transfer.setBuffer(buffer);
+        try {
+            while (true) {
+                int packetLength = transfer.readInt();
+                if (length - 4 == packetLength) {
+                    parsePacket(transfer);
+                    break;
+                } else if (length - 4 > packetLength) {
+                    parsePacket(transfer);
+                    pos = pos + packetLength + 4;
+                    length = length - (packetLength + 4);
+                    // 有可能剩下的不够4个字节了
+                    if (length < 4) {
+                        lastBuffer = buffer.getBuffer(pos, pos + length);
+                        break;
+                    } else {
+                        continue;
+                    }
                 } else {
-                    parsePacket(buffer.slice(pos, pos + packetLength + 4));
-                }
-                break;
-            } else if (length - 4 > packetLength) {
-                parsePacket(buffer.slice(pos, pos + packetLength + 4));
-                pos = pos + packetLength + 4;
-                length = length - (packetLength + 4);
-                // 有可能剩下的不够4个字节了
-                if (length < 4) {
                     lastBuffer = buffer.getBuffer(pos, pos + length);
                     break;
-                } else {
-                    continue;
                 }
-            } else {
-                lastBuffer = buffer.getBuffer(pos, pos + length);
-                break;
-            }
-        }
-    }
-
-    private void parsePacket(Buffer buffer) {
-        try {
-            Transfer transfer = new Transfer(this, socket);
-            transfer.setBuffer(buffer);
-            transfer.readInt(); // packetLength
-
-            boolean isRequest = transfer.readByte() == Transfer.REQUEST;
-            int id = transfer.readInt();
-            // boolean isRequest = (id & 1) == 0;
-            // id = id >>> 1;
-            if (isRequest) {
-                try {
-                    processRequest(transfer, id);
-                } catch (Throwable e) {
-                    sendError(transfer, id, e);
-                }
-            } else {
-                processResponse(transfer, id);
             }
         } catch (Throwable e) {
             logger.error("Parse packet", e);
+        }
+    }
+
+    private void parsePacket(Transfer transfer) throws IOException {
+        boolean isRequest = transfer.readByte() == Transfer.REQUEST;
+        int id = transfer.readInt();
+        // boolean isRequest = (id & 1) == 0;
+        // id = id >>> 1;
+        if (isRequest) {
+            try {
+                processRequest(transfer, id);
+            } catch (Throwable e) {
+                sendError(transfer, id, e);
+            }
+        } else {
+            processResponse(transfer, id);
         }
     }
 
