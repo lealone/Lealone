@@ -76,13 +76,12 @@ public class PeriodicLogSyncService extends LogSyncService {
 
     @Override
     public void prepareCommit(MVCCTransaction t) {
-        if (t != null)
-            transactions.add(t);
         // 如果在同步周期内，可以提前提交事务
         long started = System.currentTimeMillis();
-        if (!waitForSyncToCatchUp(started)) {
-            commitTransactions();
+        if (!waitForSyncToCatchUp(started) && (t.getSession() != null)) {
+            t.getSession().commit(false, null);
+        } else {
+            super.prepareCommit(t);
         }
-        haveWork.release();
     }
 }

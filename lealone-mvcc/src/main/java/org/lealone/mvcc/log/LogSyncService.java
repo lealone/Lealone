@@ -44,8 +44,7 @@ public abstract class LogSyncService extends Thread {
     public abstract void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId);
 
     public void prepareCommit(MVCCTransaction t) {
-        if (t != null)
-            transactions.add(t);
+        transactions.add(t);
         haveWork.release();
     }
 
