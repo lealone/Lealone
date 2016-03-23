@@ -71,20 +71,16 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         c.close();
     }
 
-    private final LinkedList<Integer> sessions = new LinkedList<>();
+    private final ConcurrentLinkedQueue<Integer> sessions = new ConcurrentLinkedQueue<>();
     private final Semaphore haveWork = new Semaphore(1);
     private boolean stop;
 
     void addSessionId(Integer sessionId) {
-        synchronized (sessions) {
-            sessions.add(sessionId);
-        }
+        sessions.add(sessionId);
     }
 
     void removeSessionId(Integer sessionId) {
-        synchronized (sessions) {
-            sessions.remove(sessionId);
-        }
+        sessions.remove(sessionId);
     }
 
     public CommandHandler(int id) {
