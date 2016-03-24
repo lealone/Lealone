@@ -16,8 +16,6 @@
 
 base_dir: ../data
 
-listen_address: 127.0.0.1
-
 storage_engines:
     - name: MVStore
       enabled: true
@@ -45,6 +43,7 @@ protocol_server_engines:
     - name: TcpServer
       enabled: true
       parameters: {
+          host: 127.0.0.1,
           port: 5210,
           trace: false,
           allow_others: true,
