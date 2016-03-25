@@ -975,9 +975,15 @@ public class AsyncConnection implements Handler<Buffer> {
         }
 
         int pos = 0;
-        Transfer transfer = new Transfer(this, socket, buffer);
         try {
             while (true) {
+                // 必须生成新的Transfer实例，不同协议包对应不同Transfer实例，
+                // 否则如果有多个CommandHandler线程时会用同一个Transfer实例写数据，这会产生并发问题。
+                Transfer transfer;
+                if (pos == 0)
+                    transfer = new Transfer(this, socket, buffer);
+                else
+                    transfer = new Transfer(this, socket, buffer.slice(pos, pos + length));
                 int packetLength = transfer.readInt();
                 if (length - 4 == packetLength) {
                     parsePacket(transfer);
