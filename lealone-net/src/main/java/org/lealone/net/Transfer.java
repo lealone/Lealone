@@ -75,20 +75,35 @@ public class Transfer {
     private Session session;
     private DataInputStream in;
     private BufferInputStream bufferInputStream;
-    private DataOutputStream out;
-    private ResettableBufferOutputStream resettableOutputStream;
+    private final DataOutputStream out;
+    private final ResettableBufferOutputStream resettableOutputStream;
     private byte[] lobMacSalt;
 
-    public Transfer(AsyncConnection conn, NetSocket socket) {
+    public Transfer(AsyncConnection conn, NetSocket socket, Session session) {
+        this(conn, socket, (Buffer) null);
+        this.session = session;
+    }
+
+    public Transfer(AsyncConnection conn, NetSocket socket, Buffer buffer) {
         this.socket = socket;
         this.conn = conn;
+
+        resettableOutputStream = new ResettableBufferOutputStream(BUFFER_SIZE);
+        out = new DataOutputStream(resettableOutputStream);
+
+        try {
+            out.writeInt(0);
+        } catch (IOException e) {
+            throw new AssertionError();
+        }
+        if (buffer != null) {
+            bufferInputStream = new BufferInputStream(buffer);
+            in = new DataInputStream(bufferInputStream);
+        }
     }
 
     public Transfer copy(Session session) {
-        Transfer t = new Transfer(conn, socket);
-        t.session = session;
-        t.init();
-        return t;
+        return new Transfer(conn, socket, session);
     }
 
     public AsyncConnection getAsyncConnection() {
@@ -113,29 +128,6 @@ public class Transfer {
         // writeInt((id << 1) | 1).writeInt(status);
         writeByte(RESPONSE).writeInt(id).writeInt(status);
         return this;
-    }
-
-    /**
-     * Initialize the transfer object. 
-     * This method will try to open an input and output stream.
-     */
-    public void init() {
-        setBuffer(null);
-    }
-
-    public void setBuffer(Buffer buffer) {
-        resettableOutputStream = new ResettableBufferOutputStream(BUFFER_SIZE);
-        out = new DataOutputStream(resettableOutputStream);
-
-        try {
-            out.writeInt(0);
-        } catch (IOException e) {
-            throw new AssertionError();
-        }
-        if (buffer != null) {
-            bufferInputStream = new BufferInputStream(buffer);
-            in = new DataInputStream(bufferInputStream);
-        }
     }
 
     public void setDataInputStream(DataInputStream in) {

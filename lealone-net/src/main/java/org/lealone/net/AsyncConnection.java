@@ -122,15 +122,11 @@ public class AsyncConnection implements Handler<Buffer> {
     }
 
     public Transfer createTransfer(Session session) {
-        Transfer t = new Transfer(this, socket);
-        t.setSession(session);
-        t.init();
-        return t;
+        return new Transfer(this, socket, session);
     }
 
     public void writeInitPacket(Session session, int sessionId, Transfer transfer, ConnectionInfo ci) throws Exception {
         transfer.setSSL(ci.isSSL());
-        transfer.init();
         transfer.writeRequestHeader(sessionId, Session.SESSION_INIT);
         transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
         transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
@@ -1011,8 +1007,7 @@ public class AsyncConnection implements Handler<Buffer> {
         }
 
         int pos = 0;
-        Transfer transfer = new Transfer(this, socket);
-        transfer.setBuffer(buffer);
+        Transfer transfer = new Transfer(this, socket, buffer);
         try {
             while (true) {
                 int packetLength = transfer.readInt();
