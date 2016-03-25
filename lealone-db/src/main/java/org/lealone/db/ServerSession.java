@@ -721,8 +721,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
                 locks.clear();
             }
         }
-        sessionStateChanged = true;
-
         releaseSessionCache();
     }
 

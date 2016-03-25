@@ -334,16 +334,16 @@ public class AsyncConnection implements Handler<Buffer> {
         }
     }
 
-    private static int getStatus(Session session, int oldModificationId) {
-        if (session.getModificationId() == oldModificationId) {
+    private static int getStatus(Session session) {
+        if (session != null && session.isClosed()) {
+            return Session.STATUS_CLOSED;
+        } else {
             return Session.STATUS_OK;
         }
-        return Session.STATUS_OK_STATE_CHANGED;
     }
 
-    private static void writeBatchResult(Transfer transfer, Session session, int id, int[] result, int oldModificationId)
-            throws IOException {
-        writeResponseHeader(transfer, session, id, oldModificationId);
+    private static void writeBatchResult(Transfer transfer, Session session, int id, int[] result) throws IOException {
+        writeResponseHeader(transfer, session, id);
         for (int i = 0; i < result.length; i++)
             transfer.writeInt(result[i]);
 
@@ -351,7 +351,7 @@ public class AsyncConnection implements Handler<Buffer> {
     }
 
     private void executeQuery(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
-            int operation, int objectId, int maxRows, int fetchSize, int oldModificationId) throws IOException {
+            int operation, int objectId, int maxRows, int fetchSize) throws IOException {
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
@@ -361,7 +361,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 Callable<Object> callable = new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
-                        transfer.writeResponseHeader(id, getStatus(session, oldModificationId));
+                        transfer.writeResponseHeader(id, getStatus(session));
 
                         if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
                                 || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY)
@@ -403,7 +403,7 @@ public class AsyncConnection implements Handler<Buffer> {
     }
 
     private void executeUpdate(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
-            int operation, int oldModificationId) throws IOException {
+            int operation) throws IOException {
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
             @Override
             public Object call() throws Exception {
@@ -411,13 +411,8 @@ public class AsyncConnection implements Handler<Buffer> {
                 Callable<Object> callable = new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
-                        int status;
-                        if (session.isClosed()) {
-                            status = Session.STATUS_CLOSED;
-                        } else {
-                            status = getStatus(session, oldModificationId);
-                        }
-                        transfer.writeResponseHeader(id, status);
+                        transfer.writeResponseHeader(id, getStatus(session));
+
                         if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
                                 || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
                             transfer.writeString(session.getTransaction().getLocalTransactionNames());
@@ -512,14 +507,12 @@ public class AsyncConnection implements Handler<Buffer> {
     private void processResponse(Transfer transfer, int id) throws IOException {
         int status = transfer.readInt();
         DbException e = null;
-        if (status == Session.STATUS_ERROR) {
+        if (status == Session.STATUS_OK) {
+            // ok
+        } else if (status == Session.STATUS_ERROR) {
             e = parseError(transfer);
         } else if (status == Session.STATUS_CLOSED) {
             transfer = null;
-        } else if (status == Session.STATUS_OK_STATE_CHANGED) {
-            // sessionStateChanged = true;
-        } else if (status == Session.STATUS_OK) {
-            // ok
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
@@ -535,15 +528,8 @@ public class AsyncConnection implements Handler<Buffer> {
             ac.run(transfer);
     }
 
-    private static void writeResponseHeader(Transfer transfer, Session session, int id, int oldModificationId)
-            throws IOException {
-        int status;
-        if (session != null && session.isClosed()) {
-            status = Session.STATUS_CLOSED;
-        } else {
-            status = getStatus(session, oldModificationId);
-        }
-        transfer.writeResponseHeader(id, status);
+    private static void writeResponseHeader(Transfer transfer, Session session, int id) throws IOException {
+        transfer.writeResponseHeader(id, getStatus(session));
     }
 
     private void processRequest(Transfer transfer, int id) throws IOException {
@@ -558,11 +544,10 @@ public class AsyncConnection implements Handler<Buffer> {
             int sessionId = transfer.readInt();
             String sql = transfer.readString();
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
             PreparedStatement command = session.prepareStatement(sql, -1);
             cache.addObject(id, command);
             boolean isQuery = command.isQuery();
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             transfer.writeBoolean(isQuery);
             if (operation == Session.COMMAND_PREPARE_READ_PARAMS) {
                 List<? extends CommandParameter> params = command.getParameters();
@@ -586,10 +571,9 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            int old = session.getModificationId();
             PreparedStatement command = session.prepareStatement(sql, fetchSize);
             cache.addObject(id, command);
-            executeQuery(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize, old);
+            executeQuery(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
@@ -606,8 +590,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            int old = session.getModificationId();
-            executeQuery(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize, old);
+            executeQuery(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
@@ -616,7 +599,6 @@ public class AsyncConnection implements Handler<Buffer> {
             int sessionId = transfer.readInt();
             String sql = transfer.readString();
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
             if (operation == Session.COMMAND_REPLICATION_UPDATE)
                 session.setReplicationName(transfer.readString());
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE) {
@@ -625,7 +607,7 @@ public class AsyncConnection implements Handler<Buffer> {
             }
             PreparedStatement command = session.prepareStatement(sql, -1);
             cache.addObject(id, command);
-            executeUpdate(transfer, session, sessionId, id, command, operation, old);
+            executeUpdate(transfer, session, sessionId, id, command, operation);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
@@ -641,8 +623,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            int old = session.getModificationId();
-            executeUpdate(transfer, session, sessionId, id, command, operation, old);
+            executeUpdate(transfer, session, sessionId, id, command, operation);
             break;
         }
         case Session.COMMAND_STORAGE_DISTRIBUTED_PUT:
@@ -657,7 +638,6 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            int old = session.getModificationId();
             if (operation == Session.COMMAND_STORAGE_REPLICATION_PUT)
                 session.setReplicationName(transfer.readString());
 
@@ -667,7 +647,7 @@ public class AsyncConnection implements Handler<Buffer> {
             Object k = map.getKeyType().read(ByteBuffer.wrap(key));
             Object v = valueType.read(ByteBuffer.wrap(value));
             Object result = map.put(k, v);
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
@@ -690,14 +670,12 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            int old = session.getModificationId();
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
-
             DataType valueType = map.getValueType();
             Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
 
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
@@ -716,14 +694,12 @@ public class AsyncConnection implements Handler<Buffer> {
             ByteBuffer splitKey = transfer.readByteBuffer();
             ByteBuffer page = transfer.readByteBuffer();
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
 
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
             if (map instanceof Replication) {
                 ((Replication) map).addLeafPage(splitKey, page);
             }
-
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;
         }
@@ -732,14 +708,12 @@ public class AsyncConnection implements Handler<Buffer> {
             String mapName = transfer.readString();
             ByteBuffer key = transfer.readByteBuffer();
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
 
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
             if (map instanceof Replication) {
                 ((Replication) map).removeLeafPage(key);
             }
-
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;
         }
@@ -760,18 +734,16 @@ public class AsyncConnection implements Handler<Buffer> {
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
             session.commit(false, transfer.readString());
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
             session.rollback();
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;
         }
@@ -779,22 +751,20 @@ public class AsyncConnection implements Handler<Buffer> {
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT: {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
             String name = transfer.readString();
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT)
                 session.addSavepoint(name);
             else
                 session.rollbackToSavepoint(name);
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE: {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
             boolean isValid = session.validateTransaction(transfer.readString());
-            writeResponseHeader(transfer, session, id, old);
+            writeResponseHeader(transfer, session, id);
             transfer.writeBoolean(isValid);
             transfer.flush();
             break;
@@ -804,7 +774,6 @@ public class AsyncConnection implements Handler<Buffer> {
             Session session = getSession(sessionId);
             int size = transfer.readInt();
             int[] result = new int[size];
-            int old = session.getModificationId();
             for (int i = 0; i < size; i++) {
                 String sql = transfer.readString();
                 PreparedStatement command = session.prepareStatement(sql, -1);
@@ -814,7 +783,7 @@ public class AsyncConnection implements Handler<Buffer> {
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(transfer, session, id, result, old);
+            writeBatchResult(transfer, session, id, result);
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
@@ -825,7 +794,6 @@ public class AsyncConnection implements Handler<Buffer> {
             int paramsSize = params.size();
             int[] result = new int[size];
             Session session = getSession(sessionId);
-            int old = session.getModificationId();
             for (int i = 0; i < size; i++) {
                 for (int j = 0; j < paramsSize; j++) {
                     CommandParameter p = params.get(j);
@@ -837,7 +805,7 @@ public class AsyncConnection implements Handler<Buffer> {
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(transfer, session, id, result, old);
+            writeBatchResult(transfer, session, id, result);
             break;
         }
         case Session.COMMAND_CLOSE: {

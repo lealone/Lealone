@@ -1,71 +1,34 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.db;
 
-import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
-import org.lealone.db.result.Result;
-import org.lealone.db.value.Value;
-import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageMap;
 
-/**
- * The base class for both client and server sessions.
- */
 public abstract class SessionBase implements Session {
-
-    protected ArrayList<String> sessionState;
-    protected boolean sessionStateChanged;
-    private boolean sessionStateUpdating;
 
     protected String replicationName;
     protected boolean local;
     protected AtomicInteger nextId = new AtomicInteger(0);
-
     protected Callable<?> callable;
-
-    /**
-     * Re-create the session state using the stored sessionState list.
-     */
-    protected void recreateSessionState() {
-        if (sessionState != null && sessionState.size() > 0) {
-            sessionStateUpdating = true;
-            try {
-                for (String sql : sessionState) {
-                    PreparedStatement ps = prepareStatement(sql, Integer.MAX_VALUE);
-                    ps.executeUpdate();
-                }
-            } finally {
-                sessionStateUpdating = false;
-                sessionStateChanged = false;
-            }
-        }
-    }
-
-    /**
-     * Read the session state if necessary.
-     */
-    public void readSessionState() {
-        if (!sessionStateChanged || sessionStateUpdating) {
-            return;
-        }
-        sessionStateChanged = false;
-        sessionState = New.arrayList();
-        Command c = prepareCommand("SELECT * FROM INFORMATION_SCHEMA.SESSION_STATE", Integer.MAX_VALUE);
-        Result result = c.executeQuery(0, false);
-        while (result.next()) {
-            Value[] row = result.currentRow();
-            sessionState.add(row[1].getString());
-        }
-    }
 
     @Override
     public String getReplicationName() {

@@ -239,8 +239,6 @@ public class ClientCommand implements StorageCommand {
                     else
                         result = new RowCountDeterminedClientResult(session, transfer, resultId, columnCount, rowCount,
                                 fetch);
-
-                    session.readSessionState();
                     setResult(result);
                     if (handler != null) {
                         AsyncResult<Result> r = new AsyncResult<>();
@@ -259,7 +257,6 @@ public class ClientCommand implements StorageCommand {
             return null;
         } else {
             Result result = ac.getResult();
-            session.readSessionState();
             return result;
         }
     }
@@ -341,7 +338,6 @@ public class ClientCommand implements StorageCommand {
 
                     int updateCount = transfer.readInt();
                     setResult(updateCount);
-                    session.readSessionState();
                     if (handler != null) {
                         AsyncResult<Integer> r = new AsyncResult<>();
                         r.setResult(updateCount);
@@ -360,7 +356,6 @@ public class ClientCommand implements StorageCommand {
             updateCount = -1;
         } else {
             ac.await();
-            session.readSessionState();
             updateCount = ac.getResult();
         }
 
@@ -460,7 +455,6 @@ public class ClientCommand implements StorageCommand {
         } catch (Exception e) {
             session.handleException(e);
         }
-        session.readSessionState();
         return bytes;
     }
 
@@ -487,7 +481,6 @@ public class ClientCommand implements StorageCommand {
         } catch (Exception e) {
             session.handleException(e);
         }
-        session.readSessionState();
         return bytes;
     }
 
@@ -503,7 +496,6 @@ public class ClientCommand implements StorageCommand {
         } catch (Exception e) {
             session.handleException(e);
         }
-        session.readSessionState();
     }
 
     @Override
@@ -517,7 +509,6 @@ public class ClientCommand implements StorageCommand {
         } catch (Exception e) {
             session.handleException(e);
         }
-        session.readSessionState();
     }
 
     /**
