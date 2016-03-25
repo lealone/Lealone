@@ -17,6 +17,8 @@
  */
 package org.lealone.mvcc.log;
 
+import org.lealone.mvcc.MVCCTransaction;
+
 public class NoLogSyncService extends LogSyncService {
 
     public NoLogSyncService() {
@@ -33,6 +35,13 @@ public class NoLogSyncService extends LogSyncService {
 
     @Override
     public void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId) {
+    }
+
+    @Override
+    public void prepareCommit(MVCCTransaction t) {
+        if (t.getSession() != null) {
+            t.getSession().commit(false, null);
+        }
     }
 
 }
