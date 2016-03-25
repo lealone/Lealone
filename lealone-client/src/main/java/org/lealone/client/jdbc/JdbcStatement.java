@@ -174,9 +174,10 @@ public class JdbcStatement extends TraceObject implements Statement {
                 @Override
                 public void handle(AsyncResult<Integer> ar) {
                     updateCount = ar.getResult();
-                    handler.handle(ar);
+                    // 设置完后再调用handle，否则有可能当前语句提前关闭了
                     setExecutingStatement(null);
                     command.close();
+                    handler.handle(ar);
                 }
             };
             command.executeUpdateAsync(h);

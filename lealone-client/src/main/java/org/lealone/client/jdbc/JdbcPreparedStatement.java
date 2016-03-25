@@ -191,8 +191,8 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 @Override
                 public void handle(AsyncResult<Integer> ar) {
                     updateCount = ar.getResult();
-                    handler.handle(ar);
                     setExecutingStatement(null);
+                    handler.handle(ar);
                 }
             };
             command.executeUpdateAsync(h);
