@@ -6,8 +6,8 @@
  */
 package org.lealone.common.util;
 
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -17,7 +17,7 @@ import org.lealone.common.exceptions.DbException;
  */
 public class SmallMap {
 
-    private final HashMap<Integer, Object> map = New.hashMap();
+    private final ConcurrentHashMap<Integer, Object> map = new ConcurrentHashMap<>();
     private Object cache;
     private int cacheId;
     private int lastId;

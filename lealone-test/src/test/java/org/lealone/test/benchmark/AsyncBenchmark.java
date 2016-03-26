@@ -99,18 +99,18 @@ public class AsyncBenchmark {
                 random_read_time = t2 - t1;
             else
                 read_time = t2 - t1;
-            if (random)
-                System.out.println(getName() + " random read end, time=" + random_read_time + " ms");
-            else
-                System.out.println(getName() + "  read end, time=" + read_time + " ms");
+            // if (random)
+            // System.out.println(getName() + " random read end, time=" + random_read_time + " ms");
+            // else
+            // System.out.println(getName() + "  read end, time=" + read_time + " ms");
         }
 
         @Override
         public void run() {
             try {
                 write();
-                // read(false);
-                // read(true);
+                read(false);
+                read(true);
                 stmt.close();
                 conn.close();
             } catch (Exception e) {
@@ -123,7 +123,7 @@ public class AsyncBenchmark {
         Connection conn = new TestBase().getConnection();
         Statement stmt = conn.createStatement();
 
-        int loop = 5;
+        int loop = 10;
         for (int i = 0; i < loop; i++) {
             stmt.executeUpdate("DROP TABLE IF EXISTS test");
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
@@ -135,8 +135,8 @@ public class AsyncBenchmark {
     }
 
     static void benchmark() throws Exception {
-        int threadsCount = 50; // Runtime.getRuntime().availableProcessors() * 4;
-        int loop = 100;
+        int threadsCount = 1; // Runtime.getRuntime().availableProcessors() * 4;
+        int loop = 1000;
 
         MyThread[] threads = new MyThread[threadsCount];
         for (int i = 0; i < threadsCount; i++) {

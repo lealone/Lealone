@@ -30,7 +30,7 @@ import org.lealone.sql.SQLStatementExecutor;
 public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     private static final LinkedList<AsyncConnection> connections = new LinkedList<>();
-    private static final int commandHandlersCount = 2; // Runtime.getRuntime().availableProcessors();
+    private static final int commandHandlersCount = 1; // Runtime.getRuntime().availableProcessors();
     private static final CommandHandler[] commandHandlers = new CommandHandler[commandHandlersCount];
     private static final AtomicInteger index = new AtomicInteger(0);
 
