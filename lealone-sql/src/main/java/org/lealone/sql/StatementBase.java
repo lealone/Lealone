@@ -560,11 +560,6 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     }
 
     @Override
-    public Result executeQueryAsync(int maxRows) {
-        return executeQuery(maxRows);
-    }
-
-    @Override
     public int executeUpdate() {
         return update();
     }
@@ -575,19 +570,22 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     }
 
     @Override
-    public int executeUpdateAsync() {
-        return executeUpdate();
-    }
-
-    @Override
     public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        // TODO Auto-generated method stub
-
+        Result result = executeQuery(maxRows, scrollable);
+        if (handler != null) {
+            AsyncResult<Result> r = new AsyncResult<>();
+            r.setResult(result);
+            handler.handle(r);
+        }
     }
 
     @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        // TODO Auto-generated method stub
-
+        int updateCount = executeUpdate();
+        if (handler != null) {
+            AsyncResult<Integer> r = new AsyncResult<>();
+            r.setResult(updateCount);
+            handler.handle(r);
+        }
     }
 }

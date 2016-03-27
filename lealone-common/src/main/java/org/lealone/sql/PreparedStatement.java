@@ -55,8 +55,4 @@ public interface PreparedStatement extends SQLStatement {
 
     int update(String replicationName);
 
-    Result executeQueryAsync(int maxRows);
-
-    int executeUpdateAsync();
-
 }

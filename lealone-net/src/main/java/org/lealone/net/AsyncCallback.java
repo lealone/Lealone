@@ -44,58 +44,49 @@ public class AsyncCallback<T> {
         this.ah = ah;
     }
 
-    @SuppressWarnings("unchecked")
-    private void handle(DbException e) {
-        if (ah == null)
-            throw e;
-
-        AsyncResult r = new AsyncResult();
-        r.setCause(e);
-        ah.handle(r);
-    }
-
-    public T getResult() {
-        try {
-            latch.await();
-            if (e != null)
-                handle(e);
-        } catch (InterruptedException e) {
-            throw DbException.convert(e);
-        }
-        return result;
-    }
-
     public void setTransfer(Transfer transfer) {
         this.transfer = transfer;
     }
 
     public void setDbException(DbException e) {
         this.e = e;
-        latch.countDown();
-        handle(e);
     }
 
     public void setResult(T result) {
         this.result = result;
-        latch.countDown();
     }
 
-    public void run(Transfer transfer) {
-        this.transfer.setDataInputStream(transfer.getDataInputStream());
-        runInternal();
-        latch.countDown();
-    }
-
-    protected void runInternal() {
+    public T getResult() {
+        await();
+        return result;
     }
 
     public void await() {
         try {
             latch.await();
             if (e != null)
-                handle(e);
+                throw e;
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }
     }
+
+    @SuppressWarnings("unchecked")
+    public final void run(Transfer transfer) {
+        if (e == null) {
+            this.transfer.setDataInputStream(transfer.getDataInputStream());
+            runInternal();
+        } else if (ah != null) {
+            AsyncResult r = new AsyncResult();
+            r.setCause(e);
+            ah.handle(r);
+        }
+
+        if (ah == null)
+            latch.countDown();
+    }
+
+    protected void runInternal() {
+    }
+
 }

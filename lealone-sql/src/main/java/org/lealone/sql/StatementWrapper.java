@@ -7,6 +7,7 @@ package org.lealone.sql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.concurrent.Callable;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
@@ -247,7 +248,10 @@ class StatementWrapper extends StatementBase {
         return statement.update();
     }
 
-    private Object execute(int maxRows, boolean async, boolean isUpdate) {
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private Object execute(int maxRows, boolean isUpdate, AsyncHandler<AsyncResult<Integer>> updateHandler,
+            AsyncHandler<AsyncResult<Result>> queryHandler) {
+        boolean async = (updateHandler != null) || (queryHandler != null);
         startTime = 0;
         long start = 0;
         Database database = session.getDatabase();
@@ -256,7 +260,11 @@ class StatementWrapper extends StatementBase {
         int savepointId = 0;
         if (isUpdate)
             savepointId = session.getTransaction(statement).getSavepointId();
+        else
+            session.getTransaction(statement);
         session.setCurrentCommand(this);
+        AsyncResult asyncResult = null;
+        AsyncHandler asyncHandler = updateHandler != null ? updateHandler : queryHandler;
         try {
             while (true) {
                 database.checkPowerOff();
@@ -271,11 +279,21 @@ class StatementWrapper extends StatementBase {
                         session.setLastScopeIdentity(ValueNull.INSTANCE);
                         int updateCount = RouterHolder.getRouter().executeUpdate(statement);
                         rowCount = updateCount;
+                        if (updateHandler != null) {
+                            AsyncResult<Integer> ar = new AsyncResult<>();
+                            ar.setResult(updateCount);
+                            asyncResult = ar;
+                        }
                         result = Integer.valueOf(updateCount);
                     } else {
                         Result r = RouterHolder.getRouter().executeQuery(statement, maxRows);
                         rowCount = r.getRowCount();
                         result = r;
+                        if (queryHandler != null) {
+                            AsyncResult<Result> ar = new AsyncResult<>();
+                            ar.setResult(r);
+                            asyncResult = ar;
+                        }
                     }
                     statement.trace(startTime, rowCount);
                     setProgress(DatabaseEventListener.STATE_STATEMENT_END);
@@ -311,10 +329,18 @@ class StatementWrapper extends StatementBase {
                     session.rollbackTo(savepointId);
                 }
             }
-            throw e;
+            if (asyncHandler != null) {
+                asyncResult = new AsyncResult();
+                asyncResult.setCause(e);
+                asyncHandler.handle(asyncResult);
+                async = false; // 不需要再回调了
+                return null;
+            } else {
+                throw e;
+            }
         } finally {
             if (callStop) {
-                stop(async);
+                stop(async, asyncResult, asyncHandler);
             }
         }
     }
@@ -384,10 +410,34 @@ class StatementWrapper extends StatementBase {
         return start == 0 ? now : start;
     }
 
-    private void stop(boolean async) {
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private void setCallable(AsyncResult ar, AsyncHandler ah) {
+        Callable<Object> callable = new Callable<Object>() {
+            @Override
+            public Object call() throws Exception {
+                ah.handle(ar);
+                return null;
+            }
+        };
+        session.setCallable(callable);
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private void stop(boolean async, AsyncResult ar, AsyncHandler ah) {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
-        if (!async) {
+        if (async) {
+            if (!isTransactional()) {
+                setCallable(ar, ah);
+                session.prepareCommit(true);
+            } else if (session.isAutoCommit()) {
+                setCallable(ar, ah);
+                session.prepareCommit(false);
+            } else {
+                // 当前语句是在一个手动提交的事务中进行，提前返回语句的执行结果
+                ah.handle(ar);
+            }
+        } else {
             if (!isTransactional()) {
                 session.commit(true);
             } else if (session.isAutoCommit()) {
@@ -419,32 +469,21 @@ class StatementWrapper extends StatementBase {
 
     @Override
     public Result executeQuery(int maxRows) {
-        return (Result) execute(maxRows, false, false);
-    }
-
-    @Override
-    public Result executeQueryAsync(int maxRows) {
-        return (Result) execute(maxRows, true, false);
-    }
-
-    @Override
-    public int executeUpdate() {
-        return ((Integer) execute(0, false, true)).intValue();
-    }
-
-    @Override
-    public int executeUpdateAsync() {
-        return ((Integer) execute(0, true, true)).intValue();
+        return (Result) execute(maxRows, false, null, null);
     }
 
     @Override
     public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        statement.executeQueryAsync(maxRows, scrollable, handler);
+        execute(0, false, null, handler);
+    }
+
+    @Override
+    public int executeUpdate() {
+        return ((Integer) execute(0, true, null, null)).intValue();
     }
 
     @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        statement.executeUpdateAsync(handler);
+        execute(0, true, handler, null);
     }
-
 }

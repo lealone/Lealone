@@ -20,7 +20,6 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -350,89 +349,74 @@ public class AsyncConnection implements Handler<Buffer> {
         transfer.flush();
     }
 
-    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
-            int operation, int objectId, int maxRows, int fetchSize) throws IOException {
-        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
+    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id,
+            PreparedStatement command, int operation, int objectId, int maxRows, int fetchSize) throws IOException {
+        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
             @Override
-            public Object call() throws Exception {
-                final Result result = command.executeQueryAsync(maxRows);
-                cache.addObject(objectId, result);
+            public void run() {
+                command.executeQueryAsync(maxRows, false, res -> {
+                    if (res.isSucceeded()) {
+                        Result result = res.getResult();
+                        cache.addObject(objectId, result);
+                        try {
+                            transfer.writeResponseHeader(id, getStatus(session));
 
-                Callable<Object> callable = new Callable<Object>() {
-                    @Override
-                    public Object call() throws Exception {
-                        transfer.writeResponseHeader(id, getStatus(session));
+                            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
+                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY)
+                                transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
-                        if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
-                                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY)
-                            transfer.writeString(session.getTransaction().getLocalTransactionNames());
-
-                        int columnCount = result.getVisibleColumnCount();
-                        transfer.writeInt(columnCount);
-                        int rowCount = result.getRowCount();
-                        transfer.writeInt(rowCount);
-                        for (int i = 0; i < columnCount; i++) {
-                            writeColumn(transfer, result, i);
+                            int columnCount = result.getVisibleColumnCount();
+                            transfer.writeInt(columnCount);
+                            int rowCount = result.getRowCount();
+                            transfer.writeInt(rowCount);
+                            for (int i = 0; i < columnCount; i++) {
+                                writeColumn(transfer, result, i);
+                            }
+                            int fetch = fetchSize;
+                            if (rowCount != -1)
+                                fetch = Math.min(rowCount, fetchSize);
+                            writeRow(transfer, result, fetch);
+                            transfer.flush();
+                        } catch (Exception e) {
+                            sendError(transfer, id, e);
                         }
-                        int fetch = fetchSize;
-                        if (rowCount != -1)
-                            fetch = Math.min(rowCount, fetchSize);
-                        writeRow(transfer, result, fetch);
-                        transfer.flush();
-                        return null;
+                    } else {
+                        sendError(transfer, id, res.getCause());
                     }
-                };
-                session.setCallable(callable);
-                prepareCommit(session, command);
-                return null;
+                });
             }
         });
-
         addPreparedCommandToQueue(pc, sessionId);
     }
 
-    private void prepareCommit(Session session, PreparedStatement command) throws Exception {
-        if (!command.isTransactional()) {
-            session.prepareCommit(true);
-        } else if (session.isAutoCommit()) {
-            session.prepareCommit(false);
-        } else {
-            // 当前语句是在一个手动提交的事务中进行，提前返回语句的执行结果
-            session.getCallable().call();
-        }
-    }
-
-    private void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
-            int operation) throws IOException {
-        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
+    private void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id,
+            PreparedStatement command, int operation) throws IOException {
+        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
             @Override
-            public Object call() throws Exception {
-                int updateCount = command.executeUpdateAsync();
-                Callable<Object> callable = new Callable<Object>() {
-                    @Override
-                    public Object call() throws Exception {
-                        transfer.writeResponseHeader(id, getStatus(session));
-
-                        if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
-                                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
-                            transfer.writeString(session.getTransaction().getLocalTransactionNames());
-
-                        transfer.writeInt(updateCount);
-                        transfer.flush();
-                        return null;
+            public void run() {
+                command.executeUpdateAsync(res -> {
+                    if (res.isSucceeded()) {
+                        int updateCount = res.getResult();
+                        try {
+                            transfer.writeResponseHeader(id, getStatus(session));
+                            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
+                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
+                                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                            transfer.writeInt(updateCount);
+                            transfer.flush();
+                        } catch (Exception e) {
+                            sendError(transfer, id, e);
+                        }
+                    } else {
+                        sendError(transfer, id, res.getCause());
                     }
-                };
-                session.setCallable(callable);
-                prepareCommit(session, command);
-                return null;
+                });
             }
         });
-
         addPreparedCommandToQueue(pc, sessionId);
     }
 
     void addPreparedCommandToQueue(PreparedCommand pc, int sessionId) {
-
         SessionInfo sessionInfo = sessionInfoMap.get(sessionId);
         if (sessionInfo == null) {
             throw DbException.throwInternalError("sessionInfo is null");
@@ -444,8 +428,7 @@ public class AsyncConnection implements Handler<Buffer> {
 
     ConcurrentLinkedQueue<PreparedCommand> getPreparedCommandQueue(int sessionId) {
         SessionInfo sessionInfo = sessionInfoMap.get(sessionId);
-        if (sessionInfo == null) {
-            // throw DbException.throwInternalError("sessionInfo is null");
+        if (sessionInfo == null) { // 允许的，CommandHandler在迭代的过程中可能session已经关闭了
             return null;
         }
         return sessionInfo.preparedCommandQueue;
@@ -524,8 +507,7 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         if (e != null)
             ac.setDbException(e);
-        else
-            ac.run(transfer);
+        ac.run(transfer);
     }
 
     private static void writeResponseHeader(Transfer transfer, Session session, int id) throws IOException {
@@ -1005,7 +987,8 @@ public class AsyncConnection implements Handler<Buffer> {
                 }
             }
         } catch (Throwable e) {
-            logger.error("Parse packet", e);
+            if (isServer)
+                logger.error("Parse packet", e);
         }
     }
 

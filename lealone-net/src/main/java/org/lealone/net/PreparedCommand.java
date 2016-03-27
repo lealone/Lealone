@@ -17,8 +17,6 @@
  */
 package org.lealone.net;
 
-import java.util.concurrent.Callable;
-
 import org.lealone.db.Session;
 import org.lealone.sql.PreparedStatement;
 
@@ -28,18 +26,18 @@ public class PreparedCommand {
     PreparedStatement stmt;
     Transfer transfer;
     Session session;
-    Callable<?> call;
+    Runnable runnable;
 
-    PreparedCommand(int id, PreparedStatement stmt, Transfer transfer, Session session, Callable<?> call) {
+    PreparedCommand(int id, PreparedStatement stmt, Transfer transfer, Session session, Runnable runnable) {
         this.id = id;
         this.stmt = stmt;
         this.transfer = transfer;
         this.session = session;
-        this.call = call;
+        this.runnable = runnable;
     }
 
-    void run() throws Exception {
-        call.call();
+    void run() {
+        runnable.run();
     }
 
 }
