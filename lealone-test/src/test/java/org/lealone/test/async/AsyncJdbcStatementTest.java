@@ -19,6 +19,7 @@ package org.lealone.test.async;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.test.TestBase;
@@ -34,24 +35,48 @@ public class AsyncJdbcStatementTest {
         stmt.executeUpdate(sql);
 
         stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(2, 2)", res -> {
-            System.out.println("updateCount: " + res.getResult());
+            if (res.isSucceeded()) {
+                System.out.println("updateCount: " + res.getResult());
+            } else {
+                close(stmt, conn);
+                res.getCause().printStackTrace();
+                return;
+            }
 
             try {
                 stmt.executeQueryAsync("SELECT * FROM test where f2 = 2", res2 -> {
-                    ResultSet rs = res2.getResult();
-                    try {
-                        while (rs.next()) {
-                            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+                    if (res2.isSucceeded()) {
+                        ResultSet rs = res2.getResult();
+                        try {
+                            while (rs.next()) {
+                                System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+                            }
+                            close(stmt, conn);
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
-                        stmt.close();
-                        conn.close();
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    } else {
+                        close(stmt, conn);
+                        res2.getCause().printStackTrace();
+                        return;
                     }
                 });
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
+    }
+
+    static void close(JdbcStatement stmt, Connection conn) {
+        try {
+            stmt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        try {
+            conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

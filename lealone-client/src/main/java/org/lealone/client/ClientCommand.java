@@ -26,9 +26,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
-import org.lealone.net.IntAsyncCallback;
 import org.lealone.net.Transfer;
-import org.lealone.net.VoidAsyncCallback;
 import org.lealone.storage.StorageCommand;
 
 /**
@@ -77,7 +75,7 @@ public class ClientCommand implements StorageCommand {
                 transfer.writeRequestHeader(id, Session.COMMAND_PREPARE);
             }
             transfer.writeInt(session.getSessionId()).writeString(sql);
-            VoidAsyncCallback ac = new VoidAsyncCallback() {
+            AsyncCallback<Void> ac = new AsyncCallback<Void>() {
                 @Override
                 public void runInternal() {
                     try {
@@ -250,6 +248,8 @@ public class ClientCommand implements StorageCommand {
                 }
             }
         };
+        if (async)
+            ac.setAsyncHandler(handler);
         transfer.addAsyncCallback(id, ac);
         transfer.flush();
 
@@ -329,7 +329,7 @@ public class ClientCommand implements StorageCommand {
     private int getUpdateCount(boolean isDistributedUpdate, int id, AsyncHandler<AsyncResult<Integer>> handler,
             boolean async) throws IOException {
         isQuery = false;
-        IntAsyncCallback ac = new IntAsyncCallback() {
+        AsyncCallback<Integer> ac = new AsyncCallback<Integer>() {
             @Override
             public void runInternal() {
                 try {
@@ -348,6 +348,8 @@ public class ClientCommand implements StorageCommand {
                 }
             }
         };
+        if (async)
+            ac.setAsyncHandler(handler);
         transfer.addAsyncCallback(id, ac);
         transfer.flush();
 
@@ -355,7 +357,6 @@ public class ClientCommand implements StorageCommand {
         if (async) {
             updateCount = -1;
         } else {
-            ac.await();
             updateCount = ac.getResult();
         }
 

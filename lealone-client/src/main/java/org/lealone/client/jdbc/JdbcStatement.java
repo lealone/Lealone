@@ -93,15 +93,20 @@ public class JdbcStatement extends TraceObject implements Statement {
                 AsyncHandler<AsyncResult<Result>> h = new AsyncHandler<AsyncResult<Result>>() {
                     @Override
                     public void handle(AsyncResult<Result> ar) {
-                        Result r = ar.getResult();
-                        resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet, scrollable,
-                                updatable);
-                        resultSet.setCommand(command);
+                        if (ar.isSucceeded()) {
+                            Result r = ar.getResult();
+                            resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet,
+                                    scrollable, updatable);
+                            resultSet.setCommand(command);
+                        }
                         setExecutingStatement(null);
 
                         if (handler != null) {
                             AsyncResult<ResultSet> r2 = new AsyncResult<>();
-                            r2.setResult(resultSet);
+                            if (ar.isSucceeded())
+                                r2.setResult(resultSet);
+                            else
+                                r2.setCause(ar.getCause());
                             handler.handle(r2);
                         }
                     }
@@ -173,7 +178,8 @@ public class JdbcStatement extends TraceObject implements Statement {
             AsyncHandler<AsyncResult<Integer>> h = new AsyncHandler<AsyncResult<Integer>>() {
                 @Override
                 public void handle(AsyncResult<Integer> ar) {
-                    updateCount = ar.getResult();
+                    if (ar.isSucceeded())
+                        updateCount = ar.getResult();
                     // 设置完后再调用handle，否则有可能当前语句提前关闭了
                     setExecutingStatement(null);
                     command.close();

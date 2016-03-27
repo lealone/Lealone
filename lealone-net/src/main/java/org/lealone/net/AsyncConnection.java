@@ -141,7 +141,7 @@ public class AsyncConnection implements Handler<Buffer> {
         for (String key : keys) {
             transfer.writeString(key).writeString(ci.getProperty(key));
         }
-        VoidAsyncCallback ac = new VoidAsyncCallback() {
+        AsyncCallback<Void> ac = new AsyncCallback<Void>() {
             @Override
             public void runInternal() {
                 try {
@@ -350,7 +350,7 @@ public class AsyncConnection implements Handler<Buffer> {
         transfer.flush();
     }
 
-    private void executeQuery(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
+    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
             int operation, int objectId, int maxRows, int fetchSize) throws IOException {
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
             @Override
@@ -402,7 +402,7 @@ public class AsyncConnection implements Handler<Buffer> {
         }
     }
 
-    private void executeUpdate(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
+    private void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
             int operation) throws IOException {
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Callable<Object>() {
             @Override
@@ -469,7 +469,7 @@ public class AsyncConnection implements Handler<Buffer> {
             }
 
             if (isServer) {
-                message = "[Server]" + message;
+                message = "[Server] " + message;
             }
 
             transfer.reset(); // 为什么要reset? 见reset中的注释
@@ -573,7 +573,7 @@ public class AsyncConnection implements Handler<Buffer> {
             }
             PreparedStatement command = session.prepareStatement(sql, fetchSize);
             cache.addObject(id, command);
-            executeQuery(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
+            executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
@@ -590,7 +590,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            executeQuery(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
+            executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
@@ -607,7 +607,7 @@ public class AsyncConnection implements Handler<Buffer> {
             }
             PreparedStatement command = session.prepareStatement(sql, -1);
             cache.addObject(id, command);
-            executeUpdate(transfer, session, sessionId, id, command, operation);
+            executeUpdateAsync(transfer, session, sessionId, id, command, operation);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
@@ -623,7 +623,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            executeUpdate(transfer, session, sessionId, id, command, operation);
+            executeUpdateAsync(transfer, session, sessionId, id, command, operation);
             break;
         }
         case Session.COMMAND_STORAGE_DISTRIBUTED_PUT:

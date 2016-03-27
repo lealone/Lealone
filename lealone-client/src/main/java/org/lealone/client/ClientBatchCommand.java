@@ -30,8 +30,8 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
+import org.lealone.net.AsyncCallback;
 import org.lealone.net.Transfer;
-import org.lealone.net.VoidAsyncCallback;
 
 public class ClientBatchCommand implements Command {
     private ClientSession session;
@@ -132,7 +132,7 @@ public class ClientBatchCommand implements Command {
     }
 
     private void getResultAsync() throws IOException {
-        VoidAsyncCallback ac = new VoidAsyncCallback() {
+        AsyncCallback<Void> ac = new AsyncCallback<Void>() {
             @Override
             public void runInternal() {
                 try {

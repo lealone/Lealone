@@ -19,8 +19,11 @@ package org.lealone.net;
 
 import java.util.concurrent.CountDownLatch;
 
+import org.lealone.async.AsyncHandler;
+import org.lealone.async.AsyncResult;
 import org.lealone.common.exceptions.DbException;
 
+@SuppressWarnings("rawtypes")
 public class AsyncCallback<T> {
 
     protected Transfer transfer;
@@ -28,11 +31,34 @@ public class AsyncCallback<T> {
     protected DbException e;
     protected CountDownLatch latch = new CountDownLatch(1);
 
+    protected AsyncHandler ah;
+
+    public AsyncCallback() {
+    }
+
+    public AsyncCallback(AsyncHandler ah) {
+        this.ah = ah;
+    }
+
+    public void setAsyncHandler(AsyncHandler ah) {
+        this.ah = ah;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void handle(DbException e) {
+        if (ah == null)
+            throw e;
+
+        AsyncResult r = new AsyncResult();
+        r.setCause(e);
+        ah.handle(r);
+    }
+
     public T getResult() {
         try {
             latch.await();
             if (e != null)
-                throw e;
+                handle(e);
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }
@@ -46,6 +72,7 @@ public class AsyncCallback<T> {
     public void setDbException(DbException e) {
         this.e = e;
         latch.countDown();
+        handle(e);
     }
 
     public void setResult(T result) {
@@ -53,14 +80,10 @@ public class AsyncCallback<T> {
         latch.countDown();
     }
 
-    public void run() {
-        runInternal();
-        latch.countDown();
-    }
-
     public void run(Transfer transfer) {
         this.transfer.setDataInputStream(transfer.getDataInputStream());
-        run();
+        runInternal();
+        latch.countDown();
     }
 
     protected void runInternal() {
@@ -70,7 +93,7 @@ public class AsyncCallback<T> {
         try {
             latch.await();
             if (e != null)
-                throw e;
+                handle(e);
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }

@@ -16,8 +16,8 @@ import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
+import org.lealone.net.AsyncCallback;
 import org.lealone.net.Transfer;
-import org.lealone.net.VoidAsyncCallback;
 
 /**
  * The client side part of a result set that is kept on the server.
@@ -168,7 +168,7 @@ public abstract class ClientResult implements Result {
         session.traceOperation("RESULT_FETCH_ROWS", id);
         transfer.writeRequestHeader(id, Session.RESULT_FETCH_ROWS).writeInt(fetchSize);
 
-        VoidAsyncCallback ac = new VoidAsyncCallback();
+        AsyncCallback<Void> ac = new AsyncCallback<>();
         transfer.addAsyncCallback(id, ac);
         transfer.flush();
         ac.await();
