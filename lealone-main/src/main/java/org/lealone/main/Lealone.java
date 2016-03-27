@@ -36,9 +36,6 @@ import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.ProtocolServerEngineManager;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLEngineManager;
-import org.lealone.sql.router.Router;
-import org.lealone.sql.router.RouterHolder;
-import org.lealone.sql.router.TransactionalRouter;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageEngineManager;
 import org.lealone.transaction.TransactionEngine;
@@ -85,7 +82,6 @@ public class Lealone {
         initBaseDir();
         initPluggableEngines();
         LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
-        initRouter();
     }
 
     private static void initBaseDir() {
@@ -190,11 +186,6 @@ public class Lealone {
             def.getParameters().put("base_dir", config.base_dir);
 
         pe.init(def.getParameters());
-    }
-
-    private static void initRouter() {
-        Router r = RouterHolder.getRouter();
-        RouterHolder.setRouter(new TransactionalRouter(r));
     }
 
     private static void start() throws Exception {
