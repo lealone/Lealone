@@ -390,21 +390,29 @@ class StatementWrapper extends StatementBase {
         if (start != 0 && now - start > session.getLockTimeout()) {
             throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, e.getCause(), "");
         }
-        Database database = session.getDatabase();
-        int sleep = 1 + MathUtils.randomInt(10);
-        while (true) {
-            try {
-                if (database.isMultiThreaded()) {
-                    Thread.sleep(sleep);
-                } else {
-                    database.wait(sleep);
+        Thread t = Thread.currentThread();
+        // 当两个sql执行线程更新同一行出现并发更新冲突时，
+        // 不阻塞当前sql执行线程，而是看看是否有其他sql需要执行
+        if (t instanceof SQLStatementExecutor) {
+            SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
+            sqlStatementExecutor.executeNextStatement();
+        } else {
+            Database database = session.getDatabase();
+            int sleep = 1 + MathUtils.randomInt(10);
+            while (true) {
+                try {
+                    if (database.isMultiThreaded()) {
+                        Thread.sleep(sleep);
+                    } else {
+                        database.wait(sleep);
+                    }
+                } catch (InterruptedException e1) {
+                    // ignore
                 }
-            } catch (InterruptedException e1) {
-                // ignore
-            }
-            long slept = System.nanoTime() / 1000000 - now;
-            if (slept >= sleep) {
-                break;
+                long slept = System.nanoTime() / 1000000 - now;
+                if (slept >= sleep) {
+                    break;
+                }
             }
         }
         return start == 0 ? now : start;

@@ -360,11 +360,10 @@ public class AsyncConnection implements Handler<Buffer> {
                         cache.addObject(objectId, result);
                         try {
                             transfer.writeResponseHeader(id, getStatus(session));
-
                             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
-                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY)
+                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
                                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
-
+                            }
                             int columnCount = result.getVisibleColumnCount();
                             transfer.writeInt(columnCount);
                             int rowCount = result.getRowCount();
@@ -400,8 +399,9 @@ public class AsyncConnection implements Handler<Buffer> {
                         try {
                             transfer.writeResponseHeader(id, getStatus(session));
                             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
-                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE)
+                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
                                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                            }
                             transfer.writeInt(updateCount);
                             transfer.flush();
                         } catch (Exception e) {
@@ -416,7 +416,7 @@ public class AsyncConnection implements Handler<Buffer> {
         addPreparedCommandToQueue(pc, sessionId);
     }
 
-    void addPreparedCommandToQueue(PreparedCommand pc, int sessionId) {
+    private void addPreparedCommandToQueue(PreparedCommand pc, int sessionId) {
         SessionInfo sessionInfo = sessionInfoMap.get(sessionId);
         if (sessionInfo == null) {
             throw DbException.throwInternalError("sessionInfo is null");
@@ -554,6 +554,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setRoot(false);
             }
             PreparedStatement command = session.prepareStatement(sql, fetchSize);
+            command.setFetchSize(fetchSize);
             cache.addObject(id, command);
             executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
             break;

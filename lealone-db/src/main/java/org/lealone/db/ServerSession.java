@@ -35,9 +35,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
-import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
-import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
@@ -497,7 +495,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public void commit(boolean ddl) {
         commit(ddl, null);
-        if (ddl) {
+        if (ddl && currentCommand != null) {
             getTransaction(); // DDL语句重新启动一个新事务
         }
     }
@@ -554,13 +552,18 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
         sessionStatus = SessionStatus.NO_TRANSACTION;
 
-        SQLStatementExecutor[] sqlStatementExecutors = SQLEngineManager.getInstance().getSQLStatementExecutors();
-        if (sqlStatementExecutors != null) {
-            Thread t = Thread.currentThread();
-            if (t instanceof SQLStatementExecutor) {
-                ((SQLStatementExecutor) t).ready();
-            }
-        }
+        // SQLStatementExecutor[] sqlStatementExecutors = SQLEngineManager.getInstance().getSQLStatementExecutors();
+        // // if (sqlStatementExecutors != null) {
+        // // Thread t = Thread.currentThread();
+        // // if (t instanceof SQLStatementExecutor) {
+        // // ((SQLStatementExecutor) t).ready();
+        // // }
+        // // }
+        //
+        // if (sqlStatementExecutors != null) {
+        // for (SQLStatementExecutor e : sqlStatementExecutors)
+        // e.ready();
+        // }
     }
 
     private void endTransaction() {

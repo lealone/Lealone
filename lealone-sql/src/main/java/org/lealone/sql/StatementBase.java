@@ -370,14 +370,6 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         if ((++rowScanCount & 127) == 0) {
             checkCanceled();
         }
-        if (isQuery()) {
-            if ((rowScanCount % 8) == 0) {
-                this.currentRowNumber = rowNumber;
-                // Coroutine.yield();
-                this.currentRowNumber = rowNumber;
-                this.currentRowNumber = rowNumber;
-            }
-        }
         this.currentRowNumber = rowNumber;
         setProgress();
     }

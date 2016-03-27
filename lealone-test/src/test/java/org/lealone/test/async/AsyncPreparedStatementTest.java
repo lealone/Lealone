@@ -24,9 +24,8 @@ import java.util.concurrent.CountDownLatch;
 import org.lealone.client.jdbc.JdbcPreparedStatement;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.test.TestBase;
-import org.lealone.test.sql.SqlTestBase;
 
-public class AsyncPreparedStatementTest extends SqlTestBase {
+public class AsyncPreparedStatementTest {
 
     public static void main(String[] args) throws Exception {
         Connection conn = new TestBase().getConnection();
