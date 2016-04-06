@@ -5181,8 +5181,7 @@ public class Parser implements SQLParser {
             read("REFERENTIAL_INTEGRITY");
             int type = SQLStatement.ALTER_TABLE_SET_REFERENTIAL_INTEGRITY;
             boolean value = readBooleanSetting();
-            AlterTableSet command = new AlterTableSet(session, table.getSchema(), type, value);
-            command.setTableName(table.getName());
+            AlterTableSet command = new AlterTableSet(session, table, type, value);
             if (readIf("CHECK")) {
                 command.setCheckExisting(true);
             } else if (readIf("NOCHECK")) {
@@ -5360,7 +5359,6 @@ public class Parser implements SQLParser {
                 columnsToAdd.add(column);
             } while (readIf(","));
             read(")");
-            command.setNewColumns(columnsToAdd);
         } else {
             boolean ifNotExists = readIfNotExists();
             command.setIfNotExists(ifNotExists);
@@ -5433,8 +5431,7 @@ public class Parser implements SQLParser {
             }
             return command;
         } else if (allowIndexDefinition && (isToken("INDEX") || isToken("KEY"))) {
-            // MySQL
-            // need to read ahead, as it could be a column name
+            // MySQL need to read ahead, as it could be a column name
             int start = lastParseIndex;
             read();
             if (DataType.getTypeByName(currentToken) != null) {

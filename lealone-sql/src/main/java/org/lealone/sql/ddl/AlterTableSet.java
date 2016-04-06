@@ -9,7 +9,6 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
-import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 
@@ -19,14 +18,14 @@ import org.lealone.sql.SQLStatement;
  */
 public class AlterTableSet extends SchemaStatement {
 
-    private String tableName;
+    private final Table table;
     private final int type;
-
     private final boolean value;
     private boolean checkExisting;
 
-    public AlterTableSet(ServerSession session, Schema schema, int type, boolean value) {
-        super(session, schema);
+    public AlterTableSet(ServerSession session, Table table, int type, boolean value) {
+        super(session, table.getSchema());
+        this.table = table;
         this.type = type;
         this.value = value;
     }
@@ -45,13 +44,8 @@ public class AlterTableSet extends SchemaStatement {
         return true;
     }
 
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
-    }
-
     @Override
     public int update() {
-        Table table = getSchema().getTableOrView(session, tableName);
         session.getUser().checkRight(table, Right.ALL);
         table.lock(session, true, true);
         switch (type) {
