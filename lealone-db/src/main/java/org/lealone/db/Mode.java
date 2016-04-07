@@ -104,11 +104,6 @@ public class Mode {
     public boolean treatEmptyStringsAsNull;
 
     /**
-     * Support the pseudo-table SYSIBM.SYSDUMMY1.
-     */
-    public boolean sysDummy1;
-
-    /**
      * Text can be concatenated using '+'.
      */
     public boolean allowPlusForStringConcat;

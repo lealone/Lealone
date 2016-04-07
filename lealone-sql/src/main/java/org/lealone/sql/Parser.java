@@ -649,8 +649,6 @@ public class Parser implements SQLParser {
             if (equalsToken("SESSION", schemaName)) {
                 // for local temporary tables
                 schema = database.getSchema(session.getCurrentSchemaName());
-            } else if (database.getMode().sysDummy1 && "SYSIBM".equals(schemaName)) {
-                // IBM DB2 and Apache Derby compatibility: SYSIBM.SYSDUMMY1
             } else {
                 throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
             }
@@ -1693,8 +1691,6 @@ public class Parser implements SQLParser {
                     table = new FunctionTable(mainSchema, session, expr, (org.lealone.db.expression.FunctionCall) call);
                 }
             } else if (equalsToken("DUAL", tableName)) {
-                table = getDualTable(false);
-            } else if (database.getMode().sysDummy1 && equalsToken("SYSDUMMY1", tableName)) {
                 table = getDualTable(false);
             } else {
                 table = readTableOrView(tableName);
