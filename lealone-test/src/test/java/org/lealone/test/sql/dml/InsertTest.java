@@ -84,5 +84,14 @@ public class InsertTest extends SqlTestBase {
 
         sql = "DELETE FROM InsertTest";
         assertEquals(1, executeUpdate(sql));
+
+        // test NULL_TO_DEFAULT
+        sql = "DROP TABLE IF EXISTS InsertTest";
+        executeUpdate(sql);
+        sql = "CREATE TABLE IF NOT EXISTS InsertTest (f1 int, f2 int NULL_TO_DEFAULT)";
+        executeUpdate(sql);
+        executeUpdate("insert into InsertTest(f1) values(10)");
+        sql = "DELETE FROM InsertTest";
+        assertEquals(1, executeUpdate(sql));
     }
 }
