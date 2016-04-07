@@ -6,7 +6,7 @@
 
 ### Lealone有哪些特性
 
-#### Lealone开源版本(不支持分布式)
+##### 开源版本(不支持分布式)
 
 * 完全异步化，使用少量线程就能处理大量并发
 
@@ -23,7 +23,7 @@
 * 从[H2数据库](http://www.h2database.com/html/main.html)借鉴了大量成熟的代码和思想
 
 
-#### Lealone企业版本(支持分布式)
+##### 企业版本(支持分布式)
 
 * 内置AOSE自适应优化存储引擎(Adaptive Optimization Storage Engine)
 
