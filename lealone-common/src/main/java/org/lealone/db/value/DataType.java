@@ -73,8 +73,7 @@ public class DataType {
     public String jdbc;
 
     /**
-     * How closely the data type maps to the corresponding JDBC SQL type (low is
-     * best).
+     * How closely the data type maps to the corresponding JDBC SQL type (low is best).
      */
     public int sqlTypePos;
 
@@ -641,9 +640,9 @@ public class DataType {
         switch (sqlType) {
         case Types.OTHER:
         case Types.JAVA_OBJECT:
-            //            if (sqlTypeName.equalsIgnoreCase("geometry")) {
-            //                return Value.GEOMETRY;
-            //            }
+            // if (sqlTypeName.equalsIgnoreCase("geometry")) {
+            // return Value.GEOMETRY;
+            // }
         }
         return convertSQLTypeToValueType(sqlType);
     }

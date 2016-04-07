@@ -3884,8 +3884,7 @@ public class Parser implements SQLParser {
             if (selectivity != Constants.SELECTIVITY_DEFAULT) {
                 column.setSelectivity(selectivity);
             }
-            Expression checkConstraint = (Expression) templateColumn.getCheckConstraint(session, columnName);
-            column.addCheckConstraint(session, checkConstraint);
+            column.addCheckConstraint(session, templateColumn.getCheckConstraint(session, columnName));
         }
         column.setComment(comment);
         column.setOriginalSQL(original);
@@ -5643,25 +5642,12 @@ public class Parser implements SQLParser {
         }
         if (readIf("ENGINE")) {
             readIf("=");
-            // if (readIf("=")) {
-            // // map MySQL engine types onto H2 behavior
-            // String storageEngine = readUniqueIdentifier();
-            // if ("InnoDb".equalsIgnoreCase(storageEngine)) {
-            // // ok
-            // } else if (!"MyISAM".equalsIgnoreCase(storageEngine)) {
-            // throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, storageEngine);
-            // }
-            // }
             command.setStorageEngineName(readUniqueIdentifier());
         } else if (database.getSettings().defaultStorageEngine != null) {
             command.setStorageEngineName(database.getSettings().defaultStorageEngine);
         }
         if (readIf("WITH")) {
             command.setStorageEngineParams(parseParameters());
-        }
-        if (readIf("CHARSET")) {
-            read("=");
-            read("UTF8");
         }
         if (temp) {
             if (readIf("ON")) {
@@ -5673,11 +5659,8 @@ public class Parser implements SQLParser {
                     command.setOnCommitTruncate();
                 }
             } else if (readIf("NOT")) {
-                if (readIf("PERSISTENT")) {
-                    command.setPersistData(false);
-                } else {
-                    read("LOGGED");
-                }
+                read("PERSISTENT");
+                command.setPersistData(false);
             }
             if (readIf("TRANSACTIONAL")) {
                 command.setTransactional(true);
