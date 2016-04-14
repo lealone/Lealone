@@ -93,7 +93,6 @@ public class AlterTableAlterColumn extends SchemaStatement {
         session.getUser().checkRight(table, Right.ALL);
         table.checkSupportAlter();
         table.lock(session, true, true);
-        Sequence sequence = oldColumn == null ? null : oldColumn.getSequence();
         if (newColumn != null) {
             checkDefaultReferencesTable((Expression) newColumn.getDefaultExpression());
         }
@@ -124,6 +123,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             break;
         }
         case SQLStatement.ALTER_TABLE_ALTER_COLUMN_DEFAULT: {
+            Sequence sequence = oldColumn.getSequence();
             checkDefaultReferencesTable(defaultExpression);
             oldColumn.setSequence(null);
             oldColumn.setDefaultExpression(session, defaultExpression);
@@ -226,9 +226,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
         Database db = session.getDatabase();
         String baseName = table.getName();
         String tempName = db.getTempTableName(baseName, session);
-        Column[] columns = table.getColumns();
-        ArrayList<Column> newColumns = New.arrayList();
-        Table newTable = cloneTableStructure(columns, db, tempName, newColumns);
+        Table newTable = cloneTableStructure(db, tempName);
         try {
             // check if a view would become invalid
             // (because the column to drop is referenced or so)
@@ -278,7 +276,9 @@ public class AlterTableAlterColumn extends SchemaStatement {
         }
     }
 
-    private Table cloneTableStructure(Column[] columns, Database db, String tempName, ArrayList<Column> newColumns) {
+    private Table cloneTableStructure(Database db, String tempName) {
+        Column[] columns = table.getColumns();
+        ArrayList<Column> newColumns = New.arrayList();
         for (Column col : columns) {
             newColumns.add(col.getClone());
         }
