@@ -51,22 +51,20 @@ public class StandardPrimaryIndex extends IndexBase {
     private int mainIndexColumn = -1;
 
     public StandardPrimaryIndex(ServerSession session, StandardTable table) {
-        super(table, table.getId(), table.getName() + "_DATA", IndexType.createScan());
+        super(table, table.getId(), table.getName() + "_DATA", IndexType.createScan(), IndexColumn.wrap(table
+                .getColumns()));
         this.table = table;
-        IndexColumn[] columns = IndexColumn.wrap(table.getColumns());
-        setIndexColumns(columns);
+        mapName = table.getMapNameForTable(getId());
         int[] sortTypes = new int[columns.length];
         for (int i = 0; i < columns.length; i++) {
             sortTypes[i] = SortOrder.ASCENDING;
         }
         ValueDataType keyType = new ValueDataType(null, null, null);
         ValueDataType valueType = new ValueDataType(database, database.getCompareMode(), sortTypes);
-        mapName = table.getMapNameForTable(getId());
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         boolean isShardingMode = session.isShardingMode();
-        // TODO处理内存表的情况!table.isPersistData()
         dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
                 keyType, valueType, storage, isShardingMode);
 

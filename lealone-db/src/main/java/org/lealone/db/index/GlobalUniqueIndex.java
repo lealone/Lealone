@@ -34,8 +34,7 @@ public class GlobalUniqueIndex extends IndexBase {
 
     public GlobalUniqueIndex(ServerSession session, StandardTable table, int id, String indexName,
             IndexColumn[] columns, IndexType indexType) {
-        super(table, id, indexName, indexType);
-        setIndexColumns(columns);
+        super(table, id, indexName, indexType, columns);
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }

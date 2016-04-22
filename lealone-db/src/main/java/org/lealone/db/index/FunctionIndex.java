@@ -31,8 +31,7 @@ public class FunctionIndex extends IndexBase {
     private final FunctionTable functionTable;
 
     public FunctionIndex(FunctionTable functionTable, IndexColumn[] columns) {
-        super(functionTable, 0, null, IndexType.createNonUnique());
-        setIndexColumns(columns);
+        super(functionTable, 0, null, IndexType.createNonUnique(), columns);
         this.functionTable = functionTable;
     }
 

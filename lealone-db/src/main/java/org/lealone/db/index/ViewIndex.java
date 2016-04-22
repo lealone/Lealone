@@ -52,8 +52,7 @@ public class ViewIndex extends IndexBase {
     private final ServerSession createSession;
 
     public ViewIndex(TableView view, String querySQL, ArrayList<CommandParameter> originalParameters, boolean recursive) {
-        super(view, 0, null, IndexType.createNonUnique());
-        setIndexColumns(null);
+        super(view, 0, null, IndexType.createNonUnique(), null);
         this.view = view;
         this.querySQL = querySQL;
         this.originalParameters = originalParameters;
@@ -64,8 +63,7 @@ public class ViewIndex extends IndexBase {
     }
 
     public ViewIndex(TableView view, ViewIndex index, ServerSession session, int[] masks) {
-        super(view, 0, null, IndexType.createNonUnique());
-        setIndexColumns(null);
+        super(view, 0, null, IndexType.createNonUnique(), null);
         this.view = view;
         this.querySQL = index.querySQL;
         this.originalParameters = index.originalParameters;

@@ -32,8 +32,7 @@ public class HashIndex extends IndexBase {
     private ValueHashMap<Long> rows;
 
     public HashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
-        super(table, id, indexName, indexType);
-        setIndexColumns(columns);
+        super(table, id, indexName, indexType, columns);
         this.indexColumn = columns[0].column.getColumnId();
         this.tableData = table;
         reset();

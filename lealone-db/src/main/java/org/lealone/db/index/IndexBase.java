@@ -45,11 +45,23 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
      * @param id the object id
      * @param name the index name
      * @param indexType the index type
+     * @param indexColumns the columns that are indexed or null if this is not yet known
      */
-    protected IndexBase(Table table, int id, String name, IndexType indexType) {
+    protected IndexBase(Table table, int id, String name, IndexType indexType, IndexColumn[] indexColumns) {
         super(table.getSchema(), id, name, Trace.INDEX);
         this.table = table;
         this.indexType = indexType;
+        this.indexColumns = indexColumns;
+        if (indexColumns != null) {
+            int len = indexColumns.length;
+            columns = new Column[len];
+            columnIds = new int[len];
+            for (int i = 0; i < len; i++) {
+                Column col = indexColumns[i].column;
+                columns[i] = col;
+                columnIds[i] = col.getColumnId();
+            }
+        }
     }
 
     @Override
@@ -57,41 +69,37 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         return DbObjectType.INDEX;
     }
 
-    /**
-     * Initialize the index columns.
-     *
-     * @param newIndexColumns the columns that are indexed or null if this is not yet known
-     */
-    protected void setIndexColumns(IndexColumn[] newIndexColumns) {
-        if (newIndexColumns != null) {
-            int len = newIndexColumns.length;
-            indexColumns = newIndexColumns;
-            columns = new Column[len];
-            columnIds = new int[len];
-            for (int i = 0; i < len; i++) {
-                Column col = newIndexColumns[i].column;
-                columns[i] = col;
-                columnIds[i] = col.getColumnId();
-            }
-        }
+    @Override
+    public Table getTable() {
+        return table;
+    }
+
+    @Override
+    public IndexType getIndexType() {
+        return indexType;
+    }
+
+    @Override
+    public IndexColumn[] getIndexColumns() {
+        return indexColumns;
+    }
+
+    @Override
+    public Column[] getColumns() {
+        return columns;
     }
 
     /**
-     * Create a duplicate key exception with a message that contains the index
-     * name.
+     * Create a duplicate key exception with a message that contains the index name.
      *
      * @return the exception
      */
     protected DbException getDuplicateKeyException() {
-        String sql = getName() + " ON " + table.getSQL() + "(" + getColumnListSQL() + ")";
-        DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-        e.setSource(this);
-        return e;
+        return getDuplicateKeyException(null);
     }
 
     /**
-     * Create a duplicate key exception with a message that contains the index
-     * name.
+     * Create a duplicate key exception with a message that contains the index name.
      *
      * @param key the key values
      * @return the exception
@@ -132,17 +140,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
         return find(filter.getSession(), first, last);
     }
-
-    /**
-     * Find a row or a list of rows that is larger and create a cursor to
-     * iterate over the result. The base implementation doesn't support this feature.
-     *
-     * @param session the session
-     * @param higherThan the lower limit (excluding)
-     * @param last the last row, or null for no limit
-     * @return the cursor
-     * @throws DbException always
-     */
 
     /**
      * Calculate the cost for the given mask as if this index was a typical
@@ -367,26 +364,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public String getCreateSQL() {
         return getCreateSQLForCopy(table, getSQL());
-    }
-
-    @Override
-    public IndexColumn[] getIndexColumns() {
-        return indexColumns;
-    }
-
-    @Override
-    public Column[] getColumns() {
-        return columns;
-    }
-
-    @Override
-    public IndexType getIndexType() {
-        return indexType;
-    }
-
-    @Override
-    public Table getTable() {
-        return table;
     }
 
     @Override

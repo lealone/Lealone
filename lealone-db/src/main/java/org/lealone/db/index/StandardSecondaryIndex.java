@@ -36,15 +36,15 @@ import org.lealone.transaction.TransactionMap;
 public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     private final StandardTable table;
-    private final int keyColumns;
     private final String mapName;
+    private final int keyColumns;
     private final TransactionMap<Value, Value> dataMap;
 
     public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
             IndexColumn[] columns, IndexType indexType) {
-        super(table, id, indexName, indexType);
+        super(table, id, indexName, indexType, columns);
         this.table = table;
-        setIndexColumns(columns);
+        mapName = table.getMapNameForIndex(getId());
         if (!database.isStarting()) {
             checkIndexColumnTypes(columns);
         }
@@ -59,7 +59,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         Database db = session.getDatabase();
         ValueDataType keyType = new ValueDataType(db, db.getCompareMode(), sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
-        mapName = table.getMapNameForIndex(getId());
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();

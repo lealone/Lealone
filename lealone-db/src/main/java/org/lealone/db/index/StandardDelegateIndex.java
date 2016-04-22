@@ -27,9 +27,8 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
 
     public StandardDelegateIndex(StandardTable table, int id, String name, StandardPrimaryIndex mainIndex,
             IndexType indexType) {
-        super(table, id, name, indexType);
-        IndexColumn[] cols = IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) });
-        setIndexColumns(cols);
+        super(table, id, name, indexType, IndexColumn.wrap(new Column[] { table.getColumn(mainIndex
+                .getMainIndexColumn()) }));
         this.mainIndex = mainIndex;
         if (id < 0) {
             throw DbException.throwInternalError("" + name);

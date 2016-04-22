@@ -26,8 +26,7 @@ public class RangeIndex extends IndexBase {
     private final RangeTable rangeTable;
 
     public RangeIndex(RangeTable table, IndexColumn[] columns) {
-        super(table, 0, "RANGE_INDEX", IndexType.createNonUnique());
-        setIndexColumns(columns);
+        super(table, 0, "RANGE_INDEX", IndexType.createNonUnique(), columns);
         this.rangeTable = table;
     }
 
