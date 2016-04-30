@@ -222,6 +222,14 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
     }
 
+    /**
+     * Execute a query and return the result.
+     * This method prepares everything and calls {@link #query(int)} finally.
+     *
+     * @param maxRows the maximum number of rows to return
+     * @param scrollable if the result set must be scrollable (ignored)
+     * @return the result set
+     */
     @Override
     public Result query(int maxRows, boolean scrollable) {
         return query(maxRows);
