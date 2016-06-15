@@ -5,6 +5,7 @@
  */
 package org.lealone.db.index;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -22,6 +23,7 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
+import org.lealone.db.table.TableAlterHistoryRecord;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
@@ -46,7 +48,7 @@ public class StandardPrimaryIndex extends IndexBase {
 
     private final StandardTable table;
     private final String mapName;
-    private final TransactionMap<Value, Value> dataMap;
+    private final TransactionMap<Value, VersionedValue> dataMap;
     private long lastKey;
     private int mainIndexColumn = -1;
 
@@ -61,12 +63,13 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         ValueDataType keyType = new ValueDataType(null, null, null);
         ValueDataType valueType = new ValueDataType(database, database.getCompareMode(), sortTypes);
+        VersionedValueType vvType = new VersionedValueType(valueType);
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         boolean isShardingMode = session.isShardingMode();
         dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
-                keyType, valueType, storage, isShardingMode);
+                keyType, vvType, storage, isShardingMode);
 
         transactionEngine.addTransactionMap(dataMap);
 
@@ -113,8 +116,8 @@ public class StandardPrimaryIndex extends IndexBase {
                 row.setKey(++lastKey);
             }
         } else {
-            long c = row.getValue(mainIndexColumn).getLong();
-            row.setKey(c);
+            long k = row.getValue(mainIndexColumn).getLong();
+            row.setKey(k);
         }
 
         if (table.getContainsLargeObject()) {
@@ -130,9 +133,9 @@ public class StandardPrimaryIndex extends IndexBase {
             }
         }
 
-        TransactionMap<Value, Value> map = getMap(session);
+        TransactionMap<Value, VersionedValue> map = getMap(session);
         Value key = ValueLong.get(row.getKey());
-        Value old = map.get(key);
+        VersionedValue old = map.get(key);
         if (old != null) {
             String sql = "PRIMARY KEY ON " + table.getSQL();
             if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
@@ -143,7 +146,8 @@ public class StandardPrimaryIndex extends IndexBase {
             throw e;
         }
         try {
-            map.put(key, ValueArray.get(row.getValueList()));
+            VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
+            map.put(key, value);
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
         }
@@ -160,9 +164,9 @@ public class StandardPrimaryIndex extends IndexBase {
                 }
             }
         }
-        TransactionMap<Value, Value> map = getMap(session);
+        TransactionMap<Value, VersionedValue> map = getMap(session);
         try {
-            Value old = map.remove(ValueLong.get(row.getKey()));
+            VersionedValue old = map.remove(ValueLong.get(row.getKey()));
             if (old == null) {
                 throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
             }
@@ -198,15 +202,15 @@ public class StandardPrimaryIndex extends IndexBase {
                 max = v;
             }
         }
-        TransactionMap<Value, Value> map = getMap(session);
-        return new StandardPrimaryIndexCursor(map.entryIterator(min), max);
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        return new StandardPrimaryIndexCursor(session, table, this, map.entryIterator(min), max);
     }
 
     @Override
     public Row getRow(ServerSession session, long key) {
-        TransactionMap<Value, Value> map = getMap(session);
-        Value v = map.get(ValueLong.get(key));
-        ValueArray array = (ValueArray) v;
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        VersionedValue v = map.get(ValueLong.get(key));
+        ValueArray array = v.value;
         Row row = new Row(array.getList(), 0);
         row.setKey(key);
         return row;
@@ -230,7 +234,7 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public void remove(ServerSession session) {
-        TransactionMap<Value, Value> map = getMap(session);
+        TransactionMap<Value, VersionedValue> map = getMap(session);
         if (!map.isClosed()) {
             map.remove();
         }
@@ -238,7 +242,7 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public void truncate(ServerSession session) {
-        TransactionMap<Value, Value> map = getMap(session);
+        TransactionMap<Value, VersionedValue> map = getMap(session);
         if (table.getContainsLargeObject()) {
             database.getLobStorage().removeAllForTable(table.getId());
         }
@@ -252,15 +256,16 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public Cursor findFirstOrLast(ServerSession session, boolean first) {
-        TransactionMap<Value, Value> map = getMap(session);
+        TransactionMap<Value, VersionedValue> map = getMap(session);
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
         if (v == null) {
-            return new StandardPrimaryIndexCursor(Collections.<Entry<Value, Value>> emptyList().iterator(), null);
+            return new StandardPrimaryIndexCursor(session, table, this, Collections
+                    .<Entry<Value, VersionedValue>> emptyList().iterator(), null);
         }
-        Value value = map.get(v);
-        Entry<Value, Value> e = new DataUtils.MapEntry<Value, Value>(v, value);
-        List<Entry<Value, Value>> list = Arrays.asList(e);
-        StandardPrimaryIndexCursor c = new StandardPrimaryIndexCursor(list.iterator(), v);
+        VersionedValue value = map.get(v);
+        Entry<Value, VersionedValue> e = new DataUtils.MapEntry<Value, VersionedValue>(v, value);
+        List<Entry<Value, VersionedValue>> list = Arrays.asList(e);
+        StandardPrimaryIndexCursor c = new StandardPrimaryIndexCursor(session, table, this, list.iterator(), v);
         c.next();
         return c;
     }
@@ -272,7 +277,7 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public long getRowCount(ServerSession session) {
-        TransactionMap<Value, Value> map = getMap(session);
+        TransactionMap<Value, VersionedValue> map = getMap(session);
         return map.sizeAsLong();
     }
 
@@ -330,8 +335,8 @@ public class StandardPrimaryIndex extends IndexBase {
      * @return the cursor
      */
     Cursor find(ServerSession session, ValueLong first, ValueLong last) {
-        TransactionMap<Value, Value> map = getMap(session);
-        return new StandardPrimaryIndexCursor(map.entryIterator(first), last);
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        return new StandardPrimaryIndexCursor(session, table, this, map.entryIterator(first), last);
     }
 
     @Override
@@ -345,7 +350,7 @@ public class StandardPrimaryIndex extends IndexBase {
      * @param session the session
      * @return the map
      */
-    TransactionMap<Value, Value> getMap(ServerSession session) {
+    TransactionMap<Value, VersionedValue> getMap(ServerSession session) {
         if (session == null) {
             return dataMap;
         }
@@ -366,12 +371,19 @@ public class StandardPrimaryIndex extends IndexBase {
      */
     private static class StandardPrimaryIndexCursor implements Cursor {
 
-        private final Iterator<Entry<Value, Value>> it;
+        private final ServerSession session;
+        private final StandardTable table;
+        private final StandardPrimaryIndex index;
+        private final Iterator<Entry<Value, VersionedValue>> it;
         private final ValueLong last;
-        private Entry<Value, Value> current;
+        private Entry<Value, VersionedValue> current;
         private Row row;
 
-        public StandardPrimaryIndexCursor(Iterator<Entry<Value, Value>> it, ValueLong last) {
+        public StandardPrimaryIndexCursor(ServerSession session, StandardTable table, StandardPrimaryIndex index,
+                Iterator<Entry<Value, VersionedValue>> it, ValueLong last) {
+            this.session = session;
+            this.table = table;
+            this.index = index;
             this.it = it;
             this.last = last;
         }
@@ -380,9 +392,28 @@ public class StandardPrimaryIndex extends IndexBase {
         public Row get() {
             if (row == null) {
                 if (current != null) {
-                    ValueArray array = (ValueArray) current.getValue();
-                    row = new Row(array.getList(), 0);
+                    VersionedValue value = current.getValue();
+                    Value[] data = value.value.getList();
+                    int version = value.vertion;
+                    row = new Row(data, 0);
                     row.setKey(current.getKey().getLong());
+                    row.setVersion(version);
+
+                    if (table.getVersion() != version) {
+                        ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getTableAlterHistoryRecord(
+                                table.getId(), version, table.getVersion());
+                        Value[] newValues = data;
+                        for (TableAlterHistoryRecord record : records) {
+                            newValues = record.redo(session, newValues);
+                        }
+                        if (newValues != data) {
+                            index.remove(session, row);
+                            row = new Row(newValues, 0);
+                            row.setKey(current.getKey().getLong());
+                            row.setVersion(table.getVersion());
+                            index.add(session, row);
+                        }
+                    }
                 }
             }
             return row;

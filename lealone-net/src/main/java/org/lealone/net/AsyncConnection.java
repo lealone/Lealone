@@ -1002,6 +1002,7 @@ public class AsyncConnection implements Handler<Buffer> {
             try {
                 processRequest(transfer, id);
             } catch (Throwable e) {
+                logger.error("process request", e);
                 sendError(transfer, id, e);
             }
         } else {

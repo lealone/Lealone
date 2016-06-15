@@ -12,6 +12,7 @@ import org.lealone.db.Data;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 
 /**
@@ -188,6 +189,14 @@ public class Row implements SearchRow {
 
     public Value[] getValueList() {
         return data;
+    }
+
+    public Value[] getValueListWithVersion() {
+        int len = data.length;
+        Value[] d2 = new Value[len + 1];
+        System.arraycopy(data, 0, d2, 0, len);
+        d2[len] = ValueInt.get(version);
+        return d2;
     }
 
     public Table getTable() {

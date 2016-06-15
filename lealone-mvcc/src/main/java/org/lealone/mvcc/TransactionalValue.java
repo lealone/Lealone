@@ -17,17 +17,17 @@
  */
 package org.lealone.mvcc;
 
-class VersionedValue {
+class TransactionalValue {
 
     public final long tid;
     public final int logId;
     public final Object value;
 
-    public VersionedValue(Object value) {
+    public TransactionalValue(Object value) {
         this(0, 0, value);
     }
 
-    public VersionedValue(long tid, int logId, Object value) {
+    public TransactionalValue(long tid, int logId, Object value) {
         this.tid = tid;
         this.logId = logId;
         this.value = value;
@@ -35,7 +35,7 @@ class VersionedValue {
 
     @Override
     public String toString() {
-        StringBuilder buff = new StringBuilder("VersionedValue[ ");
+        StringBuilder buff = new StringBuilder("TransactionalValue[ ");
         buff.append("tid = ").append(tid);
         buff.append(", logId = ").append(logId);
         buff.append(", value = ").append(value).append(" ]");

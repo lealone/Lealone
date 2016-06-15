@@ -12,22 +12,22 @@ import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
 
 /**
- * The value type for a versioned value.
+ * The value type for a transactional value.
  * 
  * @author H2 Group
  * @author zhh
  */
-class VersionedValueType implements DataType {
+class TransactionalValueType implements DataType {
 
     final DataType valueType;
 
-    public VersionedValueType(DataType valueType) {
+    public TransactionalValueType(DataType valueType) {
         this.valueType = valueType;
     }
 
     @Override
     public int getMemory(Object obj) {
-        VersionedValue v = (VersionedValue) obj;
+        TransactionalValue v = (TransactionalValue) obj;
         return valueType.getMemory(v.value) + 12;
     }
 
@@ -36,8 +36,8 @@ class VersionedValueType implements DataType {
         if (aObj == bObj) {
             return 0;
         }
-        VersionedValue a = (VersionedValue) aObj;
-        VersionedValue b = (VersionedValue) bObj;
+        TransactionalValue a = (TransactionalValue) aObj;
+        TransactionalValue b = (TransactionalValue) bObj;
         long comp = a.tid - b.tid;
         if (comp == 0) {
             comp = a.logId - b.logId;
@@ -52,7 +52,7 @@ class VersionedValueType implements DataType {
         if (buff.get() == 0) {
             // fast path (no tid/logId or null entries)
             for (int i = 0; i < len; i++) {
-                obj[i] = new VersionedValue(valueType.read(buff));
+                obj[i] = new TransactionalValue(valueType.read(buff));
             }
         } else {
             // slow path (some entries may be null)
@@ -70,14 +70,14 @@ class VersionedValueType implements DataType {
         if (buff.get() == 1) {
             value = valueType.read(buff);
         }
-        return new VersionedValue(tid, logId, value);
+        return new TransactionalValue(tid, logId, value);
     }
 
     @Override
     public void write(WriteBuffer buff, Object[] obj, int len, boolean key) {
         boolean fastPath = true;
         for (int i = 0; i < len; i++) {
-            VersionedValue v = (VersionedValue) obj[i];
+            TransactionalValue v = (TransactionalValue) obj[i];
             if (v.tid != 0 || v.value == null) {
                 fastPath = false;
             }
@@ -85,7 +85,7 @@ class VersionedValueType implements DataType {
         if (fastPath) {
             buff.put((byte) 0);
             for (int i = 0; i < len; i++) {
-                VersionedValue v = (VersionedValue) obj[i];
+                TransactionalValue v = (TransactionalValue) obj[i];
                 valueType.write(buff, v.value);
             }
         } else {
@@ -100,7 +100,7 @@ class VersionedValueType implements DataType {
 
     @Override
     public void write(WriteBuffer buff, Object obj) {
-        VersionedValue v = (VersionedValue) obj;
+        TransactionalValue v = (TransactionalValue) obj;
         buff.putVarLong(v.tid);
         buff.putVarInt(v.logId);
         if (v.value == null) {

@@ -75,22 +75,27 @@ public class StandardTable extends Table {
     private boolean containsGlobalUniqueIndex;
     private long rowCount;
 
+    ArrayList<TableAlterHistoryRecord> tableAlterHistoryRecords;
+
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
-        storageEngineName = data.storageEngineName;
-        isHidden = data.isHidden;
-        globalTemporary = data.globalTemporary;
-        traceLock = database.getTrace(Trace.LOCK);
-        nextAnalyze = database.getSettings().analyzeAuto;
         this.storageEngine = storageEngine;
+        storageEngineName = data.storageEngineName;
         storageEngineParams = data.storageEngineParams;
         if (storageEngineParams != null) {
             if (database.getSettings().databaseToUpper)
                 mapType = storageEngineParams.get("MAP_TYPE");
             else
                 mapType = storageEngineParams.get("map_type");
-        } else
+        } else {
             mapType = null;
+        }
+
+        globalTemporary = data.globalTemporary;
+        isHidden = data.isHidden;
+        traceLock = database.getTrace(Trace.LOCK);
+        nextAnalyze = database.getSettings().analyzeAuto;
+
         setTemporary(data.temporary);
         setColumns(data.columns.toArray(new Column[0]));
         for (Column col : getColumns()) {
@@ -100,6 +105,7 @@ public class StandardTable extends Table {
         }
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
+        tableAlterHistoryRecords = getDatabase().getTableAlterHistoryRecord(id, 0, getVersion() - 1);
     }
 
     public String getMapName() {
@@ -735,6 +741,7 @@ public class StandardTable extends Table {
 
     @Override
     public void addRow(ServerSession session, Row row) {
+        row.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         int savepointId = t.getSavepointId();
@@ -912,5 +919,24 @@ public class StandardTable extends Table {
                 maps.add(i.getStorageMap());
         }
         return maps;
+    }
+
+    @Override
+    public void setNewColumns(Column[] columns) {
+        this.oldColumns = this.columns;
+        setColumns(columns);
+    }
+
+    private Column[] oldColumns;
+
+    @Override
+    public Column[] getOldColumns() {
+        return oldColumns;
+    }
+
+    @Override
+    public void incrementVersion() {
+        super.incrementVersion();
+        tableAlterHistoryRecords = getDatabase().getTableAlterHistoryRecord(id, 0, getVersion() - 1);
     }
 }

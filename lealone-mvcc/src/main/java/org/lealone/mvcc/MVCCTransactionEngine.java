@@ -57,7 +57,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     private StorageMapSaveService storageMapSaveService;
 
     // key: mapName
-    private final ConcurrentHashMap<String, StorageMap<Object, VersionedValue>> maps = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, StorageMap<Object, TransactionalValue>> maps = new ConcurrentHashMap<>();
     // key: mapName, value: memory size
     private final ConcurrentHashMap<String, Integer> estimatedMemory = new ConcurrentHashMap<>();
 
@@ -78,11 +78,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
     }
 
-    StorageMap<Object, VersionedValue> getMap(String mapName) {
+    StorageMap<Object, TransactionalValue> getMap(String mapName) {
         return maps.get(mapName);
     }
 
-    void addMap(StorageMap<Object, VersionedValue> map) {
+    void addMap(StorageMap<Object, TransactionalValue> map) {
         estimatedMemory.put(map.getName(), 0);
         maps.put(map.getName(), map);
     }
@@ -227,20 +227,20 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     @SuppressWarnings("unchecked")
-    <K> void redo(StorageMap<K, VersionedValue> map) {
+    <K> void redo(StorageMap<K, TransactionalValue> map) {
         ArrayList<ByteBuffer> logs = pendingRedoLog.remove(map.getName());
         if (logs != null) {
             K key;
             Object value;
             DataType kt = map.getKeyType();
-            DataType vt = ((VersionedValueType) map.getValueType()).valueType;
+            DataType vt = ((TransactionalValueType) map.getValueType()).valueType;
             for (ByteBuffer log : logs) {
                 key = (K) kt.read(log);
                 if (log.get() == 0)
                     map.remove(key);
                 else {
                     value = vt.read(log);
-                    map.put(key, new VersionedValue(value));
+                    map.put(key, new TransactionalValue(value));
                 }
             }
         }
@@ -338,20 +338,20 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (t == null)
             return;
         LinkedList<LogRecord> logRecords = t.logRecords;
-        StorageMap<Object, VersionedValue> map;
+        StorageMap<Object, TransactionalValue> map;
         for (LogRecord r : logRecords) {
             map = getMap(r.mapName);
             if (map == null) {
                 // map was later removed
             } else {
-                VersionedValue value = map.get(r.key);
+                TransactionalValue value = map.get(r.key);
                 if (value == null) {
                     // nothing to do
                 } else if (value.value == null) {
                     // remove the value
                     map.remove(r.key);
                 } else {
-                    map.put(r.key, new VersionedValue(value.value));
+                    map.put(r.key, new TransactionalValue(value.value));
                 }
             }
         }
@@ -365,7 +365,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         WriteBuffer writeBuffer = WriteBufferPool.poll();
 
         String mapName;
-        VersionedValue value;
+        TransactionalValue value;
         StorageMap<?, ?> map;
         int lastPosition = 0, keyValueStart, memory;
 
@@ -383,7 +383,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 writeBuffer.put((byte) 0);
             else {
                 writeBuffer.put((byte) 1);
-                ((VersionedValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
+                ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
             }
 
             writeBuffer.putInt(keyValueStart, writeBuffer.position() - keyValueStart - 4);

@@ -15,16 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql;
+package org.lealone.db.index;
 
-public interface SQLParser {
+import org.lealone.db.value.ValueArray;
 
-    void setRightsChecked(boolean rightsChecked);
+class VersionedValue {
 
-    Expression parseExpression(String sql);
+    public final int vertion; // 表的元数据版本号
+    public final ValueArray value;
 
-    ParsedStatement parse(String sql);
+    public VersionedValue(int vertion, ValueArray value) {
+        this.vertion = vertion;
+        this.value = value;
+    }
 
-    Object parseColumnForTable(String columnSql);
+    @Override
+    public String toString() {
+        StringBuilder buff = new StringBuilder("VersionedValue[ ");
+        buff.append("vertion = ").append(vertion);
+        buff.append(", value = ").append(value).append(" ]");
+        return buff.toString();
+    }
 
 }

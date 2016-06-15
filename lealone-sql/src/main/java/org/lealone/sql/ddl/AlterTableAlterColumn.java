@@ -230,11 +230,15 @@ public class AlterTableAlterColumn extends SchemaStatement {
         try {
             // check if a view would become invalid
             // (because the column to drop is referenced or so)
-            checkViews(table, newTable);
+            // checkViews(table, newTable);
+            checkViewsAreValid(table);
         } catch (DbException e) {
-            execute("DROP TABLE " + newTable.getName(), true);
+            table.setNewColumns(table.getOldColumns());
+            // execute("DROP TABLE " + newTable.getName(), true);
             throw DbException.get(ErrorCode.VIEW_IS_INVALID_2, e, getSQL(), e.getMessage());
         }
+        if (newTable != null)
+            return;
         String tableName = table.getName();
         ArrayList<TableView> views = table.getViews();
         if (views != null) {
@@ -276,7 +280,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
         }
     }
 
-    private Table cloneTableStructure(Database db, String tempName) {
+    private Table cloneTableStructure(Database db, String tempTableName) {
         Column[] columns = table.getColumns();
         ArrayList<Column> newColumns = New.arrayList();
         for (Column col : columns) {
@@ -285,6 +289,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
         if (type == SQLStatement.ALTER_TABLE_DROP_COLUMN) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
+            db.addTableAlterHistoryRecord(table.getId(), table.getVersion(), type, Integer.toString(position));
         } else if (type == SQLStatement.ALTER_TABLE_ADD_COLUMN) {
             int position;
             if (addBefore != null) {
@@ -294,13 +299,26 @@ public class AlterTableAlterColumn extends SchemaStatement {
             } else {
                 position = columns.length;
             }
+            StringBuilder buff = new StringBuilder();
+            buff.append(position);
             for (Column column : columnsToAdd) {
+                buff.append(',').append(column.getCreateSQL());
                 newColumns.add(position++, column);
             }
+            db.addTableAlterHistoryRecord(table.getId(), table.getVersion(), type, buff.toString());
         } else if (type == SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
             newColumns.add(position, newColumn);
+            db.addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+                    position + "," + newColumn.getCreateSQL());
+        }
+
+        if (tempTableName != null) {
+            table.incrementVersion();
+            table.setNewColumns(newColumns.toArray(new Column[0]));
+            db.getNextModificationMetaId(); // 通知元数据改变了，原有的结果集缓存要废弃了
+            return table;
         }
 
         // create a table object in order to get the SQL statement
@@ -310,7 +328,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
         // to use the rows of the table 0 (the meta table)
         int id = db.allocateObjectId();
         CreateTableData data = new CreateTableData();
-        data.tableName = tempName;
+        data.tableName = tempTableName;
         data.id = id;
         data.columns = newColumns;
         data.temporary = table.isTemporary();
@@ -373,7 +391,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             } else if (child.getType() == DbObjectType.TABLE_OR_VIEW) {
                 DbException.throwInternalError();
             }
-            String quotedName = Parser.quoteIdentifier(tempName + "_" + child.getName());
+            String quotedName = Parser.quoteIdentifier(tempTableName + "_" + child.getName());
             String sql = null;
             if (child instanceof ConstraintReferential) {
                 ConstraintReferential r = (ConstraintReferential) child;

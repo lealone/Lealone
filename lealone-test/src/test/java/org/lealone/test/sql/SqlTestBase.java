@@ -85,6 +85,22 @@ public class SqlTestBase extends TestBase {
         }
     }
 
+    public int executeUpdate() {
+        return executeUpdate(sql);
+    }
+
+    public void tryExecuteUpdate() {
+        tryExecuteUpdate(sql);
+    }
+
+    public void tryExecuteUpdate(String sql) {
+        try {
+            stmt.executeUpdate(sql);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
     public void createTable(String tableName) {
         executeUpdate("DROP TABLE IF EXISTS " + tableName);
         executeUpdate("CREATE TABLE " + tableName + " (pk varchar(100) NOT NULL PRIMARY KEY, " + //

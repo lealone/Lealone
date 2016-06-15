@@ -112,6 +112,8 @@ public abstract class Table extends SchemaObjectBase {
     private boolean onCommitDrop, onCommitTruncate;
     private Row nullRow;
 
+    private int version = -1;
+
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         super(schema, id, name, Trace.TABLE);
         columnMap = database.newStringMap();
@@ -123,6 +125,31 @@ public abstract class Table extends SchemaObjectBase {
     @Override
     public DbObjectType getType() {
         return DbObjectType.TABLE_OR_VIEW;
+    }
+
+    public int getVersion() {
+        if (version == -1) {
+            synchronized (this) {
+                version = getDatabase().getVersion(getId());
+            }
+        }
+        return version;
+    }
+
+    public void incrementVersion() {
+        synchronized (this) {
+            version++;
+            getDatabase().updateVersion(getId(), version);
+        }
+    }
+
+    public void decrementVersion() {
+        if (version == -1)
+            return;
+        synchronized (this) {
+            version--;
+            getDatabase().updateVersion(getId(), version);
+        }
     }
 
     @Override
@@ -183,10 +210,6 @@ public abstract class Table extends SchemaObjectBase {
      * @param row the row
      */
     public abstract void removeRow(ServerSession session, Row row);
-
-    public void removeRow(final ServerSession session, final Row row, boolean isUndo) {
-        // TODO
-    }
 
     /**
      * Remove all rows from the table and indexes.
@@ -367,31 +390,30 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     protected void setColumns(Column[] columns) {
-        setColumnsInternal(columns, true);
-    }
-
-    protected void setColumnsNoCheck(Column[] columns) {
-        setColumnsInternal(columns, false);
-    }
-
-    private void setColumnsInternal(Column[] columns, boolean check) {
         this.columns = columns;
-        if (columnMap.size() > 0) {
+        if (!columnMap.isEmpty()) {
             columnMap.clear();
         }
-        for (int i = 0; i < columns.length; i++) {
+        for (int i = 0, len = columns.length; i < len; i++) {
             Column col = columns[i];
-            int dataType = col.getType();
-            if (check && dataType == Value.UNKNOWN) {
+            if (col.getType() == Value.UNKNOWN) {
                 throw DbException.get(ErrorCode.UNKNOWN_DATA_TYPE_1, col.getSQL());
             }
-            col.setTable(this, i);
             String columnName = col.getName();
-            if (columnMap.get(columnName) != null) {
+            if (columnMap.containsKey(columnName)) {
                 throw DbException.get(ErrorCode.DUPLICATE_COLUMN_NAME_1, columnName);
             }
             columnMap.put(columnName, col);
+            col.setTable(this, i);
         }
+    }
+
+    public void setNewColumns(Column[] columns) {
+
+    }
+
+    public Column[] getOldColumns() {
+        return columns;
     }
 
     /**
@@ -1022,8 +1044,7 @@ public abstract class Table extends SchemaObjectBase {
      *            verification
      * @param visited set with sessions already visited, and null when starting
      *            verification
-     * @return an object array with the sessions involved in the deadlock, or
-     *         null
+     * @return an object array with the sessions involved in the deadlock, or null
      */
     public ArrayList<ServerSession> checkDeadlock(ServerSession session, ServerSession clash, Set<ServerSession> visited) {
         return null;

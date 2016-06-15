@@ -67,8 +67,7 @@ public class Schema extends DbObjectBase {
      * @param id the object id
      * @param schemaName the schema name
      * @param owner the owner of the schema
-     * @param system if this is a system schema (such a schema can not be
-     *            dropped)
+     * @param system if this is a system schema (such a schema can not be dropped)
      */
     public Schema(Database database, int id, String schemaName, User owner, boolean system) {
         super(database, id, schemaName, Trace.SCHEMA);
@@ -122,8 +121,7 @@ public class Schema extends DbObjectBase {
         }
 
         StatementBuilder sql = new StatementBuilder();
-        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(database.getSQL()).append(getSQL()).append(" AUTHORIZATION ")
-                .append(owner.getSQL());
+        sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ").append(owner.getSQL());
         if (replicationProperties != null && !replicationProperties.isEmpty()) {
             sql.append(" WITH REPLICATION = (");
             for (Map.Entry<String, String> e : replicationProperties.entrySet()) {

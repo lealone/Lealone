@@ -102,10 +102,12 @@ public class DropTable extends SchemaStatement {
         table = getSchema().findTableOrView(session, tableName);
 
         if (table != null) {
+            int id = table.getId();
             table.setModified();
             Database db = session.getDatabase();
             db.lockMeta(session);
             db.removeSchemaObject(session, table);
+            db.deleteTableAlterHistoryRecord(id);
         }
         if (next != null) {
             next.executeDrop();

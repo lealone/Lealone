@@ -39,9 +39,9 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * Key: the key of the data.
      * Value: { transactionId, logId, value }
      */
-    private final StorageMap<K, VersionedValue> map;
+    private final StorageMap<K, TransactionalValue> map;
 
-    MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, VersionedValue> map) {
+    MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
         this.transaction = transaction;
         this.map = map;
     }
@@ -70,7 +70,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @SuppressWarnings("unchecked")
     @Override
     public V get(K key) {
-        VersionedValue data = map.get(key);
+        TransactionalValue data = map.get(key);
         data = getValue(key, data);
         return data == null ? null : (V) data.value;
     }
@@ -82,7 +82,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * @param data the value stored in the main map
      * @return the value
      */
-    private VersionedValue getValue(K key, VersionedValue data) {
+    private TransactionalValue getValue(K key, TransactionalValue data) {
         while (true) {
             if (data == null) {
                 // doesn't exist or deleted by a committed transaction
@@ -187,14 +187,14 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      *         update
      */
     public boolean trySet(K key, V value) {
-        VersionedValue current = map.get(key);
-        VersionedValue newValue = new VersionedValue(transaction.transactionId, transaction.logId, value);
+        TransactionalValue current = map.get(key);
+        TransactionalValue newValue = new TransactionalValue(transaction.transactionId, transaction.logId, value);
 
         String mapName = getName();
         if (current == null) {
             // a new value
             transaction.log(mapName, key, current, newValue);
-            VersionedValue old = map.putIfAbsent(key, newValue);
+            TransactionalValue old = map.putIfAbsent(key, newValue);
             if (old != null) {
                 transaction.logUndo();
                 return false;
@@ -383,10 +383,10 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
             // the undo log is larger than the map -
             // count the entries of the map
             long size = 0;
-            StorageMapCursor<K, VersionedValue> cursor = map.cursor(null);
+            StorageMapCursor<K, TransactionalValue> cursor = map.cursor(null);
             while (cursor.hasNext()) {
                 K key = cursor.next();
-                VersionedValue data = cursor.getValue();
+                TransactionalValue data = cursor.getValue();
                 data = getValue(key, data);
                 if (data != null && data.value != null) {
                     size++;
@@ -559,8 +559,8 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @SuppressWarnings("unchecked")
     public V putCommitted(K key, V value) {
         DataUtils.checkArgument(value != null, "The value may not be null");
-        VersionedValue newValue = new VersionedValue(value);
-        VersionedValue oldValue = map.put(key, newValue);
+        TransactionalValue newValue = new TransactionalValue(value);
+        TransactionalValue oldValue = map.put(key, newValue);
         return (V) (oldValue == null ? null : oldValue.value);
     }
 
@@ -573,7 +573,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      */
     @Override
     public boolean isSameTransaction(K key) {
-        VersionedValue data = map.get(key);
+        TransactionalValue data = map.get(key);
         if (data == null) {
             // doesn't exist or deleted by a committed transaction
             return false;
@@ -593,7 +593,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         return new Iterator<Entry<K, V>>() {
             private Entry<K, V> current;
             private K currentKey = from;
-            private StorageMapCursor<K, VersionedValue> cursor = map.cursor(currentKey);
+            private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(currentKey);
 
             {
                 fetchNext();
@@ -623,7 +623,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                         }
                     }
                     final K key = k;
-                    VersionedValue data = cursor.getValue();
+                    TransactionalValue data = cursor.getValue();
                     data = getValue(key, data);
                     if (data != null && data.value != null) {
                         @SuppressWarnings("unchecked")
@@ -680,7 +680,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
         return new Iterator<K>() {
             private K currentKey = from;
-            private StorageMapCursor<K, VersionedValue> cursor = map.cursor(currentKey);
+            private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(currentKey);
 
             {
                 fetchNext();

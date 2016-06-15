@@ -11,7 +11,9 @@ import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -54,6 +56,7 @@ import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableAlterHistoryRecord;
 import org.lealone.db.table.TableView;
 import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.CaseInsensitiveMap;
@@ -348,6 +351,7 @@ public class Database implements DataHandler, DbObject {
         initTraceSystem(ci);
         openDatabase();
         addShutdownHook();
+        initDbObjectVersionTable();
     }
 
     private void initTraceSystem(ConnectionInfo ci) {
@@ -1490,7 +1494,6 @@ public class Database implements DataHandler, DbObject {
             removeDatabaseObject(session, comment);
         }
         obj.getSchema().remove(obj);
-        int id = obj.getId();
         if (!starting) {
             Table t = getDependentTable(obj, null);
             if (t != null) {
@@ -1499,7 +1502,7 @@ public class Database implements DataHandler, DbObject {
             }
             obj.removeChildrenAndResources(session);
         }
-        removeMeta(session, id);
+        removeMeta(session, obj.getId());
     }
 
     public void addPersistentMetaInfo(MetaTable mt, ArrayList<Row> rows) {
@@ -2329,5 +2332,105 @@ public class Database implements DataHandler, DbObject {
         if (hostIds == null)
             hostIds = new int[0];
         return hostIds;
+    }
+
+    private java.sql.PreparedStatement psGetVersion;
+    private java.sql.PreparedStatement psUpdateVersion;
+
+    private java.sql.PreparedStatement psAddTableAlterHistoryRecord;
+    private java.sql.PreparedStatement psGetTableAlterHistoryRecord;
+    private java.sql.PreparedStatement psDeleteTableAlterHistoryRecord;
+
+    private void initDbObjectVersionTable() {
+        try {
+            Connection conn = LealoneDatabase.getInstance().getInternalConnection();
+            Statement stmt = conn.createStatement();
+            stmt.execute("CREATE TABLE IF NOT EXISTS db_object_version (id int PRIMARY KEY, version int)");
+            stmt.execute("CREATE TABLE IF NOT EXISTS table_alter_history"
+                    + " (id int, version int, alter_type int, columns varchar, PRIMARY KEY(id, version))");
+            stmt.close();
+            psGetVersion = conn.prepareStatement("select version from db_object_version where id = ?");
+            psUpdateVersion = conn.prepareStatement("update db_object_version set version = ? where id = ?");
+
+            psAddTableAlterHistoryRecord = conn.prepareStatement("insert into table_alter_history values(?,?,?,?)");
+            psGetTableAlterHistoryRecord = conn
+                    .prepareStatement("select id, version, alter_type, columns from table_alter_history "
+                            + "where id = ? and version between ? and ?");
+            psDeleteTableAlterHistoryRecord = conn.prepareStatement("delete from table_alter_history where id = ?");
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    public synchronized void addTableAlterHistoryRecord(int id, int version, int alterType, String columns) {
+        try {
+            psAddTableAlterHistoryRecord.setInt(1, id);
+            psAddTableAlterHistoryRecord.setInt(2, version);
+            psAddTableAlterHistoryRecord.setInt(3, alterType);
+            psAddTableAlterHistoryRecord.setString(4, columns);
+            psAddTableAlterHistoryRecord.executeUpdate();
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    public synchronized void deleteTableAlterHistoryRecord(int id) {
+        try {
+            psDeleteTableAlterHistoryRecord.setInt(1, id);
+            psDeleteTableAlterHistoryRecord.executeUpdate();
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    public synchronized ArrayList<TableAlterHistoryRecord> getTableAlterHistoryRecord(int id, int versionMin,
+            int versionMax) {
+        ArrayList<TableAlterHistoryRecord> records = new ArrayList<>();
+        if (psGetTableAlterHistoryRecord == null)
+            return records;
+        try {
+            psGetTableAlterHistoryRecord.setInt(1, id);
+            psGetTableAlterHistoryRecord.setInt(2, versionMin);
+            psGetTableAlterHistoryRecord.setInt(3, versionMax);
+            ResultSet rs = psGetTableAlterHistoryRecord.executeQuery();
+            while (rs.next()) {
+                records.add(new TableAlterHistoryRecord(rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getString(4)));
+            }
+            return records;
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    public synchronized void updateVersion(int id, int version) {
+        if (psUpdateVersion == null)
+            return;
+        try {
+            psUpdateVersion.setInt(1, version);
+            psUpdateVersion.setInt(2, id);
+            psUpdateVersion.executeUpdate();
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    public synchronized int getVersion(int id) {
+        if (psGetVersion == null)
+            return -1;
+        int version;
+        try {
+            psGetVersion.setInt(1, id);
+            ResultSet rs = psGetVersion.executeQuery();
+            if (rs.next()) {
+                version = rs.getInt(1);
+            } else {
+                version = 1;
+                updateVersion(id, version);
+            }
+            rs.close();
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
+        return version;
     }
 }

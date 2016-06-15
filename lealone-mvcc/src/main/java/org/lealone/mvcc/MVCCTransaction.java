@@ -58,10 +58,10 @@ public class MVCCTransaction implements Transaction {
     static class LogRecord {
         final String mapName;
         final Object key;
-        final VersionedValue oldValue;
-        final VersionedValue newValue;
+        final TransactionalValue oldValue;
+        final TransactionalValue newValue;
 
-        public LogRecord(String mapName, Object key, VersionedValue oldValue, VersionedValue newValue) {
+        public LogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
             this.mapName = mapName;
             this.key = key;
             this.oldValue = oldValue;
@@ -69,7 +69,7 @@ public class MVCCTransaction implements Transaction {
         }
     }
 
-    void log(String mapName, Object key, VersionedValue oldValue, VersionedValue newValue) {
+    void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
         logRecords.add(new LogRecord(mapName, key, oldValue, newValue));
         logId++;
     }
@@ -145,10 +145,10 @@ public class MVCCTransaction implements Transaction {
             valueType = new ObjectDataType();
 
         checkNotClosed();
-        valueType = new VersionedValueType(valueType);
-        StorageMap<K, VersionedValue> map = storage.openMap(name, mapType, keyType, valueType, null);
+        valueType = new TransactionalValueType(valueType);
+        StorageMap<K, TransactionalValue> map = storage.openMap(name, mapType, keyType, valueType, null);
         transactionEngine.redo(map);
-        transactionEngine.addMap((StorageMap<Object, VersionedValue>) map);
+        transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
         return new MVCCTransactionMap<>(this, map);
     }
 
@@ -263,10 +263,10 @@ public class MVCCTransaction implements Transaction {
         while (--logId >= toLogId) {
             LogRecord r = logRecords.removeLast();
             String mapName = r.mapName;
-            StorageMap<Object, VersionedValue> map = transactionEngine.getMap(mapName);
+            StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
             if (map != null) {
                 Object key = r.key;
-                VersionedValue oldValue = r.oldValue;
+                TransactionalValue oldValue = r.oldValue;
                 if (oldValue == null) {
                     // this transaction added the value
                     map.remove(key);

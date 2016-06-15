@@ -255,8 +255,17 @@ public class Parser implements SQLParser {
     public StatementBase parse(String sql) {
         StatementBase s = null;
         try {
-            // first, try the fast variant
-            s = parse(sql, false);
+            try {
+                // first, try the fast variant
+                s = parse(sql, false);
+            } catch (DbException e) {
+                if (e.getErrorCode() == ErrorCode.SYNTAX_ERROR_1) {
+                    // now, get the detailed exception
+                    s = parse(sql, true);
+                } else {
+                    throw e.addSQL(sql); // 比如update时如果表名不存在就会是ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1
+                }
+            }
 
             s.setPrepareAlways(recompileAlways);
             s.setParameterList(parameters);
@@ -272,12 +281,7 @@ public class Parser implements SQLParser {
                 throw getSyntaxError();
             }
         } catch (DbException e) {
-            if (e.getErrorCode() == ErrorCode.SYNTAX_ERROR_1) {
-                // now, get the detailed exception
-                s = parse(sql, true);
-            } else {
-                throw e.addSQL(sql);
-            }
+            throw e.addSQL(originalSQL);
         }
         return s;
     }
@@ -3646,6 +3650,14 @@ public class Parser implements SQLParser {
             return keywordType;
         }
         return IDENTIFIER;
+    }
+
+    @Override
+    public Column parseColumnForTable(String columnSql) {
+        initialize(columnSql);
+        read();
+        String columnName = readColumnIdentifier();
+        return parseColumnForTable(columnName, true);
     }
 
     private Column parseColumnForTable(String columnName, boolean defaultNullable) {
