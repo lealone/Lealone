@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
 import org.lealone.mvcc.MVCCTransaction;
+import org.lealone.mvcc.log.RedoLog;
 
 public abstract class LogSyncService extends Thread {
 
@@ -35,13 +36,18 @@ public abstract class LogSyncService extends Thread {
     protected long syncIntervalMillis;
     protected volatile long lastSyncedAt = System.currentTimeMillis();
     protected boolean running = true;
+    protected RedoLog redoLog;
 
     public LogSyncService(String name) {
         super(name);
         setDaemon(true);
     }
 
-    public abstract void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId);
+    public abstract void maybeWaitForSync(RedoLog redoLog, Long lastOperationId);
+
+    public void setRedoLog(RedoLog redoLog) {
+        this.redoLog = redoLog;
+    }
 
     public void prepareCommit(MVCCTransaction t) {
         transactions.add(t);
@@ -75,13 +81,9 @@ public abstract class LogSyncService extends Thread {
     }
 
     protected void sync() {
-        if (LogStorage.redoLog != null)
-            LogStorage.redoLog.save();
+        if (redoLog != null)
+            redoLog.save();
         commitTransactions();
-        // TODO 是否要保存其他map?
-        // for (LogMap<?, ?> map : LogStorage.logMaps) {
-        // map.save();
-        // }
     }
 
     protected void commitTransactions() {

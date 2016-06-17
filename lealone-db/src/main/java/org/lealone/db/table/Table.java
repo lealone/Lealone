@@ -409,7 +409,6 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     public void setNewColumns(Column[] columns) {
-
     }
 
     public Column[] getOldColumns() {
@@ -1115,10 +1114,6 @@ public abstract class Table extends SchemaObjectBase {
 
     public void setHidden(boolean hidden) {
         this.isHidden = hidden;
-    }
-
-    public boolean supportsAlterColumnWithCopyData() { // TODO
-        return true;
     }
 
     public String getStorageEngineName() {

@@ -79,6 +79,7 @@ public class MemoryStorage implements Storage {
             Map<String, String> parameters) {
         MemoryMap<K, V> map = new MemoryMap<>(name, keyType, valueType);
         maps.put(name, map);
+        map.setMemoryStorage(this);
         return map;
     }
 }

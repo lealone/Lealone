@@ -14,24 +14,17 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
-import org.lealone.db.constraint.Constraint;
-import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
-import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
-import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
-import org.lealone.sql.Parser;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
@@ -84,6 +77,30 @@ public class AlterTableAlterColumn extends SchemaStatement {
 
     public void setAddAfter(String after) {
         this.addAfter = after;
+    }
+
+    public void setType(int type) {
+        this.type = type;
+    }
+
+    public void setSelectivity(Expression selectivity) {
+        newSelectivity = selectivity;
+    }
+
+    public void setDefaultExpression(Expression defaultExpression) {
+        this.defaultExpression = defaultExpression;
+    }
+
+    public void setNewColumn(Column newColumn) {
+        this.newColumn = newColumn;
+    }
+
+    public void setIfNotExists(boolean ifNotExists) {
+        this.ifNotExists = ifNotExists;
+    }
+
+    public void setNewColumns(ArrayList<Column> columnsToAdd) {
+        this.columnsToAdd = columnsToAdd;
     }
 
     @Override
@@ -149,7 +166,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
                     checkNullable();
                 }
                 convertAutoIncrementColumn(newColumn);
-                copyData();
+                addTableAlterHistoryRecords();
             }
             break;
         }
@@ -164,7 +181,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
                     column.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary());
                 }
             }
-            copyData();
+            addTableAlterHistoryRecords();
             break;
         }
         case SQLStatement.ALTER_TABLE_DROP_COLUMN: {
@@ -172,7 +189,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 throw DbException.get(ErrorCode.CANNOT_DROP_LAST_COLUMN, oldColumn.getSQL());
             }
             table.dropSingleColumnConstraintsAndIndexes(session, oldColumn);
-            copyData();
+            addTableAlterHistoryRecords();
             break;
         }
         case SQLStatement.ALTER_TABLE_ALTER_COLUMN_SELECTIVITY: {
@@ -213,74 +230,63 @@ public class AlterTableAlterColumn extends SchemaStatement {
     private void removeSequence(Sequence sequence) {
         if (sequence != null) {
             table.removeSequence(sequence);
-            sequence.setBelongsToTable(false);
-            Database db = session.getDatabase();
-            db.removeSchemaObject(session, sequence);
+            if (sequence.getBelongsToTable()) {
+                sequence.setBelongsToTable(false);
+                Database db = session.getDatabase();
+                db.removeSchemaObject(session, sequence);
+            }
         }
     }
 
-    private void copyData() {
+    private void checkNullable() {
+        for (Index index : table.getIndexes()) {
+            if (index.getColumnIndex(oldColumn) < 0) {
+                continue;
+            }
+            IndexType indexType = index.getIndexType();
+            if (indexType.isPrimaryKey() || indexType.isHash()) {
+                throw DbException.get(ErrorCode.COLUMN_IS_PART_OF_INDEX_1, index.getSQL());
+            }
+        }
+    }
+
+    private void checkNoNullValues() {
+        String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL() + " IS NULL";
+        StatementBase command = (StatementBase) session.prepareStatement(sql);
+        Result result = command.query(0);
+        result.next();
+        if (result.currentRow()[0].getInt() > 0) {
+            throw DbException.get(ErrorCode.COLUMN_CONTAINS_NULL_VALUES_1, oldColumn.getSQL());
+        }
+    }
+
+    private void addTableAlterHistoryRecords() {
         if (table.isTemporary()) {
             throw DbException.getUnsupportedException("TEMP TABLE");
         }
-        Database db = session.getDatabase();
-        String baseName = table.getName();
-        String tempName = db.getTempTableName(baseName, session);
-        Table newTable = cloneTableStructure(db, tempName);
+        addTableAlterHistoryRecords0();
         try {
             // check if a view would become invalid
             // (because the column to drop is referenced or so)
-            // checkViews(table, newTable);
             checkViewsAreValid(table);
         } catch (DbException e) {
             table.setNewColumns(table.getOldColumns());
-            // execute("DROP TABLE " + newTable.getName(), true);
             throw DbException.get(ErrorCode.VIEW_IS_INVALID_2, e, getSQL(), e.getMessage());
         }
-        if (newTable != null)
-            return;
-        String tableName = table.getName();
-        ArrayList<TableView> views = table.getViews();
-        if (views != null) {
-            views = New.arrayList(views);
-            for (TableView view : views) {
-                table.removeView(view);
-            }
+
+        try {
+            table.incrementVersion();
+        } catch (DbException e) {
+            table.setNewColumns(table.getOldColumns());
+            throw e;
         }
-        execute("DROP TABLE " + table.getSQL() + " IGNORE", true);
-        db.renameSchemaObject(session, newTable, tableName);
-        for (DbObject child : newTable.getChildren()) {
-            if (child instanceof Sequence) {
-                continue;
-            }
-            String name = child.getName();
-            if (name == null || child.getCreateSQL() == null) {
-                continue;
-            }
-            if (name.startsWith(tempName + "_")) {
-                name = name.substring(tempName.length() + 1);
-                SchemaObject so = (SchemaObject) child;
-                if (so instanceof Constraint) {
-                    if (so.getSchema().findConstraint(session, name) != null) {
-                        name = so.getSchema().getUniqueConstraintName(session, newTable);
-                    }
-                } else if (so instanceof Index) {
-                    if (so.getSchema().findIndex(session, name) != null) {
-                        name = so.getSchema().getUniqueIndexName(session, newTable, name);
-                    }
-                }
-                db.renameSchemaObject(session, so, name);
-            }
-        }
-        if (views != null) {
-            for (TableView view : views) {
-                String sql = view.getCreateSQL(true, true);
-                execute(sql, true);
-            }
-        }
+
+        // 通知元数据改变了，原有的结果集缓存要废弃了
+        table.setModified();
     }
 
-    private Table cloneTableStructure(Database db, String tempTableName) {
+    private void addTableAlterHistoryRecords0() {
+        Database db = session.getDatabase();
         Column[] columns = table.getColumns();
         ArrayList<Column> newColumns = New.arrayList();
         for (Column col : columns) {
@@ -314,140 +320,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
                     position + "," + newColumn.getCreateSQL());
         }
 
-        if (tempTableName != null) {
-            table.incrementVersion();
-            table.setNewColumns(newColumns.toArray(new Column[0]));
-            db.getNextModificationMetaId(); // 通知元数据改变了，原有的结果集缓存要废弃了
-            return table;
-        }
-
-        // create a table object in order to get the SQL statement
-        // can't just use this table, because most column objects are 'shared'
-        // with the old table
-        // still need a new id because using 0 would mean: the new table tries
-        // to use the rows of the table 0 (the meta table)
-        int id = db.allocateObjectId();
-        CreateTableData data = new CreateTableData();
-        data.tableName = tempTableName;
-        data.id = id;
-        data.columns = newColumns;
-        data.temporary = table.isTemporary();
-        data.persistData = table.isPersistData();
-        data.persistIndexes = table.isPersistIndexes();
-        data.isHidden = table.isHidden();
-        data.create = true;
-        data.session = session;
-        data.storageEngineName = table.getStorageEngineName();
-        Table newTable = getSchema().createTable(data);
-        newTable.setComment(table.getComment());
-        StringBuilder buff = new StringBuilder();
-        buff.append(newTable.getCreateSQL());
-
-        if (table.supportsAlterColumnWithCopyData()) {
-            StringBuilder columnList = new StringBuilder();
-            for (Column nc : newColumns) {
-                if (columnList.length() > 0) {
-                    columnList.append(", ");
-                }
-                if (type == SQLStatement.ALTER_TABLE_ADD_COLUMN && columnsToAdd.contains(nc)) {
-                    Expression def = (Expression) nc.getDefaultExpression();
-                    columnList.append(def == null ? "NULL" : def.getSQL());
-                } else {
-                    columnList.append(nc.getSQL());
-                }
-            }
-            buff.append(" AS SELECT ");
-            if (columnList.length() == 0) {
-                // special case: insert into test select * from
-                buff.append('*');
-            } else {
-                buff.append(columnList);
-            }
-            buff.append(" FROM ").append(table.getSQL());
-        }
-        String newTableSQL = buff.toString();
-        String newTableName = newTable.getName();
-        Schema newTableSchema = newTable.getSchema();
-        newTable.removeChildrenAndResources(session);
-
-        execute(newTableSQL, true);
-        newTable = newTableSchema.getTableOrView(session, newTableName);
-        ArrayList<String> triggers = New.arrayList();
-        for (DbObject child : table.getChildren()) {
-            if (child instanceof Sequence) {
-                continue;
-            } else if (child instanceof Index) {
-                Index idx = (Index) child;
-                if (idx.getIndexType().getBelongsToConstraint()) {
-                    continue;
-                }
-            }
-            String createSQL = child.getCreateSQL();
-            if (createSQL == null) {
-                continue;
-            }
-            if (child instanceof TableView) {
-                continue;
-            } else if (child.getType() == DbObjectType.TABLE_OR_VIEW) {
-                DbException.throwInternalError();
-            }
-            String quotedName = Parser.quoteIdentifier(tempTableName + "_" + child.getName());
-            String sql = null;
-            if (child instanceof ConstraintReferential) {
-                ConstraintReferential r = (ConstraintReferential) child;
-                if (r.getTable() != table) {
-                    sql = r.getCreateSQLForCopy(r.getTable(), newTable, quotedName, false);
-                }
-            }
-            if (sql == null) {
-                sql = child.getCreateSQLForCopy(newTable, quotedName);
-            }
-            if (sql != null) {
-                if (child instanceof TriggerObject) {
-                    triggers.add(sql);
-                } else {
-                    execute(sql, true);
-                }
-            }
-        }
-        table.setModified();
-        // remove the sequences from the columns (except dropped columns)
-        // otherwise the sequence is dropped if the table is dropped
-        for (Column col : newColumns) {
-            Sequence seq = col.getSequence();
-            if (seq != null) {
-                table.removeSequence(seq);
-                col.setSequence(null);
-            }
-        }
-        for (String sql : triggers) {
-            execute(sql, true);
-        }
-        return newTable;
-    }
-
-    /**
-     * Check that all views and other dependent objects.
-     */
-    private void checkViews(SchemaObject sourceTable, SchemaObject newTable) {
-        String sourceTableName = sourceTable.getName();
-        String newTableName = newTable.getName();
-        Database db = sourceTable.getDatabase();
-        // save the real table under a temporary name
-        String temp = db.getTempTableName(sourceTableName, session);
-        db.renameSchemaObject(session, sourceTable, temp);
-        try {
-            // have our new table impersonate the target table
-            db.renameSchemaObject(session, newTable, sourceTableName);
-            checkViewsAreValid(sourceTable);
-        } finally {
-            // always put the source tables back with their proper names
-            try {
-                db.renameSchemaObject(session, newTable, newTableName);
-            } finally {
-                db.renameSchemaObject(session, sourceTable, sourceTableName);
-            }
-        }
+        table.setNewColumns(newColumns.toArray(new Column[0]));
     }
 
     /**
@@ -468,58 +341,4 @@ public class AlterTableAlterColumn extends SchemaStatement {
         }
     }
 
-    private void execute(String sql, boolean ddl) {
-        StatementBase command = (StatementBase) session.prepareStatement(sql);
-        command.setLocal(true);
-        command.update();
-        if (ddl) {
-            session.commit(true);
-        }
-    }
-
-    private void checkNullable() {
-        for (Index index : table.getIndexes()) {
-            if (index.getColumnIndex(oldColumn) < 0) {
-                continue;
-            }
-            IndexType indexType = index.getIndexType();
-            if (indexType.isPrimaryKey() || indexType.isHash()) {
-                throw DbException.get(ErrorCode.COLUMN_IS_PART_OF_INDEX_1, index.getSQL());
-            }
-        }
-    }
-
-    private void checkNoNullValues() {
-        String sql = "SELECT COUNT(*) FROM " + table.getSQL() + " WHERE " + oldColumn.getSQL() + " IS NULL";
-        StatementBase command = (StatementBase) session.prepareStatement(sql);
-        Result result = command.query(0);
-        result.next();
-        if (result.currentRow()[0].getInt() > 0) {
-            throw DbException.get(ErrorCode.COLUMN_CONTAINS_NULL_VALUES_1, oldColumn.getSQL());
-        }
-    }
-
-    public void setType(int type) {
-        this.type = type;
-    }
-
-    public void setSelectivity(Expression selectivity) {
-        newSelectivity = selectivity;
-    }
-
-    public void setDefaultExpression(Expression defaultExpression) {
-        this.defaultExpression = defaultExpression;
-    }
-
-    public void setNewColumn(Column newColumn) {
-        this.newColumn = newColumn;
-    }
-
-    public void setIfNotExists(boolean ifNotExists) {
-        this.ifNotExists = ifNotExists;
-    }
-
-    public void setNewColumns(ArrayList<Column> columnsToAdd) {
-        this.columnsToAdd = columnsToAdd;
-    }
 }

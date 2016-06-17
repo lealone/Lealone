@@ -27,6 +27,8 @@ import org.lealone.storage.type.WriteBuffer;
 
 public class RedoLogValueType implements DataType {
 
+    private static ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
+
     @Override
     public int compare(Object a, Object b) {
         throw DbException.getUnsupportedException("compare");
@@ -44,6 +46,9 @@ public class RedoLogValueType implements DataType {
         if (v.checkpoint != null) {
             buff.put((byte) 0);
             buff.putVarLong(v.checkpoint);
+        } else if (v.droppedMap != null) {
+            buff.put((byte) 3);
+            StringDataType.INSTANCE.write(buff, v.droppedMap);
         } else {
             if (v.transactionName == null) {
                 buff.put((byte) 1);
@@ -70,6 +75,10 @@ public class RedoLogValueType implements DataType {
         int type = buff.get();
         if (type == 0)
             return new RedoLogValue(DataUtils.readVarLong(buff));
+        else if (type == 3) {
+            String droppedMap = StringDataType.INSTANCE.read(buff);
+            return new RedoLogValue(droppedMap);
+        }
 
         RedoLogValue v = new RedoLogValue();
         if (type == 2) {
@@ -84,7 +93,7 @@ public class RedoLogValueType implements DataType {
             buff.get(value);
             v.values = ByteBuffer.wrap(value);
         } else {
-            v.values = LogChunkMap.EMPTY_BUFFER;
+            v.values = EMPTY_BUFFER;
         }
         return v;
     }

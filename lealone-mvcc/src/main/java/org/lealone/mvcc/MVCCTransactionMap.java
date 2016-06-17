@@ -14,9 +14,11 @@ import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
+import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.ObjectDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 
@@ -399,7 +401,10 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         // re-fetch in case any transaction was committed now
         long size = map.sizeAsLong();
         String mapName = getName();
-        StorageMap<Object, Integer> temp = transaction.transactionEngine.logStorage.createTempMap();
+        Storage storage = map.getStorage();
+        String tmpMapName = storage.nextTemporaryMapName();
+        StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, null, new ObjectDataType(),
+                new ObjectDataType(), null);
         try {
             for (MVCCTransaction t : transaction.transactionEngine.currentTransactions.values()) {
                 LinkedList<LogRecord> records = t.logRecords;
@@ -524,6 +529,11 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public void transferFrom(ReadableByteChannel src) throws IOException {
         map.transferFrom(src);
+    }
+
+    @Override
+    public Storage getStorage() {
+        return map.getStorage();
     }
 
     /**

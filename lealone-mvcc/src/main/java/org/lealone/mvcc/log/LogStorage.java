@@ -19,15 +19,10 @@ package org.lealone.mvcc.log;
 
 import java.io.File;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.lealone.db.Constants;
-import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.type.DataType;
 
 /**
  * A log storage
@@ -36,31 +31,16 @@ import org.lealone.storage.type.DataType;
  */
 public class LogStorage {
 
-    public static String LOG_SYNC_TYPE_PERIODIC = "periodic";
-    public static String LOG_SYNC_TYPE_BATCH = "batch";
-    public static String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
+    public static final String LOG_SYNC_TYPE_PERIODIC = "periodic";
+    public static final String LOG_SYNC_TYPE_BATCH = "batch";
+    public static final String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
 
-    public static final char MAP_NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
+    public static final char NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
 
-    private static final String TEMP_MAP_NAME_PREFIX = "temp" + MAP_NAME_ID_SEPARATOR;
-
-    private static final ConcurrentHashMap<String, ConcurrentSkipListSet<Integer>> ids = new ConcurrentHashMap<>();
-
-    static final CopyOnWriteArrayList<LogMap<?, ?>> logMaps = new CopyOnWriteArrayList<>();
-
-    static LogMap<?, ?> redoLog;
-
-    private final Map<String, String> config;
-
-    public final LogSyncService logSyncService;
-
-    /**
-     * The next id of a temporary map.
-     */
-    private int nextTempMapId;
+    private final RedoLog redoLog;
+    private final LogSyncService logSyncService;
 
     public LogStorage(Map<String, String> config) {
-        this.config = config;
         String baseDir = config.get("base_dir");
         String logDir = config.get("transaction_log_dir");
         String storageName = baseDir + File.separator + logDir;
@@ -70,20 +50,18 @@ public class LogStorage {
             FileUtils.createDirectories(storageName);
 
         FilePath dir = FilePath.get(storageName);
+        int lastId = 0;
         for (FilePath fp : dir.newDirectoryStream()) {
-            String mapFullName = fp.getName();
-            if (mapFullName.startsWith(TEMP_MAP_NAME_PREFIX)) {
-                fp.delete();
-                continue;
-            }
-
-            int mapIdStartPos = mapFullName.lastIndexOf(MAP_NAME_ID_SEPARATOR);
-            if (mapIdStartPos > 0) {
-                String mapName = mapFullName.substring(0, mapIdStartPos);
-                int mapId = Integer.parseInt(mapFullName.substring(mapIdStartPos + 1));
-                addMapId(mapName, mapId);
+            String fullName = fp.getName();
+            int idStartPos = fullName.lastIndexOf(NAME_ID_SEPARATOR);
+            if (idStartPos > 0) {
+                int id = Integer.parseInt(fullName.substring(idStartPos + 1));
+                if (id > lastId)
+                    lastId = id;
             }
         }
+        redoLog = new RedoLog(lastId, config);
+
         String logSyncType = config.get("log_sync_type");
         if (logSyncType == null || LOG_SYNC_TYPE_PERIODIC.equalsIgnoreCase(logSyncType))
             logSyncService = new PeriodicLogSyncService(config);
@@ -94,58 +72,25 @@ public class LogStorage {
         else
             throw new IllegalArgumentException("Unknow log_sync_type: " + logSyncType);
 
+        logSyncService.setRedoLog(redoLog);
         logSyncService.start();
     }
 
-    public synchronized StorageMap<Object, Integer> createTempMap() {
-        String mapName = LogStorage.TEMP_MAP_NAME_PREFIX + (++nextTempMapId);
-        return openLogMap(mapName, null, null);
+    public LogSyncService getLogSyncService() {
+        return logSyncService;
     }
 
-    public <K, V> LogMap<K, V> openLogMap(String name, DataType keyType, DataType valueType) {
-        int mapId = 1;
-        if (ids.containsKey(name))
-            mapId = ids.get(name).last();
-        LogMap<K, V> m = new LogMap<>(mapId, name, keyType, valueType, config);
-        logMaps.add(m);
-        if ("redoLog".equals(name))
-            redoLog = m;
-        return m;
+    public RedoLog getRedoLog() {
+        return redoLog;
     }
 
     public synchronized void close() {
-        for (StorageMap<?, ?> map : logMaps)
-            map.save();
-
-        if (logSyncService != null) {
-            logSyncService.close();
-            try {
-                logSyncService.join();
-            } catch (InterruptedException e) {
-            }
+        redoLog.close();
+        logSyncService.close();
+        try {
+            logSyncService.join();
+        } catch (InterruptedException e) {
         }
-
-        for (StorageMap<?, ?> map : logMaps)
-            map.close();
-
-        logMaps.clear();
-        ids.clear();
     }
 
-    public static Integer getPreviousId(String name, Integer currentId) {
-        Integer id = null;
-        if (ids.containsKey(name))
-            id = ids.get(name).lower(currentId);
-        return id;
-    }
-
-    public static void addMapId(String mapName, Integer mapId) {
-        ConcurrentSkipListSet<Integer> set = ids.get(mapName);
-        if (set == null) {
-            set = new ConcurrentSkipListSet<Integer>();
-            ids.putIfAbsent(mapName, set);
-            set = ids.get(mapName);
-        }
-        set.add(mapId);
-    }
 }

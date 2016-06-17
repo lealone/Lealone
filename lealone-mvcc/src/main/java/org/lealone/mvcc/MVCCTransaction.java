@@ -276,7 +276,6 @@ public class MVCCTransaction implements Transaction {
                 }
             }
         }
-
     }
 
     void checkNotClosed() {

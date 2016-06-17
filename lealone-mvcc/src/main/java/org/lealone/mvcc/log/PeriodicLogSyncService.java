@@ -22,7 +22,7 @@ import java.util.Map;
 import org.lealone.common.concurrent.WaitQueue;
 import org.lealone.mvcc.MVCCTransaction;
 
-public class PeriodicLogSyncService extends LogSyncService {
+class PeriodicLogSyncService extends LogSyncService {
 
     private static final long DEFAULT_LOG_SYNC_PERIOD = 500;
 
@@ -40,7 +40,7 @@ public class PeriodicLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId) {
+    public void maybeWaitForSync(RedoLog redoLog, Long lastOperationId) {
         haveWork.release();
         Long lastSyncKey = redoLog.getLastSyncKey();
 

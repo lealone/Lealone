@@ -20,6 +20,7 @@ package org.lealone.mvcc;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -33,13 +34,11 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
-import org.lealone.mvcc.log.LogMap;
 import org.lealone.mvcc.log.LogStorage;
-import org.lealone.mvcc.log.RedoLogKeyType;
+import org.lealone.mvcc.log.LogSyncService;
+import org.lealone.mvcc.log.RedoLog;
 import org.lealone.mvcc.log.RedoLogValue;
-import org.lealone.mvcc.log.RedoLogValueType;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.StringDataType;
 import org.lealone.storage.type.WriteBuffer;
@@ -65,9 +64,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     // key: mapName, value: map key/value ByteBuffer list
     private final HashMap<String, ArrayList<ByteBuffer>> pendingRedoLog = new HashMap<>();
 
-    // key: transactionId
-    private LogMap<Long, RedoLogValue> redoLog;
-    LogStorage logStorage;
+    private LogStorage logStorage;
+    private RedoLog redoLog;
+    private LogSyncService logSyncService;
 
     private boolean init;
 
@@ -90,6 +89,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     void removeMap(String mapName) {
         estimatedMemory.remove(mapName);
         maps.remove(mapName);
+        long tid = nextEvenTransactionId();
+        redoLog.put(tid, new RedoLogValue(mapName));
+        logSyncService.maybeWaitForSync(redoLog, tid);
     }
 
     private class StorageMapSaveService extends Thread {
@@ -153,7 +155,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
                 if (writeCheckpoint && checkpoint != null) {
                     redoLog.put(checkpoint, new RedoLogValue(checkpoint));
-                    logStorage.logSyncService.maybeWaitForSync(redoLog, redoLog.getLastSyncKey());
+                    logSyncService.maybeWaitForSync(redoLog, redoLog.getLastSyncKey());
                 }
 
                 if (isClosed)
@@ -185,9 +187,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             sleep = mapSavePeriod;
 
         logStorage = new LogStorage(config);
-
-        // 不使用ObjectDataType，因为ObjectDataType需要自动侦测，会有一些开销
-        redoLog = logStorage.openLogMap("redoLog", new RedoLogKeyType(), new RedoLogValueType());
+        redoLog = logStorage.getRedoLog();
+        logSyncService = logStorage.getLogSyncService();
         initPendingRedoLog();
 
         Long key = redoLog.lastKey();
@@ -205,23 +206,31 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 checkpoint = e.getValue().checkpoint;
         }
 
-        StorageMapCursor<Long, RedoLogValue> cursor = redoLog.cursor(checkpoint);
+        Iterator<Entry<Long, RedoLogValue>> cursor = redoLog.cursor(checkpoint);
         while (cursor.hasNext()) {
-            cursor.next();
-            RedoLogValue v = cursor.getValue();
-            ByteBuffer buff = v.values;
-            while (buff.hasRemaining()) {
-                String mapName = StringDataType.INSTANCE.read(buff);
-
-                ArrayList<ByteBuffer> logs = pendingRedoLog.get(mapName);
-                if (logs == null) {
+            Entry<Long, RedoLogValue> e = cursor.next();
+            RedoLogValue v = e.getValue();
+            if (v.droppedMap != null) {
+                ArrayList<ByteBuffer> logs = pendingRedoLog.get(v.droppedMap);
+                if (logs != null) {
                     logs = new ArrayList<>();
-                    pendingRedoLog.put(mapName, logs);
+                    pendingRedoLog.put(v.droppedMap, logs);
                 }
-                int len = buff.getInt();
-                byte[] keyValue = new byte[len];
-                buff.get(keyValue);
-                logs.add(ByteBuffer.wrap(keyValue));
+            } else {
+                ByteBuffer buff = v.values;
+                while (buff.hasRemaining()) {
+                    String mapName = StringDataType.INSTANCE.read(buff);
+
+                    ArrayList<ByteBuffer> logs = pendingRedoLog.get(mapName);
+                    if (logs == null) {
+                        logs = new ArrayList<>();
+                        pendingRedoLog.put(mapName, logs);
+                    }
+                    int len = buff.getInt();
+                    byte[] keyValue = new byte[len];
+                    buff.get(keyValue);
+                    logs.add(ByteBuffer.wrap(keyValue));
+                }
             }
         }
     }
@@ -229,7 +238,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     @SuppressWarnings("unchecked")
     <K> void redo(StorageMap<K, TransactionalValue> map) {
         ArrayList<ByteBuffer> logs = pendingRedoLog.remove(map.getName());
-        if (logs != null) {
+        if (logs != null && !logs.isEmpty()) {
             K key;
             Object value;
             DataType kt = map.getKeyType();
@@ -308,7 +317,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             // commit(t);
         }
 
-        logStorage.logSyncService.prepareCommit(t);
+        logSyncService.prepareCommit(t);
     }
 
     void commit(MVCCTransaction t) {
@@ -326,7 +335,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (v != null) { // 事务没有进行任何操作时不用同步日志
             // 先写redoLog
             redoLog.put(t.transactionId, v);
-            logStorage.logSyncService.maybeWaitForSync(redoLog, t.transactionId);
+            logSyncService.maybeWaitForSync(redoLog, t.transactionId);
         }
 
         commitFinal(t.transactionId);

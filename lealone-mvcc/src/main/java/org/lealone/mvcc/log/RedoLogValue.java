@@ -32,6 +32,9 @@ public class RedoLogValue {
     // 3. 检查点只有这个字段
     public Long checkpoint;
 
+    // 4. 已经被删除的map
+    public String droppedMap;
+
     public RedoLogValue() {
     }
 
@@ -41,5 +44,9 @@ public class RedoLogValue {
 
     public RedoLogValue(Long checkpoint) {
         this.checkpoint = checkpoint;
+    }
+
+    public RedoLogValue(String droppedMap) {
+        this.droppedMap = droppedMap;
     }
 }

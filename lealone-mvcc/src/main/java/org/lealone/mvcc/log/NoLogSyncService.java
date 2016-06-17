@@ -19,7 +19,7 @@ package org.lealone.mvcc.log;
 
 import org.lealone.mvcc.MVCCTransaction;
 
-public class NoLogSyncService extends LogSyncService {
+class NoLogSyncService extends LogSyncService {
 
     public NoLogSyncService() {
         super("NoLogSyncService");
@@ -34,7 +34,7 @@ public class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId) {
+    public void maybeWaitForSync(RedoLog redoLog, Long lastOperationId) {
     }
 
     @Override

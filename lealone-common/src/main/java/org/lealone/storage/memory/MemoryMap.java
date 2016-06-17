@@ -23,6 +23,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
@@ -56,6 +57,8 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
     protected final DataType valueType;
     protected final ConcurrentSkipListMap<K, V> skipListMap;
 
+    protected MemoryStorage memoryStorage;
+
     protected boolean closed;
 
     public MemoryMap(String name, DataType keyType, DataType valueType) {
@@ -68,6 +71,14 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
         this.keyType = keyType;
         this.valueType = valueType;
         skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<K>(keyType));
+    }
+
+    public MemoryStorage getMemoryStorage() {
+        return memoryStorage;
+    }
+
+    public void setMemoryStorage(MemoryStorage memoryStorage) {
+        this.memoryStorage = memoryStorage;
     }
 
     @Override
@@ -233,12 +244,15 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
     @Override
     public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
         // TODO Auto-generated method stub
-
     }
 
     @Override
     public void transferFrom(ReadableByteChannel src) throws IOException {
         // TODO Auto-generated method stub
+    }
 
+    @Override
+    public Storage getStorage() {
+        return memoryStorage;
     }
 }

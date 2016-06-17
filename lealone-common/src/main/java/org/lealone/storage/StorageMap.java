@@ -203,4 +203,6 @@ public interface StorageMap<K, V> {
     void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException;
 
     void transferFrom(ReadableByteChannel src) throws IOException;
+
+    Storage getStorage();
 }

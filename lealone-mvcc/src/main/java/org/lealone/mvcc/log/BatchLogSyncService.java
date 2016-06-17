@@ -20,8 +20,10 @@ package org.lealone.mvcc.log;
 import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
+import org.lealone.mvcc.log.LogSyncService;
+import org.lealone.mvcc.log.RedoLog;
 
-public class BatchLogSyncService extends LogSyncService {
+class BatchLogSyncService extends LogSyncService {
     private static final long DEFAULT_LOG_SYNC_BATCH_WINDOW = 5;
 
     public BatchLogSyncService(Map<String, String> config) {
@@ -34,7 +36,7 @@ public class BatchLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void maybeWaitForSync(LogMap<Long, RedoLogValue> redoLog, Long lastOperationId) {
+    public void maybeWaitForSync(RedoLog redoLog, Long lastOperationId) {
         haveWork.release();
         Long lastSyncKey = redoLog.getLastSyncKey();
 
