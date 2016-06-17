@@ -2272,11 +2272,6 @@ public class Database implements DataHandler, DbObject {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        return getSQL();
-    }
-
-    @Override
     public String getCreateSQL() {
         return getSQL();
     }

@@ -48,21 +48,6 @@ public class ConstraintCheck extends Constraint {
         this.expr = expr;
     }
 
-    @Override
-    public String getCreateSQLForCopy(Table forTable, String quotedName) {
-        StringBuilder buff = new StringBuilder("ALTER TABLE ");
-        buff.append(forTable.getSQL()).append(" ADD CONSTRAINT ");
-        if (forTable.isHidden()) {
-            buff.append("IF NOT EXISTS ");
-        }
-        buff.append(quotedName);
-        if (comment != null) {
-            buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
-        }
-        buff.append(" CHECK").append(StringUtils.enclose(expr.getSQL())).append(" NOCHECK");
-        return buff.toString();
-    }
-
     private String getShortDescription() {
         return getName() + ": " + expr.getSQL();
     }
@@ -74,7 +59,17 @@ public class ConstraintCheck extends Constraint {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQLForCopy(table, getSQL());
+        StringBuilder buff = new StringBuilder("ALTER TABLE ");
+        buff.append(table.getSQL()).append(" ADD CONSTRAINT ");
+        if (table.isHidden()) {
+            buff.append("IF NOT EXISTS ");
+        }
+        buff.append(getSQL());
+        if (comment != null) {
+            buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
+        }
+        buff.append(" CHECK").append(StringUtils.enclose(expr.getSQL())).append(" NOCHECK");
+        return buff.toString();
     }
 
     @Override

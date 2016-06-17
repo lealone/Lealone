@@ -38,11 +38,6 @@ public class ConstraintUnique extends Constraint {
         return primaryKey ? Constraint.PRIMARY_KEY : Constraint.UNIQUE;
     }
 
-    @Override
-    public String getCreateSQLForCopy(Table forTable, String quotedName) {
-        return getCreateSQLForCopy(forTable, quotedName, true);
-    }
-
     private String getCreateSQLForCopy(Table forTable, String quotedName, boolean internalIndex) {
         StatementBuilder buff = new StatementBuilder("ALTER TABLE ");
         buff.append(forTable.getSQL()).append(" ADD CONSTRAINT ");
@@ -79,7 +74,7 @@ public class ConstraintUnique extends Constraint {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQLForCopy(table, getSQL());
+        return getCreateSQLForCopy(table, getSQL(), true);
     }
 
     public void setColumns(IndexColumn[] columns) {

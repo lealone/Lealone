@@ -304,35 +304,6 @@ public class TriggerObject extends SchemaObjectBase {
         this.onRollback = onRollback;
     }
 
-    @Override
-    public String getCreateSQLForCopy(Table targetTable, String quotedName) {
-        StringBuilder buff = new StringBuilder("CREATE FORCE TRIGGER ");
-        buff.append(quotedName);
-        if (insteadOf) {
-            buff.append(" INSTEAD OF ");
-        } else if (before) {
-            buff.append(" BEFORE ");
-        } else {
-            buff.append(" AFTER ");
-        }
-        buff.append(getTypeNameList());
-        buff.append(" ON ").append(targetTable.getSQL());
-        if (rowBased) {
-            buff.append(" FOR EACH ROW");
-        }
-        if (noWait) {
-            buff.append(" NOWAIT");
-        } else {
-            buff.append(" QUEUE ").append(queueSize);
-        }
-        if (triggerClassName != null) {
-            buff.append(" CALL ").append(database.quoteIdentifier(triggerClassName));
-        } else {
-            buff.append(" AS ").append(StringUtils.quoteStringSQL(triggerSource));
-        }
-        return buff.toString();
-    }
-
     public String getTypeNameList() {
         StatementBuilder buff = new StatementBuilder();
         if ((typeMask & Trigger.INSERT) != 0) {
@@ -360,7 +331,31 @@ public class TriggerObject extends SchemaObjectBase {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQLForCopy(table, getSQL());
+        StringBuilder buff = new StringBuilder("CREATE FORCE TRIGGER ");
+        buff.append(getSQL());
+        if (insteadOf) {
+            buff.append(" INSTEAD OF ");
+        } else if (before) {
+            buff.append(" BEFORE ");
+        } else {
+            buff.append(" AFTER ");
+        }
+        buff.append(getTypeNameList());
+        buff.append(" ON ").append(table.getSQL());
+        if (rowBased) {
+            buff.append(" FOR EACH ROW");
+        }
+        if (noWait) {
+            buff.append(" NOWAIT");
+        } else {
+            buff.append(" QUEUE ").append(queueSize);
+        }
+        if (triggerClassName != null) {
+            buff.append(" CALL ").append(database.quoteIdentifier(triggerClassName));
+        } else {
+            buff.append(" AS ").append(StringUtils.quoteStringSQL(triggerSource));
+        }
+        return buff.toString();
     }
 
     @Override

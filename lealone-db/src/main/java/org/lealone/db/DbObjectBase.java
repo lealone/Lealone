@@ -7,9 +7,7 @@ package org.lealone.db;
 
 import java.util.List;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
-import org.lealone.db.table.Table;
 
 /**
  * The base class for all database objects.
@@ -69,11 +67,6 @@ public abstract class DbObjectBase implements DbObject {
     @Override
     public String getSQL() {
         return database.quoteIdentifier(name);
-    }
-
-    @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        throw DbException.throwInternalError();
     }
 
     @Override

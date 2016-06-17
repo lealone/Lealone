@@ -95,24 +95,12 @@ public class ConstraintReferential extends Constraint {
      * Create the SQL statement of this object so a copy of the table can be made.
      *
      * @param forTable the table to create the object for
-     * @param quotedName the name of this object (quoted if necessary)
-     * @return the SQL statement
-     */
-    @Override
-    public String getCreateSQLForCopy(Table forTable, String quotedName) {
-        return getCreateSQLForCopy(forTable, refTable, quotedName, true);
-    }
-
-    /**
-     * Create the SQL statement of this object so a copy of the table can be made.
-     *
-     * @param forTable the table to create the object for
      * @param forRefTable the referenced table
      * @param quotedName the name of this object (quoted if necessary)
      * @param internalIndex add the index name to the statement
      * @return the SQL statement
      */
-    public String getCreateSQLForCopy(Table forTable, Table forRefTable, String quotedName, boolean internalIndex) {
+    private String getCreateSQLForCopy(Table forTable, Table forRefTable, String quotedName, boolean internalIndex) {
         StatementBuilder buff = new StatementBuilder("ALTER TABLE ");
         String mainTable = forTable.getSQL();
         buff.append(mainTable).append(" ADD CONSTRAINT ");
@@ -208,7 +196,7 @@ public class ConstraintReferential extends Constraint {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQLForCopy(table, getSQL());
+        return getCreateSQLForCopy(table, refTable, getSQL(), true);
     }
 
     public void setColumns(IndexColumn[] cols) {

@@ -7,8 +7,6 @@ package org.lealone.db;
 
 import java.util.List;
 
-import org.lealone.db.table.Table;
-
 /**
  * A database object such as a table, an index, or a user.
  */
@@ -48,16 +46,6 @@ public interface DbObject {
      * @return the SQL name
      */
     String getSQL();
-
-    /**
-     * Build a SQL statement to re-create the object, or to create a copy of the
-     * object with a different name or referencing a different table
-     *
-     * @param table the new table
-     * @param quotedName the quoted name
-     * @return the SQL statement
-     */
-    String getCreateSQLForCopy(Table table, String quotedName);
 
     /**
      * Construct the original CREATE ... SQL statement for this object.

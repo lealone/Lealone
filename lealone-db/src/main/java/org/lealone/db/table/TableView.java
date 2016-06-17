@@ -224,11 +224,6 @@ public class TableView extends Table {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        return getCreateSQL(false, true, quotedName);
-    }
-
-    @Override
     public String getCreateSQL() {
         return getCreateSQL(false, true);
     }

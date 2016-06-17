@@ -345,25 +345,20 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table targetTable, String quotedName) {
+    public String getCreateSQL() {
         StringBuilder buff = new StringBuilder("CREATE ");
         buff.append(indexType.getSQL());
         buff.append(' ');
         if (table.isHidden()) {
             buff.append("IF NOT EXISTS ");
         }
-        buff.append(quotedName);
-        buff.append(" ON ").append(targetTable.getSQL());
+        buff.append(getSQL());
+        buff.append(" ON ").append(table.getSQL());
         if (comment != null) {
             buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
         }
         buff.append('(').append(getColumnListSQL()).append(')');
         return buff.toString();
-    }
-
-    @Override
-    public String getCreateSQL() {
-        return getCreateSQLForCopy(table, getSQL());
     }
 
     @Override

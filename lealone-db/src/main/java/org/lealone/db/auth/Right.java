@@ -134,32 +134,23 @@ public class Right extends DbObjectBase {
     }
 
     @Override
-    public String getCreateSQLForCopy(Table table, String quotedName) {
-        return getCreateSQLForCopy(table);
-    }
-
-    private String getCreateSQLForCopy(DbObject object) {
+    public String getCreateSQL() {
         StringBuilder buff = new StringBuilder();
         buff.append("GRANT ");
         if (grantedRole != null) {
             buff.append(grantedRole.getSQL());
         } else {
             buff.append(getRights());
-            if (object != null) {
-                if (object instanceof Schema) {
-                    buff.append(" ON SCHEMA ").append(object.getSQL());
-                } else if (object instanceof Table) {
-                    buff.append(" ON ").append(object.getSQL());
+            if (grantedObject != null) {
+                if (grantedObject instanceof Schema) {
+                    buff.append(" ON SCHEMA ").append(grantedObject.getSQL());
+                } else if (grantedObject instanceof Table) {
+                    buff.append(" ON ").append(grantedObject.getSQL());
                 }
             }
         }
         buff.append(" TO ").append(grantee.getSQL());
         return buff.toString();
-    }
-
-    @Override
-    public String getCreateSQL() {
-        return getCreateSQLForCopy(grantedObject);
     }
 
     @Override
