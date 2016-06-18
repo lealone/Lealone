@@ -122,10 +122,6 @@ public abstract class DbObjectBase implements DbObject {
         return modificationId;
     }
 
-    protected void setObjectName(String name) {
-        this.name = name;
-    }
-
     /**
      * Set the main attributes to null to make sure the object is no longer used.
      */

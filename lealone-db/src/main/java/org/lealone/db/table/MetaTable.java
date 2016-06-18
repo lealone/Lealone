@@ -107,6 +107,10 @@ public class MetaTable extends Table {
     private final int indexColumn;
     private final MetaIndex metaIndex;
 
+    private void setObjectName(String name) {
+        this.name = name;
+    }
+
     /**
      * Create a new metadata table.
      *
