@@ -57,7 +57,7 @@ public class LealoneDatabase extends Database {
     }
 
     Database createDatabase(String dbName, ConnectionInfo ci) {
-        String sql = getSQL(quoteIdentifier(dbName), ci);
+        String sql = getCreateSQL(quoteIdentifier(dbName), ci);
         getSystemSession().prepareStatementLocal(sql).executeUpdate();
         // 执行完CREATE DATABASE后会加到databases字段中
         // CreateDatabase.update -> Database.addDatabaseObject -> Database.getMap -> this.getDatabasesMap

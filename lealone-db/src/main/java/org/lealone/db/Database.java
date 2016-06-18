@@ -2232,16 +2232,17 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public String getSQL() {
-        return getSQL(quoteIdentifier(name), dbSettings, replicationProperties);
+        return quoteIdentifier(name);
     }
 
-    public static String getSQL(String dbName, ConnectionInfo ci) {
-        return getSQL(dbName, ci.getDbSettings(), null);
+    public static String getCreateSQL(String quotedDbName, ConnectionInfo ci) {
+        return getCreateSQL(quotedDbName, ci.getDbSettings(), null);
     }
 
-    public static String getSQL(String dbName, DbSettings dbSettings, Map<String, String> replicationProperties) {
+    private static String getCreateSQL(String quotedDbName, DbSettings dbSettings,
+            Map<String, String> replicationProperties) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
-        sql.append(dbName).append(" WITH ( ");
+        sql.append(quotedDbName).append(" WITH ( ");
 
         Map<String, String> map = dbSettings.getSettings();
         for (Entry<String, String> e : map.entrySet()) {
@@ -2273,7 +2274,7 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public String getCreateSQL() {
-        return getSQL();
+        return getCreateSQL(quoteIdentifier(name), dbSettings, replicationProperties);
     }
 
     @Override

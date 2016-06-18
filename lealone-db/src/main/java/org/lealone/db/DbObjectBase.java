@@ -14,24 +14,18 @@ import org.lealone.common.trace.Trace;
  */
 public abstract class DbObjectBase implements DbObject {
 
-    /**
-     * The database.
-     */
     protected Database database;
     protected int id;
     protected String name;
+
+    protected boolean temporary;
+    protected String comment;
 
     /**
      * The trace module.
      */
     protected Trace trace;
     protected long modificationId;
-    protected boolean temporary;
-
-    /**
-     * The comment (if set).
-     */
-    protected String comment;
 
     /**
      * Initialize some attributes of this object.
@@ -133,15 +127,14 @@ public abstract class DbObjectBase implements DbObject {
     }
 
     /**
-     * Set the main attributes to null to make sure the object is no longer
-     * used.
+     * Set the main attributes to null to make sure the object is no longer used.
      */
     protected void invalidate() {
         setModified();
-        id = -1;
         database = null;
-        trace = null;
+        id = -1;
         name = null;
+        trace = null;
     }
 
     @Override
