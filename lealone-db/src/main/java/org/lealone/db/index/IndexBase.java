@@ -89,6 +89,11 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         return columns;
     }
 
+    @Override
+    public int[] getColumnIds() {
+        return columnIds;
+    }
+
     /**
      * Create a duplicate key exception with a message that contains the index name.
      *

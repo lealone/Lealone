@@ -199,6 +199,13 @@ public interface Index extends SchemaObject {
     Column[] getColumns();
 
     /**
+     * Get the indexed column ids.
+     *
+     * @return the column ids
+     */
+    int[] getColumnIds();
+
+    /**
      * Get the index type.
      *
      * @return the index type

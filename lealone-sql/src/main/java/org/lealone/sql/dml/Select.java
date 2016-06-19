@@ -82,7 +82,7 @@ public class Select extends Query implements org.lealone.db.expression.Select {
     private boolean isGroupQuery, isGroupSortedQuery;
     private boolean isForUpdate, isForUpdateMvcc;
     private double cost;
-    private boolean isQuickAggregateQuery, isDistinctQuery;
+    private boolean isQuickAggregateQuery, isDistinctQuery, isDistinctQueryForMultiFields;
     private boolean isPrepared, checkInit;
     private boolean sortUsingIndex;
     private SortOrder sort;
@@ -370,30 +370,8 @@ public class Select extends Query implements org.lealone.db.expression.Select {
         // 以下3个if为特殊的distinct、sort、group by选择更合适的索引
         // 1. distinct
         if (distinct && session.getDatabase().getSettings().optimizeDistinct && !isGroupQuery && filters.size() == 1
-                && expressions.size() == 1 && condition == null) {
-            Expression expr = expressions.get(0);
-            expr = expr.getNonAliasExpression();
-            if (expr instanceof ExpressionColumn) {
-                Column column = ((ExpressionColumn) expr).getColumn();
-                int selectivity = column.getSelectivity();
-                Index columnIndex = topTableFilter.getTable().getIndexForColumn(column);
-                if (columnIndex != null && selectivity != Constants.SELECTIVITY_DEFAULT && selectivity < 20) {
-                    // the first column must be ascending
-                    boolean ascending = columnIndex.getIndexColumns()[0].sortType == SortOrder.ASCENDING;
-                    Index current = topTableFilter.getIndex();
-                    // if another index is faster
-                    if (columnIndex.supportsDistinctQuery() && ascending
-                            && (current == null || current.getIndexType().isScan() || columnIndex == current)) {
-                        IndexType type = columnIndex.getIndexType();
-                        // hash indexes don't work, and unique single column
-                        // indexes don't work
-                        if (!type.isHash() && (!type.isUnique() || columnIndex.getColumns().length > 1)) {
-                            topTableFilter.setIndex(columnIndex);
-                            isDistinctQuery = true;
-                        }
-                    }
-                }
-            }
+                && condition == null) {
+            optimizeDistinct();
         }
         // 2. sort
         if (sort != null && !isQuickAggregateQuery && !isGroupQuery) {
@@ -443,6 +421,73 @@ public class Select extends Query implements org.lealone.db.expression.Select {
         isPrepared = true;
 
         return this;
+    }
+
+    private void optimizeDistinct() {
+        // 1.1. distinct 单字段
+        if (expressions.size() == 1) {
+            Expression expr = expressions.get(0);
+            expr = expr.getNonAliasExpression();
+            if (expr instanceof ExpressionColumn) {
+                Column column = ((ExpressionColumn) expr).getColumn();
+                int selectivity = column.getSelectivity();
+                Index columnIndex = topTableFilter.getTable().getIndexForColumn(column);
+                if (columnIndex != null && selectivity != Constants.SELECTIVITY_DEFAULT && selectivity < 20) {
+                    // the first column must be ascending
+                    boolean ascending = columnIndex.getIndexColumns()[0].sortType == SortOrder.ASCENDING;
+                    Index current = topTableFilter.getIndex();
+                    // if another index is faster
+                    if (columnIndex.supportsDistinctQuery() && ascending
+                            && (current == null || current.getIndexType().isScan() || columnIndex == current)) {
+                        IndexType type = columnIndex.getIndexType();
+                        // hash indexes don't work, and unique single column
+                        // indexes don't work
+                        if (!type.isHash() && (!type.isUnique() || columnIndex.getColumns().length > 1)) {
+                            topTableFilter.setIndex(columnIndex);
+                            isDistinctQuery = true;
+                        }
+                    }
+                }
+            }
+        }
+        // 1.2. distinct 多字段
+        else {
+            Index current = topTableFilter.getIndex();
+            if (current == null || current.getIndexType().isScan()) {
+                boolean isExpressionColumn = true;
+                int size = expressions.size();
+                Column[] columns = new Column[size];
+                for (int i = 0; isExpressionColumn && i < size; i++) {
+                    Expression expr = expressions.get(i);
+                    expr = expr.getNonAliasExpression();
+                    isExpressionColumn &= (expr instanceof ExpressionColumn);
+                    if (isExpressionColumn)
+                        columns[i] = ((ExpressionColumn) expr).getColumn();
+                }
+                if (isExpressionColumn) {
+                    for (Index index : topTableFilter.getTable().getIndexes()) {
+                        IndexType type = index.getIndexType();
+                        // hash indexes don't work, and unique single column
+                        // indexes don't work
+                        if (index.supportsDistinctQuery() && !type.isHash() && !type.isUnique()) {
+                            Column[] indexColumns = index.getColumns();
+                            if (indexColumns.length == size) {
+                                boolean found = true;
+                                for (int i = 0; found && i < size; i++) {
+                                    found &= (indexColumns[i] == columns[i])
+                                            && index.getIndexColumns()[i].sortType == SortOrder.ASCENDING;
+                                }
+                                if (found) {
+                                    topTableFilter.setIndex(index);
+                                    isDistinctQueryForMultiFields = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private double preparePlan() {
@@ -674,7 +719,7 @@ public class Select extends Query implements org.lealone.db.expression.Select {
             result = createLocalResult(result);
             result.setSortOrder(sort);
         }
-        if (distinct && !isDistinctQuery) {
+        if (distinct && (!isDistinctQuery && !isDistinctQueryForMultiFields)) {
             result = createLocalResult(result);
             result.setDistinct();
         }
@@ -715,6 +760,8 @@ public class Select extends Query implements org.lealone.db.expression.Select {
                 }
             } else if (isDistinctQuery) {
                 queryDistinct(to, limitRows);
+            } else if (isDistinctQueryForMultiFields) {
+                queryDistinctForMultiFields(to, limitRows);
             } else {
                 queryFlat(columnCount, to, limitRows);
             }
@@ -743,6 +790,42 @@ public class Select extends Query implements org.lealone.db.expression.Select {
         return old != null ? old : new LocalResult(session, expressionArray, visibleColumnCount);
     }
 
+    private void queryDistinctForMultiFields(ResultTarget result, long limitRows) {
+        // limitRows must be long, otherwise we get an int overflow
+        // if limitRows is at or near Integer.MAX_VALUE
+        // limitRows is never 0 here
+        if (limitRows > 0 && offsetExpr != null) {
+            int offset = offsetExpr.getValue(session).getInt();
+            if (offset > 0) {
+                limitRows += offset;
+            }
+        }
+        int rowNumber = 0;
+        setCurrentRowNumber(0);
+        Index index = topTableFilter.getIndex();
+        int[] columnIds = index.getColumnIds();
+        int size = columnIds.length;
+        int sampleSize = getSampleSizeValue(session);
+        Cursor cursor = index.findDistinct(session, null, null);
+        while (cursor.next()) {
+            setCurrentRowNumber(rowNumber + 1);
+            SearchRow found = cursor.getSearchRow();
+            Value[] row = new Value[size];
+            for (int i = 0; i < size; i++) {
+                row[i] = found.getValue(columnIds[i]);
+            }
+            result.addRow(row);
+            rowNumber++;
+            if ((sort == null || sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
+                break;
+            }
+            if (sampleSize > 0 && rowNumber >= sampleSize) {
+                break;
+            }
+        }
+    }
+
+    // 单字段distinct
     private void queryDistinct(ResultTarget result, long limitRows) {
         // limitRows must be long, otherwise we get an int overflow
         // if limitRows is at or near Integer.MAX_VALUE

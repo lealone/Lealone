@@ -207,7 +207,8 @@ public class SqlTestBase extends TestBase {
         return rs.next();
     }
 
-    public void printResultSet() {
+    public int printResultSet() {
+        int count = 0;
         try {
             rs = stmt.executeQuery(sql);
 
@@ -216,6 +217,7 @@ public class SqlTestBase extends TestBase {
                 for (int i = 1; i <= n; i++) {
                     System.out.print(rs.getString(i) + " ");
                 }
+                count++;
                 System.out.println();
             }
             rs.close();
@@ -224,5 +226,6 @@ public class SqlTestBase extends TestBase {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        return count;
     }
 }
