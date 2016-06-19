@@ -14,7 +14,6 @@ import java.util.TreeSet;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
-import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -41,37 +40,45 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     private final TransactionMap<Value, Value> dataMap;
 
     public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
-            IndexColumn[] columns, IndexType indexType) {
-        super(table, id, indexName, indexType, columns);
+            IndexColumn[] indexColumns, IndexType indexType) {
+        super(table, id, indexName, indexType, indexColumns);
         this.table = table;
-        mapName = table.getMapNameForIndex(getId());
+        mapName = table.getMapNameForIndex(id);
         if (!database.isStarting()) {
-            checkIndexColumnTypes(columns);
+            checkIndexColumnTypes(indexColumns);
         }
         // always store the row key in the map key,
         // even for unique indexes, as some of the index columns could be null
-        keyColumns = columns.length + 1;
+        keyColumns = indexColumns.length + 1;
+
+        dataMap = openMap(session, mapName);
+
+        // TODO
+        // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs
+        session.commit(false);
+    }
+
+    // TODO 不考虑事务
+    private TransactionMap<Value, Value> openMap(ServerSession session, String mapName) {
         int[] sortTypes = new int[keyColumns];
-        for (int i = 0; i < columns.length; i++) {
-            sortTypes[i] = columns[i].sortType;
+        for (int i = 0; i < indexColumns.length; i++) {
+            sortTypes[i] = indexColumns[i].sortType;
         }
         sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
-        Database db = session.getDatabase();
-        ValueDataType keyType = new ValueDataType(db, db.getCompareMode(), sortTypes);
+
+        ValueDataType keyType = new ValueDataType(database, database.getCompareMode(), sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         boolean isShardingMode = session.isShardingMode();
-        dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
-                keyType, valueType, storage, isShardingMode);
-        transactionEngine.addTransactionMap(dataMap);
-        // TODO
-        // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs
-        session.commit(false);
-        if (!keyType.equals(dataMap.getKeyType())) {
+        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName,
+                table.getMapType(), keyType, valueType, storage, isShardingMode);
+        transactionEngine.addTransactionMap(map);
+        if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }
+        return map;
     }
 
     @Override
@@ -161,28 +168,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
                 map.remove();
             }
         }
-    }
-
-    // TODO 不考虑事务
-    private TransactionMap<Value, Value> openMap(ServerSession session, String mapName) {
-        int[] sortTypes = new int[keyColumns];
-        for (int i = 0; i < indexColumns.length; i++) {
-            sortTypes[i] = indexColumns[i].sortType;
-        }
-        sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
-        ValueDataType keyType = new ValueDataType(database, database.getCompareMode(), sortTypes);
-        ValueDataType valueType = new ValueDataType(null, null, null);
-
-        Storage storage = database.getStorage(table.getStorageEngine());
-        TransactionEngine transactionEngine = database.getTransactionEngine();
-        boolean isShardingMode = session.isShardingMode();
-        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName,
-                table.getMapType(), keyType, valueType, storage, isShardingMode);
-        transactionEngine.addTransactionMap(map);
-        if (!keyType.equals(map.getKeyType())) {
-            throw DbException.throwInternalError("Incompatible key type");
-        }
-        return map;
     }
 
     @Override
@@ -490,6 +475,8 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         private SearchRow searchRow;
         private Row row;
 
+        private ValueArray oldKey;
+
         public StandardSecondaryIndexDistinctCursor(ServerSession session, ValueArray min, SearchRow last) {
             this.session = session;
             this.last = last;
@@ -520,26 +507,31 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
         @Override
         public boolean next() {
-            Value oldKey = null;
-            if (current != null) {
-                // 不改变底层的ValueArray
-                Value[] oldValues = ((ValueArray) current).getList();
-                Value[] newValues = new Value[keyColumns];
-                System.arraycopy(oldValues, 0, newValues, 0, keyColumns - 1);
-                newValues[keyColumns - 1] = ValueLong.get(Long.MAX_VALUE);
-                oldKey = ValueArray.get(newValues);
-            }
-            Value newKey = map.higherKey(oldKey);
+            Value newKey = map.higherKey(oldKey); // oldKey从null开始，此时返回第一个元素
             current = newKey;
             searchRow = null;
+            row = null;
             if (newKey != null) {
                 if (last != null && compareRows(getSearchRow(), last) > 0) {
                     searchRow = null;
                     current = null;
                 }
             }
-            row = null;
-            return current != null;
+            if (current != null) {
+                Value[] currentValues = ((ValueArray) current).getList();
+                if (oldKey == null) {
+                    Value[] oldValues = new Value[keyColumns];
+                    System.arraycopy(currentValues, 0, oldValues, 0, keyColumns - 1);
+                    oldValues[keyColumns - 1] = ValueLong.get(Long.MAX_VALUE);
+                    oldKey = ValueArray.get(oldValues);
+                } else {
+                    Value[] oldValues = oldKey.getList();
+                    for (int i = 0, size = keyColumns - 1; i < size; i++)
+                        oldValues[i] = currentValues[i];
+                }
+                return true;
+            }
+            return false;
         }
 
         @Override

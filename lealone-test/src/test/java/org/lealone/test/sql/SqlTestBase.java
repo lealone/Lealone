@@ -80,8 +80,9 @@ public class SqlTestBase extends TestBase {
         try {
             return stmt.executeUpdate(sql);
         } catch (SQLException e) {
-            e.printStackTrace();
-            return -1;
+            // e.printStackTrace();
+            // return -1;
+            throw new RuntimeException(e);
         }
     }
 
