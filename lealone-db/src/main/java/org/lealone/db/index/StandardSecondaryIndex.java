@@ -123,7 +123,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         TreeSet<Source> sources = new TreeSet<Source>();
         for (int i = 0; i < bufferNames.size(); i++) {
             TransactionMap<Value, Value> map = openMap(session, bufferNames.get(i));
-            Iterator<Value> it = map.keyIterator(null);
+            Iterator<Value> it = map.keyIterator(null, true);
             if (it.hasNext()) {
                 Source s = new Source();
                 s.value = it.next();
