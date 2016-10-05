@@ -182,9 +182,12 @@ public class AsyncConnection implements Handler<Buffer> {
             userName = StringUtils.toUpperEnglish(userName);
             Session session = createSession(transfer, originalURL, dbName, userName);
             CommandHandler commandHandler = CommandHandler.getNextCommandHandler();
-            commandHandler.addSessionId(sessionId);
             sessions.put(sessionId, session);
+            // 先生成SessionInfo再把sessionId加到CommandHandler中，
+            // 否则CommandHandler与当前线程并发运行时，
+            // 当找不到sessionId对应的SessionInfo时，会立刻把CommandHandler中的session删除
             sessionInfoMap.put(sessionId, new SessionInfo(session, commandHandler));
+            commandHandler.addSessionId(sessionId);
             transfer.setSession(session);
             transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
             transfer.writeInt(clientVersion);
