@@ -183,11 +183,9 @@ public class AsyncConnection implements Handler<Buffer> {
             Session session = createSession(transfer, originalURL, dbName, userName);
             CommandHandler commandHandler = CommandHandler.getNextCommandHandler();
             sessions.put(sessionId, session);
-            // 先生成SessionInfo再把sessionId加到CommandHandler中，
-            // 否则CommandHandler与当前线程并发运行时，
-            // 当找不到sessionId对应的SessionInfo时，会立刻把CommandHandler中的session删除
-            sessionInfoMap.put(sessionId, new SessionInfo(session, commandHandler));
-            commandHandler.addSessionId(sessionId);
+            SessionInfo sessionInfo = new SessionInfo(session, commandHandler);
+            sessionInfoMap.put(sessionId, sessionInfo);
+            commandHandler.addSession(sessionId, sessionInfo);
             transfer.setSession(session);
             transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
             transfer.writeInt(clientVersion);
@@ -265,7 +263,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 closeSession(s);
             sessions.clear();
             for (Integer id : sessionInfoMap.keySet()) {
-                sessionInfoMap.get(id).commandHandler.removeSessionId(id);
+                sessionInfoMap.get(id).commandHandler.removeSession(id);
             }
             sessionInfoMap.clear();
         } catch (Exception e) {
@@ -427,14 +425,6 @@ public class AsyncConnection implements Handler<Buffer> {
 
         sessionInfo.preparedCommandQueue.add(pc);
         sessionInfo.commandHandler.ready();
-    }
-
-    ConcurrentLinkedQueue<PreparedCommand> getPreparedCommandQueue(int sessionId) {
-        SessionInfo sessionInfo = sessionInfoMap.get(sessionId);
-        if (sessionInfo == null) { // 允许的，CommandHandler在迭代的过程中可能session已经关闭了
-            return null;
-        }
-        return sessionInfo.preparedCommandQueue;
     }
 
     void sendError(Transfer transfer, int id, Throwable t) {
@@ -841,7 +831,7 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.SESSION_CLOSE: {
             SessionInfo si = sessionInfoMap.remove(id);
-            si.commandHandler.removeSessionId(id);
+            si.commandHandler.removeSession(id);
             Session session = sessions.remove(id);
             closeSession(session);
             break;

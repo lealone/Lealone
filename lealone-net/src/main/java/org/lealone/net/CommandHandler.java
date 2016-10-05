@@ -18,12 +18,14 @@
 package org.lealone.net;
 
 import java.util.LinkedList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.SessionStatus;
+import org.lealone.net.AsyncConnection.SessionInfo;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 
@@ -71,16 +73,16 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         c.close();
     }
 
-    private final ConcurrentLinkedQueue<Integer> sessions = new ConcurrentLinkedQueue<>();
+    private final ConcurrentHashMap<Integer, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
     private final Semaphore haveWork = new Semaphore(1);
     private boolean stop;
 
-    void addSessionId(Integer sessionId) {
-        sessions.add(sessionId);
+    void addSession(Integer sessionId, SessionInfo sessionInfo) {
+        sessionInfoMap.put(sessionId, sessionInfo);
     }
 
-    void removeSessionId(Integer sessionId) {
-        sessions.remove(sessionId);
+    void removeSession(Integer sessionId) {
+        sessionInfoMap.remove(sessionId);
     }
 
     public CommandHandler(int id) {
@@ -127,38 +129,29 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
     }
 
     private PreparedCommand getNextBestCommand() {
-        if (connections.isEmpty())
+        if (sessionInfoMap.isEmpty())
             return null;
 
-        AsyncConnection ac;
-        PreparedCommand pc;
         ConcurrentLinkedQueue<PreparedCommand> bestPreparedCommandQueue = null;
         double cost = 0.0;
 
-        outer: for (int i = 0, size = connections.size(); i < size; i++) {
-            ac = connections.get(i);
-            for (Integer sessionId : sessions) {
-                ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = ac.getPreparedCommandQueue(sessionId);
-                if (preparedCommandQueue == null) {
-                    removeSessionId(sessionId);
-                    continue;
-                }
-                pc = preparedCommandQueue.peek();
-                if (pc == null)
-                    continue;
+        for (SessionInfo sessionInfo : sessionInfoMap.values()) {
+            ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = sessionInfo.preparedCommandQueue;
+            PreparedCommand pc = preparedCommandQueue.peek();
+            if (pc == null)
+                continue;
 
-                SessionStatus sessionStatus = pc.session.getStatus();
-                if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
-                    bestPreparedCommandQueue = preparedCommandQueue;
-                    break outer;
-                } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
-                    continue;
-                }
+            SessionStatus sessionStatus = pc.session.getStatus();
+            if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
+                bestPreparedCommandQueue = preparedCommandQueue;
+                break;
+            } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
+                continue;
+            }
 
-                if (bestPreparedCommandQueue == null || pc.stmt.getCost() < cost) {
-                    bestPreparedCommandQueue = preparedCommandQueue;
-                    cost = pc.stmt.getCost();
-                }
+            if (bestPreparedCommandQueue == null || pc.stmt.getCost() < cost) {
+                bestPreparedCommandQueue = preparedCommandQueue;
+                cost = pc.stmt.getCost();
             }
         }
 
