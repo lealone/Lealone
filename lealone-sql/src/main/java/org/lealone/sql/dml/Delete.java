@@ -151,4 +151,12 @@ public class Delete extends ManipulateStatement {
         return buff.toString();
     }
 
+    @Override
+    public int getPriority() {
+        if (getCurrentRowNumber() > 0)
+            return priority;
+
+        priority = NORM_PRIORITY - 1;
+        return priority;
+    }
 }

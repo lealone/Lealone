@@ -250,4 +250,16 @@ public class Insert extends ManipulateStatement implements ResultTarget {
     public double getCost() {
         return query != null ? query.getCost() : list.size();
     }
+
+    @Override
+    public int getPriority() {
+        if (rowNumber > 0)
+            return priority;
+
+        if (query != null || list.size() > 10)
+            priority = NORM_PRIORITY - 1;
+        else
+            priority = MAX_PRIORITY;
+        return priority;
+    }
 }

@@ -26,13 +26,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.SessionStatus;
 import org.lealone.net.AsyncConnection.SessionInfo;
+import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 
 public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     private static final LinkedList<AsyncConnection> connections = new LinkedList<>();
-    private static final int commandHandlersCount = 2; // Runtime.getRuntime().availableProcessors();
+    private static final int commandHandlersCount = 1; // Runtime.getRuntime().availableProcessors();
     private static final CommandHandler[] commandHandlers = new CommandHandler[commandHandlersCount];
     private static final AtomicInteger index = new AtomicInteger(0);
 
@@ -76,6 +77,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
     private final ConcurrentHashMap<Integer, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
     private final Semaphore haveWork = new Semaphore(1);
     private boolean stop;
+    private int nested;
 
     void addSession(Integer sessionId, SessionInfo sessionInfo) {
         sessionInfoMap.put(sessionId, sessionInfo);
@@ -133,7 +135,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
             return null;
 
         ConcurrentLinkedQueue<PreparedCommand> bestPreparedCommandQueue = null;
-        double cost = 0.0;
+        int priority = PreparedStatement.MIN_PRIORITY;
 
         for (SessionInfo sessionInfo : sessionInfoMap.values()) {
             ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = sessionInfo.preparedCommandQueue;
@@ -149,9 +151,9 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
                 continue;
             }
 
-            if (bestPreparedCommandQueue == null || pc.stmt.getCost() < cost) {
+            if (bestPreparedCommandQueue == null || pc.stmt.getPriority() > priority) {
                 bestPreparedCommandQueue = preparedCommandQueue;
-                cost = pc.stmt.getCost();
+                priority = pc.stmt.getPriority();
             }
         }
 
@@ -161,4 +163,63 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         return bestPreparedCommandQueue.poll();
     }
 
+    @Override
+    public void executeNextStatementIfNeeded(PreparedStatement current) {
+        // 如果出来各高优化级的命令，最多只抢占3次，避免堆栈溢出
+        if (nested >= 3)
+            return;
+        nested++;
+        int priority = current.getPriority();
+        boolean hasHigherPriorityCommand = false;
+        while (true) {
+            PreparedCommand c = getNextBestCommand(priority);
+            if (c == null) {
+                break;
+            }
+
+            hasHigherPriorityCommand = true;
+            try {
+                c.run();
+            } catch (Throwable e) {
+                c.transfer.getAsyncConnection().sendError(c.transfer, c.id, e);
+            }
+        }
+
+        if (hasHigherPriorityCommand) {
+            current.setPriority(priority + 1);
+        }
+        nested--;
+    }
+
+    private PreparedCommand getNextBestCommand(int priority) {
+        if (sessionInfoMap.isEmpty())
+            return null;
+
+        ConcurrentLinkedQueue<PreparedCommand> bestPreparedCommandQueue = null;
+
+        for (SessionInfo sessionInfo : sessionInfoMap.values()) {
+            ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = sessionInfo.preparedCommandQueue;
+            PreparedCommand pc = preparedCommandQueue.peek();
+            if (pc == null)
+                continue;
+
+            // SessionStatus sessionStatus = pc.session.getStatus();
+            // if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
+            // bestPreparedCommandQueue = preparedCommandQueue;
+            // break;
+            // } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
+            // continue;
+            // }
+
+            if (pc.stmt.getPriority() > priority) {
+                bestPreparedCommandQueue = preparedCommandQueue;
+                priority = pc.stmt.getPriority();
+            }
+        }
+
+        if (bestPreparedCommandQueue == null)
+            return null;
+
+        return bestPreparedCommandQueue.poll();
+    }
 }

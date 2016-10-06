@@ -469,4 +469,9 @@ public class SelectUnion extends Query {
     public void addGlobalCondition(CommandParameter param, int columnId, int comparisonType) {
         this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }
+
+    @Override
+    public int getPriority() {
+        return Math.min(left.getPriority(), left.getPriority());
+    }
 }

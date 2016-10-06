@@ -72,6 +72,7 @@ import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.memory.MemoryStorageEngine;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
@@ -2155,7 +2156,11 @@ public class Database implements DataHandler, DbObject {
         if (storage != null)
             return storage;
 
-        storage = getStorageBuilder(storageEngine).openStorage();
+        if (storageEngine instanceof MemoryStorageEngine) {
+            storage = storageEngine.getStorageBuilder().openStorage();
+        } else {
+            storage = getStorageBuilder(storageEngine).openStorage();
+        }
         storages.put(storageEngine.getName(), storage);
         if (persistent && lobStorage == null)
             setLobStorage(storageEngine.getLobStorage(this, storage));

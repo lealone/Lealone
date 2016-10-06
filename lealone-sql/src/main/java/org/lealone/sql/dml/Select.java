@@ -1513,4 +1513,13 @@ public class Select extends Query implements org.lealone.db.expression.Select {
     public void addGlobalCondition(CommandParameter param, int columnId, int comparisonType) {
         this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }
+
+    @Override
+    public int getPriority() {
+        if (getCurrentRowNumber() > 127)
+            return priority;
+
+        priority = MIN_PRIORITY;
+        return priority;
+    }
 }

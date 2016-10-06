@@ -21,6 +21,8 @@ public interface SQLStatementExecutor {
 
     void executeNextStatement();
 
+    void executeNextStatementIfNeeded(PreparedStatement current);
+
     void ready();
 
 }

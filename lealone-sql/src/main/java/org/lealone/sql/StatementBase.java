@@ -377,6 +377,12 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     protected void setCurrentRowNumber(int rowNumber) {
         if ((++rowScanCount & 127) == 0) {
             checkCanceled();
+
+            Thread t = Thread.currentThread();
+            if (t instanceof SQLStatementExecutor) {
+                SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
+                sqlStatementExecutor.executeNextStatementIfNeeded(this);
+            }
         }
         this.currentRowNumber = rowNumber;
         setProgress();
@@ -547,6 +553,18 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     @Override
     public double getCost() {
         return cost;
+    }
+
+    protected int priority = NORM_PRIORITY;
+
+    @Override
+    public int getPriority() {
+        return priority;
+    }
+
+    @Override
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 
     @Override

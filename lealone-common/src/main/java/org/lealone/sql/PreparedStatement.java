@@ -21,6 +21,10 @@ import org.lealone.db.result.Result;
 
 public interface PreparedStatement extends SQLStatement {
 
+    public final static int MIN_PRIORITY = 1;
+    public final static int NORM_PRIORITY = 5;
+    public final static int MAX_PRIORITY = 10;
+
     void setFetchSize(int fetchSize);
 
     int getFetchSize();
@@ -44,6 +48,10 @@ public interface PreparedStatement extends SQLStatement {
     PreparedStatement getWrappedStatement();
 
     double getCost();
+
+    int getPriority();
+
+    void setPriority(int priority);
 
     boolean isTransactional();
 

@@ -305,4 +305,13 @@ public class Merge extends ManipulateStatement {
     public double getCost() {
         return query != null ? query.getCost() : list.size();
     }
+
+    @Override
+    public int getPriority() {
+        if (getCurrentRowNumber() > 0)
+            return priority;
+
+        priority = NORM_PRIORITY - 1;
+        return priority;
+    }
 }

@@ -44,4 +44,9 @@ public abstract class DefineStatement extends StatementBase {
         return transactional;
     }
 
+    @Override
+    public int getPriority() {
+        priority = MIN_PRIORITY;
+        return priority;
+    }
 }
