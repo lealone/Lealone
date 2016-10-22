@@ -92,7 +92,7 @@ public class Lealone {
         logger.info("Base dir: {}", config.base_dir);
     }
 
-    // 初始化顺序storage -> transaction -> sql -> protocol
+    // 初始化顺序storage -> transaction -> sql -> protocol_server
     private static void initPluggableEngines() {
         List<PluggableEngineDef> pluggable_engines = config.storage_engines;
         if (pluggable_engines != null) {
@@ -105,7 +105,7 @@ public class Lealone {
                             se = (StorageEngine) clz.newInstance();
                             StorageEngineManager.getInstance().registerEngine(se);
                         } catch (Exception e) {
-                            throw new ConfigurationException("StorageEngine '" + def.name + "' can not found");
+                            throw new ConfigurationException("StorageEngine '" + def.name + "' can not found", e);
                         }
                     }
 
@@ -127,7 +127,7 @@ public class Lealone {
                             te = (TransactionEngine) clz.newInstance();
                             TransactionEngineManager.getInstance().registerEngine(te);
                         } catch (Exception e) {
-                            throw new ConfigurationException("TransactionEngine '" + def.name + "' can not found");
+                            throw new ConfigurationException("TransactionEngine '" + def.name + "' can not found", e);
                         }
                     }
 
@@ -149,7 +149,7 @@ public class Lealone {
                             se = (SQLEngine) clz.newInstance();
                             SQLEngineManager.getInstance().registerEngine(se);
                         } catch (Exception e) {
-                            throw new ConfigurationException("SQLEngine '" + def.name + "' can not found");
+                            throw new ConfigurationException("SQLEngine '" + def.name + "' can not found", e);
                         }
                     }
 
@@ -160,7 +160,6 @@ public class Lealone {
                 }
             }
         }
-
         pluggable_engines = config.protocol_server_engines;
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
@@ -172,7 +171,7 @@ public class Lealone {
                             pse = (ProtocolServerEngine) clz.newInstance();
                             ProtocolServerEngineManager.getInstance().registerEngine(pse);
                         } catch (Exception e) {
-                            throw new ConfigurationException("ProtocolServerEngine '" + def.name + "' can not found");
+                            throw new ConfigurationException("ProtocolServerEngine '" + def.name + "' can not found", e);
                         }
                     }
                     initPluggableEngine(pse, def);
@@ -182,10 +181,11 @@ public class Lealone {
     }
 
     private static void initPluggableEngine(PluggableEngine pe, PluggableEngineDef def) {
-        if (!def.getParameters().containsKey("base_dir"))
-            def.getParameters().put("base_dir", config.base_dir);
+        Map<String, String> parameters = def.getParameters();
+        if (!parameters.containsKey("base_dir"))
+            parameters.put("base_dir", config.base_dir);
 
-        pe.init(def.getParameters());
+        pe.init(parameters);
     }
 
     private static void start() throws Exception {

@@ -19,6 +19,7 @@ package org.lealone.main.config;
 
 import java.util.List;
 
+import org.lealone.db.Constants;
 import org.lealone.main.config.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.main.config.EncryptionOptions.ServerEncryptionOptions;
 
@@ -39,11 +40,11 @@ public class Config {
     }
 
     public static String getProperty(String key, String def) {
-        return System.getProperty("lealone." + key, def);
+        return System.getProperty(Constants.PROJECT_NAME_PREFIX + key, def);
     }
 
     public static void setProperty(String key, String value) {
-        System.setProperty("lealone." + key, value);
+        System.setProperty(Constants.PROJECT_NAME_PREFIX + key, value);
     }
 
 }

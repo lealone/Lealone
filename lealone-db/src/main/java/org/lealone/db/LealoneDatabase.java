@@ -33,6 +33,8 @@ import org.lealone.common.exceptions.DbException;
  */
 public class LealoneDatabase extends Database {
 
+    // 所有元数据从名为lealone的数据库开始查找，并且ID固定为0
+    public static final int ID = 0;
     public static final String NAME = Constants.PROJECT_NAME;
 
     private static LealoneDatabase INSTANCE = new LealoneDatabase();
@@ -44,7 +46,7 @@ public class LealoneDatabase extends Database {
     private final ConcurrentHashMap<String, Database> databases;;
 
     private LealoneDatabase() {
-        super(0, NAME, null);
+        super(ID, NAME, null);
         databases = new ConcurrentHashMap<>();
         databases.put(NAME, this);
 
