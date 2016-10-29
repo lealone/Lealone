@@ -224,6 +224,21 @@ public class StandardTable extends Table {
 
     @Override
     public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
+        // lockSharedSessions.put(session, session);
+        // session.addLock(this);
+        // return true;
+        //
+        return lockOld(session, exclusive, forceLockEvenInMvcc);
+    }
+
+    @Override
+    public void unlock(ServerSession s) {
+        // lockSharedSessions.remove(s);
+
+        unlockOld(s);
+    }
+
+    public boolean lockOld(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
         int lockMode = database.getLockMode();
         if (lockMode == Constants.LOCK_MODE_OFF) {
             return false;
@@ -464,8 +479,8 @@ public class StandardTable extends Table {
         return lockExclusiveSession == session;
     }
 
-    @Override
-    public void unlock(ServerSession s) {
+    // @Override
+    public void unlockOld(ServerSession s) {
         if (database != null) {
             traceLock(s, lockExclusiveSession == s, "unlock");
             if (lockExclusiveSession == s) {

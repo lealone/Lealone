@@ -56,7 +56,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private static int nextSerialId;
 
     private final int serialId = nextSerialId++;
-    private final Database database;
+    private Database database;
     private ConnectionInfo connectionInfo;
     private final User user;
     private final int id;
@@ -98,6 +98,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private SmallLRUCache<String, PreparedStatement> queryCache;
     private long modificationMetaID = -1;
 
+    private final ArrayList<PreparedStatement> currentStatements = new ArrayList<>(1);
+    private boolean containsDDL;
+
     public ServerSession(Database database, User user, int id) {
         this.database = database;
         this.queryTimeout = database.getSettings().maxQueryTimeout;
@@ -107,6 +110,10 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         Setting setting = database.findSetting(SetTypes.getTypeName(SetTypes.DEFAULT_LOCK_TIMEOUT));
         this.lockTimeout = setting == null ? Constants.INITIAL_LOCK_TIMEOUT : setting.getIntValue();
         this.currentSchemaName = Constants.SCHEMA_MAIN;
+    }
+
+    public void setDatabase(Database database) {
+        this.database = database;
     }
 
     public boolean setCommitOrRollbackDisabled(boolean x) {
@@ -578,6 +585,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
         if (!isRoot)
             setAutoCommit(true);
+
+        currentStatements.clear();
     }
 
     private void checkCommitRollback() {
@@ -608,6 +617,17 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             autoCommit = true;
             autoCommitAtTransactionEnd = false;
         }
+
+        if (containsDDL) {
+            Database db = this.database;
+            db.copy();
+            containsDDL = false;
+        }
+
+        // for (int i = currentStatements.size() - 1; i >= 0; i--) {
+        // currentStatements.get(i).rollback();
+        // }
+        currentStatements.clear();
     }
 
     /**
@@ -885,6 +905,12 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             currentCommandStart = now;
             cancelAt = now + queryTimeout;
         }
+    }
+
+    public void addStatement(PreparedStatement statement) {
+        currentStatements.add(statement);
+        if (!containsDDL && statement.isDDL())
+            containsDDL = true;
     }
 
     /**

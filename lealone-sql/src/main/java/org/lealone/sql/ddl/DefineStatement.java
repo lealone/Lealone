@@ -49,4 +49,9 @@ public abstract class DefineStatement extends StatementBase {
         priority = MIN_PRIORITY;
         return priority;
     }
+
+    @Override
+    public boolean isDDL() {
+        return true;
+    }
 }

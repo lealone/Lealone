@@ -260,6 +260,7 @@ class StatementWrapper extends StatementBase {
         else
             session.getTransaction(statement);
         session.setCurrentCommand(this);
+        session.addStatement(statement);
         AsyncResult asyncResult = null;
         AsyncHandler asyncHandler = updateHandler != null ? updateHandler : queryHandler;
         try {

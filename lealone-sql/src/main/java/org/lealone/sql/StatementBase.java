@@ -606,4 +606,13 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
             handler.handle(r);
         }
     }
+
+    @Override
+    public void rollback() {
+    }
+
+    @Override
+    public boolean isDDL() {
+        return false;
+    }
 }

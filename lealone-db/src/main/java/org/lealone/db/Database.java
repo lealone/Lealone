@@ -196,6 +196,7 @@ public class Database implements DataHandler, DbObject {
 
     private RunMode runMode;
     private final Map<String, String> parameters;
+    private ConnectionInfo ci;
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -321,11 +322,27 @@ public class Database implements DataHandler, DbObject {
         return initialized;
     }
 
+    public synchronized Database copy() {
+        Database db = new Database(id, name, parameters);
+        // 因为每个存储只能打开一次，所以要复用原有存储
+        db.storageName = storageName;
+        db.storageBuilder = storageBuilder;
+        db.storages.putAll(storages);
+        db.init(ci);
+        LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
+        for (ServerSession s : userSessions) {
+            db.userSessions.add(s);
+            s.setDatabase(db);
+        }
+        return db;
+    }
+
     public synchronized void init(ConnectionInfo ci) {
         if (initialized)
             return;
 
         initialized = true;
+        this.ci = ci;
         compareMode = CompareMode.getInstance(null, 0, false);
         filePasswordHash = ci.getFilePasswordHash();
         fileEncryptionKey = ci.getFileEncryptionKey();
@@ -342,7 +359,7 @@ public class Database implements DataHandler, DbObject {
             listener = StringUtils.trim(listener, true, true, "'");
             setEventListenerClass(listener);
         }
-        String modeName = ci.removeProperty("MODE", null);
+        String modeName = ci.getProperty("MODE", null);
         if (modeName != null) {
             mode = Mode.getInstance(modeName);
         }
@@ -401,7 +418,10 @@ public class Database implements DataHandler, DbObject {
 
             systemSession = new ServerSession(this, systemUser, ++nextSessionId);
 
+            long t1 = System.currentTimeMillis();
             openMetaTable();
+            System.out.println(getShortName() + ": openMetaTable total time: " + (System.currentTimeMillis() - t1)
+                    + " ms");
 
             if (!readOnly) {
                 // set CREATE_BUILD in a new database
@@ -456,6 +476,27 @@ public class Database implements DataHandler, DbObject {
         IndexType indexType = IndexType.createDelegate(); // 重用原有的primary index
         metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, indexType, true, null);
 
+        ArrayList<MetaRecord> records = New.arrayList();
+        Cursor cursor = metaIdIndex.find(systemSession, null, null);
+        while (cursor.next()) {
+            MetaRecord rec = new MetaRecord(cursor.get());
+            objectIds.set(rec.getId());
+            records.add(rec);
+        }
+
+        objectIds.set(0);
+        starting = true;
+
+        Collections.sort(records);
+        for (MetaRecord rec : records) {
+            rec.execute(this, systemSession, eventListener);
+        }
+
+        recompileInvalidViews();
+        starting = false;
+    }
+
+    public synchronized void rollbackMetaTable(ServerSession session) {
         ArrayList<MetaRecord> records = New.arrayList();
         Cursor cursor = metaIdIndex.find(systemSession, null, null);
         while (cursor.next()) {
