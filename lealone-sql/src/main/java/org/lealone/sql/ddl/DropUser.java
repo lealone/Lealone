@@ -31,11 +31,6 @@ public class DropUser extends DefineStatement implements AuthStatement {
         return SQLStatement.DROP_USER;
     }
 
-    // @Override
-    // public boolean isTransactional() {
-    // return false;
-    // }
-
     public void setIfExists(boolean b) {
         ifExists = b;
     }
@@ -74,14 +69,4 @@ public class DropUser extends DefineStatement implements AuthStatement {
         return 0;
     }
 
-    @Override
-    public void rollback() {
-        Database db = session.getDatabase();
-        db.removeDatabaseObject(session, db.findUser(userName));
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return true;
-    }
 }

@@ -5674,9 +5674,6 @@ public class Parser implements SQLParser {
                 read("PERSISTENT");
                 command.setPersistData(false);
             }
-            if (readIf("TRANSACTIONAL")) {
-                command.setTransactional(true);
-            }
         } else if (!persistIndexes && readIf("NOT")) {
             read("PERSISTENT");
             command.setPersistData(false);

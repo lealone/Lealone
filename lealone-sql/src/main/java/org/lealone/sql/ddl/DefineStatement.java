@@ -16,12 +16,6 @@ import org.lealone.sql.StatementBase;
 public abstract class DefineStatement extends StatementBase {
 
     /**
-     * The transactional behavior. The default is disabled, meaning the command
-     * commits an open transaction.
-     */
-    protected boolean transactional;
-
-    /**
      * Create a new command for the given session.
      *
      * @param session the session
@@ -33,15 +27,6 @@ public abstract class DefineStatement extends StatementBase {
     @Override
     public Result getMetaData() {
         return null;
-    }
-
-    public void setTransactional(boolean transactional) {
-        this.transactional = transactional;
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return transactional;
     }
 
     @Override

@@ -49,11 +49,6 @@ public class GrantRevoke extends DefineStatement implements AuthStatement {
         this.operationType = operationType;
     }
 
-    @Override
-    public boolean isTransactional() {
-        return false;
-    }
-
     /**
      * Add the specified right bit to the rights bitmap.
      *

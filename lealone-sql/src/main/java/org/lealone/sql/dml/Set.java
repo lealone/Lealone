@@ -60,24 +60,6 @@ public class Set extends ManipulateStatement {
     }
 
     @Override
-    public boolean isTransactional() {
-        switch (type) {
-        case SetTypes.CLUSTER:
-        case SetTypes.VARIABLE:
-        case SetTypes.QUERY_TIMEOUT:
-        case SetTypes.LOCK_TIMEOUT:
-        case SetTypes.TRACE_LEVEL_SYSTEM_OUT:
-        case SetTypes.TRACE_LEVEL_FILE:
-        case SetTypes.THROTTLE:
-        case SetTypes.SCHEMA:
-        case SetTypes.SCHEMA_SEARCH_PATH:
-            return true;
-        default:
-        }
-        return false;
-    }
-
-    @Override
     public int update() {
         Database database = session.getDatabase();
         String name = SetTypes.getTypeName(type);

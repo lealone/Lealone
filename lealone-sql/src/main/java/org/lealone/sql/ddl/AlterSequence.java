@@ -45,11 +45,6 @@ public class AlterSequence extends SchemaStatement {
         this.sequence = sequence;
     }
 
-    @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
     public void setColumn(Column column) {
         table = column.getTable();
         sequence = column.getSequence();

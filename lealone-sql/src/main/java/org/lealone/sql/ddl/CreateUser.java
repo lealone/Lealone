@@ -96,17 +96,6 @@ public class CreateUser extends DefineStatement implements AuthStatement {
         return 0;
     }
 
-    @Override
-    public void rollback() {
-        Database db = session.getDatabase();
-        db.removeDatabaseObject(session, db.findUser(userName));
-    }
-
-    @Override
-    public boolean isTransactional() {
-        return false;
-    }
-
     /**
      * Set the salt and hash for the given user.
      *

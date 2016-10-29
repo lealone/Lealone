@@ -38,9 +38,4 @@ public abstract class AdminStatement extends StatementBase {
         return null;
     }
 
-    @Override
-    public boolean isTransactional() {
-        return false;
-    }
-
 }

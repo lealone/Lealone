@@ -104,15 +104,6 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         this.fetchSize = fetchSize;
     }
 
-    /**
-     * Check if this statement is transactional.
-     * If it is not, then it forces the current transaction to commit.
-     *
-     * @return true if it is
-     */
-    @Override
-    public abstract boolean isTransactional();
-
     @Override
     public abstract Result getMetaData();
 

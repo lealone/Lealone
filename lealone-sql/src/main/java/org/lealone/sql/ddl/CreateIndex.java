@@ -57,9 +57,6 @@ public class CreateIndex extends SchemaStatement {
 
     @Override
     public int update() {
-        if (!transactional) {
-            session.commit(true);
-        }
         Table table = getSchema().getTableOrView(session, tableName);
         if (getSchema().findIndex(session, indexName) != null) {
             if (ifNotExists) {

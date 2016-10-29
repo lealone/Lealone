@@ -120,11 +120,6 @@ class StatementWrapper extends StatementBase {
     }
 
     @Override
-    public boolean isTransactional() {
-        return statement.isTransactional();
-    }
-
-    @Override
     public boolean isBatch() {
         return statement.isBatch();
     }
@@ -433,10 +428,7 @@ class StatementWrapper extends StatementBase {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
         if (async) {
-            if (!isTransactional()) {
-                setCallable(ar, ah);
-                session.prepareCommit(true);
-            } else if (session.isAutoCommit()) {
+            if (session.isAutoCommit()) {
                 setCallable(ar, ah);
                 session.prepareCommit(false);
             } else {
@@ -444,9 +436,7 @@ class StatementWrapper extends StatementBase {
                 ah.handle(ar);
             }
         } else {
-            if (!isTransactional()) {
-                session.commit(true);
-            } else if (session.isAutoCommit()) {
+            if (session.isAutoCommit()) {
                 session.commit(false);
             } else if (session.getDatabase().isMultiThreaded()) {
                 Database db = session.getDatabase();

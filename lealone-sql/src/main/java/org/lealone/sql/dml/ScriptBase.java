@@ -96,11 +96,6 @@ abstract class ScriptBase extends ManipulateStatement implements DataHandler {
         return fileName;
     }
 
-    @Override
-    public boolean isTransactional() {
-        return false;
-    }
-
     /**
      * Delete the target file.
      */

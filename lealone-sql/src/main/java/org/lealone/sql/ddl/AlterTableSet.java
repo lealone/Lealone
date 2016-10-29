@@ -40,11 +40,6 @@ public class AlterTableSet extends SchemaStatement {
     }
 
     @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
     public int update() {
         session.getUser().checkRight(table, Right.ALL);
         table.lock(session, true, true);

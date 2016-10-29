@@ -53,8 +53,6 @@ public interface PreparedStatement extends SQLStatement {
 
     void setPriority(int priority);
 
-    boolean isTransactional();
-
     Result query(int maxRows);
 
     Result query(int maxRows, boolean scrollable);

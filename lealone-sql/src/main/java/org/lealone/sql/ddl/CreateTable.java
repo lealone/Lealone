@@ -103,9 +103,6 @@ public class CreateTable extends SchemaStatement {
 
     @Override
     public int update() {
-        if (!transactional) {
-            session.commit(true);
-        }
         Database db = session.getDatabase();
         if (!db.isPersistent()) {
             data.persistIndexes = false;
@@ -173,7 +170,6 @@ public class CreateTable extends SchemaStatement {
                 table.addSequence(sequence);
             }
             for (DefineStatement command : constraintCommands) {
-                command.setTransactional(transactional);
                 command.update();
             }
             if (asQuery != null) {
@@ -187,9 +183,6 @@ public class CreateTable extends SchemaStatement {
         } catch (DbException e) {
             db.checkPowerOff();
             db.removeSchemaObject(session, table);
-            if (!transactional) {
-                session.commit(true);
-            }
             throw e;
         }
         return 0;

@@ -28,11 +28,6 @@ public abstract class ManipulateStatement extends StatementBase {
     }
 
     @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
     public Result getMetaData() {
         return null;
     }

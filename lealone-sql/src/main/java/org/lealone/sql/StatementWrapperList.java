@@ -62,11 +62,6 @@ class StatementWrapperList extends StatementWrapper {
     }
 
     @Override
-    public boolean isTransactional() {
-        return true;
-    }
-
-    @Override
     public int getType() {
         return firstStatement.getType();
     }
