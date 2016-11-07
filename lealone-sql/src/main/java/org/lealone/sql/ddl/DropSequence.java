@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
@@ -43,18 +44,19 @@ public class DropSequence extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        Sequence sequence = getSchema().findSequence(sequenceName);
-        if (sequence == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.SEQUENCE_NOT_FOUND_1, sequenceName);
+        synchronized (getSchema().getLock(DbObjectType.SEQUENCE)) {
+            Sequence sequence = getSchema().findSequence(sequenceName);
+            if (sequence == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.SEQUENCE_NOT_FOUND_1, sequenceName);
+                }
+            } else {
+                if (sequence.getBelongsToTable()) {
+                    throw DbException.get(ErrorCode.SEQUENCE_BELONGS_TO_A_TABLE_1, sequenceName);
+                }
+                db.removeSchemaObject(session, sequence);
             }
-        } else {
-            if (sequence.getBelongsToTable()) {
-                throw DbException.get(ErrorCode.SEQUENCE_BELONGS_TO_A_TABLE_1, sequenceName);
-            }
-            db.removeSchemaObject(session, sequence);
         }
         return 0;
     }

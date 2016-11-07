@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
@@ -54,23 +55,24 @@ public class CreateSequence extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         Database db = session.getDatabase();
-        if (getSchema().findSequence(sequenceName) != null) {
-            if (ifNotExists) {
-                return 0;
+        synchronized (getSchema().getLock(DbObjectType.SEQUENCE)) {
+            if (getSchema().findSequence(sequenceName) != null) {
+                if (ifNotExists) {
+                    return 0;
+                }
+                throw DbException.get(ErrorCode.SEQUENCE_ALREADY_EXISTS_1, sequenceName);
             }
-            throw DbException.get(ErrorCode.SEQUENCE_ALREADY_EXISTS_1, sequenceName);
+            int id = getObjectId();
+            Long startValue = getLong(start);
+            Long inc = getLong(increment);
+            Long cache = getLong(cacheSize);
+            Long min = getLong(minValue);
+            Long max = getLong(maxValue);
+            Sequence sequence = new Sequence(getSchema(), id, sequenceName, startValue, inc, cache, min, max, cycle,
+                    belongsToTable);
+            db.addSchemaObject(session, sequence);
         }
-        int id = getObjectId();
-        Long startValue = getLong(start);
-        Long inc = getLong(increment);
-        Long cache = getLong(cacheSize);
-        Long min = getLong(minValue);
-        Long max = getLong(maxValue);
-        Sequence sequence = new Sequence(getSchema(), id, sequenceName, startValue, inc, cache, min, max, cycle,
-                belongsToTable);
-        db.addSchemaObject(session, sequence);
         return 0;
     }
 

@@ -13,6 +13,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
@@ -29,6 +30,9 @@ import org.lealone.sql.expression.Expression;
 /**
  * This class represents the statement
  * CREATE TABLE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CreateTable extends SchemaStatement {
 
@@ -107,89 +111,87 @@ public class CreateTable extends SchemaStatement {
         if (!db.isPersistent()) {
             data.persistIndexes = false;
         }
-        if (getSchema().findTableOrView(session, data.tableName) != null) {
-            if (ifNotExists) {
-                return 0;
+        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
+            if (getSchema().findTableOrView(session, data.tableName) != null) {
+                if (ifNotExists) {
+                    return 0;
+                }
+                throw DbException.get(ErrorCode.TABLE_OR_VIEW_ALREADY_EXISTS_1, data.tableName);
             }
-            throw DbException.get(ErrorCode.TABLE_OR_VIEW_ALREADY_EXISTS_1, data.tableName);
-        }
-        if (asQuery != null) {
-            asQuery.prepare();
-            if (data.columns.isEmpty()) {
-                generateColumnsFromQuery();
-            } else if (data.columns.size() != asQuery.getColumnCount()) {
-                throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
+            if (asQuery != null) {
+                asQuery.prepare();
+                if (data.columns.isEmpty()) {
+                    generateColumnsFromQuery();
+                } else if (data.columns.size() != asQuery.getColumnCount()) {
+                    throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
+                }
             }
-        }
-        if (pkColumns != null) {
-            for (Column c : data.columns) {
-                for (IndexColumn idxCol : pkColumns) {
-                    if (c.getName().equals(idxCol.columnName)) {
-                        c.setNullable(false);
+            if (pkColumns != null) {
+                for (Column c : data.columns) {
+                    for (IndexColumn idxCol : pkColumns) {
+                        if (c.getName().equals(idxCol.columnName)) {
+                            c.setNullable(false);
+                        }
                     }
                 }
             }
-        }
-        data.id = getObjectId();
-        data.create = create;
-        data.session = session;
-        boolean isSessionTemporary = data.temporary && !data.globalTemporary;
-        if (!isSessionTemporary) {
-            db.lockMeta(session);
-        }
-        Table table = createTable(data);
-        ArrayList<Sequence> sequences = New.arrayList();
-        for (Column c : data.columns) {
-            if (c.isAutoIncrement()) {
-                int objId = getObjectId();
-                c.convertAutoIncrementToSequence(session, getSchema(), objId, data.temporary);
-            }
-            Sequence seq = c.getSequence();
-            if (seq != null) {
-                sequences.add(seq);
-            }
-        }
-        table.setComment(comment);
-        if (isSessionTemporary) {
-            if (onCommitDrop) {
-                table.setOnCommitDrop(true);
-            }
-            if (onCommitTruncate) {
-                table.setOnCommitTruncate(true);
-            }
-            session.addLocalTempTable(table);
-        } else {
-            db.lockMeta(session);
-            db.addSchemaObject(session, table);
-        }
-        try {
+            data.id = getObjectId();
+            data.create = create;
+            data.session = session;
+            boolean isSessionTemporary = data.temporary && !data.globalTemporary;
+            // if (!isSessionTemporary) {
+            // db.lockMeta(session);
+            // }
+            Table table = getSchema().createTable(data);
+            ArrayList<Sequence> sequences = New.arrayList();
             for (Column c : data.columns) {
-                c.prepareExpression(session);
+                if (c.isAutoIncrement()) {
+                    int objId = getObjectId();
+                    c.convertAutoIncrementToSequence(session, getSchema(), objId, data.temporary);
+                }
+                Sequence seq = c.getSequence();
+                if (seq != null) {
+                    sequences.add(seq);
+                }
             }
-            for (Sequence sequence : sequences) {
-                table.addSequence(sequence);
+            table.setComment(comment);
+            if (isSessionTemporary) {
+                if (onCommitDrop) {
+                    table.setOnCommitDrop(true);
+                }
+                if (onCommitTruncate) {
+                    table.setOnCommitTruncate(true);
+                }
+                session.addLocalTempTable(table);
+            } else {
+                // db.lockMeta(session);
+                db.addSchemaObject(session, table);
             }
-            for (DefineStatement command : constraintCommands) {
-                command.update();
+            try {
+                for (Column c : data.columns) {
+                    c.prepareExpression(session);
+                }
+                for (Sequence sequence : sequences) {
+                    table.addSequence(sequence);
+                }
+                for (DefineStatement command : constraintCommands) {
+                    command.update();
+                }
+                if (asQuery != null) {
+                    Insert insert = new Insert(session);
+                    insert.setQuery(asQuery);
+                    insert.setTable(table);
+                    insert.setInsertFromSelect(true);
+                    insert.prepare();
+                    insert.update();
+                }
+            } catch (DbException e) {
+                db.checkPowerOff();
+                db.removeSchemaObject(session, table);
+                throw e;
             }
-            if (asQuery != null) {
-                Insert insert = new Insert(session);
-                insert.setQuery(asQuery);
-                insert.setTable(table);
-                insert.setInsertFromSelect(true);
-                insert.prepare();
-                insert.update();
-            }
-        } catch (DbException e) {
-            db.checkPowerOff();
-            db.removeSchemaObject(session, table);
-            throw e;
         }
         return 0;
-    }
-
-    protected Table createTable(CreateTableData data) {
-        return getSchema().createTable(data);
     }
 
     private void generateColumnsFromQuery() {
@@ -202,8 +204,9 @@ public class CreateTable extends SchemaStatement {
             long precision = expr.getPrecision();
             int displaySize = expr.getDisplaySize();
             DataType dt = DataType.getDataType(type);
-            if (precision > 0
-                    && (dt.defaultPrecision == 0 || (dt.defaultPrecision > precision && dt.defaultPrecision < Byte.MAX_VALUE))) {
+            if (precision > 0 && //
+                    (dt.defaultPrecision == 0 //
+                    || (dt.defaultPrecision > precision && dt.defaultPrecision < Byte.MAX_VALUE))) {
                 // dont' set precision to MAX_VALUE if this is the default
                 precision = dt.defaultPrecision;
             }
@@ -247,8 +250,19 @@ public class CreateTable extends SchemaStatement {
         data.persistIndexes = persistIndexes;
     }
 
+    public void setPersistData(boolean persistData) {
+        data.persistData = persistData;
+        if (!persistData) {
+            data.persistIndexes = false;
+        }
+    }
+
     public void setGlobalTemporary(boolean globalTemporary) {
         data.globalTemporary = globalTemporary;
+    }
+
+    public void setHidden(boolean isHidden) {
+        data.isHidden = isHidden;
     }
 
     /**
@@ -269,23 +283,12 @@ public class CreateTable extends SchemaStatement {
         this.comment = comment;
     }
 
-    public void setPersistData(boolean persistData) {
-        data.persistData = persistData;
-        if (!persistData) {
-            data.persistIndexes = false;
-        }
-    }
-
     public void setStorageEngineName(String storageEngineName) {
         data.storageEngineName = storageEngineName;
     }
 
     public void setStorageEngineParams(Map<String, String> storageEngineParams) {
         data.storageEngineParams = storageEngineParams;
-    }
-
-    public void setHidden(boolean isHidden) {
-        data.isHidden = isHidden;
     }
 
 }

@@ -9,6 +9,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
@@ -39,25 +40,26 @@ public class CreateFunctionAlias extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        if (getSchema().findFunction(aliasName) != null) {
-            if (!ifNotExists) {
-                throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, aliasName);
-            }
-        } else {
-            int id = getObjectId();
-            FunctionAlias functionAlias;
-            if (javaClassMethod != null) {
-                functionAlias = FunctionAlias.newInstance(getSchema(), id, aliasName, javaClassMethod, force,
-                        bufferResultSetToLocalTemp);
+        synchronized (getSchema().getLock(DbObjectType.FUNCTION_ALIAS)) {
+            if (getSchema().findFunction(aliasName) != null) {
+                if (!ifNotExists) {
+                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, aliasName);
+                }
             } else {
-                functionAlias = FunctionAlias.newInstanceFromSource(getSchema(), id, aliasName, source, force,
-                        bufferResultSetToLocalTemp);
+                int id = getObjectId();
+                FunctionAlias functionAlias;
+                if (javaClassMethod != null) {
+                    functionAlias = FunctionAlias.newInstance(getSchema(), id, aliasName, javaClassMethod, force,
+                            bufferResultSetToLocalTemp);
+                } else {
+                    functionAlias = FunctionAlias.newInstanceFromSource(getSchema(), id, aliasName, source, force,
+                            bufferResultSetToLocalTemp);
+                }
+                functionAlias.setDeterministic(deterministic);
+                db.addSchemaObject(session, functionAlias);
             }
-            functionAlias.setDeterministic(deterministic);
-            db.addSchemaObject(session, functionAlias);
         }
         return 0;
     }

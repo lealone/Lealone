@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.sql.SQLStatement;
@@ -38,18 +39,19 @@ public class DropSchema extends DefineStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        Schema schema = db.findSchema(schemaName);
-        if (schema == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
+        synchronized (db.getLock(DbObjectType.SCHEMA)) {
+            Schema schema = db.findSchema(schemaName);
+            if (schema == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
+                }
+            } else {
+                if (!schema.canDrop()) {
+                    throw DbException.get(ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1, schemaName);
+                }
+                db.removeDatabaseObject(session, schema);
             }
-        } else {
-            if (!schema.canDrop()) {
-                throw DbException.get(ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1, schemaName);
-            }
-            db.removeDatabaseObject(session, schema);
         }
         return 0;
     }

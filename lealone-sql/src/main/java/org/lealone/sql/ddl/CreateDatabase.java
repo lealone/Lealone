@@ -23,6 +23,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
@@ -61,24 +62,25 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         LealoneDatabase db = LealoneDatabase.getInstance();
-        if (db.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
-            if (ifNotExists) {
-                return 0;
+        synchronized (db.getLock(DbObjectType.DATABASE)) {
+            if (db.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
+                if (ifNotExists) {
+                    return 0;
+                }
+                throw DbException.get(ErrorCode.DATABASE_ALREADY_EXISTS_1, dbName);
             }
-            throw DbException.get(ErrorCode.DATABASE_ALREADY_EXISTS_1, dbName);
+            int id = getObjectId(db);
+            Database newDb = new Database(id, dbName, parameters);
+            newDb.setReplicationProperties(replicationProperties);
+            newDb.setRunMode(runMode);
+            if (parameters != null && !parameters.containsKey("hostIds")) {
+                int[] hostIds = RouterHolder.getRouter().getHostIds(newDb);
+                if (hostIds != null && hostIds.length > 0)
+                    newDb.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
+            }
+            db.addDatabaseObject(session, newDb);
         }
-        int id = getObjectId(db);
-        Database newDb = new Database(id, dbName, parameters);
-        newDb.setReplicationProperties(replicationProperties);
-        newDb.setRunMode(runMode);
-        if (parameters != null && !parameters.containsKey("hostIds")) {
-            int[] hostIds = RouterHolder.getRouter().getHostIds(newDb);
-            if (hostIds != null && hostIds.length > 0)
-                newDb.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
-        }
-        db.addDatabaseObject(session, newDb);
         return 0;
     }
 

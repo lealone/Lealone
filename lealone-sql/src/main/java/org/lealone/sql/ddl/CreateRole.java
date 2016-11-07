@@ -16,6 +16,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * CREATE ROLE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CreateRole extends DefineStatement implements AuthStatement {
 
@@ -42,20 +45,21 @@ public class CreateRole extends DefineStatement implements AuthStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        if (db.findUser(roleName) != null) {
-            throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, roleName);
-        }
-        if (db.findRole(roleName) != null) {
-            if (ifNotExists) {
-                return 0;
+        synchronized (db.getAuthLock()) {
+            if (db.findUser(roleName) != null) {
+                throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, roleName);
             }
-            throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, roleName);
+            if (db.findRole(roleName) != null) {
+                if (ifNotExists) {
+                    return 0;
+                }
+                throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, roleName);
+            }
+            int id = getObjectId();
+            Role role = new Role(db, id, roleName, false);
+            db.addRole(session, role);
         }
-        int id = getObjectId();
-        Role role = new Role(db, id, roleName, false);
-        db.addDatabaseObject(session, role);
         return 0;
     }
 

@@ -11,6 +11,7 @@ import java.util.Map;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
@@ -44,23 +45,24 @@ public class CreateSchema extends DefineStatement {
     @Override
     public int update() {
         session.getUser().checkSchemaAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        User user = db.getUser(authorization);
-        // during DB startup, the Right/Role records have not yet been loaded
-        if (!db.isStarting()) {
-            user.checkSchemaAdmin();
-        }
-        if (db.findSchema(schemaName) != null) {
-            if (ifNotExists) {
-                return 0;
+        synchronized (db.getLock(DbObjectType.SCHEMA)) {
+            User user = db.getUser(authorization);
+            // during DB startup, the Right/Role records have not yet been loaded
+            if (!db.isStarting()) {
+                user.checkSchemaAdmin();
             }
-            throw DbException.get(ErrorCode.SCHEMA_ALREADY_EXISTS_1, schemaName);
+            if (db.findSchema(schemaName) != null) {
+                if (ifNotExists) {
+                    return 0;
+                }
+                throw DbException.get(ErrorCode.SCHEMA_ALREADY_EXISTS_1, schemaName);
+            }
+            int id = getObjectId();
+            Schema schema = new Schema(db, id, schemaName, user, false);
+            schema.setReplicationProperties(replicationProperties);
+            db.addDatabaseObject(session, schema);
         }
-        int id = getObjectId();
-        Schema schema = new Schema(db, id, schemaName, user, false);
-        schema.setReplicationProperties(replicationProperties);
-        db.addDatabaseObject(session, schema);
         return 0;
     }
 

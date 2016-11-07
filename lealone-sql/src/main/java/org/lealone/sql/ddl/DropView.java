@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.ConstraintReferential;
@@ -52,28 +53,29 @@ public class DropView extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
-        Table view = getSchema().findTableOrView(session, viewName);
-        if (view == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.VIEW_NOT_FOUND_1, viewName);
-            }
-        } else {
-            if (!Table.VIEW.equals(view.getTableType())) {
-                throw DbException.get(ErrorCode.VIEW_NOT_FOUND_1, viewName);
-            }
-            session.getUser().checkRight(view, Right.ALL);
+        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
+            Table view = getSchema().findTableOrView(session, viewName);
+            if (view == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.VIEW_NOT_FOUND_1, viewName);
+                }
+            } else {
+                if (!Table.VIEW.equals(view.getTableType())) {
+                    throw DbException.get(ErrorCode.VIEW_NOT_FOUND_1, viewName);
+                }
+                session.getUser().checkRight(view, Right.ALL);
 
-            if (dropAction == ConstraintReferential.RESTRICT) {
-                for (DbObject child : view.getChildren()) {
-                    if (child instanceof TableView) {
-                        throw DbException.get(ErrorCode.CANNOT_DROP_2, viewName, child.getName());
+                if (dropAction == ConstraintReferential.RESTRICT) {
+                    for (DbObject child : view.getChildren()) {
+                        if (child instanceof TableView) {
+                            throw DbException.get(ErrorCode.CANNOT_DROP_2, viewName, child.getName());
+                        }
                     }
                 }
-            }
 
-            view.lock(session, true, true);
-            session.getDatabase().removeSchemaObject(session, view);
+                view.lock(session, true, true);
+                session.getDatabase().removeSchemaObject(session, view);
+            }
         }
         return 0;
     }

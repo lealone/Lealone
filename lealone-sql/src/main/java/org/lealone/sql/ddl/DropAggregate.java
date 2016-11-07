@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;
 import org.lealone.sql.SQLStatement;
@@ -34,15 +35,16 @@ public class DropAggregate extends DefineStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        UserAggregate aggregate = db.findAggregate(name);
-        if (aggregate == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.AGGREGATE_NOT_FOUND_1, name);
+        synchronized (db.getLock(DbObjectType.AGGREGATE)) {
+            UserAggregate aggregate = db.findAggregate(name);
+            if (aggregate == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.AGGREGATE_NOT_FOUND_1, name);
+                }
+            } else {
+                db.removeDatabaseObject(session, aggregate);
             }
-        } else {
-            db.removeDatabaseObject(session, aggregate);
         }
         return 0;
     }

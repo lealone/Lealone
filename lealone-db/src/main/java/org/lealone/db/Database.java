@@ -120,6 +120,13 @@ public class Database implements DataHandler, DbObject {
     private final HashMap<String, Comment> comments = New.hashMap();
     private final HashMap<String, Schema> schemas = New.hashMap();
 
+    // 与users、roles和rights相关的操作都用这个对象进行同步
+    private final Object authLock = new Object();
+
+    public Object getAuthLock() {
+        return authLock;
+    }
+
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<ServerSession>());
     private ServerSession exclusiveSession;
     private final BitField objectIds = new BitField();
@@ -731,19 +738,19 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
-    private synchronized void addMeta(ServerSession session, DbObject obj) {
-        int id = obj.getId();
-        if (id > 0 && !starting && !obj.isTemporary()) {
-            Row r = meta.getTemplateRow();
-            MetaRecord rec = new MetaRecord(obj);
-            rec.setRecord(r);
-            objectIds.set(id);
-            if (SysProperties.CHECK) {
-                verifyMetaLocked(session);
-            }
-            meta.addRow(session, r);
-        }
-    }
+    // private synchronized void addMetaOld(ServerSession session, DbObject obj) {
+    // int id = obj.getId();
+    // if (id > 0 && !starting && !obj.isTemporary()) {
+    // Row r = meta.getTemplateRow();
+    // MetaRecord rec = new MetaRecord(obj);
+    // rec.setRecord(r);
+    // objectIds.set(id);
+    // if (SysProperties.CHECK) {
+    // verifyMetaLocked(session);
+    // }
+    // meta.addRow(session, r);
+    // }
+    // }
 
     /**
      * Verify the meta table is locked.
@@ -762,7 +769,11 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @return whether it was already locked before by this session
      */
-    public synchronized boolean lockMeta(ServerSession session) {
+    public boolean lockMeta(ServerSession session) {
+        return false;
+    }
+
+    public synchronized boolean lockMetaOld(ServerSession session) {
         if (meta == null) {
             return true;
         }
@@ -802,7 +813,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param id the id of the object to remove
      */
-    public synchronized void removeMeta(ServerSession session, int id) {
+    public synchronized void removeMetaOld(ServerSession session, int id) {
         if (id > 0 && !starting) {
             SearchRow r = meta.getTemplateSimpleRow(false);
             r.setValue(0, ValueInt.get(id));
@@ -866,13 +877,59 @@ public class Database implements DataHandler, DbObject {
         return (Map<String, DbObject>) result;
     }
 
+    public Object getLock(DbObjectType type) {
+        Object lock;
+        switch (type) {
+        case USER:
+            lock = authLock;
+            break;
+        case SETTING:
+            lock = settings;
+            break;
+        case ROLE:
+            lock = authLock;
+            break;
+        case RIGHT:
+            lock = rights;
+            break;
+        case SCHEMA:
+            lock = schemas;
+            break;
+        case USER_DATATYPE:
+            lock = userDataTypes;
+            break;
+        case COMMENT:
+            lock = comments;
+            break;
+        case AGGREGATE:
+            lock = aggregates;
+            break;
+        case DATABASE:
+            lock = LealoneDatabase.getInstance().getDatabasesMap();
+            break;
+        default:
+            throw DbException.throwInternalError("type=" + type);
+        }
+        return lock;
+    }
+
     /**
      * Add a schema object to the database.
      *
      * @param session the session
      * @param obj the object to add
      */
-    public synchronized void addSchemaObject(ServerSession session, SchemaObject obj) {
+    public void addSchemaObject(ServerSession session, SchemaObject obj) {
+        int id = obj.getId();
+        if (id > 0 && !starting) {
+            checkWritingAllowed();
+        }
+        // lockMeta(session);
+        obj.getSchema().add(obj);
+        addMeta(session, obj);
+    }
+
+    public synchronized void addSchemaObjectOld(ServerSession session, SchemaObject obj) {
         int id = obj.getId();
         if (id > 0 && !starting) {
             checkWritingAllowed();
@@ -882,13 +939,204 @@ public class Database implements DataHandler, DbObject {
         addMeta(session, obj);
     }
 
+    public void addUser(ServerSession session, User user) {
+        String name = user.getName();
+        synchronized (getAuthLock()) {
+            checkAdd(users, user);
+            if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
+                systemUser.rename(name);
+            }
+            // lockMeta(session);
+            addMeta(session, user);
+            users.put(name, user);
+        }
+    }
+
+    public void addRole(ServerSession session, Role role) {
+        synchronized (getAuthLock()) {
+            checkAdd(roles, role);
+            addMeta(session, role);
+            roles.put(role.getName(), role);
+        }
+    }
+
+    private void checkAdd(Map<String, ? extends DbObject> map, DbObject obj) {
+        int id = obj.getId();
+        if (id > 0 && !starting) {
+            checkWritingAllowed();
+        }
+        String name = obj.getName();
+        if (SysProperties.CHECK && map.get(name) != null) {
+            DbException.throwInternalError("object already exists");
+        }
+    }
+
+    private void addMeta(ServerSession session, DbObject obj) {
+        int id = obj.getId();
+        if (id > 0 && !starting && !obj.isTemporary()) {
+            Row r = meta.getTemplateRow();
+            MetaRecord rec = new MetaRecord(obj);
+            rec.setRecord(r);
+            synchronized (objectIds) {
+                objectIds.set(id);
+            }
+            // if (SysProperties.CHECK) {
+            // verifyMetaLocked(session);
+            // }
+            meta.addRow(session, r);
+        }
+    }
+
+    public void renameUser(ServerSession session, User user, String newName) {
+        synchronized (getAuthLock()) {
+            checkRename(users, user, newName);
+            int id = user.getId();
+            // lockMeta(session);
+            removeMeta(session, id);
+            users.remove(user.getName());
+            user.rename(newName);
+            users.put(newName, user);
+        }
+        updateMetaAndFirstLevelChildren(session, user);
+    }
+
+    private void checkRename(Map<String, ? extends DbObject> map, DbObject obj, String newName) {
+        checkWritingAllowed();
+        if (SysProperties.CHECK) {
+            if (!map.containsKey(obj.getName())) {
+                DbException.throwInternalError("not found: " + obj.getName());
+            }
+            if (obj.getName().equals(newName) || map.containsKey(newName)) {
+                DbException.throwInternalError("object already exists: " + newName);
+            }
+        }
+        obj.checkRename();
+    }
+
+    private void updateMetaAndFirstLevelChildren(ServerSession session, DbObject obj) {
+        List<DbObject> list = obj.getChildren();
+        Comment comment = findComment(obj);
+        if (comment != null) {
+            DbException.throwInternalError();
+        }
+        updateMeta(session, obj);
+        // remember that this scans only one level deep!
+        if (list != null) {
+            for (DbObject o : list) {
+                if (o.getCreateSQL() != null) {
+                    updateMeta(session, o);
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove the given object from the meta data.
+     *
+     * @param session the session
+     * @param id the id of the object to remove
+     */
+    public void removeMeta(ServerSession session, int id) {
+        if (id > 0 && !starting) {
+            SearchRow r = meta.getTemplateSimpleRow(false);
+            r.setValue(0, ValueInt.get(id));
+            Cursor cursor = metaIdIndex.find(session, r, r);
+            if (cursor.next()) {
+                Row found = cursor.get();
+                meta.removeRow(session, found);
+                synchronized (objectIds) {
+                    objectIds.clear(id);
+                }
+            }
+        }
+        // if (id > 0 && !starting) {
+        // SearchRow r = meta.getTemplateSimpleRow(false);
+        // r.setValue(0, ValueInt.get(id));
+        // boolean wasLocked = lockMeta(session);
+        // Cursor cursor = metaIdIndex.find(session, r, r);
+        // if (cursor.next()) {
+        // // if (SysProperties.CHECK) {
+        // // if (lockMode != 0 && !wasLocked) {
+        // // throw DbException.throwInternalError();
+        // // }
+        // // }
+        // Row found = cursor.get();
+        // meta.removeRow(session, found);
+        // objectIds.clear(id);
+        // if (SysProperties.CHECK) {
+        // checkMetaFree(session, id);
+        // }
+        // } else if (!wasLocked) {
+        // // must not keep the lock if it was not locked
+        // // otherwise updating sequences may cause a deadlock
+        // meta.unlock(session);
+        // session.unlock(meta);
+        // }
+        // }
+    }
+
+    /**
+     * Update an object in the system table.
+     *
+     * @param session the session
+     * @param obj the database object
+     */
+    public void updateMeta(ServerSession session, DbObject obj) {
+        // lockMeta(session);
+        int id = obj.getId();
+        removeMeta(session, id);
+        addMeta(session, obj);
+    }
+
+    public void removeUser(ServerSession session, User obj) {
+        synchronized (getAuthLock()) {
+            checkWritingAllowed();
+            String objName = obj.getName();
+            DbObjectType type = obj.getType();
+            Map<String, DbObject> map = getMap(type);
+            if (SysProperties.CHECK && !map.containsKey(objName)) {
+                DbException.throwInternalError("not found: " + objName);
+            }
+            Comment comment = findComment(obj);
+            lockMeta(session);
+            if (comment != null) {
+                removeDatabaseObject(session, comment);
+            }
+            int id = obj.getId();
+            obj.removeChildrenAndResources(session);
+            map.remove(objName);
+            removeMeta(session, id);
+        }
+    }
+
+    public void removeComment(ServerSession session, DbObject obj) {
+        synchronized (getAuthLock()) {
+            checkWritingAllowed();
+            String objName = obj.getName();
+            DbObjectType type = obj.getType();
+            Map<String, DbObject> map = getMap(type);
+            if (SysProperties.CHECK && !map.containsKey(objName)) {
+                DbException.throwInternalError("not found: " + objName);
+            }
+            Comment comment = findComment(obj);
+            lockMeta(session);
+            if (comment != null) {
+                removeDatabaseObject(session, comment);
+            }
+            int id = obj.getId();
+            obj.removeChildrenAndResources(session);
+            map.remove(objName);
+            removeMeta(session, id);
+        }
+    }
+
     /**
      * Add an object to the database.
      *
      * @param session the session
      * @param obj the object to add
      */
-    public synchronized void addDatabaseObject(ServerSession session, DbObject obj) {
+    public synchronized void addDatabaseObjectOld(ServerSession session, DbObject obj) {
         int id = obj.getId();
         if (id > 0 && !starting) {
             checkWritingAllowed();
@@ -907,6 +1155,30 @@ public class Database implements DataHandler, DbObject {
         lockMeta(session);
         addMeta(session, obj);
         map.put(name, obj);
+    }
+
+    public void addDatabaseObject(ServerSession session, DbObject obj) {
+        int id = obj.getId();
+        if (id > 0 && !starting) {
+            checkWritingAllowed();
+        }
+        DbObjectType type = obj.getType();
+        synchronized (getLock(type)) {
+            Map<String, DbObject> map = getMap(type);
+            if (obj.getType() == DbObjectType.USER) {
+                User user = (User) obj;
+                if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
+                    systemUser.rename(user.getName());
+                }
+            }
+            String name = obj.getName();
+            if (SysProperties.CHECK && map.get(name) != null) {
+                DbException.throwInternalError("object already exists");
+            }
+            // lockMeta(session);
+            addMeta(session, obj);
+            map.put(name, obj);
+        }
     }
 
     /**
@@ -941,7 +1213,9 @@ public class Database implements DataHandler, DbObject {
      * @return the role or null
      */
     public Role findRole(String roleName) {
-        return roles.get(roleName);
+        synchronized (getAuthLock()) {
+            return roles.get(roleName);
+        }
     }
 
     /**
@@ -975,7 +1249,9 @@ public class Database implements DataHandler, DbObject {
      * @return the user or null
      */
     public User findUser(String name) {
-        return users.get(name);
+        synchronized (getAuthLock()) {
+            return users.get(name);
+        }
     }
 
     /**
@@ -1196,10 +1472,12 @@ public class Database implements DataHandler, DbObject {
      *
      * @return the id
      */
-    public synchronized int allocateObjectId() {
-        int i = objectIds.nextClearBit(0);
-        objectIds.set(i);
-        return i;
+    public int allocateObjectId() {
+        synchronized (objectIds) {
+            int i = objectIds.nextClearBit(0);
+            objectIds.set(i);
+            return i;
+        }
     }
 
     public ArrayList<UserAggregate> getAllAggregates() {
@@ -1222,7 +1500,9 @@ public class Database implements DataHandler, DbObject {
     }
 
     public ArrayList<Role> getAllRoles() {
-        return New.arrayList(roles.values());
+        synchronized (getAuthLock()) {
+            return New.arrayList(roles.values());
+        }
     }
 
     /**
@@ -1289,7 +1569,9 @@ public class Database implements DataHandler, DbObject {
     }
 
     public ArrayList<User> getAllUsers() {
-        return New.arrayList(users.values());
+        synchronized (getAuthLock()) {
+            return New.arrayList(users.values());
+        }
     }
 
     public CompareMode getCompareMode() {
@@ -1334,7 +1616,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param obj the database object
      */
-    public synchronized void updateMeta(ServerSession session, DbObject obj) {
+    public synchronized void updateMetaOld(ServerSession session, DbObject obj) {
         lockMeta(session);
         int id = obj.getId();
         removeMeta(session, id);
@@ -1354,22 +1636,22 @@ public class Database implements DataHandler, DbObject {
         updateMetaAndFirstLevelChildren(session, obj);
     }
 
-    private synchronized void updateMetaAndFirstLevelChildren(ServerSession session, DbObject obj) {
-        List<DbObject> list = obj.getChildren();
-        Comment comment = findComment(obj);
-        if (comment != null) {
-            DbException.throwInternalError();
-        }
-        updateMeta(session, obj);
-        // remember that this scans only one level deep!
-        if (list != null) {
-            for (DbObject o : list) {
-                if (o.getCreateSQL() != null) {
-                    updateMeta(session, o);
-                }
-            }
-        }
-    }
+    // private synchronized void updateMetaAndFirstLevelChildrenOld(ServerSession session, DbObject obj) {
+    // List<DbObject> list = obj.getChildren();
+    // Comment comment = findComment(obj);
+    // if (comment != null) {
+    // DbException.throwInternalError();
+    // }
+    // updateMeta(session, obj);
+    // // remember that this scans only one level deep!
+    // if (list != null) {
+    // for (DbObject o : list) {
+    // if (o.getCreateSQL() != null) {
+    // updateMeta(session, o);
+    // }
+    // }
+    // }
+    // }
 
     /**
      * Rename a database object.
@@ -1378,7 +1660,7 @@ public class Database implements DataHandler, DbObject {
      * @param obj the object
      * @param newName the new name
      */
-    public synchronized void renameDatabaseObject(ServerSession session, DbObject obj, String newName) {
+    public synchronized void renameDatabaseObjectOld(ServerSession session, DbObject obj, String newName) {
         checkWritingAllowed();
         DbObjectType type = obj.getType();
         Map<String, DbObject> map = getMap(type);
@@ -1397,6 +1679,30 @@ public class Database implements DataHandler, DbObject {
         map.remove(obj.getName());
         obj.rename(newName);
         map.put(newName, obj);
+        updateMetaAndFirstLevelChildren(session, obj);
+    }
+
+    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName) {
+        checkWritingAllowed();
+        DbObjectType type = obj.getType();
+        synchronized (getLock(type)) {
+            Map<String, DbObject> map = getMap(type);
+            if (SysProperties.CHECK) {
+                if (!map.containsKey(obj.getName())) {
+                    DbException.throwInternalError("not found: " + obj.getName());
+                }
+                if (obj.getName().equals(newName) || map.containsKey(newName)) {
+                    DbException.throwInternalError("object already exists: " + newName);
+                }
+            }
+            obj.checkRename();
+            int id = obj.getId();
+            // lockMeta(session);
+            removeMeta(session, id);
+            map.remove(obj.getName());
+            obj.rename(newName);
+            map.put(newName, obj);
+        }
         updateMetaAndFirstLevelChildren(session, obj);
     }
 
@@ -1449,7 +1755,7 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      * @param obj the object to remove
      */
-    public synchronized void removeDatabaseObject(ServerSession session, DbObject obj) {
+    public synchronized void removeDatabaseObjectOld(ServerSession session, DbObject obj) {
         checkWritingAllowed();
         String objName = obj.getName();
         DbObjectType type = obj.getType();
@@ -1466,6 +1772,33 @@ public class Database implements DataHandler, DbObject {
         obj.removeChildrenAndResources(session);
         map.remove(objName);
         removeMeta(session, id);
+    }
+
+    /**
+     * Remove the object from the database.
+     *
+     * @param session the session
+     * @param obj the object to remove
+     */
+    public void removeDatabaseObject(ServerSession session, DbObject obj) {
+        checkWritingAllowed();
+        String objName = obj.getName();
+        DbObjectType type = obj.getType();
+        synchronized (getLock(type)) {
+            Map<String, DbObject> map = getMap(type);
+            if (SysProperties.CHECK && !map.containsKey(objName)) {
+                DbException.throwInternalError("not found: " + objName);
+            }
+            Comment comment = findComment(obj);
+            // lockMeta(session);
+            if (comment != null) {
+                removeDatabaseObject(session, comment);
+            }
+            int id = obj.getId();
+            obj.removeChildrenAndResources(session);
+            map.remove(objName);
+            removeMeta(session, id);
+        }
     }
 
     /**

@@ -25,6 +25,7 @@ import org.h2.engine.Constants;
 import org.h2.security.SHA256;
 import org.h2.util.MathUtils;
 import org.h2.util.StringUtils;
+import org.lealone.test.db.UserAggregateTest.MedianString;
 import org.lealone.test.sql.SqlTestBase;
 
 public class TransactionalDDLTest extends SqlTestBase {
@@ -55,7 +56,13 @@ public class TransactionalDDLTest extends SqlTestBase {
     }
 
     public void runDLL() throws Exception {
-        stmt.executeUpdate("CREATE USER IF NOT EXISTS sa1 PASSWORD 'abc' ADMIN");
+        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS db2 WITH(OPTIMIZE_DISTINCT=true, PERSISTENT=false)");
+        stmt.executeUpdate("CREATE DOMAIN IF NOT EXISTS EMAIL AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
+        stmt.executeUpdate("CREATE FORCE AGGREGATE IF NOT EXISTS MEDIAN FOR \"" + MedianString.class.getName() + "\"");
+
+        stmt.executeUpdate("ALTER USER SA RENAME TO SA2");
+        stmt.executeUpdate("CREATE USER IF NOT EXISTS sa2 PASSWORD 'abc' ADMIN");
+        stmt.executeUpdate("DROP USER IF EXISTS sa2");
     }
 
     public void runDLL0() throws Exception {

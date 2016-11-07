@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Constant;
 import org.lealone.db.schema.Schema;
@@ -41,20 +42,21 @@ public class CreateConstant extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        if (getSchema().findConstant(constantName) != null) {
-            if (ifNotExists) {
-                return 0;
+        synchronized (getSchema().getLock(DbObjectType.CONSTANT)) {
+            if (getSchema().findConstant(constantName) != null) {
+                if (ifNotExists) {
+                    return 0;
+                }
+                throw DbException.get(ErrorCode.CONSTANT_ALREADY_EXISTS_1, constantName);
             }
-            throw DbException.get(ErrorCode.CONSTANT_ALREADY_EXISTS_1, constantName);
+            int id = getObjectId();
+            expression = expression.optimize(session);
+            Value value = expression.getValue(session);
+            Constant constant = new Constant(getSchema(), id, constantName, value);
+            db.addSchemaObject(session, constant);
         }
-        int id = getObjectId();
-        expression = expression.optimize(session);
-        Value value = expression.getValue(session);
-        Constant constant = new Constant(getSchema(), id, constantName, value);
-        db.addSchemaObject(session, constant);
         return 0;
     }
 

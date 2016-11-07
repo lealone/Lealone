@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
@@ -35,15 +36,16 @@ public class DropFunctionAlias extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        FunctionAlias functionAlias = getSchema().findFunction(aliasName);
-        if (functionAlias == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, aliasName);
+        synchronized (getSchema().getLock(DbObjectType.FUNCTION_ALIAS)) {
+            FunctionAlias functionAlias = getSchema().findFunction(aliasName);
+            if (functionAlias == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, aliasName);
+                }
+            } else {
+                db.removeSchemaObject(session, functionAlias);
             }
-        } else {
-            db.removeSchemaObject(session, functionAlias);
         }
         return 0;
     }

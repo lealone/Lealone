@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
@@ -44,17 +45,18 @@ public class DropTrigger extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         Database db = session.getDatabase();
-        TriggerObject trigger = getSchema().findTrigger(triggerName);
-        if (trigger == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.TRIGGER_NOT_FOUND_1, triggerName);
+        synchronized (getSchema().getLock(DbObjectType.TRIGGER)) {
+            TriggerObject trigger = getSchema().findTrigger(triggerName);
+            if (trigger == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.TRIGGER_NOT_FOUND_1, triggerName);
+                }
+            } else {
+                Table table = trigger.getTable();
+                session.getUser().checkRight(table, Right.ALL);
+                db.removeSchemaObject(session, trigger);
             }
-        } else {
-            Table table = trigger.getTable();
-            session.getUser().checkRight(table, Right.ALL);
-            db.removeSchemaObject(session, trigger);
         }
         return 0;
     }

@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Constant;
 import org.lealone.db.schema.Schema;
@@ -43,15 +44,16 @@ public class DropConstant extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        Constant constant = getSchema().findConstant(constantName);
-        if (constant == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.CONSTANT_NOT_FOUND_1, constantName);
+        synchronized (getSchema().getLock(DbObjectType.CONSTANT)) {
+            Constant constant = getSchema().findConstant(constantName);
+            if (constant == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.CONSTANT_NOT_FOUND_1, constantName);
+                }
+            } else {
+                db.removeSchemaObject(session, constant);
             }
-        } else {
-            db.removeSchemaObject(session, constant);
         }
         return 0;
     }

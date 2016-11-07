@@ -20,6 +20,7 @@ package org.lealone.sql.ddl;
 import java.util.Map;
 
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
@@ -53,14 +54,15 @@ public class AlterDatabase extends DefineStatement implements DatabaseStatement 
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
-        if (runMode != null)
-            db.setRunMode(runMode);
-        if (parameters != null)
-            ; // TODO
-        if (replicationProperties != null)
-            db.setReplicationProperties(replicationProperties);
-        LealoneDatabase.getInstance().updateMeta(session, db);
+        synchronized (LealoneDatabase.getInstance().getLock(DbObjectType.DATABASE)) {
+            if (runMode != null)
+                db.setRunMode(runMode);
+            if (parameters != null)
+                ; // TODO
+            if (replicationProperties != null)
+                db.setReplicationProperties(replicationProperties);
+            LealoneDatabase.getInstance().updateMeta(session, db);
+        }
         return 0;
     }
 

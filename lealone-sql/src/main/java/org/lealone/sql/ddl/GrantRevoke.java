@@ -26,6 +26,9 @@ import org.lealone.sql.SQLStatement;
  * GRANT ROLE,
  * REVOKE RIGHT,
  * REVOKE ROLE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class GrantRevoke extends DefineStatement implements AuthStatement {
 
@@ -116,7 +119,6 @@ public class GrantRevoke extends DefineStatement implements AuthStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
         if (roleNames != null) {
             for (String name : roleNames) {

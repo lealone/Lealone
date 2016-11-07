@@ -19,6 +19,9 @@ import org.lealone.sql.expression.Expression;
  * ALTER USER ADMIN,
  * ALTER USER RENAME,
  * ALTER USER SET PASSWORD
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterUser extends DefineStatement implements AuthStatement {
 
@@ -69,37 +72,39 @@ public class AlterUser extends DefineStatement implements AuthStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         Database db = session.getDatabase();
-        switch (type) {
-        case SQLStatement.ALTER_USER_SET_PASSWORD:
-            if (user != session.getUser()) {
+        synchronized (db.getAuthLock()) {
+            switch (type) {
+            case SQLStatement.ALTER_USER_SET_PASSWORD:
+                if (user != session.getUser()) {
+                    session.getUser().checkAdmin();
+                }
+                if (hash != null && salt != null) {
+                    CreateUser.setSaltAndHash(user, session, salt, hash);
+                } else {
+                    CreateUser.setPassword(user, session, password);
+                }
+                db.updateMeta(session, user);
+                break;
+            case SQLStatement.ALTER_USER_RENAME:
                 session.getUser().checkAdmin();
+                if (db.findUser(newName) != null || newName.equals(user.getName())) {
+                    throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, newName);
+                }
+                db.renameDatabaseObject(session, user, newName);
+                break;
+            case SQLStatement.ALTER_USER_ADMIN:
+                session.getUser().checkAdmin();
+                if (!admin) {
+                    user.checkOwnsNoSchemas(session);
+                }
+                user.setAdmin(admin);
+                db.updateMeta(session, user);
+                break;
+            default:
+                DbException.throwInternalError("type=" + type);
             }
-            if (hash != null && salt != null) {
-                CreateUser.setSaltAndHash(user, session, salt, hash);
-            } else {
-                CreateUser.setPassword(user, session, password);
-            }
-            break;
-        case SQLStatement.ALTER_USER_RENAME:
-            session.getUser().checkAdmin();
-            if (db.findUser(newName) != null || newName.equals(user.getName())) {
-                throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, newName);
-            }
-            db.renameDatabaseObject(session, user, newName);
-            break;
-        case SQLStatement.ALTER_USER_ADMIN:
-            session.getUser().checkAdmin();
-            if (!admin) {
-                user.checkOwnsNoSchemas(session);
-            }
-            user.setAdmin(admin);
-            break;
-        default:
-            DbException.throwInternalError("type=" + type);
         }
-        db.updateMeta(session, user);
         return 0;
     }
 

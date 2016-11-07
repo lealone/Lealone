@@ -223,6 +223,10 @@ public class Schema extends DbObjectBase {
         return (HashMap<String, SchemaObject>) result;
     }
 
+    public Object getLock(DbObjectType type) {
+        return getMap(type);
+    }
+
     /**
      * Add an object to this schema.
      * This method must not be called within CreateSchemaObject;
@@ -235,12 +239,15 @@ public class Schema extends DbObjectBase {
             DbException.throwInternalError("wrong schema");
         }
         String name = obj.getName();
-        HashMap<String, SchemaObject> map = getMap(obj.getType());
-        if (SysProperties.CHECK && map.get(name) != null) {
-            DbException.throwInternalError("object already exists: " + name);
+        DbObjectType type = obj.getType();
+        synchronized (getLock(type)) {
+            HashMap<String, SchemaObject> map = getMap(type);
+            if (SysProperties.CHECK && map.get(name) != null) {
+                DbException.throwInternalError("object already exists: " + name);
+            }
+            map.put(name, obj);
+            freeUniqueName(name);
         }
-        map.put(name, obj);
-        freeUniqueName(name);
     }
 
     /**
@@ -251,21 +258,23 @@ public class Schema extends DbObjectBase {
      */
     public void rename(SchemaObject obj, String newName) {
         DbObjectType type = obj.getType();
-        HashMap<String, SchemaObject> map = getMap(type);
-        if (SysProperties.CHECK) {
-            if (!map.containsKey(obj.getName())) {
-                DbException.throwInternalError("not found: " + obj.getName());
+        synchronized (getLock(type)) {
+            HashMap<String, SchemaObject> map = getMap(type);
+            if (SysProperties.CHECK) {
+                if (!map.containsKey(obj.getName())) {
+                    DbException.throwInternalError("not found: " + obj.getName());
+                }
+                if (obj.getName().equals(newName) || map.containsKey(newName)) {
+                    DbException.throwInternalError("object already exists: " + newName);
+                }
             }
-            if (obj.getName().equals(newName) || map.containsKey(newName)) {
-                DbException.throwInternalError("object already exists: " + newName);
-            }
+            obj.checkRename();
+            map.remove(obj.getName());
+            freeUniqueName(obj.getName());
+            obj.rename(newName);
+            map.put(newName, obj);
+            freeUniqueName(newName);
         }
-        obj.checkRename();
-        map.remove(obj.getName());
-        freeUniqueName(obj.getName());
-        obj.rename(newName);
-        map.put(newName, obj);
-        freeUniqueName(newName);
     }
 
     /**
@@ -562,12 +571,15 @@ public class Schema extends DbObjectBase {
      */
     public void remove(SchemaObject obj) {
         String objName = obj.getName();
-        HashMap<String, SchemaObject> map = getMap(obj.getType());
-        if (SysProperties.CHECK && !map.containsKey(objName)) {
-            DbException.throwInternalError("not found: " + objName);
+        DbObjectType type = obj.getType();
+        synchronized (getLock(type)) {
+            HashMap<String, SchemaObject> map = getMap(type);
+            if (SysProperties.CHECK && !map.containsKey(objName)) {
+                DbException.throwInternalError("not found: " + objName);
+            }
+            map.remove(objName);
+            freeUniqueName(objName);
         }
-        map.remove(objName);
-        freeUniqueName(objName);
     }
 
     /**
@@ -577,36 +589,36 @@ public class Schema extends DbObjectBase {
      * @return the created {@link Table} object
      */
     public Table createTable(CreateTableData data) {
-        synchronized (database) {
-            if (!data.temporary || data.globalTemporary) {
-                database.lockMeta(data.session);
-            }
-            data.schema = this;
-
-            if (data.isMemoryTable())
-                data.storageEngineName = MemoryStorageEngine.NAME;
-
-            // 用默认的数据库参数
-            if (data.storageEngineName == null) {
-                data.storageEngineName = database.getDefaultStorageEngineName();
-            }
-            if (data.storageEngineName != null) {
-                StorageEngine engine = StorageEngineManager.getInstance().getEngine(data.storageEngineName);
-                if (engine == null) {
-                    try {
-                        engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName).newInstance();
-                        StorageEngineManager.getInstance().registerEngine(engine);
-                    } catch (Exception e) {
-                        throw DbException.convert(e);
-                    }
-                }
-
-                if (engine instanceof TableFactory) {
-                    return ((TableFactory) engine).createTable(data);
-                }
-                return new StandardTable(data, engine);
-            }
-            throw DbException.convert(new NullPointerException("table engine is null"));
+        // synchronized (database) {
+        if (!data.temporary || data.globalTemporary) {
+            database.lockMeta(data.session);
         }
+        data.schema = this;
+
+        if (data.isMemoryTable())
+            data.storageEngineName = MemoryStorageEngine.NAME;
+
+        // 用默认的数据库参数
+        if (data.storageEngineName == null) {
+            data.storageEngineName = database.getDefaultStorageEngineName();
+        }
+        if (data.storageEngineName != null) {
+            StorageEngine engine = StorageEngineManager.getInstance().getEngine(data.storageEngineName);
+            if (engine == null) {
+                try {
+                    engine = (StorageEngine) Utils.loadUserClass(data.storageEngineName).newInstance();
+                    StorageEngineManager.getInstance().registerEngine(engine);
+                } catch (Exception e) {
+                    throw DbException.convert(e);
+                }
+            }
+
+            if (engine instanceof TableFactory) {
+                return ((TableFactory) engine).createTable(data);
+            }
+            return new StandardTable(data, engine);
+        }
+        throw DbException.convert(new NullPointerException("table engine is null"));
     }
+    // }
 }

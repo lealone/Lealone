@@ -16,6 +16,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP USER
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropUser extends DefineStatement implements AuthStatement {
 
@@ -42,29 +45,30 @@ public class DropUser extends DefineStatement implements AuthStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        User user = db.findUser(userName);
-        if (user == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.USER_NOT_FOUND_1, userName);
-            }
-        } else {
-            if (user == session.getUser()) {
-                int adminUserCount = 0;
-                for (User u : db.getAllUsers()) {
-                    if (u.isAdmin()) {
-                        adminUserCount++;
+        synchronized (db.getAuthLock()) {
+            User user = db.findUser(userName);
+            if (user == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.USER_NOT_FOUND_1, userName);
+                }
+            } else {
+                if (user == session.getUser()) {
+                    int adminUserCount = 0;
+                    for (User u : db.getAllUsers()) {
+                        if (u.isAdmin()) {
+                            adminUserCount++;
+                        }
+                    }
+                    // 运行到这里时当前用户必定是有Admin权限的，如果当前用户想删除它自己，
+                    // 同时系统中又没有其他Admin权限的用户了，那么不允许它删除自己
+                    if (adminUserCount == 1) {
+                        throw DbException.get(ErrorCode.CANNOT_DROP_CURRENT_USER);
                     }
                 }
-                // 运行到这里时当前用户必定是有Admin权限的，如果当前用户想删除它自己，
-                // 同时系统中又没有其他Admin权限的用户了，那么不允许它删除自己
-                if (adminUserCount == 1) {
-                    throw DbException.get(ErrorCode.CANNOT_DROP_CURRENT_USER);
-                }
+                user.checkOwnsNoSchemas(session); // 删除用户前需要删除它拥有的所有Schema，否则不允许删
+                db.removeDatabaseObject(session, user);
             }
-            user.checkOwnsNoSchemas(session); // 删除用户前需要删除它拥有的所有Schema，否则不允许删
-            db.removeDatabaseObject(session, user);
         }
         return 0;
     }

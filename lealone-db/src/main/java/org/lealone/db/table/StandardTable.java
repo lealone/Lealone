@@ -224,18 +224,18 @@ public class StandardTable extends Table {
 
     @Override
     public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
-        // lockSharedSessions.put(session, session);
-        // session.addLock(this);
-        // return true;
-        //
-        return lockOld(session, exclusive, forceLockEvenInMvcc);
+        lockSharedSessions.put(session, session);
+        session.addLock(this);
+        return true;
+
+        // return lockOld(session, exclusive, forceLockEvenInMvcc);
     }
 
     @Override
     public void unlock(ServerSession s) {
-        // lockSharedSessions.remove(s);
+        lockSharedSessions.remove(s);
 
-        unlockOld(s);
+        // unlockOld(s);
     }
 
     public boolean lockOld(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {

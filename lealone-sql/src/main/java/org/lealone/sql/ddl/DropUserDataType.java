@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.UserDataType;
 import org.lealone.sql.SQLStatement;
@@ -38,15 +39,16 @@ public class DropUserDataType extends DefineStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        UserDataType type = db.findUserDataType(typeName);
-        if (type == null) {
-            if (!ifExists) {
-                throw DbException.get(ErrorCode.USER_DATA_TYPE_NOT_FOUND_1, typeName);
+        synchronized (db.getLock(DbObjectType.USER_DATATYPE)) {
+            UserDataType type = db.findUserDataType(typeName);
+            if (type == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.USER_DATA_TYPE_NOT_FOUND_1, typeName);
+                }
+            } else {
+                db.removeDatabaseObject(session, type);
             }
-        } else {
-            db.removeDatabaseObject(session, type);
         }
         return 0;
     }

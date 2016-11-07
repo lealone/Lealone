@@ -12,6 +12,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -48,18 +49,19 @@ public class DropDatabase extends DefineStatement implements DatabaseStatement {
 
     @Override
     public int update() {
-        if (dropAllObjects) {
-            dropAllObjects();
-        }
-        if (deleteFiles) {
-            session.getDatabase().setDeleteFilesOnDisconnect(true);
+        synchronized (LealoneDatabase.getInstance().getLock(DbObjectType.DATABASE)) {
+            if (dropAllObjects) {
+                dropAllObjects();
+            }
+            if (deleteFiles) {
+                session.getDatabase().setDeleteFilesOnDisconnect(true);
+            }
         }
         return 0;
     }
 
     private void dropAllObjects() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
         db.lockMeta(session);
         // TODO local temp tables are not removed

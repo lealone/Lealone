@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.UserDataType;
 import org.lealone.db.table.Column;
@@ -50,30 +51,30 @@ public class CreateUserDataType extends DefineStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         Database db = session.getDatabase();
-        session.getUser().checkAdmin();
-        if (db.findUserDataType(typeName) != null) {
-            if (ifNotExists) {
-                return 0;
-            }
-            throw DbException.get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1, typeName);
-        }
-        DataType builtIn = DataType.getTypeByName(typeName);
-        if (builtIn != null) {
-            if (!builtIn.hidden) {
+        synchronized (db.getLock(DbObjectType.USER_DATATYPE)) {
+            if (db.findUserDataType(typeName) != null) {
+                if (ifNotExists) {
+                    return 0;
+                }
                 throw DbException.get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1, typeName);
             }
-            Table table = session.getDatabase().getFirstUserTable();
-            if (table != null) {
-                throw DbException
-                        .get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1, typeName + " (" + table.getSQL() + ")");
+            DataType builtIn = DataType.getTypeByName(typeName);
+            if (builtIn != null) {
+                if (!builtIn.hidden) {
+                    throw DbException.get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1, typeName);
+                }
+                Table table = session.getDatabase().getFirstUserTable();
+                if (table != null) {
+                    throw DbException.get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1, typeName + " (" + table.getSQL()
+                            + ")");
+                }
             }
+            int id = getObjectId();
+            UserDataType type = new UserDataType(db, id, typeName);
+            type.setColumn(column);
+            db.addDatabaseObject(session, type);
         }
-        int id = getObjectId();
-        UserDataType type = new UserDataType(db, id, typeName);
-        type.setColumn(column);
-        db.addDatabaseObject(session, type);
         return 0;
     }
 
