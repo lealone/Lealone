@@ -65,4 +65,5 @@ public interface PreparedStatement extends SQLStatement {
 
     boolean isDDL();
 
+    boolean isDatabaseStatement();
 }

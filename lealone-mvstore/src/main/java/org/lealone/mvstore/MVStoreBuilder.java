@@ -17,9 +17,13 @@
  */
 package org.lealone.mvstore;
 
+import java.util.HashMap;
+
 import org.lealone.storage.StorageBuilder;
 
 public class MVStoreBuilder extends StorageBuilder {
+
+    private static HashMap<String, MVStore> cache = new HashMap<>();
 
     /**
      * Open the storage.
@@ -28,7 +32,18 @@ public class MVStoreBuilder extends StorageBuilder {
      */
     @Override
     public MVStore openStorage() {
-        return new MVStore(config);
+        String storageName = (String) config.get("storageName");
+        MVStore store = cache.get(storageName);
+        if (store == null) {
+            synchronized (cache) {
+                store = cache.get(storageName);
+                if (store == null) {
+                    store = new MVStore(config);
+                    cache.put(storageName, store);
+                }
+            }
+        }
+        return store;
     }
 
     @Override

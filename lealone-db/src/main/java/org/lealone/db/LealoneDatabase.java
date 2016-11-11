@@ -97,4 +97,10 @@ public class LealoneDatabase extends Database {
         }
         return db;
     }
+
+    @Override
+    public synchronized Database copy() {
+        INSTANCE = new LealoneDatabase();
+        return INSTANCE;
+    }
 }

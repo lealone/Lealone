@@ -133,6 +133,8 @@ public class ConnectionInfo implements Cloneable {
         if (url.startsWith(Constants.URL_EMBED)) {
             throw DbException.throwInternalError("Server backend URL: " + this.url);
         }
+
+        remote = true; // server端的remote总是true
     }
 
     public ConnectionInfo(String url) {

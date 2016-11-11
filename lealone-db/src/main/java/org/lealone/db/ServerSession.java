@@ -100,6 +100,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     private final ArrayList<PreparedStatement> currentStatements = new ArrayList<>(1);
     private boolean containsDDL;
+    private boolean containsDatabaseStatement;
 
     public ServerSession(Database database, User user, int id) {
         this.database = database;
@@ -618,6 +619,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             autoCommitAtTransactionEnd = false;
         }
 
+        if (containsDatabaseStatement) {
+            LealoneDatabase.getInstance().copy();
+            containsDatabaseStatement = false;
+        }
+
         if (containsDDL) {
             Database db = this.database;
             db.copy();
@@ -909,7 +915,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public void addStatement(PreparedStatement statement) {
         currentStatements.add(statement);
-        if (!containsDDL && statement.isDDL())
+        if (statement.isDatabaseStatement())
+            containsDatabaseStatement = true;
+        else if (statement.isDDL())
             containsDDL = true;
     }
 

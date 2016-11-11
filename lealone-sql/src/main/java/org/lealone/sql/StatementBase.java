@@ -606,4 +606,9 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     public boolean isDDL() {
         return false;
     }
+
+    @Override
+    public boolean isDatabaseStatement() {
+        return false;
+    }
 }

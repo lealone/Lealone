@@ -131,4 +131,8 @@ public class DropDatabase extends DefineStatement implements DatabaseStatement {
         }
     }
 
+    @Override
+    public boolean isDatabaseStatement() {
+        return true;
+    }
 }

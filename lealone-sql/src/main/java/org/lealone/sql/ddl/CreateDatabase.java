@@ -84,4 +84,8 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
         return 0;
     }
 
+    @Override
+    public boolean isDatabaseStatement() {
+        return true;
+    }
 }
