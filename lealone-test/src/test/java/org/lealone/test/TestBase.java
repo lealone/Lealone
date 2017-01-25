@@ -17,8 +17,6 @@
  */
 package org.lealone.test;
 
-import io.vertx.core.impl.FileResolver;
-
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -34,11 +32,17 @@ import org.lealone.mvcc.log.LogStorage;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
+import io.vertx.core.impl.FileResolver;
+
 public class TestBase extends Assert {
     public static String url;
     public static final String DEFAULT_STORAGE_ENGINE_NAME = getDefaultStorageEngineName();
     public static final String TEST_DIR = "." + File.separatorChar + "lealone-test-data" + File.separatorChar + "test";
-    public static final String DB_NAME = "test";
+    public static final String TEST = "test";
+    public static final String LEALONE = " lealone";
+    public static final String DB_NAME = TEST;
+    public static final String USER = "root";
+    public static final String PASSWORD = "";
 
     public static TransactionEngine te;
 
@@ -174,13 +178,13 @@ public class TestBase extends Assert {
     public synchronized String getURL(String dbName) {
         if (url != null)
             return url;
-        addConnectionParameter("DATABASE_TO_UPPER", "false");
+        // addConnectionParameter("DATABASE_TO_UPPER", "false");
         // addConnectionParameter("ALIAS_COLUMN_NAME", "true");
         // addConnectionParameter("IGNORE_UNKNOWN_SETTINGS", "true");
 
         if (!connectionParameters.containsKey("user")) {
-            addConnectionParameter("user", "sa");
-            addConnectionParameter("password", "");
+            addConnectionParameter("user", USER);
+            addConnectionParameter("password", PASSWORD);
         }
 
         StringBuilder url = new StringBuilder(100);

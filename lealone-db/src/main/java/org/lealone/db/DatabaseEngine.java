@@ -99,26 +99,27 @@ public class DatabaseEngine {
         }
 
         private ServerSession createSession(String dbName, ConnectionInfo ci, boolean ifExists) {
-            // 不允许Client访问LealoneDatabase
-            if (ci.isRemote() && LealoneDatabase.NAME.equalsIgnoreCase(dbName))
-                throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
-
             boolean opened = false;
             User user = null;
             Database database = LealoneDatabase.getInstance().findDatabase(dbName);
             if (database == null) {
                 if (ifExists)
                     throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
+                // ***********************************************************
+                // **************以下代码是不安全的****************************
+                // ***********************************************************
+                // 最安全的做法是先连到LealoneDatabase，然后执行CREATE DATABASE语句创建新的数据库
+                // 为了方便测试(不安全的做法)，如果数据库不存在，按ConnectionInfo中指定的数据库名和用户名自动创建数据库
                 database = LealoneDatabase.getInstance().createDatabase(dbName, ci);
-                database.init(ci);
                 opened = true;
-                if (database.getAllUsers().isEmpty()) {
-                    // users is the last thing we add, so if no user is around,
-                    // the database is new (or not initialized correctly)
-                    user = new User(database, database.allocateObjectId(), ci.getUserName(), false);
-                    user.setAdmin(true);
-                    user.setUserPasswordHash(ci.getUserPasswordHash());
-                    database.setMasterUser(user);
+
+                String userName = ci.getUserName();
+                byte[] userPasswordHash = ci.getUserPasswordHash();
+                if (database.isRootUser(userName)) {
+                    user = database.alterRootUserPassword(userPasswordHash);
+                } else {
+                    // 把当前连接进来的用户当成Admin
+                    user = database.createAdminUser(userName, userPasswordHash);
                 }
             } else {
                 if (!database.isInitialized())

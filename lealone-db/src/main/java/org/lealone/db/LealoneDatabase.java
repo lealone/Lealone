@@ -56,6 +56,7 @@ public class LealoneDatabase extends Database {
         ConnectionInfo ci = new ConnectionInfo(url, (Properties) null);
         ci.setBaseDir(SysProperties.getBaseDir());
         init(ci);
+        createRootUser(this);
     }
 
     Database createDatabase(String dbName, ConnectionInfo ci) {
@@ -63,7 +64,14 @@ public class LealoneDatabase extends Database {
         getSystemSession().prepareStatementLocal(sql).executeUpdate();
         // 执行完CREATE DATABASE后会加到databases字段中
         // CreateDatabase.update -> Database.addDatabaseObject -> Database.getMap -> this.getDatabasesMap
-        return databases.get(dbName);
+        Database db = databases.get(dbName);
+        db.init(ci);
+        createRootUser(db);
+        return db;
+    }
+
+    private static void createRootUser(Database db) {
+        db.getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
     }
 
     void closeDatabase(String dbName) {

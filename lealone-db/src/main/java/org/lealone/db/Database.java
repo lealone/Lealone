@@ -425,10 +425,10 @@ public class Database implements DataHandler, DbObject {
 
             systemSession = new ServerSession(this, systemUser, ++nextSessionId);
 
-            long t1 = System.currentTimeMillis();
+            // long t1 = System.currentTimeMillis();
             openMetaTable();
-            System.out.println(getShortName() + ": openMetaTable total time: " + (System.currentTimeMillis() - t1)
-                    + " ms");
+            // System.out.println(getShortName() + ": openMetaTable total time: " + (System.currentTimeMillis() - t1)
+            // + " ms");
 
             if (!readOnly) {
                 // set CREATE_BUILD in a new database
@@ -1165,12 +1165,6 @@ public class Database implements DataHandler, DbObject {
         DbObjectType type = obj.getType();
         synchronized (getLock(type)) {
             Map<String, DbObject> map = getMap(type);
-            if (obj.getType() == DbObjectType.USER) {
-                User user = (User) obj;
-                if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
-                    systemUser.rename(user.getName());
-                }
-            }
             String name = obj.getName();
             if (SysProperties.CHECK && map.get(name) != null) {
                 DbException.throwInternalError("object already exists");
@@ -1917,12 +1911,6 @@ public class Database implements DataHandler, DbObject {
 
     public byte[] getFileEncryptionKey() {
         return fileEncryptionKey;
-    }
-
-    public synchronized void setMasterUser(User user) {
-        lockMeta(systemSession);
-        addDatabaseObject(systemSession, user);
-        systemSession.commit(true);
     }
 
     public Role getPublicRole() {
@@ -2807,5 +2795,31 @@ public class Database implements DataHandler, DbObject {
             throw DbException.convert(e);
         }
         return version;
+    }
+
+    private static final String ROOT_USER = "ROOT";
+
+    boolean isRootUser(String userName) {
+        return ROOT_USER.equalsIgnoreCase(userName);
+    }
+
+    synchronized User alterRootUserPassword(byte[] userPasswordHash) {
+        User rootUser = users.get(ROOT_USER);
+        if (!rootUser.validateUserPasswordHash(userPasswordHash)) {
+            rootUser.setUserPasswordHash(userPasswordHash);
+            updateMeta(systemSession, rootUser);
+            systemSession.commit(true);
+        }
+        return rootUser;
+    }
+
+    synchronized User createAdminUser(String userName, byte[] userPasswordHash) {
+        User user = new User(this, allocateObjectId(), userName, false);
+        user.setAdmin(true);
+        user.setUserPasswordHash(userPasswordHash);
+        lockMeta(systemSession);
+        addDatabaseObject(systemSession, user);
+        systemSession.commit(true);
+        return user;
     }
 }

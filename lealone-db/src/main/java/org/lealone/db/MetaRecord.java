@@ -18,6 +18,9 @@ import org.lealone.sql.PreparedStatement;
 /**
  * A record in the system table of the database.
  * It contains the SQL statement to create the database object.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class MetaRecord implements Comparable<MetaRecord> {
 
