@@ -39,7 +39,7 @@ public class TestBase extends Assert {
     public static final String DEFAULT_STORAGE_ENGINE_NAME = getDefaultStorageEngineName();
     public static final String TEST_DIR = "." + File.separatorChar + "lealone-test-data" + File.separatorChar + "test";
     public static final String TEST = "test";
-    public static final String LEALONE = " lealone";
+    public static final String LEALONE = "lealone";
     public static final String DB_NAME = TEST;
     public static final String USER = "root";
     public static final String PASSWORD = "";

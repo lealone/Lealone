@@ -35,7 +35,7 @@ import org.lealone.db.auth.User;
  */
 public class DatabaseEngine {
 
-    private static final SessionFactoryImpl SESSION_FACTORY = new SessionFactoryImpl();
+    private static final ServerSessionFactory SESSION_FACTORY = new ServerSessionFactory();
 
     public static List<Database> getDatabases() {
         return LealoneDatabase.getInstance().getDatabases();
@@ -56,7 +56,7 @@ public class DatabaseEngine {
     private DatabaseEngine() {
     }
 
-    private static class SessionFactoryImpl implements SessionFactory {
+    private static class ServerSessionFactory implements SessionFactory {
 
         private volatile long wrongPasswordDelay = SysProperties.DELAY_WRONG_PASSWORD_MIN;
 
