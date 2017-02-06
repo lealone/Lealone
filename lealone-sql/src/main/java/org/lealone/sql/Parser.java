@@ -68,7 +68,6 @@ import org.lealone.sql.admin.ShutdownServer;
 import org.lealone.sql.ddl.AlterDatabase;
 import org.lealone.sql.ddl.AlterIndexRename;
 import org.lealone.sql.ddl.AlterSchemaRename;
-import org.lealone.sql.ddl.AlterSchemaWithReplication;
 import org.lealone.sql.ddl.AlterSequence;
 import org.lealone.sql.ddl.AlterTableAddConstraint;
 import org.lealone.sql.ddl.AlterTableAlterColumn;
@@ -908,7 +907,8 @@ public class Parser implements SQLParser {
             if (readIf("FROM")) {
                 schema = readUniqueIdentifier();
             }
-            buff.append("TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=? ORDER BY TABLE_NAME");
+            buff.append(
+                    "TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=? ORDER BY TABLE_NAME");
             paramValues.add(ValueString.get(schema));
         } else if (readIf("COLUMNS")) {
             // for MySQL compatibility
@@ -1254,6 +1254,16 @@ public class Parser implements SQLParser {
             ifExists = readIfExists(ifExists);
             command.setIfExists(ifExists);
             return command;
+            // } else if (readIf("DATABASE")) {
+            // boolean ifExists = readIfExists(false);
+            // String dbName = readUniqueIdentifier();
+            // DropDatabase command = new DropDatabase(session);
+            // command.setDropAllObjects(true);
+            // if (readIf("DELETE")) {
+            // read("FILES");
+            // command.setDeleteFiles(true);
+            // }
+            // return command;
         } else if (readIf("ALL")) {
             read("OBJECTS");
             DropDatabase command = new DropDatabase(session);
@@ -4204,9 +4214,10 @@ public class Parser implements SQLParser {
         // Map<String, String> resourceQuota = null;
         Map<String, String> parameters = null;
         if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING) {
-            if (readIf("REPLICATION")) {
+            if (readIf("WITH")) {
+                read("REPLICATION");
                 read("STRATEGY");
-                replicationProperties = parseParameters();
+                replicationProperties = parseParameters(true);
                 checkReplicationProperties(replicationProperties);
             }
         }
@@ -4214,7 +4225,7 @@ public class Parser implements SQLParser {
         // read("QUOTA");
         // resourceQuota = parseParameters();
         // }
-        if (readIf("WITH"))
+        if (readIf("PARAMETERS"))
             parameters = parseParameters();
         // return new CreateDatabase(session, dbName, ifNotExists, runMode, replicationProperties, resourceQuota,
         // parameters);
@@ -4237,6 +4248,11 @@ public class Parser implements SQLParser {
         return null;
     }
 
+    private void checkReplicationProperties(Map<String, String> replicationProperties) {
+        if (replicationProperties != null && !replicationProperties.containsKey("class"))
+            throw DbException.get(ErrorCode.SYNTAX_ERROR_1, sqlCommand + ", missing replication strategy class");
+    }
+
     private CreateSchema parseCreateSchema() {
         CreateSchema command = new CreateSchema(session);
         command.setIfNotExists(readIfNotExists());
@@ -4246,19 +4262,14 @@ public class Parser implements SQLParser {
         } else {
             command.setAuthorization(session.getUser().getName());
         }
-
-        if (readIf("WITH")) {
-            read("REPLICATION");
-            read("=");
-            Map<String, String> replicationProperties = parseParameters();
-            command.setReplicationProperties(replicationProperties);
-            checkReplicationProperties(replicationProperties);
-        }
-
         return command;
     }
 
     private Map<String, String> parseParameters() {
+        return parseParameters(false);
+    }
+
+    private Map<String, String> parseParameters(boolean toLowerCase) {
         read("(");
         HashMap<String, String> parameters = New.hashMap();
         if (readIf(")"))
@@ -4266,6 +4277,8 @@ public class Parser implements SQLParser {
         String k, v;
         do {
             k = readUniqueIdentifier();
+            if (toLowerCase)
+                k = k.toLowerCase();
             if (readIf("=") || readIf(":"))
                 v = readString();
             else
@@ -4622,16 +4635,19 @@ public class Parser implements SQLParser {
     private AlterDatabase parseAlterDatabase() {
         String dbName = readUniqueIdentifier();
         Database db = LealoneDatabase.getInstance().getDatabase(dbName);
-        Map<String, String> parameters = null;
-        Map<String, String> replicationProperties = null;
-        if (readIf("WITH"))
-            parameters = parseParameters();
-        if (readIf("REPLICATION")) {
-            replicationProperties = parseParameters();
-            checkReplicationProperties(replicationProperties);
-        }
-
         RunMode runMode = parseRunMode();
+        Map<String, String> replicationProperties = null;
+        Map<String, String> parameters = null;
+        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING) {
+            if (readIf("WITH")) {
+                read("REPLICATION");
+                read("STRATEGY");
+                replicationProperties = parseParameters(true);
+                checkReplicationProperties(replicationProperties);
+            }
+        }
+        if (readIf("PARAMETERS"))
+            parameters = parseParameters();
         return new AlterDatabase(session, db, parameters, replicationProperties, runMode);
     }
 
@@ -4663,22 +4679,7 @@ public class Parser implements SQLParser {
 
     private DefineStatement parseAlterSchema() {
         String schemaName = readIdentifierWithSchema();
-        if (readIf("WITH")) {
-            read("REPLICATION");
-            read("=");
-            AlterSchemaWithReplication command = new AlterSchemaWithReplication(session);
-            command.setSchema(getSchema(schemaName));
-            Map<String, String> replicationProperties = parseParameters();
-            command.setReplicationProperties(replicationProperties);
-            checkReplicationProperties(replicationProperties);
-            return command;
-        }
         return parseAlterSchemaRename(schemaName);
-    }
-
-    private void checkReplicationProperties(Map<String, String> replicationProperties) {
-        if (replicationProperties != null && !replicationProperties.containsKey("class"))
-            throw DbException.get(ErrorCode.SYNTAX_ERROR_1, sqlCommand + ", missing replication strategy class");
     }
 
     private AlterSchemaRename parseAlterSchemaRename(String schemaName) {

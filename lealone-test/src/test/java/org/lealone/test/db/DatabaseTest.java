@@ -46,10 +46,11 @@ public class DatabaseTest extends DbObjectTestBase {
         executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest1");
         asserts("CreateDatabaseTest1");
 
-        executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest2 WITH(OPTIMIZE_DISTINCT=true, PERSISTENT=false)");
+        executeUpdate(
+                "CREATE DATABASE IF NOT EXISTS CreateDatabaseTest2 PARAMETERS(OPTIMIZE_DISTINCT=true, PERSISTENT=false)");
         asserts("CreateDatabaseTest2");
 
-        executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest3 WITH()");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest3 PARAMETERS()");
         asserts("CreateDatabaseTest3");
 
         try {
@@ -67,5 +68,22 @@ public class DatabaseTest extends DbObjectTestBase {
             assertTrue(e instanceof DbException);
             assertEquals(ErrorCode.DATABASE_ALREADY_EXISTS_1, ((DbException) e).getErrorCode());
         }
+
+        String dbName = "CreateDatabaseTest4";
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName //
+                + " RUN MODE REPLICATION WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:1)");
+        Database db = LealoneDatabase.getInstance().findDatabase(dbName);
+        assertNotNull(db);
+        assertNotNull(db.getReplicationProperties());
+        assertTrue(db.getReplicationProperties().containsKey("class"));
+
+        executeUpdate("ALTER DATABASE " + dbName //
+                + " RUN MODE REPLICATION WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:2)");
+
+        db = LealoneDatabase.getInstance().findDatabase(dbName);
+        assertNotNull(db);
+        assertNotNull(db.getReplicationProperties());
+        assertEquals("2", db.getReplicationProperties().get("replication_factor"));
+        // executeUpdate("DROP DATABASE IF EXISTS " + dbName);
     }
 }

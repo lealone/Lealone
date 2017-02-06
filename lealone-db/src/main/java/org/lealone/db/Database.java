@@ -2603,30 +2603,33 @@ public class Database implements DataHandler, DbObject {
     }
 
     public static String getCreateSQL(String quotedDbName, ConnectionInfo ci) {
-        return getCreateSQL(quotedDbName, ci.getDbSettings(), null);
+        return getCreateSQL(quotedDbName, ci.getDbSettings(), null, null);
     }
 
     private static String getCreateSQL(String quotedDbName, DbSettings dbSettings,
-            Map<String, String> replicationProperties) {
+            Map<String, String> replicationProperties, RunMode runMode) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
-        sql.append(quotedDbName).append(" WITH ( ");
+        sql.append(quotedDbName);
+        if (runMode != null) {
+            sql.append(" RUN MODE ").append(runMode.toString());
+        }
+        if (replicationProperties != null && !replicationProperties.isEmpty()) {
+            sql.append(" WITH REPLICATION STRATEGY");
+            appendMap(sql, replicationProperties);
+        }
+        sql.append(" PARAMETERS");
+        appendMap(sql, dbSettings.getSettings());
+        return sql.toString();
+    }
 
-        Map<String, String> map = dbSettings.getSettings();
+    private static void appendMap(StatementBuilder sql, Map<String, String> map) {
+        sql.resetCount();
+        sql.append("(");
         for (Entry<String, String> e : map.entrySet()) {
             sql.appendExceptFirst(",");
             sql.append(e.getKey()).append('=').append("'").append(e.getValue()).append("'");
         }
-        sql.append(" )");
-
-        if (replicationProperties != null && !replicationProperties.isEmpty()) {
-            sql.append(" REPLICATION (");
-            for (Map.Entry<String, String> e : replicationProperties.entrySet()) {
-                sql.appendExceptFirst(",");
-                sql.append('\'').append(e.getKey()).append("':'").append(e.getValue()).append('\'');
-            }
-            sql.append(')');
-        }
-        return sql.toString();
+        sql.append(')');
     }
 
     @Override
@@ -2641,7 +2644,7 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), dbSettings, replicationProperties);
+        return getCreateSQL(quoteIdentifier(name), dbSettings, replicationProperties, runMode);
     }
 
     @Override
@@ -2804,7 +2807,10 @@ public class Database implements DataHandler, DbObject {
     }
 
     synchronized User alterRootUserPassword(byte[] userPasswordHash) {
-        User rootUser = users.get(ROOT_USER);
+        String userName = ROOT_USER;
+        if (!getSettings().databaseToUpper)
+            userName = "root";
+        User rootUser = users.get(userName);
         if (!rootUser.validateUserPasswordHash(userPasswordHash)) {
             rootUser.setUserPasswordHash(userPasswordHash);
             updateMeta(systemSession, rootUser);

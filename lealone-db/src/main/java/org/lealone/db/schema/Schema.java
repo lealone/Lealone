@@ -8,7 +8,6 @@ package org.lealone.db.schema;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -50,9 +49,6 @@ public class Schema extends DbObjectBase {
     private final HashMap<String, Constant> constants;
     private final HashMap<String, FunctionAlias> functions;
 
-    private Map<String, String> replicationProperties;
-    private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
-
     /**
      * The set of returned unique names that are not yet stored. It is used to
      * avoid returning the same unique name twice when multiple threads
@@ -87,24 +83,6 @@ public class Schema extends DbObjectBase {
         return DbObjectType.SCHEMA;
     }
 
-    public Map<String, String> getReplicationProperties() {
-        return replicationProperties;
-    }
-
-    public void setReplicationProperties(Map<String, String> replicationProperties) {
-        this.replicationProperties = replicationProperties;
-        if (replicationPropertiesChangeListener != null)
-            replicationPropertiesChangeListener.replicationPropertiesChanged(this);
-    }
-
-    public void setReplicationPropertiesChangeListener(ReplicationPropertiesChangeListener listener) {
-        replicationPropertiesChangeListener = listener;
-    }
-
-    public static interface ReplicationPropertiesChangeListener {
-        void replicationPropertiesChanged(Schema schema);
-    }
-
     /**
      * Check if this schema can be dropped. System schemas can not be dropped.
      *
@@ -119,17 +97,8 @@ public class Schema extends DbObjectBase {
         if (system) {
             return null;
         }
-
         StatementBuilder sql = new StatementBuilder();
         sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ").append(owner.getSQL());
-        if (replicationProperties != null && !replicationProperties.isEmpty()) {
-            sql.append(" WITH REPLICATION = (");
-            for (Map.Entry<String, String> e : replicationProperties.entrySet()) {
-                sql.appendExceptFirst(",");
-                sql.append('\'').append(e.getKey()).append("':'").append(e.getValue()).append('\'');
-            }
-            sql.append(')');
-        }
         return sql.toString();
     }
 

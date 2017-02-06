@@ -33,7 +33,6 @@ public class SchemaTest extends DbObjectTestBase {
         create();
         alter();
         drop();
-
     }
 
     void create() {
@@ -102,23 +101,6 @@ public class SchemaTest extends DbObjectTestBase {
         assertNull(db.findSchema("SchemaTest_s1"));
         assertNotNull(db.findSchema(schemaName));
         executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
-
-        schemaName = "SchemaTest_s3";
-        executeUpdate("CREATE SCHEMA IF NOT EXISTS " + schemaName + " AUTHORIZATION " + userName //
-                + " WITH REPLICATION = (class: 'SimpleStrategy', replication_factor:1)");
-        schema = db.findSchema(schemaName);
-        assertNotNull(schema);
-        assertNotNull(schema.getReplicationProperties());
-        assertTrue(schema.getReplicationProperties().containsKey("class"));
-
-        executeUpdate("ALTER SCHEMA " + schemaName //
-                + " WITH REPLICATION = (class: 'SimpleStrategy', replication_factor:2)");
-
-        schema = db.findSchema(schemaName);
-        assertNotNull(schema);
-        assertNotNull(schema.getReplicationProperties());
-        assertEquals("2", schema.getReplicationProperties().get("replication_factor"));
-        executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
     }
 
     void drop() {
@@ -127,7 +109,7 @@ public class SchemaTest extends DbObjectTestBase {
         assertNull(schema);
         assertNull(findMeta(id));
         try {
-            executeUpdate("DROP SCHEMA " + schemaName + " AUTHORIZATION " + userName);
+            executeUpdate("DROP SCHEMA " + schemaName);
             fail();
         } catch (Exception e) {
             assertException(e, ErrorCode.SCHEMA_NOT_FOUND_1);

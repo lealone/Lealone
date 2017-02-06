@@ -6,8 +6,6 @@
  */
 package org.lealone.sql.ddl;
 
-import java.util.Map;
-
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
@@ -26,8 +24,6 @@ public class CreateSchema extends DefineStatement {
     private String schemaName;
     private String authorization;
     private boolean ifNotExists;
-
-    private Map<String, String> replicationProperties;
 
     public CreateSchema(ServerSession session) {
         super(session);
@@ -60,7 +56,6 @@ public class CreateSchema extends DefineStatement {
             }
             int id = getObjectId();
             Schema schema = new Schema(db, id, schemaName, user, false);
-            schema.setReplicationProperties(replicationProperties);
             db.addDatabaseObject(session, schema);
         }
         return 0;
@@ -72,10 +67,6 @@ public class CreateSchema extends DefineStatement {
 
     public void setAuthorization(String userName) {
         this.authorization = userName;
-    }
-
-    public void setReplicationProperties(Map<String, String> replicationProperties) {
-        this.replicationProperties = replicationProperties;
     }
 
 }
