@@ -101,11 +101,11 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     public void end() {
         stop = true;
-        ready();
+        wakeUp();
     }
 
     @Override
-    public void ready() {
+    public void wakeUp() {
         haveWork.release(1);
     }
 

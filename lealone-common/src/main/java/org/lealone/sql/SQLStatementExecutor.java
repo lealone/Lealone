@@ -23,6 +23,6 @@ public interface SQLStatementExecutor {
 
     void executeNextStatementIfNeeded(PreparedStatement current);
 
-    void ready();
+    void wakeUp();
 
 }

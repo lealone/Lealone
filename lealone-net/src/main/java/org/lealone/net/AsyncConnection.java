@@ -424,7 +424,7 @@ public class AsyncConnection implements Handler<Buffer> {
         }
 
         sessionInfo.preparedCommandQueue.add(pc);
-        sessionInfo.commandHandler.ready();
+        sessionInfo.commandHandler.wakeUp();
     }
 
     void sendError(Transfer transfer, int id, Throwable t) {

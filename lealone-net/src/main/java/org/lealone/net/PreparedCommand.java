@@ -22,11 +22,11 @@ import org.lealone.sql.PreparedStatement;
 
 public class PreparedCommand {
 
-    int id;
-    PreparedStatement stmt;
-    Transfer transfer;
-    Session session;
-    Runnable runnable;
+    final int id;
+    final PreparedStatement stmt;
+    final Transfer transfer;
+    final Session session;
+    private final Runnable runnable;
 
     PreparedCommand(int id, PreparedStatement stmt, Transfer transfer, Session session, Runnable runnable) {
         this.id = id;

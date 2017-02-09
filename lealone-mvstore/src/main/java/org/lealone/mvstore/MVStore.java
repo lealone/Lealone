@@ -1855,7 +1855,7 @@ public class MVStore implements Storage {
                         Page p = Page.read(fileStore, pos, map, filePos, maxPos);
                         cachePage(pos, p, p.getMemory());
                         if (sqlStatementExecutor != null)
-                            sqlStatementExecutor.ready();
+                            sqlStatementExecutor.wakeUp();
                         return p;
                     }
                 };
