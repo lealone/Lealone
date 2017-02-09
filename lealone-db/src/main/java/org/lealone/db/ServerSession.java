@@ -1141,20 +1141,26 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      */
     public void waitIfExclusiveModeEnabled() {
         while (true) {
-            ServerSession exclusive = database.getExclusiveSession();
-            if (exclusive == null || exclusive == this) {
+            if (!isExclusiveMode())
                 break;
-            }
-            if (Thread.holdsLock(exclusive)) {
-                // if another connection is used within the connection
-                break;
-            }
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 // ignore
             }
         }
+    }
+
+    private boolean isExclusiveMode() {
+        ServerSession exclusive = database.getExclusiveSession();
+        if (exclusive == null || exclusive == this) {
+            return false;
+        }
+        if (Thread.holdsLock(exclusive)) {
+            // if another connection is used within the connection
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -1459,6 +1465,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     @Override
     public SessionStatus getStatus() {
+        if (isExclusiveMode())
+            return SessionStatus.EXCLUSIVE_MODE;
         return sessionStatus;
     }
 }

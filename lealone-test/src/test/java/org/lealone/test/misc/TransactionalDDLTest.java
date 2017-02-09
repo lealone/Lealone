@@ -55,9 +55,9 @@ public class TransactionalDDLTest extends SqlTestBase {
     }
 
     public void runDLL() throws Exception {
-        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS db2 WITH(OPTIMIZE_DISTINCT=true, PERSISTENT=true)");
+        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS db2 PARAMETERS(OPTIMIZE_DISTINCT=true, PERSISTENT=true)");
 
-        stmt.executeUpdate("ALTER DATABASE db2 WITH(OPTIMIZE_DISTINCT=false)");
+        stmt.executeUpdate("ALTER DATABASE db2 PARAMETERS(OPTIMIZE_DISTINCT=false)");
 
         // stmt.executeUpdate("CREATE DOMAIN IF NOT EXISTS EMAIL AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)");
         // stmt.executeUpdate("CREATE FORCE AGGREGATE IF NOT EXISTS MEDIAN FOR \"" + MedianString.class.getName() +

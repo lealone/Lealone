@@ -144,7 +144,9 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
                 continue;
 
             SessionStatus sessionStatus = pc.session.getStatus();
-            if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
+            if (sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
+                continue;
+            } else if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
                 bestPreparedCommandQueue = preparedCommandQueue;
                 break;
             } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
