@@ -427,6 +427,7 @@ class StatementWrapper extends StatementBase {
     private void stop(boolean async, AsyncResult ar, AsyncHandler ah) {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
+        boolean unlockReadLocks = false;
         if (async) {
             if (session.isAutoCommit()) {
                 setCallable(ar, ah);
@@ -434,25 +435,19 @@ class StatementWrapper extends StatementBase {
             } else {
                 // 当前语句是在一个手动提交的事务中进行，提前返回语句的执行结果
                 ah.handle(ar);
+                unlockReadLocks = true;
             }
         } else {
             if (session.isAutoCommit()) {
                 session.commit(false);
-            } else if (session.getDatabase().isMultiThreaded()) {
-                Database db = session.getDatabase();
-                if (db != null) {
-                    if (db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {
-                        session.unlockReadLocks();
-                    }
-                }
+            } else {
+                unlockReadLocks = true;
             }
         }
-        if (session.getDatabase().isMultiThreaded()) {
+        if (unlockReadLocks && session.getDatabase().isMultiThreaded()) {
             Database db = session.getDatabase();
-            if (db != null) {
-                if (db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {
-                    session.unlockReadLocks();
-                }
+            if (db != null && db.getLockMode() == Constants.LOCK_MODE_READ_COMMITTED) {
+                session.unlockReadLocks();
             }
         }
         if (trace.isInfoEnabled() && startTime > 0) {
