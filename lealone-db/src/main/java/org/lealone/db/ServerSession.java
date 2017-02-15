@@ -709,28 +709,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     /**
-     * Unlock all read locks. This is done if the transaction isolation mode is
-     * READ_COMMITTED.
-     */
-    public void unlockReadLocks() {
-        if (database.isMultiVersion()) {
-            // MVCC: keep shared locks (insert / update / delete)
-            return;
-        }
-        // locks is modified in the loop
-        for (int i = 0; i < locks.size(); i++) {
-            Table t = locks.get(i);
-            if (!t.isLockedExclusively()) {
-                synchronized (database) {
-                    t.unlock(this);
-                    locks.remove(i);
-                }
-                i--;
-            }
-        }
-    }
-
-    /**
      * Unlock just this table.
      *
      * @param t the table to unlock
