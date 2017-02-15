@@ -20,6 +20,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
+import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Parameter;
@@ -381,7 +382,13 @@ class StatementWrapper extends StatementBase {
         }
         long now = System.nanoTime() / 1000000;
         if (start != 0 && now - start > session.getLockTimeout()) {
-            throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, e.getCause(), "");
+            ArrayList<ServerSession> sessions = session.checkDeadlock();
+            if (sessions != null) {
+                throw DbException.get(ErrorCode.DEADLOCK_1, StandardTable.getDeadlockDetails(sessions));
+            } else {
+
+                throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, e.getCause(), "");
+            }
         }
         Thread t = Thread.currentThread();
         // 当两个sql执行线程更新同一行出现并发更新冲突时，

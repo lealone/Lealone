@@ -731,13 +731,6 @@ public class Database implements DataHandler, DbObject {
         return meta == null || meta.isLockedExclusivelyBy(session);
     }
 
-    public void isSysTableLockedThenUnlock(ServerSession session) {
-        if (meta != null && meta.isLockedExclusively()) {
-            meta.unlock(session);
-            session.unlock(meta);
-        }
-    }
-
     // private synchronized void addMetaOld(ServerSession session, DbObject obj) {
     // int id = obj.getId();
     // if (id > 0 && !starting && !obj.isTemporary()) {
