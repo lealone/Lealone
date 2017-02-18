@@ -22,13 +22,13 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class AlterIndexRename extends DefineStatement {
+public class AlterIndexRename extends SchemaStatement {
 
     private Index oldIndex;
     private String newIndexName;
 
-    public AlterIndexRename(ServerSession session) {
-        super(session);
+    public AlterIndexRename(ServerSession session, Schema schema) {
+        super(session, schema);
     }
 
     @Override
@@ -46,7 +46,7 @@ public class AlterIndexRename extends DefineStatement {
 
     @Override
     public int update() {
-        Schema schema = oldIndex.getSchema();
+        Schema schema = getSchema();
         synchronized (schema.getLock(DbObjectType.INDEX)) {
             if (schema.findIndex(session, newIndexName) != null || newIndexName.equals(oldIndex.getName())) {
                 throw DbException.get(ErrorCode.INDEX_ALREADY_EXISTS_1, newIndexName);
