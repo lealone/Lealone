@@ -1617,7 +1617,7 @@ public class Database implements DataHandler, DbObject {
      * @param obj the object
      * @param newName the new name
      */
-    public synchronized void renameSchemaObject(ServerSession session, SchemaObject obj, String newName) {
+    public void renameSchemaObject(ServerSession session, SchemaObject obj, String newName) {
         checkWritingAllowed();
         obj.getSchema().rename(obj, newName);
         updateMetaAndFirstLevelChildren(session, obj);
@@ -1674,11 +1674,12 @@ public class Database implements DataHandler, DbObject {
         DbObjectType type = obj.getType();
         synchronized (getLock(type)) {
             Map<String, DbObject> map = getMap(type);
+            String oldName = obj.getName();
             if (SysProperties.CHECK) {
-                if (!map.containsKey(obj.getName())) {
-                    DbException.throwInternalError("not found: " + obj.getName());
+                if (!map.containsKey(oldName)) {
+                    DbException.throwInternalError("not found: " + oldName);
                 }
-                if (obj.getName().equals(newName) || map.containsKey(newName)) {
+                if (oldName.equals(newName) || map.containsKey(newName)) {
                     DbException.throwInternalError("object already exists: " + newName);
                 }
             }
@@ -1686,7 +1687,7 @@ public class Database implements DataHandler, DbObject {
             int id = obj.getId();
             // lockMeta(session);
             removeMeta(session, id);
-            map.remove(obj.getName());
+            map.remove(oldName);
             obj.rename(newName);
             map.put(newName, obj);
         }

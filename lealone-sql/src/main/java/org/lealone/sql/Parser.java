@@ -4655,7 +4655,7 @@ public class Parser implements SQLParser {
         String indexName = readIdentifierWithSchema();
         Schema old = getSchema();
         AlterIndexRename command = new AlterIndexRename(session);
-        command.setOldIndex(getSchema().getIndex(indexName));
+        command.setOldIndex(old.getIndex(indexName));
         read("RENAME");
         read("TO");
         String newName = readIdentifierWithSchema(old.getName());

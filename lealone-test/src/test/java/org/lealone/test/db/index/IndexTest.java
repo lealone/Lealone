@@ -63,6 +63,10 @@ public class IndexTest extends DbObjectTestBase {
     }
 
     void alter() {
+        // executeUpdate("CREATE SCHEMA s1 AUTHORIZATION root");
+        // executeUpdate("ALTER INDEX idx2 RENAME TO DbObjectTest.s1.idx22");
+
+        // executeUpdate("ALTER INDEX idx2 RENAME TO DbObjectTest.PUBLIC.idx22");
         executeUpdate("ALTER INDEX idx2 RENAME TO idx22");
 
         Index index = schema.findIndex(session, "idx22");

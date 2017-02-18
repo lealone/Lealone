@@ -21,10 +21,10 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.Properties;
 
-import org.h2.engine.Constants;
-import org.h2.security.SHA256;
-import org.h2.util.MathUtils;
-import org.h2.util.StringUtils;
+import org.lealone.common.security.SHA256;
+import org.lealone.common.util.MathUtils;
+import org.lealone.common.util.StringUtils;
+import org.lealone.db.Constants;
 import org.lealone.test.sql.SqlTestBase;
 
 public class TransactionalDDLTest extends SqlTestBase {

@@ -229,17 +229,18 @@ public class Schema extends DbObjectBase {
         DbObjectType type = obj.getType();
         synchronized (getLock(type)) {
             HashMap<String, SchemaObject> map = getMap(type);
+            String oldName = obj.getName();
             if (SysProperties.CHECK) {
-                if (!map.containsKey(obj.getName())) {
-                    DbException.throwInternalError("not found: " + obj.getName());
+                if (!map.containsKey(oldName)) {
+                    DbException.throwInternalError("not found: " + oldName);
                 }
-                if (obj.getName().equals(newName) || map.containsKey(newName)) {
+                if (oldName.equals(newName) || map.containsKey(newName)) {
                     DbException.throwInternalError("object already exists: " + newName);
                 }
             }
             obj.checkRename();
-            map.remove(obj.getName());
-            freeUniqueName(obj.getName());
+            map.remove(oldName);
+            freeUniqueName(oldName);
             obj.rename(newName);
             map.put(newName, obj);
             freeUniqueName(newName);
