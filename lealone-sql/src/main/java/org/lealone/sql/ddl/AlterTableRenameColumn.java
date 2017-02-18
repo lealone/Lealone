@@ -8,8 +8,10 @@ package org.lealone.sql.ddl;
 
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
+import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
@@ -22,14 +24,14 @@ import org.lealone.sql.expression.Expression;
  * @author H2 Group
  * @author zhh
  */
-public class AlterTableRenameColumn extends DefineStatement {
+public class AlterTableRenameColumn extends SchemaStatement {
 
     private Table table;
     private Column column;
     private String newName;
 
-    public AlterTableRenameColumn(ServerSession session) {
-        super(session);
+    public AlterTableRenameColumn(ServerSession session, Schema schema) {
+        super(session, schema);
     }
 
     @Override
@@ -51,21 +53,22 @@ public class AlterTableRenameColumn extends DefineStatement {
 
     @Override
     public int update() {
-        session.commit(true);
-        Database db = session.getDatabase();
-        session.getUser().checkRight(table, Right.ALL);
-        table.checkSupportAlter();
-        // we need to update CHECK constraint
-        // since it might reference the name of the column
-        Expression newCheckExpr = (Expression) column.getCheckConstraint(session, newName);
-        table.renameColumn(column, newName);
-        column.removeCheckConstraint();
-        column.addCheckConstraint(session, newCheckExpr);
-        table.setModified();
-        db.updateMeta(session, table);
-        for (DbObject child : table.getChildren()) {
-            if (child.getCreateSQL() != null) {
-                db.updateMeta(session, child);
+        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
+            Database db = session.getDatabase();
+            session.getUser().checkRight(table, Right.ALL);
+            table.checkSupportAlter();
+            // we need to update CHECK constraint
+            // since it might reference the name of the column
+            Expression newCheckExpr = (Expression) column.getCheckConstraint(session, newName);
+            table.renameColumn(column, newName);
+            column.removeCheckConstraint();
+            column.addCheckConstraint(session, newCheckExpr);
+            table.setModified();
+            db.updateMeta(session, table);
+            for (DbObject child : table.getChildren()) {
+                if (child.getCreateSQL() != null) {
+                    db.updateMeta(session, child);
+                }
             }
         }
         return 0;

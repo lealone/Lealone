@@ -1074,7 +1074,7 @@ public class Parser implements SQLParser {
     private StatementBase parseTruncate() {
         read("TABLE");
         Table table = readTableOrView();
-        TruncateTable command = new TruncateTable(session);
+        TruncateTable command = new TruncateTable(session, table.getSchema());
         command.setTable(table);
         return command;
     }
@@ -5256,7 +5256,7 @@ public class Parser implements SQLParser {
             // new column type ignored. RENAME and MODIFY are
             // a single command in MySQL but two different commands in H2.
             parseColumnForTable(newColumnName, column.isNullable());
-            AlterTableRenameColumn command = new AlterTableRenameColumn(session);
+            AlterTableRenameColumn command = new AlterTableRenameColumn(session, table.getSchema());
             command.setTable(table);
             command.setColumn(column);
             command.setNewColumnName(newColumnName);
@@ -5273,7 +5273,7 @@ public class Parser implements SQLParser {
             Column column = table.getColumn(columnName);
             if (readIf("RENAME")) {
                 read("TO");
-                AlterTableRenameColumn command = new AlterTableRenameColumn(session);
+                AlterTableRenameColumn command = new AlterTableRenameColumn(session, table.getSchema());
                 command.setTable(table);
                 command.setColumn(column);
                 String newName = readColumnIdentifier();
