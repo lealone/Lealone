@@ -7,21 +7,26 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.Right;
+import org.lealone.db.schema.Schema;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
  * ALTER VIEW
+ * 
+ * @author H2 Group
+ * @author zhh
  */
-public class AlterView extends DefineStatement {
+public class AlterView extends SchemaStatement {
 
     private TableView view;
 
-    public AlterView(ServerSession session) {
-        super(session);
+    public AlterView(ServerSession session, Schema schema) {
+        super(session, schema);
     }
 
     @Override
@@ -35,11 +40,12 @@ public class AlterView extends DefineStatement {
 
     @Override
     public int update() {
-        session.commit(true);
-        session.getUser().checkRight(view, Right.ALL);
-        DbException e = view.recompile(session, false);
-        if (e != null) {
-            throw e;
+        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
+            session.getUser().checkRight(view, Right.ALL);
+            DbException e = view.recompile(session, false);
+            if (e != null) {
+                throw e;
+            }
         }
         return 0;
     }

@@ -4665,8 +4665,8 @@ public class Parser implements SQLParser {
     }
 
     private AlterView parseAlterView() {
-        AlterView command = new AlterView(session);
         String viewName = readIdentifierWithSchema();
+        AlterView command = new AlterView(session, getSchema());
         Table tableView = getSchema().findTableOrView(session, viewName);
         if (!(tableView instanceof TableView)) {
             throw DbException.get(ErrorCode.VIEW_NOT_FOUND_1, viewName);
